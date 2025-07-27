@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block navbar %}
+    {% include 'tracker/QA_navbar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto px-4">
+
+    <!-- QA Parts Table Section -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold mb-2">Parts for QA</h2>
+
+        <div id="qa-parts-table-container"
+             hx-get="{% url 'generic_table_view' 'Parts' %}?qa_mode=true"
+             hx-trigger="load"
+             hx-target="#qa-parts-table-container"
+        hx-push-url="false">
+        </div>
+    </div>
+
+</div>
+{% endblock %}
