@@ -1,0 +1,80 @@
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyc
+*.pyo
+*.db
+*.mo
+*.migrations
+*.coverage
+*.tox
+*.env
+*.env.*
+.envrc
+*.DS_Store
+
+# Django static/media
+/media/
+/static/
+/staticfiles/
+/backend/media/
+/backend/staticfiles/
+
+# Virtualenv
+venv/
+env/
+ENV/
+.backend_venv/
+.pytest_cache/
+
+# Django secrets and IDE
+backend/.env
+backend/.vscode/
+backend/.idea/
+
+# ---- Bun / Vite / React ----
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.bun/
+frontend/bun.lockb
+frontend/.env
+frontend/.env.*
+
+# Logs
+npm-debug.log*
+bun-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Docker / Infra ----
+*.pid
+*.seed
+*.orig
+*.swp
+docker-compose.override.yml
+.env.docker
+init.sql
+
+# ---- JetBrains IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ---- macOS ----
+.DS_Store
+
+# ---- Windows ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- Test Coverage / Reporting ----
+.coverage
+htmlcov/
+coverage.xml
+pytestdebug.log

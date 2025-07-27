@@ -1,0 +1,21 @@
+<h2>Hello {{ user.first_name }},</h2>
+
+<p>Here is your weekly update on your orders:</p>
+
+<ul>
+  {% for order in orders %}
+    <li style="margin-bottom: 1em;">
+      <strong>{{ order.name }}</strong><br>
+      Status: {{ order.get_status_display }}<br>
+      Estimated Completion: {{ order.estimated_completion|default:"N/A" }}<br>
+      {% if order.customer_note %}
+        <em>Note:</em> {{ order.customer_note }}<br>
+      {% endif %}
+      APQP Stage: {{ order.get_current_hubspot_gate_display }}
+    </li>
+  {% empty %}
+    <li>No orders updated this week.</li>
+  {% endfor %}
+</ul>
+
+<p>Thank you for working with us!</p>
