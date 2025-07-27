@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="mx-auto px-4">
+
+    <!-- Orders Section -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold mb-2">Orders</h2>
+        <div id="orders-table-container"
+             hx-get="{% url 'generic_table_view' 'Orders' %}"
+             hx-trigger="load"
+             hx-target="#orders-table-container"
+             hx-push-url="false">
+        </div>
+    </div>
+
+    <!-- Parts Section -->
+    <div class="mb-8">
+        <h2 class="text-lg font-semibold mb-2">Parts</h2>
+        <div id="parts-table-container"
+             hx-get="{% url 'generic_table_view' 'Parts' %}"
+             hx-trigger="load"
+             hx-target="#parts-table-container"
+             hx-push-url="false">
+        </div>
+    </div>
+
+    <!-- Fallback if no products -->
+    {% if not deals and not parts %}
+        <div class="flex flex-col items-center justify-center h-[70vh] text-center px-4">
+            <div class="max-w-md bg-white shadow-lg rounded-lg p-6 border border-red-200">
+                <h2 class="text-2xl font-semibold text-red-600 mb-2">No Products Found</h2>
+                <p class="text-gray-700 mb-4">
+                    Sorry, we couldn't find any associated products or parts for your account.
+                </p>
+
+                {% if not user.is_authenticated %}
+                    <a href="{% url 'login' %}"
+                       class="inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                        Log in to Your Account
+                    </a>
+                {% else %}
+                    <p class="text-sm text-gray-500">
+                        Please contact your administrator or check your order details.
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
