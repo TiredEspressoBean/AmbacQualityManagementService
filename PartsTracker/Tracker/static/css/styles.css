@@ -1,0 +1,136 @@
+/* General Page Styling */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 60upx;
+    background-color: #333;
+    color: white;
+    height: 100%;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+}
+
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar ul li {
+    padding: 15px;
+    text-align: center;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.sidebar ul li a:hover {
+    background-color: #555;
+}
+
+.sidebar .menu-text {
+    display: none;
+    white-space: nowrap;
+}
+
+.sidebar.expanded {
+    width: 200px;
+}
+
+.sidebar.expanded .menu-text {
+    display: inline;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 60px;
+    width: calc(100% - 60px);
+    padding: 20px;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.expanded + .main-content {
+    margin-left: 200px;
+    width: calc(100% - 200px);
+}
+
+/* Top Navigation Bar */
+.topnav {
+    background-color: #333;
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+    align-items: center;
+}
+
+.topnav a, .logout-button {
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+}
+
+.topnav a:hover {
+    background-color: #555;
+}
+
+.logout-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    background-color: #333;
+    color: white;
+    position: absolute;
+    width: 100%;
+    bottom: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 60px;
+    }
+
+    .sidebar.expanded {
+        width: 160px;
+    }
+
+    .sidebar.expanded .menu-text {
+        display: inline;
+    }
+
+    .main-content {
+        margin-left: 60px;
+    }
+
+    .sidebar.expanded + .main-content {
+        margin-left: 160px;
+    }
+}

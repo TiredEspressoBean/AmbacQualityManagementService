@@ -1,0 +1,6 @@
+{% for form in formset %}
+    <div class="bg-gray-50 rounded-lg m-5 p-3 shadow">
+    <p class="inline font-bold">Part - </p> <p class="inline">{{ form.initial.glovia_id }}</p>
+    {{ form.as_p }}
+    </div>
+{% endfor %}

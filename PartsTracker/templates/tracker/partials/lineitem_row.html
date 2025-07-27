@@ -1,0 +1,25 @@
+{% load widget_tweaks %}
+
+<tr class="bg-white border-b">
+    <td class="border px-2 py-1">
+        {{ form.quantity|add_class:"w-20" }}
+    </td>
+
+    <td class="border px-2 py-1">
+        {{ form.part_type|add_class:"w-48" }}
+    </td>
+
+    <td class="border px-2 py-1">
+        <div class="max-w-full">
+            {{ form.process|add_class:"w-48" }}
+        </div>
+    </td>
+
+    <td class="border px-2 py-1">
+        {{ form.enumeration_start|add_class:"w-20" }}
+    </td>
+
+    <td class="border px-2 py-1 text-center">
+        <button type="button" class="delete-row text-red-500">Delete</button>
+    </td>
+</tr>

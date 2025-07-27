@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
+    <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
+
+    {% if form.errors %}
+        <p class="mb-4 text-red-600 text-sm">
+            Your username and password didn't match. Please try again.
+        </p>
+    {% endif %}
+
+    {% if next %}
+        {% if user.is_authenticated %}
+            <p class="mb-4 text-yellow-700 bg-yellow-100 p-2 rounded text-sm">
+                Your account doesn't have access to this page. To proceed, please login with an account that has access.
+            </p>
+        {% else %}
+            <p class="mb-4 text-blue-700 bg-blue-100 p-2 rounded text-sm">
+                Please login to see this page.
+            </p>
+        {% endif %}
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+            <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-700">Username</label>
+            <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}"
+                   value="{{ form.username.value|default_if_none:'' }}"
+                   class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+        </div>
+
+        <div>
+            <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-700">Password</label>
+            <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}"
+                   class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div class="flex items-center justify-between mt-4">
+            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Login
+            </button>
+            <a href="{% url 'password_reset' %}" class="text-sm text-blue-600 hover:underline">Lost password?</a>
+        </div>
+    </form>
+
+    <div class="mt-6 text-center">
+{#        <a href="{% provider_login_url 'microsoft' %}" disabled class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm">#}
+{#            Sign in with Microsoft#}
+{#        </a>#}
+    </div>
+</div>
+{% endblock %}

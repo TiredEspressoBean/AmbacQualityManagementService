@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block navbar %}
+  {% include 'tracker/edit_navbar.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto px-4">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-semibold text-gray-800">
+      Edit {{ model_name }}
+    </h1>
+    <a href="{% url 'create_page' model_name=model_name %}" 
+       class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+      + Add New {{ model_name }}
+    </a>
+  </div>
+
+  <div id="table-container"
+       hx-get="{% url 'generic_table_view' model_name %}?edit_mode=true"
+       hx-trigger="load"
+       hx-target="#table-container"
+       hx-push-url="false">
+  </div>
+</div>
+{% endblock %}

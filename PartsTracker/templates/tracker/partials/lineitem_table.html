@@ -1,0 +1,9 @@
+<tbody id="lineitemsBody"
+       hx-get="{% url 'refresh_parttype_process_selects' %}"
+       hx-trigger="refresh-lineitems from:body"
+       hx-swap="innerHTML">
+    {{ lineitem_formset.management_form }}
+    {% for form in lineitem_formset.forms %}
+        {% include "tracker/partials/lineitem_row.html" with form=form %}
+    {% endfor %}
+</tbody>

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block navbar %}
+    {% include 'tracker/qa_navbar.html' %}
+{% endblock %}
+
+{% block content %}
+    
+    <div id="history-table-container"
+             hx-get="{% url 'generic_table_view' 'auditlog_logentry' %}"
+             hx-trigger="load"
+             hx-target="#history-table-container"
+             hx-swap="outerHTML"
+        >
+    </div>
+    
+{% endblock %}

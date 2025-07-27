@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mx-auto p-6 bg-white shadow-md rounded-lg max-w-2xl">
+    <h2 class="text-2xl font-bold text-gray-900">{{ deal.name }}</h2>
+
+    <p class="mt-2 text-gray-700"><strong>Status:</strong> 
+        <span class="px-3 py-1 rounded text-white 
+            {% if deal.is_complete %} bg-green-500 
+            {% elif deal.is_in_progress %} bg-yellow-500 
+            {% else %} bg-red-500 {% endif %}">
+            {{ deal.status }}
+        </span>
+    </p>
+
+    <div class="mt-4 text-gray-700">
+        <p><strong>Customer:</strong> {{ deal.customer.username }} : {{ deal.customer.first_name }} {{ deal.customer.last_name }}</p>
+        <p><strong>Company:</strong> {{ deal.company.name }}</p>
+        <p><strong>Estimated Completion:</strong> {{ deal.estimated_completion }}</p>
+        <p><strong>Archived: </strong>{{ deal.archived }}</p>
+    </div>
+
+    <h3 class="mt-6 text-lg font-semibold text-gray-900">Parts Associated with this Deal</h3>
+    {% if parts %}
+        <div class="mt-2 space-y-2">
+            {% for part in parts %}
+                <div class="p-2 bg-gray-50 hover:bg-gray-100 rounded">
+                    <a href="/part_view/{{ part.id }}" class="text-blue-600 hover:underline">
+                        {{ part.id }} : {{ part }}
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-500 mt-2">No parts associated with this deal.</p>
+    {% endif %}
+
+    <div class="mt-6">
+        <a href="{% url 'tracker' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+            Back to List
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+<div class="container mx-auto p-6 bg-white shadow-md rounded-lg">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Edit Part</h1>
+
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Part Name:</label>
+                <input type="text" id="name" name="name" value="{{ part.name }}" required
+                       class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+            </div>
+
+            <div>
+                <label for="part_type" class="block text-sm font-medium text-gray-700">Part Type:</label>
+                <select id="part_type" name="part_type"
+                        class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                    {% for type in part_types %}
+                        <option value="{{ type.id }}" {% if part.part_type.id == type.id %}selected{% endif %}>
+                            {{ type.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="step" class="block text-sm font-medium text-gray-700">Step:</label>
+                <select id="step" name="step"
+                        class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                    {% for s in steps %}
+                        <option value="{{ s.id }}" {% if part.step.id == s.id %}selected{% endif %}>
+                            {{ s.step }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700">Status:</label>
+                <select id="status" name="status"
+                        class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                    <option value="">PENDING</option>
+                    {% for choice in status %}
+                        <option value="{{ choice }}" {% if part.status == choice %}selected{% endif %}>
+                            {{ choice }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label for="assigned_emp" class="block text-sm font-medium text-gray-700">Assigned Employee:</label>
+            <select id="assigned_emp" name="assigned_emp"
+                    class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                <option value="">Unassigned</option>
+                {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if part.assigned_emp.id == emp.id %}selected{% endif %}>
+                        {{ emp.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="customer" class="block text-sm font-medium text-gray-700">Customer:</label>
+            <select id="customer" name="customer"
+                    class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                {% for cust in customers %}
+                    <option value="{{ cust.id }}" {% if part.customer.id == cust.id %}selected{% endif %}>
+                        {{ cust.company }} {{ cust.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="company" class="block text-sm font-medium text-gray-700">Company:</label>
+            <select id="company" name="company"
+                    class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                {% for company in companies %}
+                    <option value="{{ company.id }}" {% if part.parent_company.id == company.id %}selected{% endif %}>
+                        {{ company.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="order" class="block text-sm font-medium text-gray-700">Order:</label>
+            <select id="order" name="order"
+                    class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                {% for o in orders %}
+                    <option value="{{ o.id }}" {% if part.order.id == o.id %}selected{% endif %}>
+                        {{ o.id }} - {{ o.description }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="estimated_completion" class="block text-sm font-medium text-gray-700">Estimated Completion Date:</label>
+            <input type="date" id="estimated_completion" name="estimated_completion"
+                   value="{{ part.estimated_completion|date:'Y-m-d' }}"
+                   class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+        </div>
+
+        <div class="mt-6 flex gap-4">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                Save Changes
+            </button>
+            <a href="{% url 'edit' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+</div>
+{% endblock %}

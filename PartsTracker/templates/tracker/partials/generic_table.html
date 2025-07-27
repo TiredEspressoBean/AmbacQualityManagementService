@@ -1,0 +1,83 @@
+{% load table_helpers %}
+
+<div id="{{ table_id }}">
+    <!-- 🔍 Filter Form -->
+    <form hx-get="{% url 'generic_table_view' model_name %}?{% if qa_mode %}qa_mode=true&{% endif %}{% if edit_mode %}edit_mode=true{% endif %}"
+          hx-target="#{{ table_id }}"
+          hx-push-url="false"
+          class="mb-4 flex flex-wrap gap-2 items-center">
+
+        <input type="text" name="q" value="{{ query|default:'' }}"
+               class="p-2 border rounded shadow-sm w-full md:w-64"
+               placeholder="Search..."
+               hx-trigger="keyup changed delay:300ms"/>
+
+        {% for field in filter_fields %}
+            <select name="{{ field }}" class="p-2 border rounded shadow-sm w-full md:w-48"
+                    hx-trigger="change">
+                <option value="">All {{ field|title }}</option>
+                {% for val in filter_values|get_item:field %}
+                    <option value="{{ val }}" {% if request.GET|get_item:field == val %}selected{% endif %}>
+                        {{ val }}
+                    </option>
+                {% endfor %}
+            </select>
+        {% endfor %}
+
+        <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded">Filter</button>
+    </form>
+
+    <!-- 📊 Results Table -->
+    {% if rows %}
+        <table class="min-w-full border border-gray-300 mb-6">
+            <thead class="bg-gray-100 text-center">
+            <tr>
+                {% for header, field in header_field_pairs %}
+                    <th class="p-3 cursor-pointer"
+                        {% if field %}
+                        hx-get="{% url 'generic_table_view' model_name %}?sort={{ field }}&direction={% if request.GET.sort == field and request.GET.direction != 'desc' %}desc{% else %}asc{% endif %}{% if query %}&q={{ query }}{% endif %}"
+                        hx-target="#{{ table_id }}"
+                        hx-push-url="true"
+                        hx-swap="innerHTML"
+                        {% endif %}>
+                        {{ header }}
+                        {% if request.GET.sort == field %}
+                            {% if request.GET.direction == 'desc' %}
+                                ▼
+                            {% else %}
+                                ▲
+                            {% endif %}
+                        {% endif %}
+                    </th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr class="border-b even:bg-gray-100 odd:bg-white hover:bg-gray-200 text-center">
+                    {% for field in fields %}
+                        <td class="p-2">
+                            {% if forloop.first and link_prefix %}
+                                <a href="/view/{{ link_prefix }}/{{ row.pk }}" class="text-blue-600 hover:underline">
+                                    {{ row|get_attr:field }}
+                                </a>
+                            {% else %}
+                                {{ row|get_attr:field }}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+
+                    {% if row_actions %}
+                        {% include row_actions with row=row %}
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% include "tracker/partials/pagination.html" %}
+
+    {% else %}
+        <p class="text-center text-gray-500 text-sm mt-4">No results found.</p>
+    {% endif %}
+</div>

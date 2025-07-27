@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="max-w-4xl mx-auto py-10 px-6">
+        <h1 class="text-3xl font-bold mb-6">Detail View</h1>
+
+        <!-- Primary Fields Table -->
+        <div class="bg-white shadow-md rounded-xl overflow-hidden border border-gray-200">
+            <table class="w-full table-auto divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                <tr>
+                    <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">Field</th>
+                    <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">Value</th>
+                </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                {% for name, value, is_download, field_name in fields %}
+                    <tr>
+                        <td class="px-4 py-3 text-sm text-gray-600 font-medium">{{ name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800">
+                            {% if is_download %}
+                                <a href="{% url 'download_file' model_name=model_name pk=object.pk field=field_name %}"
+                                   class="text-blue-500 hover:underline">Download File</a>
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Attached Documents -->
+        {% if object.documents.all %}
+            <div class="mt-10">
+                <h2 class="text-2xl font-semibold mb-4">Attached Documents</h2>
+                <div class="bg-white shadow-md rounded-xl overflow-hidden border border-gray-200">
+                    <table class="w-full table-auto divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">Name</th>
+                            <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">Uploaded</th>
+                            <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">By</th>
+                            <th class="text-left text-sm font-semibold text-gray-700 px-4 py-3">File</th>
+                        </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                        {% for doc in object.documents.all %}
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-gray-800">{{ doc.file_name }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">{{ doc.upload_date }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-600">{{ doc.uploaded_by }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <a href="{{ doc.file.url }}" class="text-blue-600 hover:underline" download>
+                                        Download
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-gray-600" colspan="4">No documents attached.</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- HTMX-Powered Related Table (Parts for Order, Steps for Process) -->
+        {% if has_related_table %}
+            <div class="mt-10">
+                <h2 class="text-2xl font-semibold mb-4">Related Items</h2>
+                <div
+                        id="related-table"
+                        hx-get="{{ table_partial_url }}?order_id={{ related_object_id }}"
+                        hx-trigger="load"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        class="text-gray-600"
+                >
+                    Loading related table...
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Back Button -->
+        <div class="mt-6">
+            <a href="{% url 'home' %}"
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg">
+                Back to Home
+            </a>
+        </div>
+    </div>
+{% endblock %}

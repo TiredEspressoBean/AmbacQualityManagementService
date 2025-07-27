@@ -1,0 +1,44 @@
+{% if user.is_staff %}
+<div class="relative inline-block text-left">
+  <div class="group inline-block focus-within:outline-none">
+    <button
+      class="inline-flex items-center gap-2 w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+      aria-haspopup="true"
+      aria-expanded="false"
+    >
+      Manage Data
+      <i class="material-icons">expand_more</i>
+    </button>
+
+    <div
+      class="absolute z-50 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden group-focus-within:block"
+      role="menu"
+      aria-orientation="vertical"
+    >
+      <div class="py-1">
+        <a href="{% url 'edit' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          All Edits
+        </a>
+        <a href="{% url 'edit_model_page' 'Parts' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Parts
+        </a>
+        <a href="{% url 'edit_model_page' 'Orders' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Orders
+        </a>
+        <a href="{% url 'edit_model_page' 'PartTypes' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Part Types
+        </a>
+        <a href="{% url 'edit_model_page' 'Processes' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Processes
+        </a>
+        <a href="{% url 'edit_model_page' 'Steps' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Steps
+        </a>
+        <a href="{% url 'edit_model_page' 'Equipments' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+          Equipment
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

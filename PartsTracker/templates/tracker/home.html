@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+    <div class="container mx-auto text-center">
+        <h1 class="mt-5 text-3xl font-bold bg">Welcome to Our Manufacturing Tracker</h1>
+        <p class="mt-3 text-lg text-gray-700">
+            Track your orders and manage production efficiently.
+        </p>
+
+        {% if user.is_authenticated %}
+            <p class="mt-4">You are logged in as <strong>{{ user.username }}</strong>.</p>
+        {% endif %}
+
+        <div class="mt-5">
+            <img src="https://transform.octanecdn.com/fit/1200x600/https://octanecdn.com/ambacinternationalcom/ambacinternationalcom_153271557.jpg"
+                 alt="Picture of wonderful person Hal" class="w-full">
+        </div>
+
+        {# Convert UTC time to users timezone #}
+        <footer class="mt-5 text-sm text-gray-500">
+            <p>Last updated: {{ current_time }}</p>
+        </footer>
+    </div>
+{% endblock %}
