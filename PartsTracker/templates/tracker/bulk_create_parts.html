@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- HTMX dependency -->
+<script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+<div class="md:flex gap-4 w-full">
+    <div class="w-full md:w-3/4 mx-auto p-6 bg-white shadow rounded-lg flex-none">
+        <form method="POST" id="bulkPartsForm" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <h2 class="text-2xl font-bold mb-4">
+                Create Bulk Parts
+            </h2>
+
+            <table id="lineItemForm" class="w-full table-auto border text-sm mb-4">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th class="border px-2 py-1">Quantity</th>
+                        <th class="border px-2 py-1">Part Type</th>
+                        <th class="border px-2 py-1">Process</th>
+                        <th class="border px-2 py-1">IDs Start</th>
+                        <th class="border px-2 py-1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="lineitemsBody">
+                    {{ lineitem_formset.management_form }}
+                    {% for form in lineitem_formset.forms %}
+                        {% include "tracker/partials/lineitem_row.html" with form=form %}
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="button"
+                    class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    hx-get="{% url 'add_lineitem_partial' %}?total_forms={{ lineitem_formset.total_form_count }}"
+                    hx-target="#lineitemsBody"
+                    hx-swap="beforeend"
+                    id="addRowBtn">
+                + Add Part Line
+            </button>
+
+            {% if part_formset %}
+                {{ part_formset.management_form }}
+                {% for form in part_formset %}
+                    <div class="p-3 my-2 border rounded bg-gray-50">
+                        {{ form.as_p }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="mt-6 border-t pt-4">
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                    Create Parts
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right Column: New Part Types & Processes -->
+    <div class="w-full md:w-1/2 mt-8 flex-auto">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">New Part Types (if needed)</h3>
+        <div id="newPartTypeForms" class="border rounded p-3 bg-gray-50 mb-4">
+            {% for form in parttype_formset.forms %}
+                {% include "tracker/partials/parttype_row.html" with form=form %}
+            {% endfor %}
+        </div>
+        <button type="button"
+                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                hx-get="{% url 'add_parttype_partial' %}"
+                hx-target="#newPartTypeForms"
+                hx-swap="beforeend">
+            + Add New Part Type
+        </button>
+
+        <h3 class="text-lg font-semibold text-gray-800 mt-6 mb-2">New Processes (if needed)</h3>
+        <div id="newProcessForms" class="border rounded p-3 bg-gray-50 mb-4">
+            {% for form in process_formset.forms %}
+                {% include "tracker/partials/process_row.html" with form=form %}
+            {% endfor %}
+        </div>
+        <button type="button"
+                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                hx-get="{% url 'add_process_partial' %}"
+                hx-target="#newProcessForms"
+                hx-swap="beforeend">
+            + Add New Process
+        </button>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+        if (evt.detail.target.id === "lineitemsBody") {
+            const totalFormsInput = document.querySelector('input[name="lineitem-TOTAL_FORMS"]');
+            if (totalFormsInput) {
+                totalFormsInput.value = parseInt(totalFormsInput.value || 0) + 1;
+            }
+        }
+    });
+
+    document.addEventListener("click", function (e) {
+        if (e.target.classList.contains("delete-row")) {
+            e.target.closest("tr").remove();
+            const totalFormsInput = document.querySelector('input[name="lineitem-TOTAL_FORMS"]');
+            if (totalFormsInput) {
+                totalFormsInput.value = document.querySelectorAll('#lineitemsBody tr').length;
+            }
+        }
+    });
+</script>
+{% endblock %}

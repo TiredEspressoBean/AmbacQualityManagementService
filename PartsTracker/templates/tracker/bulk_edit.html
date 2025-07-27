@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="mx-auto p-6 bg-white shadow-md rounded-lg">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">Bulk edit Parts to Deal</h1>
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity:</label>
+                    <input id="quantity" type="number" value=""
+                           class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                </div>
+                <div>
+                    <label for="glovia id" class="block text-sm font-medium text-gray-700">Glovia ID Prefix:</label>
+                    <input id="glovia id" type="text" class="w-full border border-gray-300 rounded-lg shadow-sm p-2" value="{{ deal.glovia_id }}">
+                </div>
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
+                    <input id="name" type="text" class="w-full border border-gray-300 rounded-lg shadow-sm p-2" value="{{ deal.name }}">
+                </div>
+                <div>
+                    <label for="estimated completion" class="block text-sm font-medium text-gray-700">Estimated
+                        Completion:</label>
+                    <input id="estimated completion" type="datetime-local"
+                           class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                </div>
+                <div>
+                    <label for="related deal" class="block text-sm font-medium text-gray-700">Deal Associated:</label>
+                    <select id="related deal" class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                            
+                    </select>
+                </div>
+                <div>
+                    <label for="assign an employee" class="block text-sm font-medium text-gray-700">Assign an
+                        employee?</label>
+                    <select id="assign an employee" class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+
+                    </select>
+                </div>
+                <div>
+                    <label for="part_type" class="block text-sm font-medium text-gray-700">Select part type /
+                        process</label>
+                    <select id="part_type" class="w-full border border-gray-300 rounded-lg shadow-sm p-2">
+                    </select>
+                    
+                    <label for="new_part_type_checkbox" class="block text-sm font-medium text-gray-700">New type of
+                        part?</label>
+                    <input id="new_part_type_checkbox" type="checkbox">
+                    <label for="new_part_name" class="block text-sm font-medium text-gray-700">New Part Name:</label>
+                    <input id="new_part_name" type="text"
+                           class="w-full border border-gray-300 rounded-lg shadow-sm p-2 bg-gray-100" readonly>
+                    <label for="new_part_num_steps" class="block text-sm font-medium text-gray-700">Number of
+                        Steps:</label>
+                    <input id="new_part_num_steps" type="number"
+                           class="w-full border border-gray-300 rounded-lg shadow-sm p-2 bg-gray-100" readonly>
+                    <label for="remanufactured_checkbox" class="block text-sm font-medium text-gray-700">Remanufactured
+                        Product?</label>
+                    <input id="remanufactured_checkbox" type="checkbox" class="bg-gray-100" readonly>
+                </div>
+                <div>
+                    <div>
+                        <label for="new_steps_checkbox" class="block text-sm font-medium text-gray-700">Need to add new
+                            steps?</label>
+                        <input id="new_steps_checkbox" type="checkbox">
+                    </div>
+                    <div id="new_steps_information_div">
+                        <label for="new_steps_num_steps" class="block text-sm font-medium text-gray-700">Number of new
+                            steps:</label>
+                        <input id="new_steps_num_steps" type="number" readonly 
+                               class="w-full border border-gray-300 rounded-lg shadow-sm p-2 bg-gray-100">
+                        <label for="associate_to_new_part_checkbox" class="block text-sm font-medium text-gray-700">Associate to New Part?</label>
+                        <input id="associate_to_new_part_checkbox" type="checkbox" class="bg-gray-100" readonly>
+                    </div>
+                </div>
+            </div>
+            <div id="new_steps_series_div">
+            </div>
+            <div class="mt-6 flex gap-4">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Submit
+                </button>
+                <a href="{% url 'QA' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

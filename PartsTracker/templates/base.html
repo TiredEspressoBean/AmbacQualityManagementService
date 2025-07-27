@@ -1,0 +1,158 @@
+{% load static tailwind_tags %}
+
+<html lang="en">
+<head>
+    {% tailwind_css %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Tracker</title>
+    {% load static %}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+<body class="bg-gray-100 text-gray-900 text-sm">
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+<div class="flex flex-col min-h-screen">
+    <!-- Sidebar and Main Content Wrapper -->
+
+        <!-- Sidebar -->
+        <aside id="sidebar"
+                class="w-16 bg-gray-50 shadow-lg transition-all duration-300 flex flex-col fixed top-0 left-0 h-screen">
+            <ul class="space-y-4">
+                <li>
+                    <button id="toggleSidebar" class="flex items-center w-full py-4 bg-gray-200 hover:bg-gray-300">
+                        <i class="material-icons m-auto">menu</i>
+                    </button>
+                </li>
+                <li>
+                    <a href="{% url 'home' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                        <i class="material-icons">home</i>
+                        <span class="menu-text ml-3 hidden ">Home</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'tracker' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                        <i class="material-icons">analytics</i>
+                        <span class="menu-text ml-3 hidden ">Tracker</span>
+                    </a>
+                </li>
+                {% if user.is_staff %}
+                    <li>
+                        <a href="{% url 'QA' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                            <i class="material-icons">bug_report</i>
+                            <span class="menu-text ml-3 hidden ">QA</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'edit' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                            <i class="material-icons">edit</i>
+                            <span class="menu-text ml-3 hidden ">Edits</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'list_part_docs' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                            <i class="material-icons">description</i>
+                            <span class="menu-text ml-3 hidden ">Docs</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{% url 'chat_ai_view' %}" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                            <i class="material-icons">chat</i>
+                            <span class="menu-text ml-3 hidden ">Chat</span>
+                        </a>
+                    </li>
+                    {% if user.is_superuser %}
+                        <li>
+                            <a href="{% url 'admin:login' %}"
+                               class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-160">
+                                <i class="material-icons">admin_panel_settings</i>
+                                <span class="menu-text ml-3 hidden ">Admin</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endif %}
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 p-5 ml-16 transition-all duration-300">
+            <div class="flex flex-wrap justify-between items-center bg-white p-2 shadow-md rounded-md">
+                <div>
+                    {% block navbar %}{% endblock %}
+                </div>
+                <div>
+                    {% if user.is_authenticated %}
+                        <form id="logout-form" action="{% url 'logout' %}" method="POST" class="mb-0">
+                            {% csrf_token %}
+                            <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                                Logout
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="px-4 py-2 inline-block bg-blue-500 text-white rounded hover:bg-blue-600">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-6 flex-1">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    <!-- Footer -->
+    <footer class="text-center text-gray-500 text-sm py-4">
+        &copy; 1625 Factory Orders Tracker. All Rights Reserved.
+    </footer>
+</div>
+
+
+<script>
+    document.getElementById("toggleSidebar").addEventListener("click", function () {
+        const sidebar = document.getElementById("sidebar");
+        const mainContent = document.getElementById("main-content");
+
+        if (sidebar.classList.contains("w-32")) {
+            sidebar.classList.remove("w-32");
+            sidebar.classList.add("w-16");
+            sidebar.classList.remove("md:w-32")
+            mainContent.classList.remove("ml-32");
+            mainContent.classList.add("ml-16");
+        } else {
+            sidebar.classList.remove("w-16");
+            sidebar.classList.add("w-32");
+            sidebar.classList.add("md:w-32")
+            mainContent.classList.remove("ml-16");
+            mainContent.classList.add("ml-32");
+        }
+
+        // Toggle menu text visibility
+        document.querySelectorAll(".menu-text").forEach(el => {
+            el.classList.toggle("hidden");
+            el.classList.remove("md-block");
+        });
+    });
+    
+    const toggleButton = document.getElementById('darkModeToggle');
+    
+    // Check if dark mode is already applied based on user preferences
+    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // If user prefers dark mode, set class accordingly
+    if (prefersDarkMode) {
+      document.documentElement.classList.add('dark');
+    }
+
+    
+    function sortTable(columnIndex, tableId) {
+        let table = document.getElementById(tableId);
+        let rows = Array.from(table.getElementsByTagName("tr")).slice();
+        let sortedRows = rows.sort((a, b) => {
+            let aText = a.cells[columnIndex].innerText.trim();
+            let bText = b.cells[columnIndex].innerText.trim();
+            return aText.localeCompare(bText, undefined, { numeric: true });
+        });
+        sortedRows.forEach(row => table.appendChild(row));
+    }
+</script>
+
+</body>
+</html>
