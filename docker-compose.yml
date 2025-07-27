@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    command: >
+      sh -c "
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      python manage.py create_temp_admin &&
+      python manage.py tailwind install &&
+      python manage.py tailwind build &&
+      python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./PartsTracker:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./ambac-tracker-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_API_TARGET: ${VITE_API_TARGET}
+    ports:
+      - "5173:5173"  # Map container's port 80 to host's port 5173
+    environment:                         # Add this for runtime
+      - VITE_API_TARGET=${VITE_API_TARGET}
+    env_file:
+      - .env
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
