@@ -9,12 +9,15 @@ RUN npm install
 # Copy rest of the frontend source
 COPY . .
 
-# Declare a build argument
+# Declare a build argument for Vite
 ARG VITE_API_TARGET
-
-# Expose it to the build process as an environment variable
 ENV VITE_API_TARGET=$VITE_API_TARGET
 
-# Serve with Vite's preview server (handles SPA routing automatically)
+# 👉 Build the app for production
+RUN npm run build
+
+# Expose Vite preview server
 EXPOSE 5173
+
+# Start the preview server for the built output
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
