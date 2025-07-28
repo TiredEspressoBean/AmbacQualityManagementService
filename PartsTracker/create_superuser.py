@@ -10,6 +10,8 @@ if not User.objects.filter(username=os.environ["DJANGO_SUPERUSER_USERNAME"]).exi
     User.objects.create_superuser(
         username=os.environ["DJANGO_SUPERUSER_USERNAME"],
         email=os.environ["DJANGO_SUPERUSER_EMAIL"],
-        password=os.environ["DJANGO_SUPERUSER_PASSWORD"]
+        password=os.environ["DJANGO_SUPERUSER_PASSWORD"],
+        first_name="John",
+        last_name="Doe",
     )
     print(f"Superuser created successfully with username: {username} and password: {password}")
