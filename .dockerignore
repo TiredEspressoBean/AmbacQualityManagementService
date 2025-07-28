@@ -1,0 +1,40 @@
+# Global ignores
+*.pyc
+__pycache__/
+*.log
+.env
+.env.*
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Python / Django
+**/migrations/
+**/staticfiles/
+**/media/
+**/__pycache__/
+**/*.pyc
+
+# Node / React
+**/node_modules/
+**/build/
+**/dist/
+**/.next/
+**/.cache/
+
+# Frontend artifact folders (like for Tailwind or Vite)
+**/public/build/
+**/static_src/css/
+**/.parcel-cache/
+**/.turbo/
+
+# Test output
+coverage/
+*.cover
+htmlcov/
+
+# Docker
+docker-compose.override.yml
