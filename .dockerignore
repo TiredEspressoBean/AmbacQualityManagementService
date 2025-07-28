@@ -38,3 +38,6 @@ htmlcov/
 
 # Docker
 docker-compose.override.yml
+
+# Explicitly ignore deeply nested node_modules to avoid Docker tar failures
+theme/static_src/node_modules/
