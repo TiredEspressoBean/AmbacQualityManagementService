@@ -36,13 +36,13 @@ backend/.vscode/
 backend/.idea/
 
 # ---- Bun / Vite / React ----
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/.bun/
-frontend/bun.lockb
-frontend/.env
-frontend/.env.*
+/ambac-tracker-ui/node_modules/
+/ambac-tracker-ui/dist/
+/ambac-tracker-ui/.vite/
+/ambac-tracker-ui/.bun/
+/ambac-tracker-ui/bun.lock
+/ambac-tracker-ui/.env
+/ambac-tracker-ui/.env.*
 
 # Logs
 npm-debug.log*
