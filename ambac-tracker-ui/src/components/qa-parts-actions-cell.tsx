@@ -32,7 +32,6 @@ export function QaPartActionsCell({ part, onError }: PartActionsCellProps) {
 
             <Sheet open={sheet !== null} onOpenChange={(open) => !open && setSheet(null)}>
                 <SheetContent side="right" className="p-0 w-full">
-                    <form className="flex h-full w-full flex-col">
                         <SheetHeader className="flex-none border-b p-6 text-left">
                             <SheetTitle>
                                 {sheet === "quality" ? "Submit Quality Report" : "Archive Part"}
@@ -51,7 +50,6 @@ export function QaPartActionsCell({ part, onError }: PartActionsCellProps) {
                                     />
                             </div>
                         </div>
-                    </form>
                 </SheetContent>
             </Sheet>
         </>

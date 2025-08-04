@@ -1,133 +1,301 @@
-import React from 'react';
+import React, { useState } from "react";
 import {
-    Card, CardHeader, CardTitle, CardContent, CardFooter,
-} from '@/components/ui/card';
-import {Button} from '@/components/ui/button';
-import {useNavigate} from '@tanstack/react-router';
-import {useRetrieveDocuments} from '@/hooks/useRetrieveDocuments';
-import {useRetrieveContentTypes} from '@/hooks/useRetrieveContentTypes';
-import type {schemas} from '@/lib/api/generated';
-import {z} from 'zod';
+    Card, CardHeader, CardTitle, CardContent, CardDescription,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
+import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import DocumentsSection from "@/pages/detail pages/DocumentsSection";
+import AuditTrailComponent from "@/pages/detail pages/AuditTrail";
 
-type Document = z.infer<typeof schemas.Document>;
+type InfoSection = {
+    title: string;
+    fields: string[];
+    auditLog?: boolean;
+};
 
-export type FieldsConfig = {
+type RelatedModel = {
+    modelType: string;
+    fieldName: string; // The field that contains the related model ID
+    label: string; // Display name for the relationship
+    getValue?: (modelData: any) => number | null; // Custom getter for the related ID
+};
+
+type FieldsConfig = {
     fields: Record<string, { label: string }>;
     customRenderers?: Record<string, (value: any) => React.ReactNode>;
     fetcher: (id: string) => Promise<any>;
+    sections: {
+        header: any[];
+        info: InfoSection[];
+        related: any[];
+        documents: any[];
+        renderer?: (modelData: any) => React.ReactNode;
+    };
+    // New: Define related models whose documents should be included
+    relatedModels?: RelatedModel[];
+    subcomponents?: {
+        RendererSidebarComponent?: React.FC<{
+            modelType: string;
+            modelData: any;
+            documents?: Document[];
+            loading?: boolean;
+        }>;
+        DocumentsSectionComponent?: React.FC<any>;
+        AuditTrailComponent?: React.FC<any>;
+    };
 };
 
 type ModelData = {
-    id: number; name?: string; documents?: Document[]; // preload optional
+    id: number;
+    name?: string;
     [key: string]: any;
 };
 
 type ModelDetailPageProps = {
-    modelData: ModelData; modelType: string; fieldsConfig: FieldsConfig;
+    modelData: ModelData;
+    modelType: string;
+    fieldsConfig: FieldsConfig;
+    RendererSidebarComponent?: FieldsConfig["subcomponents"]["RendererSidebarComponent"];
 };
 
-const DocumentsSection: React.FC<{
-    documents: Document[]; isLoading?: boolean; error?: unknown;
-}> = ({documents, isLoading, error}) => {
-    const navigate = useNavigate();
-
-    if (isLoading) {
-        return <p className="text-sm text-muted-foreground">Loading documents…</p>;
-    }
-
-    if (error) {
-        console.log(error)
-        return <p className="text-sm text-destructive">Failed to load documents.</p>;
-    }
-
-    if (!documents.length) return null;
-
-    return (<div className="mt-6">
-            <h3 className="text-xl font-semibold mb-2">Associated Documents</h3>
-            <ul className="space-y-1">
-                {documents.map((doc) => (<li key={doc.id}>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            className="p-0 text-blue-600 hover:text-blue-800"
-                            onClick={() => navigate({to: `/documents/${doc.id}`})}
-                        >
-                            {doc.file_name}
-                        </Button>
-                    </li>))}
-            </ul>
-        </div>);
+type DocumentWithSource = Document & {
+    sourceModel?: string;
+    sourceLabel?: string;
 };
 
 const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
-                                                             modelData, modelType, fieldsConfig,
+                                                             modelData,
+                                                             modelType,
+                                                             fieldsConfig,
+                                                             RendererSidebarComponent,
                                                          }) => {
+    const [selectedDocument, setSelectedDocument] = useState<DocumentWithSource | null>(null);
+
     const {
-        data: contentTypes, isLoading: isLoadingContentTypes, error: contentTypeError,
+        data: contentTypes,
+        isLoading: isLoadingContentTypes,
+        error: contentTypeError,
     } = useRetrieveContentTypes({});
 
-    const contentTypeId = contentTypes?.results?.find((ct) => ct.model?.toLowerCase() === modelType.toLowerCase())?.id;
+    // Get content type for main model
+    const mainContentTypeId = contentTypes?.results?.find(
+        (ct) => ct.model?.toLowerCase() === modelType.toLowerCase()
+    )?.id;
 
+    // Get main model documents
     const {
-        data: documents,
-        isLoading: isLoadingDocs,
-        error: documentError,
-    } = useRetrieveDocuments({
-        queries: {
-            object_id: modelData.id,
-            content_type: contentTypeId,
+        data: mainDocuments,
+        isLoading: isLoadingMainDocs,
+        error: mainDocumentError,
+    } = useRetrieveDocuments(
+        {
+            queries: {
+                object_id: modelData.id,
+                content_type: mainContentTypeId,
+            },
         },
-        enabled: !!contentTypeId && !!modelData.id,
+        {
+            enabled: !!mainContentTypeId && !!modelData.id,
+        }
+    );
+
+    // Hook for each related model's documents
+    const relatedDocumentQueries = (fieldsConfig.relatedModels || []).map(relatedModel => {
+        const relatedId = relatedModel.getValue
+            ? relatedModel.getValue(modelData)
+            : modelData[relatedModel.fieldName];
+
+        const relatedContentTypeId = contentTypes?.results?.find(
+            (ct) => ct.model?.toLowerCase() === relatedModel.modelType.toLowerCase()
+        )?.id;
+
+        return useRetrieveDocuments(
+            {
+                queries: {
+                    object_id: relatedId,
+                    content_type: relatedContentTypeId,
+                },
+            },
+            {
+                enabled: !!relatedContentTypeId && !!relatedId,
+            }
+        );
     });
 
+    // Combine all documents with source information
+    const allDocuments: DocumentWithSource[] = [
+        // Main model documents
+        ...(mainDocuments?.results?.map(doc => ({
+            ...doc,
+            file: doc.file.replace("/media/", "/media/"),
+            sourceModel: modelType,
+            sourceLabel: "This Record"
+        })) ?? []),
+
+        // Related model documents
+        ...relatedDocumentQueries.flatMap((query, index) => {
+            const relatedModel = fieldsConfig.relatedModels![index];
+            return query.data?.results?.map(doc => ({
+                ...doc,
+                file: doc.file.replace("/media/", "/media/"),
+                sourceModel: relatedModel.modelType,
+                sourceLabel: relatedModel.label
+            })) ?? [];
+        })
+    ];
+
+    const isLoadingDocs = isLoadingMainDocs || relatedDocumentQueries.some(q => q.isLoading);
+    const documentError = mainDocumentError || relatedDocumentQueries.find(q => q.error)?.error;
 
     const renderField = (field: string, value: any) => {
         const customRenderer = fieldsConfig.customRenderers?.[field];
-        return customRenderer ? customRenderer(value) : value;
+        if (customRenderer) return customRenderer(value);
+
+        if (value === null || value === undefined || value === "") {
+            return <span className="text-muted-foreground italic">—</span>;
+        }
+
+        if (typeof value === "boolean") {
+            return value ? "Yes" : "No";
+        }
+
+        return String(value);
     };
 
-    return (<div className="p-6 max-w-4xl mx-auto">
-            <Card className="shadow-sm mb-6">
+    // Enhanced DocumentsSection that shows source
+    const EnhancedDocumentsSection = ({ documents, isLoading, error, onDocumentSelect, selectedDocument }) => {
+        const DocumentsSectionComponent = fieldsConfig.subcomponents?.DocumentsSectionComponent || DocumentsSection;
+
+        // Group documents by source
+        const groupedDocuments = documents.reduce((acc, doc) => {
+            const source = doc.sourceLabel || 'Unknown';
+            if (!acc[source]) acc[source] = [];
+            acc[source].push(doc);
+            return acc;
+        }, {});
+
+        return (
+            <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl font-semibold">
-                        {modelData.name || `${modelType} Detail`}
-                    </CardTitle>
+                    <CardTitle className="text-lg">Documents</CardTitle>
+                    <CardDescription>
+                        Files associated with this record and related items
+                    </CardDescription>
                 </CardHeader>
-
-                <CardContent className="space-y-4">
-                    {Object.entries(fieldsConfig.fields).map(([key, config]) => key in modelData ? (
-                        <div key={key} className="mb-4">
-                            <strong className="text-lg text-gray-700">{config.label}:</strong>
-                            <div className="text-gray-500">
-                                {renderField(key, modelData[key])}
+                <CardContent>
+                    {Object.entries(groupedDocuments).map(([source, docs]) => (
+                        <div key={source} className="mb-6 last:mb-0">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Badge variant="outline" className="text-xs">
+                                    {source}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                    {docs.length} document{docs.length !== 1 ? 's' : ''}
+                                </span>
                             </div>
-                        </div>) : null)}
+                            <DocumentsSectionComponent
+                                documents={docs}
+                                isLoading={isLoading}
+                                error={error}
+                                onDocumentSelect={onDocumentSelect}
+                                selectedDocument={selectedDocument}
+                                hideHeader={true} // Don't show the header since we're grouping
+                            />
+                        </div>
+                    ))}
+
+                    {documents.length === 0 && !isLoading && (
+                        <p className="text-muted-foreground italic">No documents found</p>
+                    )}
                 </CardContent>
-
-                <CardFooter className="flex flex-col items-start">
-                    <DocumentsSection
-                        documents={documents?.results ?? []}
-                        isLoading={isLoadingDocs || isLoadingContentTypes}
-                        error={documentError || contentTypeError}
-                    />
-                </CardFooter>
             </Card>
+        );
+    };
 
-            <div className="mt-4 flex justify-between">
-                <Button
-                    className="bg-gray-800 text-white hover:bg-gray-700"
-                    onClick={() => alert('Edit functionality here!')}
-                >
-                    Edit
-                </Button>
-                <Button
-                    className="bg-gray-800 text-white hover:bg-gray-700"
-                    onClick={() => alert('Create functionality here!')}
-                >
-                    Create New
-                </Button>
-            </div>
-        </div>);
+    const AuditComponent = fieldsConfig.subcomponents?.AuditTrailComponent || AuditTrailComponent;
+
+    return (
+        <ResizablePanelGroup direction="horizontal" className="w-full max-w-[1600px] mx-auto rounded-lg border">
+            <ResizablePanel defaultSize={34} minSize={20} className="p-6">
+                <Card className="mb-6">
+                    <CardHeader>
+                        <CardTitle>
+                            <div className="flex flex-col gap-1">
+                                <h1 className="text-xl font-bold tracking-tight">
+                                    {modelData.name || `${modelType} Detail`}
+                                </h1>
+                                <p className="text-sm text-muted-foreground">ID: {modelData.id}</p>
+                            </div>
+                        </CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="space-y-8">
+                        {fieldsConfig.sections.info.map((section, idx) => (
+                            <section key={idx} className="space-y-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-semibold tracking-wide text-foreground">
+                                        {section.title}
+                                    </h3>
+                                    <CardDescription className="text-sm text-muted-foreground" />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                    {section.fields.map((field) =>
+                                        field in modelData ? (
+                                            <div key={field} className="flex flex-col gap-1 text-sm">
+                                                <span className="text-muted-foreground font-medium">
+                                                    {fieldsConfig.fields[field]?.label || field}
+                                                </span>
+                                                <span className="text-foreground break-words">
+                                                    {renderField(field, modelData[field])}
+                                                </span>
+                                            </div>
+                                        ) : null
+                                    )}
+                                </div>
+
+                                {idx < fieldsConfig.sections.info.length - 1 && <Separator />}
+                            </section>
+                        ))}
+
+                        <EnhancedDocumentsSection
+                            documents={allDocuments}
+                            isLoading={isLoadingDocs || isLoadingContentTypes}
+                            error={documentError || contentTypeError}
+                            onDocumentSelect={setSelectedDocument}
+                            selectedDocument={selectedDocument}
+                        />
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Activity History</CardTitle>
+                                <CardDescription>Recent changes and updates to this record</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <AuditComponent objectId={modelData.id} modelType={modelType} />
+                            </CardContent>
+                        </Card>
+                    </CardContent>
+                </Card>
+            </ResizablePanel>
+
+            {RendererSidebarComponent && <ResizableHandle />}
+
+            {RendererSidebarComponent && (
+                <ResizablePanel defaultSize={66} minSize={30} className="p-6 bg-muted/5">
+                    <RendererSidebarComponent
+                        modelType={modelType}
+                        modelData={selectedDocument || modelData}
+                        documents={allDocuments}
+                        loading={isLoadingDocs || isLoadingContentTypes}
+                    />
+                </ResizablePanel>
+            )}
+        </ResizablePanelGroup>
+    );
 };
 
 export default ModelDetailPage;

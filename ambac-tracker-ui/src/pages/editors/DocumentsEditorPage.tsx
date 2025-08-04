@@ -31,7 +31,9 @@ export function DocumentsEditorPage() {
     return (
         <ModelEditorPage
             title="Documents"
+            modelName="Documents"
             useList={useDocumentsList}
+            showDetailsLink={true}
             sortOptions={[
                 { label: "Created (Newest)", value: "-created_at" },
                 { label: "Created (Oldest)", value: "created_at" },
@@ -51,7 +53,7 @@ export function DocumentsEditorPage() {
                 { header: "Version", renderCell: (p: any) => p.version || "-" },
             ]}
             renderActions={(document) => <EditDocumentsActionsCell documentId={document.id} />}
-            onCreate={() => navigate({ to: "/DocumentsForm/create" })}
+            onCreate={() => navigate({ to: "/DocumentForm/create" })}
         />
     );
 }

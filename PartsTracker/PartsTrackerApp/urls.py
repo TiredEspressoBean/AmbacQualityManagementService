@@ -33,7 +33,6 @@ from Tracker.AI_view import chat_ai_view
 
 urlpatterns = [
 
-    path("__reload__/", include("django_browser_reload.urls")),
 
     path("accounts/", include("django.contrib.auth.urls")),
 
@@ -125,10 +124,12 @@ urlpatterns += [
 
 
 urlpatterns += [
+    path("auth/user/", UserDetailsView.as_view(), name="rest_user_details"),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),
     path("accounts/", include("allauth.urls")),  # Required for Microsoft SSO,
     path("api/csrf/", get_csrf_token),
+    path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"), namespace="django_browser_reload")),
 
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema")),
@@ -152,15 +153,14 @@ router.register(r"Equipment-types", EquipmentTypeViewSet, basename="equipmenttyp
 router.register(r"Error-types", ErrorTypeViewSet, basename="errortype")
 router.register(r"Documents", DocumentViewSet, basename="documents")
 router.register(r'Processes_with_steps', ProcessWithStepsViewSet)
-router.register("Sampling-rule-sets", SamplingRuleSetViewSet)
-router.register("Sampling-rules", SamplingRuleViewSet)
+router.register("Sampling-rule-sets", SamplingRuleSetViewSet, basename="sampling-rule-sets")
+router.register("Sampling-rules", SamplingRuleViewSet, basename="sampling-rules")
 router.register("MeasurementDefinitions", MeasurementsDefinitionViewSet)
 router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 
-
-
 urlpatterns += [
+    path("media/<path:path>", serve_media_iframe_safe),
     path('api/', include(router.urls)),  # ✅ Adds /api/TrackerOrders/
     path("api/orders/<int:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list")
 ]

@@ -31,6 +31,8 @@ export function ProcessEditorPage() {
     return (
         <ModelEditorPage
             title="Process"
+            modelName="Processes"
+            showDetailsLink={true}
             useList={useProcessList}
             sortOptions={[
                 { label: "Created (Newest)", value: "-created_at" },

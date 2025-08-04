@@ -1,7 +1,9 @@
+import json
 import os
 import random
 from datetime import date
 
+from auditlog.models import LogEntry
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -13,7 +15,207 @@ from Tracker.hubspot.api import update_deal_stage
 from Tracker.sampling import SamplingFallbackApplier
 
 
-class Companies(models.Model):
+class SecureQuerySet(models.QuerySet):
+    """QuerySet with soft delete functionality and full audit logging"""
+
+    def delete(self):
+        """Soft delete all objects in queryset with full logging"""
+        deleted_count = 0
+        for obj in self:
+            if not obj.archived:
+                obj.delete()  # This calls the model's delete() method
+                deleted_count += 1
+        return deleted_count, {}
+
+    def bulk_soft_delete(self, actor=None, reason="bulk_operation"):
+        """Fast bulk soft delete WITH audit logging"""
+        # Get objects that will be affected
+        objects_to_delete = list(self.filter(archived=False).values('id', 'pk'))
+
+        if not objects_to_delete:
+            return 0
+
+        # Perform the bulk update
+        updated_count = self.filter(archived=False).update(deleted_at=timezone.now(), archived=True)
+
+        # Create bulk audit log entries
+        if updated_count > 0:
+            self._create_bulk_audit_logs(objects_to_delete, action='soft_delete_bulk', actor=actor, reason=reason)
+
+        return updated_count
+
+    def bulk_restore(self, actor=None, reason="bulk_restore"):
+        """Bulk restore WITH audit logging"""
+        # Get objects that will be affected
+        objects_to_restore = list(self.filter(archived=True).values('id', 'pk'))
+
+        if not objects_to_restore:
+            return 0
+
+        # Perform the bulk update
+        updated_count = self.filter(archived=True).update(deleted_at=None, archived=False)
+
+        # Create bulk audit log entries
+        if updated_count > 0:
+            self._create_bulk_audit_logs(objects_to_restore, action='restore_bulk', actor=actor, reason=reason)
+
+        return updated_count
+
+    def _create_bulk_audit_logs(self, object_list, action, actor=None, reason=""):
+        """Create audit log entries for bulk operations"""
+        if not object_list:
+            return
+
+        content_type = ContentType.objects.get_for_model(self.model)
+
+        # Create individual log entries for each affected object
+        log_entries = []
+        for obj_data in object_list:
+            log_entries.append(
+                LogEntry(content_type=content_type, object_pk=str(obj_data['pk']), object_id=obj_data['id'],
+                    object_repr=f"{self.model.__name__} (id={obj_data['id']})", action=LogEntry.Action.UPDATE,
+                    changes=json.dumps(
+                        {'archived': [False, True] if 'delete' in action else [True, False], 'bulk_operation': action,
+                            'reason': reason}), actor=actor, timestamp=timezone.now()))
+
+        # Bulk create the log entries
+        LogEntry.objects.bulk_create(log_entries)
+
+        # Also create a summary log entry
+        LogEntry.objects.create(content_type=content_type, object_pk='bulk_operation', object_id=None,
+            object_repr=f"Bulk {action} - {len(object_list)} {self.model.__name__} objects",
+            action=LogEntry.Action.UPDATE, changes=json.dumps({'operation': action, 'affected_count': len(object_list),
+                'affected_ids': [obj['id'] for obj in object_list], 'reason': reason}), actor=actor,
+            timestamp=timezone.now())
+
+    def hard_delete(self):
+        """Actually delete from database"""
+        return super().delete()
+
+    def active(self):
+        """Get non-deleted objects"""
+        return self.filter(archived=False)
+
+    def deleted(self):
+        """Get soft-deleted objects"""
+        return self.filter(archived=True)
+
+
+class SecureManager(models.Manager):
+    """Manager with customer filtering and soft delete"""
+
+    def get_queryset(self):
+        return SecureQuerySet(self.model, using=self._db)
+
+    def for_user(self, user):
+        """Filter data based on user permissions"""
+        queryset = self.active()  # Start with non-deleted objects
+
+        # Superusers see everything
+        if user.is_superuser:
+            return queryset
+
+        # Staff see all active objects
+        if user.is_staff:
+            return queryset
+
+        # Customer filtering - only see their own data
+        model_name = self.model._meta.model_name
+
+        if model_name == 'orders':
+            return queryset.filter(customer=user)
+        elif model_name == 'parts':
+            return queryset.filter(order__customer=user)
+        elif model_name == 'documents':
+            return queryset.filter(models.Q(customer=user) |  # Their documents
+                                   models.Q(classification='public')  # Public documents
+            )
+        elif model_name == 'user':
+            # Customers only see themselves
+            return queryset.filter(id=user.id)
+
+        # Default: no access
+        return queryset.none()
+
+    def active(self):
+        """Get active (non-deleted) objects"""
+        return self.get_queryset().active()
+
+    def deleted(self):
+        """Get soft-deleted objects"""
+        return self.get_queryset().deleted()
+
+    def bulk_soft_delete(self, actor=None, reason="bulk_operation"):
+        """Manager-level bulk soft delete"""
+        return self.get_queryset().bulk_soft_delete(actor=actor, reason=reason)
+
+    def bulk_restore(self, actor=None, reason="bulk_restore"):
+        """Manager-level bulk restore"""
+        return self.get_queryset().bulk_restore(actor=actor, reason=reason)
+
+
+class SecureModel(models.Model):
+    """Simple base model with soft delete (django-auditlog handles logging)"""
+
+    # Soft delete fields
+    archived = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    # Auto timestamp fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # Manager
+    objects = SecureManager()
+    all_objects = models.Manager()  # See everything including deleted
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - django-auditlog will automatically log this"""
+        if self.archived:
+            return
+
+        self.archived = True
+        self.deleted_at = timezone.now()
+        self.save(using=using)
+
+    def restore(self):
+        """Restore soft-deleted object - django-auditlog will log this too"""
+        if not self.archived:
+            return
+
+        self.archived = False
+        self.deleted_at = None
+        self.save()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Actually delete from database"""
+        super().delete(using=using, keep_parents=keep_parents)
+
+
+class PartsStatus(models.TextChoices):
+    # Before production starts
+    PENDING = "PENDING", "Pending"  # Created, not yet started
+
+    # Core flow
+    IN_PROGRESS = "IN_PROGRESS", "In Progress"  # Actively being worked on
+    AWAITING_QA = "AWAITING_QA", "Awaiting QA"  # Step done, waiting for inspection
+    READY_FOR_NEXT_STEP = "READY FOR NEXT STEP", "Ready for next step"
+    COMPLETED = "COMPLETED", "Completed"  # Fully passed all steps
+
+    # Exceptions
+    QUARANTINED = "QUARANTINED", "Quarantined"  # Temporarily flagged for QA review
+    REWORK_NEEDED = "REWORK_NEEDED", "Rework Needed"  # Needs rework from QA or operator
+    REWORK_IN_PROGRESS = "REWORK_IN_PROGRESS", "Rework In Progress"
+
+    # Terminal failures
+    SCRAPPED = "SCRAPPED", "Scrapped"  # Rejected permanently
+    CANCELLED = "CANCELLED", "Cancelled"  # Removed before production finished
+
+
+class Companies(SecureModel):
     """
     Represents a company or customer entity associated with deals, parts, and HubSpot CRM integration.
 
@@ -60,6 +262,16 @@ class User(AbstractUser):
         verbose_name_plural = 'Users'
         verbose_name = 'User'
 
+    def deactivate(self, reason=""):
+        """Deactivate user account"""
+        self.is_active = False
+        self.save()
+
+    def reactivate(self):
+        """Reactivate user account"""
+        self.is_active = True
+        self.save()
+
     def __str__(self):
         """Returns a readable representation of the user with username and full name."""
         return f"{self.username}: {self.first_name} {self.last_name}"
@@ -94,7 +306,7 @@ class ClassificationLevel(models.TextChoices):
     SECRET = "secret", "Secret"  # critical impact
 
 
-class Documents(models.Model):
+class Documents(SecureModel):
     """
     Represents a file uploaded and optionally associated with a specific part.
 
@@ -118,16 +330,12 @@ class Documents(models.Model):
 
     classification = models.CharField(max_length=20, choices=ClassificationLevel.choices,
                                       default=ClassificationLevel.INTERNAL,
-                                      help_text=(
-                                          "Level of document classification:\n"
-                                          '- "public": Public\n'
-                                          '- "internal": Internal Use\n'
-                                          '- "confidential": Confidential\n'
-                                          '- "restricted": Restricted (serious impact)\n'
-                                          '- "secret": Secret (critical impact)'
-                                      ),
-                                      null=True,
-                                      blank=False)
+                                      help_text=("Level of document classification:\n"
+                                                 '- "public": Public\n'
+                                                 '- "internal": Internal Use\n'
+                                                 '- "confidential": Confidential\n'
+                                                 '- "restricted": Restricted (serious impact)\n'
+                                                 '- "secret": Secret (critical impact)'), null=True, blank=False)
 
     AI_readable = models.BooleanField(default=False)
 
@@ -152,7 +360,7 @@ class Documents(models.Model):
     object_id = models.PositiveBigIntegerField(null=True, blank=True,
                                                help_text="ID of the object this document relates to")
 
-    related_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey('content_type', 'object_id')
     """Optional reference to the Object this document relates to."""
 
     version = models.PositiveSmallIntegerField(default=1)
@@ -168,8 +376,149 @@ class Documents(models.Model):
         """
         return self.file_name
 
+    def user_can_access(self, user):
+        """Check if user has permission to access this document"""
+        if user.is_superuser:
+            return True
 
-class PartTypes(models.Model):
+        if user.groups.filter(name="Customer").exists():
+            return self.classification == ClassificationLevel.PUBLIC
+        elif user.groups.filter(name="Employee").exists():
+            return self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL]
+        elif user.groups.filter(name="Manager").exists():
+            return self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL,
+                                           ClassificationLevel.CONFIDENTIAL]
+
+        return False
+
+    def get_access_level_for_user(self, user):
+        """Get the access level this user has for this document"""
+        if user.is_superuser:
+            return "full_access"
+
+        user_groups = user.groups.values_list('name', flat=True)
+
+        if "Customer" in user_groups:
+            return "public_only" if self.classification == ClassificationLevel.PUBLIC else "no_access"
+        elif "Employee" in user_groups:
+            if self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL]:
+                return "read_only"
+            return "no_access"
+        elif "Manager" in user_groups:
+            if self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL,
+                                       ClassificationLevel.CONFIDENTIAL]:
+                return "read_write"
+            return "no_access"
+
+        return "no_access"
+
+    def log_access(self, user, request=None):
+        """Log document access for audit trail"""
+        from auditlog.models import LogEntry
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils import timezone
+        import json
+
+        # Extract request metadata
+        remote_addr = None
+        if request:
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                remote_addr = x_forwarded_for.split(',')[0].strip()
+            else:
+                remote_addr = request.META.get('REMOTE_ADDR')
+
+        # Log document access
+        LogEntry.objects.create(
+            content_type=ContentType.objects.get_for_model(self),
+            object_pk=str(self.pk),
+            object_id=self.id,
+            object_repr=str(self),
+            action=LogEntry.Action.ACCESS,  # Use proper Action enum
+            changes=json.dumps({
+                'action_type': 'document_viewed',
+                'file_name': self.file_name,
+                'classification': self.classification,
+                'is_image': self.is_image
+            }),
+            actor=user,
+            remote_addr=remote_addr,
+            timestamp=timezone.now(),
+            additional_data=json.dumps({
+                'actor_email': user.email if user else None,
+                'user_agent': request.META.get('HTTP_USER_AGENT') if request else None,
+                'referer': request.META.get('HTTP_REFERER') if request else None
+            })
+        )
+
+        # Log access to related object if it exists
+        if self.content_object:
+            LogEntry.objects.create(
+                content_type=ContentType.objects.get_for_model(self.content_object),
+                object_pk=str(self.content_object.pk),
+                object_id=self.content_object.id,
+                object_repr=str(self.content_object),
+                action=LogEntry.Action.ACCESS,
+                changes=json.dumps({
+                    'action_type': 'related_object_accessed_via_document',
+                    'document_id': self.id,
+                    'document_name': self.file_name
+                }),
+                actor=user,
+                remote_addr=remote_addr,
+                timestamp=timezone.now(),
+                additional_data=json.dumps({
+                    'access_method': 'document_view',
+                    'document_classification': self.classification
+                })
+            )
+
+    def auto_detect_properties(self, file=None):
+        """Auto-detect document properties from uploaded file"""
+        from mimetypes import guess_type
+        from django.db.models import Max
+
+        file = file or self.file
+        if not file:
+            return {}
+
+        properties = {}
+
+        # Auto-detect file type
+        mime_type, _ = guess_type(file.name)
+        properties['is_image'] = mime_type and mime_type.startswith("image/")
+
+        # Auto-set file name if not provided
+        if not self.file_name:
+            properties['file_name'] = file.name
+
+        # Auto-increment version for same object
+        if self.content_type and self.object_id:
+            existing = Documents.objects.filter(content_type=self.content_type, object_id=self.object_id)
+            max_version = existing.aggregate(Max("version"))["version__max"] or 0
+            properties['version'] = max_version + 1
+
+        return properties
+
+    @classmethod
+    def get_user_accessible_queryset(cls, user):
+        """Get queryset filtered by user's access permissions"""
+        qs = cls.objects.select_related("uploaded_by", "content_type")
+
+        if user.is_superuser:
+            return qs
+        elif user.groups.filter(name="Customer").exists():
+            return qs.filter(classification=ClassificationLevel.PUBLIC)
+        elif user.groups.filter(name="Employee").exists():
+            return qs.filter(classification__in=[ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL])
+        elif user.groups.filter(name="Manager").exists():
+            return qs.filter(classification__in=[ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL,
+                                                 ClassificationLevel.CONFIDENTIAL])
+        else:
+            return qs.none()
+
+
+class PartTypes(SecureModel):
     """
     Represents a type/category of part that can be associated with processes and orders.
 
@@ -225,7 +574,7 @@ class PartTypes(models.Model):
         return self.name
 
 
-class Processes(models.Model):
+class Processes(SecureModel):
     """
     Defines a manufacturing process applied to a given part type.
 
@@ -284,7 +633,7 @@ class Processes(models.Model):
                       "Calibration", "Packaging", "Shipping"]
 
         new_steps = [
-            Steps(name=f"{self.part_type.name} step {i}" if not settings.DEBUG else random.choice(STEP_NAMES), step=i,
+            Steps(name=f"{self.part_type.name} step {i}" if not settings.DEBUG else random.choice(STEP_NAMES), order=i,
                   process=self, part_type=self.part_type, description=f"Step {i}", expected_duration=None,
                   is_last_step=(i == self.num_steps)) for i in range(existing_steps + 1, self.num_steps + 1)]
 
@@ -314,36 +663,22 @@ class Processes(models.Model):
         return f"{self.name} {self.part_type}{' Reman' if self.is_remanufactured else ''}"
 
 
-class MeasurementDefinition(models.Model):
+class MeasurementDefinition(SecureModel):
     step = models.ForeignKey("Steps", on_delete=models.CASCADE, related_name="measurement_definitions")
-    label = models.CharField(max_length=100)           # e.g. "Outer Diameter"
-    type = models.CharField(
-        max_length=20,
-        choices=[("NUMERIC", "Numeric"), ("PASS_FAIL", "Pass/Fail")],
-    )
+    label = models.CharField(max_length=100)  # e.g. "Outer Diameter"
+    type = models.CharField(max_length=20, choices=[("NUMERIC", "Numeric"), ("PASS_FAIL", "Pass/Fail")], )
     allow_quarantine = models.BooleanField(default=True)
     allow_remeasure = models.BooleanField(default=False)
     allow_override = models.BooleanField(default=False)
     require_qa_review = models.BooleanField(default=True)
-    unit = models.CharField(max_length=50, blank=True) # e.g. "mm", "psi"
+    unit = models.CharField(max_length=50, blank=True)  # e.g. "mm", "psi"
     nominal = models.FloatField(null=True, blank=True)
     upper_tol = models.FloatField(null=True, blank=True)
     lower_tol = models.FloatField(null=True, blank=True)
     required = models.BooleanField(default=True)
 
-    def evaluate_spec(self):
-        if self.definition.type == "NUMERIC":
-            return (
-                    self.definition.nominal - self.definition.lower_tol
-                    <= self.value_numeric
-                    <= self.definition.nominal + self.definition.upper_tol
-            )
-        if self.definition.type == "PASS_FAIL":
-            return self.value_pass_fail == "PASS"
-        return False
 
-
-class Steps(models.Model):
+class Steps(SecureModel):
     """
     Represents a single step within a manufacturing process for a specific part type.
 
@@ -380,12 +715,14 @@ class Steps(models.Model):
 
     requires_qa_signoff = models.BooleanField(default=False)
 
-    required_measurements = models.ManyToManyField(
-        MeasurementDefinition,
-        blank=True,
-        related_name="required_on_steps",
-        help_text="Measurements that must be collected during this step"
-    )
+    required_measurements = models.ManyToManyField(MeasurementDefinition, blank=True, related_name="required_on_steps",
+                                                   help_text="Measurements that must be collected during this step")
+
+    sampling_required = models.BooleanField(default=False)
+    """Whether this step requires sampling for quality control."""
+
+    min_sampling_rate = models.FloatField(default=0.0, help_text="Minimum % of parts that must be sampled at this step")
+    """Minimum sampling rate required for step advancement."""
 
     class Meta:
         ordering = ('part_type', 'order')
@@ -397,12 +734,123 @@ class Steps(models.Model):
         """Human-readable representation showing the part type and step number."""
         return f"{self.part_type.name} Step {self.order}"
 
+    def get_resolved_sampling_rules(self):
+        """Get complete resolved sampling rules for this step"""
+        # Get active primary ruleset
+        primary_ruleset = self.sampling_ruleset.filter(is_fallback=False, active=True).order_by("-version").first()
+
+        fallback_ruleset = None
+        if primary_ruleset and primary_ruleset.fallback_ruleset:
+            fallback_ruleset = primary_ruleset.fallback_ruleset
+
+        return {'active_ruleset': {'id': primary_ruleset.id if primary_ruleset else None,
+            'name': primary_ruleset.name if primary_ruleset else None, 'rules': list(
+                primary_ruleset.rules.all().values('id', 'rule_type', 'value', 'order')) if primary_ruleset else [],
+            'fallback_threshold': primary_ruleset.fallback_threshold if primary_ruleset else None,
+            'fallback_duration': primary_ruleset.fallback_duration if primary_ruleset else None},
+            'fallback_ruleset': {'id': fallback_ruleset.id if fallback_ruleset else None,
+                'name': fallback_ruleset.name if fallback_ruleset else None, 'rules': list(
+                    fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
+                        'order')) if fallback_ruleset else []} if fallback_ruleset else None}
+
+    def apply_sampling_rules_update(self, rules_data, fallback_rules_data=None, fallback_threshold=None,
+                                    fallback_duration=None, user=None):
+        """Apply sampling rules update with proper versioning and activation"""
+        from django.db import transaction
+        from django.db.models import Max
+
+        with transaction.atomic():
+            # Archive existing rulesets
+            self.sampling_ruleset.filter(active=True).update(active=False, archived=True)
+
+            # Calculate next version numbers
+            main_version = (SamplingRuleSet.objects.filter(part_type=self.part_type, process=self.process, step=self,
+                is_fallback=False).aggregate(Max("version"))["version__max"] or 0) + 1
+
+            fallback_version = (SamplingRuleSet.objects.filter(part_type=self.part_type, process=self.process,
+                step=self, is_fallback=True).aggregate(Max("version"))["version__max"] or 0) + 1
+
+            # Create fallback ruleset first if provided
+            fallback_ruleset = None
+            if fallback_rules_data:
+                fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
+                    step=self, name=f"Fallback for Step {self.id} v{fallback_version}", version=fallback_version,
+                    rules=fallback_rules_data, created_by=user, origin="serializer-update", active=True,
+                    is_fallback=True)
+
+            # Create main ruleset
+            main_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self,
+                name=f"Rules for Step {self.id} v{main_version}", version=main_version, rules=rules_data,
+                fallback_ruleset=fallback_ruleset, fallback_threshold=fallback_threshold,
+                fallback_duration=fallback_duration, created_by=user, origin="serializer-update", active=True,
+                is_fallback=False)
+
+            # Re-evaluate sampling for any active parts at this step
+            active_parts = Parts.objects.filter(step=self,
+                part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
+
+            if active_parts.exists():
+                self._reevaluate_parts_sampling(list(active_parts))
+
+            return main_ruleset
+
+    def _reevaluate_parts_sampling(self, parts_list):
+        """Re-evaluate sampling for list of parts after rule changes"""
+        updates = []
+        for part in parts_list:
+            evaluator = SamplingFallbackApplier(part=part)
+            result = evaluator.evaluate()
+
+            part.requires_sampling = result.get("requires_sampling", False)
+            part.sampling_rule = result.get("rule")
+            part.sampling_ruleset = result.get("ruleset")
+            part.sampling_context = result.get("context", {})
+            updates.append(part)
+
+        # Bulk update for efficiency
+        Parts.objects.bulk_update(updates,
+            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+
+    def update_sampling_rules(self, rules_data, fallback_rules_data=None, fallback_threshold=None,
+                              fallback_duration=None, user=None):
+        """Update sampling rules for this step"""
+        from django.db import transaction
+
+        with transaction.atomic():
+            # Get or create primary ruleset
+            primary_ruleset = SamplingRuleSet.objects.filter(step=self, part_type=self.part_type, active=True,
+                is_fallback=False).first()
+
+            if primary_ruleset:
+                # Supersede existing ruleset
+                new_ruleset = primary_ruleset.supersede_with(name=f"{self.name} Rules v{primary_ruleset.version + 1}",
+                    rules=rules_data, created_by=user)
+            else:
+                # Create new ruleset
+                new_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
+                    step=self, name=f"{self.name} Rules v1", rules=rules_data, created_by=user)
+
+            # Handle fallback ruleset if provided
+            if fallback_rules_data:
+                fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
+                    step=self, name=f"{self.name} Fallback Rules v1", rules=fallback_rules_data, created_by=user,
+                    is_fallback=True)
+
+                # Link fallback to primary
+                new_ruleset.fallback_ruleset = fallback_ruleset
+                new_ruleset.fallback_threshold = fallback_threshold
+                new_ruleset.fallback_duration = fallback_duration
+                new_ruleset.save()
+
+            return new_ruleset
+
     def can_advance_step(self, work_order, step):
-        parts = Parts.objects.filter(work_order=work_order, current_step=step)
-        completed = parts.filter(status='COMPLETED').count()
+        """Fixed method with proper field references"""
+        parts = Parts.objects.filter(work_order=work_order, step=step)  # Fixed: was current_step
+        completed = parts.filter(part_status='COMPLETED').count()  # Fixed: was status
         total = parts.count()
 
-        if step.block_on_quarantine and parts.filter(status='QUARANTINED').exists():
+        if step.block_on_quarantine and parts.filter(part_status='QUARANTINED').exists():  # Fixed: was status
             return False
 
         if completed / total < step.pass_threshold:
@@ -412,6 +860,31 @@ class Steps(models.Model):
             return False
 
         return True
+
+    def get_active_sampling_ruleset(self, part_type):
+        """Get the currently active ruleset for this step"""
+        return SamplingRuleSet.objects.filter(step=self, part_type=part_type, active=True, is_fallback=False).order_by(
+            "version").last()
+
+    def validate_sampling_coverage(self, work_order):
+        """Ensure minimum sampling rate is met"""
+        total_parts = Parts.objects.filter(work_order=work_order, step=self).count()
+        sampled_parts = Parts.objects.filter(work_order=work_order, step=self, requires_sampling=True).count()
+
+        actual_rate = (sampled_parts / total_parts * 100) if total_parts > 0 else 0
+        return actual_rate >= self.min_sampling_rate
+
+    def get_sampling_coverage_report(self, work_order):
+        """Generate sampling coverage report for this step"""
+        total_parts = Parts.objects.filter(work_order=work_order, step=self).count()
+        sampled_parts = Parts.objects.filter(work_order=work_order, step=self, requires_sampling=True).count()
+
+        inspected_parts = QualityReports.objects.filter(part__work_order=work_order, step=self).count()
+
+        return {'total_parts': total_parts, 'sampled_parts': sampled_parts, 'inspected_parts': inspected_parts,
+            'sampling_rate': (sampled_parts / total_parts * 100) if total_parts > 0 else 0,
+            'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
+            'meets_minimum': self.validate_sampling_coverage(work_order)}
 
 
 class OrdersStatus(models.TextChoices):
@@ -423,7 +896,7 @@ class OrdersStatus(models.TextChoices):
     CANCELLED = 'CANCELLED', "Cancelled"
 
 
-class Orders(models.Model):
+class Orders(SecureModel):
     """
     Represents a production or delivery order submitted by a customer.
 
@@ -529,6 +1002,130 @@ class Orders(models.Model):
         if is_update and self.current_hubspot_gate != old_stage:
             self.push_to_hubspot()
 
+    def get_step_distribution(self, exclude_completed=True):
+        """Get distribution of parts across steps for this order"""
+        from django.db.models import Count
+
+        queryset = self.parts.all()
+        if exclude_completed:
+            queryset = queryset.exclude(part_status=PartsStatus.COMPLETED)
+
+        step_counts = queryset.values("step_id").annotate(count=Count("id"))
+
+        # Get step names efficiently
+        step_id_to_name = {step.id: step.name for step in
+                           Steps.objects.filter(id__in=[s["step_id"] for s in step_counts])}
+
+        return [{"id": step["step_id"], "name": step_id_to_name.get(step["step_id"], f"Step {step['step_id']}"),
+                 "count": step["count"]} for step in step_counts]
+
+    def bulk_increment_parts_at_step(self, step_id):
+        """Increment all parts at a specific step"""
+        try:
+            target_step = Steps.objects.get(id=step_id)
+        except Steps.DoesNotExist:
+            raise ValueError(f"Step with id {step_id} does not exist")
+
+        parts_to_advance = self.parts.filter(step=target_step)
+        advanced = 0
+
+        for part in parts_to_advance:
+            try:
+                result = part.increment_step()
+                if result in ["completed_workorder", "full_work_order_advanced"]:
+                    advanced += 1
+            except Exception:
+                continue  # Skip failed parts, continue with others
+
+        return {"advanced": advanced, "total": parts_to_advance.count()}
+
+    def bulk_add_parts(self, part_type, step, quantity, part_status=PartsStatus.PENDING, work_order=None,
+                       erp_id_start=1):
+        """Add multiple parts to this order efficiently"""
+        # Create parts without sampling evaluation
+        parts = []
+        for i in range(quantity):
+            erp_id = f"{part_type.ID_prefix or 'P'}{erp_id_start + i:04d}"
+            part = Parts(part_status=part_status, order=self, part_type=part_type, step=step, work_order=work_order,
+                         archived=False, ERP_id=erp_id)
+            parts.append(part)
+
+        # Bulk create for efficiency
+        created_parts = Parts.objects.bulk_create(parts)
+
+        # Evaluate sampling for all new parts
+        updates = []
+        for part in created_parts:
+            evaluator = SamplingFallbackApplier(part=part)
+            result = evaluator.evaluate()
+
+            part.requires_sampling = result.get("requires_sampling", False)
+            part.sampling_rule = result.get("rule")
+            part.sampling_ruleset = result.get("ruleset")
+            part.sampling_context = result.get("context", {})
+            updates.append(part)
+
+        # Bulk update sampling fields
+        Parts.objects.bulk_update(updates,
+                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+
+        return {"created": len(created_parts), "parts": created_parts}
+
+    def bulk_remove_parts(self, part_ids):
+        """Remove parts from this order by setting order to None"""
+        parts = Parts.objects.filter(id__in=part_ids, order=self)
+        count = parts.update(order=None)
+        return {"removed": count}
+
+    def get_process_stages(self):
+        """Get stage progression for order based on parts' current steps"""
+        if not self.parts.exists():
+            return []
+
+        # Get the process from the first part (assuming all parts follow same process)
+        first_part = self.parts.first()
+        if not first_part or not first_part.step:
+            return []
+
+        process = first_part.step.process
+        process_steps = process.steps.order_by('order')
+
+        # Calculate current step based on part progression
+        current_step_order = first_part.step.order
+
+        stages = []
+        for step in process_steps:
+            stages.append({"name": step.name, "timestamp": None,  # Could be enhanced with StepTransitionLog data
+                           "is_completed": step.order < current_step_order,
+                           "is_current": step.order == current_step_order, "step_id": step.id, "order": step.order})
+
+        return stages
+
+    def get_detailed_stage_info(self):
+        """Get detailed stage information with timing and sampling data"""
+
+        stages = self.get_process_stages()
+        # Enhance with actual transition data
+        for stage in stages:
+            step_id = stage['step_id']
+
+            # Get transition timing from logs
+            transition_log = StepTransitionLog.objects.filter(part__order=self, step_id=step_id).order_by(
+                '-timestamp').first()
+
+            if transition_log:
+                stage['timestamp'] = transition_log.timestamp
+
+            # Add sampling information
+            parts_at_step = self.parts.filter(step_id=step_id)
+            sampled_parts = parts_at_step.filter(requires_sampling=True)
+
+            stage['sampling_info'] = {'total_parts': parts_at_step.count(), 'sampled_parts': sampled_parts.count(),
+                                      'sampling_rate': (
+                                              sampled_parts.count() / parts_at_step.count() * 100) if parts_at_step.count() > 0 else 0}
+
+        return stages
+
 
 class WorkOrderStatus(models.TextChoices):
     PENDING = 'PENDING', "Pending"
@@ -543,7 +1140,7 @@ class WorkOrderStatus(models.TextChoices):
         return self.name
 
 
-class WorkOrder(models.Model):
+class WorkOrder(SecureModel):
     """
     Represents a production Work Order derived from a customer Order.
 
@@ -556,7 +1153,6 @@ class WorkOrder(models.Model):
 
     workorder_status = models.CharField(max_length=50, choices=WorkOrderStatus.choices, default=WorkOrderStatus.PENDING)
     """Current status of the work order (e.g., in progress, completed)."""
-
 
     quantity = models.IntegerField(default=1)
 
@@ -591,8 +1187,6 @@ class WorkOrder(models.Model):
     notes = models.TextField(max_length=500, null=True, blank=True)
     """Optional notes or remarks logged during execution or review."""
 
-
-
     class Meta:
         verbose_name = "Work Order"
         verbose_name_plural = "Work Orders"
@@ -602,8 +1196,185 @@ class WorkOrder(models.Model):
         """Returns a string representation for admin and logs."""
         return f"WO-{self.ERP_id} ({self.workorder_status})"
 
+    def save(self, *args, **kwargs):
+        """Enhanced save with sampling lifecycle management"""
+        is_new = self.pk is None
+        old_status = None
 
-class SamplingRuleSet(models.Model):
+        if not is_new:
+            try:
+                old_instance = WorkOrder.objects.get(pk=self.pk)
+                old_status = old_instance.workorder_status
+            except WorkOrder.DoesNotExist:
+                pass
+
+        super().save(*args, **kwargs)
+
+        # Handle status transitions
+        if old_status != self.workorder_status:
+            self._handle_status_change(old_status)
+
+    def _handle_status_change(self, old_status):
+        """Handle work order status changes affecting sampling"""
+        if self.workorder_status == WorkOrderStatus.IN_PROGRESS and old_status == WorkOrderStatus.PENDING:
+            # Initialize sampling for all parts when work order starts
+            self._initialize_sampling()
+
+        elif self.workorder_status == WorkOrderStatus.COMPLETED:
+            # Generate final sampling analytics
+            self._generate_final_sampling_report()
+
+        elif self.workorder_status == WorkOrderStatus.ON_HOLD:
+            # Pause any active fallback triggers
+            self._pause_sampling_triggers()
+
+    def _initialize_sampling(self):
+        """Initialize sampling evaluation for all parts in work order"""
+        parts_without_sampling = self.parts.filter(requires_sampling__isnull=True)
+
+        if parts_without_sampling.exists():
+            self._bulk_evaluate_sampling(list(parts_without_sampling))
+
+    def _bulk_evaluate_sampling(self, parts_list):
+        """Evaluate sampling for multiple parts efficiently"""
+        updates = []
+        for part in parts_list:
+            evaluator = SamplingFallbackApplier(part=part)
+            result = evaluator.evaluate()
+
+            part.requires_sampling = result.get("requires_sampling", False)
+            part.sampling_rule = result.get("rule")
+            part.sampling_ruleset = result.get("ruleset")
+            part.sampling_context = result.get("context", {})
+            updates.append(part)
+
+        # Bulk update sampling fields
+        Parts.objects.bulk_update(updates,
+                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+
+    def _generate_final_sampling_report(self):
+        """Generate comprehensive sampling report for completed work order"""
+        # This could create a summary document or trigger reporting
+        pass
+
+    def _pause_sampling_triggers(self):
+        """Pause active sampling triggers when work order is on hold"""
+        SamplingTriggerState.objects.filter(work_order=self, active=True).update(active=False)
+
+    def create_parts_batch(self, part_type, step, quantity=None):
+        """Create parts in batch with sampling evaluation"""
+        quantity = quantity or self.quantity
+
+        # Create parts without sampling evaluation first
+        parts = []
+        for i in range(quantity):
+            part = Parts(work_order=self, part_type=part_type, step=step,
+                         ERP_id=f"{self.ERP_id}-{part_type.ID_prefix or 'P'}{i + 1:04d}",
+                         part_status=PartsStatus.PENDING)
+            parts.append(part)
+
+        # Bulk create for efficiency
+        Parts.objects.bulk_create(parts)
+
+        # Now evaluate sampling for all parts
+        self._bulk_evaluate_sampling(parts)
+
+        return parts
+
+    @classmethod
+    def process_csv_date(cls, date_string):
+        """Process various date formats from CSV uploads"""
+        from datetime import datetime
+        from django.utils.dateparse import parse_date
+
+        if not date_string or str(date_string).strip() == '':
+            return None
+
+        # Try standard ISO format first
+        parsed = parse_date(str(date_string).strip())
+        if parsed:
+            return parsed
+
+        # Try various formats
+        date_formats = ["%b %d", "%B %d", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]
+
+        for fmt in date_formats:
+            try:
+                dt = datetime.strptime(str(date_string).strip(), fmt)
+                today = datetime.today()
+                year = today.year
+
+                # For formats without year, assume next year if date has passed
+                if fmt in ["%b %d", "%B %d"]:
+                    if dt.month < today.month or (dt.month == today.month and dt.day < today.day):
+                        year += 1
+                    return dt.replace(year=year).date()
+                else:
+                    return dt.date()
+            except (ValueError, TypeError):
+                continue
+
+        raise ValueError(f"Invalid date format: {date_string}")
+
+    @classmethod
+    def create_from_csv_row(cls, row_data, user=None):
+        """Create or update work order from CSV row data"""
+        erp_id = row_data.get('ERP_id')
+        if not erp_id:
+            raise ValueError("ERP_id is required")
+
+        # Process related order lookup
+        related_order = None
+        related_order_erp = row_data.get("related_order_erp_id")
+        if related_order_erp:
+            try:
+                related_order = Orders.objects.get(ERP_id=related_order_erp)
+            except Orders.DoesNotExist:
+                pass  # Continue without related order
+
+        # Process expected completion date
+        expected_completion = None
+        warnings = []
+        if row_data.get("expected_completion"):
+            try:
+                expected_completion = cls.process_csv_date(row_data["expected_completion"])
+            except ValueError as e:
+                warnings.append(f"Invalid date format: {e}")
+
+        # Create or update work order
+        work_order, created = cls.objects.update_or_create(ERP_id=erp_id,
+                                                           defaults={'quantity': row_data.get('quantity', 1),
+                                                                     'expected_completion': expected_completion,
+                                                                     'notes': row_data.get('notes', ''),
+                                                                     'workorder_status': row_data.get(
+                                                                         'workorder_status', WorkOrderStatus.PENDING),
+                                                                     'related_order': related_order,
+                                                                     'expected_duration': row_data.get(
+                                                                         'expected_duration'),
+                                                                     'true_duration': row_data.get('true_duration')})
+
+        return work_order, created, warnings
+
+    @classmethod
+    def bulk_create_from_csv(cls, file_data, user=None):
+        """Process CSV file and create multiple work orders"""
+        results = []
+
+        for i, row in enumerate(file_data, start=1):
+            try:
+                work_order, created, warnings = cls.create_from_csv_row(row, user)
+                result = {"row": i, "status": "success" if created else "updated", "id": work_order.id}
+                if warnings:
+                    result["warnings"] = warnings
+                results.append(result)
+
+            except Exception as e:
+                results.append({"row": i, "status": "error", "errors": str(e)})
+
+        return results
+
+
+class SamplingRuleSet(SecureModel):
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE)
     process = models.ForeignKey(Processes, on_delete=models.CASCADE)
     step = models.ForeignKey(Steps, on_delete=models.CASCADE, related_name="sampling_ruleset")
@@ -641,62 +1412,92 @@ class SamplingRuleSet(models.Model):
 
     def supersede_with(self, *, name, rules, created_by):
         new_version = self.version + 1
-        return SamplingRuleSet.create_with_rules(
-            part_type=self.part_type,
-            process=self.process,
-            step=self.step,
-            name=name,
-            version=new_version,
-            rules=rules,
-            supersedes=self,
-            created_by=created_by,
-        )
+        return SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self.step,
+                                                 name=name, version=new_version, rules=rules, supersedes=self,
+                                                 created_by=created_by, )
 
     @classmethod
-    def create_with_rules(
-            cls,
-            *,
-            part_type,
-            process,
-            step,
-            name,
-            version=1,
-            rules=None,
-            fallback_ruleset=None,
-            fallback_threshold=None,
-            fallback_duration=None,
-            created_by=None,
-            origin="",
-            active=True,
-            supersedes=None,
-            is_fallback=False
-    ):
-        ruleset = cls.objects.create(
-            part_type=part_type,
-            process=process,
-            step=step,
-            name=name,
-            version=version,
-            fallback_ruleset=fallback_ruleset,
-            fallback_threshold=fallback_threshold,
-            fallback_duration=fallback_duration,
-            created_by=created_by,
-            origin=origin,
-            active=active,
-            supersedes=supersedes,
-            is_fallback=is_fallback,
-        )
+    def create_with_rules(cls, *, part_type, process, step, name, version=1, rules=None, fallback_ruleset=None,
+                          fallback_threshold=None, fallback_duration=None, created_by=None, origin="", active=True,
+                          supersedes=None, is_fallback=False):
+        ruleset = cls.objects.create(part_type=part_type, process=process, step=step, name=name, version=version,
+                                     fallback_ruleset=fallback_ruleset, fallback_threshold=fallback_threshold,
+                                     fallback_duration=fallback_duration, created_by=created_by, origin=origin,
+                                     active=active, supersedes=supersedes, is_fallback=is_fallback, )
 
-        SamplingRule.bulk_create_for_ruleset(
-            ruleset=ruleset,
-            rules=rules or [],
-            created_by=created_by,
-        )
+        SamplingRule.bulk_create_for_ruleset(ruleset=ruleset, rules=rules or [], created_by=created_by, )
 
         return ruleset
 
+    def activate(self, user=None):
+        """Activate this ruleset and deactivate others"""
+        # Deactivate other rulesets for same step/part_type
+        SamplingRuleSet.objects.filter(step=self.step, part_type=self.part_type, active=True,
+            is_fallback=self.is_fallback).exclude(pk=self.pk).update(active=False)
 
-class SamplingRule(models.Model):
+        # Activate this ruleset
+        self.active = True
+        self.modified_by = user
+        self.save()
+
+        # Re-evaluate sampling for affected active parts
+        self._reevaluate_active_parts(user)
+
+    def _reevaluate_active_parts(self, user=None):
+        """Re-evaluate sampling for parts currently at this step"""
+        active_parts = Parts.objects.filter(step=self.step, part_type=self.part_type,
+            part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
+
+        updates = []
+        for part in active_parts:
+            evaluator = SamplingFallbackApplier(part=part)
+            result = evaluator.evaluate()
+
+            part.requires_sampling = result.get("requires_sampling", False)
+            part.sampling_rule = result.get("rule")
+            part.sampling_ruleset = result.get("ruleset")
+            part.sampling_context = result.get("context", {})
+            updates.append(part)
+
+        # Bulk update
+        Parts.objects.bulk_update(updates,
+            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+
+    def create_fallback_trigger(self, triggering_part, quality_report):
+        """Create fallback trigger and re-evaluate remaining parts"""
+        if not self.fallback_ruleset:
+            return None
+
+        trigger_state = SamplingTriggerState.objects.create(ruleset=self.fallback_ruleset,
+            work_order=triggering_part.work_order, step=self.step, triggered_by=quality_report)
+
+        # Re-evaluate remaining parts with fallback rules
+        self._apply_fallback_to_remaining_parts(triggering_part)
+
+        return trigger_state
+
+    def _apply_fallback_to_remaining_parts(self, triggering_part):
+        """Apply fallback sampling to remaining parts in work order"""
+        remaining_parts = Parts.objects.filter(work_order=triggering_part.work_order, step=self.step,
+            part_type=self.part_type, part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
+            id__gt=triggering_part.id)
+
+        updates = []
+        for part in remaining_parts:
+            evaluator = SamplingFallbackApplier(part=part)
+            result = evaluator.evaluate()  # Will use fallback rules
+
+            part.requires_sampling = result.get("requires_sampling", False)
+            part.sampling_rule = result.get("rule")
+            part.sampling_ruleset = result.get("ruleset")
+            part.sampling_context = result.get("context", {})
+            updates.append(part)
+
+        Parts.objects.bulk_update(updates,
+            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+
+
+class SamplingRule(SecureModel):
     class RuleType(models.TextChoices):
         EVERY_NTH_PART = "every_nth_part", "Every Nth Part"
         PERCENTAGE = "percentage", "Percentage of Parts"
@@ -714,42 +1515,23 @@ class SamplingRule(models.Model):
     modified_by = models.ForeignKey("User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     modified_at = models.DateTimeField(auto_now=True)
 
+    # ADD THESE NEW FIELDS:
+    algorithm_description = models.TextField(default="SHA-256 hash modulo arithmetic",
+                                             help_text="Description of sampling algorithm for audit purposes")
+    """Documentation of the sampling algorithm used for compliance."""
+
+    last_validated = models.DateTimeField(null=True, blank=True)
+    """Timestamp of last validation for regulatory compliance."""
+
     @classmethod
     def bulk_create_for_ruleset(cls, *, ruleset, rules, created_by=None):
         instances = [
-            cls(
-                ruleset=ruleset,
-                rule_type=rule["rule_type"],
-                value=rule.get("value"),
-                order=rule.get("order", i),
-                created_by=created_by,
-            )
-            for i, rule in enumerate(rules)
-        ]
+            cls(ruleset=ruleset, rule_type=rule["rule_type"], value=rule.get("value"), order=rule.get("order", i),
+                created_by=created_by, ) for i, rule in enumerate(rules)]
         cls.objects.bulk_create(instances)
 
 
-class PartsStatus(models.TextChoices):
-    # Before production starts
-    PENDING = "PENDING", "Pending"  # Created, not yet started
-
-    # Core flow
-    IN_PROGRESS = "IN_PROGRESS", "In Progress"  # Actively being worked on
-    AWAITING_QA = "AWAITING_QA", "Awaiting QA"  # Step done, waiting for inspection
-    READY_FOR_NEXT_STEP = "READY FOR NEXT STEP", "Ready for next step"
-    COMPLETED = "COMPLETED", "Completed"  # Fully passed all steps
-
-    # Exceptions
-    QUARANTINED = "QUARANTINED", "Quarantined"  # Temporarily flagged for QA review
-    REWORK_NEEDED = "REWORK_NEEDED", "Rework Needed"  # Needs rework from QA or operator
-    REWORK_IN_PROGRESS = "REWORK_IN_PROGRESS", "Rework In Progress"
-
-    # Terminal failures
-    SCRAPPED = "SCRAPPED", "Scrapped"  # Rejected permanently
-    CANCELLED = "CANCELLED", "Cancelled"  # Removed before production finished
-
-
-class Parts(models.Model):
+class Parts(SecureModel):
     """
     Represents an individual part undergoing a manufacturing process.
 
@@ -804,6 +1586,9 @@ class Parts(models.Model):
                                          related_name="sampled_parts")
     """The full sampling rule set used to evaluate this part for inspection."""
 
+    sampling_context = models.JSONField(default=dict, blank=True)
+    """Context data for sampling decisions, used by SamplingFallbackApplier."""
+
     def delete(self, *args, **kwargs):
         """
         Overrides default delete behavior to perform a soft archive instead.
@@ -828,29 +1613,23 @@ class Parts(models.Model):
 
         # Final step: mark this part completed
         if self.step.is_last_step:
-            self.status = PartsStatus.COMPLETED
+            self.part_status = PartsStatus.COMPLETED
             self.save()
             return "completed_workorder"
 
         try:
-            next_step = Steps.objects.get(
-                part_type=self.part_type,
-                process=self.step.process,
-                order=self.step.order + 1
-            )
+            next_step = Steps.objects.get(part_type=self.part_type, process=self.step.process,
+                                          order=self.step.order + 1)
         except Steps.DoesNotExist:
             raise ValueError("Next step not found for this part.")
 
         # Mark this part ready
-        self.status = PartsStatus.READY_FOR_NEXT_STEP
+        self.part_status = PartsStatus.READY_FOR_NEXT_STEP
         self.save()
 
         # Check if all parts at this step are ready
-        other_parts_pending = Parts.objects.filter(
-            work_order=self.work_order,
-            part_type=self.part_type,
-            step=self.step
-        ).exclude(status=PartsStatus.READY_FOR_NEXT_STEP)
+        other_parts_pending = Parts.objects.filter(work_order=self.work_order, part_type=self.part_type,
+                                                   step=self.step).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP)
 
         if other_parts_pending.exists():
             return "marked_ready"
@@ -860,16 +1639,12 @@ class Parts(models.Model):
             return "marked_ready"  # Step not ready due to QA/quarantine/pass rate
 
         # Bulk-advance all parts
-        ready_parts = list(Parts.objects.filter(
-            work_order=self.work_order,
-            part_type=self.part_type,
-            step=self.step,
-            status=PartsStatus.READY_FOR_NEXT_STEP
-        ))
+        ready_parts = list(Parts.objects.filter(work_order=self.work_order, part_type=self.part_type, step=self.step,
+                                                part_status=PartsStatus.READY_FOR_NEXT_STEP))
 
         for part in ready_parts:
             part.step = next_step
-            part.status = PartsStatus.IN_PROGRESS  # Or blank if you use "" for active
+            part.part_status = PartsStatus.IN_PROGRESS  # Or blank if you use "" for active
             evaluator = SamplingFallbackApplier(part=part)
             result = evaluator.evaluate()
             part.requires_sampling = result.get("requires_sampling", False)
@@ -877,10 +1652,9 @@ class Parts(models.Model):
             part.sampling_ruleset = result.get("ruleset")
             part.sampling_context = result.get("context")
 
-        Parts.objects.bulk_update(
-            ready_parts,
-            ["step", "status", "requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"]
-        )
+        Parts.objects.bulk_update(ready_parts,
+                                  ["step", "part_status", "requires_sampling", "sampling_rule", "sampling_ruleset",
+                                   "sampling_context"])
 
         return "full_work_order_advanced"
 
@@ -906,6 +1680,85 @@ class Parts(models.Model):
         except ContentType.DoesNotExist:
             pass  # Optional: add logging here
 
+    def has_quality_errors(self):
+        """Check if part has any quality errors"""
+        return self.error_reports.filter(status='FAIL').exists()
+
+    def get_latest_quality_status(self):
+        """Get the most recent quality report status"""
+        latest_report = self.error_reports.order_by('-created_at').first()
+        return latest_report.status if latest_report else None
+
+    def get_sampling_display_info(self):
+        """Get sampling information for display purposes"""
+        return {'requires_sampling': self.requires_sampling,
+                'sampling_rule_type': self.sampling_rule.rule_type if self.sampling_rule else None,
+                'sampling_rule_value': self.sampling_rule.value if self.sampling_rule else None,
+                'ruleset_name': self.sampling_ruleset.name if self.sampling_ruleset else None,
+                'is_fallback_active': bool(
+                    SamplingTriggerState.objects.filter(work_order=self.work_order, step=self.step,
+                                                        active=True).exists()) if self.work_order and self.step else False}
+
+    def get_work_order_display_info(self):
+        """Get work order information for display"""
+        if not self.work_order:
+            return None
+
+        return {'erp_id': self.work_order.ERP_id, 'status': self.work_order.workorder_status,
+                'quantity': self.work_order.quantity, 'expected_completion': self.work_order.expected_completion}
+
+    def get_sampling_history(self):
+        """Get complete sampling history for this part"""
+        return {'current_sampling': {'requires_sampling': self.requires_sampling,
+            'rule': {'id': self.sampling_rule.id, 'rule_type': self.sampling_rule.rule_type,
+                'value': self.sampling_rule.value, 'order': self.sampling_rule.order} if self.sampling_rule else None,
+            # ✅ Convert to dict
+            'ruleset': {'id': self.sampling_ruleset.id, 'name': self.sampling_ruleset.name,
+                'version': self.sampling_ruleset.version,
+                'active': self.sampling_ruleset.active} if self.sampling_ruleset else None,  # ✅ Convert to dict
+            'context': self.sampling_context}, 'quality_reports': list(
+            self.error_reports.all().values('status', 'created_at', 'sampling_method', 'description')),
+            'audit_logs': list(
+                SamplingAuditLog.objects.filter(part=self).values('hash_input', 'sampling_decision', 'timestamp',
+                    'ruleset_type')) if 'SamplingAuditLog' in globals() else []}
+
+    @classmethod
+    def get_filtered_queryset(cls, user=None, filters=None):
+        """Get optimized queryset with common select_related/prefetch_related"""
+        qs = cls.objects.select_related('part_type', 'step', 'order', 'work_order', 'sampling_rule',
+                                        'sampling_ruleset').prefetch_related('error_reports')
+
+        # Apply user-specific filtering if needed
+        if user and not user.is_staff:
+            qs = qs.filter(order__customer=user)
+
+        return qs
+
+    def save(self, *args, **kwargs):
+        """Enhanced save method with sampling evaluation"""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        # Evaluate sampling requirements for new parts
+        if is_new and self.step and self.part_type and self.work_order:
+            self._evaluate_initial_sampling()
+
+    def _evaluate_initial_sampling(self):
+        """Evaluate sampling requirements when part is first created"""
+        evaluator = SamplingFallbackApplier(part=self)
+        result = evaluator.evaluate()
+
+        # Update sampling fields
+        self.requires_sampling = result.get("requires_sampling", False)
+        self.sampling_rule = result.get("rule")
+        self.sampling_ruleset = result.get("ruleset")
+        self.sampling_context = result.get("context", {})
+
+        # Save without triggering recursion
+        Parts.objects.filter(pk=self.pk).update(requires_sampling=self.requires_sampling,
+            sampling_rule=self.sampling_rule, sampling_ruleset=self.sampling_ruleset,
+            sampling_context=self.sampling_context)
+
     def __str__(self):
         """
         Returns a human-readable identifier combining ERP ID, Order, and PartType.
@@ -915,7 +1768,7 @@ class Parts(models.Model):
         return f"{self.ERP_id} {deal_name} {part_type_name}"
 
 
-class EquipmentType(models.Model):
+class EquipmentType(SecureModel):
     """
     Represents a category or classification of equipment used in the manufacturing process.
 
@@ -938,7 +1791,7 @@ class EquipmentType(models.Model):
         return self.name
 
 
-class Equipments(models.Model):
+class Equipments(SecureModel):
     name = models.CharField(max_length=50)
     equipment_type = models.ForeignKey(EquipmentType, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -950,7 +1803,7 @@ class Equipments(models.Model):
         return f"{self.name} ({self.equipment_type})" if self.equipment_type else self.name
 
 
-class QualityErrorsList(models.Model):
+class QualityErrorsList(SecureModel):
     """
     Defines a type of known quality error that can be associated with a part inspection.
 
@@ -977,7 +1830,7 @@ class QualityErrorsList(models.Model):
         return f"{self.error_name} ({self.part_type})" if self.part_type else self.error_name
 
 
-class QualityReports(models.Model):
+class QualityReports(SecureModel):
     """
     Records an instance of a quality issue or operational anomaly identified during part production.
 
@@ -1015,6 +1868,10 @@ class QualityReports(models.Model):
     errors = models.ManyToManyField(QualityErrorsList, blank=True)
     """List of known quality errors that this report corresponds to."""
 
+    sampling_audit_log = models.ForeignKey('SamplingAuditLog', null=True, blank=True, on_delete=models.SET_NULL,
+                                           help_text="Links to the sampling decision that triggered this inspection")
+    """Link to the sampling audit log that triggered this quality report."""
+
     class Meta:
         verbose_name_plural = 'Error Reports'
         verbose_name = 'Error Report'
@@ -1026,27 +1883,100 @@ class QualityReports(models.Model):
         return f"Quality Report for {self.part} on {self.created_at.date()}"
 
     def save(self, *args, **kwargs):
+        """Enhanced save with sampling integration and audit trail"""
         is_new = self.pk is None
         super().save(*args, **kwargs)
 
-        if is_new and self.status in {"PASS", "FAIL"}:
-            SamplingTriggerManager(self.part, self.status).update_state()
+        if is_new:
+            # Link to sampling audit log if this was a sampled part
+            self._link_sampling_audit_log()
 
-        # Trigger fallback if this is a new FAIL report
-        if is_new and self.status == "FAIL":
-            from Tracker.sampling import SamplingFallbackApplier
-            SamplingFallbackApplier(self.part).apply()
+            # Update sampling trigger state
+            if self.status in {"PASS", "FAIL"}:
+                SamplingTriggerManager(self.part, self.status).update_state()
 
-class MeasurementResult(models.Model):
+            # Trigger fallback if failure
+            if self.status == "FAIL":
+                self._trigger_sampling_fallback()
+
+            # Update sampling analytics
+            self._update_sampling_analytics()
+
+    def _link_sampling_audit_log(self):
+        """Link quality report to the sampling decision that triggered it"""
+        if self.part and self.part.requires_sampling:
+            # Find the most recent sampling audit log for this part
+            audit_log = SamplingAuditLog.objects.filter(part=self.part, sampling_decision=True).order_by(
+                '-timestamp').first()
+
+            if audit_log:
+                self.sampling_audit_log = audit_log
+                self.save(update_fields=['sampling_audit_log'])
+
+    def _trigger_sampling_fallback(self):
+        """Trigger fallback sampling for remaining parts"""
+        if self.part and self.part.sampling_ruleset:
+            # Use the new method instead
+            trigger_state = self.part.sampling_ruleset.create_fallback_trigger(triggering_part=self.part,
+                quality_report=self)
+            return trigger_state
+
+        # Fallback to original method
+        fallback_applier = SamplingFallbackApplier(self.part)
+        fallback_applier.apply()
+
+    def _update_sampling_analytics(self):
+        """Update sampling analytics based on quality report results"""
+        if not self.part or not self.part.sampling_ruleset:
+            return
+
+        analytics, created = SamplingAnalytics.objects.get_or_create(ruleset=self.part.sampling_ruleset,
+                                                                     work_order=self.part.work_order,
+                                                                     defaults={'parts_sampled': 0,
+                                                                               'parts_total': self.part.work_order.quantity,
+                                                                               'defects_found': 0,
+                                                                               'actual_sampling_rate': 0.0,
+                                                                               'target_sampling_rate': 0.0,
+                                                                               'variance': 0.0})
+
+        # Update counters
+        analytics.parts_sampled += 1
+        if self.status == "FAIL":
+            analytics.defects_found += 1
+
+        # Recalculate rates
+        analytics.actual_sampling_rate = (analytics.parts_sampled / analytics.parts_total * 100)
+        analytics.variance = abs(analytics.actual_sampling_rate - analytics.target_sampling_rate)
+
+        analytics.save()
+
+    def clean(self):
+        """Validate that sampled parts have sampling requirements"""
+        if self.part and not self.part.requires_sampling:
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Cannot create quality report for non-sampled part")
+
+
+class MeasurementResult(SecureModel):
     report = models.ForeignKey("QualityReports", on_delete=models.CASCADE, related_name="measurements")
     definition = models.ForeignKey("MeasurementDefinition", on_delete=models.CASCADE)
     value_numeric = models.FloatField(null=True, blank=True)
-    value_pass_fail = models.CharField(max_length=4, choices=[("PASS", "Pass"), ("FAIL", "Fail")], null=True, blank=True)
+    value_pass_fail = models.CharField(max_length=4, choices=[("PASS", "Pass"), ("FAIL", "Fail")], null=True,
+                                       blank=True)
     is_within_spec = models.BooleanField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-class EquipmentUsage(models.Model):
+    def evaluate_spec(self):
+        if self.definition.type == "NUMERIC":
+            return (
+                    self.definition.nominal - self.definition.lower_tol <= self.value_numeric <= self.definition.nominal + self.definition.upper_tol)
+        if self.definition.type == "PASS_FAIL":
+            return self.value_pass_fail == "PASS"
+        return False
+
+
+class EquipmentUsage(SecureModel):
     """
     Tracks the usage of equipment on a specific part and step in the manufacturing process.
 
@@ -1088,7 +2018,7 @@ class EquipmentUsage(models.Model):
         return f"{self.equipment} on {self.part} (step: {self.step})"
 
 
-class ExternalAPIOrderIdentifier(models.Model):
+class ExternalAPIOrderIdentifier(SecureModel):
     """
     Maps internal order objects to external API identifiers.
 
@@ -1114,7 +2044,7 @@ class ExternalAPIOrderIdentifier(models.Model):
         return f"Hubspot deal stage: {self.stage_name}, id: {self.API_id}"
 
 
-class ArchiveReason(models.Model):
+class ArchiveReason(SecureModel):
     """
     Represents the reason and metadata for archiving a model instance.
 
@@ -1160,7 +2090,7 @@ class ArchiveReason(models.Model):
         return f"{self.content_object} → {self.reason}"
 
 
-class StepTransitionLog(models.Model):
+class StepTransitionLog(SecureModel):
     """
     Logs each transition of a part from one step to the next within a manufacturing process.
 
@@ -1196,7 +2126,7 @@ class StepTransitionLog(models.Model):
         return f"Step {self.step.order} for {self.part} completed at {self.timestamp}"
 
 
-class SamplingTriggerState(models.Model):
+class SamplingTriggerState(SecureModel):
     ruleset = models.ForeignKey(SamplingRuleSet, on_delete=models.CASCADE)
     work_order = models.ForeignKey(WorkOrder, on_delete=models.CASCADE)
     step = models.ForeignKey(Steps, on_delete=models.CASCADE)
@@ -1246,20 +2176,71 @@ class SamplingTriggerManager:
                 active_state.save()
 
 
-class QaApproval(models.Model):
+class QaApproval(SecureModel):
     step = models.ForeignKey(Steps, related_name='qa_approvals', on_delete=models.PROTECT)
     work_order = models.ForeignKey(WorkOrder, related_name='qa_approvals', on_delete=models.PROTECT)
     qa_staff = models.ForeignKey(User, related_name='qa_approvals', on_delete=models.PROTECT)
 
 
-class MeasurementDisposition(models.Model):
+class MeasurementDisposition(SecureModel):
     measurement = models.OneToOneField(MeasurementResult, on_delete=models.CASCADE, related_name="disposition")
-    disposition_type = models.CharField(choices=[
-        ("QUARANTINE", "Quarantined"),
-        ("REMEASURE", "Re-measured"),
-        ("OVERRIDDEN", "Overridden by QA"),
-        ("ESCALATED", "Escalated for Review"),
-    ])
+    disposition_type = models.CharField(
+        choices=[("QUARANTINE", "Quarantined"), ("REMEASURE", "Re-measured"), ("OVERRIDDEN", "Overridden by QA"),
+                 ("ESCALATED", "Escalated for Review"), ])
     resolved_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     notes = models.TextField(blank=True)
     resolved_at = models.DateTimeField(auto_now_add=True)
+
+
+class SamplingAuditLog(SecureModel):
+    """Comprehensive audit trail for sampling decisions"""
+    part = models.ForeignKey(Parts, on_delete=models.CASCADE)
+    rule = models.ForeignKey(SamplingRule, on_delete=models.CASCADE)
+    hash_input = models.CharField(max_length=200)
+    hash_output = models.BigIntegerField()
+    sampling_decision = models.BooleanField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ruleset_type = models.CharField(max_length=20,
+                                    choices=[('PRIMARY', 'Primary Ruleset'), ('FALLBACK', 'Fallback Ruleset')])
+
+    class Meta:
+        indexes = [models.Index(fields=['part', 'timestamp']), models.Index(fields=['rule', 'sampling_decision']), ]
+        verbose_name = 'Sampling Audit Log'
+        verbose_name_plural = 'Sampling Audit Logs'
+
+    def __str__(self):
+        return f"Sampling decision for {self.part} at {self.timestamp}"
+
+
+class SamplingAnalytics(SecureModel):
+    """Track sampling effectiveness and compliance metrics"""
+    ruleset = models.ForeignKey(SamplingRuleSet, on_delete=models.CASCADE)
+    work_order = models.ForeignKey(WorkOrder, on_delete=models.CASCADE)
+
+    parts_sampled = models.PositiveIntegerField(default=0)
+    parts_total = models.PositiveIntegerField(default=0)
+    defects_found = models.PositiveIntegerField(default=0)
+
+    actual_sampling_rate = models.FloatField()
+    target_sampling_rate = models.FloatField()
+    variance = models.FloatField()  # Difference between actual and target
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('ruleset', 'work_order')
+        verbose_name = 'Sampling Analytics'
+        verbose_name_plural = 'Sampling Analytics'
+
+    @property
+    def sampling_effectiveness(self):
+        """Defects found per 100 sampled parts"""
+        return (self.defects_found / self.parts_sampled * 100) if self.parts_sampled > 0 else 0
+
+    @property
+    def is_compliant(self):
+        """Whether sampling rate is within acceptable variance"""
+        return abs(self.variance) < 0.5  # Within 0.5%
+
+    def __str__(self):
+        return f"Analytics for {self.ruleset} - WO {self.work_order.ERP_id}"

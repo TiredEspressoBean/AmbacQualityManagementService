@@ -2,12 +2,29 @@ import { useParams } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import ModelDetailPage from './ModelDetailPage';
 import { getFieldsConfigForModel } from './fieldsConfigMap';
+import { CompositeRenderer } from "@/pages/detail pages/RendererSidebarComponent";
+
+const getDetailComponentsForModel = (modelType: string) => {
+    switch (modelType.toLowerCase()) {
+        case 'parts':
+            return {
+                RendererSidebarComponent: CompositeRenderer,
+            };
+        case 'documents':
+            return {
+                RendererSidebarComponent: CompositeRenderer,
+            };
+        default:
+            return {};
+    }
+};
 
 const ModelDetailPageWrapper = () => {
     const { model, id } = useParams({ from: '/details/$model/$id' });
-    const modelType = model.toLowerCase();
+    const modelType = model;
 
     const fieldsConfig = getFieldsConfigForModel(modelType);
+    const componentOverrides = getDetailComponentsForModel(modelType);
 
     const {
         data: modelData,
@@ -27,6 +44,7 @@ const ModelDetailPageWrapper = () => {
             modelData={modelData}
             modelType={modelType}
             fieldsConfig={fieldsConfig}
+            {...componentOverrides}
         />
     );
 };

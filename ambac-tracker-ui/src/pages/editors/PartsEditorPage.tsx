@@ -31,6 +31,8 @@ export function PartsEditorPage() {
     return (
         <ModelEditorPage
             title="Parts"
+            modelName="Parts"
+            showDetailsLink={true}
             useList={usePartsList}
             sortOptions={[
                 { label: "Created (Newest)", value: "-created_at" },

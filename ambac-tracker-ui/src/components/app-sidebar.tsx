@@ -129,7 +129,7 @@ const data: {
             pages: [
                 { name: "Quality Assurance", url: "/QA", icon: ClipboardCheck },
                 { name: "Editing", url: "/Edit", icon: GalleryVerticalEnd },
-                { name: "Documents", url:"/Documents", icon: Files}
+                { name: "Documents", url: "/Documents", icon: Files }
             ],
         },
     ],
@@ -138,8 +138,10 @@ const data: {
 export function AppSidebar({
                                ...props
                            }: React.ComponentProps<typeof Sidebar>) {
-    // const { data: user, isLoading, isError } = useAuthUser()
     const { data: user } = useAuthUser()
+
+    // Determine if user is staff
+    const isStaff = user?.is_staff || false
 
     return (
         <Sidebar collapsible="icon" {...props}>
@@ -147,18 +149,22 @@ export function AppSidebar({
                 <AppSidebarHeader />
             </SidebarHeader>
             <SidebarContent>
+                {/* Always show user sections */}
                 {data.user_sections.map((section) => (
                     <NavPages
                         key={section.key}
-                        pages={section.pages} />
+                        pages={section.pages}
+                    />
                 ))}
-                {data.staff_sections.map((section) => (
-                        <NavPages
-                            key={section.key}
-                            title={section.title ?? "Untitled"}
-                            pages={section.pages}
-                        />
-                    ))}
+
+                {/* Only show staff sections if user is staff */}
+                {isStaff && data.staff_sections.map((section) => (
+                    <NavPages
+                        key={section.key}
+                        title={section.title ?? "Untitled"}
+                        pages={section.pages}
+                    />
+                ))}
             </SidebarContent>
             <SidebarFooter>
                 {user ? <NavUser user={user} /> : <LoginLink />}

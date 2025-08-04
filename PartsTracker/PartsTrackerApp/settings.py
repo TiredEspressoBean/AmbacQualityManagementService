@@ -230,6 +230,11 @@ INTERNAL_IPS = [
     "127.0.0.1",
 ]
 
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 NPM_BIN_PATH = os.environ.get("NPM_BIN_PATH")
 
 AUDITLOG_INCLUDE_ALL_MODELS = True

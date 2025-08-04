@@ -2,19 +2,49 @@ import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
 import { z } from "zod";
 import qs from "qs";
 
-type BulkAddPartsRequest = {
+type AuditLog = {
+  id: number;
+  /**
+   * @maxLength 255
+   */
+  object_pk: string;
+  object_repr: string;
+  content_type: number;
+  content_type_name: string;
+  actor?: (number | null) | undefined;
+  actor_info: {};
+  remote_addr?: (string | null) | undefined;
+  timestamp: string;
+  /**
+   * @minimum 0
+   * @maximum 32767
+   */
+  action: ActionEnum;
+  changes?: unknown | undefined;
+};
+type ActionEnum =
+  /**
+   * * `0` - create
+   * `1` - update
+   * `2` - delete
+   * `3` - access
+   *
+   * @enum 0, 1, 2, 3
+   */
+  0 | 1 | 2 | 3;
+type BulkAddPartsInputRequest = {
   part_type: number;
   step: number;
-  /**
-   * @minimum 1
-   */
   quantity: number;
-  part_status: PartStatusEnum;
-  process_id: number;
-  /**
-   * @minLength 1
+  part_status?: /**
+   * @default "PENDING"
    */
-  ERP_id: string;
+  PartStatusEnum | undefined;
+  work_order?: number | undefined;
+  erp_id_start?: /**
+   * @default 1
+   */
+  number | undefined;
 };
 type PartStatusEnum =
   /**
@@ -41,121 +71,8 @@ type PartStatusEnum =
   | "REWORK_IN_PROGRESS"
   | "SCRAPPED"
   | "CANCELLED";
-type Customer = {
-  /**
-   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   *
-   * @maxLength 150
-   * @pattern ^[\w.@+-]+$
-   */
-  username: string;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  email?: /**
-   * @maxLength 254
-   */
-  string | undefined;
-  is_staff?: /**
-   * Designates whether the user can log into this admin site.
-   */
-  boolean | undefined;
-  parent_company: Company;
+type Documents = {
   id: number;
-};
-type Company = {
-  id: number;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-  description: string;
-  /**
-   * @maxLength 50
-   */
-  hubspot_api_id: string;
-};
-type CustomerRequest = {
-  /**
-   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   *
-   * @minLength 1
-   * @maxLength 150
-   * @pattern ^[\w.@+-]+$
-   */
-  username: string;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  email?: /**
-   * @maxLength 254
-   */
-  string | undefined;
-  is_staff?: /**
-   * Designates whether the user can log into this admin site.
-   */
-  boolean | undefined;
-  parent_company: CompanyRequest;
-};
-type CompanyRequest = {
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  name: string;
-  /**
-   * @minLength 1
-   */
-  description: string;
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  hubspot_api_id: string;
-};
-type Document = {
-  id: number;
-  is_image: boolean;
-  /**
-   * @maxLength 50
-   */
-  file_name: string;
-  file: string;
-  file_url: string | null;
-  upload_date: string;
-  uploaded_by?: (number | null) | undefined;
-  uploaded_by_name: string;
-  content_type?:
-    | /**
-     * Model of the object this document relates to
-     */
-    (number | null)
-    | undefined;
-  content_type_model: string | null;
-  object_id?:
-    | /**
-     * ID of the object this document relates to
-     *
-     * @minimum 0
-     * @maximum 9223372036854776000
-     */
-    (number | null)
-    | undefined;
-  version?: /**
-   * @minimum 0
-   * @maximum 32767
-   */
-  number | undefined;
   classification?:
     | /**
      * Level of document classification:
@@ -173,6 +90,43 @@ type Document = {
      */
     (ClassificationEnum | NullEnum | null)
     | undefined;
+  AI_readable?: boolean | undefined;
+  is_image: boolean;
+  /**
+   * @maxLength 50
+   */
+  file_name: string;
+  file: string;
+  file_url: string;
+  upload_date: string;
+  uploaded_by?: (number | null) | undefined;
+  uploaded_by_info: {};
+  content_type?:
+    | /**
+     * Model of the object this document relates to
+     */
+    (number | null)
+    | undefined;
+  object_id?:
+    | /**
+     * ID of the object this document relates to
+     *
+     * @minimum 0
+     * @maximum 9223372036854776000
+     */
+    (number | null)
+    | undefined;
+  content_type_info: {};
+  version?: /**
+   * @minimum 0
+   * @maximum 32767
+   */
+  number | undefined;
+  access_info: {};
+  auto_properties: {};
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
 };
 type ClassificationEnum =
   /**
@@ -190,7 +144,25 @@ type NullEnum =
    * @enum
    */
   unknown;
-type DocumentRequest = {
+type DocumentsRequest = {
+  classification?:
+    | /**
+     * Level of document classification:
+    - "public": Public
+    - "internal": Internal Use
+    - "confidential": Confidential
+    - "restricted": Restricted (serious impact)
+    - "secret": Secret (critical impact)
+    
+    * `public` - Public
+    * `internal` - Internal Use
+    * `confidential` - Confidential
+    * `restricted` - Restricted
+    * `secret` - Secret
+     */
+    (ClassificationEnum | NullEnum | null)
+    | undefined;
+  AI_readable?: boolean | undefined;
   is_image: boolean;
   /**
    * @minLength 1
@@ -219,67 +191,7 @@ type DocumentRequest = {
    * @maximum 32767
    */
   number | undefined;
-  classification?:
-    | /**
-     * Level of document classification:
-    - "public": Public
-    - "internal": Internal Use
-    - "confidential": Confidential
-    - "restricted": Restricted (serious impact)
-    - "secret": Secret (critical impact)
-    
-    * `public` - Public
-    * `internal` - Internal Use
-    * `confidential` - Confidential
-    * `restricted` - Restricted
-    * `secret` - Secret
-     */
-    (ClassificationEnum | NullEnum | null)
-    | undefined;
 };
-type EquipmentSelect = {
-  id: number;
-  equipment_type: EquipmentType;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-};
-type EquipmentType = {
-  id: number;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-};
-type LogEntry = {
-  id: number;
-  /**
-   * @maxLength 255
-   */
-  object_pk: string;
-  object_repr: string;
-  content_type_name: string;
-  actor?: (number | null) | undefined;
-  remote_addr?: (string | null) | undefined;
-  timestamp?: string | undefined;
-  /**
-   * @minimum 0
-   * @maximum 32767
-   */
-  action: ActionEnum;
-  changes?: unknown | undefined;
-};
-type ActionEnum =
-  /**
-   * * `0` - create
-   * `1` - update
-   * `2` - delete
-   * `3` - access
-   *
-   * @enum 0, 1, 2, 3
-   */
-  0 | 1 | 2 | 3;
 type MeasurementDefinition = {
   id: number;
   /**
@@ -332,13 +244,6 @@ type MeasurementDefinitionRequest = {
 };
 type Orders = {
   id: number;
-  order_status: OrderStatusEnum;
-  customer: number;
-  company: number;
-  current_hubspot_gate?: (number | null) | undefined;
-  customer_first_name: string;
-  customer_last_name: string;
-  company_name: string;
   /**
    * @maxLength 50
    */
@@ -349,15 +254,61 @@ type Orders = {
      */
     (string | null)
     | undefined;
+  customer: number;
+  customer_info: UserSelect;
+  company: number;
+  company_info: Company;
   estimated_completion?: (string | null) | undefined;
-  original_completion_date?: (string | null) | undefined;
-  archived?: boolean | undefined;
-  last_synced_hubspot_stage?:
-    | /**
-     * @maxLength 100
-     */
-    (string | null)
-    | undefined;
+  order_status: OrderStatusEnum;
+  current_hubspot_gate?: (number | null) | undefined;
+  parts_summary: {};
+  process_stages: Array<unknown>;
+  customer_first_name: string;
+  customer_last_name: string;
+  company_name: string;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+};
+type UserSelect = {
+  id: number;
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   */
+  username: string;
+  first_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  last_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  email?: /**
+   * @maxLength 254
+   */
+  string | undefined;
+  full_name: string;
+  /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  is_active: boolean;
+};
+type Company = {
+  id: number;
+  /**
+   * @maxLength 50
+   */
+  name: string;
+  description: string;
+  /**
+   * @maxLength 50
+   */
+  hubspot_api_id: string;
+  user_count: number;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
 };
 type OrderStatusEnum =
   /**
@@ -372,10 +323,6 @@ type OrderStatusEnum =
    */
   "RFI" | "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED";
 type OrdersRequest = {
-  order_status: OrderStatusEnum;
-  customer: number;
-  company: number;
-  current_hubspot_gate?: (number | null) | undefined;
   /**
    * @minLength 1
    * @maxLength 50
@@ -387,15 +334,30 @@ type OrdersRequest = {
      */
     (string | null)
     | undefined;
+  customer: number;
+  company: number;
   estimated_completion?: (string | null) | undefined;
-  original_completion_date?: (string | null) | undefined;
-  archived?: boolean | undefined;
-  last_synced_hubspot_stage?:
+  order_status: OrderStatusEnum;
+  current_hubspot_gate?: (number | null) | undefined;
+};
+type PaginatedAuditLogList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
     | /**
-     * @maxLength 100
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
      */
     (string | null)
     | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<AuditLog>;
 };
 type PaginatedContentTypeList = {
   /**
@@ -427,7 +389,7 @@ type ContentType = {
    */
   model: string;
 };
-type PaginatedDocumentList = {
+type PaginatedDocumentsList = {
   /**
    * @example 123
    */
@@ -444,88 +406,7 @@ type PaginatedDocumentList = {
      */
     (string | null)
     | undefined;
-  results: Array<Document>;
-};
-type PaginatedEmployeeSelectList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<EmployeeSelect>;
-};
-type EmployeeSelect = {
-  id: number;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  email?: /**
-   * @maxLength 254
-   */
-  string | undefined;
-};
-type PaginatedEquipmentList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<Equipment>;
-};
-type Equipment = {
-  id: number;
-  /**
-   * @maxLength 50
-   */
-  name: string;
-  equipment_type?: (number | null) | undefined;
-  equipment_type_name: string;
-};
-type PaginatedEquipmentSelectList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<EquipmentSelect>;
+  results: Array<Documents>;
 };
 type PaginatedEquipmentTypeList = {
   /**
@@ -546,7 +427,18 @@ type PaginatedEquipmentTypeList = {
     | undefined;
   results: Array<EquipmentType>;
 };
-type PaginatedErrorTypeList = {
+type EquipmentType = {
+  id: number;
+  archived?: boolean | undefined;
+  deleted_at?: (string | null) | undefined;
+  created_at: string;
+  updated_at: string;
+  /**
+   * @maxLength 50
+   */
+  name: string;
+};
+type PaginatedEquipmentsList = {
   /**
    * @example 123
    */
@@ -563,36 +455,16 @@ type PaginatedErrorTypeList = {
      */
     (string | null)
     | undefined;
-  results: Array<ErrorType>;
+  results: Array<Equipments>;
 };
-type ErrorType = {
+type Equipments = {
   id: number;
   /**
    * @maxLength 50
    */
-  error_name: string;
-  error_example: string;
-  part_type?: (number | null) | undefined;
-  part_type_name: string;
-};
-type PaginatedLogEntryList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<LogEntry>;
+  name: string;
+  equipment_type?: (number | null) | undefined;
+  equipment_type_name: string;
 };
 type PaginatedMeasurementDefinitionList = {
   /**
@@ -632,7 +504,7 @@ type PaginatedOrdersList = {
     | undefined;
   results: Array<Orders>;
 };
-type PaginatedPartTypeList = {
+type PaginatedPartTypesList = {
   /**
    * @example 123
    */
@@ -649,12 +521,14 @@ type PaginatedPartTypeList = {
      */
     (string | null)
     | undefined;
-  results: Array<PartType>;
+  results: Array<PartTypes>;
 };
-type PartType = {
+type PartTypes = {
   id: number;
   previous_version: number | null;
   previous_version_name: string | null;
+  archived?: boolean | undefined;
+  deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
   /**
@@ -700,25 +574,36 @@ type PaginatedPartsList = {
 };
 type Parts = {
   id: number;
-  part_status?: PartStatusEnum | undefined;
-  order?: (number | null) | undefined;
-  part_type: number;
-  created_at: string;
-  order_name: string | null;
-  part_type_name: string;
-  step: number;
-  step_description: string;
-  requires_sampling: boolean;
   /**
    * @maxLength 50
    */
   ERP_id: string;
-  archived?: boolean | undefined;
-  has_error: boolean;
+  part_status?: PartStatusEnum | undefined;
+  archived: boolean;
+  requires_sampling: boolean;
+  order?: number | undefined;
+  order_info: {};
+  part_type: number;
+  part_type_info: {};
+  step: number;
+  step_info: {};
   work_order?: (number | null) | undefined;
+  work_order_info: {};
+  sampling_info: {};
+  quality_info: {};
+  sampling_history: {};
+  created_at: string;
+  updated_at: string;
+  has_error: boolean;
+  part_type_name: string;
+  process_name: string;
+  order_name: string | null;
+  step_description: string;
+  work_order_erp_id: string | null;
+  quality_status: {};
   sampling_rule?: (number | null) | undefined;
   sampling_ruleset?: (number | null) | undefined;
-  work_order_erp_id: string | null;
+  sampling_context?: unknown | undefined;
 };
 type PaginatedProcessWithStepsList = {
   /**
@@ -771,6 +656,11 @@ type Step = {
   part_type: number;
   process_name: string;
   part_type_name: string;
+  sampling_required?: boolean | undefined;
+  min_sampling_rate?: /**
+   * Minimum % of parts that must be sampled at this step
+   */
+  number | undefined;
 };
 type PaginatedProcessesList = {
   /**
@@ -795,6 +685,8 @@ type Processes = {
   id: number;
   part_type_name: string;
   steps: Array<Step>;
+  archived?: boolean | undefined;
+  deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
   /**
@@ -815,7 +707,7 @@ type Processes = {
   part_type: number;
   previous_version?: (number | null) | undefined;
 };
-type PaginatedQualityReportFormList = {
+type PaginatedQualityErrorsListList = {
   /**
    * @example 123
    */
@@ -832,9 +724,38 @@ type PaginatedQualityReportFormList = {
      */
     (string | null)
     | undefined;
-  results: Array<QualityReportForm>;
+  results: Array<QualityErrorsList>;
 };
-type QualityReportForm = {
+type QualityErrorsList = {
+  id: number;
+  /**
+   * @maxLength 50
+   */
+  error_name: string;
+  error_example: string;
+  part_type?: (number | null) | undefined;
+  part_type_name: string;
+};
+type PaginatedQualityReportsList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<QualityReports>;
+};
+type QualityReports = {
   id: number;
   step?: (number | null) | undefined;
   part?: (number | null) | undefined;
@@ -855,6 +776,12 @@ type QualityReportForm = {
   file?: (number | null) | undefined;
   created_at: string;
   errors?: Array<number> | undefined;
+  sampling_audit_log?:
+    | /**
+     * Links to the sampling decision that triggered this inspection
+     */
+    (number | null)
+    | undefined;
 };
 type StatusEnum =
   /**
@@ -886,8 +813,8 @@ type PaginatedSamplingRuleList = {
 };
 type SamplingRule = {
   id: number;
-  ruleset: number;
   rule_type: RuleTypeEnum;
+  rule_type_display: string;
   value?:
     | /**
      * @minimum 0
@@ -900,10 +827,18 @@ type SamplingRule = {
    * @maximum 2147483647
    */
   number | undefined;
+  algorithm_description?: /**
+   * Description of sampling algorithm for audit purposes
+   */
+  string | undefined;
+  last_validated?: (string | null) | undefined;
+  ruleset: number;
+  ruleset_info: {};
   created_by?: (number | null) | undefined;
   created_at: string;
   modified_by?: (number | null) | undefined;
   modified_at: string;
+  archived: boolean;
   ruletype_name: string;
   ruleset_name: string;
 };
@@ -939,9 +874,6 @@ type PaginatedSamplingRuleSetList = {
 };
 type SamplingRuleSet = {
   id: number;
-  rules: Array<SamplingRule>;
-  part_type_name: string;
-  process_name: string;
   /**
    * @maxLength 100
    */
@@ -957,6 +889,10 @@ type SamplingRuleSet = {
    * @maximum 2147483647
    */
   number | undefined;
+  is_fallback?: /**
+   * @default false
+   */
+  boolean | undefined;
   fallback_threshold?:
     | /**
      * Number of consecutive failures before switching to fallback
@@ -975,20 +911,20 @@ type SamplingRuleSet = {
      */
     (number | null)
     | undefined;
-  created_at: string;
-  modified_at: string;
-  is_fallback?: /**
-   * @default false
-   */
-  boolean | undefined;
-  archived?: boolean | undefined;
+  archived: boolean;
   part_type: number;
+  part_type_info: {};
   process: number;
+  process_info: {};
   step: number;
-  supersedes?: (number | null) | undefined;
-  fallback_ruleset?: (number | null) | undefined;
+  step_info: {};
+  rules: Array<unknown>;
   created_by?: (number | null) | undefined;
+  created_at: string;
   modified_by?: (number | null) | undefined;
+  modified_at: string;
+  part_type_name: string;
+  process_name: string;
 };
 type PaginatedStepDistributionResponseList = {
   /**
@@ -1014,7 +950,7 @@ type StepDistributionResponse = {
   count: number;
   name: string;
 };
-type PaginatedStepList = {
+type PaginatedStepsList = {
   /**
    * @example 123
    */
@@ -1031,54 +967,60 @@ type PaginatedStepList = {
      */
     (string | null)
     | undefined;
-  results: Array<Step>;
+  results: Array<Steps>;
 };
-type PaginatedTrackerPageOrderList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<TrackerPageOrder>;
-};
-type TrackerPageOrder = {
+type Steps = {
   id: number;
-  order_status: OrderStatusEnum;
-  stages: Array<Stage>;
-  customer: Customer;
-  company: Company;
-  created_at: string;
-  updated_at: string;
   /**
    * @maxLength 50
    */
   name: string;
-  customer_note?:
+  /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  order: number;
+  expected_duration?: (string | null) | undefined;
+  description?: (string | null) | undefined;
+  is_last_step?: boolean | undefined;
+  block_on_quarantine?: boolean | undefined;
+  requires_qa_signoff?: boolean | undefined;
+  sampling_required?: boolean | undefined;
+  min_sampling_rate?: /**
+   * Minimum % of parts that must be sampled at this step
+   */
+  number | undefined;
+  pass_threshold?: number | undefined;
+  process: number;
+  part_type: number;
+  process_info: {};
+  part_type_info: {};
+  resolved_sampling_rules: unknown;
+  sampling_coverage: {};
+  process_name: string;
+  part_type_name: string;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+};
+type PaginatedUserSelectList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
     | /**
-     * @maxLength 500
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
      */
     (string | null)
     | undefined;
-  estimated_completion?: (string | null) | undefined;
-  original_completion_date?: (string | null) | undefined;
-  archived?: boolean | undefined;
-};
-type Stage = {
-  name: string;
-  timestamp: string | null;
-  is_completed: boolean;
-  is_current: boolean;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<UserSelect>;
 };
 type PaginatedWorkOrderList = {
   /**
@@ -1101,20 +1043,19 @@ type PaginatedWorkOrderList = {
 };
 type WorkOrder = {
   id: number;
-  related_order?: (number | null) | undefined;
-  related_order_detail: Orders;
+  /**
+   * @maxLength 50
+   */
+  ERP_id: string;
   workorder_status?: WorkorderStatusEnum | undefined;
   quantity?: /**
    * @minimum -2147483648
    * @maximum 2147483647
    */
   number | undefined;
-  /**
-   * @maxLength 50
-   */
-  ERP_id: string;
-  created_at: string;
-  updated_at: string;
+  related_order?: (number | null) | undefined;
+  related_order_info: {};
+  related_order_detail: Orders;
   expected_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
@@ -1125,6 +1066,10 @@ type WorkOrder = {
      */
     (string | null)
     | undefined;
+  parts_summary: {};
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
 };
 type WorkorderStatusEnum =
   /**
@@ -1144,48 +1089,37 @@ type WorkorderStatusEnum =
   | "CANCELLED"
   | "WAITING_FOR_OPERATOR";
 type PartsRequest = {
-  part_status?: PartStatusEnum | undefined;
-  order?: (number | null) | undefined;
-  part_type: number;
-  step: number;
   /**
    * @minLength 1
    * @maxLength 50
    */
   ERP_id: string;
-  archived?: boolean | undefined;
+  part_status?: PartStatusEnum | undefined;
+  order?: number | undefined;
+  part_type: number;
+  step: number;
   work_order?: (number | null) | undefined;
   sampling_rule?: (number | null) | undefined;
   sampling_ruleset?: (number | null) | undefined;
+  sampling_context?: unknown | undefined;
 };
-type PatchedCustomerRequest = Partial<{
+type PatchedDocumentsRequest = Partial<{
   /**
-   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-   *
-   * @minLength 1
-   * @maxLength 150
-   * @pattern ^[\w.@+-]+$
-   */
-  username: string;
-  /**
-   * @maxLength 150
-   */
-  first_name: string;
-  /**
-   * @maxLength 150
-   */
-  last_name: string;
-  /**
-   * @maxLength 254
-   */
-  email: string;
-  /**
-   * Designates whether the user can log into this admin site.
-   */
-  is_staff: boolean;
-  parent_company: CompanyRequest;
-}>;
-type PatchedDocumentRequest = Partial<{
+     * Level of document classification:
+    - "public": Public
+    - "internal": Internal Use
+    - "confidential": Confidential
+    - "restricted": Restricted (serious impact)
+    - "secret": Secret (critical impact)
+    
+    * `public` - Public
+    * `internal` - Internal Use
+    * `confidential` - Confidential
+    * `restricted` - Restricted
+    * `secret` - Secret
+     */
+  classification: ClassificationEnum | NullEnum | null;
+  AI_readable: boolean;
   is_image: boolean;
   /**
    * @minLength 1
@@ -1210,21 +1144,6 @@ type PatchedDocumentRequest = Partial<{
    * @maximum 32767
    */
   version: number;
-  /**
-     * Level of document classification:
-    - "public": Public
-    - "internal": Internal Use
-    - "confidential": Confidential
-    - "restricted": Restricted (serious impact)
-    - "secret": Secret (critical impact)
-    
-    * `public` - Public
-    * `internal` - Internal Use
-    * `confidential` - Confidential
-    * `restricted` - Restricted
-    * `secret` - Secret
-     */
-  classification: ClassificationEnum | NullEnum | null;
 }>;
 type PatchedMeasurementDefinitionRequest = Partial<{
   /**
@@ -1247,10 +1166,6 @@ type PatchedMeasurementDefinitionRequest = Partial<{
   type: TypeEnum;
 }>;
 type PatchedOrdersRequest = Partial<{
-  order_status: OrderStatusEnum;
-  customer: number;
-  company: number;
-  current_hubspot_gate: number | null;
   /**
    * @minLength 1
    * @maxLength 50
@@ -1260,28 +1175,26 @@ type PatchedOrdersRequest = Partial<{
    * @maxLength 500
    */
   customer_note: string | null;
+  customer: number;
+  company: number;
   estimated_completion: string | null;
-  original_completion_date: string | null;
-  archived: boolean;
-  /**
-   * @maxLength 100
-   */
-  last_synced_hubspot_stage: string | null;
+  order_status: OrderStatusEnum;
+  current_hubspot_gate: number | null;
 }>;
 type PatchedPartsRequest = Partial<{
-  part_status: PartStatusEnum;
-  order: number | null;
-  part_type: number;
-  step: number;
   /**
    * @minLength 1
    * @maxLength 50
    */
   ERP_id: string;
-  archived: boolean;
+  part_status: PartStatusEnum;
+  order: number;
+  part_type: number;
+  step: number;
   work_order: number | null;
   sampling_rule: number | null;
   sampling_ruleset: number | null;
+  sampling_context: unknown;
 }>;
 type PatchedProcessWithStepsRequest = Partial<{
   /**
@@ -1313,29 +1226,13 @@ type StepRequest = {
   is_last_step?: boolean | undefined;
   process: number;
   part_type: number;
+  sampling_required?: boolean | undefined;
+  min_sampling_rate?: /**
+   * Minimum % of parts that must be sampled at this step
+   */
+  number | undefined;
 };
-type PatchedProcessesRequest = Partial<{
-  steps: Array<StepRequest>;
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  name: string;
-  is_remanufactured: boolean;
-  /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  num_steps: number;
-  /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  version: number;
-  part_type: number;
-  previous_version: number | null;
-}>;
-type PatchedQualityReportFormRequest = Partial<{
+type PatchedQualityReportsRequest = Partial<{
   step: number | null;
   part: number | null;
   machine: number | null;
@@ -1354,9 +1251,12 @@ type PatchedQualityReportFormRequest = Partial<{
   file: number | null;
   errors: Array<number>;
   measurements: Array<MeasurementDefinitionRequest>;
+  /**
+   * Links to the sampling decision that triggered this inspection
+   */
+  sampling_audit_log: number | null;
 }>;
 type PatchedSamplingRuleRequest = Partial<{
-  ruleset: number;
   rule_type: RuleTypeEnum;
   /**
    * @minimum 0
@@ -1368,39 +1268,30 @@ type PatchedSamplingRuleRequest = Partial<{
    * @maximum 2147483647
    */
   order: number;
+  /**
+   * Description of sampling algorithm for audit purposes
+   *
+   * @minLength 1
+   */
+  algorithm_description: string;
+  last_validated: string | null;
+  ruleset: number;
   created_by: number | null;
   modified_by: number | null;
 }>;
-type PatchedTrackerPageOrderRequest = Partial<{
-  order_status: OrderStatusEnum;
-  customer: CustomerRequest;
-  company: CompanyRequest;
+type PatchedWorkOrderRequest = Partial<{
   /**
    * @minLength 1
    * @maxLength 50
    */
-  name: string;
-  /**
-   * @maxLength 500
-   */
-  customer_note: string | null;
-  estimated_completion: string | null;
-  original_completion_date: string | null;
-  archived: boolean;
-}>;
-type PatchedWorkOrderRequest = Partial<{
-  related_order: number | null;
+  ERP_id: string;
   workorder_status: WorkorderStatusEnum;
   /**
    * @minimum -2147483648
    * @maximum 2147483647
    */
   quantity: number;
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  ERP_id: string;
+  related_order: number | null;
   expected_completion: string | null;
   expected_duration: string | null;
   true_completion: string | null;
@@ -1425,28 +1316,7 @@ type ProcessWithStepsRequest = {
    */
   num_steps: number;
 };
-type ProcessesRequest = {
-  steps: Array<StepRequest>;
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  name: string;
-  is_remanufactured: boolean;
-  /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  num_steps: number;
-  version?: /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  number | undefined;
-  part_type: number;
-  previous_version?: (number | null) | undefined;
-};
-type QualityReportFormRequest = {
+type QualityReportsRequest = {
   step?: (number | null) | undefined;
   part?: (number | null) | undefined;
   machine?: (number | null) | undefined;
@@ -1467,9 +1337,14 @@ type QualityReportFormRequest = {
   file?: (number | null) | undefined;
   errors?: Array<number> | undefined;
   measurements: Array<MeasurementDefinitionRequest>;
+  sampling_audit_log?:
+    | /**
+     * Links to the sampling decision that triggered this inspection
+     */
+    (number | null)
+    | undefined;
 };
 type SamplingRuleRequest = {
-  ruleset: number;
   rule_type: RuleTypeEnum;
   value?:
     | /**
@@ -1483,53 +1358,73 @@ type SamplingRuleRequest = {
    * @maximum 2147483647
    */
   number | undefined;
+  algorithm_description?: /**
+   * Description of sampling algorithm for audit purposes
+   *
+   * @minLength 1
+   */
+  string | undefined;
+  last_validated?: (string | null) | undefined;
+  ruleset: number;
   created_by?: (number | null) | undefined;
   modified_by?: (number | null) | undefined;
 };
-type SamplingRuleWriteRequest = {
+type SamplingRuleUpdateRequest = {
   rule_type: RuleTypeEnum;
   value?: (number | null) | undefined;
   order: number;
-  is_fallback?: boolean | undefined;
 };
-type StepSamplingRulesWriteRequest = {
-  rules: Array<SamplingRuleWriteRequest>;
-  fallback_rules?: Array<SamplingRuleWriteRequest> | undefined;
+type StepSamplingRulesUpdateRequest = {
+  rules: Array<SamplingRuleUpdateRequest>;
+  fallback_rules?: Array<SamplingRuleUpdateRequest> | undefined;
   fallback_threshold?: number | undefined;
   fallback_duration?: number | undefined;
 };
-type TrackerPageOrderRequest = {
-  order_status: OrderStatusEnum;
-  customer: CustomerRequest;
-  company: CompanyRequest;
+type UserDetail = {
+  id: number;
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   *
+   * @maxLength 150
+   * @pattern ^[\w.@+-]+$
+   */
+  username: string;
+  first_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  last_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  email?: /**
+   * @maxLength 254
+   */
+  string | undefined;
+  is_staff?: /**
+   * Designates whether the user can log into this admin site.
+   */
+  boolean | undefined;
+  is_active?: /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  boolean | undefined;
+  date_joined: string;
+  parent_company: Company;
+};
+type WorkOrderRequest = {
   /**
    * @minLength 1
    * @maxLength 50
    */
-  name: string;
-  customer_note?:
-    | /**
-     * @maxLength 500
-     */
-    (string | null)
-    | undefined;
-  estimated_completion?: (string | null) | undefined;
-  original_completion_date?: (string | null) | undefined;
-  archived?: boolean | undefined;
-};
-type WorkOrderRequest = {
-  related_order?: (number | null) | undefined;
+  ERP_id: string;
   workorder_status?: WorkorderStatusEnum | undefined;
   quantity?: /**
    * @minimum -2147483648
    * @maximum 2147483647
    */
   number | undefined;
-  /**
-   * @minLength 1
-   * @maxLength 50
-   */
-  ERP_id: string;
+  related_order?: (number | null) | undefined;
   expected_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
@@ -1548,9 +1443,13 @@ const Company: z.ZodType<Company> = z
     name: z.string().max(50),
     description: z.string(),
     hubspot_api_id: z.string().max(50),
+    user_count: z.number().int(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
   })
   .passthrough();
-const CompanyRequest: z.ZodType<CompanyRequest> = z
+const CompanyRequest = z
   .object({
     name: z.string().min(1).max(50),
     description: z.string().min(1),
@@ -1565,8 +1464,9 @@ const PatchedCompanyRequest = z
   })
   .partial()
   .passthrough();
-const Customer: z.ZodType<Customer> = z
+const UserDetail: z.ZodType<UserDetail> = z
   .object({
+    id: z.number().int(),
     username: z
       .string()
       .max(150)
@@ -1575,11 +1475,12 @@ const Customer: z.ZodType<Customer> = z
     last_name: z.string().max(150).optional(),
     email: z.string().max(254).email().optional(),
     is_staff: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    date_joined: z.string().datetime({ offset: true }),
     parent_company: Company,
-    id: z.number().int(),
   })
   .passthrough();
-const CustomerRequest: z.ZodType<CustomerRequest> = z
+const UserDetailRequest = z
   .object({
     username: z
       .string()
@@ -1590,10 +1491,11 @@ const CustomerRequest: z.ZodType<CustomerRequest> = z
     last_name: z.string().max(150).optional(),
     email: z.string().max(254).email().optional(),
     is_staff: z.boolean().optional(),
-    parent_company: CompanyRequest,
+    is_active: z.boolean().optional(),
+    parent_company_id: z.number().int().optional(),
   })
   .passthrough();
-const PatchedCustomerRequest: z.ZodType<PatchedCustomerRequest> = z
+const PatchedUserDetailRequest = z
   .object({
     username: z
       .string()
@@ -1604,7 +1506,8 @@ const PatchedCustomerRequest: z.ZodType<PatchedCustomerRequest> = z
     last_name: z.string().max(150),
     email: z.string().max(254).email(),
     is_staff: z.boolean(),
-    parent_company: CompanyRequest,
+    is_active: z.boolean(),
+    parent_company_id: z.number().int(),
   })
   .partial()
   .passthrough();
@@ -1616,33 +1519,41 @@ const ClassificationEnum = z.enum([
   "secret",
 ]);
 const NullEnum = z.unknown();
-const Document: z.ZodType<Document> = z
+const Documents: z.ZodType<Documents> = z
   .object({
     id: z.number().int(),
+    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
+    AI_readable: z.boolean().optional(),
     is_image: z.boolean(),
     file_name: z.string().max(50),
     file: z.string().url(),
-    file_url: z.string().nullable(),
+    file_url: z.string(),
     upload_date: z.string(),
     uploaded_by: z.number().int().nullish(),
-    uploaded_by_name: z.string(),
+    uploaded_by_info: z.object({}).partial().passthrough(),
     content_type: z.number().int().nullish(),
-    content_type_model: z.string().nullable(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullish(),
+    content_type_info: z.object({}).partial().passthrough(),
     version: z.number().int().gte(0).lte(32767).optional(),
-    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
+    access_info: z.object({}).partial().passthrough(),
+    auto_properties: z.object({}).partial().passthrough(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
   })
   .passthrough();
-const PaginatedDocumentList: z.ZodType<PaginatedDocumentList> = z
+const PaginatedDocumentsList: z.ZodType<PaginatedDocumentsList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(Document),
+    results: z.array(Documents),
   })
   .passthrough();
-const DocumentRequest: z.ZodType<DocumentRequest> = z
+const DocumentsRequest: z.ZodType<DocumentsRequest> = z
   .object({
+    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
+    AI_readable: z.boolean().optional(),
     is_image: z.boolean(),
     file_name: z.string().min(1).max(50),
     file: z.instanceof(File),
@@ -1650,11 +1561,12 @@ const DocumentRequest: z.ZodType<DocumentRequest> = z
     content_type: z.number().int().nullish(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullish(),
     version: z.number().int().gte(0).lte(32767).optional(),
-    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
   })
   .passthrough();
-const PatchedDocumentRequest: z.ZodType<PatchedDocumentRequest> = z
+const PatchedDocumentsRequest: z.ZodType<PatchedDocumentsRequest> = z
   .object({
+    classification: z.union([ClassificationEnum, NullEnum]).nullable(),
+    AI_readable: z.boolean(),
     is_image: z.boolean(),
     file_name: z.string().min(1).max(50),
     file: z.instanceof(File),
@@ -1662,27 +1574,29 @@ const PatchedDocumentRequest: z.ZodType<PatchedDocumentRequest> = z
     content_type: z.number().int().nullable(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullable(),
     version: z.number().int().gte(0).lte(32767),
-    classification: z.union([ClassificationEnum, NullEnum]).nullable(),
   })
   .partial()
   .passthrough();
-const EmployeeSelect: z.ZodType<EmployeeSelect> = z
+const UserSelect: z.ZodType<UserSelect> = z
   .object({
     id: z.number().int(),
+    username: z.string(),
     first_name: z.string().max(150).optional(),
     last_name: z.string().max(150).optional(),
     email: z.string().max(254).email().optional(),
+    full_name: z.string(),
+    is_active: z.boolean(),
   })
   .passthrough();
-const PaginatedEmployeeSelectList: z.ZodType<PaginatedEmployeeSelectList> = z
+const PaginatedUserSelectList: z.ZodType<PaginatedUserSelectList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(EmployeeSelect),
+    results: z.array(UserSelect),
   })
   .passthrough();
-const Equipment: z.ZodType<Equipment> = z
+const Equipments: z.ZodType<Equipments> = z
   .object({
     id: z.number().int(),
     name: z.string().max(50),
@@ -1690,36 +1604,28 @@ const Equipment: z.ZodType<Equipment> = z
     equipment_type_name: z.string(),
   })
   .passthrough();
-const PaginatedEquipmentList: z.ZodType<PaginatedEquipmentList> = z
+const PaginatedEquipmentsList: z.ZodType<PaginatedEquipmentsList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(Equipment),
+    results: z.array(Equipments),
   })
   .passthrough();
-const EquipmentRequest = z
+const EquipmentsRequest = z
   .object({
     name: z.string().min(1).max(50),
     equipment_type: z.number().int().nullish(),
   })
   .passthrough();
 const EquipmentType: z.ZodType<EquipmentType> = z
-  .object({ id: z.number().int(), name: z.string().max(50) })
-  .passthrough();
-const EquipmentSelect: z.ZodType<EquipmentSelect> = z
   .object({
     id: z.number().int(),
-    equipment_type: EquipmentType,
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
     name: z.string().max(50),
-  })
-  .passthrough();
-const PaginatedEquipmentSelectList: z.ZodType<PaginatedEquipmentSelectList> = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(EquipmentSelect),
   })
   .passthrough();
 const PaginatedEquipmentTypeList: z.ZodType<PaginatedEquipmentTypeList> = z
@@ -1731,20 +1637,28 @@ const PaginatedEquipmentTypeList: z.ZodType<PaginatedEquipmentTypeList> = z
   })
   .passthrough();
 const EquipmentTypeRequest = z
-  .object({ name: z.string().min(1).max(50) })
+  .object({
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
+    name: z.string().min(1).max(50),
+  })
   .passthrough();
 const PatchedEquipmentTypeRequest = z
-  .object({ name: z.string().min(1).max(50) })
+  .object({
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
+    name: z.string().min(1).max(50),
+  })
   .partial()
   .passthrough();
-const PatchedEquipmentRequest = z
+const PatchedEquipmentsRequest = z
   .object({
     name: z.string().min(1).max(50),
     equipment_type: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
-const ErrorType: z.ZodType<ErrorType> = z
+const QualityErrorsList: z.ZodType<QualityErrorsList> = z
   .object({
     id: z.number().int(),
     error_name: z.string().max(50),
@@ -1753,22 +1667,23 @@ const ErrorType: z.ZodType<ErrorType> = z
     part_type_name: z.string(),
   })
   .passthrough();
-const PaginatedErrorTypeList: z.ZodType<PaginatedErrorTypeList> = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ErrorType),
-  })
-  .passthrough();
-const ErrorTypeRequest = z
+const PaginatedQualityErrorsListList: z.ZodType<PaginatedQualityErrorsListList> =
+  z
+    .object({
+      count: z.number().int(),
+      next: z.string().url().nullish(),
+      previous: z.string().url().nullish(),
+      results: z.array(QualityErrorsList),
+    })
+    .passthrough();
+const QualityErrorsListRequest = z
   .object({
     error_name: z.string().min(1).max(50),
     error_example: z.string().min(1),
     part_type: z.number().int().nullish(),
   })
   .passthrough();
-const PatchedErrorTypeRequest = z
+const PatchedQualityErrorsListRequest = z
   .object({
     error_name: z.string().min(1).max(50),
     error_example: z.string().min(1),
@@ -1777,7 +1692,7 @@ const PatchedErrorTypeRequest = z
   .partial()
   .passthrough();
 const StatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
-const QualityReportForm: z.ZodType<QualityReportForm> = z
+const QualityReports: z.ZodType<QualityReports> = z
   .object({
     id: z.number().int(),
     step: z.number().int().nullish(),
@@ -1791,17 +1706,17 @@ const QualityReportForm: z.ZodType<QualityReportForm> = z
     file: z.number().int().nullish(),
     created_at: z.string().datetime({ offset: true }),
     errors: z.array(z.number().int()).optional(),
+    sampling_audit_log: z.number().int().nullish(),
   })
   .passthrough();
-const PaginatedQualityReportFormList: z.ZodType<PaginatedQualityReportFormList> =
-  z
-    .object({
-      count: z.number().int(),
-      next: z.string().url().nullish(),
-      previous: z.string().url().nullish(),
-      results: z.array(QualityReportForm),
-    })
-    .passthrough();
+const PaginatedQualityReportsList: z.ZodType<PaginatedQualityReportsList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(QualityReports),
+  })
+  .passthrough();
 const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
 const MeasurementDefinitionRequest: z.ZodType<MeasurementDefinitionRequest> = z
   .object({
@@ -1818,7 +1733,7 @@ const MeasurementDefinitionRequest: z.ZodType<MeasurementDefinitionRequest> = z
     type: TypeEnum,
   })
   .passthrough();
-const QualityReportFormRequest: z.ZodType<QualityReportFormRequest> = z
+const QualityReportsRequest: z.ZodType<QualityReportsRequest> = z
   .object({
     step: z.number().int().nullish(),
     part: z.number().int().nullish(),
@@ -1831,40 +1746,49 @@ const QualityReportFormRequest: z.ZodType<QualityReportFormRequest> = z
     file: z.number().int().nullish(),
     errors: z.array(z.number().int()).optional(),
     measurements: z.array(MeasurementDefinitionRequest),
+    sampling_audit_log: z.number().int().nullish(),
   })
   .passthrough();
-const PatchedQualityReportFormRequest: z.ZodType<PatchedQualityReportFormRequest> =
-  z
-    .object({
-      step: z.number().int().nullable(),
-      part: z.number().int().nullable(),
-      machine: z.number().int().nullable(),
-      operator: z.array(z.number().int()),
-      sampling_rule: z.number().int().nullable(),
-      sampling_method: z.string().min(1).max(50),
-      status: StatusEnum,
-      description: z.string().max(300).nullable(),
-      file: z.number().int().nullable(),
-      errors: z.array(z.number().int()),
-      measurements: z.array(MeasurementDefinitionRequest),
-    })
-    .partial()
-    .passthrough();
+const PatchedQualityReportsRequest: z.ZodType<PatchedQualityReportsRequest> = z
+  .object({
+    step: z.number().int().nullable(),
+    part: z.number().int().nullable(),
+    machine: z.number().int().nullable(),
+    operator: z.array(z.number().int()),
+    sampling_rule: z.number().int().nullable(),
+    sampling_method: z.string().min(1).max(50),
+    status: StatusEnum,
+    description: z.string().max(300).nullable(),
+    file: z.number().int().nullable(),
+    errors: z.array(z.number().int()),
+    measurements: z.array(MeasurementDefinitionRequest),
+    sampling_audit_log: z.number().int().nullable(),
+  })
+  .partial()
+  .passthrough();
 const ExternalAPIOrderIdentifier = z
   .object({
     id: z.number().int(),
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
     stage_name: z.string().max(100),
     API_id: z.string().max(50),
   })
   .passthrough();
 const ExternalAPIOrderIdentifierRequest = z
   .object({
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
   })
   .passthrough();
 const PatchedExternalAPIOrderIdentifierRequest = z
   .object({
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
   })
@@ -1925,19 +1849,23 @@ const OrderStatusEnum = z.enum([
 const Orders: z.ZodType<Orders> = z
   .object({
     id: z.number().int(),
-    order_status: OrderStatusEnum,
+    name: z.string().max(50),
+    customer_note: z.string().max(500).nullish(),
     customer: z.number().int(),
+    customer_info: UserSelect,
     company: z.number().int(),
+    company_info: Company,
+    estimated_completion: z.string().nullish(),
+    order_status: OrderStatusEnum,
     current_hubspot_gate: z.number().int().nullish(),
+    parts_summary: z.object({}).partial().passthrough(),
+    process_stages: z.array(z.unknown()),
     customer_first_name: z.string(),
     customer_last_name: z.string(),
     company_name: z.string(),
-    name: z.string().max(50),
-    customer_note: z.string().max(500).nullish(),
-    estimated_completion: z.string().nullish(),
-    original_completion_date: z.string().datetime({ offset: true }).nullish(),
-    archived: z.boolean().optional(),
-    last_synced_hubspot_stage: z.string().max(100).nullish(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
   })
   .passthrough();
 const PaginatedOrdersList: z.ZodType<PaginatedOrdersList> = z
@@ -1950,35 +1878,29 @@ const PaginatedOrdersList: z.ZodType<PaginatedOrdersList> = z
   .passthrough();
 const OrdersRequest: z.ZodType<OrdersRequest> = z
   .object({
-    order_status: OrderStatusEnum,
-    customer: z.number().int(),
-    company: z.number().int(),
-    current_hubspot_gate: z.number().int().nullish(),
     name: z.string().min(1).max(50),
     customer_note: z.string().max(500).nullish(),
+    customer: z.number().int(),
+    company: z.number().int(),
     estimated_completion: z.string().nullish(),
-    original_completion_date: z.string().datetime({ offset: true }).nullish(),
-    archived: z.boolean().optional(),
-    last_synced_hubspot_stage: z.string().max(100).nullish(),
+    order_status: OrderStatusEnum,
+    current_hubspot_gate: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedOrdersRequest: z.ZodType<PatchedOrdersRequest> = z
   .object({
-    order_status: OrderStatusEnum,
-    customer: z.number().int(),
-    company: z.number().int(),
-    current_hubspot_gate: z.number().int().nullable(),
     name: z.string().min(1).max(50),
     customer_note: z.string().max(500).nullable(),
+    customer: z.number().int(),
+    company: z.number().int(),
     estimated_completion: z.string().nullable(),
-    original_completion_date: z.string().datetime({ offset: true }).nullable(),
-    archived: z.boolean(),
-    last_synced_hubspot_stage: z.string().max(100).nullable(),
+    order_status: OrderStatusEnum,
+    current_hubspot_gate: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
 const StepIncrementInputRequest = z
-  .object({ step_id: z.number().int(), order_id: z.number().int() })
+  .object({ step_id: z.number().int() })
   .passthrough();
 const StepIncrementResponse = z
   .object({ advanced: z.number().int(), total: z.number().int() })
@@ -1995,18 +1917,21 @@ const PartStatusEnum = z.enum([
   "SCRAPPED",
   "CANCELLED",
 ]);
-const BulkAddPartsRequest: z.ZodType<BulkAddPartsRequest> = z
+const BulkAddPartsInputRequest: z.ZodType<BulkAddPartsInputRequest> = z
   .object({
     part_type: z.number().int(),
     step: z.number().int(),
-    quantity: z.number().int().gte(1),
-    part_status: PartStatusEnum,
-    process_id: z.number().int(),
-    ERP_id: z.string().min(1),
+    quantity: z.number().int(),
+    part_status: PartStatusEnum.optional().default("PENDING"),
+    work_order: z.number().int().optional(),
+    erp_id_start: z.number().int().optional().default(1),
   })
   .passthrough();
-const BulkRemovePartsRequest = z
-  .object({ ids: z.array(z.number().int()) })
+const BulkSoftDeleteRequest = z
+  .object({
+    ids: z.array(z.number().int()),
+    reason: z.string().min(1).max(200).optional().default("bulk_admin_delete"),
+  })
   .passthrough();
 const StepDistributionResponse: z.ZodType<StepDistributionResponse> = z
   .object({ id: z.number().int(), count: z.number().int(), name: z.string() })
@@ -2020,11 +1945,13 @@ const PaginatedStepDistributionResponseList: z.ZodType<PaginatedStepDistribution
       results: z.array(StepDistributionResponse),
     })
     .passthrough();
-const PartType: z.ZodType<PartType> = z
+const PartTypes: z.ZodType<PartTypes> = z
   .object({
     id: z.number().int(),
     previous_version: z.number().int().nullable(),
     previous_version_name: z.string().nullable(),
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     name: z.string().max(50),
@@ -2033,24 +1960,28 @@ const PartType: z.ZodType<PartType> = z
     ERP_id: z.string().max(50).nullish(),
   })
   .passthrough();
-const PaginatedPartTypeList: z.ZodType<PaginatedPartTypeList> = z
+const PaginatedPartTypesList: z.ZodType<PaginatedPartTypesList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(PartType),
+    results: z.array(PartTypes),
   })
   .passthrough();
-const PartTypeRequest = z
+const PartTypesRequest = z
   .object({
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullish(),
     version: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     ERP_id: z.string().max(50).nullish(),
   })
   .passthrough();
-const PatchedPartTypeRequest = z
+const PatchedPartTypesRequest = z
   .object({
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullable(),
     version: z.number().int().gte(-2147483648).lte(2147483647),
@@ -2061,22 +1992,33 @@ const PatchedPartTypeRequest = z
 const Parts: z.ZodType<Parts> = z
   .object({
     id: z.number().int(),
-    part_status: PartStatusEnum.optional(),
-    order: z.number().int().nullish(),
-    part_type: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    order_name: z.string().nullable(),
-    part_type_name: z.string(),
-    step: z.number().int(),
-    step_description: z.string(),
-    requires_sampling: z.boolean(),
     ERP_id: z.string().max(50),
-    archived: z.boolean().optional(),
-    has_error: z.boolean(),
+    part_status: PartStatusEnum.optional(),
+    archived: z.boolean(),
+    requires_sampling: z.boolean(),
+    order: z.number().int().optional(),
+    order_info: z.object({}).partial().passthrough(),
+    part_type: z.number().int(),
+    part_type_info: z.object({}).partial().passthrough(),
+    step: z.number().int(),
+    step_info: z.object({}).partial().passthrough(),
     work_order: z.number().int().nullish(),
+    work_order_info: z.object({}).partial().passthrough().nullable(),
+    sampling_info: z.object({}).partial().passthrough(),
+    quality_info: z.object({}).partial().passthrough(),
+    sampling_history: z.object({}).partial().passthrough(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    has_error: z.boolean(),
+    part_type_name: z.string(),
+    process_name: z.string(),
+    order_name: z.string().nullable(),
+    step_description: z.string(),
+    work_order_erp_id: z.string().nullable(),
+    quality_status: z.object({}).partial().passthrough(),
     sampling_rule: z.number().int().nullish(),
     sampling_ruleset: z.number().int().nullish(),
-    work_order_erp_id: z.string().nullable(),
+    sampling_context: z.unknown().optional(),
   })
   .passthrough();
 const PaginatedPartsList: z.ZodType<PaginatedPartsList> = z
@@ -2089,28 +2031,28 @@ const PaginatedPartsList: z.ZodType<PaginatedPartsList> = z
   .passthrough();
 const PartsRequest: z.ZodType<PartsRequest> = z
   .object({
+    ERP_id: z.string().min(1).max(50),
     part_status: PartStatusEnum.optional(),
-    order: z.number().int().nullish(),
+    order: z.number().int().optional(),
     part_type: z.number().int(),
     step: z.number().int(),
-    ERP_id: z.string().min(1).max(50),
-    archived: z.boolean().optional(),
     work_order: z.number().int().nullish(),
     sampling_rule: z.number().int().nullish(),
     sampling_ruleset: z.number().int().nullish(),
+    sampling_context: z.unknown().optional(),
   })
   .passthrough();
 const PatchedPartsRequest: z.ZodType<PatchedPartsRequest> = z
   .object({
+    ERP_id: z.string().min(1).max(50),
     part_status: PartStatusEnum,
-    order: z.number().int().nullable(),
+    order: z.number().int(),
     part_type: z.number().int(),
     step: z.number().int(),
-    ERP_id: z.string().min(1).max(50),
-    archived: z.boolean(),
     work_order: z.number().int().nullable(),
     sampling_rule: z.number().int().nullable(),
     sampling_ruleset: z.number().int().nullable(),
+    sampling_context: z.unknown(),
   })
   .partial()
   .passthrough();
@@ -2125,6 +2067,8 @@ const Step: z.ZodType<Step> = z
     part_type: z.number().int(),
     process_name: z.string(),
     part_type_name: z.string(),
+    sampling_required: z.boolean().optional(),
+    min_sampling_rate: z.number().optional(),
   })
   .passthrough();
 const Processes: z.ZodType<Processes> = z
@@ -2132,6 +2076,8 @@ const Processes: z.ZodType<Processes> = z
     id: z.number().int(),
     part_type_name: z.string(),
     steps: z.array(Step),
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     name: z.string().max(50),
@@ -2150,19 +2096,10 @@ const PaginatedProcessesList: z.ZodType<PaginatedProcessesList> = z
     results: z.array(Processes),
   })
   .passthrough();
-const StepRequest: z.ZodType<StepRequest> = z
+const ProcessesRequest = z
   .object({
-    name: z.string().min(1).max(50),
-    order: z.number().int().gte(-2147483648).lte(2147483647),
-    description: z.string().nullish(),
-    is_last_step: z.boolean().optional(),
-    process: z.number().int(),
-    part_type: z.number().int(),
-  })
-  .passthrough();
-const ProcessesRequest: z.ZodType<ProcessesRequest> = z
-  .object({
-    steps: z.array(StepRequest),
+    archived: z.boolean().optional(),
+    deleted_at: z.string().datetime({ offset: true }).nullish(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
@@ -2171,9 +2108,10 @@ const ProcessesRequest: z.ZodType<ProcessesRequest> = z
     previous_version: z.number().int().nullish(),
   })
   .passthrough();
-const PatchedProcessesRequest: z.ZodType<PatchedProcessesRequest> = z
+const PatchedProcessesRequest = z
   .object({
-    steps: z.array(StepRequest),
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
@@ -2202,6 +2140,18 @@ const PaginatedProcessWithStepsList: z.ZodType<PaginatedProcessWithStepsList> =
       results: z.array(ProcessWithSteps),
     })
     .passthrough();
+const StepRequest: z.ZodType<StepRequest> = z
+  .object({
+    name: z.string().min(1).max(50),
+    order: z.number().int().gte(-2147483648).lte(2147483647),
+    description: z.string().nullish(),
+    is_last_step: z.boolean().optional(),
+    process: z.number().int(),
+    part_type: z.number().int(),
+    sampling_required: z.boolean().optional(),
+    min_sampling_rate: z.number().optional(),
+  })
+  .passthrough();
 const ProcessWithStepsRequest: z.ZodType<ProcessWithStepsRequest> = z
   .object({
     name: z.string().min(1).max(50),
@@ -2222,51 +2172,30 @@ const PatchedProcessWithStepsRequest: z.ZodType<PatchedProcessWithStepsRequest> 
     })
     .partial()
     .passthrough();
-const RuleTypeEnum = z.enum([
-  "every_nth_part",
-  "percentage",
-  "random",
-  "first_n_parts",
-  "last_n_parts",
-]);
-const SamplingRule: z.ZodType<SamplingRule> = z
-  .object({
-    id: z.number().int(),
-    ruleset: z.number().int(),
-    rule_type: RuleTypeEnum,
-    value: z.number().int().gte(0).lte(2147483647).nullish(),
-    order: z.number().int().gte(0).lte(2147483647).optional(),
-    created_by: z.number().int().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    modified_by: z.number().int().nullish(),
-    modified_at: z.string().datetime({ offset: true }),
-    ruletype_name: z.string(),
-    ruleset_name: z.string(),
-  })
-  .passthrough();
 const SamplingRuleSet: z.ZodType<SamplingRuleSet> = z
   .object({
     id: z.number().int(),
-    rules: z.array(SamplingRule),
-    part_type_name: z.string(),
-    process_name: z.string(),
     name: z.string().max(100),
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
     version: z.number().int().gte(0).lte(2147483647).optional().default(1),
+    is_fallback: z.boolean().optional().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    modified_at: z.string().datetime({ offset: true }),
-    is_fallback: z.boolean().optional().default(false),
-    archived: z.boolean().optional(),
+    archived: z.boolean(),
     part_type: z.number().int(),
+    part_type_info: z.object({}).partial().passthrough(),
     process: z.number().int(),
+    process_info: z.object({}).partial().passthrough(),
     step: z.number().int(),
-    supersedes: z.number().int().nullish(),
-    fallback_ruleset: z.number().int().nullish(),
+    step_info: z.object({}).partial().passthrough(),
+    rules: z.array(z.unknown()),
     created_by: z.number().int().nullish(),
+    created_at: z.string().datetime({ offset: true }),
     modified_by: z.number().int().nullish(),
+    modified_at: z.string().datetime({ offset: true }),
+    part_type_name: z.string(),
+    process_name: z.string(),
   })
   .passthrough();
 const PaginatedSamplingRuleSetList: z.ZodType<PaginatedSamplingRuleSetList> = z
@@ -2283,15 +2212,12 @@ const SamplingRuleSetRequest = z
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
     version: z.number().int().gte(0).lte(2147483647).optional().default(1),
+    is_fallback: z.boolean().optional().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-    is_fallback: z.boolean().optional().default(false),
-    archived: z.boolean().optional(),
     part_type: z.number().int(),
     process: z.number().int(),
     step: z.number().int(),
-    supersedes: z.number().int().nullish(),
-    fallback_ruleset: z.number().int().nullish(),
     created_by: z.number().int().nullish(),
     modified_by: z.number().int().nullish(),
   })
@@ -2302,19 +2228,43 @@ const PatchedSamplingRuleSetRequest = z
     origin: z.string().max(100),
     active: z.boolean(),
     version: z.number().int().gte(0).lte(2147483647).default(1),
+    is_fallback: z.boolean().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullable(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullable(),
-    is_fallback: z.boolean().default(false),
-    archived: z.boolean(),
     part_type: z.number().int(),
     process: z.number().int(),
     step: z.number().int(),
-    supersedes: z.number().int().nullable(),
-    fallback_ruleset: z.number().int().nullable(),
     created_by: z.number().int().nullable(),
     modified_by: z.number().int().nullable(),
   })
   .partial()
+  .passthrough();
+const RuleTypeEnum = z.enum([
+  "every_nth_part",
+  "percentage",
+  "random",
+  "first_n_parts",
+  "last_n_parts",
+]);
+const SamplingRule: z.ZodType<SamplingRule> = z
+  .object({
+    id: z.number().int(),
+    rule_type: RuleTypeEnum,
+    rule_type_display: z.string(),
+    value: z.number().int().gte(0).lte(2147483647).nullish(),
+    order: z.number().int().gte(0).lte(2147483647).optional(),
+    algorithm_description: z.string().optional(),
+    last_validated: z.string().datetime({ offset: true }).nullish(),
+    ruleset: z.number().int(),
+    ruleset_info: z.object({}).partial().passthrough(),
+    created_by: z.number().int().nullish(),
+    created_at: z.string().datetime({ offset: true }),
+    modified_by: z.number().int().nullish(),
+    modified_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
+    ruletype_name: z.string(),
+    ruleset_name: z.string(),
+  })
   .passthrough();
 const PaginatedSamplingRuleList: z.ZodType<PaginatedSamplingRuleList> = z
   .object({
@@ -2326,129 +2276,111 @@ const PaginatedSamplingRuleList: z.ZodType<PaginatedSamplingRuleList> = z
   .passthrough();
 const SamplingRuleRequest: z.ZodType<SamplingRuleRequest> = z
   .object({
-    ruleset: z.number().int(),
     rule_type: RuleTypeEnum,
     value: z.number().int().gte(0).lte(2147483647).nullish(),
     order: z.number().int().gte(0).lte(2147483647).optional(),
+    algorithm_description: z.string().min(1).optional(),
+    last_validated: z.string().datetime({ offset: true }).nullish(),
+    ruleset: z.number().int(),
     created_by: z.number().int().nullish(),
     modified_by: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedSamplingRuleRequest: z.ZodType<PatchedSamplingRuleRequest> = z
   .object({
-    ruleset: z.number().int(),
     rule_type: RuleTypeEnum,
     value: z.number().int().gte(0).lte(2147483647).nullable(),
     order: z.number().int().gte(0).lte(2147483647),
+    algorithm_description: z.string().min(1),
+    last_validated: z.string().datetime({ offset: true }).nullable(),
+    ruleset: z.number().int(),
     created_by: z.number().int().nullable(),
     modified_by: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
-const PaginatedStepList: z.ZodType<PaginatedStepList> = z
+const Steps: z.ZodType<Steps> = z
+  .object({
+    id: z.number().int(),
+    name: z.string().max(50),
+    order: z.number().int().gte(-2147483648).lte(2147483647),
+    expected_duration: z.string().nullish(),
+    description: z.string().nullish(),
+    is_last_step: z.boolean().optional(),
+    block_on_quarantine: z.boolean().optional(),
+    requires_qa_signoff: z.boolean().optional(),
+    sampling_required: z.boolean().optional(),
+    min_sampling_rate: z.number().optional(),
+    pass_threshold: z.number().optional(),
+    process: z.number().int(),
+    part_type: z.number().int(),
+    process_info: z.object({}).partial().passthrough(),
+    part_type_info: z.object({}).partial().passthrough(),
+    resolved_sampling_rules: z.unknown(),
+    sampling_coverage: z.object({}).partial().passthrough(),
+    process_name: z.string(),
+    part_type_name: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
+  })
+  .passthrough();
+const PaginatedStepsList: z.ZodType<PaginatedStepsList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(Step),
+    results: z.array(Steps),
   })
   .passthrough();
-const PatchedStepRequest = z
+const StepsRequest = z
   .object({
     name: z.string().min(1).max(50),
     order: z.number().int().gte(-2147483648).lte(2147483647),
+    expected_duration: z.string().nullish(),
+    description: z.string().nullish(),
+    is_last_step: z.boolean().optional(),
+    block_on_quarantine: z.boolean().optional(),
+    requires_qa_signoff: z.boolean().optional(),
+    sampling_required: z.boolean().optional(),
+    min_sampling_rate: z.number().optional(),
+    pass_threshold: z.number().optional(),
+    process: z.number().int(),
+    part_type: z.number().int(),
+  })
+  .passthrough();
+const PatchedStepsRequest = z
+  .object({
+    name: z.string().min(1).max(50),
+    order: z.number().int().gte(-2147483648).lte(2147483647),
+    expected_duration: z.string().nullable(),
     description: z.string().nullable(),
     is_last_step: z.boolean(),
+    block_on_quarantine: z.boolean(),
+    requires_qa_signoff: z.boolean(),
+    sampling_required: z.boolean(),
+    min_sampling_rate: z.number(),
+    pass_threshold: z.number(),
     process: z.number().int(),
     part_type: z.number().int(),
   })
   .partial()
   .passthrough();
-const SamplingRuleWriteRequest: z.ZodType<SamplingRuleWriteRequest> = z
+const SamplingRuleUpdateRequest: z.ZodType<SamplingRuleUpdateRequest> = z
   .object({
     rule_type: RuleTypeEnum,
     value: z.number().int().nullish(),
     order: z.number().int(),
-    is_fallback: z.boolean().optional(),
   })
   .passthrough();
-const StepSamplingRulesWriteRequest: z.ZodType<StepSamplingRulesWriteRequest> =
+const StepSamplingRulesUpdateRequest: z.ZodType<StepSamplingRulesUpdateRequest> =
   z
     .object({
-      rules: z.array(SamplingRuleWriteRequest),
-      fallback_rules: z.array(SamplingRuleWriteRequest).optional(),
+      rules: z.array(SamplingRuleUpdateRequest),
+      fallback_rules: z.array(SamplingRuleUpdateRequest).optional(),
       fallback_threshold: z.number().int().optional(),
       fallback_duration: z.number().int().optional(),
     })
-    .passthrough();
-const StepSamplingRulesResponse = z
-  .object({
-    detail: z.string(),
-    ruleset_id: z.number().int(),
-    step_id: z.number().int(),
-  })
-  .passthrough();
-const Stage: z.ZodType<Stage> = z
-  .object({
-    name: z.string(),
-    timestamp: z.string().datetime({ offset: true }).nullable(),
-    is_completed: z.boolean(),
-    is_current: z.boolean(),
-  })
-  .passthrough();
-const TrackerPageOrder: z.ZodType<TrackerPageOrder> = z
-  .object({
-    id: z.number().int(),
-    order_status: OrderStatusEnum,
-    stages: z.array(Stage),
-    customer: Customer,
-    company: Company,
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    name: z.string().max(50),
-    customer_note: z.string().max(500).nullish(),
-    estimated_completion: z.string().nullish(),
-    original_completion_date: z.string().datetime({ offset: true }).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedTrackerPageOrderList: z.ZodType<PaginatedTrackerPageOrderList> =
-  z
-    .object({
-      count: z.number().int(),
-      next: z.string().url().nullish(),
-      previous: z.string().url().nullish(),
-      results: z.array(TrackerPageOrder),
-    })
-    .passthrough();
-const TrackerPageOrderRequest: z.ZodType<TrackerPageOrderRequest> = z
-  .object({
-    order_status: OrderStatusEnum,
-    customer: CustomerRequest,
-    company: CompanyRequest,
-    name: z.string().min(1).max(50),
-    customer_note: z.string().max(500).nullish(),
-    estimated_completion: z.string().nullish(),
-    original_completion_date: z.string().datetime({ offset: true }).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PatchedTrackerPageOrderRequest: z.ZodType<PatchedTrackerPageOrderRequest> =
-  z
-    .object({
-      order_status: OrderStatusEnum,
-      customer: CustomerRequest,
-      company: CompanyRequest,
-      name: z.string().min(1).max(50),
-      customer_note: z.string().max(500).nullable(),
-      estimated_completion: z.string().nullable(),
-      original_completion_date: z
-        .string()
-        .datetime({ offset: true })
-        .nullable(),
-      archived: z.boolean(),
-    })
-    .partial()
     .passthrough();
 const WorkorderStatusEnum = z.enum([
   "PENDING",
@@ -2461,18 +2393,21 @@ const WorkorderStatusEnum = z.enum([
 const WorkOrder: z.ZodType<WorkOrder> = z
   .object({
     id: z.number().int(),
-    related_order: z.number().int().nullish(),
-    related_order_detail: Orders.nullable(),
+    ERP_id: z.string().max(50),
     workorder_status: WorkorderStatusEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    ERP_id: z.string().max(50),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
+    related_order: z.number().int().nullish(),
+    related_order_info: z.object({}).partial().passthrough(),
+    related_order_detail: Orders,
     expected_completion: z.string().nullish(),
     expected_duration: z.string().nullish(),
     true_completion: z.string().nullish(),
     true_duration: z.string().nullish(),
     notes: z.string().max(500).nullish(),
+    parts_summary: z.object({}).partial().passthrough(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
   })
   .passthrough();
 const PaginatedWorkOrderList: z.ZodType<PaginatedWorkOrderList> = z
@@ -2485,10 +2420,10 @@ const PaginatedWorkOrderList: z.ZodType<PaginatedWorkOrderList> = z
   .passthrough();
 const WorkOrderRequest: z.ZodType<WorkOrderRequest> = z
   .object({
-    related_order: z.number().int().nullish(),
+    ERP_id: z.string().min(1).max(50),
     workorder_status: WorkorderStatusEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    ERP_id: z.string().min(1).max(50),
+    related_order: z.number().int().nullish(),
     expected_completion: z.string().nullish(),
     expected_duration: z.string().nullish(),
     true_completion: z.string().nullish(),
@@ -2498,10 +2433,10 @@ const WorkOrderRequest: z.ZodType<WorkOrderRequest> = z
   .passthrough();
 const PatchedWorkOrderRequest: z.ZodType<PatchedWorkOrderRequest> = z
   .object({
-    related_order: z.number().int().nullable(),
+    ERP_id: z.string().min(1).max(50),
     workorder_status: WorkorderStatusEnum,
     quantity: z.number().int().gte(-2147483648).lte(2147483647),
-    ERP_id: z.string().min(1).max(50),
+    related_order: z.number().int().nullable(),
     expected_completion: z.string().nullable(),
     expected_duration: z.string().nullable(),
     true_completion: z.string().nullable(),
@@ -2516,25 +2451,27 @@ const ActionEnum = z.union([
   z.literal(2),
   z.literal(3),
 ]);
-const LogEntry: z.ZodType<LogEntry> = z
+const AuditLog: z.ZodType<AuditLog> = z
   .object({
     id: z.number().int(),
     object_pk: z.string().max(255),
     object_repr: z.string(),
+    content_type: z.number().int(),
     content_type_name: z.string(),
     actor: z.number().int().nullish(),
+    actor_info: z.object({}).partial().passthrough().nullable(),
     remote_addr: z.string().nullish(),
-    timestamp: z.string().datetime({ offset: true }).optional(),
+    timestamp: z.string().datetime({ offset: true }),
     action: ActionEnum,
     changes: z.unknown().nullish(),
   })
   .passthrough();
-const PaginatedLogEntryList: z.ZodType<PaginatedLogEntryList> = z
+const PaginatedAuditLogList: z.ZodType<PaginatedAuditLogList> = z
   .object({
     count: z.number().int(),
     next: z.string().url().nullish(),
     previous: z.string().url().nullish(),
-    results: z.array(LogEntry),
+    results: z.array(AuditLog),
   })
   .passthrough();
 const ContentType: z.ZodType<ContentType> = z
@@ -2630,38 +2567,36 @@ export const schemas = {
   Company,
   CompanyRequest,
   PatchedCompanyRequest,
-  Customer,
-  CustomerRequest,
-  PatchedCustomerRequest,
+  UserDetail,
+  UserDetailRequest,
+  PatchedUserDetailRequest,
   ClassificationEnum,
   NullEnum,
-  Document,
-  PaginatedDocumentList,
-  DocumentRequest,
-  PatchedDocumentRequest,
-  EmployeeSelect,
-  PaginatedEmployeeSelectList,
-  Equipment,
-  PaginatedEquipmentList,
-  EquipmentRequest,
+  Documents,
+  PaginatedDocumentsList,
+  DocumentsRequest,
+  PatchedDocumentsRequest,
+  UserSelect,
+  PaginatedUserSelectList,
+  Equipments,
+  PaginatedEquipmentsList,
+  EquipmentsRequest,
   EquipmentType,
-  EquipmentSelect,
-  PaginatedEquipmentSelectList,
   PaginatedEquipmentTypeList,
   EquipmentTypeRequest,
   PatchedEquipmentTypeRequest,
-  PatchedEquipmentRequest,
-  ErrorType,
-  PaginatedErrorTypeList,
-  ErrorTypeRequest,
-  PatchedErrorTypeRequest,
+  PatchedEquipmentsRequest,
+  QualityErrorsList,
+  PaginatedQualityErrorsListList,
+  QualityErrorsListRequest,
+  PatchedQualityErrorsListRequest,
   StatusEnum,
-  QualityReportForm,
-  PaginatedQualityReportFormList,
+  QualityReports,
+  PaginatedQualityReportsList,
   TypeEnum,
   MeasurementDefinitionRequest,
-  QualityReportFormRequest,
-  PatchedQualityReportFormRequest,
+  QualityReportsRequest,
+  PatchedQualityReportsRequest,
   ExternalAPIOrderIdentifier,
   ExternalAPIOrderIdentifierRequest,
   PatchedExternalAPIOrderIdentifierRequest,
@@ -2676,14 +2611,14 @@ export const schemas = {
   StepIncrementInputRequest,
   StepIncrementResponse,
   PartStatusEnum,
-  BulkAddPartsRequest,
-  BulkRemovePartsRequest,
+  BulkAddPartsInputRequest,
+  BulkSoftDeleteRequest,
   StepDistributionResponse,
   PaginatedStepDistributionResponseList,
-  PartType,
-  PaginatedPartTypeList,
-  PartTypeRequest,
-  PatchedPartTypeRequest,
+  PartTypes,
+  PaginatedPartTypesList,
+  PartTypesRequest,
+  PatchedPartTypesRequest,
   Parts,
   PaginatedPartsList,
   PartsRequest,
@@ -2691,40 +2626,36 @@ export const schemas = {
   Step,
   Processes,
   PaginatedProcessesList,
-  StepRequest,
   ProcessesRequest,
   PatchedProcessesRequest,
   ProcessWithSteps,
   PaginatedProcessWithStepsList,
+  StepRequest,
   ProcessWithStepsRequest,
   PatchedProcessWithStepsRequest,
-  RuleTypeEnum,
-  SamplingRule,
   SamplingRuleSet,
   PaginatedSamplingRuleSetList,
   SamplingRuleSetRequest,
   PatchedSamplingRuleSetRequest,
+  RuleTypeEnum,
+  SamplingRule,
   PaginatedSamplingRuleList,
   SamplingRuleRequest,
   PatchedSamplingRuleRequest,
-  PaginatedStepList,
-  PatchedStepRequest,
-  SamplingRuleWriteRequest,
-  StepSamplingRulesWriteRequest,
-  StepSamplingRulesResponse,
-  Stage,
-  TrackerPageOrder,
-  PaginatedTrackerPageOrderList,
-  TrackerPageOrderRequest,
-  PatchedTrackerPageOrderRequest,
+  Steps,
+  PaginatedStepsList,
+  StepsRequest,
+  PatchedStepsRequest,
+  SamplingRuleUpdateRequest,
+  StepSamplingRulesUpdateRequest,
   WorkorderStatusEnum,
   WorkOrder,
   PaginatedWorkOrderList,
   WorkOrderRequest,
   PatchedWorkOrderRequest,
   ActionEnum,
-  LogEntry,
-  PaginatedLogEntryList,
+  AuditLog,
+  PaginatedAuditLogList,
   ContentType,
   PaginatedContentTypeList,
   LoginRequest,
@@ -2791,7 +2722,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedLogEntryList,
+    response: PaginatedAuditLogList,
   },
   {
     method: "get",
@@ -2805,7 +2736,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: LogEntry,
+    response: AuditLog,
   },
   {
     method: "get",
@@ -2951,7 +2882,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: z.array(Customer),
+    response: z.array(UserDetail),
   },
   {
     method: "post",
@@ -2962,10 +2893,10 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: CustomerRequest,
+        schema: UserDetailRequest,
       },
     ],
-    response: Customer,
+    response: UserDetail,
   },
   {
     method: "get",
@@ -2979,7 +2910,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Customer,
+    response: UserDetail,
   },
   {
     method: "put",
@@ -2990,7 +2921,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: CustomerRequest,
+        schema: UserDetailRequest,
       },
       {
         name: "id",
@@ -2998,7 +2929,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Customer,
+    response: UserDetail,
   },
   {
     method: "patch",
@@ -3009,7 +2940,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedCustomerRequest,
+        schema: PatchedUserDetailRequest,
       },
       {
         name: "id",
@@ -3017,7 +2948,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Customer,
+    response: UserDetail,
   },
   {
     method: "delete",
@@ -3075,7 +3006,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedDocumentList,
+    response: PaginatedDocumentsList,
   },
   {
     method: "post",
@@ -3086,10 +3017,10 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: DocumentRequest,
+        schema: DocumentsRequest,
       },
     ],
-    response: Document,
+    response: Documents,
   },
   {
     method: "get",
@@ -3103,7 +3034,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Document,
+    response: Documents,
   },
   {
     method: "put",
@@ -3114,7 +3045,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: DocumentRequest,
+        schema: DocumentsRequest,
       },
       {
         name: "id",
@@ -3122,7 +3053,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Document,
+    response: Documents,
   },
   {
     method: "patch",
@@ -3133,7 +3064,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedDocumentRequest,
+        schema: PatchedDocumentsRequest,
       },
       {
         name: "id",
@@ -3141,7 +3072,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Document,
+    response: Documents,
   },
   {
     method: "delete",
@@ -3179,7 +3110,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedEmployeeSelectList,
+    response: PaginatedUserSelectList,
   },
   {
     method: "get",
@@ -3193,7 +3124,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: EmployeeSelect,
+    response: UserSelect,
   },
   {
     method: "get",
@@ -3217,7 +3148,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedEquipmentSelectList,
+    response: PaginatedEquipmentsList,
   },
   {
     method: "get",
@@ -3231,7 +3162,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: EquipmentSelect,
+    response: Equipments,
   },
   {
     method: "get",
@@ -3276,7 +3207,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: z.object({ name: z.string().min(1).max(50) }).passthrough(),
+        schema: EquipmentTypeRequest,
       },
     ],
     response: EquipmentType,
@@ -3304,7 +3235,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: z.object({ name: z.string().min(1).max(50) }).passthrough(),
+        schema: EquipmentTypeRequest,
       },
       {
         name: "id",
@@ -3323,10 +3254,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ name: z.string().min(1).max(50) })
-          .partial()
-          .passthrough(),
+        schema: PatchedEquipmentTypeRequest,
       },
       {
         name: "id",
@@ -3382,7 +3310,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedEquipmentList,
+    response: PaginatedEquipmentsList,
   },
   {
     method: "post",
@@ -3393,10 +3321,10 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: EquipmentRequest,
+        schema: EquipmentsRequest,
       },
     ],
-    response: Equipment,
+    response: Equipments,
   },
   {
     method: "get",
@@ -3410,7 +3338,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Equipment,
+    response: Equipments,
   },
   {
     method: "put",
@@ -3421,7 +3349,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: EquipmentRequest,
+        schema: EquipmentsRequest,
       },
       {
         name: "id",
@@ -3429,7 +3357,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Equipment,
+    response: Equipments,
   },
   {
     method: "patch",
@@ -3440,7 +3368,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedEquipmentRequest,
+        schema: PatchedEquipmentsRequest,
       },
       {
         name: "id",
@@ -3448,7 +3376,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: Equipment,
+    response: Equipments,
   },
   {
     method: "delete",
@@ -3496,7 +3424,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedErrorTypeList,
+    response: PaginatedQualityErrorsListList,
   },
   {
     method: "post",
@@ -3507,10 +3435,10 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: ErrorTypeRequest,
+        schema: QualityErrorsListRequest,
       },
     ],
-    response: ErrorType,
+    response: QualityErrorsList,
   },
   {
     method: "get",
@@ -3524,7 +3452,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: ErrorType,
+    response: QualityErrorsList,
   },
   {
     method: "put",
@@ -3535,7 +3463,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: ErrorTypeRequest,
+        schema: QualityErrorsListRequest,
       },
       {
         name: "id",
@@ -3543,7 +3471,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: ErrorType,
+    response: QualityErrorsList,
   },
   {
     method: "patch",
@@ -3554,7 +3482,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedErrorTypeRequest,
+        schema: PatchedQualityErrorsListRequest,
       },
       {
         name: "id",
@@ -3562,7 +3490,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: ErrorType,
+    response: QualityErrorsList,
   },
   {
     method: "delete",
@@ -3600,7 +3528,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedQualityReportFormList,
+    response: PaginatedQualityReportsList,
   },
   {
     method: "post",
@@ -3611,10 +3539,10 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: QualityReportFormRequest,
+        schema: QualityReportsRequest,
       },
     ],
-    response: QualityReportForm,
+    response: QualityReports,
   },
   {
     method: "get",
@@ -3628,7 +3556,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: QualityReportForm,
+    response: QualityReports,
   },
   {
     method: "put",
@@ -3639,7 +3567,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: QualityReportFormRequest,
+        schema: QualityReportsRequest,
       },
       {
         name: "id",
@@ -3647,7 +3575,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: QualityReportForm,
+    response: QualityReports,
   },
   {
     method: "patch",
@@ -3658,7 +3586,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedQualityReportFormRequest,
+        schema: PatchedQualityReportsRequest,
       },
       {
         name: "id",
@@ -3666,7 +3594,7 @@ const endpoints = makeApi([
         schema: z.number().int(),
       },
     ],
-    response: QualityReportForm,
+    response: QualityReports,
   },
   {
     method: "delete",
@@ -4058,7 +3986,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: StepIncrementInputRequest,
+        schema: z.object({ step_id: z.number().int() }).passthrough(),
       },
       {
         name: "id",
@@ -4077,7 +4005,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: BulkAddPartsRequest,
+        schema: BulkAddPartsInputRequest,
       },
       {
         name: "id",
@@ -4096,7 +4024,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: BulkRemovePartsRequest,
+        schema: BulkSoftDeleteRequest,
       },
       {
         name: "id",
@@ -4404,7 +4332,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedPartTypeList,
+    response: PaginatedPartTypesList,
   },
   {
     method: "post",
@@ -4415,7 +4343,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PartTypeRequest,
+        schema: PartTypesRequest,
       },
       {
         name: "part_type",
@@ -4423,7 +4351,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: PartType,
+    response: PartTypes,
   },
   {
     method: "get",
@@ -4442,7 +4370,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: PartType,
+    response: PartTypes,
   },
   {
     method: "put",
@@ -4453,7 +4381,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PartTypeRequest,
+        schema: PartTypesRequest,
       },
       {
         name: "id",
@@ -4466,7 +4394,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: PartType,
+    response: PartTypes,
   },
   {
     method: "patch",
@@ -4477,7 +4405,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedPartTypeRequest,
+        schema: PatchedPartTypesRequest,
       },
       {
         name: "id",
@@ -4490,7 +4418,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: PartType,
+    response: PartTypes,
   },
   {
     method: "delete",
@@ -5157,7 +5085,7 @@ const endpoints = makeApi([
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedStepList,
+    response: PaginatedStepsList,
   },
   {
     method: "post",
@@ -5168,7 +5096,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: StepRequest,
+        schema: StepsRequest,
       },
       {
         name: "part_type",
@@ -5181,7 +5109,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: Step,
+    response: Steps,
   },
   {
     method: "get",
@@ -5205,7 +5133,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: Step,
+    response: Steps,
   },
   {
     method: "put",
@@ -5216,7 +5144,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: StepRequest,
+        schema: StepsRequest,
       },
       {
         name: "id",
@@ -5234,7 +5162,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: Step,
+    response: Steps,
   },
   {
     method: "patch",
@@ -5245,7 +5173,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: PatchedStepRequest,
+        schema: PatchedStepsRequest,
       },
       {
         name: "id",
@@ -5263,7 +5191,7 @@ const endpoints = makeApi([
         schema: z.number().int().optional(),
       },
     ],
-    response: Step,
+    response: Steps,
   },
   {
     method: "delete",
@@ -5313,7 +5241,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.number().int().optional(),
       },
     ],
-    response: Step,
+    response: Steps,
   },
   {
     method: "post",
@@ -5325,7 +5253,7 @@ Returns the active + fallback rulesets for a given step`,
       {
         name: "body",
         type: "Body",
-        schema: StepSamplingRulesWriteRequest,
+        schema: StepSamplingRulesUpdateRequest,
       },
       {
         name: "id",
@@ -5343,7 +5271,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.number().int().optional(),
       },
     ],
-    response: StepSamplingRulesResponse,
+    response: Steps,
   },
   {
     method: "get",
@@ -5367,7 +5295,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedTrackerPageOrderList,
+    response: PaginatedOrdersList,
   },
   {
     method: "post",
@@ -5378,10 +5306,10 @@ Returns the active + fallback rulesets for a given step`,
       {
         name: "body",
         type: "Body",
-        schema: TrackerPageOrderRequest,
+        schema: OrdersRequest,
       },
     ],
-    response: TrackerPageOrder,
+    response: Orders,
   },
   {
     method: "get",
@@ -5395,7 +5323,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.number().int(),
       },
     ],
-    response: TrackerPageOrder,
+    response: Orders,
   },
   {
     method: "put",
@@ -5406,7 +5334,7 @@ Returns the active + fallback rulesets for a given step`,
       {
         name: "body",
         type: "Body",
-        schema: TrackerPageOrderRequest,
+        schema: OrdersRequest,
       },
       {
         name: "id",
@@ -5414,7 +5342,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.number().int(),
       },
     ],
-    response: TrackerPageOrder,
+    response: Orders,
   },
   {
     method: "patch",
@@ -5425,7 +5353,7 @@ Returns the active + fallback rulesets for a given step`,
       {
         name: "body",
         type: "Body",
-        schema: PatchedTrackerPageOrderRequest,
+        schema: PatchedOrdersRequest,
       },
       {
         name: "id",
@@ -5433,7 +5361,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.number().int(),
       },
     ],
-    response: TrackerPageOrder,
+    response: Orders,
   },
   {
     method: "delete",

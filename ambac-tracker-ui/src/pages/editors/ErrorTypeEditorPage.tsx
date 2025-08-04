@@ -33,6 +33,7 @@ export function ErrorTypeEditorPage() {
     return (
         <ModelEditorPage
             title="Error Types"
+            modelName="ErrorTypes"
             useList={useErrorTypesList}
             sortOptions={[
                 { label: "Name (A-Z)", value: "name" },

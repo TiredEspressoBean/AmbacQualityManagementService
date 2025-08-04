@@ -37,6 +37,8 @@ export function StepsEditorPage() {
     return (
         <ModelEditorPage
             title="Steps"
+            modelName="Steps"
+            showDetailsLink={true}
             useList={useStepsList}
             sortOptions={[
                 { label: "Process Name (A-Z)", value: "process__name" },

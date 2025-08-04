@@ -3,7 +3,8 @@ from django.contrib.auth.models import Group
 from Tracker.models import (
     Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents,
     Equipments, EquipmentType, QualityErrorsList, QualityReports,
-    EquipmentUsage, ArchiveReason, StepTransitionLog, WorkOrder, SamplingRuleSet, SamplingRule
+    EquipmentUsage, ArchiveReason, StepTransitionLog, WorkOrder, SamplingRuleSet, SamplingRule,
+    MeasurementDefinition, MeasurementResult, QaApproval, PartsStatus
 )
 import random
 from faker import Faker
@@ -101,8 +102,6 @@ class Command(BaseCommand):
                 customer=random.choice(customers),
                 company=random.choice(companies),
                 estimated_completion=timezone.now().date() + timedelta(days=random.randint(2, 10)),
-                order_status=random.choice([s[0] for s in Orders.Status.choices]),
-                archived=False
             ) for _ in range(5)
         ]
 
@@ -113,7 +112,7 @@ class Command(BaseCommand):
                 customer=random.choice(customers),
                 company=random.choice(companies),
                 estimated_completion=timezone.now().date() - timedelta(days=random.randint(5, 20)),
-                order_status=Orders.Status.CANCELLED,
+                order_status='CANCELLED',
                 archived=True
             )
             ArchiveReason.objects.create(
@@ -126,13 +125,13 @@ class Command(BaseCommand):
             process = pt.processes.first()
             if not process:
                 continue
-            step = process.steps.order_by('step').first()
+            step = process.steps.order_by('order').first()
             part = Parts.objects.create(
                 ERP_id=fake.uuid4().split('-')[0].upper(),
                 part_type=pt,
                 step=step,
                 order=order,
-                part_status=Parts.Status.CANCELLED,
+                part_status='CANCELLED',
                 archived=True
             )
             ArchiveReason.objects.create(
@@ -149,12 +148,11 @@ class Command(BaseCommand):
             process = pt.processes.first()
             if not process:
                 continue
-            step = process.steps.order_by('step').first()
+            step = process.steps.order_by('order').first()
 
             # Work order
             wo = WorkOrder.objects.create(
                 ERP_id=fake.uuid4().split('-')[0].upper(),
-                operator=random.choice(employees),
                 related_order=order,
                 expected_completion=timezone.now().date() + timedelta(days=5)
             )
@@ -176,8 +174,8 @@ class Command(BaseCommand):
 
             rule = SamplingRule.objects.create(
                 ruleset=srs,
-                rule_type=random.choice(SamplingRule.RuleType),
-                value=random.randint(1,20),
+                rule_type=random.choice(SamplingRule.RuleType.values),
+                value=random.randint(1, 20),
                 created_by=random.choice(employees),
                 modified_by=random.choice(employees)
             )
@@ -188,11 +186,12 @@ class Command(BaseCommand):
                 part_type=pt,
                 step=step,
                 order=order,
-                part_status=random.choice([s[0] for s in Parts.Status.choices]),
+                part_status=random.choice([s[0] for s in PartsStatus.choices]),
                 archived=False,
                 work_order=wo,
                 requires_sampling=True,
-                sampling_rule=rule
+                sampling_rule=rule,
+                sampling_ruleset=srs
             )
 
             # Document linked to part
@@ -225,6 +224,7 @@ class Command(BaseCommand):
             qr = QualityReports.objects.create(
                 part=part,
                 machine=random.choice(equipment_list),
+                step=step,
                 description=fake.text(max_nb_chars=300),
                 sampling_method="manual",
                 status=random.choice(["PASS", "FAIL"]),
@@ -232,7 +232,32 @@ class Command(BaseCommand):
             qr.operator.add(random.choice(employees))
             qr.errors.set(errors)
 
-            # Step transition logs
+            md = MeasurementDefinition.objects.create(
+                step=step,
+                label="Outer Diameter",
+                type="NUMERIC",
+                unit="mm",
+                nominal=10.0,
+                upper_tol=0.2,
+                lower_tol=0.2,
+            )
+            step.required_measurements.add(md)
+
+            MeasurementResult.objects.create(
+                report=qr,
+                definition=md,
+                value_numeric=10.05,
+                is_within_spec=True,
+                created_by=random.choice(employees),
+            )
+
+            if random.random() > 0.5:
+                QaApproval.objects.create(
+                    step=step,
+                    work_order=wo,
+                    qa_staff=random.choice(employees),
+                )
+
             for s in process.steps.all():
                 StepTransitionLog.objects.create(
                     step=s,

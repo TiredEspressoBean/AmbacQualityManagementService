@@ -1,15 +1,27 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+    Package,
+    FileCheck,
+    TrendingUp,
+    CheckCircle
+} from "lucide-react";
 
 export default function Home() {
     return (
-        <section className="h-full flex items-center justify-center px-4">
-            <div className="text-center">
-                <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                    Welcome to Ambac Tracker
-                </h1>
-                <p className="text-muted-foreground mb-6">
-                    Track parts, processes, and quality effortlessly with a dashboard built on TanStack, Django, and shadcn/ui.
-                </p>
-            </div>
-        </section>
+        <div className="min-h-full">
+            {/* Hero Section */}
+            <section className="px-6 py-16">
+                <div className="max-w-4xl mx-auto text-center">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6">
+                        Ambac Quality Tracker
+                    </h1>
+                    <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+                        Track your orders, view quality reports, and monitor production progress
+                        with our comprehensive manufacturing management system.
+                    </p>
+                </div>
+            </section>
+        </div>
     );
 }

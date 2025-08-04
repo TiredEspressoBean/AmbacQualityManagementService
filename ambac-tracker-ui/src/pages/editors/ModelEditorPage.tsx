@@ -19,11 +19,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
+import { ExternalLink } from "lucide-react";
+
+// Try to import Link, but handle gracefully if it fails
+let Link: any = null;
+try {
+    const RouterModule = require("react-router-dom");
+    Link = RouterModule.Link;
+} catch (error) {
+    // Router not available
+    Link = null;
+}
 
 export type SortOption = { label: string; value: string };
 
 export interface ModelEditorProps<T> {
     title: string;
+    /** The model name for generating detail links (e.g., "user", "product") - required only when showDetailsLink is true */
+    modelName?: string;
     useList: (params: {
         offset: number;
         limit: number;
@@ -41,19 +54,25 @@ export interface ModelEditorProps<T> {
     }>;
     renderActions?: (item: T) => React.ReactNode;
     onCreate?: () => void;
-
-    /** ✅ Optional injected toolbar content, e.g. file upload form */
+    /** Optional injected toolbar content, e.g. file upload form */
     extraToolbarContent?: React.ReactNode;
+    /** Optional custom link generator, defaults to `/details/${modelName}/${id}` */
+    generateDetailLink?: (item: T) => string;
+    /** Whether to show the details link column, defaults to true */
+    showDetailsLink?: boolean;
 }
 
 export function ModelEditorPage<T extends { id: number }>({
                                                               title,
+                                                              modelName,
                                                               useList,
                                                               sortOptions,
                                                               columns,
                                                               renderActions,
                                                               onCreate,
                                                               extraToolbarContent,
+                                                              generateDetailLink,
+                                                              showDetailsLink = true,
                                                           }: ModelEditorProps<T>) {
     const [offset, setOffset] = useState(0);
     const [limit] = useState(25);
@@ -71,6 +90,76 @@ export function ModelEditorPage<T extends { id: number }>({
     useEffect(() => {
         setOffset(0);
     }, [debouncedSearch, ordering]);
+
+    // Default link generator with validation
+    const defaultGenerateDetailLink = (item: T) => {
+        if (!modelName) {
+            console.warn('ModelEditorPage: modelName is required when showDetailsLink is true');
+            return `/details/unknown/${item.id}`;
+        }
+        return `/details/${modelName}/${item.id}`;
+    };
+    const linkGenerator = generateDetailLink || defaultGenerateDetailLink;
+
+    // Safe link component that handles missing router and validates modelName
+    const SafeDetailLink = ({ item }: { item: T }) => {
+        const linkTo = linkGenerator(item);
+
+        // Don't render link if modelName is missing and no custom generator provided
+        if (!modelName && !generateDetailLink) {
+            return (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                    disabled
+                    title="Details link not configured"
+                >
+                    <span className="flex items-center gap-1 opacity-50">
+                        <ExternalLink className="h-3 w-3" />
+                        View
+                    </span>
+                </Button>
+            );
+        }
+
+        if (Link) {
+            // React Router is available
+            return (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-8 px-2"
+                >
+                    <Link
+                        to={linkTo}
+                        className="flex items-center gap-1"
+                    >
+                        <ExternalLink className="h-3 w-3" />
+                        View
+                    </Link>
+                </Button>
+            );
+        } else {
+            // Fallback to regular navigation
+            return (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() => {
+                        window.location.href = linkTo;
+                    }}
+                >
+                    <span className="flex items-center gap-1">
+                        <ExternalLink className="h-3 w-3" />
+                        View
+                    </span>
+                </Button>
+            );
+        }
+    };
 
     if (isLoading) return <Skeleton className="h-32 w-full" />;
     if (error) return <p className="text-red-500">Error loading {title}</p>;
@@ -107,7 +196,7 @@ export function ModelEditorPage<T extends { id: number }>({
                 </Select>
                 {onCreate && <Button onClick={onCreate}>New {title}</Button>}
 
-                {/* ✅ Optional extra content */}
+                {/* Optional extra content */}
                 {extraToolbarContent && (
                     <div className="ml-auto flex-shrink-0">{extraToolbarContent}</div>
                 )}
@@ -121,6 +210,7 @@ export function ModelEditorPage<T extends { id: number }>({
                         {columns.map((col, i) => (
                             <TableHead key={i}>{col.header}</TableHead>
                         ))}
+                        {showDetailsLink && <TableHead>Details</TableHead>}
                         {renderActions && <TableHead>Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
@@ -130,6 +220,11 @@ export function ModelEditorPage<T extends { id: number }>({
                             {columns.map((col, j) => (
                                 <TableCell key={j}>{col.renderCell(item)}</TableCell>
                             ))}
+                            {showDetailsLink && (
+                                <TableCell>
+                                    <SafeDetailLink item={item} />
+                                </TableCell>
+                            )}
                             {renderActions && (
                                 <TableCell className="text-right space-x-2">
                                     {renderActions(item)}
@@ -150,8 +245,8 @@ export function ModelEditorPage<T extends { id: number }>({
                     Previous
                 </Button>
                 <span>
-          Page {page} of {pageCount}
-        </span>
+                    Page {page} of {pageCount}
+                </span>
                 <Button
                     variant="secondary"
                     onClick={() => setOffset(offset + limit)}

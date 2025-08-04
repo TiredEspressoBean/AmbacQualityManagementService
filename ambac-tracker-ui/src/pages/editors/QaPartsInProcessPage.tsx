@@ -22,6 +22,7 @@ function usePartsList({
             ordering,
             search,
             archived: false,
+            requires_sampling: true,
             status__in: [
                 "PENDING",
                 "IN_PROGRESS",
@@ -38,6 +39,8 @@ export function QaPartsInProcessPage() {
         <ModelEditorPage
             title="Parts"
             useList={usePartsList}
+            modelName="Parts"
+            showDetailsLink={true}
             sortOptions={[
                 { label: "Created (Newest)", value: "-created_at" },
                 { label: "Created (Oldest)", value: "created_at" },
@@ -49,6 +52,7 @@ export function QaPartsInProcessPage() {
                 { header: "Status", renderCell: (p: any) => p.part_status },
                 { header: "WorkOrder", renderCell:(p:any) => p.work_order_erp_id || "-"},
                 { header: "Step", renderCell: (p: any) => p.step_name || p.step_description }, // depending on serialization
+                {header: "Process", renderCell: (p:any) => p.process_name},
                 { header: "Part Type", renderCell: (p: any) => p.part_type_name || p.part_type },
                 { header: "Created At", renderCell: (p: any) => new Date(p.created_at).toLocaleString() },
             ]}

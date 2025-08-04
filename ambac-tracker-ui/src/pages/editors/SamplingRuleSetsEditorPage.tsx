@@ -31,6 +31,8 @@ export function SamplingRuleSetsEditorPage() {
     return (
         <ModelEditorPage
             title="Sampling Rules"
+            modelName="SamplingRuleSets"
+            showDetailsLink={true}
             useList={useSamplingRuleList}
             sortOptions={[
                 { label: "Created (Newest)", value: "-created_at" },

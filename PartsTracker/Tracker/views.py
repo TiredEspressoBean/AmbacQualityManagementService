@@ -23,6 +23,7 @@ from Tracker.models import Parts, Orders, PartTypes, Steps, User, Companies, Equ
     QualityErrorsList, Processes, Documents, StepTransitionLog
 from Tracker.forms import DealForm, PartTypeForm, ProcessForm, LineItemForm, LineItemFormSet, PartDocForm, \
     ErrorReportForm, PartFormSet
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 
 @login_required
@@ -1811,6 +1812,7 @@ def get_client_ip(request):
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     return x_forwarded_for.split(",")[0] if x_forwarded_for else request.META.get("REMOTE_ADDR")
 
+@xframe_options_exempt
 @staff_member_required(login_url="login")
 def download_file(request, model_name, pk, field):
     """

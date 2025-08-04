@@ -33,6 +33,8 @@ export function EquipmentEditorPage() {
     return (
         <ModelEditorPage
             title="Equipments"
+            modelName="Equipments"
+            showDetailsLink={true}
             useList={useEquipmentsList}
             sortOptions={[
                 { label: "Name (A-Z)", value: "name" },

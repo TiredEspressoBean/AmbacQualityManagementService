@@ -127,17 +127,11 @@ export default function LoginPreview() {
                                     Login
                                 </Button>
                                 <Button variant="outline" className="w-full">
-                                    Login with Google
+                                    Login with Microsoft
                                 </Button>
                             </div>
                         </form>
                     </Form>
-                    <div className="mt-4 text-center text-sm">
-                        Don&apos;t have an account?{' '}
-                        <Link to="/" className="underline">
-                            Sign up
-                        </Link>
-                    </div>
                 </CardContent>
             </Card>
         </div>

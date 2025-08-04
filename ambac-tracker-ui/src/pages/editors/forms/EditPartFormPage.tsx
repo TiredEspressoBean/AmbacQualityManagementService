@@ -31,7 +31,7 @@ const PART_STATUS = schemas.PartStatusEnum.options;
 
 const formSchema = z.object({
     ERP_id: z.string().min(1),
-    status: schemas.PartStatusEnum.optional(),
+    part_status: schemas.PartStatusEnum.optional(),
     order: z.number().optional(),
     part_type: z.number(),
     step: z.number(),
@@ -69,7 +69,7 @@ export default function PartFormPage() {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema), defaultValues: {
             ERP_id: part?.ERP_id ?? "",
-            status: part?.part_status ?? PART_STATUS[0],
+            part_status: part?.part_status ?? PART_STATUS[0],
             order: part?.order ?? undefined,
             part_type: part?.part_type ?? undefined,
             step: part?.step ?? undefined,
@@ -82,7 +82,7 @@ export default function PartFormPage() {
         if (mode === "edit" && part) {
             form.reset({
                 ERP_id: part.ERP_id ?? "",
-                status: part.part_status ?? PART_STATUS[0],
+                part_status: part.part_status ?? PART_STATUS[0],
                 order: part.order ?? undefined,
                 part_type: part.part_type ?? undefined,
                 step: part.step ?? undefined,
@@ -164,7 +164,7 @@ export default function PartFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="status"
+                        name="part_status"
                         render={({field}) => (<FormItem>
                             <FormLabel>Status</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>

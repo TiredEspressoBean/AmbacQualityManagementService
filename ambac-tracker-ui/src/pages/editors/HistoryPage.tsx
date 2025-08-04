@@ -23,6 +23,8 @@ export function AuditLogViewerPage() {
     return (
         <ModelEditorPage
             title="Audit Log"
+            modelName="AuditLog"
+            showDetailsLink={true}
             useList={useAuditLogList}
             sortOptions={[
                 { label: "Most Recent", value: "-timestamp" },
