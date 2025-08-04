@@ -1,12 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-    Package,
-    FileCheck,
-    TrendingUp,
-    CheckCircle
-} from "lucide-react";
-
 export default function Home() {
     return (
         <div className="min-h-full">

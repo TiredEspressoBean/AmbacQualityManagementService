@@ -28,6 +28,7 @@ from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
 from Tracker.hubspot_view import hubspot_webhook
 from Tracker.views import OrderUpdateView, OrderCreateView, ErrorFormView
+from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
 from Tracker.AI_view import chat_ai_view
 
@@ -124,12 +125,17 @@ urlpatterns += [
 
 
 urlpatterns += [
+    path(
+        "password/reset/confirm/<slug:uidb64>/<slug:token>/",
+        PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
     path("auth/user/", UserDetailsView.as_view(), name="rest_user_details"),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),
-    path("accounts/", include("allauth.urls")),  # Required for Microsoft SSO,
     path("api/csrf/", get_csrf_token),
-    path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"), namespace="django_browser_reload")),
+    path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"),
+                                namespace="django_browser_reload")),
 
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema")),

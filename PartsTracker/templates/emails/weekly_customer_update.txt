@@ -1,0 +1,22 @@
+WEEKLY ORDER UPDATE
+Week ending {{ week_ending|date:"F d, Y" }}
+
+Hi {{ customer.first_name|default:"there" }}!
+
+Here's your weekly update on your {{ total_orders }} active order{{ total_orders|pluralize }}:
+
+{% for order in orders %}
+=====================================
+{{ order.name }}
+Status: {{ order.status }}
+Progress: {{ order.progress }}% Complete ({{ order.completed_parts }}/{{ order.total_parts }} parts)
+Current Stage: {{ order.current_stage }}
+Est. Completion: {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
+
+{% endfor %}
+=====================================
+
+Questions about your orders? Email us at sales@ambacinternational.com or call us at (800) 628-6894.
+
+Thanks for choosing us!
+The Team

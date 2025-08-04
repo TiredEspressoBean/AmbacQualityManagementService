@@ -1,11 +1,30 @@
 # serializers.py - Complete merged version with SecureModel integration
-
+from allauth import app_settings
+from allauth.account.adapter import get_adapter
+from allauth.account.forms import default_token_generator
+from allauth.account.utils import user_username, filter_users_by_email, user_pk_to_url_str
+from allauth.utils import build_absolute_uri
 from auditlog.models import LogEntry
+from dj_rest_auth.forms import AllAuthPasswordResetForm
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.shortcuts import get_current_site
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from dj_rest_auth.serializers import PasswordResetSerializer as BasePasswordResetSerializer, PasswordResetSerializer
 
 from .models import *
+
+if 'allauth' in settings.INSTALLED_APPS:
+    from allauth.account import app_settings as allauth_account_settings
+    from allauth.account.adapter import get_adapter
+    from allauth.account.forms import ResetPasswordForm as DefaultPasswordResetForm
+    from allauth.account.forms import default_token_generator
+    from allauth.account.utils import (
+        filter_users_by_email,
+        user_pk_to_url_str,
+        user_username,
+    )
+    from allauth.utils import build_absolute_uri
 
 
 # ===== BASE MIXINS =====
@@ -1270,3 +1289,71 @@ class SamplingTriggerStateSerializer(serializers.ModelSerializer):
                   "active", "triggered_by", "triggered_by_status", "triggered_at", "success_count",
                   "fail_count", "parts_inspected"]
         read_only_fields = ["id", "triggered_at"]
+
+
+class CustomAllAuthPasswordResetForm(AllAuthPasswordResetForm):
+    def clean_email(self):
+        """
+        Invalid email should not raise error, as this would leak users
+        for unit test: test_password_reset_with_invalid_email
+        """
+        email = self.cleaned_data["email"]
+        email = get_adapter().clean_email(email)
+        self.users = filter_users_by_email(email, is_active=True)
+        return self.cleaned_data["email"]
+
+    def save(self, request, **kwargs):
+        current_site = get_current_site(request)
+        email = self.cleaned_data['email']
+        token_generator = kwargs.get('token_generator', default_token_generator)
+
+        from django.template.loader import select_template
+        try:
+            template_names = [
+                'account/email/password_reset_key_message.html',
+                'account/email/password_reset_key_message.txt',
+            ]
+            template = select_template(template_names)
+            print(f" Allauth will use template: {template.origin.name}")
+        except Exception as e:
+            print(f" Template selection error: {e}")
+
+        # Get frontend URL from settings
+        if settings.DEBUG:
+            frontend_url = "http://localhost:5173"
+        else:
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://yourdomain.com')
+
+        for user in self.users:
+            temp_key = token_generator.make_token(user)
+            uid = user_pk_to_url_str(user)
+
+            # 🔥 Custom URL pointing to your frontend
+            custom_url = f"{frontend_url}/reset-password/{uid}/{temp_key}/"
+
+            context = {
+                'current_site': current_site,
+                'user': user,
+                'site_name': "AMBAC",
+                'password_reset_url': custom_url,  # This is the key!
+                'request': request,
+                'token': temp_key,
+                'uid': uid,
+            }
+            if (
+                    allauth_account_settings.AUTHENTICATION_METHOD != allauth_account_settings.AuthenticationMethod.EMAIL
+            ):
+                context['username'] = user_username(user)
+
+            get_adapter(request).send_mail(
+                'account/email/password_reset_key', email, context
+            )
+
+        return self.cleaned_data['email']
+
+
+class PasswordResetSerializer(BasePasswordResetSerializer):
+    @property
+    def password_reset_form_class(self):
+        """Force use of our custom form instead of the default AllAuth form"""
+        return CustomAllAuthPasswordResetForm

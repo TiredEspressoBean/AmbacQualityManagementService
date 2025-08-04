@@ -39,6 +39,7 @@ import DocumentFormPage from "@/pages/editors/forms/EditDocumentFormPage.tsx";
 import ModelDetailPageWrapper from "@/pages/detail pages/ModeDetaisPageWrapper.tsx";
 import {WorkOrdersEditorPage} from "@/pages/editors/WorkOrdersEditorPage.tsx";
 import WorkOrderFormPage from "@/pages/editors/forms/EditWorkOrderFormPage.tsx";
+import {PasswordResetConfirm, PasswordResetRequest} from "@/pages/PasswordResetConfirmForm.tsx";
 
 
 
@@ -58,6 +59,31 @@ const loginRote = createRoute({
     path: "/login",
     component: () => <Login />,
 })
+
+const passwordResetRequestRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/password-reset-request",
+    component: () => <PasswordResetRequest />,
+})
+
+const passwordResetConfirmRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/reset-password/$uid/$token",
+    component: () => {
+        const { uid, token } = passwordResetConfirmRoute.useParams()
+        return (
+            <PasswordResetConfirm
+                uid={uid}
+                token={token}
+                onSuccess={() => {
+                    // Navigate to login or show success message
+                    window.location.href = '/login'
+                }}
+            />
+        )
+    },
+})
+
 
 const trackerRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -320,6 +346,8 @@ export const workOrderEditRoute = createRoute({
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRote,
+    passwordResetRequestRoute,
+    passwordResetConfirmRoute,
     trackerRoute,
     orderDetailsRoute,
     partAnnotatorRoute,
@@ -362,7 +390,7 @@ const routeTree = rootRoute.addChildren([
     ModelDetailRoute,
     WorkOrderEditorRoute,
     workOrderEditRoute,
-    workOrderCreateRoute
+    workOrderCreateRoute,
 ])
 
 export const router = new Router({routeTree})

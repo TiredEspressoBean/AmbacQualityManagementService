@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Weekly Order Update</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        .order-card {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #ffffff;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .order-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .status-pending { background-color: #fef3c7; color: #d97706; }
+        .status-in-progress { background-color: #dbeafe; color: #1d4ed8; }
+        .status-on-hold { background-color: #fee2e2; color: #dc2626; }
+        .status-rfi { background-color: #f3e8ff; color: #7c3aed; }
+        
+        .progress-bar {
+            background-color: #e5e7eb;
+            border-radius: 10px;
+            height: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background-color: #10b981;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .order-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Weekly Order Update</h1>
+        <p>Week ending {{ week_ending|date:"F d, Y" }}</p>
+    </div>
+
+    <p>Hi {{ customer.first_name|default:"there" }}!</p>
+    
+    <p>Here's your weekly update on your {{ total_orders }} active order{{ total_orders|pluralize }}:</p>
+
+    {% for order in orders %}
+    <div class="order-card">
+        <div class="order-header">
+            <div class="order-name">{{ order.name }}</div>
+            <span class="status-badge status-{{ order.status|lower|cut:' '|cut:'_' }}">
+                {{ order.status }}
+            </span>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ order.progress }}%"></div>
+        </div>
+        <div style="text-align: center; font-size: 12px; color: #6b7280; margin-top: 5px;">
+            {{ order.progress }}% Complete ({{ order.completed_parts }}/{{ order.total_parts }} parts)
+        </div>
+        
+        <div class="order-details">
+            <div>
+                <strong>Current Stage:</strong><br>
+                {{ order.current_stage }}
+            </div>
+            <div>
+                <strong>Est. Completion:</strong><br>
+                {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="footer">
+        <p>Questions about your orders? Email us at sales@ambacinternational.com or call us at (800) 628-6894.</p>
+        <p>Thanks for choosing us!</p>
+        <p><strong>The Team</strong></p>
+    </div>
+</body>
+</html>
