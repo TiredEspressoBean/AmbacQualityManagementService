@@ -1,0 +1,143 @@
+"""
+Azure production settings for PartsTracker project.
+"""
+
+from .settings import *
+import os
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+
+# Security settings for production
+# SSL redirect handled by Azure Container Apps ingress
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+
+# Update ALLOWED_HOSTS from environment
+allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', '')
+if allowed_hosts_str:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = ['*']  # For development/testing only
+
+# CORS settings
+cors_origins_str = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if cors_origins_str:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = []
+    
+CORS_ALLOW_CREDENTIALS = True
+
+# Database configuration for Azure PostgreSQL
+db_host = os.environ.get('POSTGRES_HOST', 'localhost')
+db_options = {}
+
+# Enable SSL for Azure PostgreSQL, disable for local development
+if 'postgres.database.azure.com' in db_host:
+    db_options['sslmode'] = 'require'
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'parts_tracker'),
+        'USER': os.environ.get('POSTGRES_USER', 'parts_tracker_user'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
+        'HOST': db_host,
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'OPTIONS': db_options,
+    }
+}
+
+# Azure Blob Storage for static and media files (optional)
+# Requires: pip install django-storages[azure]
+if os.environ.get('AZURE_STORAGE_ACCOUNT_NAME'):
+    try:
+        DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+        STATICFILES_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    except ImportError:
+        # Fallback to local storage if django-storages is not installed
+        pass
+    
+    AZURE_ACCOUNT_NAME = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')
+    AZURE_ACCOUNT_KEY = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY')
+    AZURE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER_NAME_MEDIA', 'media')
+    AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
+    
+    # Static files
+    STATIC_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{os.environ.get("AZURE_STORAGE_CONTAINER_NAME_STATIC", "static")}/'
+    MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
+else:
+    # Use container local storage
+    STATIC_URL = '/static/'
+    MEDIA_URL = '/media/'
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# Application Insights (optional)
+if os.environ.get('APPINSIGHTS_INSTRUMENTATIONKEY'):
+    INSTALLED_APPS += ['applicationinsights.django']
+    APPLICATION_INSIGHTS = {
+        'ikey': os.environ.get('APPINSIGHTS_INSTRUMENTATIONKEY'),
+    }
+
+# Email configuration
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+if EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
+    EMAIL_HOST = os.environ.get('EMAIL_HOST')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+# Caching with Redis (optional)
+if os.environ.get('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+# Health check endpoint
+HEALTH_CHECK_URL = '/health/'
