@@ -24,7 +24,10 @@ import { useCreateEquipmentType } from "@/hooks/useCreateEquipmentType";
 import { useUpdateEquipmentType } from "@/hooks/useUpdateEquipmentType";
 
 const formSchema = z.object({
-    name: z.string().min(1, "Name is required"),
+    name: z
+        .string()
+        .min(1, "Equipment type name is required - please enter a descriptive name for this type of equipment")
+        .max(255, "Equipment type name must be 255 characters or less"),
 });
 
 export default function EquipmentTypeFormPage() {
@@ -92,7 +95,7 @@ export default function EquipmentTypeFormPage() {
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Name</FormLabel>
+                            <FormLabel>Name *</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g. CNC Lathe, CMM, Robot Arm" {...field} />
                             </FormControl>

@@ -38,10 +38,21 @@ const WORKORDER_STATUS = schemas.WorkorderStatusEnum.options
 
 const formSchema = z.object({
     status: schemas.WorkorderStatusEnum,
-    ERP_id: z.string().min(1),
-    notes: z.string().optional(),
-    related_order: z.number(),
-    expected_completion: z.coerce.date(),
+    ERP_id: z
+        .string()
+        .min(1, "ERP ID is required - please enter the unique identifier from your ERP system")
+        .max(100, "ERP ID must be 100 characters or less"),
+    notes: z
+        .string()
+        .max(1000, "Notes must be 1000 characters or less")
+        .optional(),
+    related_order: z
+        .number()
+        .min(1, "Related order must be selected - please choose which customer order this work order belongs to"),
+    expected_completion: z
+        .coerce.date({
+            errorMap: () => ({ message: "Expected completion date is required - please select when this work order should be completed" })
+        }),
 })
 
 export default function WorkOrderFormPage() {
@@ -116,7 +127,7 @@ export default function WorkOrderFormPage() {
                     name="status"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Status</FormLabel>
+                            <FormLabel>Status *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
@@ -142,7 +153,7 @@ export default function WorkOrderFormPage() {
                     name="ERP_id"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>ERP ID</FormLabel>
+                            <FormLabel>ERP ID *</FormLabel>
                             <FormControl>
                                 <Input placeholder="Enter ERP ID" {...field} />
                             </FormControl>
@@ -174,7 +185,7 @@ export default function WorkOrderFormPage() {
                         const selectedOrder = orders?.results.find((o) => o.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Related Order</FormLabel>
+                                <FormLabel>Related Order *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -224,7 +235,7 @@ export default function WorkOrderFormPage() {
                     name="expected_completion"
                     render={({field}) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Expected Completion Date</FormLabel>
+                            <FormLabel>Expected Completion Date *</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>

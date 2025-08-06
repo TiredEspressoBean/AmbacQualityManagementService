@@ -96,7 +96,7 @@ class CompanySerializer(serializers.ModelSerializer, SecureModelMixin):
 
 class CustomerSerializer(serializers.ModelSerializer):
     """Customer serializer with company info"""
-    parent_company = CompanySerializer(read_only=True)
+    parent_company = CompanySerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = User
@@ -105,7 +105,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 class UserDetailSerializer(serializers.ModelSerializer):
     """Detailed user serializer with company info"""
-    parent_company = CompanySerializer(read_only=True)
+    parent_company = CompanySerializer(read_only=True, allow_null=True)
     parent_company_id = serializers.PrimaryKeyRelatedField(
         queryset=Companies.objects.all(),
         source='parent_company',
@@ -198,7 +198,7 @@ class TrackerPageOrderSerializer(serializers.ModelSerializer):
     order_status = serializers.ChoiceField(choices=OrdersStatus.choices)
     stages = serializers.SerializerMethodField()
     customer = CustomerSerializer(read_only=True)
-    company = CompanySerializer(read_only=True)
+    company = CompanySerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Orders
@@ -409,7 +409,7 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     class Meta:
         model = Documents
-        fields = ('id', 'classification', 'AI_readable', 'is_image', 'file_name', 'file', 'file_url', 'upload_date',
+        fields = ('id', 'classification', 'ai_readable', 'is_image', 'file_name', 'file', 'file_url', 'upload_date',
                   'uploaded_by', 'uploaded_by_info', 'content_type', 'object_id', 'content_type_info', 'version',
                   'access_info', 'auto_properties', 'created_at', 'updated_at', 'archived')
         read_only_fields = ('upload_date', 'created_at', 'updated_at', 'archived', 'file_url', 'uploaded_by_info',
@@ -485,7 +485,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = Documents
         fields = ["id", "is_image", "file_name", "file", "file_url", "upload_date", "uploaded_by", "uploaded_by_name",
                   "content_type", "content_type_model", "object_id", "version", "classification", "access_level",
-                  "AI_readable"]
+                  "ai_readable"]
         read_only_fields = ["upload_date", "uploaded_by_name", "file_url", "content_type_model", "access_level"]
 
     def get_file_url(self, obj) -> str | None:
@@ -627,30 +627,18 @@ class StepSerializer(serializers.ModelSerializer):
 
 class PartTypesSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Part types serializer"""
-    previous_version = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
-    previous_version_name = serializers.SerializerMethodField(allow_null=True)
 
     class Meta:
         model = PartTypes
         fields = "__all__"
-
-    @extend_schema_field(serializers.CharField())
-    def get_previous_version_name(self, obj):
-        return obj.previous_version.name if obj.previous_version else None
 
 
 class PartTypeSerializer(serializers.ModelSerializer):
     """Legacy part type serializer"""
-    previous_version = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
-    previous_version_name = serializers.SerializerMethodField(allow_null=True)
 
     class Meta:
         model = PartTypes
         fields = "__all__"
-
-    @extend_schema_field(serializers.CharField())
-    def get_previous_version_name(self, obj):
-        return obj.previous_version.name if obj.previous_version else None
 
 
 class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
@@ -693,7 +681,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
         instance.save()
 
         # Replace all steps and related rulesets
-        instance.steps.all().delete()
+        instance.steps.all().delete()  # Use soft delete from SecureManager
 
         for step_index, step_data in enumerate(steps_data):
             step = Steps.objects.create(
@@ -850,9 +838,9 @@ class SamplingRuleSerializer(serializers.ModelSerializer, SecureModelMixin):
     class Meta:
         model = SamplingRule
         fields = ('id', 'rule_type', 'rule_type_display', 'value', 'order', 'algorithm_description', 'last_validated',
-                  'ruleset', 'ruleset_info', 'created_by', 'created_at', 'modified_by', 'modified_at', 'archived',
+                  'ruleset', 'ruleset_info', 'created_by', 'created_at', 'modified_by', 'updated_at', 'archived',
                   'ruletype_name', 'ruleset_name')
-        read_only_fields = ('created_at', 'modified_at', 'archived', 'ruleset_info', 'ruletype_name', 'ruleset_name')
+        read_only_fields = ('created_at', 'updated_at', 'archived', 'ruleset_info', 'ruletype_name', 'ruleset_name')
 
     @extend_schema_field(serializers.DictField())
     def get_ruleset_info(self, obj):
@@ -880,9 +868,9 @@ class SamplingRuleSetSerializer(serializers.ModelSerializer, SecureModelMixin):
         model = SamplingRuleSet
         fields = ('id', 'name', 'origin', 'active', 'version', 'is_fallback', 'fallback_threshold', 'fallback_duration',
                   'archived', 'part_type', 'part_type_info', 'process', 'process_info', 'step', 'step_info', 'rules',
-                  'created_by', 'created_at', 'modified_by', 'modified_at', 'archived', 'part_type_name',
+                  'created_by', 'created_at', 'modified_by', 'updated_at', 'archived', 'part_type_name',
                   'process_name')
-        read_only_fields = ('created_at', 'modified_at', 'archived', 'rules', 'part_type_info', 'process_info',
+        read_only_fields = ('created_at', 'updated_at', 'archived', 'rules', 'part_type_info', 'process_info',
                             'step_info', 'part_type_name', 'process_name')
 
     @extend_schema_field(serializers.ListField())
@@ -1357,3 +1345,29 @@ class PasswordResetSerializer(BasePasswordResetSerializer):
     def password_reset_form_class(self):
         """Force use of our custom form instead of the default AllAuth form"""
         return CustomAllAuthPasswordResetForm
+
+class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Enhanced user serializer with company and permission info"""
+    full_name = serializers.SerializerMethodField()
+    parent_company = CompanySerializer(read_only=True, allow_null=True)
+    parent_company_id = serializers.PrimaryKeyRelatedField(
+        queryset=Companies.objects.all(),
+        source='parent_company',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 
+                  'date_joined', 'parent_company', 'parent_company_id')
+        read_only_fields = ('date_joined', 'full_name')
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    @extend_schema_field(serializers.CharField())
+    def get_full_name(self, obj):
+        """Get formatted full name or fallback to username"""
+        return f"{obj.first_name} {obj.last_name}".strip() or obj.username

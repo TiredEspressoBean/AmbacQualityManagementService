@@ -24,7 +24,7 @@ import {ProcessEditorPage} from "@/pages/editors/ProcessEditorPage.tsx";
 import ProcessFormPage from "@/pages/editors/forms/EditProcessFormPage.tsx";
 import StepFormPage from "@/pages/editors/forms/EditStepFormPage.tsx";
 import {StepsEditorPage} from "@/pages/editors/StepEditorPage.tsx";
-import EquipmentFormPage from "@/pages/editors/forms/EditEquipmentTypeFormPage.tsx";
+import EquipmentFormPage from "@/pages/editors/forms/EditEquipmentFormPage.tsx";
 import {EquipmentEditorPage} from "@/pages/editors/EquipmentsEditorPage.tsx";
 import {EquipmentTypeEditorPage} from "@/pages/editors/EquipmentTypeEditorPage.tsx";
 import EquipmentTypeFormPage from "@/pages/editors/forms/EditEquipmentTypeFormPage.tsx";
@@ -40,6 +40,10 @@ import ModelDetailPageWrapper from "@/pages/detail pages/ModeDetaisPageWrapper.t
 import {WorkOrdersEditorPage} from "@/pages/editors/WorkOrdersEditorPage.tsx";
 import WorkOrderFormPage from "@/pages/editors/forms/EditWorkOrderFormPage.tsx";
 import {PasswordResetConfirm, PasswordResetRequest} from "@/pages/PasswordResetConfirmForm.tsx";
+import CompaniesFormPage from "@/pages/editors/forms/EditCompanyFormPage.tsx";
+import {CompaniesEditorPage} from "@/pages/editors/CompaniesEditorPage.tsx";
+import UsersFormPage from "@/pages/editors/forms/EditUserFormPage.tsx";
+import { UserEditorPage} from "@/pages/editors/UserEditorPage.tsx";
 
 
 
@@ -343,6 +347,42 @@ export const workOrderEditRoute = createRoute({
     component: WorkOrderFormPage,
 });
 
+export const companiesEditorRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'editor/Companies',
+    component: CompaniesEditorPage
+})
+
+export const companiesCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/CompaniesForm/create',
+    component: CompaniesFormPage,
+})
+
+export const companiesEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/CompaniesForm/edit/$id',
+    component: CompaniesFormPage,
+});
+
+export const userEditorRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'editor/users',
+    component: UserEditorPage
+})
+
+export const usersCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/UserForm/create',
+    component: UsersFormPage,
+})
+
+export const usersEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/UserForm/edit/$id',
+    component: UsersFormPage,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRote,
@@ -391,6 +431,12 @@ const routeTree = rootRoute.addChildren([
     WorkOrderEditorRoute,
     workOrderEditRoute,
     workOrderCreateRoute,
+    companiesEditorRoute,
+    companiesEditRoute,
+    companiesCreateRoute,
+    userEditorRoute,
+    usersEditRoute,
+    usersCreateRoute
 ])
 
 export const router = new Router({routeTree})

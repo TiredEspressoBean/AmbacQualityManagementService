@@ -17,12 +17,12 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useParams } from "@tanstack/react-router";
 
-import { useRetrieveErrorType } from "@/hooks/useRetrieveErrorType";
-import { useCreateErrorType } from "@/hooks/useCreateErrorType";
-import { useUpdateErrorType } from "@/hooks/useUpdateErrorType";
+import { useRetrieveEquipment } from "@/hooks/useRetrieveEquipment";
+import { useCreateEquipment } from "@/hooks/useCreateEquipment";
+import { useUpdateEquipment } from "@/hooks/useUpdateEquipment";
+import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -34,96 +34,87 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
-import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 
 const formSchema = z.object({
-    error_name: z
+    name: z
         .string()
-        .min(1, "Error name is required - please enter a descriptive name for this error type")
-        .max(255, "Error name must be 255 characters or less"),
-    error_example: z
-        .string()
-        .min(1, "Error example is required - please provide a detailed description to help operators identify this error")
-        .max(1000, "Error example must be 1000 characters or less"),
-    part_type: z.number().nullable().optional(), // Allow null/undefined for no selection
+        .min(1, "Equipment name is required - please enter a descriptive name for this equipment")
+        .max(255, "Equipment name must be 255 characters or less"),
+    equipment_type: z.number().nullable().optional(),
 });
 
-export default function ErrorTypeFormPage() {
+export default function EquipmentFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const errorTypeId = params.id ? parseInt(params.id, 10) : undefined;
-    const [partTypeSearch, setPartTypeSearch] = useState("");
+    const equipmentId = params.id ? parseInt(params.id, 10) : undefined;
+    const [equipmentTypeSearch, setEquipmentTypeSearch] = useState("");
     const [open, setOpen] = useState(false);
 
-    const { data: errorType, isLoading: isLoadingErrorType } = useRetrieveErrorType(
-        { params: { id: errorTypeId! } },
-        { enabled: mode === "edit" && !!errorTypeId }
+    const { data: equipment, isLoading: isLoadingEquipment } = useRetrieveEquipment(
+        { params: { id: equipmentId! } },
+        { enabled: mode === "edit" && !!equipmentId }
     );
 
-    const { data: partTypes, isLoading: isLoadingPartTypes } = useRetrievePartTypes({
-        queries: { search: partTypeSearch },
+    const { data: equipmentTypes, isLoading: isLoadingEquipmentTypes } = useRetrieveEquipmentTypes({
+        queries: { search: equipmentTypeSearch },
     });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            error_name: "",
-            error_example: "",
-            part_type: undefined,
+            name: "",
+            equipment_type: undefined,
         },
     });
 
-    // Reset form when errorType data loads
+    // Reset form when equipment data loads
     useEffect(() => {
-        if (mode === "edit" && errorType) {
+        if (mode === "edit" && equipment) {
             form.reset({
-                error_name: errorType.error_name || "",
-                error_example: errorType.error_example || "",
-                part_type: errorType.part_type || undefined,
+                name: equipment.name || "",
+                equipment_type: equipment.equipment_type || undefined,
             });
         }
-    }, [mode, errorType, form]);
+    }, [mode, equipment, form]);
 
-    const createErrorType = useCreateErrorType();
-    const updateErrorType = useUpdateErrorType();
+    const createEquipment = useCreateEquipment();
+    const updateEquipment = useUpdateEquipment();
 
     function onSubmit(values: z.infer<typeof formSchema>) {
-        // Clean up the data before sending
         const submitData = {
-            error_name: values.error_name,
-            error_example: values.error_example,
-            part_type: values.part_type || null, // Convert undefined to null
+            name: values.name,
+            equipment_type: values.equipment_type || null,
         };
 
-        if (mode === "edit" && errorTypeId) {
-            updateErrorType.mutate(
-                { id: errorTypeId, data: submitData },
+        if (mode === "edit" && equipmentId) {
+            updateEquipment.mutate(
+                { id: equipmentId, data: submitData },
                 {
                     onSuccess: () => {
-                        toast.success("Error type updated successfully!");
+                        toast.success("Equipment updated successfully!");
                     },
                     onError: (err) => {
                         console.error("Update failed:", err);
-                        toast.error("Failed to update error type.");
+                        toast.error("Failed to update equipment.");
                     },
                 }
             );
         } else {
-            createErrorType.mutate(submitData, {
+            createEquipment.mutate(submitData, {
                 onSuccess: () => {
-                    toast.success("Error type created successfully!");
+                    toast.success("Equipment created successfully!");
                     form.reset();
                 },
                 onError: (err) => {
                     console.error("Creation failed:", err);
-                    toast.error("Failed to create error type.");
+                    toast.error("Failed to create equipment.");
                 },
             });
         }
     }
 
     // Show loading state
-    if (mode === "edit" && isLoadingErrorType) {
+    if (mode === "edit" && isLoadingEquipment) {
         return (
             <div className="max-w-3xl mx-auto py-10">
                 <div className="animate-pulse">
@@ -135,18 +126,18 @@ export default function ErrorTypeFormPage() {
         );
     }
 
-    const selectedPartType = partTypes?.results.find((pt) => pt.id === form.watch("part_type"));
+    const selectedEquipmentType = equipmentTypes?.results.find((et) => et.id === form.watch("equipment_type"));
 
     return (
         <div className="max-w-3xl mx-auto py-10">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">
-                    {mode === "edit" ? "Edit Error Type" : "Create Error Type"}
+                    {mode === "edit" ? "Edit Equipment" : "Create Equipment"}
                 </h1>
                 <p className="text-muted-foreground">
                     {mode === "edit"
-                        ? "Update the error type information below"
-                        : "Define a new quality error type that can occur during manufacturing"
+                        ? "Update the equipment information below"
+                        : "Add a new piece of equipment to the system"
                     }
                 </p>
             </div>
@@ -155,18 +146,18 @@ export default function ErrorTypeFormPage() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
                         control={form.control}
-                        name="error_name"
+                        name="name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Error Name *</FormLabel>
+                                <FormLabel>Equipment Name *</FormLabel>
                                 <FormControl>
                                     <Input
-                                        placeholder="e.g. Surface Crack, Dimensional Out of Tolerance"
+                                        placeholder="e.g. CNC Machine #1, Inspection Station A"
                                         {...field}
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    A concise name that describes the type of error
+                                    A descriptive name for this piece of equipment
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -175,31 +166,10 @@ export default function ErrorTypeFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="error_example"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Error Example *</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="Describe what this error looks like, how to identify it, when it typically occurs..."
-                                        className="min-h-[100px]"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormDescription>
-                                    Detailed description to help operators identify this error type
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="part_type"
+                        name="equipment_type"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Part Type (Optional)</FormLabel>
+                                <FormLabel>Equipment Type (Optional)</FormLabel>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -211,13 +181,13 @@ export default function ErrorTypeFormPage() {
                                                     "w-full justify-between",
                                                     !field.value && "text-muted-foreground"
                                                 )}
-                                                disabled={isLoadingPartTypes}
+                                                disabled={isLoadingEquipmentTypes}
                                             >
-                                                {isLoadingPartTypes
+                                                {isLoadingEquipmentTypes
                                                     ? "Loading..."
-                                                    : selectedPartType
-                                                        ? selectedPartType.name
-                                                        : "Select a part type (optional)"}
+                                                    : selectedEquipmentType
+                                                        ? selectedEquipmentType.name
+                                                        : "Select an equipment type (optional)"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -225,17 +195,16 @@ export default function ErrorTypeFormPage() {
                                     <PopoverContent className="w-full p-0" align="start">
                                         <Command>
                                             <CommandInput
-                                                value={partTypeSearch}
-                                                onValueChange={setPartTypeSearch}
-                                                placeholder="Search part types..."
+                                                value={equipmentTypeSearch}
+                                                onValueChange={setEquipmentTypeSearch}
+                                                placeholder="Search equipment types..."
                                             />
                                             <CommandList>
-                                                <CommandEmpty>No part types found.</CommandEmpty>
+                                                <CommandEmpty>No equipment types found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {/* Option to clear selection */}
                                                     <CommandItem
                                                         onSelect={() => {
-                                                            form.setValue("part_type", undefined);
+                                                            form.setValue("equipment_type", undefined);
                                                             setOpen(false);
                                                         }}
                                                     >
@@ -245,25 +214,25 @@ export default function ErrorTypeFormPage() {
                                                                 !field.value ? "opacity-100" : "opacity-0"
                                                             )}
                                                         />
-                                                        No specific part type
+                                                        No specific equipment type
                                                     </CommandItem>
 
-                                                    {partTypes?.results.map((pt) => (
+                                                    {equipmentTypes?.results.map((et) => (
                                                         <CommandItem
-                                                            key={pt.id}
-                                                            value={pt.name}
+                                                            key={et.id}
+                                                            value={et.name}
                                                             onSelect={() => {
-                                                                form.setValue("part_type", pt.id);
+                                                                form.setValue("equipment_type", et.id);
                                                                 setOpen(false);
                                                             }}
                                                         >
                                                             <Check
                                                                 className={cn(
                                                                     "mr-2 h-4 w-4",
-                                                                    pt.id === field.value ? "opacity-100" : "opacity-0"
+                                                                    et.id === field.value ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
-                                                            {pt.name}
+                                                            {et.name}
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -272,7 +241,7 @@ export default function ErrorTypeFormPage() {
                                     </PopoverContent>
                                 </Popover>
                                 <FormDescription>
-                                    Link this error to a specific part type, or leave blank for general errors
+                                    Categorize this equipment by type, or leave blank for general equipment
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -282,16 +251,16 @@ export default function ErrorTypeFormPage() {
                     <div className="flex gap-4">
                         <Button
                             type="submit"
-                            disabled={createErrorType.isPending || updateErrorType.isPending}
+                            disabled={createEquipment.isPending || updateEquipment.isPending}
                             className="flex-1"
                         >
                             {mode === "edit"
-                                ? updateErrorType.isPending
+                                ? updateEquipment.isPending
                                     ? "Saving..."
                                     : "Save Changes"
-                                : createErrorType.isPending
+                                : createEquipment.isPending
                                     ? "Creating..."
-                                    : "Create Error Type"}
+                                    : "Create Equipment"}
                         </Button>
                     </div>
                 </form>

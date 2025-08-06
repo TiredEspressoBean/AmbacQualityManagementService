@@ -72,8 +72,15 @@ import {useUpdateDocument} from "@/hooks/useUpdateDocument.ts";
 const DOCUMENT_CLASSIFICATION = schemas.ClassificationEnum.options;
 
 const formSchema = z.object({
-    file: z.any().refine((file) => file instanceof File || (Array.isArray(file) && file.length > 0), "A file is required"),
-    classification_level: z.string().min(1, "Classification level is required"),
+    file: z
+        .any()
+        .refine(
+            (file) => file instanceof File || (Array.isArray(file) && file.length > 0), 
+            "A file is required - please select a document to upload (PDF, DOCX, or image up to 10MB)"
+        ),
+    classification_level: z
+        .string()
+        .min(1, "Classification level is required - please select the security level for this document"),
     content_type: z.string().optional(),
     object_id: z.number().optional(),
 });
@@ -185,7 +192,7 @@ export default function DocumentFormPage() {
                     name="file"
                     render={() => (
                         <FormItem>
-                            <FormLabel>Select File</FormLabel>
+                            <FormLabel>Select File *</FormLabel>
                             <FormControl>
                                 <FileUploader
                                     value={files}
@@ -231,7 +238,7 @@ export default function DocumentFormPage() {
                     name="classification_level"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Classification Level</FormLabel>
+                            <FormLabel>Classification Level *</FormLabel>
                             <Select
                                 value={field.value}
                                 onValueChange={field.onChange}

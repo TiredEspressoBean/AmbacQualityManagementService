@@ -32,6 +32,9 @@ services:
       python manage.py create_temp_admin &&
       python manage.py tailwind install &&
       python manage.py tailwind build &&
+      python manage.py crontab remove &&
+      python manage.py crontab add &&
+      service cron start &&
       python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"

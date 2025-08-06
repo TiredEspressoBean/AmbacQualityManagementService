@@ -31,11 +31,20 @@ import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses"
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps"
 
 const formSchema = z.object({
-    name: z.string().min(1),
+    name: z
+        .string()
+        .min(1, "Rule set name is required - please enter a descriptive name for this sampling rule set")
+        .max(255, "Rule set name must be 255 characters or less"),
     active: z.boolean().optional(),
-    part_type: z.number(),
-    process: z.number(),
-    step: z.number(),
+    part_type: z
+        .number()
+        .min(1, "Part type must be selected - please choose which part type this rule set applies to"),
+    process: z
+        .number()
+        .min(1, "Process must be selected - please choose which process this rule set is related to"),
+    step: z
+        .number()
+        .min(1, "Step must be selected - please choose which manufacturing step this rule set applies to"),
 })
 
 export default function SamplingRuleSetsFormPage() {
@@ -111,7 +120,7 @@ export default function SamplingRuleSetsFormPage() {
                     name="name"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Name</FormLabel>
+                            <FormLabel>Name *</FormLabel>
                             <FormControl>
                                 <Input placeholder="Sampling rule set name" {...field} />
                             </FormControl>
@@ -148,7 +157,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = partTypes?.results.find(pt => pt.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Part Type</FormLabel>
+                                <FormLabel>Part Type *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -203,7 +212,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = processes?.results.find(p => p.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Process</FormLabel>
+                                <FormLabel>Process *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -256,7 +265,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = steps?.results.find(s => s.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Step</FormLabel>
+                                <FormLabel>Step *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>

@@ -30,15 +30,34 @@ import {useDebounce} from "@/hooks/useDebounce.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 
 const stepSchema = z.object({
-    name: z.string(), description: z.string(), expected_duration: z.number().nullable().optional(),
+    name: z
+        .string()
+        .min(1, "Step name is required - please enter a descriptive name for this step")
+        .max(255, "Step name must be 255 characters or less"),
+    description: z
+        .string()
+        .min(1, "Step description is required - please describe what happens in this step")
+        .max(1000, "Step description must be 1000 characters or less"),
+    expected_duration: z.number().nullable().optional(),
 });
 
 const formSchema = z.object({
-    name: z.string().min(1).max(50),
+    name: z
+        .string()
+        .min(1, "Process name is required - please enter a descriptive name for this process")
+        .max(255, "Process name must be 255 characters or less"),
     is_remanufactured: z.boolean(),
-    part_type: z.number().int(),
-    num_steps: z.number().min(1),
-    steps: z.array(stepSchema).min(1),
+    part_type: z
+        .number()
+        .int("Part type must be selected - please choose a valid part type for this process")
+        .min(1, "Part type must be selected - please choose a valid part type for this process"),
+    num_steps: z
+        .number()
+        .min(1, "Number of steps must be at least 1 - please specify how many steps this process requires")
+        .max(50, "Number of steps cannot exceed 50 - please use a reasonable number of steps"),
+    steps: z
+        .array(stepSchema)
+        .min(1, "At least one step is required - please define the steps for this process"),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;
@@ -171,7 +190,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="name"
                         render={({field}) => (<FormItem>
-                            <FormLabel>Name</FormLabel>
+                            <FormLabel>Name *</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g. Assembly Line 1" {...field} />
                             </FormControl>
@@ -200,7 +219,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="part_type"
                         render={({field}) => (<FormItem className="flex flex-col">
-                            <FormLabel>Part Type</FormLabel>
+                            <FormLabel>Part Type *</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -247,7 +266,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="num_steps"
                         render={({field}) => (<FormItem>
-                            <FormLabel>Number of Steps</FormLabel>
+                            <FormLabel>Number of Steps *</FormLabel>
                             <FormControl>
                                 <Input
                                     type="number"

@@ -656,6 +656,14 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     name: { label: 'Company Name' },
                     description: { label: 'Description' },
                     hubspot_api_id: { label: 'HubSpot API ID' },
+                    created_at: { label: 'Created At' },
+                    updated_at: { label: 'Last Updated' },
+                    archived: { label: 'Archived' },
+                },
+                customRenderers: {
+                    created_at: commonRenderers.datetime,
+                    updated_at: commonRenderers.datetime,
+                    archived: commonRenderers.boolean,
                 },
                 sections: [
                     {
@@ -665,10 +673,61 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     {
                         title: 'Integration',
                         fields: ['hubspot_api_id'],
+                    },
+                    createSystemInfoSection(['archived', 'created_at', 'updated_at']),
+                ],
+                apiPath: 'api_Companies_retrieve',
+            });
+
+        case 'users':
+            return createModelConfig({
+                modelType: 'users',
+                fields: {
+                    id: { label: 'User ID' },
+                    username: { label: 'Username' },
+                    first_name: { label: 'First Name' },
+                    last_name: { label: 'Last Name' },
+                    email: { label: 'Email' },
+                    is_staff: { label: 'Staff Status' },
+                    is_active: { label: 'Active Status' },
+                    date_joined: { label: 'Date Joined' },
+                    parent_company: { label: 'Parent Company ID' },
+                    parent_company_name: { label: 'Company Name' },
+                },
+                customRenderers: {
+                    is_staff: commonRenderers.boolean,
+                    is_active: commonRenderers.boolean,
+                    date_joined: commonRenderers.datetime,
+                    full_name: (value, data) => {
+                        const firstName = data.first_name || "";
+                        const lastName = data.last_name || "";
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        return fullName || "—";
+                    },
+                },
+                sections: [
+                    {
+                        title: 'User Information',
+                        fields: ['id', 'username', 'first_name', 'last_name', 'email'],
+                    },
+                    {
+                        title: 'Account Status',
+                        fields: ['is_active', 'is_staff', 'date_joined'],
+                    },
+                    {
+                        title: 'Company Association',
+                        fields: ['parent_company_name'],
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_Companies_retrieve',
+                apiPath: 'api_Customers_retrieve',
+                relatedModels: [
+                    {
+                        modelType: 'companies',
+                        fieldName: 'parent_company',
+                        label: 'Company Documents'
+                    }
+                ],
             });
 
         case 'trackerorders':

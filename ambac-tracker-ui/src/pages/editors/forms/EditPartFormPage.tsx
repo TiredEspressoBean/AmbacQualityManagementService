@@ -30,11 +30,18 @@ import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 const PART_STATUS = schemas.PartStatusEnum.options;
 
 const formSchema = z.object({
-    ERP_id: z.string().min(1),
+    ERP_id: z
+        .string()
+        .min(1, "ERP ID is required - please enter the unique identifier from your ERP system")
+        .max(100, "ERP ID must be 100 characters or less"),
     part_status: schemas.PartStatusEnum.optional(),
     order: z.number().optional(),
-    part_type: z.number(),
-    step: z.number(),
+    part_type: z
+        .number()
+        .min(1, "Part type must be selected - please choose which type of part this is"),
+    step: z
+        .number()
+        .min(1, "Step must be selected - please choose which manufacturing step this part is in"),
     process: z.number().optional(),
     work_order: z.number().optional(),
     archived: z.boolean().default(false).optional(),
@@ -149,7 +156,7 @@ export default function PartFormPage() {
                         control={form.control}
                         name="ERP_id"
                         render={({field}) => (<FormItem>
-                            <FormLabel>ERP Id</FormLabel>
+                            <FormLabel>ERP Id *</FormLabel>
                             <FormControl>
                                 <Input
                                     placeholder=""
@@ -235,7 +242,7 @@ export default function PartFormPage() {
                         render={({field}) => {
                             const selectedPartType = partTypes?.results.find(pt => pt.id === field.value)
                             return (<FormItem className="flex flex-col">
-                                <FormLabel>Part Type</FormLabel>
+                                <FormLabel>Part Type *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -325,7 +332,7 @@ export default function PartFormPage() {
                         control={form.control}
                         name="step"
                         render={({field}) => (<FormItem className="flex flex-col">
-                            <FormLabel>Step</FormLabel>
+                            <FormLabel>Step *</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>

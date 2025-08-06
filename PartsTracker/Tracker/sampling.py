@@ -1,16 +1,9 @@
-import hashlib
-
-
 class SamplingFallbackApplier:
     """
-    Hash-based sampling system for compliance, performance, and auditability.
+    Queryset-based sampling system for clarity and auditability.
 
-    Replaces position-based calculations with deterministic hash functions that provide:
-    - Consistent Results: Same inputs always produce same outputs
-    - Audit Trail: Clear documentation of sampling decisions  
-    - Performance: O(1) calculations instead of O(n) queries
-    - Compliance: Cryptographically sound randomness
-    - Bias Prevention: No human or timing dependencies
+    Evaluates sampling rules using queryset logic instead of hashes.
+    Prioritizes readability and audit trail over performance.
     """
 
     def __init__(self, part):
@@ -20,13 +13,12 @@ class SamplingFallbackApplier:
         self.part_type = part.part_type
 
     def evaluate(self):
-        """Determine if this part requires sampling at the current step."""
         from Tracker.models import SamplingRuleSet, SamplingTriggerState
 
         if not self.step or not self.part_type:
             return {"requires_sampling": False}
 
-        # Check for active fallback first
+        # Fallback rules take priority if present
         active_fallback = SamplingTriggerState.objects.filter(
             step=self.step,
             work_order=self.work_order,
@@ -50,13 +42,11 @@ class SamplingFallbackApplier:
         if not ruleset:
             return {"requires_sampling": False}
 
-        # Evaluate rules in order using hash-based approach
         applicable_rules = ruleset.rules.order_by("order")
+
         for rule in applicable_rules:
             if self._should_sample(rule):
-                # Log sampling decision for audit trail
                 self._log_sampling_decision(rule, True, ruleset_type)
-
                 return {
                     "requires_sampling": True,
                     "rule": rule,
@@ -64,7 +54,15 @@ class SamplingFallbackApplier:
                     "context": {"reason": f"{context_info} - matched {rule.rule_type}"}
                 }
 
-        # Log negative sampling decision for the first rule (representative)
+            if rule.rule_type in ["first_n_parts", "last_n_parts"]:
+                self._log_sampling_decision(rule, False, ruleset_type)
+                return {
+                    "requires_sampling": False,
+                    "rule": None,
+                    "ruleset": ruleset,
+                    "context": {"reason": f"{context_info} - excluded by {rule.rule_type}"}
+                }
+
         if applicable_rules.exists():
             self._log_sampling_decision(applicable_rules.first(), False, ruleset_type)
 
@@ -76,77 +74,76 @@ class SamplingFallbackApplier:
         }
 
     def _should_sample(self, rule):
-        """Hash-based sampling for compliance and consistency"""
+        from Tracker.models import Parts
+
         if not rule.value:
             return False
 
-        # Create deterministic hash input using ERP IDs for external system compatibility
-        hash_input = f"{self.work_order.ERP_id}-{self.part.ERP_id}-{rule.id}"
-        hash_value = self._get_hash(hash_input)
+        qs = Parts.objects.filter(
+            work_order=self.work_order,
+            part_type=self.part_type,
+            step=self.step
+        ).order_by('created_at')
 
         if rule.rule_type == "every_nth_part":
-            return (hash_value % rule.value) == 0
+            parts = list(qs)
+            try:
+                index = parts.index(self.part)
+                return (index + 1) % rule.value == 0
+            except ValueError:
+                return False
 
         elif rule.rule_type == "percentage":
-            return (hash_value % 100) < rule.value
+            parts = list(qs)
+            threshold = int(len(parts) * (rule.value / 100))
+            return self.part in parts[:threshold]
 
         elif rule.rule_type == "random":
-            probability = rule.value if rule.value <= 1 else rule.value / 100.0
-            return (hash_value % 10000) < (probability * 10000)
+            import random
+            random.seed(self.part.created_at.timestamp())  # use timestamp as deterministic seed
+            return random.random() < (rule.value / 100.0)
 
         elif rule.rule_type == "first_n_parts":
-            # Keep position-based for logical first/last rules where position matters
-            return self._get_work_order_position() <= rule.value
+            return qs.filter(created_at__lte=self.part.created_at).count() <= rule.value
 
         elif rule.rule_type == "last_n_parts":
-            position = self._get_work_order_position()
-            total = self.work_order.quantity
-            return position > (total - rule.value)
+            total = qs.count()
+            index = qs.filter(created_at__lte=self.part.created_at).count()
+            return index > (total - rule.value)
+
+        elif rule.rule_type == "exact_count":
+            return self._evaluate_exact_count_rule(rule, qs)
 
         return False
 
-    def _get_hash(self, input_string):
-        """SHA-256 hash for compliance and auditability"""
-        return int(hashlib.sha256(input_string.encode()).hexdigest()[:8], 16)
+    def _evaluate_exact_count_rule(self, rule, qs):
+        """Select exactly N parts based on created_at timestamp (deterministic)"""
+        if rule.value <= 0:
+            return False
 
-    def _get_work_order_position(self):
-        """Get position only when needed for first/last rules (minimizes O(n) operations)"""
-        from Tracker.models import Parts
+        all_parts = list(qs)
+        if rule.value >= len(all_parts):
+            return True
 
-        parts_in_sequence = Parts.objects.filter(
-            work_order=self.work_order,
-            part_type=self.part_type,
-            created_at__lte=self.part.created_at
-        ).order_by('created_at')
-
-        return list(parts_in_sequence).index(self.part) + 1
+        selected_parts = all_parts[:rule.value]
+        return self.part in selected_parts
 
     def _log_sampling_decision(self, rule, decision, ruleset_type):
-        """Log sampling decision for audit trail and compliance"""
         from Tracker.models import SamplingAuditLog
-
-        hash_input = f"{self.work_order.ERP_id}-{self.part.ERP_id}-{rule.id}"
-        hash_output = self._get_hash(hash_input)
 
         SamplingAuditLog.objects.create(
             part=self.part,
             rule=rule,
-            hash_input=hash_input,
-            hash_output=hash_output,
             sampling_decision=decision,
             ruleset_type=ruleset_type
         )
 
     def apply(self):
-        """Apply fallback sampling to remaining parts in work order"""
         if not self.work_order or not self.step:
             return
-
-        # Re-evaluate remaining parts using fallback rules
         self._reevaluate_remaining_parts()
 
     def _reevaluate_remaining_parts(self):
-        """Re-evaluate sampling for remaining parts using fallback rules"""
         from Tracker.models import Parts, PartsStatus
 
         remaining_parts = Parts.objects.filter(
@@ -160,7 +157,7 @@ class SamplingFallbackApplier:
         updates = []
         for part in remaining_parts:
             evaluator = SamplingFallbackApplier(part)
-            result = evaluator.evaluate()  # Will use fallback rules if active
+            result = evaluator.evaluate()
 
             part.requires_sampling = result.get("requires_sampling", False)
             part.sampling_rule = result.get("rule")
@@ -168,7 +165,6 @@ class SamplingFallbackApplier:
             part.sampling_context = result.get("context", {})
             updates.append(part)
 
-        # Bulk update for efficiency
         Parts.objects.bulk_update(
             updates,
             ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"]

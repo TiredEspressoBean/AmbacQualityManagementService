@@ -1,4 +1,3 @@
-import React from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,8 +14,16 @@ import {
     FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, CheckCircle, AlertCircle } from 'lucide-react'
+import { PasswordInput } from '@/components/ui/password-input'
 
 // 🔗 Hook Types
 type PasswordResetRequestInput = Parameters<typeof api.auth_password_reset_create>[0]
@@ -96,75 +103,84 @@ export const PasswordResetRequest = ({ onSuccess }: PasswordResetRequestProps) =
 
     if (mutation.isSuccess) {
         return (
-            <div className="space-y-4">
-                <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Password reset email sent! Check your inbox for further instructions.
-                    </AlertDescription>
-                </Alert>
+            <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+                <Card className="mx-auto max-w-sm">
+                    <CardContent className="pt-6">
+                        <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                Password reset email sent! Check your inbox for further instructions.
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
 
     return (
-        <div className="space-y-4">
-            <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    Reset your password
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    Enter your email address and we'll send you a link to reset your password.
-                </p>
-            </div>
+        <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+            <Card className="mx-auto max-w-sm">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Reset your password</CardTitle>
+                    <CardDescription>
+                        Enter your email address and we'll send you a link to reset your password.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            <div className="grid gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem className="grid gap-2">
+                                            <FormLabel htmlFor="email">Email</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    id="email"
+                                                    placeholder="Enter your email"
+                                                    type="email"
+                                                    autoComplete="email"
+                                                    {...field}
+                                                    disabled={mutation.isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="Enter your email"
-                                        type="email"
-                                        {...field}
-                                        disabled={mutation.isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                {mutation.isError && (
+                                    <Alert variant="destructive">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription>
+                                            {mutation.error instanceof Error
+                                                ? mutation.error.message
+                                                : 'An error occurred while sending the reset email'}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
 
-                    {mutation.isError && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                {mutation.error instanceof Error
-                                    ? mutation.error.message
-                                    : 'An error occurred while sending the reset email'}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                        {mutation.isPending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Sending...
-                            </>
-                        ) : (
-                            <>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Send reset email
-                            </>
-                        )}
-                    </Button>
-                </form>
-            </Form>
+                                <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                                    {mutation.isPending ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            Send reset email
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
         </div>
     )
 }
@@ -204,91 +220,100 @@ export const PasswordResetConfirm = ({ token, uid, onSuccess }: PasswordResetCon
 
     if (mutation.isSuccess) {
         return (
-            <div className="space-y-4">
-                <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Password reset successful! You can now log in with your new password.
-                    </AlertDescription>
-                </Alert>
+            <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+                <Card className="mx-auto max-w-sm">
+                    <CardContent className="pt-6">
+                        <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                Password reset successful! You can now log in with your new password.
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
 
     return (
-        <div className="space-y-4">
-            <div className="space-y-2 text-center">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    Set new password
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    Enter your new password below.
-                </p>
-            </div>
+        <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+            <Card className="mx-auto max-w-sm">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Set new password</CardTitle>
+                    <CardDescription>
+                        Enter your new password below.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            <div className="grid gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="new_password1"
+                                    render={({ field }) => (
+                                        <FormItem className="grid gap-2">
+                                            <FormLabel htmlFor="new_password1">New Password</FormLabel>
+                                            <FormControl>
+                                                <PasswordInput
+                                                    id="new_password1"
+                                                    placeholder="Enter new password"
+                                                    autoComplete="new-password"
+                                                    {...field}
+                                                    disabled={mutation.isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="new_password1"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>New Password</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="Enter new password"
-                                        type="password"
-                                        {...field}
-                                        disabled={mutation.isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                <FormField
+                                    control={form.control}
+                                    name="new_password2"
+                                    render={({ field }) => (
+                                        <FormItem className="grid gap-2">
+                                            <FormLabel htmlFor="new_password2">Confirm New Password</FormLabel>
+                                            <FormControl>
+                                                <PasswordInput
+                                                    id="new_password2"
+                                                    placeholder="Confirm new password"
+                                                    autoComplete="new-password"
+                                                    {...field}
+                                                    disabled={mutation.isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                    <FormField
-                        control={form.control}
-                        name="new_password2"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Confirm New Password</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="Confirm new password"
-                                        type="password"
-                                        {...field}
-                                        disabled={mutation.isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                {mutation.isError && (
+                                    <Alert variant="destructive">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription>
+                                            {mutation.error instanceof Error
+                                                ? mutation.error.message
+                                                : 'An error occurred while resetting your password'}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
 
-                    {mutation.isError && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                {mutation.error instanceof Error
-                                    ? mutation.error.message
-                                    : 'An error occurred while resetting your password'}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                        {mutation.isPending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Resetting...
-                            </>
-                        ) : (
-                            'Reset password'
-                        )}
-                    </Button>
-                </form>
-            </Form>
+                                <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                                    {mutation.isPending ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Resetting...
+                                        </>
+                                    ) : (
+                                        'Reset password'
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
         </div>
     )
 }

@@ -44,10 +44,20 @@ import {ruleTypes, ruleTypesEnum} from "@/lib/RuleTypesEnum.ts"
 const ruleTypeEnum = ruleTypesEnum;
 
 const samplingRuleFormSchema = z.object({
-  ruleset: z.number(),
+  ruleset: z
+    .number()
+    .min(1, "Rule set must be selected - please choose which rule set this sampling rule belongs to"),
   rule_type: ruleTypeEnum,
-  value: z.coerce.number().min(0, "Must be ≥ 1"),
-  order: z.coerce.number().int().min(-1, "Must be ≥ 0").max(2147483647).optional(),
+  value: z
+    .coerce.number()
+    .min(1, "Value must be at least 1 - please enter a positive number for the sampling rule value")
+    .max(100, "Value cannot exceed 100 for percentage rules"),
+  order: z
+    .coerce.number()
+    .int()
+    .min(0, "Order must be 0 or greater - please enter a valid priority order")
+    .max(2147483647, "Order value is too large")
+    .optional(),
 });
 
 export type SamplingRuleFormValues = z.infer<typeof samplingRuleFormSchema>;
@@ -138,7 +148,7 @@ export default function SamplingRuleFormPage() {
 
                         return (
                             <FormItem>
-                                <FormLabel>Rule Set</FormLabel>
+                                <FormLabel>Rule Set *</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -192,7 +202,7 @@ export default function SamplingRuleFormPage() {
                     name="rule_type"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Rule Type</FormLabel>
+                            <FormLabel>Rule Type *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
@@ -218,7 +228,7 @@ export default function SamplingRuleFormPage() {
                     name="value"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Sampling Rule Value</FormLabel>
+                            <FormLabel>Sampling Rule Value *</FormLabel>
                             <FormControl>
                                 <Input type="number" {...field} />
                             </FormControl>

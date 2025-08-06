@@ -47,7 +47,6 @@ def with_int_pk_schema(cls):
 @with_int_pk_schema
 class TrackerOrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrdersSerializer  # Updated to match serializers.py
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
@@ -63,7 +62,6 @@ class TrackerOrderViewSet(viewsets.ModelViewSet):
 
 class PartsByOrderView(ListAPIView):
     serializer_class = PartsSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
@@ -82,9 +80,9 @@ class PartsByOrderView(ListAPIView):
     OpenApiParameter(name='status__in', description='Filter by multiple status values.', required=False,
                      type={'type': 'array', 'items': {'type': 'string'}},  # manual override
                      style='form', explode=True, )])
+
 class PartsViewSet(viewsets.ModelViewSet):
     serializer_class = PartsSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, filters.SearchFilter]
     filterset_class = PartFilter
@@ -115,7 +113,6 @@ class PartsViewSet(viewsets.ModelViewSet):
 
 class OrdersViewSet(viewsets.ModelViewSet):
     serializer_class = OrdersSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -243,7 +240,6 @@ class OrdersViewSet(viewsets.ModelViewSet):
 
 class QualityReportViewSet(viewsets.ModelViewSet):
     serializer_class = QualityReportsSerializer  # Updated to match model name pattern
-    permission_classes = [IsAuthenticated]
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
@@ -256,7 +252,6 @@ class QualityReportViewSet(viewsets.ModelViewSet):
 
 class EmployeeSelectViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserSelectSerializer  # Updated to match existing serializer
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -267,7 +262,6 @@ class EmployeeSelectViewSet(viewsets.ReadOnlyModelViewSet):
 
 class EquipmentSelectViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = EquipmentsSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -278,7 +272,6 @@ class EquipmentSelectViewSet(viewsets.ReadOnlyModelViewSet):
 
 class HubspotGatesViewSet(viewsets.ModelViewSet):
     serializer_class = ExternalAPIOrderIdentifierSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
     def get_queryset(self):
@@ -290,7 +283,6 @@ class HubspotGatesViewSet(viewsets.ModelViewSet):
 
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = UserDetailSerializer  # Updated to use existing detailed serializer
-    permission_classes = [IsAuthenticated]
     pagination_class = None
 
     def get_queryset(self):
@@ -300,10 +292,101 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return User.objects.filter(is_staff=False)
 
 
+@with_int_pk_schema
+class UserViewSet(viewsets.ModelViewSet):
+    """Enhanced User ViewSet with comprehensive filtering, ordering, and search"""
+    serializer_class = UserSerializer
+    pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = UserFilter
+    ordering_fields = ['username', 'first_name', 'last_name', 'email', 'date_joined', 'is_active', 'is_staff']
+    ordering = ['-date_joined']
+    search_fields = ['username', 'first_name', 'last_name', 'email', 'parent_company__name']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return User.objects.none()
+
+        # User model doesn't inherit from SecureModel, so filter by company manually
+        user = self.request.user
+        if user.is_staff:
+            # Staff users can see all users in their company or all users if no company
+            if user.parent_company:
+                return User.objects.filter(parent_company=user.parent_company).select_related('parent_company')
+            else:
+                return User.objects.all().select_related('parent_company')
+        else:
+            # Non-staff users can only see themselves
+            return User.objects.filter(id=user.id).select_related('parent_company')
+
+    @extend_schema(
+        request=inline_serializer(name="BulkUserActivationInput", fields={
+            "user_ids": serializers.ListField(child=serializers.IntegerField()),
+            "is_active": serializers.BooleanField()
+        }),
+        responses={200: OpenApiResponse(response=OpenApiTypes.OBJECT, description="Bulk activation response")}
+    )
+    @action(detail=False, methods=['post'], url_path='bulk-activate')
+    def bulk_activate(self, request):
+        """Bulk activate/deactivate users"""
+        user_ids = request.data.get('user_ids', [])
+        is_active = request.data.get('is_active', True)
+        
+        if not user_ids:
+            return Response({"detail": "No user IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Filter to only users accessible by the requesting user
+        queryset = self.get_queryset().filter(id__in=user_ids)
+        updated_count = queryset.update(is_active=is_active)
+        
+        return Response({
+            "detail": f"Updated {updated_count} users",
+            "updated_count": updated_count,
+            "is_active": is_active
+        })
+
+    @extend_schema(
+        request=inline_serializer(name="BulkCompanyAssignmentInput", fields={
+            "user_ids": serializers.ListField(child=serializers.IntegerField()),
+            "company_id": serializers.IntegerField(allow_null=True)
+        }),
+        responses={200: OpenApiResponse(response=OpenApiTypes.OBJECT, description="Bulk company assignment response")}
+    )
+    @action(detail=False, methods=['post'], url_path='bulk-assign-company')
+    def bulk_assign_company(self, request):
+        """Bulk assign users to a company"""
+        user_ids = request.data.get('user_ids', [])
+        company_id = request.data.get('company_id')
+        
+        if not user_ids:
+            return Response({"detail": "No user IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate company exists if provided
+        company = None
+        if company_id:
+            try:
+                company = Companies.objects.for_user(self.request.user).get(id=company_id)
+            except Companies.DoesNotExist:
+                return Response({"detail": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Filter to only users accessible by the requesting user
+        queryset = self.get_queryset().filter(id__in=user_ids)
+        updated_count = queryset.update(parent_company=company)
+        
+        return Response({
+            "detail": f"Assigned {updated_count} users to {'company' if company else 'no company'}",
+            "updated_count": updated_count,
+            "company_name": company.name if company else None
+        })
+
+
 class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = None
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["name"]
+    search_fields = ["name"]
+    ordering_fields = ["created_at", "updated_at", "name"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -319,7 +402,6 @@ class CompanyViewSet(viewsets.ModelViewSet):
                      description="Filter steps by process's part type ID"), ])
 class StepsViewSet(viewsets.ModelViewSet):
     serializer_class = StepsSerializer  # Updated to match serializers.py
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {"process": ["exact"], "process__part_type": ["exact"]}
     search_fields = ["part_type__name", "process__name"]
@@ -378,7 +460,6 @@ class StepsViewSet(viewsets.ModelViewSet):
 
 class ProcessViewSet(viewsets.ModelViewSet):
     serializer_class = ProcessesSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["part_type"]
     search_fields = ["name", "part_type__name"]
@@ -397,7 +478,6 @@ class ProcessViewSet(viewsets.ModelViewSet):
                      description="Filter processes by associated part type ID"), ])
 class PartTypeViewSet(viewsets.ModelViewSet):
     serializer_class = PartTypesSerializer  # Will need to create this (note: plural to match model)
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, OrderingFilter]
     ordering_fields = ['created_at', 'name', 'updated_at', 'ID_prefix']
     ordering = ['-created_at']
@@ -413,7 +493,6 @@ class PartTypeViewSet(viewsets.ModelViewSet):
 
 class WorkOrderViewSet(viewsets.ModelViewSet):
     serializer_class = WorkOrderSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["related_order"]
     ordering_fields = ["created_at", "expected_completion", "ERP_id"]
@@ -526,7 +605,6 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 
 class EquipmentViewSet(viewsets.ModelViewSet):
     serializer_class = EquipmentsSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["equipment_type"]
     ordering_fields = ["name", "equipment_type__name"]
@@ -541,7 +619,6 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
 class EquipmentTypeViewSet(viewsets.ModelViewSet):
     serializer_class = EquipmentTypeSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["name"]
     ordering_fields = ["id", "name"]
@@ -556,7 +633,6 @@ class EquipmentTypeViewSet(viewsets.ModelViewSet):
 
 class ErrorTypeViewSet(viewsets.ModelViewSet):
     serializer_class = QualityErrorsListSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["error_name"]
     ordering_fields = ["id", "error_name", "part_type__name"]
@@ -571,7 +647,6 @@ class ErrorTypeViewSet(viewsets.ModelViewSet):
 
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentsSerializer  # Updated to match existing serializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["content_type", "object_id", "is_image"]
     search_fields = ["file_name", "uploaded_by__username"]
@@ -602,7 +677,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
 class ProcessWithStepsViewSet(viewsets.ModelViewSet):
     queryset = Processes.objects.all().prefetch_related("steps__sampling_ruleset__rules")
     serializer_class = ProcessWithStepsSerializer  # Use the correct serializer
-    permission_classes = [AllowAny]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -624,7 +698,6 @@ class ProcessWithStepsViewSet(viewsets.ModelViewSet):
 class SamplingRuleSetViewSet(viewsets.ModelViewSet):
     queryset = SamplingRuleSet.objects.all()
     serializer_class = SamplingRuleSetSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["part_type", "process", "step", "active", "version"]
     ordering_fields = ["id", "name", "version", "created_at"]
@@ -640,7 +713,6 @@ class SamplingRuleSetViewSet(viewsets.ModelViewSet):
 class SamplingRuleViewSet(viewsets.ModelViewSet):
     queryset = SamplingRule.objects.all()
     serializer_class = SamplingRuleSerializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["ruleset", "rule_type"]
     ordering_fields = ["id", "order", "created_at"]
@@ -656,7 +728,6 @@ class SamplingRuleViewSet(viewsets.ModelViewSet):
 class MeasurementsDefinitionViewSet(viewsets.ModelViewSet):
     queryset = MeasurementDefinition.objects.all()
     serializer_class = MeasurementDefinitionSerializer  # Will need to create this
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["step__name", "label", "step"]
     ordering_fields = ["step__name", "label"]
@@ -683,7 +754,6 @@ class ContentTypeViewSet(ReadOnlyModelViewSet):
 class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LogEntry.objects.all()  # ✅ This is the fix
     serializer_class = AuditLogSerializer  # Updated to match existing serializer
-    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["actor", "content_type", "object_pk", "action"]
     search_fields = ["object_repr", "changes"]
@@ -708,8 +778,10 @@ def serve_media_iframe_safe(request, path):
     response["Content-Security-Policy"] = "frame-ancestors http://localhost:5173"
     return response
 
+
 class UserDetailsView(UserDetailsView):
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         response.data['is_staff'] = request.user.is_staff
         return response
+

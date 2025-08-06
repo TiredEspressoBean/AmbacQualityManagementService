@@ -59,3 +59,28 @@ class OrderFilter(django_filters.FilterSet):
             'customer', 'company', 'created_at__gte', 'created_at__lte',
             'estimated_completion__gte', 'estimated_completion__lte'
         ]
+
+
+class UserFilter(django_filters.FilterSet):
+    """Filter for User model"""
+    username = django_filters.CharFilter(lookup_expr='icontains')
+    first_name = django_filters.CharFilter(lookup_expr='icontains')
+    last_name = django_filters.CharFilter(lookup_expr='icontains')
+    email = django_filters.CharFilter(lookup_expr='icontains')
+    is_staff = django_filters.BooleanFilter()
+    is_active = django_filters.BooleanFilter()
+    archived = django_filters.BooleanFilter()
+    
+    parent_company = django_filters.ModelChoiceFilter(queryset=Companies.objects.all())
+    
+    date_joined__gte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="gte")
+    date_joined__lte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="lte")
+    
+    class Meta:
+        model = User
+        fields = [
+            "username", "first_name", "last_name", "email",
+            "is_staff", "is_active", "archived",
+            "parent_company",
+            "date_joined__gte", "date_joined__lte"
+        ]

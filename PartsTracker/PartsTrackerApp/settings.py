@@ -28,6 +28,8 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-CHANGE-ME")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', True)
 
+print("DEBUG: ", DEBUG)
+
 # ALLOWED_HOSTS = ["192.168.99.1", "localhost", "127.0.0.1"]
 ALLOWED_HOSTS = ["*"]
 # Application definition
@@ -58,7 +60,8 @@ INSTALLED_APPS = [
     "dj_rest_auth",
     "dj_rest_auth.registration",
     "corsheaders",
-    "drf_spectacular"
+    "drf_spectacular",
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -185,6 +188,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # default gate
+        'rest_framework.permissions.DjangoModelPermissions',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
@@ -230,6 +234,11 @@ INTERNAL_IPS = [
     "127.0.0.1",
 ]
 
+CRONJOBS = [
+    # Tuesday at 3:00 PM - send weekly customer emails
+    ('0 15 * * 2', 'django.core.management.call_command', ['send_weekly_emails']),
+]
+
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 MEDIA_URL = "/media/"
@@ -241,10 +250,23 @@ AUDITLOG_INCLUDE_ALL_MODELS = True
 
 HUBSPOT_DEBUG = True
 
+if DEBUG:
+    PASSWORD_RESET_DOMAIN = 'localhost:5173'
+    PASSWORD_RESET_PROTOCOL = 'http'
+else:
+    PASSWORD_RESET_DOMAIN = os.environ.get("FRONTEND_URL", "")
+    PASSWORD_RESET_PROTOCOL = 'https'
+
+REST_AUTH = {
+    'PASSWORD_RESET_SERIALIZER': 'Tracker.serializer.PasswordResetSerializer',  # Replace 'your_app'
+    'PASSWORD_RESET_CONFIRM_URL': 'http://localhost:5173/reset-password/{uid}/{token}/',
+    'PASSWORD_RESET_USE_SITES_DOMAIN': False,
+}
+
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_HOST = "smtp.your-email-provider.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "your-email@example.com"
-EMAIL_HOST_PASSWORD = "your-password"
-DEFAULT_FROM_EMAIL = "webmaster@example.com"
+# EMAIL_HOST = "smtp.your-email-provider.com"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = "your-email@example.com"
+# EMAIL_HOST_PASSWORD = "your-password"
+DEFAULT_FROM_EMAIL = "webmaster@new_exampl.com"

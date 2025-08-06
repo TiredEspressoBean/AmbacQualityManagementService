@@ -75,12 +75,7 @@ type Documents = {
   id: number;
   classification?:
     | /**
-     * Level of document classification:
-    - "public": Public
-    - "internal": Internal Use
-    - "confidential": Confidential
-    - "restricted": Restricted (serious impact)
-    - "secret": Secret (critical impact)
+     * Security classification level for document access control
     
     * `public` - Public
     * `internal` - Internal Use
@@ -90,8 +85,8 @@ type Documents = {
      */
     (ClassificationEnum | NullEnum | null)
     | undefined;
-  AI_readable?: boolean | undefined;
-  is_image: boolean;
+  ai_readable?: boolean | undefined;
+  is_image?: boolean | undefined;
   /**
    * @maxLength 50
    */
@@ -119,7 +114,7 @@ type Documents = {
   content_type_info: {};
   version?: /**
    * @minimum 0
-   * @maximum 32767
+   * @maximum 2147483647
    */
   number | undefined;
   access_info: {};
@@ -147,12 +142,7 @@ type NullEnum =
 type DocumentsRequest = {
   classification?:
     | /**
-     * Level of document classification:
-    - "public": Public
-    - "internal": Internal Use
-    - "confidential": Confidential
-    - "restricted": Restricted (serious impact)
-    - "secret": Secret (critical impact)
+     * Security classification level for document access control
     
     * `public` - Public
     * `internal` - Internal Use
@@ -162,8 +152,8 @@ type DocumentsRequest = {
      */
     (ClassificationEnum | NullEnum | null)
     | undefined;
-  AI_readable?: boolean | undefined;
-  is_image: boolean;
+  ai_readable?: boolean | undefined;
+  is_image?: boolean | undefined;
   /**
    * @minLength 1
    * @maxLength 50
@@ -188,7 +178,7 @@ type DocumentsRequest = {
     | undefined;
   version?: /**
    * @minimum 0
-   * @maximum 32767
+   * @maximum 2147483647
    */
   number | undefined;
 };
@@ -359,6 +349,25 @@ type PaginatedAuditLogList = {
     | undefined;
   results: Array<AuditLog>;
 };
+type PaginatedCompanyList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Company>;
+};
 type PaginatedContentTypeList = {
   /**
    * @example 123
@@ -433,10 +442,17 @@ type EquipmentType = {
   deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
+  version?: /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
   name: string;
+  previous_version?: (number | null) | undefined;
 };
 type PaginatedEquipmentsList = {
   /**
@@ -525,12 +541,16 @@ type PaginatedPartTypesList = {
 };
 type PartTypes = {
   id: number;
-  previous_version: number | null;
-  previous_version_name: string | null;
   archived?: boolean | undefined;
   deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
+  version?: /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
@@ -541,17 +561,13 @@ type PartTypes = {
      */
     (string | null)
     | undefined;
-  version?: /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  number | undefined;
   ERP_id?:
     | /**
      * @maxLength 50
      */
     (string | null)
     | undefined;
+  previous_version?: (number | null) | undefined;
 };
 type PaginatedPartsList = {
   /**
@@ -630,7 +646,7 @@ type ProcessWithSteps = {
    * @maxLength 50
    */
   name: string;
-  is_remanufactured: boolean;
+  is_remanufactured?: boolean | undefined;
   part_type: number;
   steps: Array<Step>;
   /**
@@ -689,23 +705,24 @@ type Processes = {
   deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
+  version?: /**
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
   name: string;
-  is_remanufactured: boolean;
+  is_remanufactured?: boolean | undefined;
   /**
    * @minimum -2147483648
    * @maximum 2147483647
    */
   num_steps: number;
-  version?: /**
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  number | undefined;
-  part_type: number;
   previous_version?: (number | null) | undefined;
+  part_type: number;
 };
 type PaginatedQualityErrorsListList = {
   /**
@@ -837,7 +854,7 @@ type SamplingRule = {
   created_by?: (number | null) | undefined;
   created_at: string;
   modified_by?: (number | null) | undefined;
-  modified_at: string;
+  updated_at: string;
   archived: boolean;
   ruletype_name: string;
   ruleset_name: string;
@@ -884,7 +901,6 @@ type SamplingRuleSet = {
   string | undefined;
   active?: boolean | undefined;
   version?: /**
-   * @default 1
    * @minimum 0
    * @maximum 2147483647
    */
@@ -922,7 +938,7 @@ type SamplingRuleSet = {
   created_by?: (number | null) | undefined;
   created_at: string;
   modified_by?: (number | null) | undefined;
-  modified_at: string;
+  updated_at: string;
   part_type_name: string;
   process_name: string;
 };
@@ -1002,6 +1018,58 @@ type Steps = {
   created_at: string;
   updated_at: string;
   archived: boolean;
+};
+type PaginatedUserList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<User>;
+};
+type User = {
+  id: number;
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   *
+   * @maxLength 150
+   * @pattern ^[\w.@+-]+$
+   */
+  username: string;
+  first_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  last_name?: /**
+   * @maxLength 150
+   */
+  string | undefined;
+  email?: /**
+   * @maxLength 254
+   */
+  string | undefined;
+  full_name: string;
+  is_staff?: /**
+   * Designates whether the user can log into this admin site.
+   */
+  boolean | undefined;
+  is_active?: /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  boolean | undefined;
+  date_joined: string;
+  parent_company: Company;
 };
 type PaginatedUserSelectList = {
   /**
@@ -1105,12 +1173,7 @@ type PartsRequest = {
 };
 type PatchedDocumentsRequest = Partial<{
   /**
-     * Level of document classification:
-    - "public": Public
-    - "internal": Internal Use
-    - "confidential": Confidential
-    - "restricted": Restricted (serious impact)
-    - "secret": Secret (critical impact)
+     * Security classification level for document access control
     
     * `public` - Public
     * `internal` - Internal Use
@@ -1119,7 +1182,7 @@ type PatchedDocumentsRequest = Partial<{
     * `secret` - Secret
      */
   classification: ClassificationEnum | NullEnum | null;
-  AI_readable: boolean;
+  ai_readable: boolean;
   is_image: boolean;
   /**
    * @minLength 1
@@ -1141,7 +1204,7 @@ type PatchedDocumentsRequest = Partial<{
   object_id: number | null;
   /**
    * @minimum 0
-   * @maximum 32767
+   * @maximum 2147483647
    */
   version: number;
 }>;
@@ -1307,7 +1370,7 @@ type ProcessWithStepsRequest = {
    * @maxLength 50
    */
   name: string;
-  is_remanufactured: boolean;
+  is_remanufactured?: boolean | undefined;
   part_type: number;
   steps: Array<StepRequest>;
   /**
@@ -1449,6 +1512,14 @@ const Company: z.ZodType<Company> = z
     archived: z.boolean(),
   })
   .passthrough();
+const PaginatedCompanyList: z.ZodType<PaginatedCompanyList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(Company),
+  })
+  .passthrough();
 const CompanyRequest = z
   .object({
     name: z.string().min(1).max(50),
@@ -1477,7 +1548,7 @@ const UserDetail: z.ZodType<UserDetail> = z
     is_staff: z.boolean().optional(),
     is_active: z.boolean().optional(),
     date_joined: z.string().datetime({ offset: true }),
-    parent_company: Company,
+    parent_company: Company.nullable(),
   })
   .passthrough();
 const UserDetailRequest = z
@@ -1523,8 +1594,8 @@ const Documents: z.ZodType<Documents> = z
   .object({
     id: z.number().int(),
     classification: z.union([ClassificationEnum, NullEnum]).nullish(),
-    AI_readable: z.boolean().optional(),
-    is_image: z.boolean(),
+    ai_readable: z.boolean().optional(),
+    is_image: z.boolean().optional(),
     file_name: z.string().max(50),
     file: z.string().url(),
     file_url: z.string(),
@@ -1534,7 +1605,7 @@ const Documents: z.ZodType<Documents> = z
     content_type: z.number().int().nullish(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullish(),
     content_type_info: z.object({}).partial().passthrough(),
-    version: z.number().int().gte(0).lte(32767).optional(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
     access_info: z.object({}).partial().passthrough(),
     auto_properties: z.object({}).partial().passthrough(),
     created_at: z.string().datetime({ offset: true }),
@@ -1553,27 +1624,27 @@ const PaginatedDocumentsList: z.ZodType<PaginatedDocumentsList> = z
 const DocumentsRequest: z.ZodType<DocumentsRequest> = z
   .object({
     classification: z.union([ClassificationEnum, NullEnum]).nullish(),
-    AI_readable: z.boolean().optional(),
-    is_image: z.boolean(),
+    ai_readable: z.boolean().optional(),
+    is_image: z.boolean().optional(),
     file_name: z.string().min(1).max(50),
     file: z.instanceof(File),
     uploaded_by: z.number().int().nullish(),
     content_type: z.number().int().nullish(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullish(),
-    version: z.number().int().gte(0).lte(32767).optional(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
   })
   .passthrough();
 const PatchedDocumentsRequest: z.ZodType<PatchedDocumentsRequest> = z
   .object({
     classification: z.union([ClassificationEnum, NullEnum]).nullable(),
-    AI_readable: z.boolean(),
+    ai_readable: z.boolean(),
     is_image: z.boolean(),
     file_name: z.string().min(1).max(50),
     file: z.instanceof(File),
     uploaded_by: z.number().int().nullable(),
     content_type: z.number().int().nullable(),
     object_id: z.number().int().gte(0).lte(9223372036854776000).nullable(),
-    version: z.number().int().gte(0).lte(32767),
+    version: z.number().int().gte(0).lte(2147483647),
   })
   .partial()
   .passthrough();
@@ -1625,7 +1696,10 @@ const EquipmentType: z.ZodType<EquipmentType> = z
     deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const PaginatedEquipmentTypeList: z.ZodType<PaginatedEquipmentTypeList> = z
@@ -1640,14 +1714,20 @@ const EquipmentTypeRequest = z
   .object({
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullish(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedEquipmentTypeRequest = z
   .object({
     archived: z.boolean(),
     deleted_at: z.string().datetime({ offset: true }).nullable(),
+    version: z.number().int().gte(0).lte(2147483647),
+    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
+    previous_version: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
@@ -1773,24 +1853,33 @@ const ExternalAPIOrderIdentifier = z
     deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     stage_name: z.string().max(100),
     API_id: z.string().max(50),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const ExternalAPIOrderIdentifierRequest = z
   .object({
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullish(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedExternalAPIOrderIdentifierRequest = z
   .object({
     archived: z.boolean(),
     deleted_at: z.string().datetime({ offset: true }).nullable(),
+    version: z.number().int().gte(0).lte(2147483647),
+    is_current_version: z.boolean(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
+    previous_version: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
@@ -1948,16 +2037,16 @@ const PaginatedStepDistributionResponseList: z.ZodType<PaginatedStepDistribution
 const PartTypes: z.ZodType<PartTypes> = z
   .object({
     id: z.number().int(),
-    previous_version: z.number().int().nullable(),
-    previous_version_name: z.string().nullable(),
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
     ID_prefix: z.string().max(50).nullish(),
-    version: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     ERP_id: z.string().max(50).nullish(),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const PaginatedPartTypesList: z.ZodType<PaginatedPartTypesList> = z
@@ -1972,20 +2061,24 @@ const PartTypesRequest = z
   .object({
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullish(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullish(),
-    version: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     ERP_id: z.string().max(50).nullish(),
+    previous_version: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedPartTypesRequest = z
   .object({
     archived: z.boolean(),
     deleted_at: z.string().datetime({ offset: true }).nullable(),
+    version: z.number().int().gte(0).lte(2147483647),
+    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullable(),
-    version: z.number().int().gte(-2147483648).lte(2147483647),
     ERP_id: z.string().max(50).nullable(),
+    previous_version: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
@@ -2080,12 +2173,13 @@ const Processes: z.ZodType<Processes> = z
     deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
-    is_remanufactured: z.boolean(),
+    is_remanufactured: z.boolean().optional(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
-    version: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    part_type: z.number().int(),
     previous_version: z.number().int().nullish(),
+    part_type: z.number().int(),
   })
   .passthrough();
 const PaginatedProcessesList: z.ZodType<PaginatedProcessesList> = z
@@ -2100,24 +2194,26 @@ const ProcessesRequest = z
   .object({
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullish(),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
+    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
-    is_remanufactured: z.boolean(),
+    is_remanufactured: z.boolean().optional(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
-    version: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    part_type: z.number().int(),
     previous_version: z.number().int().nullish(),
+    part_type: z.number().int(),
   })
   .passthrough();
 const PatchedProcessesRequest = z
   .object({
     archived: z.boolean(),
     deleted_at: z.string().datetime({ offset: true }).nullable(),
+    version: z.number().int().gte(0).lte(2147483647),
+    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
-    version: z.number().int().gte(-2147483648).lte(2147483647),
-    part_type: z.number().int(),
     previous_version: z.number().int().nullable(),
+    part_type: z.number().int(),
   })
   .partial()
   .passthrough();
@@ -2125,7 +2221,7 @@ const ProcessWithSteps: z.ZodType<ProcessWithSteps> = z
   .object({
     id: z.number().int(),
     name: z.string().max(50),
-    is_remanufactured: z.boolean(),
+    is_remanufactured: z.boolean().optional(),
     part_type: z.number().int(),
     steps: z.array(Step),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
@@ -2155,7 +2251,7 @@ const StepRequest: z.ZodType<StepRequest> = z
 const ProcessWithStepsRequest: z.ZodType<ProcessWithStepsRequest> = z
   .object({
     name: z.string().min(1).max(50),
-    is_remanufactured: z.boolean(),
+    is_remanufactured: z.boolean().optional(),
     part_type: z.number().int(),
     steps: z.array(StepRequest),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
@@ -2178,7 +2274,7 @@ const SamplingRuleSet: z.ZodType<SamplingRuleSet> = z
     name: z.string().max(100),
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
-    version: z.number().int().gte(0).lte(2147483647).optional().default(1),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
     is_fallback: z.boolean().optional().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -2193,7 +2289,7 @@ const SamplingRuleSet: z.ZodType<SamplingRuleSet> = z
     created_by: z.number().int().nullish(),
     created_at: z.string().datetime({ offset: true }),
     modified_by: z.number().int().nullish(),
-    modified_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
     part_type_name: z.string(),
     process_name: z.string(),
   })
@@ -2211,7 +2307,7 @@ const SamplingRuleSetRequest = z
     name: z.string().min(1).max(100),
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
-    version: z.number().int().gte(0).lte(2147483647).optional().default(1),
+    version: z.number().int().gte(0).lte(2147483647).optional(),
     is_fallback: z.boolean().optional().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -2227,7 +2323,7 @@ const PatchedSamplingRuleSetRequest = z
     name: z.string().min(1).max(100),
     origin: z.string().max(100),
     active: z.boolean(),
-    version: z.number().int().gte(0).lte(2147483647).default(1),
+    version: z.number().int().gte(0).lte(2147483647),
     is_fallback: z.boolean().default(false),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullable(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullable(),
@@ -2260,7 +2356,7 @@ const SamplingRule: z.ZodType<SamplingRule> = z
     created_by: z.number().int().nullish(),
     created_at: z.string().datetime({ offset: true }),
     modified_by: z.number().int().nullish(),
-    modified_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean(),
     ruletype_name: z.string(),
     ruleset_name: z.string(),
@@ -2382,6 +2478,71 @@ const StepSamplingRulesUpdateRequest: z.ZodType<StepSamplingRulesUpdateRequest> 
       fallback_duration: z.number().int().optional(),
     })
     .passthrough();
+const User: z.ZodType<User> = z
+  .object({
+    id: z.number().int(),
+    username: z
+      .string()
+      .max(150)
+      .regex(/^[\w.@+-]+$/),
+    first_name: z.string().max(150).optional(),
+    last_name: z.string().max(150).optional(),
+    email: z.string().max(254).email().optional(),
+    full_name: z.string(),
+    is_staff: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    date_joined: z.string().datetime({ offset: true }),
+    parent_company: Company.nullable(),
+  })
+  .passthrough();
+const PaginatedUserList: z.ZodType<PaginatedUserList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(User),
+  })
+  .passthrough();
+const UserRequest = z
+  .object({
+    username: z
+      .string()
+      .min(1)
+      .max(150)
+      .regex(/^[\w.@+-]+$/),
+    first_name: z.string().max(150).optional(),
+    last_name: z.string().max(150).optional(),
+    email: z.string().max(254).email().optional(),
+    is_staff: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    parent_company_id: z.number().int().nullish(),
+  })
+  .passthrough();
+const PatchedUserRequest = z
+  .object({
+    username: z
+      .string()
+      .min(1)
+      .max(150)
+      .regex(/^[\w.@+-]+$/),
+    first_name: z.string().max(150),
+    last_name: z.string().max(150),
+    email: z.string().max(254).email(),
+    is_staff: z.boolean(),
+    is_active: z.boolean(),
+    parent_company_id: z.number().int().nullable(),
+  })
+  .partial()
+  .passthrough();
+const BulkUserActivationInputRequest = z
+  .object({ user_ids: z.array(z.number().int()), is_active: z.boolean() })
+  .passthrough();
+const BulkCompanyAssignmentInputRequest = z
+  .object({
+    user_ids: z.array(z.number().int()),
+    company_id: z.number().int().nullable(),
+  })
+  .passthrough();
 const WorkorderStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
@@ -2565,6 +2726,7 @@ const PatchedUserDetailsRequest = z
 
 export const schemas = {
   Company,
+  PaginatedCompanyList,
   CompanyRequest,
   PatchedCompanyRequest,
   UserDetail,
@@ -2648,6 +2810,12 @@ export const schemas = {
   PatchedStepsRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
+  User,
+  PaginatedUserList,
+  UserRequest,
+  PatchedUserRequest,
+  BulkUserActivationInputRequest,
+  BulkCompanyAssignmentInputRequest,
   WorkorderStatusEnum,
   WorkOrder,
   PaginatedWorkOrderList,
@@ -2745,12 +2913,32 @@ const endpoints = makeApi([
     requestFormat: "json",
     parameters: [
       {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
     ],
-    response: z.array(Company),
+    response: PaginatedCompanyList,
   },
   {
     method: "post",
@@ -5379,6 +5567,201 @@ Returns the active + fallback rulesets for a given step`,
   },
   {
     method: "get",
+    path: "/api/User/",
+    alias: "api_User_list",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "archived",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "date_joined__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "date_joined__lte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "email",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "first_name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "is_staff",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "last_name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "parent_company",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "username",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedUserList,
+  },
+  {
+    method: "post",
+    path: "/api/User/",
+    alias: "api_User_create",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: UserRequest,
+      },
+    ],
+    response: User,
+  },
+  {
+    method: "get",
+    path: "/api/User/:id/",
+    alias: "api_User_retrieve",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: User,
+  },
+  {
+    method: "put",
+    path: "/api/User/:id/",
+    alias: "api_User_update",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: UserRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: User,
+  },
+  {
+    method: "patch",
+    path: "/api/User/:id/",
+    alias: "api_User_partial_update",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedUserRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: User,
+  },
+  {
+    method: "delete",
+    path: "/api/User/:id/",
+    alias: "api_User_destroy",
+    description: `Enhanced User ViewSet with comprehensive filtering, ordering, and search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/User/bulk-activate/",
+    alias: "api_User_bulk_activate_create",
+    description: `Bulk activate/deactivate users`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkUserActivationInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/User/bulk-assign-company/",
+    alias: "api_User_bulk_assign_company_create",
+    description: `Bulk assign users to a company`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkCompanyAssignmentInputRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
     path: "/api/WorkOrders/",
     alias: "api_WorkOrders_list",
     requestFormat: "json",
@@ -5702,6 +6085,36 @@ Returns UserModel fields.`,
       },
     ],
     response: UserDetails,
+  },
+  {
+    method: "post",
+    path: "/password/reset/confirm/:uidb64/:token/",
+    alias: "password_reset_confirm_create",
+    description: `Password reset e-mail link is confirmed, therefore
+this resets the user&#x27;s password.
+
+Accepts the following POST parameters: token, uid,
+    new_password1, new_password2
+Returns the success/fail message.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PasswordResetConfirmRequest,
+      },
+      {
+        name: "token",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "uidb64",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({ detail: z.string() }).passthrough(),
   },
 ]);
 

@@ -3,12 +3,13 @@ import os
 import random
 from datetime import date
 
-from auditlog.models import LogEntry
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+
+from auditlog.models import LogEntry
 
 from PartsTrackerApp import settings
 from Tracker.hubspot.api import update_deal_stage
@@ -16,48 +17,46 @@ from Tracker.sampling import SamplingFallbackApplier
 
 
 class SecureQuerySet(models.QuerySet):
-    """QuerySet with soft delete functionality and full audit logging"""
+    """QuerySet with soft delete, versioning, and audit logging"""
 
     def delete(self):
-        """Soft delete all objects in queryset with full logging"""
+        """Soft delete all objects in queryset"""
         deleted_count = 0
         for obj in self:
             if not obj.archived:
-                obj.delete()  # This calls the model's delete() method
+                obj.delete()  # Calls model's delete() method
                 deleted_count += 1
         return deleted_count, {}
 
     def bulk_soft_delete(self, actor=None, reason="bulk_operation"):
         """Fast bulk soft delete WITH audit logging"""
-        # Get objects that will be affected
         objects_to_delete = list(self.filter(archived=False).values('id', 'pk'))
-
         if not objects_to_delete:
             return 0
 
-        # Perform the bulk update
-        updated_count = self.filter(archived=False).update(deleted_at=timezone.now(), archived=True)
+        updated_count = self.filter(archived=False).update(
+            deleted_at=timezone.now(),
+            archived=True
+        )
 
-        # Create bulk audit log entries
         if updated_count > 0:
-            self._create_bulk_audit_logs(objects_to_delete, action='soft_delete_bulk', actor=actor, reason=reason)
+            self._create_bulk_audit_logs(objects_to_delete, 'soft_delete_bulk', actor, reason)
 
         return updated_count
 
     def bulk_restore(self, actor=None, reason="bulk_restore"):
         """Bulk restore WITH audit logging"""
-        # Get objects that will be affected
         objects_to_restore = list(self.filter(archived=True).values('id', 'pk'))
-
         if not objects_to_restore:
             return 0
 
-        # Perform the bulk update
-        updated_count = self.filter(archived=True).update(deleted_at=None, archived=False)
+        updated_count = self.filter(archived=True).update(
+            deleted_at=None,
+            archived=False
+        )
 
-        # Create bulk audit log entries
         if updated_count > 0:
-            self._create_bulk_audit_logs(objects_to_restore, action='restore_bulk', actor=actor, reason=reason)
+            self._create_bulk_audit_logs(objects_to_restore, 'restore_bulk', actor, reason)
 
         return updated_count
 
@@ -67,84 +66,134 @@ class SecureQuerySet(models.QuerySet):
             return
 
         content_type = ContentType.objects.get_for_model(self.model)
-
-        # Create individual log entries for each affected object
         log_entries = []
+
         for obj_data in object_list:
             log_entries.append(
-                LogEntry(content_type=content_type, object_pk=str(obj_data['pk']), object_id=obj_data['id'],
-                    object_repr=f"{self.model.__name__} (id={obj_data['id']})", action=LogEntry.Action.UPDATE,
-                    changes=json.dumps(
-                        {'archived': [False, True] if 'delete' in action else [True, False], 'bulk_operation': action,
-                            'reason': reason}), actor=actor, timestamp=timezone.now()))
+                LogEntry(
+                    content_type=content_type,
+                    object_pk=str(obj_data['pk']),
+                    object_id=obj_data['id'],
+                    object_repr=f"{self.model.__name__} (id={obj_data['id']})",
+                    action=LogEntry.Action.UPDATE,
+                    changes=json.dumps({
+                        'archived': [False, True] if 'delete' in action else [True, False],
+                        'bulk_operation': action,
+                        'reason': reason
+                    }),
+                    actor=actor,
+                    timestamp=timezone.now()
+                )
+            )
 
-        # Bulk create the log entries
         LogEntry.objects.bulk_create(log_entries)
-
-        # Also create a summary log entry
-        LogEntry.objects.create(content_type=content_type, object_pk='bulk_operation', object_id=None,
-            object_repr=f"Bulk {action} - {len(object_list)} {self.model.__name__} objects",
-            action=LogEntry.Action.UPDATE, changes=json.dumps({'operation': action, 'affected_count': len(object_list),
-                'affected_ids': [obj['id'] for obj in object_list], 'reason': reason}), actor=actor,
-            timestamp=timezone.now())
 
     def hard_delete(self):
         """Actually delete from database"""
         return super().delete()
 
+    # Basic filters
     def active(self):
-        """Get non-deleted objects"""
+        """Get non-archived objects"""
         return self.filter(archived=False)
 
     def deleted(self):
-        """Get soft-deleted objects"""
+        """Get archived objects"""
         return self.filter(archived=True)
+
+    # Versioning filters
+    def current_versions(self):
+        """Get only current versions"""
+        return self.filter(is_current_version=True)
+
+    def all_versions(self):
+        """Get all versions (current and old)"""
+        return self
+
+    # Combined filters
+    def active_current(self):
+        """Get active objects that are current versions"""
+        return self.active().current_versions()
 
 
 class SecureManager(models.Manager):
-    """Manager with customer filtering and soft delete"""
+    """Unified manager with filtering, soft delete, versioning, and security"""
 
     def get_queryset(self):
         return SecureQuerySet(self.model, using=self._db)
 
+    # User-based filtering
     def for_user(self, user):
-        """Filter data based on user permissions"""
-        queryset = self.active()  # Start with non-deleted objects
+        """Filter data based on user group permissions"""
+        queryset = self.active()  # Start with non-archived objects
 
         # Superusers see everything
         if user.is_superuser:
             return queryset
 
-        # Staff see all active objects
-        if user.is_staff:
+        # Get user groups for efficiency
+        user_groups = set(user.groups.values_list('name', flat=True))
+
+        # Admin and Manager groups see everything
+        if 'Admin' in user_groups or 'Manager' in user_groups:
             return queryset
 
-        # Customer filtering - only see their own data
+        # Operator group sees all work data (no customer filtering)
+        if 'Operator' in user_groups:
+            return queryset
+
+        # Customer group filtering - only see their own data
+        if 'Customer' in user_groups:
+            return self._filter_for_customer(queryset, user)
+
+        # Default: no access for users without groups
+        return queryset.none()
+
+    def _filter_for_customer(self, queryset, user):
+        """Filter data for customer users"""
         model_name = self.model._meta.model_name
 
         if model_name == 'orders':
             return queryset.filter(customer=user)
         elif model_name == 'parts':
             return queryset.filter(order__customer=user)
+        elif model_name == 'workorder':
+            return queryset.filter(related_order__customer=user)
+        elif model_name == 'qualityreports':
+            return queryset.filter(part__order__customer=user)
         elif model_name == 'documents':
-            return queryset.filter(models.Q(customer=user) |  # Their documents
-                                   models.Q(classification='public')  # Public documents
-            )
+            return queryset.filter(classification='public')
         elif model_name == 'user':
-            # Customers only see themselves
             return queryset.filter(id=user.id)
+        elif model_name == 'companies':
+            if user.parent_company:
+                return queryset.filter(id=user.parent_company.id)
+            return queryset.none()
 
-        # Default: no access
         return queryset.none()
 
+    # Convenience methods that delegate to queryset
     def active(self):
-        """Get active (non-deleted) objects"""
+        """Get active (non-archived) objects"""
         return self.get_queryset().active()
 
     def deleted(self):
-        """Get soft-deleted objects"""
+        """Get archived objects"""
         return self.get_queryset().deleted()
 
+    def current_versions(self):
+        """Get only current versions"""
+        return self.get_queryset().current_versions()
+
+    def active_current(self):
+        """Get active objects that are current versions"""
+        return self.get_queryset().active_current()
+
+    def for_user_current(self, user):
+        """Get current versions filtered for user"""
+        return self.for_user(user).current_versions()
+
+    # Bulk operations
     def bulk_soft_delete(self, actor=None, reason="bulk_operation"):
         """Manager-level bulk soft delete"""
         return self.get_queryset().bulk_soft_delete(actor=actor, reason=reason)
@@ -153,9 +202,20 @@ class SecureManager(models.Manager):
         """Manager-level bulk restore"""
         return self.get_queryset().bulk_restore(actor=actor, reason=reason)
 
+    # Versioning helpers
+    def get_version_chain(self, root_id):
+        """Get all versions of a particular object"""
+        try:
+            root = self.get(id=root_id)
+            while root.previous_version:
+                root = root.previous_version
+            return root.get_version_history()
+        except self.model.DoesNotExist:
+            return []
+
 
 class SecureModel(models.Model):
-    """Simple base model with soft delete (django-auditlog handles logging)"""
+    """Base model with soft delete, timestamps, versioning, and audit logging"""
 
     # Soft delete fields
     archived = models.BooleanField(default=False)
@@ -165,9 +225,19 @@ class SecureModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Manager
+    # Versioning fields
+    version = models.PositiveIntegerField(default=1)
+    previous_version = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='next_versions'
+    )
+    is_current_version = models.BooleanField(default=True)
+
+    # Single manager that does everything
     objects = SecureManager()
-    all_objects = models.Manager()  # See everything including deleted
 
     class Meta:
         abstract = True
@@ -181,8 +251,37 @@ class SecureModel(models.Model):
         self.deleted_at = timezone.now()
         self.save(using=using)
 
+    def archive(self, reason="user_request", user=None, notes=""):
+        """
+        Archives the object with a specific reason for audit trail.
+        
+        Args:
+            reason (str): Archive reason code
+            user (User): The user responsible for the archive action
+            notes (str): Additional notes explaining the archive
+        """
+        if self.archived:
+            return
+
+        # Perform the soft delete
+        self.delete()
+
+        # Create archive reason record for audit trail
+        try:
+            from django.contrib.contenttypes.models import ContentType
+            content_type = ContentType.objects.get_for_model(self.__class__)
+            ArchiveReason.objects.update_or_create(
+                content_type=content_type,
+                object_id=self.pk,
+                defaults={"reason": reason, "notes": notes, "user": user}
+            )
+        except Exception:
+            # If ArchiveReason model doesn't exist or other issues, 
+            # still complete the archive operation
+            pass
+
     def restore(self):
-        """Restore soft-deleted object - django-auditlog will log this too"""
+        """Restore soft-deleted object"""
         if not self.archived:
             return
 
@@ -193,6 +292,97 @@ class SecureModel(models.Model):
     def hard_delete(self, using=None, keep_parents=False):
         """Actually delete from database"""
         super().delete(using=using, keep_parents=keep_parents)
+
+    def create_new_version(self, **field_updates):
+        """Create a new version of this object"""
+        if not self.is_current_version:
+            raise ValueError("Can only create new versions from current version")
+
+        # Mark current version as not current
+        self.is_current_version = False
+        self.save()
+
+        # Create new version
+        new_data = {}
+        for field in self._meta.fields:
+            if field.name not in ['id', 'created_at', 'version', 'previous_version', 'is_current_version']:
+                new_data[field.name] = getattr(self, field.name)
+
+        # Apply updates
+        new_data.update(field_updates)
+        new_data.update({
+            'version': self.version + 1,
+            'previous_version': self,
+            'is_current_version': True,
+        })
+
+        new_version = self.__class__.objects.create(**new_data)
+        return new_version
+
+    def get_version_history(self):
+        """Get all versions in chronological order"""
+        # Find the root version
+        root = self
+        while root.previous_version:
+            root = root.previous_version
+
+        # Build version chain
+        versions = [root]
+        current = root
+        while True:
+            next_version = self.__class__.objects.filter(previous_version=current).first()
+            if not next_version:
+                break
+            versions.append(next_version)
+            current = next_version
+
+        return versions
+
+    def get_version(self, version_number):
+        """Get a specific version number"""
+        versions = self.get_version_history()
+        for v in versions:
+            if v.version == version_number:
+                return v
+        return None
+
+    def get_current_version(self):
+        """Get the current (latest) version"""
+        versions = self.get_version_history()
+        return versions[-1] if versions else None
+
+    def __str__(self):
+        base_str = super().__str__() if hasattr(super(), '__str__') else str(self.pk)
+        return f"{base_str} (v{self.version})"
+
+
+def part_doc_upload_path(self, filename):
+    """
+    Constructs a dynamic file upload path based on part ID, upload date, and custom file name.
+
+    The final path structure is:
+        parts_docs/part_<part_id>/<YYYY-MM-DD>/<file_name>.<ext>
+
+    If the part is not yet assigned, 'unassigned' is used in the path.
+
+    Args:
+        filename (str): The original name of the uploaded file.
+
+    Returns:
+        str: A structured path to store the uploaded file.
+    """
+    today = date.today().isoformat()
+    ext = filename.split('.')[-1]
+    new_filename = f"{self.file_name}.{ext}"
+    return os.path.join("parts_docs", today, new_filename)
+
+
+class ClassificationLevel(models.TextChoices):
+    PUBLIC = "public", "Public"
+    INTERNAL = "internal", "Internal Use"
+    CONFIDENTIAL = "confidential", "Confidential"
+    RESTRICTED = "restricted", "Restricted"  # serious impact
+    SECRET = "secret", "Secret"  # critical impact
 
 
 class PartsStatus(models.TextChoices):
@@ -277,35 +467,6 @@ class User(AbstractUser):
         return f"{self.username}: {self.first_name} {self.last_name}"
 
 
-def part_doc_upload_path(self, filename):
-    """
-    Constructs a dynamic file upload path based on part ID, upload date, and custom file name.
-
-    The final path structure is:
-        parts_docs/part_<part_id>/<YYYY-MM-DD>/<file_name>.<ext>
-
-    If the part is not yet assigned, 'unassigned' is used in the path.
-
-    Args:
-        filename (str): The original name of the uploaded file.
-
-    Returns:
-        str: A structured path to store the uploaded file.
-    """
-    today = date.today().isoformat()
-    ext = filename.split('.')[-1]
-    new_filename = f"{self.file_name}.{ext}"
-    return os.path.join("parts_docs", today, new_filename)
-
-
-class ClassificationLevel(models.TextChoices):
-    PUBLIC = "public", "Public"
-    INTERNAL = "internal", "Internal Use"
-    CONFIDENTIAL = "confidential", "Confidential"
-    RESTRICTED = "restricted", "Restricted"  # serious impact
-    SECRET = "secret", "Secret"  # critical impact
-
-
 class Documents(SecureModel):
     """
     Represents a file uploaded and optionally associated with a specific part.
@@ -328,18 +489,18 @@ class Documents(SecureModel):
         parts_docs/part_<part_id>/<YYYY-MM-DD>/<file_name>.<ext>
     """
 
-    classification = models.CharField(max_length=20, choices=ClassificationLevel.choices,
-                                      default=ClassificationLevel.INTERNAL,
-                                      help_text=("Level of document classification:\n"
-                                                 '- "public": Public\n'
-                                                 '- "internal": Internal Use\n'
-                                                 '- "confidential": Confidential\n'
-                                                 '- "restricted": Restricted (serious impact)\n'
-                                                 '- "secret": Secret (critical impact)'), null=True, blank=False)
+    classification = models.CharField(
+        max_length=20,
+        choices=ClassificationLevel.choices,
+        default=ClassificationLevel.INTERNAL,
+        help_text="Security classification level for document access control",
+        null=True,
+        blank=False
+    )
 
-    AI_readable = models.BooleanField(default=False)
+    ai_readable = models.BooleanField(default=False)
 
-    is_image = models.BooleanField()
+    is_image = models.BooleanField(default=False)
     """Flag indicating whether the file is an image (for preview/display logic)."""
 
     file_name = models.CharField(max_length=50)
@@ -363,8 +524,6 @@ class Documents(SecureModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     """Optional reference to the Object this document relates to."""
 
-    version = models.PositiveSmallIntegerField(default=1)
-    """Version number of the document, useful for document change tracking."""
 
     class Meta:
         verbose_name_plural = 'Documents'
@@ -492,11 +651,6 @@ class Documents(SecureModel):
         if not self.file_name:
             properties['file_name'] = file.name
 
-        # Auto-increment version for same object
-        if self.content_type and self.object_id:
-            existing = Documents.objects.filter(content_type=self.content_type, object_id=self.object_id)
-            max_version = existing.aggregate(Max("version"))["version__max"] or 0
-            properties['version'] = max_version + 1
 
         return properties
 
@@ -529,11 +683,7 @@ class PartTypes(SecureModel):
     documents = GenericRelation(Documents)
     """Optional Document related to this type of part"""
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp of when the part type was first created."""
 
-    updated_at = models.DateTimeField(auto_now=True)
-    """Timestamp of the last update to this part type."""
 
     name = models.CharField(max_length=50)
     """Name of the part type, e.g., 'Fuel Injector'."""
@@ -541,15 +691,6 @@ class PartTypes(SecureModel):
     ID_prefix = models.CharField(max_length=50, null=True, blank=True)
     """Optional prefix for autogenerated part IDs, e.g., 'FJ-'."""
 
-    version = models.IntegerField(default=1)
-    """Integer version number of this part type. Auto-incremented on updates."""
-
-    previous_version = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
-                                         related_name='next_versions')
-    """
-    Optional reference to the prior version of this part type.
-    Enables version tracking through forward and backward relations.
-    """
 
     ERP_id = models.CharField(max_length=50, null=True, blank=True)
 
@@ -557,15 +698,6 @@ class PartTypes(SecureModel):
         verbose_name_plural = 'Part Types'
         verbose_name = 'Part Type'
 
-    def save(self, *args, **kwargs):
-        """
-        Overrides the default save behavior to increment version and create a new DB row
-        instead of updating an existing one. This ensures immutability for previous versions.
-        """
-        if self.pk:
-            self.pk = None
-            self.version += 1
-        super().save(*args, **kwargs)
 
     def __str__(self):
         """
@@ -585,16 +717,11 @@ class Processes(SecureModel):
     documents = GenericRelation(Documents)
     """Optional Document related to this type of process"""
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp of when the process was created."""
-
-    updated_at = models.DateTimeField(auto_now=True)
-    """Timestamp of the most recent update to the process."""
 
     name = models.CharField(max_length=50)
     """Name of the process, e.g., 'Assembly Line A'."""
 
-    is_remanufactured = models.BooleanField()
+    is_remanufactured = models.BooleanField(default=False)
     """Indicates whether this process is for remanufacturing existing parts."""
 
     num_steps = models.IntegerField()
@@ -603,15 +730,6 @@ class Processes(SecureModel):
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE, related_name='processes')
     """ForeignKey to the PartType this process is associated with."""
 
-    version = models.IntegerField(default=1)
-    """Version number for tracking process changes over time."""
-
-    previous_version = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
-                                         related_name='next_versions')
-    """
-    Link to the previous version of this process.
-    Used for version tracking and historical auditing.
-    """
 
     class Meta:
         verbose_name_plural = 'Processes'
@@ -646,15 +764,6 @@ class Processes(SecureModel):
 
         Steps.objects.bulk_create(new_steps)
 
-    def save(self, *args, **kwargs):
-        """
-        Overrides save to enforce versioning by creating a new DB entry on changes.
-        Ensures immutability of past versions for compliance and traceability.
-        """
-        if self.pk:
-            self.pk = None
-            self.version += 1
-        super().save(*args, **kwargs)
 
     def __str__(self):
         """
@@ -763,24 +872,17 @@ class Steps(SecureModel):
             # Archive existing rulesets
             self.sampling_ruleset.filter(active=True).update(active=False, archived=True)
 
-            # Calculate next version numbers
-            main_version = (SamplingRuleSet.objects.filter(part_type=self.part_type, process=self.process, step=self,
-                is_fallback=False).aggregate(Max("version"))["version__max"] or 0) + 1
-
-            fallback_version = (SamplingRuleSet.objects.filter(part_type=self.part_type, process=self.process,
-                step=self, is_fallback=True).aggregate(Max("version"))["version__max"] or 0) + 1
-
             # Create fallback ruleset first if provided
             fallback_ruleset = None
             if fallback_rules_data:
                 fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
-                    step=self, name=f"Fallback for Step {self.id} v{fallback_version}", version=fallback_version,
+                    step=self, name=f"Fallback for Step {self.id}",
                     rules=fallback_rules_data, created_by=user, origin="serializer-update", active=True,
                     is_fallback=True)
 
             # Create main ruleset
             main_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self,
-                name=f"Rules for Step {self.id} v{main_version}", version=main_version, rules=rules_data,
+                name=f"Rules for Step {self.id}", rules=rules_data,
                 fallback_ruleset=fallback_ruleset, fallback_threshold=fallback_threshold,
                 fallback_duration=fallback_duration, created_by=user, origin="serializer-update", active=True,
                 is_fallback=False)
@@ -904,11 +1006,7 @@ class Orders(SecureModel):
     Supports lifecycle tracking via status, estimated deadlines, and soft-archiving for traceability.
     """
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp indicating when the order was first created."""
 
-    updated_at = models.DateTimeField(auto_now=True)
-    """Timestamp automatically updated when the order is modified."""
 
     name = models.CharField(max_length=50)
     """Internal or customer-facing name for the order."""
@@ -946,8 +1044,6 @@ class Orders(SecureModel):
 
     """Optional field to track HubSpot pipeline status or stage."""
 
-    archived = models.BooleanField(default=False)
-    """Soft-deletion flag for keeping old data without fully deleting the record."""
 
     # --- HubSpot Integration Fields ---
     hubspot_deal_id = models.CharField(max_length=60, unique=True, null=True, blank=True)
@@ -956,30 +1052,7 @@ class Orders(SecureModel):
     class Meta:
         verbose_name = 'Order'
 
-    def delete(self, *args, **kwargs):
-        """
-        Overrides the default delete to perform a soft archive instead of true deletion.
-        """
-        self.archived = True
-        self.save()
 
-    def archive(self, reason="user_error", user=None, notes=""):
-        """
-        Archives the order and records the reason for traceability.
-
-        Args:
-            reason (str): Archive reason code (must match ArchiveReason.REASON_CHOICES).
-            user (User): The user responsible for the action (optional).
-            notes (str): Free-text notes elaborating on the archive reason.
-        """
-        if self.archived:
-            return  # Prevent duplicate archiving
-
-        self.archived = True
-        self.save()
-
-        ArchiveReason.objects.update_or_create(content_type=ContentType.objects.get_for_model(self), object_id=self.pk,
-                                               defaults={"reason": reason, "notes": notes, "user": user, })
 
     def push_to_hubspot(self):
         if not self.hubspot_deal_id:
@@ -1162,11 +1235,7 @@ class WorkOrder(SecureModel):
     ERP_id = models.CharField(max_length=50)
     """External ERP identifier used to sync or reference the work order."""
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp when the work order was created."""
 
-    updated_at = models.DateTimeField(auto_now=True)
-    """Timestamp for the last modification to this work order."""
 
     related_order = models.ForeignKey('Orders', on_delete=models.PROTECT, related_name='related_orders', null=True,
                                       blank=True)
@@ -1383,44 +1452,44 @@ class SamplingRuleSet(SecureModel):
     origin = models.CharField(max_length=100, blank=True)
     active = models.BooleanField(default=True)
 
-    version = models.PositiveIntegerField(default=1)
     supersedes = models.OneToOneField("self", null=True, blank=True, on_delete=models.SET_NULL,
                                       related_name="superseded_by")
 
     # CSP fallback support
     fallback_ruleset = models.OneToOneField("self", null=True, blank=True, on_delete=models.SET_NULL,
                                             related_name="used_as_fallback_for")
-    fallback_threshold = models.PositiveIntegerField(null=True, blank=True,
-                                                     help_text="Number of consecutive failures before switching to fallback")
-    fallback_duration = models.PositiveIntegerField(null=True, blank=True,
-                                                    help_text="Number of good parts required before reverting to this ruleset")
+    fallback_threshold = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of consecutive failures before switching to fallback"
+    )
+    fallback_duration = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Number of good parts required before reverting to this ruleset"
+    )
 
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
     modified_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    modified_at = models.DateTimeField(auto_now=True)
 
     is_fallback = models.BooleanField(default=False)
 
-    archived = models.BooleanField(default=False)
-
     class Meta:
-        unique_together = ("part_type", "process", "step", "version", "is_fallback")
+        unique_together = ("part_type", "process", "step", "is_fallback")
 
     def __str__(self):
         return f"{self.name} (v{self.version})"
 
     def supersede_with(self, *, name, rules, created_by):
-        new_version = self.version + 1
         return SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self.step,
-                                                 name=name, version=new_version, rules=rules, supersedes=self,
+                                                 name=name, rules=rules, supersedes=self,
                                                  created_by=created_by, )
 
     @classmethod
-    def create_with_rules(cls, *, part_type, process, step, name, version=1, rules=None, fallback_ruleset=None,
+    def create_with_rules(cls, *, part_type, process, step, name, rules=None, fallback_ruleset=None,
                           fallback_threshold=None, fallback_duration=None, created_by=None, origin="", active=True,
                           supersedes=None, is_fallback=False):
-        ruleset = cls.objects.create(part_type=part_type, process=process, step=step, name=name, version=version,
+        ruleset = cls.objects.create(part_type=part_type, process=process, step=step, name=name,
                                      fallback_ruleset=fallback_ruleset, fallback_threshold=fallback_threshold,
                                      fallback_duration=fallback_duration, created_by=created_by, origin=origin,
                                      active=active, supersedes=supersedes, is_fallback=is_fallback, )
@@ -1504,6 +1573,7 @@ class SamplingRule(SecureModel):
         RANDOM = "random", "Pure Random"
         FIRST_N_PARTS = "first_n_parts", "First N Parts"
         LAST_N_PARTS = "last_n_parts", "Last N Parts"
+        EXACT_COUNT = "exact_count", "Exact Count (No Variance)"
 
     ruleset = models.ForeignKey(SamplingRuleSet, on_delete=models.CASCADE, related_name="rules")
     rule_type = models.CharField(max_length=32, choices=RuleType.choices)
@@ -1511,9 +1581,7 @@ class SamplingRule(SecureModel):
     order = models.PositiveIntegerField(default=0)
 
     created_by = models.ForeignKey("User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    created_at = models.DateTimeField(auto_now_add=True)
     modified_by = models.ForeignKey("User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    modified_at = models.DateTimeField(auto_now=True)
 
     # ADD THESE NEW FIELDS:
     algorithm_description = models.TextField(default="SHA-256 hash modulo arithmetic",
@@ -1542,12 +1610,6 @@ class Parts(SecureModel):
     Lifecycle transitions and traceability are critical for quality control and compliance audits.
     """
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp when the part was created in the system."""
-
-    updated_at = models.DateTimeField(auto_now=True)
-    """Timestamp of the last update to the part's record."""
-
     class Meta:
         verbose_name_plural = 'Parts'
         verbose_name = 'Part'
@@ -1569,8 +1631,6 @@ class Parts(SecureModel):
     part_status = models.CharField(max_length=50, choices=PartsStatus.choices, default=PartsStatus.PENDING)
     """Lifecycle status indicating part progress through the workflow."""
 
-    archived = models.BooleanField(default=False)
-    """Soft-deletion flag to mark the part as archived without removing it."""
 
     work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name='parts')
     """Optional reference to the internal Work Order this part is attached to."""
@@ -1589,14 +1649,6 @@ class Parts(SecureModel):
     sampling_context = models.JSONField(default=dict, blank=True)
     """Context data for sampling decisions, used by SamplingFallbackApplier."""
 
-    def delete(self, *args, **kwargs):
-        """
-        Overrides default delete behavior to perform a soft archive instead.
-
-        Automatically triggers archival logic with a default 'user_error' reason.
-        A `user` keyword argument can be passed for tracking who initiated deletion.
-        """
-        self.archive(reason="user_error", user=kwargs.pop(User, None))
 
     def increment_step(self):
         """
@@ -1658,27 +1710,6 @@ class Parts(SecureModel):
 
         return "full_work_order_advanced"
 
-    def archive(self, reason="user_error", user=None, notes=""):
-        """
-        Archives the part entry without deletion and logs the reason.
-
-        Args:
-            reason (str): Code or label for why the part is archived.
-            user (User): Optional user object for audit attribution.
-            notes (str): Optional explanation or context.
-        """
-        if self.archived:
-            return
-
-        self.archived = True
-        self.save()
-
-        try:
-            content_type = ContentType.objects.get_for_model(self)
-            ArchiveReason.objects.update_or_create(content_type=content_type, object_id=self.pk,
-                                                   defaults={"reason": reason, "notes": notes, "user": user, })
-        except ContentType.DoesNotExist:
-            pass  # Optional: add logging here
 
     def has_quality_errors(self):
         """Check if part has any quality errors"""
@@ -1719,8 +1750,10 @@ class Parts(SecureModel):
             'context': self.sampling_context}, 'quality_reports': list(
             self.error_reports.all().values('status', 'created_at', 'sampling_method', 'description')),
             'audit_logs': list(
-                SamplingAuditLog.objects.filter(part=self).values('hash_input', 'sampling_decision', 'timestamp',
-                    'ruleset_type')) if 'SamplingAuditLog' in globals() else []}
+    SamplingAuditLog.objects.filter(part=self).values(
+        'sampling_decision', 'timestamp', 'ruleset_type'
+    )
+) if 'SamplingAuditLog' in globals() else []}
 
     @classmethod
     def get_filtered_queryset(cls, user=None, filters=None):
@@ -1862,8 +1895,6 @@ class QualityReports(SecureModel):
     file = models.ForeignKey(Documents, null=True, blank=True, on_delete=models.SET_NULL)
     """Optional file attachment providing supporting evidence (e.g., photo, scan, or log)."""
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    """Timestamp of when the error report was created."""
 
     errors = models.ManyToManyField(QualityErrorsList, blank=True)
     """List of known quality errors that this report corresponds to."""
@@ -1965,7 +1996,6 @@ class MeasurementResult(SecureModel):
                                        blank=True)
     is_within_spec = models.BooleanField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     def evaluate_spec(self):
         if self.definition.type == "NUMERIC":
@@ -2193,15 +2223,18 @@ class MeasurementDisposition(SecureModel):
 
 
 class SamplingAuditLog(SecureModel):
-    """Comprehensive audit trail for sampling decisions"""
+    """
+    Comprehensive audit trail for sampling decisions.
+    Logs which rule was applied to which part and whether it triggered sampling.
+    """
     part = models.ForeignKey(Parts, on_delete=models.CASCADE)
     rule = models.ForeignKey(SamplingRule, on_delete=models.CASCADE)
-    hash_input = models.CharField(max_length=200)
-    hash_output = models.BigIntegerField()
     sampling_decision = models.BooleanField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    ruleset_type = models.CharField(max_length=20,
-                                    choices=[('PRIMARY', 'Primary Ruleset'), ('FALLBACK', 'Fallback Ruleset')])
+    ruleset_type = models.CharField(
+        max_length=20,
+        choices=[('PRIMARY', 'Primary Ruleset'), ('FALLBACK', 'Fallback Ruleset')]
+    )
 
     class Meta:
         indexes = [models.Index(fields=['part', 'timestamp']), models.Index(fields=['rule', 'sampling_decision']), ]
@@ -2225,8 +2258,6 @@ class SamplingAnalytics(SecureModel):
     target_sampling_rate = models.FloatField()
     variance = models.FloatField()  # Difference between actual and target
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         unique_together = ('ruleset', 'work_order')
         verbose_name = 'Sampling Analytics'
@@ -2244,3 +2275,4 @@ class SamplingAnalytics(SecureModel):
 
     def __str__(self):
         return f"Analytics for {self.ruleset} - WO {self.work_order.ERP_id}"
+

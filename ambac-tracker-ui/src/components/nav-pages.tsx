@@ -17,7 +17,7 @@ export function NavPages({
     }[]
 }) {
 
-    return (<SidebarGroup className="group-data-[collapsible=icon]:hidden">
+    return (<SidebarGroup>
         {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
         <SidebarMenu>
             {pages.map((item) => (<SidebarMenuItem key={item.name}>

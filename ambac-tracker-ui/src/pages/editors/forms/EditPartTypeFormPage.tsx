@@ -16,8 +16,18 @@ import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 
 // 🔐 Schema matching backend POST/PATCH expectations
 const formSchema = z.object({
-    name: z.string().min(1), ID_prefix: z.string().min(1),
-    ERP_id: z.string().min(1),
+    name: z
+        .string()
+        .min(1, "Part type name is required - please enter a descriptive name for this part type")
+        .max(255, "Part type name must be 255 characters or less"),
+    ID_prefix: z
+        .string()
+        .min(1, "ID prefix is required - please enter a short prefix for ERP-generated part numbers")
+        .max(10, "ID prefix must be 10 characters or less"),
+    ERP_id: z
+        .string()
+        .min(1, "ERP ID is required - please enter the unique ERP identifier for this part type")
+        .max(50, "ERP ID must be 50 characters or less"),
 });
 
 export default function PartTypeFormPage() {
@@ -74,7 +84,7 @@ export default function PartTypeFormPage() {
                     control={form.control}
                     name="name"
                     render={({field}) => (<FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>Name *</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g. Fuel Rail" {...field} />
                         </FormControl>
@@ -87,7 +97,7 @@ export default function PartTypeFormPage() {
                     control={form.control}
                     name="ID_prefix"
                     render={({field}) => (<FormItem>
-                        <FormLabel>ERP ID Prefix</FormLabel>
+                        <FormLabel>ERP ID Prefix *</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g. FR" {...field} />
                         </FormControl>
@@ -101,7 +111,7 @@ export default function PartTypeFormPage() {
                     name="ERP_id"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>ERP ID</FormLabel>
+                            <FormLabel>ERP ID *</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g. SV852-8R" {...field} />
                             </FormControl>

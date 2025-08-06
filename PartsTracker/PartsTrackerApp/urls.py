@@ -31,8 +31,12 @@ from Tracker.views import OrderUpdateView, OrderCreateView, ErrorFormView
 from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
 from Tracker.AI_view import chat_ai_view
+from Tracker.health_views import health_check, ready_check
 
 urlpatterns = [
+    # Health check endpoints for Azure Container Apps
+    path('health/', health_check, name='health_check'),
+    path('ready/', ready_check, name='ready_check'),
 
 
     path("accounts/", include("django.contrib.auth.urls")),
@@ -164,6 +168,7 @@ router.register("Sampling-rules", SamplingRuleViewSet, basename="sampling-rules"
 router.register("MeasurementDefinitions", MeasurementsDefinitionViewSet)
 router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
+router.register("User", UserViewSet, basename="User")
 
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),

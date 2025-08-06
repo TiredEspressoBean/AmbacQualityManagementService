@@ -43,17 +43,32 @@ import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts"
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 
 const samplingRuleSchema = z.object({
-    rule_type: z.string().min(1),
+    rule_type: z
+        .string()
+        .min(1, "Rule type is required - please select a sampling rule type"),
     value: z.union([z.string(), z.number(), z.null()]),
     order: z.number().min(0),
 })
 
 const formSchema = z.object({
-    name: z.string().min(1),
-    order: z.number().min(1),
-    description: z.string(),
-    part_type: z.number(),
-    process: z.number(),
+    name: z
+        .string()
+        .min(1, "Step name is required - please enter a descriptive name for this step")
+        .max(255, "Step name must be 255 characters or less"),
+    order: z
+        .number()
+        .min(1, "Step order must be at least 1 - please specify the position of this step in the process")
+        .max(100, "Step order cannot exceed 100 - please use a reasonable step number"),
+    description: z
+        .string()
+        .min(1, "Step description is required - please describe what happens in this step")
+        .max(1000, "Step description must be 1000 characters or less"),
+    part_type: z
+        .number()
+        .min(1, "Part type must be selected - please choose which part type this step applies to"),
+    process: z
+        .number()
+        .min(1, "Process must be selected - please choose which process this step belongs to"),
     rules: z.array(samplingRuleSchema),
     fallback_rules: z.array(samplingRuleSchema).optional(),
     fallback_threshold: z.number().optional(),
@@ -209,10 +224,25 @@ export default function StepFormPage() {
 
                     <FormField
                         control={form.control}
+                        name="name"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Step Name *</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. Machining, Assembly, Quality Check" {...field} />
+                                </FormControl>
+                                <FormDescription>A descriptive name for this step</FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
                         name="order"
                         render={({field}) => (
                             <FormItem>
-                                <FormLabel>Step Number</FormLabel>
+                                <FormLabel>Step Number *</FormLabel>
                                 <FormControl>
                                     <Input type="number" {...field} />
                                 </FormControl>
@@ -227,7 +257,7 @@ export default function StepFormPage() {
                         name="description"
                         render={({field}) => (
                             <FormItem>
-                                <FormLabel>Description</FormLabel>
+                                <FormLabel>Description *</FormLabel>
                                 <FormControl>
                                     <Textarea className="resize-none" {...field} />
                                 </FormControl>
@@ -244,7 +274,7 @@ export default function StepFormPage() {
                             const selected = partTypes?.results.find(pt => pt.id === field.value)
                             return (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Part Type</FormLabel>
+                                    <FormLabel>Part Type *</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -303,7 +333,7 @@ export default function StepFormPage() {
                             const selected = processes?.results.find(p => p.id === field.value)
                             return (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Process</FormLabel>
+                                    <FormLabel>Process *</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>

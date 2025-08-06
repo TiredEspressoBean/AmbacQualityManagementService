@@ -58,6 +58,16 @@ const editors = [
         name: "Work Orders",
         description: "Manage work orders and their status",
         path: "/editor/workOrders",
+    },
+    {
+        name: "Companies",
+        description: "Manage companies",
+        path: "/editor/companies",
+    },
+    {
+        name: "Users",
+        description: "Manage users",
+        path: "/editor/users",
     }
 ];
 
