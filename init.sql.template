@@ -1,0 +1,29 @@
+-- PostgreSQL Initialization Script Template
+-- This file uses environment variable substitution
+-- Process with envsubst or similar tool before execution
+
+-- Create readonly role group (optional but recommended)
+CREATE ROLE readonly;
+
+-- Create the readonly user and assign to readonly group
+-- Environment variables: POSTGRES_READONLY_USER, POSTGRES_READONLY_PASSWORD
+CREATE USER ${POSTGRES_READONLY_USER} WITH PASSWORD '${POSTGRES_READONLY_PASSWORD}';
+GRANT readonly TO ${POSTGRES_READONLY_USER};
+
+-- Grant access to database
+-- Environment variable: POSTGRES_DB
+GRANT CONNECT ON DATABASE "${POSTGRES_DB}" TO readonly;
+
+-- Grant schema-level usage
+GRANT USAGE ON SCHEMA public TO readonly;
+
+-- Grant table and sequence access for current objects
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO readonly;
+
+-- Grant SELECT for future tables and sequences
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT ON TABLES TO readonly;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT ON SEQUENCES TO readonly;
