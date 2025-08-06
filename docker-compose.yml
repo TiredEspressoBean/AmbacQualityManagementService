@@ -1,26 +1,19 @@
-version: "3.9"
+version: "3.8"
 
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB:-tracker_AMBAC}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_READONLY_USER: ${POSTGRES_READONLY_USER:-readonly_user}
-      POSTGRES_READONLY_PASSWORD: ${POSTGRES_READONLY_PASSWORD:-readonly_pw}
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./init.sql.template:/docker-entrypoint-initdb.d/init.sql.template
-      - ./docker-init-db.sh:/docker-entrypoint-initdb.d/00-process-template.sh
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tracker_AMBAC}"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -30,27 +23,14 @@ services:
       context: ./PartsTracker
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: >
-      sh -c "
-      echo 'Waiting for PostgreSQL to be ready...' &&
-      sleep 5 &&
-      echo 'Starting Django migrations...' &&
-      python manage.py makemigrations &&
-      python manage.py migrate &&
-      python manage.py create_temp_admin &&
-      python manage.py tailwind install &&
-      python manage.py tailwind build &&
-      python manage.py crontab remove &&
-      python manage.py crontab add &&
-      service cron start &&
-      echo 'Starting Django development server...' &&
-      python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     environment:
-      POSTGRES_HOST: postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-tracker_AMBAC}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -61,16 +41,12 @@ services:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
-      args:
-        VITE_API_TARGET: ${VITE_API_TARGET}
     ports:
-      - "5173:5173"  # Map container's port 80 to host's port 5173
-    environment:                         # Add this for runtime
-      - VITE_API_TARGET=${VITE_API_TARGET}
-    env_file:
-      - .env
+      - "5173:5173"
+    environment:
+      - VITE_API_TARGET=${VITE_API_TARGET:-http://localhost:8000}
     depends_on:
       - backend
 
 volumes:
-  pgdata:
+  postgres_data:
