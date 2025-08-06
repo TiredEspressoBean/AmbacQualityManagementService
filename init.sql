@@ -1,7 +1,20 @@
+-- PostgreSQL Initialization Script
+-- 
+-- NOTE: For environment variable support, use init.sql.template instead.
+-- This file contains default values for development.
+--
+-- Environment Variables (when using template):
+-- - POSTGRES_DB (default: tracker_AMBAC)
+-- - POSTGRES_READONLY_USER (default: readonly_user) 
+-- - POSTGRES_READONLY_PASSWORD (default: readonly_pw)
+--
+-- To generate from template:
+-- envsubst < init.sql.template > init.sql
+
 -- Create readonly role group (optional but recommended)
 CREATE ROLE readonly;
 
--- Create the readonly user and assign to readonly group
+-- Create the readonly user and assign to readonly group  
 CREATE USER readonly_user WITH PASSWORD 'readonly_pw';
 GRANT readonly TO readonly_user;
 
