@@ -1,0 +1,81 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=PartsTrackerApp.settings_azure
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    nodejs \
+    npm \
+    cron \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir gunicorn
+
+# Install Tailwind globally
+RUN npm install -g tailwindcss
+
+# Copy the Django project code
+COPY . /app/
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create directories for static files and media
+RUN mkdir -p /app/staticfiles /app/media
+
+# Create gunicorn configuration
+RUN echo 'bind = "0.0.0.0:8000"' > /app/gunicorn.conf.py && \
+    echo 'workers = 4' >> /app/gunicorn.conf.py && \
+    echo 'worker_class = "sync"' >> /app/gunicorn.conf.py && \
+    echo 'worker_connections = 1000' >> /app/gunicorn.conf.py && \
+    echo 'max_requests = 1000' >> /app/gunicorn.conf.py && \
+    echo 'max_requests_jitter = 100' >> /app/gunicorn.conf.py && \
+    echo 'timeout = 30' >> /app/gunicorn.conf.py && \
+    echo 'keepalive = 2' >> /app/gunicorn.conf.py && \
+    echo 'preload_app = True' >> /app/gunicorn.conf.py
+
+# Set proper ownership and permissions
+RUN chown -R appuser:appuser /app
+RUN chmod +x /app/gunicorn.conf.py
+
+# Switch to non-root user
+USER appuser
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Create startup script
+USER root
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Starting Django application..."\n\
+\n\
+# Switch to appuser for Django commands\n\
+su appuser -c "python manage.py migrate --noinput"\n\
+su appuser -c "python manage.py collectstatic --noinput --clear"\n\
+su appuser -c "python manage.py tailwind build --skip-checks"\n\
+su appuser -c "python manage.py crontab remove" || true\n\
+su appuser -c "python manage.py crontab add"\n\
+\n\
+# Start cron service\n\
+service cron start\n\
+\n\
+# Start gunicorn as appuser\n\
+exec su appuser -c "gunicorn -c gunicorn.conf.py PartsTrackerApp.wsgi:application"\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Start script for production
+CMD ["/app/start.sh"]

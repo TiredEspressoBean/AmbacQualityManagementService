@@ -15,9 +15,6 @@ export default defineConfig(({ mode }) => {
     }
 
     return {
-        optimizeDeps: {
-            include: ["pdfjs-dist/build/pdf.worker.min.js"]
-        },
         plugins: [react(), tailwindcss()],
         resolve: {
             alias: {

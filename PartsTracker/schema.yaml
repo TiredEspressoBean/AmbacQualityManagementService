@@ -8,10 +8,32 @@ paths:
     get:
       operationId: api_Companies_list
       parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
       - name: ordering
         required: false
         in: query
         description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
         schema:
           type: string
       tags:
@@ -23,9 +45,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Company'
+                $ref: '#/components/schemas/PaginatedCompanyList'
           description: ''
     post:
       operationId: api_Companies_create
@@ -173,7 +193,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Customer'
+                  $ref: '#/components/schemas/UserDetail'
           description: ''
     post:
       operationId: api_Customers_create
@@ -183,13 +203,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
         required: true
       security:
       - cookieAuth: []
@@ -198,7 +218,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/UserDetail'
           description: ''
   /api/Customers/{id}/:
     get:
@@ -219,7 +239,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/UserDetail'
           description: ''
     put:
       operationId: api_Customers_update
@@ -236,13 +256,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CustomerRequest'
+              $ref: '#/components/schemas/UserDetailRequest'
         required: true
       security:
       - cookieAuth: []
@@ -251,7 +271,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/UserDetail'
           description: ''
     patch:
       operationId: api_Customers_partial_update
@@ -268,13 +288,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedCustomerRequest'
+              $ref: '#/components/schemas/PatchedUserDetailRequest'
       security:
       - cookieAuth: []
       responses:
@@ -282,7 +302,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
+                $ref: '#/components/schemas/UserDetail'
           description: ''
     delete:
       operationId: api_Customers_destroy
@@ -349,7 +369,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedDocumentList'
+                $ref: '#/components/schemas/PaginatedDocumentsList'
           description: ''
     post:
       operationId: api_Documents_create
@@ -359,13 +379,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -374,7 +394,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/Documents'
           description: ''
   /api/Documents/{id}/:
     get:
@@ -395,7 +415,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/Documents'
           description: ''
     put:
       operationId: api_Documents_update
@@ -412,13 +432,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentRequest'
+              $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -427,7 +447,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/Documents'
           description: ''
     patch:
       operationId: api_Documents_partial_update
@@ -444,13 +464,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedDocumentRequest'
+              $ref: '#/components/schemas/PatchedDocumentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedDocumentRequest'
+              $ref: '#/components/schemas/PatchedDocumentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedDocumentRequest'
+              $ref: '#/components/schemas/PatchedDocumentsRequest'
       security:
       - cookieAuth: []
       responses:
@@ -458,7 +478,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/Documents'
           description: ''
     delete:
       operationId: api_Documents_destroy
@@ -507,7 +527,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedEmployeeSelectList'
+                $ref: '#/components/schemas/PaginatedUserSelectList'
           description: ''
   /api/Employees-Options/{id}/:
     get:
@@ -528,7 +548,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmployeeSelect'
+                $ref: '#/components/schemas/UserSelect'
           description: ''
   /api/Equipment/:
     get:
@@ -571,7 +591,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedEquipmentList'
+                $ref: '#/components/schemas/PaginatedEquipmentsList'
           description: ''
     post:
       operationId: api_Equipment_create
@@ -581,13 +601,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -596,7 +616,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Equipment'
+                $ref: '#/components/schemas/Equipments'
           description: ''
   /api/Equipment-Options/:
     get:
@@ -629,7 +649,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedEquipmentSelectList'
+                $ref: '#/components/schemas/PaginatedEquipmentsList'
           description: ''
   /api/Equipment-Options/{id}/:
     get:
@@ -650,7 +670,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EquipmentSelect'
+                $ref: '#/components/schemas/Equipments'
           description: ''
   /api/Equipment-types/:
     get:
@@ -839,7 +859,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Equipment'
+                $ref: '#/components/schemas/Equipments'
           description: ''
     put:
       operationId: api_Equipment_update
@@ -856,13 +876,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EquipmentRequest'
+              $ref: '#/components/schemas/EquipmentsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -871,7 +891,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Equipment'
+                $ref: '#/components/schemas/Equipments'
           description: ''
     patch:
       operationId: api_Equipment_partial_update
@@ -888,13 +908,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedEquipmentRequest'
+              $ref: '#/components/schemas/PatchedEquipmentsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedEquipmentRequest'
+              $ref: '#/components/schemas/PatchedEquipmentsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedEquipmentRequest'
+              $ref: '#/components/schemas/PatchedEquipmentsRequest'
       security:
       - cookieAuth: []
       responses:
@@ -902,7 +922,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Equipment'
+                $ref: '#/components/schemas/Equipments'
           description: ''
     delete:
       operationId: api_Equipment_destroy
@@ -961,7 +981,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedErrorTypeList'
+                $ref: '#/components/schemas/PaginatedQualityErrorsListList'
           description: ''
     post:
       operationId: api_Error_types_create
@@ -971,13 +991,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
         required: true
       security:
       - cookieAuth: []
@@ -986,7 +1006,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorType'
+                $ref: '#/components/schemas/QualityErrorsList'
           description: ''
   /api/Error-types/{id}/:
     get:
@@ -1007,7 +1027,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorType'
+                $ref: '#/components/schemas/QualityErrorsList'
           description: ''
     put:
       operationId: api_Error_types_update
@@ -1024,13 +1044,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ErrorTypeRequest'
+              $ref: '#/components/schemas/QualityErrorsListRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1039,7 +1059,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorType'
+                $ref: '#/components/schemas/QualityErrorsList'
           description: ''
     patch:
       operationId: api_Error_types_partial_update
@@ -1056,13 +1076,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedErrorTypeRequest'
+              $ref: '#/components/schemas/PatchedQualityErrorsListRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedErrorTypeRequest'
+              $ref: '#/components/schemas/PatchedQualityErrorsListRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedErrorTypeRequest'
+              $ref: '#/components/schemas/PatchedQualityErrorsListRequest'
       security:
       - cookieAuth: []
       responses:
@@ -1070,7 +1090,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorType'
+                $ref: '#/components/schemas/QualityErrorsList'
           description: ''
     delete:
       operationId: api_Error_types_destroy
@@ -1119,7 +1139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedQualityReportFormList'
+                $ref: '#/components/schemas/PaginatedQualityReportsList'
           description: ''
     post:
       operationId: api_ErrorReports_create
@@ -1129,13 +1149,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1144,7 +1164,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QualityReportForm'
+                $ref: '#/components/schemas/QualityReports'
           description: ''
   /api/ErrorReports/{id}/:
     get:
@@ -1165,7 +1185,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QualityReportForm'
+                $ref: '#/components/schemas/QualityReports'
           description: ''
     put:
       operationId: api_ErrorReports_update
@@ -1182,13 +1202,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/QualityReportFormRequest'
+              $ref: '#/components/schemas/QualityReportsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1197,7 +1217,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QualityReportForm'
+                $ref: '#/components/schemas/QualityReports'
           description: ''
     patch:
       operationId: api_ErrorReports_partial_update
@@ -1214,13 +1234,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedQualityReportFormRequest'
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedQualityReportFormRequest'
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedQualityReportFormRequest'
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
       security:
       - cookieAuth: []
       responses:
@@ -1228,7 +1248,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QualityReportForm'
+                $ref: '#/components/schemas/QualityReports'
           description: ''
     delete:
       operationId: api_ErrorReports_destroy
@@ -1819,13 +1839,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BulkAddPartsRequest'
+              $ref: '#/components/schemas/BulkAddPartsInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BulkAddPartsRequest'
+              $ref: '#/components/schemas/BulkAddPartsInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/BulkAddPartsRequest'
+              $ref: '#/components/schemas/BulkAddPartsInputRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1853,13 +1873,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BulkRemovePartsRequest'
+              $ref: '#/components/schemas/BulkSoftDeleteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BulkRemovePartsRequest'
+              $ref: '#/components/schemas/BulkSoftDeleteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/BulkRemovePartsRequest'
+              $ref: '#/components/schemas/BulkSoftDeleteRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1952,7 +1972,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPartTypeList'
+                $ref: '#/components/schemas/PaginatedPartTypesList'
           description: ''
     post:
       operationId: api_PartTypes_create
@@ -1968,13 +1988,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
         required: true
       security:
       - cookieAuth: []
@@ -1983,7 +2003,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartType'
+                $ref: '#/components/schemas/PartTypes'
           description: ''
   /api/PartTypes/{id}/:
     get:
@@ -2009,7 +2029,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartType'
+                $ref: '#/components/schemas/PartTypes'
           description: ''
     put:
       operationId: api_PartTypes_update
@@ -2031,13 +2051,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartTypeRequest'
+              $ref: '#/components/schemas/PartTypesRequest'
         required: true
       security:
       - cookieAuth: []
@@ -2046,7 +2066,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartType'
+                $ref: '#/components/schemas/PartTypes'
           description: ''
     patch:
       operationId: api_PartTypes_partial_update
@@ -2068,13 +2088,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedPartTypeRequest'
+              $ref: '#/components/schemas/PatchedPartTypesRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedPartTypeRequest'
+              $ref: '#/components/schemas/PatchedPartTypesRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedPartTypeRequest'
+              $ref: '#/components/schemas/PatchedPartTypesRequest'
       security:
       - cookieAuth: []
       responses:
@@ -2082,7 +2102,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartType'
+                $ref: '#/components/schemas/PartTypes'
           description: ''
     delete:
       operationId: api_PartTypes_destroy
@@ -2586,7 +2606,6 @@ paths:
       - api
       security:
       - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2612,7 +2631,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - {}
       responses:
         '201':
           content:
@@ -2634,7 +2652,6 @@ paths:
       - api
       security:
       - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2667,7 +2684,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2699,7 +2715,6 @@ paths:
               $ref: '#/components/schemas/PatchedProcessWithStepsRequest'
       security:
       - cookieAuth: []
-      - {}
       responses:
         '200':
           content:
@@ -2720,7 +2735,6 @@ paths:
       - api
       security:
       - cookieAuth: []
-      - {}
       responses:
         '204':
           description: No response body
@@ -3143,7 +3157,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedStepList'
+                $ref: '#/components/schemas/PaginatedStepsList'
           description: ''
     post:
       operationId: api_Steps_create
@@ -3164,13 +3178,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -3179,7 +3193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Step'
+                $ref: '#/components/schemas/Steps'
           description: ''
   /api/Steps/{id}/:
     get:
@@ -3210,7 +3224,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Step'
+                $ref: '#/components/schemas/Steps'
           description: ''
     put:
       operationId: api_Steps_update
@@ -3237,13 +3251,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StepRequest'
+              $ref: '#/components/schemas/StepsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -3252,7 +3266,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Step'
+                $ref: '#/components/schemas/Steps'
           description: ''
     patch:
       operationId: api_Steps_partial_update
@@ -3279,13 +3293,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedStepRequest'
+              $ref: '#/components/schemas/PatchedStepsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedStepRequest'
+              $ref: '#/components/schemas/PatchedStepsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedStepRequest'
+              $ref: '#/components/schemas/PatchedStepsRequest'
       security:
       - cookieAuth: []
       responses:
@@ -3293,7 +3307,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Step'
+                $ref: '#/components/schemas/Steps'
           description: ''
     delete:
       operationId: api_Steps_destroy
@@ -3353,7 +3367,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Step'
+                $ref: '#/components/schemas/Steps'
           description: ''
   /api/Steps/{id}/update_sampling_rules/:
     post:
@@ -3382,13 +3396,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StepSamplingRulesWriteRequest'
+              $ref: '#/components/schemas/StepSamplingRulesUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/StepSamplingRulesWriteRequest'
+              $ref: '#/components/schemas/StepSamplingRulesUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/StepSamplingRulesWriteRequest'
+              $ref: '#/components/schemas/StepSamplingRulesUpdateRequest'
         required: true
       security:
       - cookieAuth: []
@@ -3397,7 +3411,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StepSamplingRulesResponse'
+                $ref: '#/components/schemas/Steps'
           description: Sampling rules updated successfully.
   /api/TrackerOrders/:
     get:
@@ -3430,7 +3444,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedTrackerPageOrderList'
+                $ref: '#/components/schemas/PaginatedOrdersList'
           description: ''
     post:
       operationId: api_TrackerOrders_create
@@ -3440,13 +3454,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
         required: true
       security:
       - cookieAuth: []
@@ -3455,7 +3469,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrackerPageOrder'
+                $ref: '#/components/schemas/Orders'
           description: ''
   /api/TrackerOrders/{id}/:
     get:
@@ -3475,7 +3489,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrackerPageOrder'
+                $ref: '#/components/schemas/Orders'
           description: ''
     put:
       operationId: api_TrackerOrders_update
@@ -3491,13 +3505,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TrackerPageOrderRequest'
+              $ref: '#/components/schemas/OrdersRequest'
         required: true
       security:
       - cookieAuth: []
@@ -3506,7 +3520,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrackerPageOrder'
+                $ref: '#/components/schemas/Orders'
           description: ''
     patch:
       operationId: api_TrackerOrders_partial_update
@@ -3522,13 +3536,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedTrackerPageOrderRequest'
+              $ref: '#/components/schemas/PatchedOrdersRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedTrackerPageOrderRequest'
+              $ref: '#/components/schemas/PatchedOrdersRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedTrackerPageOrderRequest'
+              $ref: '#/components/schemas/PatchedOrdersRequest'
       security:
       - cookieAuth: []
       responses:
@@ -3536,7 +3550,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrackerPageOrder'
+                $ref: '#/components/schemas/Orders'
           description: ''
     delete:
       operationId: api_TrackerOrders_destroy
@@ -3553,6 +3567,276 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/User/:
+    get:
+      operationId: api_User_list
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      parameters:
+      - in: query
+        name: archived
+        schema:
+          type: boolean
+      - in: query
+        name: date_joined__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: date_joined__lte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: email
+        schema:
+          type: string
+      - in: query
+        name: first_name
+        schema:
+          type: string
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: is_staff
+        schema:
+          type: boolean
+      - in: query
+        name: last_name
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: parent_company
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: username
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+    post:
+      operationId: api_User_create
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/User/{id}/:
+    get:
+      operationId: api_User_retrieve
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: api_User_update
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: api_User_partial_update
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: api_User_destroy
+      description: Enhanced User ViewSet with comprehensive filtering, ordering, and
+        search
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/User/bulk-activate/:
+    post:
+      operationId: api_User_bulk_activate_create
+      description: Bulk activate/deactivate users
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUserActivationInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkUserActivationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkUserActivationInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Bulk activation response
+  /api/User/bulk-assign-company/:
+    post:
+      operationId: api_User_bulk_assign_company_create
+      description: Bulk assign users to a company
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCompanyAssignmentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkCompanyAssignmentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkCompanyAssignmentInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Bulk company assignment response
   /api/WorkOrders/:
     get:
       operationId: api_WorkOrders_list
@@ -3811,7 +4095,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedLogEntryList'
+                $ref: '#/components/schemas/PaginatedAuditLogList'
           description: ''
   /api/auditlog/{id}/:
     get:
@@ -3832,7 +4116,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LogEntry'
+                $ref: '#/components/schemas/AuditLog'
           description: ''
   /api/content-types/:
     get:
@@ -4406,6 +4690,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserDetails'
           description: ''
+  /password/reset/confirm/{uidb64}/{token}/:
+    post:
+      operationId: password_reset_confirm_create
+      description: |-
+        Password reset e-mail link is confirmed, therefore
+        this resets the user's password.
+
+        Accepts the following POST parameters: token, uid,
+            new_password1, new_password2
+        Returns the success/fail message.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uidb64
+        schema:
+          type: string
+        required: true
+      tags:
+      - password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestAuthDetail'
+          description: ''
 components:
   schemas:
     ActionEnum:
@@ -4420,7 +4749,57 @@ components:
         * `1` - update
         * `2` - delete
         * `3` - access
-    BulkAddPartsRequest:
+    AuditLog:
+      type: object
+      description: Enhanced audit log serializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        object_pk:
+          type: string
+          maxLength: 255
+        object_repr:
+          type: string
+          title: Object representation
+        content_type:
+          type: integer
+        content_type_name:
+          type: string
+          readOnly: true
+        actor:
+          type: integer
+          nullable: true
+        actor_info:
+          type: object
+          nullable: true
+          readOnly: true
+        remote_addr:
+          type: string
+          nullable: true
+          title: Remote address
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          minimum: 0
+          maximum: 32767
+        changes:
+          nullable: true
+          title: Change message
+      required:
+      - action
+      - actor_info
+      - content_type
+      - content_type_name
+      - id
+      - object_pk
+      - object_repr
+      - timestamp
+    BulkAddPartsInputRequest:
       type: object
       properties:
         part_type:
@@ -4429,30 +4808,59 @@ components:
           type: integer
         quantity:
           type: integer
-          minimum: 1
         part_status:
-          $ref: '#/components/schemas/PartStatusEnum'
-        process_id:
+          allOf:
+          - $ref: '#/components/schemas/PartStatusEnum'
+          default: PENDING
+        work_order:
           type: integer
-        ERP_id:
-          type: string
-          minLength: 1
+        erp_id_start:
+          type: integer
+          default: 1
       required:
-      - ERP_id
-      - part_status
       - part_type
-      - process_id
       - quantity
       - step
-    BulkRemovePartsRequest:
+    BulkCompanyAssignmentInputRequest:
       type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: integer
+        company_id:
+          type: integer
+          nullable: true
+      required:
+      - company_id
+      - user_ids
+    BulkSoftDeleteRequest:
+      type: object
+      description: Serializer for bulk soft delete operations
       properties:
         ids:
           type: array
           items:
             type: integer
+        reason:
+          type: string
+          minLength: 1
+          default: bulk_admin_delete
+          maxLength: 200
       required:
       - ids
+    BulkUserActivationInputRequest:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: integer
+        is_active:
+          type: boolean
+      required:
+      - is_active
+      - user_ids
     ClassificationEnum:
       enum:
       - public
@@ -4469,6 +4877,7 @@ components:
         * `secret` - Secret
     Company:
       type: object
+      description: Company serializer with secure filtering
       properties:
         id:
           type: integer
@@ -4481,13 +4890,32 @@ components:
         hubspot_api_id:
           type: string
           maxLength: 50
+        user_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
       required:
+      - archived
+      - created_at
       - description
       - hubspot_api_id
       - id
       - name
+      - updated_at
+      - user_count
     CompanyRequest:
       type: object
+      description: Company serializer with secure filtering
       properties:
         name:
           type: string
@@ -4506,6 +4934,7 @@ components:
       - name
     ContentType:
       type: object
+      description: Content type serializer
       properties:
         id:
           type: integer
@@ -4521,75 +4950,28 @@ components:
       - app_label
       - id
       - model
-    Customer:
+    Documents:
       type: object
-      properties:
-        username:
-          type: string
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        first_name:
-          type: string
-          maxLength: 150
-        last_name:
-          type: string
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        is_staff:
-          type: boolean
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        parent_company:
-          $ref: '#/components/schemas/Company'
-        id:
-          type: integer
-          readOnly: true
-      required:
-      - id
-      - parent_company
-      - username
-    CustomerRequest:
-      type: object
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        first_name:
-          type: string
-          maxLength: 150
-        last_name:
-          type: string
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        is_staff:
-          type: boolean
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        parent_company:
-          $ref: '#/components/schemas/CompanyRequest'
-      required:
-      - parent_company
-      - username
-    Document:
-      type: object
+      description: Enhanced documents serializer using model methods
       properties:
         id:
           type: integer
           readOnly: true
+        classification:
+          nullable: true
+          description: |-
+            Security classification level for document access control
+
+            * `public` - Public
+            * `internal` - Internal Use
+            * `confidential` - Confidential
+            * `restricted` - Restricted
+            * `secret` - Secret
+          oneOf:
+          - $ref: '#/components/schemas/ClassificationEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        ai_readable:
+          type: boolean
         is_image:
           type: boolean
         file_name:
@@ -4600,7 +4982,6 @@ components:
           format: uri
         file_url:
           type: string
-          nullable: true
           readOnly: true
         upload_date:
           type: string
@@ -4609,17 +4990,14 @@ components:
         uploaded_by:
           type: integer
           nullable: true
-        uploaded_by_name:
-          type: string
+        uploaded_by_info:
+          type: object
+          additionalProperties: {}
           readOnly: true
         content_type:
           type: integer
           nullable: true
           description: Model of the object this document relates to
-        content_type_model:
-          type: string
-          nullable: true
-          readOnly: true
         object_id:
           type: integer
           maximum: 9223372036854775807
@@ -4627,19 +5005,54 @@ components:
           format: int64
           nullable: true
           description: ID of the object this document relates to
+        content_type_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
         version:
           type: integer
-          maximum: 32767
+          maximum: 2147483647
           minimum: 0
+        access_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        auto_properties:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+      required:
+      - access_info
+      - archived
+      - auto_properties
+      - content_type_info
+      - created_at
+      - file
+      - file_name
+      - file_url
+      - id
+      - updated_at
+      - upload_date
+      - uploaded_by_info
+    DocumentsRequest:
+      type: object
+      description: Enhanced documents serializer using model methods
+      properties:
         classification:
           nullable: true
           description: |-
-            Level of document classification:
-            - "public": Public
-            - "internal": Internal Use
-            - "confidential": Confidential
-            - "restricted": Restricted (serious impact)
-            - "secret": Secret (critical impact)
+            Security classification level for document access control
 
             * `public` - Public
             * `internal` - Internal Use
@@ -4649,18 +5062,8 @@ components:
           oneOf:
           - $ref: '#/components/schemas/ClassificationEnum'
           - $ref: '#/components/schemas/NullEnum'
-      required:
-      - content_type_model
-      - file
-      - file_name
-      - file_url
-      - id
-      - is_image
-      - upload_date
-      - uploaded_by_name
-    DocumentRequest:
-      type: object
-      properties:
+        ai_readable:
+          type: boolean
         is_image:
           type: boolean
         file_name:
@@ -4686,51 +5089,77 @@ components:
           description: ID of the object this document relates to
         version:
           type: integer
-          maximum: 32767
+          maximum: 2147483647
           minimum: 0
-        classification:
-          nullable: true
-          description: |-
-            Level of document classification:
-            - "public": Public
-            - "internal": Internal Use
-            - "confidential": Confidential
-            - "restricted": Restricted (serious impact)
-            - "secret": Secret (critical impact)
-
-            * `public` - Public
-            * `internal` - Internal Use
-            * `confidential` - Confidential
-            * `restricted` - Restricted
-            * `secret` - Secret
-          oneOf:
-          - $ref: '#/components/schemas/ClassificationEnum'
-          - $ref: '#/components/schemas/NullEnum'
       required:
       - file
       - file_name
-      - is_image
-    EmployeeSelect:
+    EquipmentType:
       type: object
+      description: Equipment type serializer
       properties:
         id:
           type: integer
           readOnly: true
-        first_name:
+        archived:
+          type: boolean
+        deleted_at:
           type: string
-          maxLength: 150
-        last_name:
+          format: date-time
+          nullable: true
+        created_at:
           type: string
-          maxLength: 150
-        email:
+          format: date-time
+          readOnly: true
+        updated_at:
           type: string
-          format: email
-          title: Email address
-          maxLength: 254
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
+        name:
+          type: string
+          maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
       required:
+      - created_at
       - id
-    Equipment:
+      - name
+      - updated_at
+    EquipmentTypeRequest:
       type: object
+      description: Equipment type serializer
+      properties:
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
+      required:
+      - name
+    Equipments:
+      type: object
+      description: Equipment serializer
       properties:
         id:
           type: integer
@@ -4748,8 +5177,9 @@ components:
       - equipment_type_name
       - id
       - name
-    EquipmentRequest:
+    EquipmentsRequest:
       type: object
+      description: Equipment serializer
       properties:
         name:
           type: string
@@ -4760,149 +5190,78 @@ components:
           nullable: true
       required:
       - name
-    EquipmentSelect:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        equipment_type:
-          $ref: '#/components/schemas/EquipmentType'
-        name:
-          type: string
-          maxLength: 50
-      required:
-      - equipment_type
-      - id
-      - name
-    EquipmentType:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 50
-      required:
-      - id
-      - name
-    EquipmentTypeRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 50
-      required:
-      - name
-    ErrorType:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        error_name:
-          type: string
-          maxLength: 50
-        error_example:
-          type: string
-        part_type:
-          type: integer
-          nullable: true
-        part_type_name:
-          type: string
-          readOnly: true
-      required:
-      - error_example
-      - error_name
-      - id
-      - part_type_name
-    ErrorTypeRequest:
-      type: object
-      properties:
-        error_name:
-          type: string
-          minLength: 1
-          maxLength: 50
-        error_example:
-          type: string
-          minLength: 1
-        part_type:
-          type: integer
-          nullable: true
-      required:
-      - error_example
-      - error_name
     ExternalAPIOrderIdentifier:
       type: object
+      description: External API order identifier serializer
       properties:
         id:
           type: integer
           readOnly: true
-        stage_name:
-          type: string
-          maxLength: 100
-        API_id:
-          type: string
-          maxLength: 50
-      required:
-      - API_id
-      - id
-      - stage_name
-    ExternalAPIOrderIdentifierRequest:
-      type: object
-      properties:
-        stage_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        API_id:
-          type: string
-          minLength: 1
-          maxLength: 50
-      required:
-      - API_id
-      - stage_name
-    LogEntry:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        object_pk:
-          type: string
-          maxLength: 255
-        object_repr:
-          type: string
-          title: Object representation
-        content_type_name:
-          type: string
-          readOnly: true
-        actor:
-          type: integer
-          nullable: true
-        remote_addr:
-          type: string
-          nullable: true
-          title: Remote address
-        timestamp:
+        archived:
+          type: boolean
+        deleted_at:
           type: string
           format: date-time
-        action:
-          allOf:
-          - $ref: '#/components/schemas/ActionEnum'
-          minimum: 0
-          maximum: 32767
-        changes:
           nullable: true
-          title: Change message
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
+        stage_name:
+          type: string
+          maxLength: 100
+        API_id:
+          type: string
+          maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
       required:
-      - action
-      - content_type_name
+      - API_id
+      - created_at
       - id
-      - object_pk
-      - object_repr
+      - stage_name
+      - updated_at
+    ExternalAPIOrderIdentifierRequest:
+      type: object
+      description: External API order identifier serializer
+      properties:
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
+        stage_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        API_id:
+          type: string
+          minLength: 1
+          maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
+      required:
+      - API_id
+      - stage_name
     LoginRequest:
       type: object
       properties:
@@ -4918,6 +5277,7 @@ components:
       - password
     MeasurementDefinition:
       type: object
+      description: Measurement definition serializer
       properties:
         id:
           type: integer
@@ -4966,6 +5326,7 @@ components:
       - type
     MeasurementDefinitionRequest:
       type: object
+      description: Measurement definition serializer
       properties:
         label:
           type: string
@@ -5022,19 +5383,47 @@ components:
         * `CANCELLED` - Cancelled
     Orders:
       type: object
+      description: Enhanced orders serializer with user filtering and features
       properties:
         id:
           type: integer
           readOnly: true
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
+        name:
+          type: string
+          maxLength: 50
+        customer_note:
+          type: string
+          nullable: true
+          maxLength: 500
         customer:
           type: integer
+        customer_info:
+          allOf:
+          - $ref: '#/components/schemas/UserSelect'
+          readOnly: true
         company:
           type: integer
+        company_info:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+        estimated_completion:
+          type: string
+          format: date
+          nullable: true
+        order_status:
+          $ref: '#/components/schemas/OrderStatusEnum'
         current_hubspot_gate:
           type: integer
           nullable: true
+        parts_summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        process_stages:
+          type: array
+          items: {}
+          readOnly: true
         customer_first_name:
           type: string
           readOnly: true
@@ -5044,48 +5433,37 @@ components:
         company_name:
           type: string
           readOnly: true
-        name:
-          type: string
-          maxLength: 50
-        customer_note:
-          type: string
-          nullable: true
-          maxLength: 500
-        estimated_completion:
-          type: string
-          format: date
-          nullable: true
-        original_completion_date:
+        created_at:
           type: string
           format: date-time
-          nullable: true
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
         archived:
           type: boolean
-        last_synced_hubspot_stage:
-          type: string
-          nullable: true
-          maxLength: 100
+          readOnly: true
       required:
+      - archived
       - company
+      - company_info
       - company_name
+      - created_at
       - customer
       - customer_first_name
+      - customer_info
       - customer_last_name
       - id
       - name
       - order_status
+      - parts_summary
+      - process_stages
+      - updated_at
     OrdersRequest:
       type: object
+      description: Enhanced orders serializer with user filtering and features
       properties:
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
-        customer:
-          type: integer
-        company:
-          type: integer
-        current_hubspot_gate:
-          type: integer
-          nullable: true
         name:
           type: string
           minLength: 1
@@ -5094,25 +5472,70 @@ components:
           type: string
           nullable: true
           maxLength: 500
+        customer:
+          type: integer
+        company:
+          type: integer
         estimated_completion:
           type: string
           format: date
           nullable: true
-        original_completion_date:
-          type: string
-          format: date-time
+        order_status:
+          $ref: '#/components/schemas/OrderStatusEnum'
+        current_hubspot_gate:
+          type: integer
           nullable: true
-        archived:
-          type: boolean
-        last_synced_hubspot_stage:
-          type: string
-          nullable: true
-          maxLength: 100
       required:
       - company
       - customer
       - name
       - order_status
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedCompanyList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Company'
     PaginatedContentTypeList:
       type: object
       required:
@@ -5136,7 +5559,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ContentType'
-    PaginatedDocumentList:
+    PaginatedDocumentsList:
       type: object
       required:
       - count
@@ -5158,76 +5581,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/Document'
-    PaginatedEmployeeSelectList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/EmployeeSelect'
-    PaginatedEquipmentList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/Equipment'
-    PaginatedEquipmentSelectList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/EquipmentSelect'
+            $ref: '#/components/schemas/Documents'
     PaginatedEquipmentTypeList:
       type: object
       required:
@@ -5251,7 +5605,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EquipmentType'
-    PaginatedErrorTypeList:
+    PaginatedEquipmentsList:
       type: object
       required:
       - count
@@ -5273,30 +5627,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/ErrorType'
-    PaginatedLogEntryList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/LogEntry'
+            $ref: '#/components/schemas/Equipments'
     PaginatedMeasurementDefinitionList:
       type: object
       required:
@@ -5343,7 +5674,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Orders'
-    PaginatedPartTypeList:
+    PaginatedPartTypesList:
       type: object
       required:
       - count
@@ -5365,7 +5696,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/PartType'
+            $ref: '#/components/schemas/PartTypes'
     PaginatedPartsList:
       type: object
       required:
@@ -5435,7 +5766,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Processes'
-    PaginatedQualityReportFormList:
+    PaginatedQualityErrorsListList:
       type: object
       required:
       - count
@@ -5457,7 +5788,30 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/QualityReportForm'
+            $ref: '#/components/schemas/QualityErrorsList'
+    PaginatedQualityReportsList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityReports'
     PaginatedSamplingRuleList:
       type: object
       required:
@@ -5527,7 +5881,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StepDistributionResponse'
-    PaginatedStepList:
+    PaginatedStepsList:
       type: object
       required:
       - count
@@ -5549,8 +5903,8 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/Step'
-    PaginatedTrackerPageOrderList:
+            $ref: '#/components/schemas/Steps'
+    PaginatedUserList:
       type: object
       required:
       - count
@@ -5572,7 +5926,30 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/TrackerPageOrder'
+            $ref: '#/components/schemas/User'
+    PaginatedUserSelectList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSelect'
     PaginatedWorkOrderList:
       type: object
       required:
@@ -5620,19 +5997,18 @@ components:
         * `REWORK_IN_PROGRESS` - Rework In Progress
         * `SCRAPPED` - Scrapped
         * `CANCELLED` - Cancelled
-    PartType:
+    PartTypes:
       type: object
+      description: Part types serializer
       properties:
         id:
           type: integer
           readOnly: true
-        previous_version:
-          type: integer
-          readOnly: true
-          nullable: true
-        previous_version_name:
+        archived:
+          type: boolean
+        deleted_at:
           type: string
-          readOnly: true
+          format: date-time
           nullable: true
         created_at:
           type: string
@@ -5642,6 +6018,12 @@ components:
           type: string
           format: date-time
           readOnly: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         name:
           type: string
           maxLength: 50
@@ -5649,24 +6031,34 @@ components:
           type: string
           nullable: true
           maxLength: 50
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
         ERP_id:
           type: string
           nullable: true
           maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
       required:
       - created_at
       - id
       - name
-      - previous_version
-      - previous_version_name
       - updated_at
-    PartTypeRequest:
+    PartTypesRequest:
       type: object
+      description: Part types serializer
       properties:
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -5675,99 +6067,149 @@ components:
           type: string
           nullable: true
           maxLength: 50
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
         ERP_id:
           type: string
           nullable: true
           maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
       required:
       - name
     Parts:
       type: object
+      description: Enhanced parts serializer using model methods
       properties:
         id:
           type: integer
           readOnly: true
+        ERP_id:
+          type: string
+          maxLength: 50
         part_status:
           $ref: '#/components/schemas/PartStatusEnum'
+        archived:
+          type: boolean
+          readOnly: true
+        requires_sampling:
+          type: boolean
+          readOnly: true
         order:
           type: integer
-          nullable: true
+        order_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
         part_type:
           type: integer
+        part_type_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        step:
+          type: integer
+        step_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        work_order:
+          type: integer
+          nullable: true
+        work_order_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        sampling_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        quality_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        sampling_history:
+          type: object
+          additionalProperties: {}
+          readOnly: true
         created_at:
           type: string
           format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        has_error:
+          type: boolean
+          readOnly: true
+        part_type_name:
+          type: string
+          readOnly: true
+        process_name:
+          type: string
           readOnly: true
         order_name:
           type: string
           readOnly: true
           nullable: true
-        part_type_name:
-          type: string
-          readOnly: true
-        step:
-          type: integer
         step_description:
           type: string
           readOnly: true
-        requires_sampling:
-          type: boolean
-          readOnly: true
-        ERP_id:
-          type: string
-          maxLength: 50
-        archived:
-          type: boolean
-        has_error:
-          type: boolean
-          readOnly: true
-        work_order:
-          type: integer
-          nullable: true
-        sampling_rule:
-          type: integer
-          nullable: true
-        sampling_ruleset:
-          type: integer
-          nullable: true
         work_order_erp_id:
           type: string
           readOnly: true
           nullable: true
+        quality_status:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        sampling_rule:
+          type: integer
+          nullable: true
+        sampling_ruleset:
+          type: integer
+          nullable: true
+        sampling_context: {}
       required:
       - ERP_id
+      - archived
       - created_at
       - has_error
       - id
+      - order_info
       - order_name
       - part_type
+      - part_type_info
       - part_type_name
+      - process_name
+      - quality_info
+      - quality_status
       - requires_sampling
+      - sampling_history
+      - sampling_info
       - step
       - step_description
+      - step_info
+      - updated_at
       - work_order_erp_id
+      - work_order_info
     PartsRequest:
       type: object
+      description: Enhanced parts serializer using model methods
       properties:
-        part_status:
-          $ref: '#/components/schemas/PartStatusEnum'
-        order:
-          type: integer
-          nullable: true
-        part_type:
-          type: integer
-        step:
-          type: integer
         ERP_id:
           type: string
           minLength: 1
           maxLength: 50
-        archived:
-          type: boolean
+        part_status:
+          $ref: '#/components/schemas/PartStatusEnum'
+        order:
+          type: integer
+        part_type:
+          type: integer
+        step:
+          type: integer
         work_order:
           type: integer
           nullable: true
@@ -5777,6 +6219,7 @@ components:
         sampling_ruleset:
           type: integer
           nullable: true
+        sampling_context: {}
       required:
       - ERP_id
       - part_type
@@ -5830,6 +6273,7 @@ components:
       - email
     PatchedCompanyRequest:
       type: object
+      description: Company serializer with secure filtering
       properties:
         name:
           type: string
@@ -5842,36 +6286,25 @@ components:
           type: string
           minLength: 1
           maxLength: 50
-    PatchedCustomerRequest:
+    PatchedDocumentsRequest:
       type: object
+      description: Enhanced documents serializer using model methods
       properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        first_name:
-          type: string
-          maxLength: 150
-        last_name:
-          type: string
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-        is_staff:
+        classification:
+          nullable: true
+          description: |-
+            Security classification level for document access control
+
+            * `public` - Public
+            * `internal` - Internal Use
+            * `confidential` - Confidential
+            * `restricted` - Restricted
+            * `secret` - Secret
+          oneOf:
+          - $ref: '#/components/schemas/ClassificationEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        ai_readable:
           type: boolean
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        parent_company:
-          $ref: '#/components/schemas/CompanyRequest'
-    PatchedDocumentRequest:
-      type: object
-      properties:
         is_image:
           type: boolean
         file_name:
@@ -5897,28 +6330,34 @@ components:
           description: ID of the object this document relates to
         version:
           type: integer
-          maximum: 32767
+          maximum: 2147483647
           minimum: 0
-        classification:
-          nullable: true
-          description: |-
-            Level of document classification:
-            - "public": Public
-            - "internal": Internal Use
-            - "confidential": Confidential
-            - "restricted": Restricted (serious impact)
-            - "secret": Secret (critical impact)
-
-            * `public` - Public
-            * `internal` - Internal Use
-            * `confidential` - Confidential
-            * `restricted` - Restricted
-            * `secret` - Secret
-          oneOf:
-          - $ref: '#/components/schemas/ClassificationEnum'
-          - $ref: '#/components/schemas/NullEnum'
-    PatchedEquipmentRequest:
+    PatchedEquipmentTypeRequest:
       type: object
+      description: Equipment type serializer
+      properties:
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
+    PatchedEquipmentsRequest:
+      type: object
+      description: Equipment serializer
       properties:
         name:
           type: string
@@ -5927,29 +6366,22 @@ components:
         equipment_type:
           type: integer
           nullable: true
-    PatchedEquipmentTypeRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 50
-    PatchedErrorTypeRequest:
-      type: object
-      properties:
-        error_name:
-          type: string
-          minLength: 1
-          maxLength: 50
-        error_example:
-          type: string
-          minLength: 1
-        part_type:
-          type: integer
-          nullable: true
     PatchedExternalAPIOrderIdentifierRequest:
       type: object
+      description: External API order identifier serializer
       properties:
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         stage_name:
           type: string
           minLength: 1
@@ -5958,8 +6390,12 @@ components:
           type: string
           minLength: 1
           maxLength: 50
+        previous_version:
+          type: integer
+          nullable: true
     PatchedMeasurementDefinitionRequest:
       type: object
+      description: Measurement definition serializer
       properties:
         label:
           type: string
@@ -5994,16 +6430,8 @@ components:
           $ref: '#/components/schemas/TypeEnum'
     PatchedOrdersRequest:
       type: object
+      description: Enhanced orders serializer with user filtering and features
       properties:
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
-        customer:
-          type: integer
-        company:
-          type: integer
-        current_hubspot_gate:
-          type: integer
-          nullable: true
         name:
           type: string
           minLength: 1
@@ -6012,23 +6440,35 @@ components:
           type: string
           nullable: true
           maxLength: 500
+        customer:
+          type: integer
+        company:
+          type: integer
         estimated_completion:
           type: string
           format: date
           nullable: true
-        original_completion_date:
+        order_status:
+          $ref: '#/components/schemas/OrderStatusEnum'
+        current_hubspot_gate:
+          type: integer
+          nullable: true
+    PatchedPartTypesRequest:
+      type: object
+      description: Part types serializer
+      properties:
+        archived:
+          type: boolean
+        deleted_at:
           type: string
           format: date-time
           nullable: true
-        archived:
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
           type: boolean
-        last_synced_hubspot_stage:
-          type: string
-          nullable: true
-          maxLength: 100
-    PatchedPartTypeRequest:
-      type: object
-      properties:
         name:
           type: string
           minLength: 1
@@ -6037,32 +6477,29 @@ components:
           type: string
           nullable: true
           maxLength: 50
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
         ERP_id:
           type: string
           nullable: true
           maxLength: 50
-    PatchedPartsRequest:
-      type: object
-      properties:
-        part_status:
-          $ref: '#/components/schemas/PartStatusEnum'
-        order:
+        previous_version:
           type: integer
           nullable: true
-        part_type:
-          type: integer
-        step:
-          type: integer
+    PatchedPartsRequest:
+      type: object
+      description: Enhanced parts serializer using model methods
+      properties:
         ERP_id:
           type: string
           minLength: 1
           maxLength: 50
-        archived:
-          type: boolean
+        part_status:
+          $ref: '#/components/schemas/PartStatusEnum'
+        order:
+          type: integer
+        part_type:
+          type: integer
+        step:
+          type: integer
         work_order:
           type: integer
           nullable: true
@@ -6072,8 +6509,10 @@ components:
         sampling_ruleset:
           type: integer
           nullable: true
+        sampling_context: {}
     PatchedProcessWithStepsRequest:
       type: object
+      description: Process with steps serializer for creation/updates
       properties:
         name:
           type: string
@@ -6093,11 +6532,20 @@ components:
           minimum: -2147483648
     PatchedProcessesRequest:
       type: object
+      description: Processes serializer
       properties:
-        steps:
-          type: array
-          items:
-            $ref: '#/components/schemas/StepRequest'
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -6108,17 +6556,28 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        part_type:
-          type: integer
         previous_version:
           type: integer
           nullable: true
-    PatchedQualityReportFormRequest:
+        part_type:
+          type: integer
+    PatchedQualityErrorsListRequest:
       type: object
+      description: Quality errors list serializer
+      properties:
+        error_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        error_example:
+          type: string
+          minLength: 1
+        part_type:
+          type: integer
+          nullable: true
+    PatchedQualityReportsRequest:
+      type: object
+      description: Quality reports serializer
       properties:
         step:
           type: integer
@@ -6158,11 +6617,14 @@ components:
           items:
             $ref: '#/components/schemas/MeasurementDefinitionRequest'
           writeOnly: true
+        sampling_audit_log:
+          type: integer
+          nullable: true
+          description: Links to the sampling decision that triggered this inspection
     PatchedSamplingRuleRequest:
       type: object
+      description: Enhanced sampling rule serializer
       properties:
-        ruleset:
-          type: integer
         rule_type:
           $ref: '#/components/schemas/RuleTypeEnum'
         value:
@@ -6174,6 +6636,16 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        algorithm_description:
+          type: string
+          minLength: 1
+          description: Description of sampling algorithm for audit purposes
+        last_validated:
+          type: string
+          format: date-time
+          nullable: true
+        ruleset:
+          type: integer
         created_by:
           type: integer
           nullable: true
@@ -6182,6 +6654,7 @@ components:
           nullable: true
     PatchedSamplingRuleSetRequest:
       type: object
+      description: Enhanced sampling ruleset serializer
       properties:
         name:
           type: string
@@ -6196,7 +6669,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
-          default: 1
+        is_fallback:
+          type: boolean
+          default: false
         fallback_threshold:
           type: integer
           maximum: 2147483647
@@ -6209,31 +6684,21 @@ components:
           minimum: 0
           nullable: true
           description: Number of good parts required before reverting to this ruleset
-        is_fallback:
-          type: boolean
-          default: false
-        archived:
-          type: boolean
         part_type:
           type: integer
         process:
           type: integer
         step:
           type: integer
-        supersedes:
-          type: integer
-          nullable: true
-        fallback_ruleset:
-          type: integer
-          nullable: true
         created_by:
           type: integer
           nullable: true
         modified_by:
           type: integer
           nullable: true
-    PatchedStepRequest:
+    PatchedStepsRequest:
       type: object
+      description: Enhanced steps serializer with resolved sampling rules
       properties:
         name:
           type: string
@@ -6243,42 +6708,65 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        expected_duration:
+          type: string
+          nullable: true
         description:
           type: string
           nullable: true
         is_last_step:
           type: boolean
+        block_on_quarantine:
+          type: boolean
+        requires_qa_signoff:
+          type: boolean
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
+        pass_threshold:
+          type: number
+          format: double
         process:
           type: integer
         part_type:
           type: integer
-    PatchedTrackerPageOrderRequest:
+    PatchedUserDetailRequest:
       type: object
+      description: Detailed user serializer with company info
       properties:
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
-        customer:
-          $ref: '#/components/schemas/CustomerRequest'
-        company:
-          $ref: '#/components/schemas/CompanyRequest'
-        name:
+        username:
           type: string
           minLength: 1
-          maxLength: 50
-        customer_note:
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
           type: string
-          nullable: true
-          maxLength: 500
-        estimated_completion:
+          maxLength: 150
+        last_name:
           type: string
-          format: date
-          nullable: true
-        original_completion_date:
+          maxLength: 150
+        email:
           type: string
-          format: date-time
-          nullable: true
-        archived:
+          format: email
+          title: Email address
+          maxLength: 254
+        is_staff:
           type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        parent_company_id:
+          type: integer
+          writeOnly: true
     PatchedUserDetailsRequest:
       type: object
       description: User model w/o password
@@ -6296,22 +6784,58 @@ components:
         last_name:
           type: string
           maxLength: 150
+    PatchedUserRequest:
+      type: object
+      description: Enhanced user serializer with company and permission info
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        parent_company_id:
+          type: integer
+          writeOnly: true
+          nullable: true
     PatchedWorkOrderRequest:
       type: object
+      description: Enhanced work order serializer
       properties:
-        related_order:
-          type: integer
-          nullable: true
+        ERP_id:
+          type: string
+          minLength: 1
+          maxLength: 50
         workorder_status:
           $ref: '#/components/schemas/WorkorderStatusEnum'
         quantity:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        ERP_id:
-          type: string
-          minLength: 1
-          maxLength: 50
+        related_order:
+          type: integer
+          nullable: true
         expected_completion:
           type: string
           format: date
@@ -6332,6 +6856,7 @@ components:
           maxLength: 500
     ProcessWithSteps:
       type: object
+      description: Process with steps serializer for creation/updates
       properties:
         id:
           type: integer
@@ -6353,13 +6878,13 @@ components:
           minimum: -2147483648
       required:
       - id
-      - is_remanufactured
       - name
       - num_steps
       - part_type
       - steps
     ProcessWithStepsRequest:
       type: object
+      description: Process with steps serializer for creation/updates
       properties:
         name:
           type: string
@@ -6378,13 +6903,13 @@ components:
           maximum: 2147483647
           minimum: -2147483648
       required:
-      - is_remanufactured
       - name
       - num_steps
       - part_type
       - steps
     Processes:
       type: object
+      description: Processes serializer
       properties:
         id:
           type: integer
@@ -6396,6 +6921,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Step'
+          readOnly: true
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -6404,6 +6936,12 @@ components:
           type: string
           format: date-time
           readOnly: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         name:
           type: string
           maxLength: 50
@@ -6413,19 +6951,14 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        part_type:
-          type: integer
         previous_version:
           type: integer
           nullable: true
+        part_type:
+          type: integer
       required:
       - created_at
       - id
-      - is_remanufactured
       - name
       - num_steps
       - part_type
@@ -6434,11 +6967,20 @@ components:
       - updated_at
     ProcessesRequest:
       type: object
+      description: Processes serializer
       properties:
-        steps:
-          type: array
-          items:
-            $ref: '#/components/schemas/StepRequest'
+        archived:
+          type: boolean
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        is_current_version:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -6449,23 +6991,58 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        part_type:
-          type: integer
         previous_version:
           type: integer
           nullable: true
+        part_type:
+          type: integer
       required:
-      - is_remanufactured
       - name
       - num_steps
       - part_type
-      - steps
-    QualityReportForm:
+    QualityErrorsList:
       type: object
+      description: Quality errors list serializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        error_name:
+          type: string
+          maxLength: 50
+        error_example:
+          type: string
+        part_type:
+          type: integer
+          nullable: true
+        part_type_name:
+          type: string
+          readOnly: true
+      required:
+      - error_example
+      - error_name
+      - id
+      - part_type_name
+    QualityErrorsListRequest:
+      type: object
+      description: Quality errors list serializer
+      properties:
+        error_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        error_example:
+          type: string
+          minLength: 1
+        part_type:
+          type: integer
+          nullable: true
+      required:
+      - error_example
+      - error_name
+    QualityReports:
+      type: object
+      description: Quality reports serializer
       properties:
         id:
           type: integer
@@ -6506,12 +7083,17 @@ components:
           type: array
           items:
             type: integer
+        sampling_audit_log:
+          type: integer
+          nullable: true
+          description: Links to the sampling decision that triggered this inspection
       required:
       - created_at
       - id
       - status
-    QualityReportFormRequest:
+    QualityReportsRequest:
       type: object
+      description: Quality reports serializer
       properties:
         step:
           type: integer
@@ -6551,6 +7133,10 @@ components:
           items:
             $ref: '#/components/schemas/MeasurementDefinitionRequest'
           writeOnly: true
+        sampling_audit_log:
+          type: integer
+          nullable: true
+          description: Links to the sampling decision that triggered this inspection
       required:
       - measurements
       - status
@@ -6611,14 +7197,16 @@ components:
         * `last_n_parts` - Last N Parts
     SamplingRule:
       type: object
+      description: Enhanced sampling rule serializer
       properties:
         id:
           type: integer
           readOnly: true
-        ruleset:
-          type: integer
         rule_type:
           $ref: '#/components/schemas/RuleTypeEnum'
+        rule_type_display:
+          type: string
+          readOnly: true
         value:
           type: integer
           maximum: 2147483647
@@ -6628,6 +7216,19 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        algorithm_description:
+          type: string
+          description: Description of sampling algorithm for audit purposes
+        last_validated:
+          type: string
+          format: date-time
+          nullable: true
+        ruleset:
+          type: integer
+        ruleset_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
         created_by:
           type: integer
           nullable: true
@@ -6638,9 +7239,12 @@ components:
         modified_by:
           type: integer
           nullable: true
-        modified_at:
+        updated_at:
           type: string
           format: date-time
+          readOnly: true
+        archived:
+          type: boolean
           readOnly: true
         ruletype_name:
           type: string
@@ -6649,18 +7253,20 @@ components:
           type: string
           readOnly: true
       required:
+      - archived
       - created_at
       - id
-      - modified_at
       - rule_type
+      - rule_type_display
       - ruleset
+      - ruleset_info
       - ruleset_name
       - ruletype_name
+      - updated_at
     SamplingRuleRequest:
       type: object
+      description: Enhanced sampling rule serializer
       properties:
-        ruleset:
-          type: integer
         rule_type:
           $ref: '#/components/schemas/RuleTypeEnum'
         value:
@@ -6672,6 +7278,16 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        algorithm_description:
+          type: string
+          minLength: 1
+          description: Description of sampling algorithm for audit purposes
+        last_validated:
+          type: string
+          format: date-time
+          nullable: true
+        ruleset:
+          type: integer
         created_by:
           type: integer
           nullable: true
@@ -6683,20 +7299,10 @@ components:
       - ruleset
     SamplingRuleSet:
       type: object
+      description: Enhanced sampling ruleset serializer
       properties:
         id:
           type: integer
-          readOnly: true
-        rules:
-          type: array
-          items:
-            $ref: '#/components/schemas/SamplingRule'
-          readOnly: true
-        part_type_name:
-          type: string
-          readOnly: true
-        process_name:
-          type: string
           readOnly: true
         name:
           type: string
@@ -6710,7 +7316,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
-          default: 1
+        is_fallback:
+          type: boolean
+          default: false
         fallback_threshold:
           type: integer
           maximum: 2147483647
@@ -6723,50 +7331,69 @@ components:
           minimum: 0
           nullable: true
           description: Number of good parts required before reverting to this ruleset
+        archived:
+          type: boolean
+          readOnly: true
+        part_type:
+          type: integer
+        part_type_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        process:
+          type: integer
+        process_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        step:
+          type: integer
+        step_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        rules:
+          type: array
+          items: {}
+          readOnly: true
+        created_by:
+          type: integer
+          nullable: true
         created_at:
           type: string
           format: date-time
           readOnly: true
-        modified_at:
-          type: string
-          format: date-time
-          readOnly: true
-        is_fallback:
-          type: boolean
-          default: false
-        archived:
-          type: boolean
-        part_type:
-          type: integer
-        process:
-          type: integer
-        step:
-          type: integer
-        supersedes:
-          type: integer
-          nullable: true
-        fallback_ruleset:
-          type: integer
-          nullable: true
-        created_by:
-          type: integer
-          nullable: true
         modified_by:
           type: integer
           nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        part_type_name:
+          type: string
+          readOnly: true
+        process_name:
+          type: string
+          readOnly: true
       required:
+      - archived
       - created_at
       - id
-      - modified_at
       - name
       - part_type
+      - part_type_info
       - part_type_name
       - process
+      - process_info
       - process_name
       - rules
       - step
+      - step_info
+      - updated_at
     SamplingRuleSetRequest:
       type: object
+      description: Enhanced sampling ruleset serializer
       properties:
         name:
           type: string
@@ -6781,7 +7408,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
-          default: 1
+        is_fallback:
+          type: boolean
+          default: false
         fallback_threshold:
           type: integer
           maximum: 2147483647
@@ -6794,23 +7423,12 @@ components:
           minimum: 0
           nullable: true
           description: Number of good parts required before reverting to this ruleset
-        is_fallback:
-          type: boolean
-          default: false
-        archived:
-          type: boolean
         part_type:
           type: integer
         process:
           type: integer
         step:
           type: integer
-        supersedes:
-          type: integer
-          nullable: true
-        fallback_ruleset:
-          type: integer
-          nullable: true
         created_by:
           type: integer
           nullable: true
@@ -6822,8 +7440,9 @@ components:
       - part_type
       - process
       - step
-    SamplingRuleWriteRequest:
+    SamplingRuleUpdateRequest:
       type: object
+      description: Serializer for updating sampling rules on steps
       properties:
         rule_type:
           $ref: '#/components/schemas/RuleTypeEnum'
@@ -6832,29 +7451,9 @@ components:
           nullable: true
         order:
           type: integer
-        is_fallback:
-          type: boolean
       required:
       - order
       - rule_type
-    Stage:
-      type: object
-      properties:
-        name:
-          type: string
-        timestamp:
-          type: string
-          format: date-time
-          nullable: true
-        is_completed:
-          type: boolean
-        is_current:
-          type: boolean
-      required:
-      - is_completed
-      - is_current
-      - name
-      - timestamp
     StatusEnum:
       enum:
       - PASS
@@ -6867,6 +7466,7 @@ components:
         * `PENDING` - Pending
     Step:
       type: object
+      description: Legacy step serializer for compatibility
       properties:
         name:
           type: string
@@ -6893,6 +7493,12 @@ components:
         part_type_name:
           type: string
           readOnly: true
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
       required:
       - id
       - name
@@ -6919,10 +7525,7 @@ components:
       properties:
         step_id:
           type: integer
-        order_id:
-          type: integer
       required:
-      - order_id
       - step_id
     StepIncrementResponse:
       type: object
@@ -6936,6 +7539,7 @@ components:
       - total
     StepRequest:
       type: object
+      description: Legacy step serializer for compatibility
       properties:
         name:
           type: string
@@ -6954,41 +7558,162 @@ components:
           type: integer
         part_type:
           type: integer
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
       required:
       - name
       - order
       - part_type
       - process
-    StepSamplingRulesResponse:
+    StepSamplingRulesUpdateRequest:
       type: object
-      properties:
-        detail:
-          type: string
-        ruleset_id:
-          type: integer
-        step_id:
-          type: integer
-      required:
-      - detail
-      - ruleset_id
-      - step_id
-    StepSamplingRulesWriteRequest:
-      type: object
+      description: Serializer for updating step sampling rules
       properties:
         rules:
           type: array
           items:
-            $ref: '#/components/schemas/SamplingRuleWriteRequest'
+            $ref: '#/components/schemas/SamplingRuleUpdateRequest'
         fallback_rules:
           type: array
           items:
-            $ref: '#/components/schemas/SamplingRuleWriteRequest'
+            $ref: '#/components/schemas/SamplingRuleUpdateRequest'
         fallback_threshold:
           type: integer
         fallback_duration:
           type: integer
       required:
       - rules
+    Steps:
+      type: object
+      description: Enhanced steps serializer with resolved sampling rules
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        expected_duration:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        is_last_step:
+          type: boolean
+        block_on_quarantine:
+          type: boolean
+        requires_qa_signoff:
+          type: boolean
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
+        pass_threshold:
+          type: number
+          format: double
+        process:
+          type: integer
+        part_type:
+          type: integer
+        process_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        part_type_info:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        resolved_sampling_rules:
+          readOnly: true
+        sampling_coverage:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        process_name:
+          type: string
+          readOnly: true
+        part_type_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+      required:
+      - archived
+      - created_at
+      - id
+      - name
+      - order
+      - part_type
+      - part_type_info
+      - part_type_name
+      - process
+      - process_info
+      - process_name
+      - resolved_sampling_rules
+      - sampling_coverage
+      - updated_at
+    StepsRequest:
+      type: object
+      description: Enhanced steps serializer with resolved sampling rules
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        expected_duration:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        is_last_step:
+          type: boolean
+        block_on_quarantine:
+          type: boolean
+        requires_qa_signoff:
+          type: boolean
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
+        pass_threshold:
+          type: number
+          format: double
+        process:
+          type: integer
+        part_type:
+          type: integer
+      required:
+      - name
+      - order
+      - part_type
+      - process
     Token:
       type: object
       description: Serializer for Token model.
@@ -6998,89 +7723,6 @@ components:
           maxLength: 40
       required:
       - key
-    TrackerPageOrder:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
-        stages:
-          type: array
-          items:
-            $ref: '#/components/schemas/Stage'
-          readOnly: true
-        customer:
-          $ref: '#/components/schemas/Customer'
-        company:
-          $ref: '#/components/schemas/Company'
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-        name:
-          type: string
-          maxLength: 50
-        customer_note:
-          type: string
-          nullable: true
-          maxLength: 500
-        estimated_completion:
-          type: string
-          format: date
-          nullable: true
-        original_completion_date:
-          type: string
-          format: date-time
-          nullable: true
-        archived:
-          type: boolean
-      required:
-      - company
-      - created_at
-      - customer
-      - id
-      - name
-      - order_status
-      - stages
-      - updated_at
-    TrackerPageOrderRequest:
-      type: object
-      properties:
-        order_status:
-          $ref: '#/components/schemas/OrderStatusEnum'
-        customer:
-          $ref: '#/components/schemas/CustomerRequest'
-        company:
-          $ref: '#/components/schemas/CompanyRequest'
-        name:
-          type: string
-          minLength: 1
-          maxLength: 50
-        customer_note:
-          type: string
-          nullable: true
-          maxLength: 500
-        estimated_completion:
-          type: string
-          format: date
-          nullable: true
-        original_completion_date:
-          type: string
-          format: date-time
-          nullable: true
-        archived:
-          type: boolean
-      required:
-      - company
-      - customer
-      - name
-      - order_status
     TypeEnum:
       enum:
       - NUMERIC
@@ -7089,6 +7731,140 @@ components:
       description: |-
         * `NUMERIC` - Numeric
         * `PASS_FAIL` - Pass/Fail
+    User:
+      type: object
+      description: Enhanced user serializer with company and permission info
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        full_name:
+          type: string
+          readOnly: true
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        parent_company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+          nullable: true
+      required:
+      - date_joined
+      - full_name
+      - id
+      - parent_company
+      - username
+    UserDetail:
+      type: object
+      description: Detailed user serializer with company info
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        parent_company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+          nullable: true
+      required:
+      - date_joined
+      - id
+      - parent_company
+      - username
+    UserDetailRequest:
+      type: object
+      description: Detailed user serializer with company info
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        parent_company_id:
+          type: integer
+          writeOnly: true
+      required:
+      - username
     UserDetails:
       type: object
       description: User model w/o password
@@ -7137,6 +7913,80 @@ components:
           maxLength: 150
       required:
       - username
+    UserRequest:
+      type: object
+      description: Enhanced user serializer with company and permission info
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        is_staff:
+          type: boolean
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        parent_company_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+      required:
+      - username
+    UserSelect:
+      type: object
+      description: Simplified user serializer for dropdowns and selections
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        full_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - full_name
+      - id
+      - is_active
+      - username
     VerifyEmailRequest:
       type: object
       properties:
@@ -7148,34 +7998,30 @@ components:
       - key
     WorkOrder:
       type: object
+      description: Enhanced work order serializer
       properties:
         id:
           type: integer
           readOnly: true
-        related_order:
-          type: integer
-          nullable: true
-        related_order_detail:
-          allOf:
-          - $ref: '#/components/schemas/Orders'
-          readOnly: true
-          nullable: true
+        ERP_id:
+          type: string
+          maxLength: 50
         workorder_status:
           $ref: '#/components/schemas/WorkorderStatusEnum'
         quantity:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        ERP_id:
-          type: string
-          maxLength: 50
-        created_at:
-          type: string
-          format: date-time
+        related_order:
+          type: integer
+          nullable: true
+        related_order_info:
+          type: object
+          additionalProperties: {}
           readOnly: true
-        updated_at:
-          type: string
-          format: date-time
+        related_order_detail:
+          allOf:
+          - $ref: '#/components/schemas/Orders'
           readOnly: true
         expected_completion:
           type: string
@@ -7195,28 +8041,47 @@ components:
           type: string
           nullable: true
           maxLength: 500
+        parts_summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
       required:
       - ERP_id
+      - archived
       - created_at
       - id
+      - parts_summary
       - related_order_detail
+      - related_order_info
       - updated_at
     WorkOrderRequest:
       type: object
+      description: Enhanced work order serializer
       properties:
-        related_order:
-          type: integer
-          nullable: true
+        ERP_id:
+          type: string
+          minLength: 1
+          maxLength: 50
         workorder_status:
           $ref: '#/components/schemas/WorkorderStatusEnum'
         quantity:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        ERP_id:
-          type: string
-          minLength: 1
-          maxLength: 50
+        related_order:
+          type: integer
+          nullable: true
         expected_completion:
           type: string
           format: date

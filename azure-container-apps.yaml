@@ -1,0 +1,154 @@
+# Azure Container Apps Configuration Files
+# These are separate YAML files to be used with Azure CLI
+
+# Backend Configuration (save as backend-containerapp.yaml)
+---
+location: eastus
+name: parts-tracker-backend
+properties:
+  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/parts-tracker-rg/providers/Microsoft.App/managedEnvironments/parts-tracker-env
+  configuration:
+    ingress:
+      external: true
+      targetPort: 8000
+      transport: http
+      allowInsecure: false
+    secrets:
+      - name: django-secret-key
+        value: "{django-secret-key}"
+      - name: postgres-password
+        value: "{postgres-password}"
+      - name: acr-password
+        value: "{acr-password}"
+    registries:
+      - server: "{acr-name}.azurecr.io"
+        username: "{acr-username}"
+        passwordSecretRef: "acr-password"
+  template:
+    containers:
+      - image: "{acr-name}.azurecr.io/parts-tracker-backend:latest"
+        name: backend
+        env:
+          - name: DJANGO_SECRET_KEY
+            secretRef: django-secret-key
+          - name: DJANGO_DEBUG
+            value: "False"
+          - name: DJANGO_SETTINGS_MODULE
+            value: "PartsTrackerApp.settings_azure"
+          - name: POSTGRES_DB
+            value: "parts_tracker"
+          - name: POSTGRES_USER
+            value: "parts_tracker_user"
+          - name: POSTGRES_PASSWORD
+            secretRef: postgres-password
+          - name: POSTGRES_HOST
+            value: "{postgres-server}.postgres.database.azure.com"
+          - name: POSTGRES_PORT
+            value: "5432"
+          - name: ALLOWED_HOSTS
+            value: "{backend-fqdn},localhost,127.0.0.1"
+          - name: CORS_ALLOWED_ORIGINS
+            value: "https://{frontend-fqdn}"
+        resources:
+          cpu: 1.0
+          memory: 2Gi
+        probes:
+          - type: liveness
+            httpGet:
+              path: "/health/"
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          - type: readiness
+            httpGet:
+              path: "/ready/"
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+    scale:
+      minReplicas: 1
+      maxReplicas: 10
+      rules:
+        - name: http-scaling
+          http:
+            metadata:
+              concurrentRequests: "10"
+
+---
+# Frontend Configuration (save as frontend-containerapp.yaml)
+location: eastus
+name: parts-tracker-frontend
+properties:
+  managedEnvironmentId: /subscriptions/{subscription-id}/resourceGroups/parts-tracker-rg/providers/Microsoft.App/managedEnvironments/parts-tracker-env
+  configuration:
+    ingress:
+      external: true
+      targetPort: 80
+      transport: http
+      allowInsecure: false
+    secrets:
+      - name: acr-password
+        value: "{acr-password}"
+    registries:
+      - server: "{acr-name}.azurecr.io"
+        username: "{acr-username}"
+        passwordSecretRef: "acr-password"
+  template:
+    containers:
+      - image: "{acr-name}.azurecr.io/parts-tracker-frontend:latest"
+        name: frontend
+        env:
+          - name: VITE_API_TARGET
+            value: "https://{backend-fqdn}"
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        probes:
+          - type: liveness
+            httpGet:
+              path: "/health"
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          - type: readiness
+            httpGet:
+              path: "/health"
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+    scale:
+      minReplicas: 1
+      maxReplicas: 5
+      rules:
+        - name: http-scaling
+          http:
+            metadata:
+              concurrentRequests: "20"
+
+---
+# Instructions for using these configurations:
+
+# 1. Replace all placeholder values in curly braces {} with actual values
+# 2. Split into separate files:
+#    - backend-containerapp.yaml (first configuration)
+#    - frontend-containerapp.yaml (second configuration)
+
+# 3. Deploy using Azure CLI:
+# az containerapp create \
+#   --resource-group parts-tracker-rg \
+#   --yaml backend-containerapp.yaml
+
+# az containerapp create \
+#   --resource-group parts-tracker-rg \
+#   --yaml frontend-containerapp.yaml
+
+# Placeholder values to replace:
+# {subscription-id} - Your Azure subscription ID
+# {acr-name} - Your Azure Container Registry name
+# {acr-username} - ACR username
+# {acr-password} - ACR password
+# {postgres-server} - Azure Database for PostgreSQL server name
+# {django-secret-key} - Django secret key (generate with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
+# {postgres-password} - PostgreSQL password
+# {backend-fqdn} - Backend container app FQDN (available after backend is deployed)
+# {frontend-fqdn} - Frontend container app FQDN (available after frontend is deployed)
