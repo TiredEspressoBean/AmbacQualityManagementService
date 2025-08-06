@@ -14,10 +14,11 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv, dotenv_values
 
-load_dotenv(dotenv_path='.env')
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env file from project root (one level up from PartsTracker/)
+load_dotenv(dotenv_path=BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -27,8 +28,6 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-CHANGE-ME")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', True)
-
-print("DEBUG: ", DEBUG)
 
 # ALLOWED_HOSTS = ["192.168.99.1", "localhost", "127.0.0.1"]
 ALLOWED_HOSTS = ["*"]
