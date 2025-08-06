@@ -29,8 +29,12 @@ services:
     build:
       context: ./PartsTracker
       dockerfile: Dockerfile
+    restart: unless-stopped
     command: >
       sh -c "
+      echo 'Waiting for PostgreSQL to be ready...' &&
+      sleep 5 &&
+      echo 'Starting Django migrations...' &&
       python manage.py makemigrations &&
       python manage.py migrate &&
       python manage.py create_temp_admin &&
@@ -39,11 +43,14 @@ services:
       python manage.py crontab remove &&
       python manage.py crontab add &&
       service cron start &&
+      echo 'Starting Django development server...' &&
       python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: postgres
     volumes:
       - ./PartsTracker:/app
     depends_on:
