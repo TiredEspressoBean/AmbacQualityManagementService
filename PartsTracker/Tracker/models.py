@@ -730,6 +730,11 @@ class Processes(SecureModel):
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE, related_name='processes')
     """ForeignKey to the PartType this process is associated with."""
 
+    is_batch_process = models.BooleanField(
+        default=False,
+        help_text="If True, UI treats work order parts as a batch unit"
+    )
+    """Indicates whether this process should be handled as batch-level tracking in the UI."""
 
     class Meta:
         verbose_name_plural = 'Processes'
@@ -823,6 +828,8 @@ class Steps(SecureModel):
     block_on_quarantine = models.BooleanField(default=False)
 
     requires_qa_signoff = models.BooleanField(default=False)
+
+    notification_users = models.ManyToManyField(User, related_name='notification_users', blank=True)
 
     required_measurements = models.ManyToManyField(MeasurementDefinition, blank=True, related_name="required_on_steps",
                                                    help_text="Measurements that must be collected during this step")
@@ -1758,11 +1765,12 @@ class Parts(SecureModel):
     @classmethod
     def get_filtered_queryset(cls, user=None, filters=None):
         """Get optimized queryset with common select_related/prefetch_related"""
-        qs = cls.objects.select_related('part_type', 'step', 'order', 'work_order', 'sampling_rule',
-                                        'sampling_ruleset').prefetch_related('error_reports')
+        qs = cls.objects.select_related(
+            'part_type', 'step', 'order', 'work_order', 'sampling_rule', 'sampling_ruleset'
+        ).prefetch_related('error_reports')
 
-        # Apply user-specific filtering if needed
-        if user and not user.is_staff:
+        # Filter to only show customer's orders if user is in 'customer' group
+        if user and user.groups.filter(name='customer').exists():
             qs = qs.filter(order__customer=user)
 
         return qs
@@ -1929,6 +1937,11 @@ class QualityReports(SecureModel):
             # Trigger fallback if failure
             if self.status == "FAIL":
                 self._trigger_sampling_fallback()
+                
+                # Auto-quarantine part on FAIL
+                if self.part:
+                    self.part.part_status = PartsStatus.QUARANTINED
+                    self.part.save(update_fields=['part_status'])
 
             # Update sampling analytics
             self._update_sampling_analytics()
@@ -2169,6 +2182,11 @@ class SamplingTriggerState(SecureModel):
     fail_count = models.PositiveIntegerField(default=0)
 
     parts_inspected = models.ManyToManyField("Parts", blank=True)
+
+    # Email notification fields
+    notification_sent = models.BooleanField(default=False)
+    notification_sent_at = models.DateTimeField(null=True, blank=True)
+    notified_users = models.ManyToManyField(User, blank=True, related_name='sampling_notifications')
 
     class Meta:
         unique_together = ("ruleset", "work_order", "step")

@@ -63,7 +63,7 @@ export default function QaWorkOrdersPage() {
             search: debouncedSearch,
             ordering: sortBy,
             // Filter for work orders with parts needing QA
-            status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
+            // status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
         },
     });
 

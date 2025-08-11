@@ -1,0 +1,26 @@
+Quality Issue Detected - Sampling Triggered
+
+Work Order: {{ work_order.ERP_id }}
+{% if work_order.description %}Description: {{ work_order.description }}{% endif %}
+Step: {{ step.name }}
+{% if quality_report %}Quality Report: #{{ quality_report.id }}{% endif %}
+
+Failure Count: {{ fail_count }}
+Triggered At: {{ trigger.triggered_at|date:"M d, Y g:i A" }}
+
+{% if quality_report and quality_report.notes %}
+Quality Issue Details:
+{{ quality_report.description }}
+{% endif %}
+
+This sampling trigger requires attention from the quality control team.
+
+Step-specific recipients were notified for: {{ step.name }}
+
+{% if site_url %}
+View Work Order: {{ site_url }}/work-orders/{{ work_order.id }}/
+{% endif %}
+
+---
+Parts Tracker Quality Control System
+This notification was sent to users configured for the "{{ step.name }}" step.

@@ -44,6 +44,7 @@ import CompaniesFormPage from "@/pages/editors/forms/EditCompanyFormPage.tsx";
 import {CompaniesEditorPage} from "@/pages/editors/CompaniesEditorPage.tsx";
 import UsersFormPage from "@/pages/editors/forms/EditUserFormPage.tsx";
 import { UserEditorPage} from "@/pages/editors/UserEditorPage.tsx";
+import { QaWorkOrderDetailPage } from "@/pages/editors/QaWorkOrderDetailPage.tsx";
 
 
 
@@ -383,6 +384,12 @@ export const usersEditRoute = createRoute({
     component: UsersFormPage,
 });
 
+export const qaWorkOrderDetailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/qa/workorder/$workOrderId',
+    component: () => <QaWorkOrderDetailPage />,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRote,
@@ -436,7 +443,8 @@ const routeTree = rootRoute.addChildren([
     companiesCreateRoute,
     userEditorRoute,
     usersEditRoute,
-    usersCreateRoute
+    usersCreateRoute,
+    qaWorkOrderDetailRoute
 ])
 
 export const router = new Router({routeTree})

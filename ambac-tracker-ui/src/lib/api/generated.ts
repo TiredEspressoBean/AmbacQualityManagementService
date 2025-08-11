@@ -244,18 +244,18 @@ type Orders = {
      */
     (string | null)
     | undefined;
-  customer: number;
+  customer?: (number | null) | undefined;
   customer_info: UserSelect;
-  company: number;
+  company?: (number | null) | undefined;
   company_info: Company;
   estimated_completion?: (string | null) | undefined;
   order_status: OrderStatusEnum;
   current_hubspot_gate?: (number | null) | undefined;
   parts_summary: {};
   process_stages: Array<unknown>;
-  customer_first_name: string;
-  customer_last_name: string;
-  company_name: string;
+  customer_first_name: string | null;
+  customer_last_name: string | null;
+  company_name: string | null;
   created_at: string;
   updated_at: string;
   archived: boolean;
@@ -324,8 +324,8 @@ type OrdersRequest = {
      */
     (string | null)
     | undefined;
-  customer: number;
-  company: number;
+  customer?: (number | null) | undefined;
+  company?: (number | null) | undefined;
   estimated_completion?: (string | null) | undefined;
   order_status: OrderStatusEnum;
   current_hubspot_gate?: (number | null) | undefined;
@@ -482,6 +482,32 @@ type Equipments = {
   equipment_type?: (number | null) | undefined;
   equipment_type_name: string;
 };
+type PaginatedGroupList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Group>;
+};
+type Group = {
+  id: number;
+  /**
+   * @maxLength 150
+   */
+  name: string;
+};
 type PaginatedMeasurementDefinitionList = {
   /**
    * @example 123
@@ -617,6 +643,7 @@ type Parts = {
   step_description: string;
   work_order_erp_id: string | null;
   quality_status: {};
+  is_from_batch_process: boolean;
   sampling_rule?: (number | null) | undefined;
   sampling_ruleset?: (number | null) | undefined;
   sampling_context?: unknown | undefined;
@@ -654,6 +681,10 @@ type ProcessWithSteps = {
    * @maximum 2147483647
    */
   num_steps: number;
+  is_batch_process?: /**
+   * If True, UI treats work order parts as a batch unit
+   */
+  boolean | undefined;
 };
 type Step = {
   /**
@@ -721,6 +752,10 @@ type Processes = {
    * @maximum 2147483647
    */
   num_steps: number;
+  is_batch_process?: /**
+   * If True, UI treats work order parts as a batch unit
+   */
+  boolean | undefined;
   previous_version?: (number | null) | undefined;
   part_type: number;
 };
@@ -866,10 +901,16 @@ type RuleTypeEnum =
    * `random` - Pure Random
    * `first_n_parts` - First N Parts
    * `last_n_parts` - Last N Parts
+   * `exact_count` - Exact Count (No Variance)
    *
-   * @enum every_nth_part, percentage, random, first_n_parts, last_n_parts
+   * @enum every_nth_part, percentage, random, first_n_parts, last_n_parts, exact_count
    */
-  "every_nth_part" | "percentage" | "random" | "first_n_parts" | "last_n_parts";
+  | "every_nth_part"
+  | "percentage"
+  | "random"
+  | "first_n_parts"
+  | "last_n_parts"
+  | "exact_count";
 type PaginatedSamplingRuleSetList = {
   /**
    * @example 123
@@ -1070,6 +1111,7 @@ type User = {
   boolean | undefined;
   date_joined: string;
   parent_company: Company;
+  groups: Array<Group>;
 };
 type PaginatedUserSelectList = {
   /**
@@ -1135,6 +1177,7 @@ type WorkOrder = {
     (string | null)
     | undefined;
   parts_summary: {};
+  is_batch_work_order: boolean;
   created_at: string;
   updated_at: string;
   archived: boolean;
@@ -1238,8 +1281,8 @@ type PatchedOrdersRequest = Partial<{
    * @maxLength 500
    */
   customer_note: string | null;
-  customer: number;
-  company: number;
+  customer: number | null;
+  company: number | null;
   estimated_completion: string | null;
   order_status: OrderStatusEnum;
   current_hubspot_gate: number | null;
@@ -1273,6 +1316,10 @@ type PatchedProcessWithStepsRequest = Partial<{
    * @maximum 2147483647
    */
   num_steps: number;
+  /**
+   * If True, UI treats work order parts as a batch unit
+   */
+  is_batch_process: boolean;
 }>;
 type StepRequest = {
   /**
@@ -1378,6 +1425,10 @@ type ProcessWithStepsRequest = {
    * @maximum 2147483647
    */
   num_steps: number;
+  is_batch_process?: /**
+   * If True, UI treats work order parts as a batch unit
+   */
+  boolean | undefined;
 };
 type QualityReportsRequest = {
   step?: (number | null) | undefined;
@@ -1846,6 +1897,17 @@ const PatchedQualityReportsRequest: z.ZodType<PatchedQualityReportsRequest> = z
   })
   .partial()
   .passthrough();
+const Group: z.ZodType<Group> = z
+  .object({ id: z.number().int(), name: z.string().max(150) })
+  .passthrough();
+const PaginatedGroupList: z.ZodType<PaginatedGroupList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(Group),
+  })
+  .passthrough();
 const ExternalAPIOrderIdentifier = z
   .object({
     id: z.number().int(),
@@ -1940,18 +2002,18 @@ const Orders: z.ZodType<Orders> = z
     id: z.number().int(),
     name: z.string().max(50),
     customer_note: z.string().max(500).nullish(),
-    customer: z.number().int(),
-    customer_info: UserSelect,
-    company: z.number().int(),
-    company_info: Company,
+    customer: z.number().int().nullish(),
+    customer_info: UserSelect.nullable(),
+    company: z.number().int().nullish(),
+    company_info: Company.nullable(),
     estimated_completion: z.string().nullish(),
     order_status: OrderStatusEnum,
     current_hubspot_gate: z.number().int().nullish(),
     parts_summary: z.object({}).partial().passthrough(),
     process_stages: z.array(z.unknown()),
-    customer_first_name: z.string(),
-    customer_last_name: z.string(),
-    company_name: z.string(),
+    customer_first_name: z.string().nullable(),
+    customer_last_name: z.string().nullable(),
+    company_name: z.string().nullable(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean(),
@@ -1969,8 +2031,8 @@ const OrdersRequest: z.ZodType<OrdersRequest> = z
   .object({
     name: z.string().min(1).max(50),
     customer_note: z.string().max(500).nullish(),
-    customer: z.number().int(),
-    company: z.number().int(),
+    customer: z.number().int().nullish(),
+    company: z.number().int().nullish(),
     estimated_completion: z.string().nullish(),
     order_status: OrderStatusEnum,
     current_hubspot_gate: z.number().int().nullish(),
@@ -1980,8 +2042,8 @@ const PatchedOrdersRequest: z.ZodType<PatchedOrdersRequest> = z
   .object({
     name: z.string().min(1).max(50),
     customer_note: z.string().max(500).nullable(),
-    customer: z.number().int(),
-    company: z.number().int(),
+    customer: z.number().int().nullable(),
+    company: z.number().int().nullable(),
     estimated_completion: z.string().nullable(),
     order_status: OrderStatusEnum,
     current_hubspot_gate: z.number().int().nullable(),
@@ -2109,6 +2171,7 @@ const Parts: z.ZodType<Parts> = z
     step_description: z.string(),
     work_order_erp_id: z.string().nullable(),
     quality_status: z.object({}).partial().passthrough(),
+    is_from_batch_process: z.boolean(),
     sampling_rule: z.number().int().nullish(),
     sampling_ruleset: z.number().int().nullish(),
     sampling_context: z.unknown().optional(),
@@ -2178,6 +2241,7 @@ const Processes: z.ZodType<Processes> = z
     name: z.string().max(50),
     is_remanufactured: z.boolean().optional(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+    is_batch_process: z.boolean().optional(),
     previous_version: z.number().int().nullish(),
     part_type: z.number().int(),
   })
@@ -2199,6 +2263,7 @@ const ProcessesRequest = z
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean().optional(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+    is_batch_process: z.boolean().optional(),
     previous_version: z.number().int().nullish(),
     part_type: z.number().int(),
   })
@@ -2212,6 +2277,7 @@ const PatchedProcessesRequest = z
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+    is_batch_process: z.boolean(),
     previous_version: z.number().int().nullable(),
     part_type: z.number().int(),
   })
@@ -2225,6 +2291,7 @@ const ProcessWithSteps: z.ZodType<ProcessWithSteps> = z
     part_type: z.number().int(),
     steps: z.array(Step),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+    is_batch_process: z.boolean().optional(),
   })
   .passthrough();
 const PaginatedProcessWithStepsList: z.ZodType<PaginatedProcessWithStepsList> =
@@ -2255,6 +2322,7 @@ const ProcessWithStepsRequest: z.ZodType<ProcessWithStepsRequest> = z
     part_type: z.number().int(),
     steps: z.array(StepRequest),
     num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+    is_batch_process: z.boolean().optional(),
   })
   .passthrough();
 const PatchedProcessWithStepsRequest: z.ZodType<PatchedProcessWithStepsRequest> =
@@ -2265,6 +2333,7 @@ const PatchedProcessWithStepsRequest: z.ZodType<PatchedProcessWithStepsRequest> 
       part_type: z.number().int(),
       steps: z.array(StepRequest),
       num_steps: z.number().int().gte(-2147483648).lte(2147483647),
+      is_batch_process: z.boolean(),
     })
     .partial()
     .passthrough();
@@ -2341,6 +2410,7 @@ const RuleTypeEnum = z.enum([
   "random",
   "first_n_parts",
   "last_n_parts",
+  "exact_count",
 ]);
 const SamplingRule: z.ZodType<SamplingRule> = z
   .object({
@@ -2493,6 +2563,7 @@ const User: z.ZodType<User> = z
     is_active: z.boolean().optional(),
     date_joined: z.string().datetime({ offset: true }),
     parent_company: Company.nullable(),
+    groups: z.array(Group),
   })
   .passthrough();
 const PaginatedUserList: z.ZodType<PaginatedUserList> = z
@@ -2516,6 +2587,7 @@ const UserRequest = z
     is_staff: z.boolean().optional(),
     is_active: z.boolean().optional(),
     parent_company_id: z.number().int().nullish(),
+    group_ids: z.array(z.number().int()).optional(),
   })
   .passthrough();
 const PatchedUserRequest = z
@@ -2531,6 +2603,7 @@ const PatchedUserRequest = z
     is_staff: z.boolean(),
     is_active: z.boolean(),
     parent_company_id: z.number().int().nullable(),
+    group_ids: z.array(z.number().int()),
   })
   .partial()
   .passthrough();
@@ -2558,14 +2631,15 @@ const WorkOrder: z.ZodType<WorkOrder> = z
     workorder_status: WorkorderStatusEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     related_order: z.number().int().nullish(),
-    related_order_info: z.object({}).partial().passthrough(),
-    related_order_detail: Orders,
+    related_order_info: z.object({}).partial().passthrough().nullable(),
+    related_order_detail: Orders.nullable(),
     expected_completion: z.string().nullish(),
     expected_duration: z.string().nullish(),
     true_completion: z.string().nullish(),
     true_duration: z.string().nullish(),
     notes: z.string().max(500).nullish(),
     parts_summary: z.object({}).partial().passthrough(),
+    is_batch_work_order: z.boolean(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean(),
@@ -2723,6 +2797,9 @@ const PatchedUserDetailsRequest = z
   })
   .partial()
   .passthrough();
+const GroupRequest = z
+  .object({ name: z.string().min(1).max(150) })
+  .passthrough();
 
 export const schemas = {
   Company,
@@ -2759,6 +2836,8 @@ export const schemas = {
   MeasurementDefinitionRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
+  Group,
+  PaginatedGroupList,
   ExternalAPIOrderIdentifier,
   ExternalAPIOrderIdentifierRequest,
   PatchedExternalAPIOrderIdentifierRequest,
@@ -2838,6 +2917,7 @@ export const schemas = {
   UserDetails,
   UserDetailsRequest,
   PatchedUserDetailsRequest,
+  GroupRequest,
 };
 
 const endpoints = makeApi([
@@ -3797,6 +3877,51 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Groups/",
+    alias: "api_Groups_list",
+    description: `ViewSet for Django Groups - read only for selection purposes`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedGroupList,
+  },
+  {
+    method: "get",
+    path: "/api/Groups/:id/",
+    alias: "api_Groups_retrieve",
+    description: `ViewSet for Django Groups - read only for selection purposes`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: Group,
   },
   {
     method: "get",
@@ -5006,6 +5131,7 @@ const endpoints = makeApi([
         schema: z
           .enum([
             "every_nth_part",
+            "exact_count",
             "first_n_parts",
             "last_n_parts",
             "percentage",
@@ -5873,6 +5999,56 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/batch_qa_action/",
+    alias: "api_WorkOrders_batch_qa_action_create",
+    description: `Perform QA action on all parts in work order (batch mode)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: WorkOrder,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/qa_documents/",
+    alias: "api_WorkOrders_qa_documents_retrieve",
+    description: `Get documents relevant to QA for this work order`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: WorkOrder,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/qa_summary/",
+    alias: "api_WorkOrders_qa_summary_retrieve",
+    description: `Get QA summary for work order including batch status`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: WorkOrder,
   },
   {
     method: "post",

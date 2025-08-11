@@ -9,6 +9,7 @@ from dj_rest_auth.views import UserDetailsView
 from django.db.models import Count
 from django.db import transaction
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Group
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, inline_serializer, OpenApiResponse, OpenApiRequest, \
@@ -380,6 +381,25 @@ class UserViewSet(viewsets.ModelViewSet):
         })
 
 
+class GroupViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for Django Groups - read only for selection purposes"""
+    serializer_class = GroupSerializer
+    pagination_class = LimitOffsetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
+    ordering_fields = ['name']
+    ordering = ['name']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Group.objects.none()
+        
+        # Only staff users can see groups
+        if self.request.user and self.request.user.is_staff:
+            return Group.objects.all()
+        return Group.objects.none()
+
+
 class CompanyViewSet(viewsets.ModelViewSet):
     serializer_class = CompanySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -602,6 +622,136 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 
         return Response(results, status=status.HTTP_207_MULTI_STATUS)
 
+    @action(detail=True, methods=['post'])
+    def batch_qa_action(self, request, pk=None):
+        """Perform QA action on all parts in work order (batch mode)"""
+        work_order = self.get_object()
+        action_type = request.data.get('action')  # 'pass', 'fail', 'quarantine'
+        
+        if not action_type:
+            return Response({'error': 'Action type required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        parts = work_order.parts.all()
+        
+        if action_type == 'pass':
+            updated_count = parts.update(part_status='COMPLETED')
+            return Response({
+                'message': f'Passed {updated_count} parts',
+                'action': 'pass',
+                'parts_affected': updated_count
+            })
+        elif action_type == 'quarantine':
+            updated_count = parts.update(part_status='QUARANTINED')
+            return Response({
+                'message': f'Quarantined {updated_count} parts', 
+                'action': 'quarantine',
+                'parts_affected': updated_count
+            })
+        elif action_type == 'fail':
+            updated_count = parts.update(part_status='REWORK_NEEDED')
+            return Response({
+                'message': f'Failed {updated_count} parts',
+                'action': 'fail', 
+                'parts_affected': updated_count
+            })
+        else:
+            return Response({'error': 'Invalid action type'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'])
+    def qa_summary(self, request, pk=None):
+        """Get QA summary for work order including batch status"""
+        work_order = self.get_object()
+        
+        parts = work_order.parts.all()
+        parts_needing_qa = parts.filter(
+            requires_sampling=True,
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA']
+        )
+        
+        return Response({
+            'work_order': self.get_serializer(work_order).data,
+            'is_batch_work_order': work_order.parts.filter(
+                part_type__processes__is_batch_process=True
+            ).exists(),
+            'parts_summary': {
+                'total': parts.count(),
+                'needing_qa': parts_needing_qa.count(),
+                'completed': parts.filter(part_status='COMPLETED').count(),
+                'quarantined': parts.filter(part_status='QUARANTINED').count(),
+                'in_progress': parts.filter(part_status='IN_PROGRESS').count()
+            },
+            'parts_needing_qa': PartsSerializer(
+                parts_needing_qa, 
+                many=True, 
+                context={'request': request}
+            ).data
+        })
+
+    @action(detail=True, methods=['get'])
+    def qa_documents(self, request, pk=None):
+        """Get documents relevant to QA for this work order"""
+        work_order = self.get_object()
+        
+        # Get parts needing QA to determine current steps
+        parts_needing_qa = work_order.parts.filter(
+            requires_sampling=True,
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
+        ).select_related('step', 'part_type')
+        
+        if not parts_needing_qa.exists():
+            return Response({
+                'work_order_documents': [],
+                'current_step_documents': [],
+                'part_type_documents': [],
+                'current_step_id': None
+            })
+        
+        # Determine the most common step (current step)
+        step_counts = Counter(part.step.id for part in parts_needing_qa if part.step)
+        current_step_id = step_counts.most_common(1)[0][0] if step_counts else None
+        current_step = None
+        if current_step_id:
+            current_step = parts_needing_qa.filter(step_id=current_step_id).first().step
+        
+        # Get part type (should be same for all parts in work order)
+        part_type = parts_needing_qa.first().part_type if parts_needing_qa.exists() else None
+        
+        # Get content types
+        work_order_ct = ContentType.objects.get_for_model(WorkOrder)
+        step_ct = ContentType.objects.get_for_model(Steps) if current_step else None
+        part_type_ct = ContentType.objects.get_for_model(PartTypes) if part_type else None
+        
+        # Get documents
+        work_order_docs = Documents.get_user_accessible_queryset(request.user).filter(
+            content_type=work_order_ct,
+            object_id=work_order.id
+        )
+        
+        current_step_docs = Documents.objects.none()
+        if step_ct and current_step:
+            current_step_docs = Documents.get_user_accessible_queryset(request.user).filter(
+                content_type=step_ct,
+                object_id=current_step.id
+            )
+        
+        part_type_docs = Documents.objects.none()
+        if part_type_ct and part_type:
+            part_type_docs = Documents.get_user_accessible_queryset(request.user).filter(
+                content_type=part_type_ct,
+                object_id=part_type.id
+            )
+        
+        # Serialize documents
+        document_serializer = DocumentsSerializer
+        
+        return Response({
+            'work_order_documents': document_serializer(work_order_docs, many=True, context={'request': request}).data,
+            'current_step_documents': document_serializer(current_step_docs, many=True, context={'request': request}).data,
+            'part_type_documents': document_serializer(part_type_docs, many=True, context={'request': request}).data,
+            'current_step_id': current_step_id,
+            'parts_in_qa': parts_needing_qa.count()
+        })
+
 
 class EquipmentViewSet(viewsets.ModelViewSet):
     serializer_class = EquipmentsSerializer  # Will need to create this
@@ -783,5 +933,6 @@ class UserDetailsView(UserDetailsView):
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         response.data['is_staff'] = request.user.is_staff
+        # Add user groups to the response
+        response.data['groups'] = [{'id': group.id, 'name': group.name} for group in request.user.groups.all()]
         return response
-

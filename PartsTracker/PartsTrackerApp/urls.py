@@ -169,6 +169,7 @@ router.register("MeasurementDefinitions", MeasurementsDefinitionViewSet)
 router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 router.register("User", UserViewSet, basename="User")
+router.register("Groups", GroupViewSet, basename="Groups")
 
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),

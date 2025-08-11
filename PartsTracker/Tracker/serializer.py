@@ -8,6 +8,7 @@ from auditlog.models import LogEntry
 from dj_rest_auth.forms import AllAuthPasswordResetForm
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.auth.models import Group
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from dj_rest_auth.serializers import PasswordResetSerializer as BasePasswordResetSerializer, PasswordResetSerializer
@@ -142,14 +143,14 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
     parts_summary = serializers.SerializerMethodField()
     process_stages = serializers.SerializerMethodField()
 
-    # Legacy fields for compatibility
-    customer_first_name = serializers.CharField(source="customer.first_name", read_only=True)
-    customer_last_name = serializers.CharField(source="customer.last_name", read_only=True)
-    company_name = serializers.CharField(source="company.name", read_only=True)
+    # Legacy fields for compatibility - using SerializerMethodField to handle null relations safely
+    customer_first_name = serializers.SerializerMethodField(required=False, allow_null=True)
+    customer_last_name = serializers.SerializerMethodField(required=False, allow_null=True)
+    company_name = serializers.SerializerMethodField(required=False, allow_null=True)
 
     # Write fields
-    customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    company = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all())
+    customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), allow_null=True, required=False)
+    company = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), allow_null=True, required=False)
     current_hubspot_gate = serializers.PrimaryKeyRelatedField(
         queryset=ExternalAPIOrderIdentifier.objects.all(),
         allow_null=True,
@@ -166,17 +167,32 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
                             'customer_info', 'company_info', 'customer_first_name', 'customer_last_name',
                             'company_name')
 
-    @extend_schema_field(UserSelectSerializer())
+    @extend_schema_field(UserSelectSerializer(allow_null=True))
     def get_customer_info(self, obj):
         if obj.customer:
             return UserSelectSerializer(obj.customer).data
         return None
 
-    @extend_schema_field(CompanySerializer())
+    @extend_schema_field(CompanySerializer(allow_null=True))
     def get_company_info(self, obj):
         if obj.company:
             return CompanySerializer(obj.company, context=self.context).data
         return None
+    
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_customer_first_name(self, obj):
+        """Safe access to customer first name"""
+        return obj.customer.first_name if obj.customer else None
+    
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_customer_last_name(self, obj):
+        """Safe access to customer last name"""
+        return obj.customer.last_name if obj.customer else None
+    
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_company_name(self, obj):
+        """Safe access to company name"""
+        return obj.company.name if obj.company else None
 
     @extend_schema_field(serializers.DictField())
     def get_parts_summary(self, obj):
@@ -232,6 +248,9 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     step_description = serializers.SerializerMethodField(read_only=True)
     work_order_erp_id = serializers.SerializerMethodField(read_only=True, allow_null=True)
     quality_status = serializers.SerializerMethodField(read_only=True)
+    
+    # Batch process info
+    is_from_batch_process = serializers.SerializerMethodField(read_only=True)
 
     # Write fields
     step = serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all())
@@ -245,11 +264,11 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
                   'part_type_info', 'step', 'step_info', 'work_order', 'work_order_info', 'sampling_info',
                   'quality_info', 'sampling_history', 'created_at', 'updated_at', 'archived', 'has_error',
                   'part_type_name', 'process_name', 'order_name', 'step_description', 'work_order_erp_id',
-                  'quality_status', 'sampling_rule', 'sampling_ruleset', 'sampling_context')
+                  'quality_status', 'is_from_batch_process', 'sampling_rule', 'sampling_ruleset', 'sampling_context')
         read_only_fields = ('created_at', 'updated_at', 'archived', 'requires_sampling', 'sampling_info',
                             'quality_info', 'work_order_info', 'sampling_history', 'order_info', 'part_type_info',
                             'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-                            'step_description', 'work_order_erp_id', 'quality_status')
+                            'step_description', 'work_order_erp_id', 'quality_status', 'is_from_batch_process')
 
     @extend_schema_field(serializers.DictField())
     def get_sampling_info(self, obj):
@@ -343,6 +362,13 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
             'has_errors': obj.has_quality_errors(),
             'latest_status': obj.get_latest_quality_status()
         }
+    
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_from_batch_process(self, obj):
+        """Check if this part comes from a batch process"""
+        if obj.part_type and obj.part_type.processes.exists():
+            return obj.part_type.processes.filter(is_batch_process=True).exists()
+        return False
 
 
 class CustomerPartsSerializer(serializers.ModelSerializer):
@@ -360,6 +386,7 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     related_order_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
     related_order_detail = serializers.SerializerMethodField()
+    is_batch_work_order = serializers.SerializerMethodField()
 
     related_order = serializers.PrimaryKeyRelatedField(queryset=Orders.objects.all(), required=False, allow_null=True)
 
@@ -367,11 +394,11 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         model = WorkOrder
         fields = ('id', 'ERP_id', 'workorder_status', 'quantity', 'related_order', 'related_order_info',
                   'related_order_detail', 'expected_completion', 'expected_duration', 'true_completion',
-                  'true_duration', 'notes', 'parts_summary', 'created_at', 'updated_at', 'archived')
+                  'true_duration', 'notes', 'parts_summary', 'is_batch_work_order', 'created_at', 'updated_at', 'archived')
         read_only_fields = ('created_at', 'updated_at', 'archived', 'related_order_info', 'parts_summary',
-                            'related_order_detail')
+                            'related_order_detail', 'is_batch_work_order')
 
-    @extend_schema_field(serializers.DictField())
+    @extend_schema_field(serializers.DictField(allow_null=True))
     def get_related_order_info(self, obj):
         if obj.related_order:
             return {
@@ -382,7 +409,7 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
             }
         return None
 
-    @extend_schema_field(OrdersSerializer())
+    @extend_schema_field(OrdersSerializer(allow_null=True))
     def get_related_order_detail(self, obj):
         if obj.related_order:
             return OrdersSerializer(obj.related_order, context=self.context).data
@@ -391,12 +418,25 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     @extend_schema_field(serializers.DictField())
     def get_parts_summary(self, obj):
         parts = obj.parts.all()
+        has_batch_parts = parts.filter(
+            part_type__processes__is_batch_process=True
+        ).exists()
+        
         return {
-            'total_parts': parts.count(),
-            'completed_parts': parts.filter(part_status=PartsStatus.COMPLETED).count(),
-            'in_progress_parts': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
-            'pending_parts': parts.filter(part_status=PartsStatus.PENDING).count()
+            'total': parts.count(),
+            'requiring_qa': parts.filter(requires_sampling=True, part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA']).count(),
+            'completed': parts.filter(part_status=PartsStatus.COMPLETED).count(),
+            'in_progress': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
+            'pending': parts.filter(part_status=PartsStatus.PENDING).count(),
+            'has_batch_parts': has_batch_parts
         }
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_batch_work_order(self, obj):
+        """Check if any parts in this work order come from batch processes"""
+        return obj.parts.filter(
+            part_type__processes__is_batch_process=True
+        ).exists()
 
 
 class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
@@ -657,7 +697,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Processes
-        fields = ["id", "name", "is_remanufactured", "part_type", "steps", "num_steps"]
+        fields = ["id", "name", "is_remanufactured", "part_type", "steps", "num_steps", "is_batch_process"]
 
     def create(self, validated_data):
         steps_data = validated_data.pop("steps", [])
@@ -1346,6 +1386,15 @@ class PasswordResetSerializer(BasePasswordResetSerializer):
         """Force use of our custom form instead of the default AllAuth form"""
         return CustomAllAuthPasswordResetForm
 
+
+class GroupSerializer(serializers.ModelSerializer):
+    """Serializer for Django Groups"""
+    
+    class Meta:
+        model = Group
+        fields = ('id', 'name')
+
+
 class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Enhanced user serializer with company and permission info"""
     full_name = serializers.SerializerMethodField()
@@ -1357,11 +1406,19 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
         required=False,
         allow_null=True
     )
+    groups = GroupSerializer(many=True, read_only=True)
+    group_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Group.objects.all(),
+        source='groups',
+        write_only=True,
+        required=False
+    )
     
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 
-                  'date_joined', 'parent_company', 'parent_company_id')
+                  'date_joined', 'parent_company', 'parent_company_id', 'groups', 'group_ids')
         read_only_fields = ('date_joined', 'full_name')
         extra_kwargs = {
             'password': {'write_only': True}

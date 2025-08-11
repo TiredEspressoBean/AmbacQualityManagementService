@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
 export function useRetrieveWorkOrder(
-    queries: Parameters<typeof api.api_WorkOrders_retrieve>[0],
+    id: number,
     options?: { enabled?: boolean }
 ) {
     return useQuery({
-        queryKey: ["workorder", queries],
-        queryFn: () => api.api_WorkOrders_retrieve(queries),
+        queryKey: ["workorder", id],
+        queryFn: () => api.api_WorkOrders_retrieve({ params: { id } }),
         enabled: options?.enabled ?? true,
     });
 }

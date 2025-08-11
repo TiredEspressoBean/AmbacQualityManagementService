@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import {useQuery, type UseQueryOptions} from "@tanstack/react-query"
 import { api } from "@/lib/api/generated.ts"
 
 export function useRetrieveOrders (queries: Parameters<typeof api.api_Orders_list>[0],

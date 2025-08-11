@@ -234,3 +234,33 @@ class SamplingSystemTestCase(TestCase):
         self.assertTrue(len(selected) in [0, 1])
         print("PASS: Single part case handled")
 
+    def test_quality_report_fail_quarantines_part(self):
+        """Test that a FAIL quality report quarantines the part"""
+        part = self.create_test_parts(1)[0]
+        self.assertEqual(part.part_status, PartsStatus.PENDING)
+        
+        quality_report = QualityReports.objects.create(
+            part=part,
+            reporter=self.user,
+            status=QualityReportsStatus.FAIL
+        )
+        
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.QUARANTINED)
+        print("PASS: FAIL quality report quarantines part")
+
+    def test_quality_report_pass_no_quarantine(self):
+        """Test that a PASS quality report does not quarantine the part"""
+        part = self.create_test_parts(1)[0]
+        self.assertEqual(part.part_status, PartsStatus.PENDING)
+        
+        quality_report = QualityReports.objects.create(
+            part=part,
+            reporter=self.user,
+            status=QualityReportsStatus.PASS
+        )
+        
+        part.refresh_from_db()
+        self.assertEqual(part.part_status, PartsStatus.PENDING)
+        print("PASS: PASS quality report does not quarantine part")
+

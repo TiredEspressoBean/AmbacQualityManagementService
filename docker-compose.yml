@@ -51,7 +51,8 @@ services:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "80:5173"
+      - "443:5173"
     environment:
       - VITE_API_TARGET=${VITE_API_TARGET:-http://localhost:8000}
     depends_on:

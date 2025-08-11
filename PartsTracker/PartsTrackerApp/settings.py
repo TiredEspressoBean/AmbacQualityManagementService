@@ -18,7 +18,7 @@ from dotenv import load_dotenv, dotenv_values
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load .env file from project root (one level up from PartsTracker/)
-load_dotenv(dotenv_path=BASE_DIR.parent / '.env')
+# load_dotenv(dotenv_path=BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/

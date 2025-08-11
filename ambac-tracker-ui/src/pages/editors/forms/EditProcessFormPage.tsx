@@ -2,22 +2,16 @@
 
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import {useForm, useFieldArray, FormProvider} from "react-hook-form";
+import {FormProvider, useFieldArray, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {Button} from "@/components/ui/button";
-import {
-    Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
+import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
-import {
-    Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
-import {ChevronsUpDown, Check} from "lucide-react";
+import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
+import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from "@/components/ui/command";
+import {Check, ChevronsUpDown} from "lucide-react";
 import {cn} from "@/lib/utils";
 import {useParams} from "@tanstack/react-router";
 
@@ -45,8 +39,7 @@ const formSchema = z.object({
     name: z
         .string()
         .min(1, "Process name is required - please enter a descriptive name for this process")
-        .max(255, "Process name must be 255 characters or less"),
-    is_remanufactured: z.boolean(),
+        .max(255, "Process name must be 255 characters or less"), is_remanufactured: z.boolean(),
     part_type: z
         .number()
         .int("Part type must be selected - please choose a valid part type for this process")
@@ -55,6 +48,7 @@ const formSchema = z.object({
         .number()
         .min(1, "Number of steps must be at least 1 - please specify how many steps this process requires")
         .max(50, "Number of steps cannot exceed 50 - please use a reasonable number of steps"),
+    is_batch_process: z.boolean(),
     steps: z
         .array(stepSchema)
         .min(1, "At least one step is required - please define the steps for this process"),
@@ -68,8 +62,7 @@ export default function ProcessFormPage() {
     const processId = params.id ? parseInt(params.id, 10) : undefined;
 
     const {
-        data,
-        isLoading
+        data, isLoading
     } = useRetrieveProcessWithSteps({params: {id: processId!}}, {enabled: mode === "edit" && !!processId});
 
     const [partTypeSearch, setPartTypeSearch] = useState("");
@@ -82,6 +75,7 @@ export default function ProcessFormPage() {
             is_remanufactured: false,
             part_type: undefined,
             num_steps: 5,
+            is_batch_process: false,
             steps: Array.from({length: 5}, () => ({
                 name: "", description: "", expected_duration: undefined,
             })),
@@ -112,12 +106,6 @@ export default function ProcessFormPage() {
     }, [debouncedNumSteps, form, mode]);
 
     useEffect(() => {
-        console.log("Reset useEffect triggered");
-        console.log("mode === 'edit':", mode === 'edit');
-        console.log("processId:", processId);
-        console.log("!isLoading:", !isLoading);
-        console.log("data:", data);
-        console.log("data?.id:", data?.id);
         if (mode === 'edit' && processId && !isLoading && data && data?.id !== undefined) {
             const stepsData = Array.isArray(data.steps) ? data.steps : [];
             const numSteps = data.num_steps ?? (stepsData.length || 1);
@@ -134,6 +122,7 @@ export default function ProcessFormPage() {
                 name: data.name ?? "",
                 is_remanufactured: data.is_remanufactured ?? false,
                 part_type: data.part_type,
+                is_batch_process: data.is_batch_process ?? false,
                 num_steps: numSteps,
             };
 
@@ -279,6 +268,28 @@ export default function ProcessFormPage() {
                             <FormDescription>How many steps should this process have?</FormDescription>
                             <FormMessage/>
                         </FormItem>)}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="is_batch_process"
+                        render={({field}) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>
+                                        Batched Process
+                                    </FormLabel>
+                                    <FormDescription>
+                                        For this process, are we tracking for the batch instead of tracking each individual part?
+                                    </FormDescription>
+                                </div>
+                            </FormItem>)}
                     />
 
                     {fields.map((field, index) => (<StepFields
