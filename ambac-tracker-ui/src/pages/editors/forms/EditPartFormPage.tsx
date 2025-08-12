@@ -42,10 +42,11 @@ const formSchema = z.object({
     step: z
         .number()
         .min(1, "Step must be selected - please choose which manufacturing step this part is in"),
-    process: z.number().optional(),
     work_order: z.number().optional(),
     archived: z.boolean().default(false).optional(),
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 export default function PartFormPage() {
     const params = useParams({strict: false});
@@ -73,8 +74,9 @@ export default function PartFormPage() {
         enabled: !!part?.order,
     });
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema), defaultValues: {
+    const form = useForm<FormData>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
             ERP_id: part?.ERP_id ?? "",
             part_status: part?.part_status ?? PART_STATUS[0],
             order: part?.order ?? undefined,
@@ -100,22 +102,41 @@ export default function PartFormPage() {
     }, [mode, part, form]);
 
     const selectedPartType = form.watch("part_type")
-    const selectedProcess = form.watch("process") // or "Process" depending on your field name
-
-    const {data: steps} = useRetrieveSteps({
-        queries: {
-            process__part_type: selectedPartType, process: selectedProcess || undefined,
-        },
-    })
+    
+    // Process selection for filtering steps (not submitted to API)
+    const [selectedProcess, setSelectedProcess] = useState<number | undefined>(undefined)
 
     const {data: processes} = useRetrieveProcesses({
         queries: {part_type: selectedPartType}
     });
 
+    const {data: steps} = useRetrieveSteps({
+        queries: {
+            part_type: selectedPartType,
+            process: selectedProcess || undefined,
+        },
+    })
+    
+    // Auto-select process when editing and we have part data
+    useEffect(() => {
+        if (mode === "edit" && part?.process && processes?.results) {
+            const processId = typeof part.process === 'string' ? parseInt(part.process) : part.process;
+            const matchingProcess = processes.results.find(p => p.id === processId);
+            if (matchingProcess && selectedProcess !== processId) {
+                setSelectedProcess(matchingProcess.id);
+            }
+        }
+    }, [mode, part?.process, processes?.results, selectedProcess]);
+
+    // Reset process selection when part type changes
+    useEffect(() => {
+        setSelectedProcess(undefined);
+    }, [selectedPartType]);
+
     const createPart = useCreatePart();
     const updatePart = useUpdatePart();
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormData) {
         if (mode === "edit" && partId) {
             updatePart.mutate({
                 id: partId, data: values,
@@ -289,44 +310,57 @@ export default function PartFormPage() {
                         }}
                     />
 
-                    <FormField
-                        control={form.control}
-                        name="process"
-                        render={({field}) => (<FormItem className="flex flex-col">
-                            <FormLabel>Process</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button variant="outline" role="combobox" className="w-[300px] justify-between">
-                                            {field.value ? processes?.results.find((p) => p.id === field.value)?.name ?? "Loading..." : "Select a process"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[300px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search processes..."/>
-                                        <CommandList>
-                                            <CommandEmpty>No processes found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {(processes?.results ?? []).map((process) => (<CommandItem
+                    {/* Process Selector - For filtering steps only, not part of form data */}
+                    <div className="flex flex-col space-y-2">
+                        <FormLabel>Process (for filtering steps)</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button 
+                                    variant="outline" 
+                                    role="combobox" 
+                                    className={cn(
+                                        "w-[300px] justify-between",
+                                        !selectedPartType && "text-muted-foreground"
+                                    )}
+                                    disabled={!selectedPartType}
+                                >
+                                    {selectedProcess 
+                                        ? processes?.results.find((p) => p.id === selectedProcess)?.name ?? "Loading..." 
+                                        : selectedPartType ? "Select a process to filter steps" : "Select part type first"
+                                    }
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search processes..."/>
+                                    <CommandList>
+                                        <CommandEmpty>No processes found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {(processes?.results ?? []).map((process) => (
+                                                <CommandItem
                                                     key={process.id}
                                                     value={process.name}
-                                                    onSelect={() => form.setValue("process", process.id)}
+                                                    onSelect={() => setSelectedProcess(process.id)}
                                                 >
                                                     <Check
-                                                        className={cn("mr-2 h-4 w-4", process.id === field.value ? "opacity-100" : "opacity-0")}
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4", 
+                                                            process.id === selectedProcess ? "opacity-100" : "opacity-0"
+                                                        )}
                                                     />
                                                     {process.name}
-                                                </CommandItem>))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage/>
-                        </FormItem>)}
-                    />
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <FormDescription>
+                            This helps filter the step choices. The process is determined automatically from the selected step.
+                        </FormDescription>
+                    </div>
 
                     <FormField
                         control={form.control}

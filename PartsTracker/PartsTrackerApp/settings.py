@@ -262,10 +262,10 @@ REST_AUTH = {
     'PASSWORD_RESET_USE_SITES_DOMAIN': False,
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-# EMAIL_HOST = "smtp.your-email-provider.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "your-email@example.com"
-# EMAIL_HOST_PASSWORD = "your-password"
-DEFAULT_FROM_EMAIL = "webmaster@new_exampl.com"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "smtp365062@ambac.net")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "Ghn083KucqxYuW167zZLOwXduYj3m4kS")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sales@ambacinternational.com")

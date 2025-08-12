@@ -243,6 +243,7 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     # Legacy compatibility fields
     has_error = serializers.SerializerMethodField(read_only=True)
     part_type_name = serializers.SerializerMethodField(read_only=True)
+    process = serializers.SerializerMethodField(read_only=True)
     process_name = serializers.SerializerMethodField(read_only=True)
     order_name = serializers.SerializerMethodField(read_only=True, allow_null=True)
     step_description = serializers.SerializerMethodField(read_only=True)
@@ -264,11 +265,11 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
                   'part_type_info', 'step', 'step_info', 'work_order', 'work_order_info', 'sampling_info',
                   'quality_info', 'sampling_history', 'created_at', 'updated_at', 'archived', 'has_error',
                   'part_type_name', 'process_name', 'order_name', 'step_description', 'work_order_erp_id',
-                  'quality_status', 'is_from_batch_process', 'sampling_rule', 'sampling_ruleset', 'sampling_context')
+                  'quality_status', 'is_from_batch_process', 'sampling_rule', 'sampling_ruleset', 'sampling_context', 'process')
         read_only_fields = ('created_at', 'updated_at', 'archived', 'requires_sampling', 'sampling_info',
                             'quality_info', 'work_order_info', 'sampling_history', 'order_info', 'part_type_info',
                             'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-                            'step_description', 'work_order_erp_id', 'quality_status', 'is_from_batch_process')
+                            'step_description', 'work_order_erp_id', 'quality_status', 'is_from_batch_process', 'process')
 
     @extend_schema_field(serializers.DictField())
     def get_sampling_info(self, obj):
@@ -315,6 +316,13 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
                 'ID_prefix': obj.part_type.ID_prefix
             }
         return None
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_process(self, obj):
+        if obj.step and obj.step.process:
+            return obj.step.process.id
+        else:
+            return None
 
     @extend_schema_field(serializers.DictField())
     def get_step_info(self, obj):
@@ -424,7 +432,8 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         
         return {
             'total': parts.count(),
-            'requiring_qa': parts.filter(requires_sampling=True, part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA']).count(),
+            'requiring_qa': parts.filter(requires_sampling=True, part_status__in=['PENDING', 'IN_PROGRESS',
+                                                                                  'AWAITING_QA', 'READY FOR NEXT STEP']).count(),
             'completed': parts.filter(part_status=PartsStatus.COMPLETED).count(),
             'in_progress': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
             'pending': parts.filter(part_status=PartsStatus.PENDING).count(),

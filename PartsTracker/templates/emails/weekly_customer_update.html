@@ -104,18 +104,19 @@
         <div class="progress-bar">
             <div class="progress-fill" style="width: {{ order.progress }}%"></div>
         </div>
-        <div style="text-align: center; font-size: 12px; color: #6b7280; margin-top: 5px;">
-            {{ order.progress }}% Complete ({{ order.completed_parts }}/{{ order.total_parts }} parts)
-        </div>
         
         <div class="order-details">
             <div>
-                <strong>Current Stage:</strong><br>
-                {{ order.current_stage }}
+                <strong>Original Completion:</strong><br>
+                {{ order.original_completion|date:"M d, Y"|default:"TBD" }}
             </div>
             <div>
                 <strong>Est. Completion:</strong><br>
                 {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
+            </div>
+            <div>
+                <strong>Current Stage:</strong><br>
+                {{ order.current_stage }}
             </div>
         </div>
     </div>

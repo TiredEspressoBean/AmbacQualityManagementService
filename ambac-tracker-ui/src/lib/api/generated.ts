@@ -647,6 +647,7 @@ type Parts = {
   sampling_rule?: (number | null) | undefined;
   sampling_ruleset?: (number | null) | undefined;
   sampling_context?: unknown | undefined;
+  process: number;
 };
 type PaginatedProcessWithStepsList = {
   /**
@@ -2175,6 +2176,7 @@ const Parts: z.ZodType<Parts> = z
     sampling_rule: z.number().int().nullish(),
     sampling_ruleset: z.number().int().nullish(),
     sampling_context: z.unknown().optional(),
+    process: z.number().int(),
   })
   .passthrough();
 const PaginatedPartsList: z.ZodType<PaginatedPartsList> = z

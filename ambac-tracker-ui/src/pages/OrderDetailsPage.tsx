@@ -54,11 +54,11 @@ export function OrderDetailsPage() {
     if (isLoading) return <p>Loading...</p>;
     if (error || !data) return <p className="text-red-500">Error loading order details.</p>;
 
-    const { stages, customer, estimated_completion } = data;
-    const customerName = customer?.parent_company?.name ?? "Unknown Customer";
-    const currentStage = stages.find((s) => s.is_current)?.name || "";
-    const completed = stages.filter((s) => s.is_completed).length;
-    const progress = (completed / stages.length) * 100;
+    const { process_stages, customer_first_name, customer_last_name, estimated_completion } = data;
+    const customerName = customer_first_name + " " + customer_last_name ?? "Unknown Customer";
+    const currentStage = process_stages.find((s) => s.is_current)?.name || "";
+    const completed = process_stages.filter((s) => s.is_completed).length;
+    const progress = (completed / process_stages.length) * 100;
 
     return (
         <div className="max-w-3xl mx-auto p-4">
@@ -67,7 +67,7 @@ export function OrderDetailsPage() {
             <ProgressLabel currentStage={currentStage} progress={progress} />
             {estimated_completion && (
                 <p className="text-sm text-muted-foreground mb-6">
-                    {completed}/{stages.length} stages complete • Estimated delivery:{" "}
+                    {completed}/{process_stages.length} stages complete • Estimated delivery:{" "}
                     {formatDistanceToNow(new Date(estimated_completion), { addSuffix: true })}
                 </p>
             )}
@@ -82,7 +82,7 @@ export function OrderDetailsPage() {
         )}
 
             <div className="space-y-4">
-                {stages.map((stage, idx) => (
+                {process_stages.map((stage, idx) => (
                     <div key={idx} className="flex items-start gap-3">
                         {getStatusIcon(stage)}
                         <div>
@@ -119,7 +119,7 @@ export function OrderDetailsPage() {
                                 >
                                 <p className="font-medium">{part.part_type.name}</p>
                                 <p className="text-muted-foreground text-xs">{part.step.description}</p>
-                                <p className="text-muted-foreground text-xs">Status: {part.status}</p>
+                                <p className="text-muted-foreground text-xs">Status: {part.part_status}</p>
                                 </Link>
                             </Card>
                         ))

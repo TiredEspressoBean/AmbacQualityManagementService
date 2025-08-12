@@ -264,3 +264,99 @@ class SamplingSystemTestCase(TestCase):
         self.assertEqual(part.part_status, PartsStatus.PENDING)
         print("PASS: PASS quality report does not quarantine part")
 
+    def test_batch_sampling_integration(self):
+        """Test that batching works correctly with sampling evaluation"""
+        # Create a work order batch using the real method
+        parts = self.work_order.create_parts_batch(self.part_type, self.step, 25)
+        
+        # Verify parts were created as batch
+        self.assertEqual(len(parts), 25)
+        self.assertTrue(all(p.work_order == self.work_order for p in parts))
+        self.assertTrue(all(p.step == self.step for p in parts))
+        
+        # Add sampling rule
+        SamplingRule.objects.create(
+            ruleset=self.ruleset,
+            rule_type='every_nth_part',
+            value=5,
+            order=1
+        )
+        
+        # Evaluate sampling for the batch
+        self.work_order._bulk_evaluate_sampling(parts)
+        
+        # Check that some parts require sampling
+        sampling_parts = [p for p in parts if p.requires_sampling]
+        self.assertEqual(len(sampling_parts), 5)  # Every 5th part
+        print("PASS: Batch sampling evaluation works correctly")
+
+    def test_ready_for_next_step_qa_visibility(self):
+        """Test that READY_FOR_NEXT_STEP parts needing sampling show in QA tasks"""
+        # Create parts requiring sampling
+        part = self.create_test_parts(1)[0]
+        part.requires_sampling = True
+        part.part_status = PartsStatus.READY_FOR_NEXT_STEP
+        part.save()
+        
+        # Test the UI query logic
+        from Tracker.serializer import WorkOrderSerializer
+        serializer = WorkOrderSerializer(self.work_order)
+        parts_summary = serializer.get_parts_summary(self.work_order)
+        
+        # Now the UI should recognize READY_FOR_NEXT_STEP parts requiring sampling
+        requiring_qa = parts_summary['requiring_qa']
+        self.assertEqual(requiring_qa, 1)
+        print("PASS: UI now recognizes READY_FOR_NEXT_STEP as QA work")
+
+    def test_batch_advancement_with_sampling(self):
+        """Test that batch advancement works correctly with sampling requirements"""
+        # Create a multi-step process
+        step2 = Steps.objects.create(
+            name='Quality Check',
+            process=self.process,
+            part_type=self.part_type,
+            order=2,
+            description='QA step',
+            is_last_step=True
+        )
+        
+        # Update first step to not be last
+        self.step.is_last_step = False
+        self.step.save()
+        
+        # Create batch at first step
+        parts = self.work_order.create_parts_batch(self.part_type, self.step, 10)
+        
+        # Add sampling rule to first step
+        SamplingRule.objects.create(
+            ruleset=self.ruleset,
+            rule_type='every_nth_part',
+            value=5,
+            order=1
+        )
+        
+        # Evaluate sampling
+        self.work_order._bulk_evaluate_sampling(parts)
+        
+        # Mark parts ready and try to advance
+        for part in parts:
+            part.part_status = PartsStatus.READY_FOR_NEXT_STEP
+            part.save()
+        
+        # Try increment_step on first part (should advance whole batch)
+        first_part = parts[0]
+        result = first_part.increment_step()
+        
+        # Check if batch advanced correctly
+        first_part.refresh_from_db()
+        
+        # Verify the result
+        self.assertEqual(result, "full_work_order_advanced")
+        
+        # Check all parts in batch advanced to step 2
+        all_parts = Parts.objects.filter(work_order=self.work_order)
+        all_advanced = all(p.step.order == 2 for p in all_parts)
+        self.assertTrue(all_advanced)
+        
+        print("PASS: Batch advancement works with sampling")
+

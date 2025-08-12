@@ -955,14 +955,15 @@ class Steps(SecureModel):
 
     def can_advance_step(self, work_order, step):
         """Fixed method with proper field references"""
-        parts = Parts.objects.filter(work_order=work_order, step=step)  # Fixed: was current_step
-        completed = parts.filter(part_status='COMPLETED').count()  # Fixed: was status
+        parts = Parts.objects.filter(work_order=work_order, step=step)
+        ready_for_next = parts.filter(part_status=PartsStatus.READY_FOR_NEXT_STEP).count()
         total = parts.count()
 
-        if step.block_on_quarantine and parts.filter(part_status='QUARANTINED').exists():  # Fixed: was status
+        if step.block_on_quarantine and parts.filter(part_status='QUARANTINED').exists():
             return False
 
-        if completed / total < step.pass_threshold:
+        # For batch processing, pass threshold should check parts ready to advance
+        if ready_for_next / total < step.pass_threshold:
             return False
 
         if step.requires_qa_signoff and not QaApproval.objects.filter(step=step, work_order=work_order).exists():
@@ -1285,6 +1286,21 @@ class WorkOrder(SecureModel):
                 pass
 
         super().save(*args, **kwargs)
+
+        # Update related order's expected completion date
+        if self.related_order and self.expected_completion:
+            current_order_completion = self.related_order.estimated_completion
+
+            # Set to the maximum of current order date and this work order's date
+            if current_order_completion is None:
+                new_completion = self.expected_completion
+            else:
+                new_completion = max(current_order_completion, self.expected_completion)
+
+            # Only update if the date actually changed to avoid unnecessary saves
+            if self.related_order.estimated_completion != new_completion:
+                self.related_order.estimated_completion = new_completion
+                self.related_order.save(update_fields=['estimated_completion'])
 
         # Handle status transitions
         if old_status != self.workorder_status:
@@ -1709,7 +1725,7 @@ class Parts(SecureModel):
             part.requires_sampling = result.get("requires_sampling", False)
             part.sampling_rule = result.get("rule")
             part.sampling_ruleset = result.get("ruleset")
-            part.sampling_context = result.get("context")
+            part.sampling_context = result.get("context", {})
 
         Parts.objects.bulk_update(ready_parts,
                                   ["step", "part_status", "requires_sampling", "sampling_rule", "sampling_ruleset",

@@ -1,11 +1,12 @@
 # Tracker/management/commands/send_weekly_emails.py
 from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
+from django.db.models import Avg, Max
 from django.template.loader import render_to_string
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
-from Tracker.models import User, Orders, OrdersStatus
+from Tracker.models import User, Orders, OrdersStatus, Steps
 
 
 class Command(BaseCommand):
@@ -22,13 +23,32 @@ class Command(BaseCommand):
             type=str,
             help='Show full email preview for a specific customer email address',
         )
+        parser.add_argument(
+            '--test-to',
+            type=str,
+            help='Send test email to this address using data from --customer-id',
+        )
+        parser.add_argument(
+            '--customer-id',
+            type=int,
+            help='Customer user ID to use for test email data',
+        )
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
         preview_email = options.get('preview')
+        test_to_email = options.get('test_to')
+        customer_id = options.get('customer_id')
 
         if preview_email:
             self.show_email_preview(preview_email)
+            return
+
+        if test_to_email:
+            if not customer_id:
+                self.stdout.write(self.style.ERROR('--customer-id is required when using --test-to'))
+                return
+            self.send_test_email(test_to_email, customer_id)
             return
 
         # Rest of existing code...
@@ -89,10 +109,27 @@ class Command(BaseCommand):
         for order in orders:
             # Get simple stats
             total_parts = order.parts.count()
-            completed_parts = order.parts.filter(part_status='COMPLETED').count()
+            completed_parts = order.parts.filter(part_status='COMPLETED', archived=False).count()
 
-            # Calculate progress percentage
-            progress = (completed_parts / total_parts * 100) if total_parts > 0 else 0
+            parts_qs = order.parts.filter(archived=False).select_related('step')
+
+            total_parts = parts_qs.filter(archived=False).count()
+
+            # Average current step index (your intended metric)
+            avg_step = parts_qs.aggregate(a=Avg('step__order'))['a'] or 0
+
+            # All processes for the parts in this order
+            process_ids = parts_qs.values_list('step__process_id', flat=True).distinct()
+
+            # True max step across those processes
+            max_step = (
+                           Steps.objects.filter(process_id__in=process_ids)
+                           .aggregate(m=Max('order'))['m']
+                       ) or 0
+
+            print("AVG STEP: ", avg_step, "MAX STEP: ", max_step)
+
+            progress = int(round(100 * (avg_step / max_step))) if max_step else 0
 
             # Get current stage
             current_stage = "Not Started"
@@ -108,6 +145,7 @@ class Command(BaseCommand):
                 'progress': round(progress),
                 'current_stage': current_stage,
                 'completion_date': order.estimated_completion,
+                'original_completion': order.original_completion_date,
                 'total_parts': total_parts,
                 'completed_parts': completed_parts,
             })
@@ -199,3 +237,67 @@ class Command(BaseCommand):
 
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Template error: {e}'))
+
+    def send_test_email(self, test_email, customer_id):
+        """Send test email using customer data but to a different email address"""
+        try:
+            customer = User.objects.get(id=customer_id)
+        except User.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'Customer with ID {customer_id} not found'))
+            return
+
+        self.stdout.write(f'Using customer data from: {customer.username} (ID: {customer.id})')
+        self.stdout.write(f'Sending test email to: {test_email}')
+
+        # Get customer's active orders
+        active_statuses = [
+            OrdersStatus.RFI,
+            OrdersStatus.PENDING,
+            OrdersStatus.IN_PROGRESS,
+            OrdersStatus.ON_HOLD
+        ]
+
+        active_orders = Orders.objects.filter(
+            customer=customer,
+            archived=False,
+            order_status__in=active_statuses
+        ).select_related('company').prefetch_related('parts__step')
+
+        if not active_orders.exists():
+            self.stdout.write(self.style.WARNING(f'No active orders found for customer {customer.username}'))
+            return
+
+        # Prepare email data
+        email_data = self.prepare_order_data(active_orders)
+
+        # Send email to test address instead of customer email
+        try:
+            context = {
+                'customer': customer,
+                'orders': email_data,
+                'week_ending': timezone.now().date(),
+                'total_orders': len(email_data),
+            }
+
+            # Render email
+            subject = f"[TEST] Weekly Order Update - {timezone.now().strftime('%B %d, %Y')} - Customer: {customer.username}"
+            html_content = render_to_string('emails/weekly_customer_update.html', context)
+            text_content = render_to_string('emails/weekly_customer_update.txt', context)
+
+            # Send to test email
+            send_mail(
+                subject=subject,
+                message=text_content,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'orders@yourcompany.com'),
+                recipient_list=[test_email],
+                html_message=html_content,
+                fail_silently=False,
+            )
+
+            self.stdout.write(
+                self.style.SUCCESS(f'✓ Test email sent to {test_email} using data from customer {customer.username}')
+            )
+        except Exception as e:
+            self.stdout.write(
+                self.style.ERROR(f'✗ Failed to send test email: {e}')
+            )

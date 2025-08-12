@@ -11,15 +11,17 @@ export default function TrackerPage() {
         return <p className="text-red-500">Error loading orders</p>
     }
 
+    console.log(data)
+
     return (
         <>
             {(data ?? []).map((order) => (
                 <ExpandableOrderTracker
                     key={order.id}
                     orderNumber={order.id.toString()}
-                    customerName={order.customer?.parent_company?.name ?? "Unknown Customer"}
+                    customerName={order.company_info?.name ?? "Unknown Customer"}
                     estimatedCompletion={order.estimated_completion}
-                    stages={order.stages.map(stage => ({
+                    stages={order.process_stages.map(stage => ({
                         name: stage.name,
                         timestamp: stage.timestamp,
                         is_completed: stage.is_completed,

@@ -141,7 +141,11 @@ export function AppSidebar({
     const { data: user } = useAuthUser()
 
     // Determine if user is staff
-    const isStaff = user?.is_staff || false
+    const is_employee = user?.groups &&
+        user.groups.length > 0 &&
+        !user.groups.some((group: { name: string }) => group.name === 'Customers')
+
+    console.log(user)
 
     return (
         <Sidebar collapsible="icon" {...props}>
@@ -158,7 +162,7 @@ export function AppSidebar({
                 ))}
 
                 {/* Only show staff sections if user is staff */}
-                {isStaff && data.staff_sections.map((section) => (
+                {is_employee && data.staff_sections.map((section) => (
                     <NavPages
                         key={section.key}
                         title={section.title ?? "Untitled"}
