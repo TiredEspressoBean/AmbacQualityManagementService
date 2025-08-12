@@ -117,8 +117,8 @@ export function OrderDetailsPage() {
                                 <Link
                                 to={"/"}
                                 >
-                                <p className="font-medium">{part.part_type.name}</p>
-                                <p className="text-muted-foreground text-xs">{part.step.description}</p>
+                                <p className="font-medium">{part.part_type_name}</p>
+                                <p className="text-muted-foreground text-xs">{part.step_description}</p>
                                 <p className="text-muted-foreground text-xs">Status: {part.part_status}</p>
                                 </Link>
                             </Card>
