@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         preview: {
             host: '0.0.0.0',
             port: 4173,
-            allowedHosts: [env.FRONTEND_URL, 'localhost']
+            allowedHosts: [env.FRONTEND_URL || 'localhost']
         },
         server: {
             host: '0.0.0.0',
