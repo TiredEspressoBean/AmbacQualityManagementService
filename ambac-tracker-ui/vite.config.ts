@@ -5,7 +5,9 @@ import path from 'path';
 
 export default defineConfig(({ mode }) => {
     // Load from .env files if available
-    const env = loadEnv(mode, process.cwd());
+    const env = loadEnv(mode, process.cwd(), '');
+    console.log('Vite looking for .env in:', process.cwd());
+    console.log('Your .env is probably in:', path.resolve(process.cwd(), '../'));
 
     // Fallback to actual process.env if not defined in .env
     const API_TARGET = env.VITE_API_TARGET || process.env.VITE_API_TARGET || "http://localhost:8000";
