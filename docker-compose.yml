@@ -53,6 +53,8 @@ services:
     ports:
       - "80:5173"
       - "443:5173"
+    env_file:
+      - .env
     environment:
       - VITE_API_TARGET=${VITE_API_TARGET:-http://localhost:8000}
     depends_on:
