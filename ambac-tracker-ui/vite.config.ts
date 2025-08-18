@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
         build: {
             sourcemap: true,
         },
+        preview:{
+            allowedHosts: env.FRONTEND_URL || "localhost:5173"
+        },
         server: {
             host: '0.0.0.0',
             proxy: {

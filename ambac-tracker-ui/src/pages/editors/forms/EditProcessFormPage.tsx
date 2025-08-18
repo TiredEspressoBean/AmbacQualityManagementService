@@ -23,6 +23,14 @@ import StepFields from "@/components/step-fields";
 import {useDebounce} from "@/hooks/useDebounce.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 
+const samplingRuleSchema = z.object({
+    rule_type: z
+        .string()
+        .min(1, "Rule type is required - please select a sampling rule type"),
+    value: z.union([z.string(), z.number(), z.null()]).optional(),
+    order: z.number().min(1, "Order must be at least 1").optional(),
+});
+
 const stepSchema = z.object({
     name: z
         .string()
@@ -33,6 +41,10 @@ const stepSchema = z.object({
         .min(1, "Step description is required - please describe what happens in this step")
         .max(1000, "Step description must be 1000 characters or less"),
     expected_duration: z.number().nullable().optional(),
+    sampling_rules: z.array(samplingRuleSchema).optional(),
+    fallback_rules: z.array(samplingRuleSchema).optional(),
+    fallback_threshold: z.number().nullable().optional(),
+    fallback_duration: z.number().nullable().optional(),
 });
 
 const formSchema = z.object({
@@ -77,7 +89,13 @@ export default function ProcessFormPage() {
             num_steps: 5,
             is_batch_process: false,
             steps: Array.from({length: 5}, () => ({
-                name: "", description: "", expected_duration: undefined,
+                name: "", 
+                description: "", 
+                expected_duration: undefined,
+                sampling_rules: [],
+                fallback_rules: [],
+                fallback_threshold: undefined,
+                fallback_duration: undefined,
             })),
         },
     });
@@ -100,7 +118,13 @@ export default function ProcessFormPage() {
 
         if (debouncedNumSteps !== currentLength) {
             form.setValue("steps", Array.from({length: debouncedNumSteps}, (_, i) => currentSteps[i] ?? {
-                name: "", description: "", expected_duration: undefined,
+                name: "", 
+                description: "", 
+                expected_duration: undefined,
+                sampling_rules: [],
+                fallback_rules: [],
+                fallback_threshold: undefined,
+                fallback_duration: undefined,
             }));
         }
     }, [debouncedNumSteps, form, mode]);
@@ -114,8 +138,18 @@ export default function ProcessFormPage() {
                 name: step.name || "",
                 description: step.description || "",
                 expected_duration: step.expected_duration ?? null,
+                sampling_rules: [],
+                fallback_rules: [],
+                fallback_threshold: null,
+                fallback_duration: null,
             })) : Array.from({length: numSteps}, () => ({
-                name: "", description: "", expected_duration: null,
+                name: "", 
+                description: "", 
+                expected_duration: null,
+                sampling_rules: [],
+                fallback_rules: [],
+                fallback_threshold: null,
+                fallback_duration: null,
             }));
 
             const resetData: Omit<FormSchema, "steps"> = {
@@ -145,8 +179,19 @@ export default function ProcessFormPage() {
 
     function onSubmit(values: FormSchema) {
         const processed = {
-            ...values, steps: values.steps.map((step, index) => ({
-                ...step, order: index + 1,
+            ...values, 
+            steps: values.steps.map((step, index) => ({
+                ...step, 
+                order: index + 1,
+                // Preserve user-defined rule orders and normalize values
+                sampling_rules: step.sampling_rules?.map(rule => ({
+                    ...rule,
+                    value: rule.value ?? null, // prevent undefined
+                })) || [],
+                fallback_rules: step.fallback_rules?.map(rule => ({
+                    ...rule,
+                    value: rule.value ?? null, // prevent undefined  
+                })) || [],
             })),
         };
 
@@ -292,12 +337,19 @@ export default function ProcessFormPage() {
                             </FormItem>)}
                     />
 
-                    {fields.map((field, index) => (<StepFields
-                        key={field.id}
-                        index={index}
-                        control={control}
-                        name="steps"
-                    />))}
+                    {fields.map((field, index) => {
+                        const existingStep = mode === 'edit' && data?.steps?.[index];
+                        return (
+                            <StepFields
+                                key={field.id}
+                                index={index}
+                                control={control}
+                                name="steps"
+                                existingStepId={existingStep?.id}
+                                existingStepName={existingStep?.name}
+                            />
+                        );
+                    })}
 
                     <Button
                         type="submit"

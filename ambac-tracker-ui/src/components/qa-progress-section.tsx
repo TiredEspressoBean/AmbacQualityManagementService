@@ -131,23 +131,6 @@ export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgre
             {/* Measurement Progress Chart */}
             <MeasurementProgressChart workOrder={workOrder} parts={parts} />
 
-            {/* Process Type Info */}
-            {isBatchProcess && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Batch Process
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            This work order uses batch processing. You can perform QA actions on individual parts or the entire batch at once.
-                        </p>
-                    </CardContent>
-                </Card>
-            )}
-
             {/* Notes */}
             {workOrder.notes && (
                 <Card>

@@ -41,6 +41,7 @@ import { useParams } from "@tanstack/react-router"
 import SamplingRulesEditor from "@/components/SamplingRulesEditor.tsx";
 import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
+import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
 
 const samplingRuleSchema = z.object({
     rule_type: z
@@ -393,6 +394,19 @@ export default function StepFormPage() {
                     </div>
 
                     <SamplingRulesEditor name="fallback_rules" label="Fallback Rules"/>
+
+                    {mode === "edit" && stepId && (
+                        <div className="space-y-4">
+                            <FormLabel>Measurement Definitions</FormLabel>
+                            <FormDescription>
+                                Define what measurements need to be taken during this step.
+                            </FormDescription>
+                            <MeasurementDefinitionsManager
+                                stepId={stepId}
+                                label="Measurement Definitions"
+                            />
+                        </div>
+                    )}
 
                     <FormField
                         control={form.control}

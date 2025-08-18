@@ -123,7 +123,7 @@ export default function OrderFormPage() {
         const submitData = {
             ...values,
             customer_note: values.customer_note || undefined,
-            estimated_completion: values.estimated_completion?.toISOString() || undefined,
+            estimated_completion: values.estimated_completion ? format(values.estimated_completion, "yyyy-MM-dd") : undefined,
             current_hubspot_gate: values.current_hubspot_gate || undefined,
         };
 
@@ -365,7 +365,7 @@ export default function OrderFormPage() {
                                             selected={field.value}
                                             onSelect={field.onChange}
                                             disabled={(date) =>
-                                                date < new Date("1900-01-01")
+                                                date < new Date("2020-01-01")
                                             }
                                             initialFocus
                                         />

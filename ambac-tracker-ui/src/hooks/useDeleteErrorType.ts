@@ -7,7 +7,7 @@ export function useDeleteErrorType() {
 
     return useMutation({
         mutationFn: (id: number) =>
-            api.api_ErrorTypes_destroy(undefined, {
+            api.api_Error_types_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),

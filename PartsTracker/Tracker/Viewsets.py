@@ -622,41 +622,6 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 
         return Response(results, status=status.HTTP_207_MULTI_STATUS)
 
-    @action(detail=True, methods=['post'])
-    def batch_qa_action(self, request, pk=None):
-        """Perform QA action on all parts in work order (batch mode)"""
-        work_order = self.get_object()
-        action_type = request.data.get('action')  # 'pass', 'fail', 'quarantine'
-        
-        if not action_type:
-            return Response({'error': 'Action type required'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        parts = work_order.parts.all()
-        
-        if action_type == 'pass':
-            updated_count = parts.update(part_status='COMPLETED')
-            return Response({
-                'message': f'Passed {updated_count} parts',
-                'action': 'pass',
-                'parts_affected': updated_count
-            })
-        elif action_type == 'quarantine':
-            updated_count = parts.update(part_status='QUARANTINED')
-            return Response({
-                'message': f'Quarantined {updated_count} parts', 
-                'action': 'quarantine',
-                'parts_affected': updated_count
-            })
-        elif action_type == 'fail':
-            updated_count = parts.update(part_status='REWORK_NEEDED')
-            return Response({
-                'message': f'Failed {updated_count} parts',
-                'action': 'fail', 
-                'parts_affected': updated_count
-            })
-        else:
-            return Response({'error': 'Invalid action type'}, status=status.HTTP_400_BAD_REQUEST)
-
     @action(detail=True, methods=['get'])
     def qa_summary(self, request, pk=None):
         """Get QA summary for work order including batch status"""

@@ -244,30 +244,70 @@ class Command(BaseCommand):
                     step = Steps.objects.create(name=step_name, process=process, order=order, part_type=part_type,
                         description=f"{step_name} for {part_type.name}")
 
-                    # Add measurement definitions for testing steps
-                    if 'Testing' in step_name or 'Inspection' in step_name or 'QC' in step_name:
-                        self.create_measurement_definitions_for_step(step)
+                    # Add measurement definitions for ALL steps
+                    self.create_measurement_definitions_for_step(step)
 
         self.stdout.write(f"Created {len(part_types)} part types with realistic processes")
         return part_types
 
     def create_measurement_definitions_for_step(self, step):
-        """Create realistic measurement definitions"""
+        """Create realistic measurement definitions for ALL steps"""
         measurements = []
 
+        # Step-specific measurements
         if 'Flow' in step.name:
-            measurements.extend([('Flow Rate', 'NUMERIC', 'mL/min', 850.0, 25.0, 25.0),
-                ('Injection Pattern', 'TEXT', '', None, None, None), ])
+            measurements.extend([
+                ('Flow Rate', 'NUMERIC', 'mL/min', 850.0, 25.0, 25.0),
+                ('Injection Pattern', 'PASS_FAIL', '', None, None, None),
+            ])
         elif 'Pressure' in step.name:
-            measurements.extend([('Opening Pressure', 'NUMERIC', 'bar', 280.0, 10.0, 10.0),
-                ('Closing Pressure', 'NUMERIC', 'bar', 250.0, 15.0, 15.0), ])
-        elif any(word in step.name for word in ['Inspection', 'QC', 'Testing']):
-            measurements.extend([('Overall Length', 'NUMERIC', 'mm', 156.5, 0.1, 0.1),
-                ('Surface Finish', 'NUMERIC', 'Ra µm', 0.8, 0.2, 0.2), ])
+            measurements.extend([
+                ('Opening Pressure', 'NUMERIC', 'bar', 280.0, 10.0, 10.0),
+                ('Closing Pressure', 'NUMERIC', 'bar', 250.0, 15.0, 15.0),
+            ])
+        elif any(word in step.name for word in ['Inspection', 'QC', 'Testing', 'Validation']):
+            measurements.extend([
+                ('Overall Length', 'NUMERIC', 'mm', 156.5, 0.1, 0.1),
+                ('Surface Finish', 'NUMERIC', 'Ra µm', 0.8, 0.2, 0.2),
+            ])
+        elif any(word in step.name for word in ['Assembly', 'Disassembly', 'Reassembly']):
+            measurements.extend([
+                ('Assembly Complete', 'PASS_FAIL', '', None, None, None),
+                ('Torque Spec', 'NUMERIC', 'Nm', 45.0, 5.0, 5.0),
+            ])
+        elif any(word in step.name for word in ['Cleaning', 'Clean']):
+            measurements.extend([
+                ('Cleanliness Check', 'PASS_FAIL', '', None, None, None),
+                ('Contamination Level', 'NUMERIC', 'mg/L', 5.0, 2.0, 2.0),
+            ])
+        elif any(word in step.name for word in ['Machining', 'Fabrication']):
+            measurements.extend([
+                ('Dimensional Check', 'NUMERIC', 'mm', 12.5, 0.05, 0.05),
+                ('Surface Quality', 'PASS_FAIL', '', None, None, None),
+            ])
+        elif any(word in step.name for word in ['Calibration', 'Adjustment']):
+            measurements.extend([
+                ('Calibration Status', 'PASS_FAIL', '', None, None, None),
+                ('Tolerance Check', 'NUMERIC', '%', 0.0, 1.0, 1.0),
+            ])
+        else:
+            # Default measurements for any other step type
+            measurements.extend([
+                ('Process Complete', 'PASS_FAIL', '', None, None, None),
+                ('Quality Check', 'PASS_FAIL', '', None, None, None),
+            ])
 
+        # Create measurement definitions
         for label, type_val, unit, nominal, upper_tol, lower_tol in measurements:
-            MeasurementDefinition.objects.create(step=step, label=label, type=type_val, unit=unit, nominal=nominal,
-                upper_tol=upper_tol, lower_tol=lower_tol, )
+            MeasurementDefinition.objects.create(
+                step=step, 
+                label=label, 
+                type=type_val, 
+                unit=unit, 
+                nominal=nominal,
+                upper_tol=upper_tol, 
+                lower_tol=lower_tol
+            )
 
     def create_realistic_orders(self, companies, customers, config):
         """Create realistic orders with proper status distribution and timing"""
@@ -364,6 +404,10 @@ class Command(BaseCommand):
                 variation = random.randint(-1, 1)  # Allow ±1 step variation within same order
                 target_step_index = max(0, min(len(steps) - 1, base_target_step_index + variation))
                 self.advance_work_order_batch(work_order, target_step_index)
+                
+                # CRITICAL: ALWAYS ensure sampling is properly evaluated after work order creation
+                # This makes it impossible for work orders to have zero sampling parts
+                work_order._bulk_evaluate_sampling(work_order.parts.all())
 
                 total_parts += len(parts)
 

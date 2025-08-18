@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartQualityForm } from "./part-quality-form";
@@ -76,44 +75,59 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
 
     return (
         <div className="space-y-6">
-            {/* Batch Actions (if batch process) */}
-            {isBatchProcess && (
+
+            {/* Batch Quality Forms Summary (for batch processes) */}
+            {isBatchProcess && parts.length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            Batch Actions
-                            <Badge variant="outline" className="text-xs">
-                                {parts.length} parts
+                            Quality Forms Required
+                            <Badge variant="secondary" className="text-sm">
+                                {parts.length} forms
                             </Badge>
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            This work order uses batch processing. You can perform QA actions on all parts at once.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <Button className="bg-green-600 hover:bg-green-700 h-12">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center gap-3">
+                                <AlertTriangle className="h-5 w-5 text-blue-600" />
+                                <div>
+                                    <p className="font-medium text-blue-900">
+                                        {parts.length} Quality Assessment{parts.length === 1 ? '' : 's'} Required
+                                    </p>
+                                    <p className="text-sm text-blue-700 mt-1">
+                                        This batch requires {parts.length} quality form{parts.length === 1 ? '' : 's'} to be completed based on sampling rules.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Button 
+                                className="bg-green-600 hover:bg-green-700 h-12"
+                                onClick={() => {
+                                    setSelectedPart(parts[0]); // Use first part as template
+                                    setShowQaForm(true);
+                                }}
+                            >
                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                Pass All Parts
-                            </Button>
-                            <Button variant="destructive" className="h-12">
-                                <AlertTriangle className="h-4 w-4 mr-2" />
-                                Report Batch Issues
+                                Start Quality Forms
                             </Button>
                             <Button variant="outline" className="h-12">
                                 <Clock className="h-4 w-4 mr-2" />
-                                Request Review
+                                View Individual Parts
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Parts List */}
+            {/* Parts List (for non-batch processes or when viewing individual parts) */}
+            {!isBatchProcess && (
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        {isBatchProcess ? "Parts in Batch" : "Parts Requiring QA"}
+                        Parts Requiring QA
                         <span className="text-sm font-normal text-muted-foreground ml-2">
                             ({parts.length} {parts.length === 1 ? 'part' : 'parts'})
                         </span>
@@ -199,6 +213,7 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                     </div>
                 </CardContent>
             </Card>
+            )}
 
             {/* Individual QA Form */}
             {selectedPart && showQaForm && (
@@ -206,10 +221,10 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-2">
-                                Quality Assessment - {selectedPart.ERP_id}
+                                {isBatchProcess ? "Batch Quality Assessment" : `Quality Assessment - ${selectedPart.ERP_id}`}
                                 {isBatchProcess && (
-                                    <Badge variant="outline" className="text-xs">
-                                        Individual QA
+                                    <Badge variant="secondary" className="text-xs">
+                                        Batch Form
                                     </Badge>
                                 )}
                             </CardTitle>
@@ -289,7 +304,7 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
             )}
 
             {/* No Selection State */}
-            {!selectedPart && (
+            {!selectedPart && !isBatchProcess && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Quality Assessment Form</CardTitle>
@@ -299,10 +314,7 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                             <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                             <p className="text-lg font-medium mb-2">Ready for Quality Assessment</p>
                             <p className="text-sm text-muted-foreground">
-                                {isBatchProcess 
-                                    ? "Use batch actions above or select a part for individual QA"
-                                    : "Select a part above to begin quality assessment"
-                                }
+                                Select a part above to begin quality assessment
                             </p>
                         </div>
                     </CardContent>

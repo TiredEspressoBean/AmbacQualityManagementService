@@ -189,17 +189,28 @@ type MeasurementDefinition = {
    */
   label: string;
   step_name: string;
-  allow_override?: boolean | undefined;
-  allow_remeasure?: boolean | undefined;
-  allow_quarantine?: boolean | undefined;
   unit?: /**
    * @maxLength 50
    */
   string | undefined;
-  require_qa_review?: boolean | undefined;
-  nominal?: (number | null) | undefined;
-  upper_tol?: (number | null) | undefined;
-  lower_tol?: (number | null) | undefined;
+  nominal?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
+  upper_tol?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
+  lower_tol?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
   required?: boolean | undefined;
   type: TypeEnum;
   step: number;
@@ -218,17 +229,28 @@ type MeasurementDefinitionRequest = {
    * @maxLength 100
    */
   label: string;
-  allow_override?: boolean | undefined;
-  allow_remeasure?: boolean | undefined;
-  allow_quarantine?: boolean | undefined;
   unit?: /**
    * @maxLength 50
    */
   string | undefined;
-  require_qa_review?: boolean | undefined;
-  nominal?: (number | null) | undefined;
-  upper_tol?: (number | null) | undefined;
-  lower_tol?: (number | null) | undefined;
+  nominal?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
+  upper_tol?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
+  lower_tol?:
+    | /**
+     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     */
+    (string | null)
+    | undefined;
   required?: boolean | undefined;
   type: TypeEnum;
 };
@@ -1258,17 +1280,22 @@ type PatchedMeasurementDefinitionRequest = Partial<{
    * @maxLength 100
    */
   label: string;
-  allow_override: boolean;
-  allow_remeasure: boolean;
-  allow_quarantine: boolean;
   /**
    * @maxLength 50
    */
   unit: string;
-  require_qa_review: boolean;
-  nominal: number | null;
-  upper_tol: number | null;
-  lower_tol: number | null;
+  /**
+   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   */
+  nominal: string | null;
+  /**
+   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   */
+  upper_tol: string | null;
+  /**
+   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   */
+  lower_tol: string | null;
   required: boolean;
   type: TypeEnum;
 }>;
@@ -1853,14 +1880,19 @@ const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
 const MeasurementDefinitionRequest: z.ZodType<MeasurementDefinitionRequest> = z
   .object({
     label: z.string().min(1).max(100),
-    allow_override: z.boolean().optional(),
-    allow_remeasure: z.boolean().optional(),
-    allow_quarantine: z.boolean().optional(),
     unit: z.string().max(50).optional(),
-    require_qa_review: z.boolean().optional(),
-    nominal: z.number().nullish(),
-    upper_tol: z.number().nullish(),
-    lower_tol: z.number().nullish(),
+    nominal: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    upper_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    lower_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
     required: z.boolean().optional(),
     type: TypeEnum,
   })
@@ -1951,14 +1983,19 @@ const MeasurementDefinition: z.ZodType<MeasurementDefinition> = z
     id: z.number().int(),
     label: z.string().max(100),
     step_name: z.string(),
-    allow_override: z.boolean().optional(),
-    allow_remeasure: z.boolean().optional(),
-    allow_quarantine: z.boolean().optional(),
     unit: z.string().max(50).optional(),
-    require_qa_review: z.boolean().optional(),
-    nominal: z.number().nullish(),
-    upper_tol: z.number().nullish(),
-    lower_tol: z.number().nullish(),
+    nominal: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    upper_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    lower_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
     required: z.boolean().optional(),
     type: TypeEnum,
     step: z.number().int(),
@@ -1977,14 +2014,19 @@ const PatchedMeasurementDefinitionRequest: z.ZodType<PatchedMeasurementDefinitio
   z
     .object({
       label: z.string().min(1).max(100),
-      allow_override: z.boolean(),
-      allow_remeasure: z.boolean(),
-      allow_quarantine: z.boolean(),
       unit: z.string().max(50),
-      require_qa_review: z.boolean(),
-      nominal: z.number().nullable(),
-      upper_tol: z.number().nullable(),
-      lower_tol: z.number().nullable(),
+      nominal: z
+        .string()
+        .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+        .nullable(),
+      upper_tol: z
+        .string()
+        .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+        .nullable(),
+      lower_tol: z
+        .string()
+        .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+        .nullable(),
       required: z.boolean(),
       type: TypeEnum,
     })
@@ -6001,26 +6043,6 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/api/WorkOrders/:id/batch_qa_action/",
-    alias: "api_WorkOrders_batch_qa_action_create",
-    description: `Perform QA action on all parts in work order (batch mode)`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: WorkOrderRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: WorkOrder,
   },
   {
     method: "get",

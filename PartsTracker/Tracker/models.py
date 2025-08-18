@@ -781,14 +781,10 @@ class MeasurementDefinition(SecureModel):
     step = models.ForeignKey("Steps", on_delete=models.CASCADE, related_name="measurement_definitions")
     label = models.CharField(max_length=100)  # e.g. "Outer Diameter"
     type = models.CharField(max_length=20, choices=[("NUMERIC", "Numeric"), ("PASS_FAIL", "Pass/Fail")], )
-    allow_quarantine = models.BooleanField(default=True)
-    allow_remeasure = models.BooleanField(default=False)
-    allow_override = models.BooleanField(default=False)
-    require_qa_review = models.BooleanField(default=True)
     unit = models.CharField(max_length=50, blank=True)  # e.g. "mm", "psi"
-    nominal = models.FloatField(null=True, blank=True)
-    upper_tol = models.FloatField(null=True, blank=True)
-    lower_tol = models.FloatField(null=True, blank=True)
+    nominal = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
+    upper_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
+    lower_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
     required = models.BooleanField(default=True)
 
 
@@ -1368,10 +1364,14 @@ class WorkOrder(SecureModel):
         # Bulk create for efficiency
         Parts.objects.bulk_create(parts)
 
-        # Now evaluate sampling for all parts
-        self._bulk_evaluate_sampling(parts)
+        # CRITICAL FIX: Get fresh parts from DB with IDs for proper sampling evaluation
+        # Only get the parts that were just created (latest by ID)
+        fresh_parts = list(Parts.objects.filter(work_order=self, part_type=part_type, step=step).order_by('id'))
+        
+        # Now evaluate sampling for all parts using fresh objects with IDs
+        self._bulk_evaluate_sampling(fresh_parts)
 
-        return parts
+        return fresh_parts
 
     @classmethod
     def process_csv_date(cls, date_string):

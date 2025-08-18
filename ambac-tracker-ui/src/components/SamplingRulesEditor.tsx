@@ -1,24 +1,13 @@
 "use client"
 
-import {
-    FormField,
-    FormItem,
-    FormLabel,
-    FormControl,
-    FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem,
-} from "@/components/ui/select";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Settings } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { useEffect } from "react";
-import { ruleTypes } from "@/lib/RuleTypesEnum.ts";
+import SamplingRuleCard from "./sampling-rule-card";
+import SamplingRuleForm from "./sampling-rule-form";
 
 type SamplingRulesEditorProps = {
     name: string;   // e.g. "rules" or "fallback_rules"
@@ -27,8 +16,9 @@ type SamplingRulesEditorProps = {
 
 export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: SamplingRulesEditorProps) {
     const { control, getValues, setValue } = useFormContext();
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-    const { fields, append, remove } = useFieldArray({ control, name });
+    const { fields, append, remove, update } = useFieldArray({ control, name });
 
     // Ensure initialized on mount
     useEffect(() => {
@@ -38,85 +28,74 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
         }
     }, [getValues, name, setValue]);
 
+    const handleCreateSuccess = (newRule: any) => {
+        // Use the order from the form, or default to the next available order
+        const order = newRule.order || (fields.length + 1);
+        append({
+            ...newRule,
+            order: order,
+        });
+        setIsCreateDialogOpen(false);
+    };
+
+    const handleUpdateRule = (index: number, updatedRule: any) => {
+        update(index, {
+            ...updatedRule,
+            // Preserve the user-defined order from the form
+        });
+    };
+
+    const handleDeleteRule = (index: number) => {
+        remove(index);
+    };
+
     return (
-        <div className="space-y-4 border p-4 rounded-md">
-            <h4 className="font-semibold">{label}</h4>
-
-            {fields.map((field, index) => (
-                <div key={field.id} className="grid grid-cols-3 gap-4 items-end">
-                    <FormField
-                        control={control}
-                        name={`${name}.${index}.rule_type`}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Type</FormLabel>
-                                <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value || ""}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select rule type" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {ruleTypes.map((type) => (
-                                            <SelectItem key={type.value} value={type.value}>
-                                                {type.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={control}
-                        name={`${name}.${index}.value`}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Value</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="number"
-                                        value={field.value ?? ""}
-                                        onChange={(e) => {
-                                            const parsed = parseFloat(e.target.value);
-                                            field.onChange(isNaN(parsed) ? null : parsed);
-                                        }}
-                                        placeholder="e.g. 10"
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <Button
-                        type="button"
-                        variant="destructive"
-                        onClick={() => remove(index)}
-                    >
-                        Remove
-                    </Button>
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                    <Settings className="h-4 w-4" />
+                    <span className="font-medium">
+                        {label} ({fields.length})
+                    </span>
                 </div>
-            ))}
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Rule
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Create Sampling Rule</DialogTitle>
+                        </DialogHeader>
+                        <SamplingRuleForm
+                            onSuccess={handleCreateSuccess}
+                            onCancel={() => setIsCreateDialogOpen(false)}
+                        />
+                    </DialogContent>
+                </Dialog>
+            </div>
 
-            <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                    append({
-                        rule_type: "",
-                        value: null,
-                        order: fields.length,
-                    });
-                }}
-            >
-                Add Rule
-            </Button>
+            {fields.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-md">
+                    <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No sampling rules defined.</p>
+                    <p className="text-sm">Click "Add Rule" to get started.</p>
+                </div>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                    {fields.map((field, index) => (
+                        <SamplingRuleCard
+                            key={field.id}
+                            rule={field as any}
+                            index={index}
+                            onUpdate={handleUpdateRule}
+                            onDelete={() => handleDeleteRule(index)}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
