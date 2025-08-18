@@ -62,12 +62,11 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    command: ["caddy", "run", "--config", "/srv/Caddyfile", "--adapter", "caddyfile"]
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/srv/Caddyfile:ro
+      - ./conf:/etc/caddy
       - frontend-dist:/usr/share/caddy
       - caddy_data:/data
       - caddy_config:/config
