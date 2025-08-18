@@ -83,7 +83,7 @@ class SamplingFallbackApplier:
             work_order=self.work_order,
             part_type=self.part_type,
             step=self.step
-        ).order_by('created_at')
+        ).order_by('created_at', 'id')
 
         if rule.rule_type == "every_nth_part":
             parts = list(qs)
