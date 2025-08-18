@@ -33,8 +33,6 @@ services:
       python manage.py crontab add &&
       service cron start &&
       python manage.py runserver 0.0.0.0:8000"
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     environment:
@@ -46,19 +44,38 @@ services:
       postgres:
         condition: service_healthy
 
-  frontend:
+  # Build frontend static files
+  frontend-builder:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
-    ports:
-      - "80:5173"
-      - "443:5173"
     env_file:
       - .env
     environment:
-      - VITE_API_TARGET=${VITE_API_TARGET:-http://localhost:8000}
+      # Frontend will make API calls to the same domain (handled by Caddy proxy)
+      - VITE_API_TARGET=https://govtracker.ambac.local
+    volumes:
+      - frontend-dist:/app/dist
+    command: ["npm", "run", "build"]
+
+  # Caddy reverse proxy and static file server
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - frontend-dist:/srv
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - backend
+      - frontend-builder
 
 volumes:
   postgres_data:
+  frontend-dist:
+  caddy_data:
+  caddy_config:
