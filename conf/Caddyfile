@@ -1,0 +1,36 @@
+# Main site
+govtracker.ambac.local {
+    tls internal
+    # Serve static frontend files
+    root * /usr/share/caddy
+    file_server
+    
+    # API routes go to Django backend
+    reverse_proxy /api/* backend:8000
+    reverse_proxy /auth/* backend:8000
+    reverse_proxy /accounts/* backend:8000
+    reverse_proxy /admin/* backend:8000
+    reverse_proxy /media/* backend:8000
+    reverse_proxy /static/* backend:8000
+    
+    # Handle SPA routing - fallback to index.html for client-side routing
+    try_files {path} /index.html
+    
+    # Enable compression
+    encode gzip
+    
+    # CORS headers for development
+    header {
+        Access-Control-Allow-Origin "https://govtracker.ambac.local"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Content-Type, Authorization, X-CSRFToken"
+        Access-Control-Allow-Credentials "true"
+    }
+    
+    # Handle preflight requests
+    @options {
+        method OPTIONS
+    }
+    respond @options 200
+}
+
