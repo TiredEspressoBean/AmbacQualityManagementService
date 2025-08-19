@@ -1,36 +1,39 @@
 # Main site
 govtracker.ambac.local {
     tls /etc/caddy/certs/govtracker.ambac.local.pem /etc/caddy/certs/govtracker.ambac.local-key.pem
-    # Serve static frontend files
-    root * /usr/share/caddy
-    file_server
     
-    # API routes go to Django backend
-    reverse_proxy /api/* backend:8000
-    reverse_proxy /auth/* backend:8000
-    reverse_proxy /accounts/* backend:8000
-    reverse_proxy /admin/* backend:8000
-    reverse_proxy /media/* backend:8000
-    reverse_proxy /static/* backend:8000
-    
-    # Handle SPA routing - fallback to index.html for client-side routing
-    try_files {path} /index.html
-    
-    # Enable compression
     encode gzip
     
-    # CORS headers for development
-    header {
-        Access-Control-Allow-Origin "https://govtracker.ambac.local"
-        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        Access-Control-Allow-Headers "Content-Type, Authorization, X-CSRFToken"
-        Access-Control-Allow-Credentials "true"
+    # Handle API routes first - most specific to least specific
+    handle /auth/* {
+        reverse_proxy backend:8000
     }
     
-    # Handle preflight requests
-    @options {
-        method OPTIONS
+    handle /api/* {
+        reverse_proxy backend:8000
     }
-    respond @options 200
+    
+    handle /accounts/* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /admin/* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /media/* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /static/* {
+        reverse_proxy backend:8000
+    }
+    
+    # Handle SPA routes (fallback)
+    handle {
+        root * /usr/share/caddy
+        try_files {path} /index.html
+        file_server
+    }
 }
 
