@@ -1,6 +1,6 @@
 # Main site
 govtracker.ambac.local {
-    tls /etc/caddy/certs/govtracker.ambac.local.pem /etc/caddy/certs/govtracker.ambac.local-key.pem
+    tls /etc/caddy/certs/govtracker.crt /etc/caddy/certs/govtracker.key
     
     encode gzip
     
