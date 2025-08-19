@@ -1,62 +1,54 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-name: Build and deploy Django API to Azure Web App - parts-tracker-django
+
+name: Build and deploy Python app to Azure Web App - Parts-tracker-django
+
 on:
   push:
     branches:
       - master
-    paths:
-      - 'PartsTracker/**'  # Only trigger when PartsTracker changes
-      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      
+
       - name: Create and start virtual environment
-        working-directory: ./PartsTracker  # Change to your Django directory
         run: |
           python -m venv venv
           source venv/bin/activate
       
       - name: Install dependencies
-        working-directory: ./PartsTracker
-        run: |
-          source venv/bin/activate
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
         
-      # Optional: Add step to run tests here
-      # - name: Run tests
-      #   working-directory: ./PartsTracker
-      #   run: |
-      #     source venv/bin/activate
-      #     python manage.py test
-        
+      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
           path: |
-            PartsTracker/
-            !PartsTracker/venv/
+            .
+            !venv/
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
-      contents: read
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
@@ -66,15 +58,14 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_D7B32734A9AA4744963F3FB36E00FA0C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E2067CB8F17A4D10BD59CE2324E8F5C8 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_3F569300A2E04AF09A2727E9F9716BF5 }}
-          
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3571F1C3A42A49D3872969648F385161 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D0F5033F7FA442309649C563C02819E1 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6B16089ABB6140E59B61D4BD52C77673 }}
+
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: 'parts-tracker-django'
+          app-name: 'Parts-tracker-django'
           slot-name: 'Production'
-
           
