@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: "10.1.2.205:8123",
+                    target: "http://10.1.2.205:8123",
                     changeOrigin: true,
                     secure: false,
                     rewrite: (p) => p.replace(/^\/lg/, ""),
