@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: "http://tracker_llm_agent-langgraph-api-1:8000", // or http://langgraph-api:8000 if you gave an alias
+                    target: "http://tracker_llm_agent-langgraph-api-1:8123", // or http://langgraph-api:8000 if you gave an alias
                     changeOrigin: true,
                     rewrite: (p) => p.replace(/^\/lg/, "")
                 },
