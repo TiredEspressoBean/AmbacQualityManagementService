@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: "http://tracker_llm_agent-langgraph-api-1:8123",
+                    target: "10.1.2.205:8123",
                     changeOrigin: true,
                     secure: false,
                     rewrite: (p) => p.replace(/^\/lg/, ""),
@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => {
                             // Handle OPTIONS requests at proxy level
                             if (req.method === 'OPTIONS') {
                                 res.writeHead(200, {
-                                    'Access-Control-Allow-Origin': 'https://govtracker.ambac.local:8123',
+                                    'Access-Control-Allow-Origin': '10.1.2.205:8123',
                                     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
                                     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
                                     'Access-Control-Max-Age': '3600',
