@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
     // Fallback to actual process.env if not defined in .env
     const API_TARGET = env.VITE_API_TARGET || process.env.VITE_API_TARGET || "http://localhost:8000";
 
+    const LANGGRAPH_API_TARGET = env.VITE_LANGGRAPH_API_URL || "http://localhost:2025"
+
     if (!API_TARGET) {
         throw new Error('VITE_API_TARGET is not defined in .env or process.env');
     }
@@ -34,6 +36,7 @@ export default defineConfig(({ mode }) => {
         server: {
             host: '0.0.0.0',
             proxy: {
+                https: true,
                 '/api': {
                     target: API_TARGET,
                     changeOrigin: true,
@@ -48,6 +51,11 @@ export default defineConfig(({ mode }) => {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,
+                },
+                "/lg": {
+                    target: LANGGRAPH_API_TARGET, // Docker DNS + container port
+                    changeOrigin: true,
+                    rewrite: p => p.replace(/^\/lg/, "")
                 },
             },
         },
