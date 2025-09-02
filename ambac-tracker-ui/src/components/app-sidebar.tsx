@@ -142,9 +142,7 @@ export function AppSidebar({
     const { data: user } = useAuthUser()
 
     // Determine if user is staff
-    const is_employee = user?.groups &&
-        user.groups.length > 0 &&
-        !user.groups.some((group: { name: string }) => group.name === 'Customers')
+    const is_employee = !user.is_staff
 
     console.log(user)
 
