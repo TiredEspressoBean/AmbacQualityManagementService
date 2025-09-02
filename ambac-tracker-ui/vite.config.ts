@@ -53,9 +53,25 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: "http://tracker_llm_agent-langgraph-api-1:8123", // or http://langgraph-api:8000 if you gave an alias
+                    target: "http://tracker_llm_agent-langgraph-api-1:8123",
                     changeOrigin: true,
-                    rewrite: (p) => p.replace(/^\/lg/, "")
+                    secure: false,
+                    rewrite: (p) => p.replace(/^\/lg/, ""),
+                    configure: (proxy) => {
+                        proxy.on('proxyReq', (proxyReq, req, res) => {
+                            // Handle OPTIONS requests at proxy level
+                            if (req.method === 'OPTIONS') {
+                                res.writeHead(200, {
+                                    'Access-Control-Allow-Origin': 'https://govtracker.ambac.local:8123',
+                                    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+                                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                                    'Access-Control-Max-Age': '3600',
+                                });
+                                res.end();
+                                return;
+                            }
+                        });
+                    },
                 },
             },
         },
