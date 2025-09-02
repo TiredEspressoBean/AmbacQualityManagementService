@@ -6,6 +6,8 @@ import type { LangChainMessage } from "@assistant-ui/react-langgraph";
 import { useRef } from "react";
 import { Client } from "@langchain/langgraph-sdk";
 
+
+
 const API_URL = (import.meta.env.VITE_LANGGRAPH_API_URL as string) || `${window.location.origin}/lg`;
 console.log('LangGraph API URL:', API_URL);
 const ASSISTANT_ID =
