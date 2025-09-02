@@ -30,6 +30,19 @@ govtracker.ambac.local {
         reverse_proxy backend:8000
     }
     
+    # Handle LangGraph API
+    handle /lg/* {
+        reverse_proxy http://10.1.2.205:8123 {
+            header_up -X-Forwarded-Proto
+        }
+        header {
+            Access-Control-Allow-Origin *
+            Access-Control-Allow-Methods "GET,POST,PUT,DELETE,OPTIONS"
+            Access-Control-Allow-Headers "Content-Type,Authorization"
+        }
+        uri strip_prefix /lg
+    }
+    
     # Handle SPA routes (fallback)
     handle {
         root * /usr/share/caddy
