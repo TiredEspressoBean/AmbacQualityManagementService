@@ -35,8 +35,8 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             host: '0.0.0.0',
+            https: true,
             proxy: {
-                https: true,
                 '/api': {
                     target: API_TARGET,
                     changeOrigin: true,
@@ -53,9 +53,9 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: LANGGRAPH_API_TARGET, // Docker DNS + container port
+                    target: "http://tracker_llm_agent-langgraph-api-1:8000", // or http://langgraph-api:8000 if you gave an alias
                     changeOrigin: true,
-                    rewrite: p => p.replace(/^\/lg/, "")
+                    rewrite: (p) => p.replace(/^\/lg/, "")
                 },
             },
         },
