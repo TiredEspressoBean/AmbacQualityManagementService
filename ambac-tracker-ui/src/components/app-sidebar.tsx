@@ -129,7 +129,8 @@ const data: {
             pages: [
                 { name: "Quality Assurance", url: "/QA", icon: ClipboardCheck },
                 { name: "Editing", url: "/Edit", icon: GalleryVerticalEnd },
-                { name: "Documents", url: "/Documents", icon: Files }
+                { name: "Documents", url: "/Documents", icon: Files },
+                { name: "AI Chat", url: "/ai-chat", icon: Bot },
             ],
         },
     ],

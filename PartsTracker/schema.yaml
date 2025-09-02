@@ -377,12 +377,6 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/DocumentsRequest'
@@ -430,12 +424,6 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/DocumentsRequest'
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/DocumentsRequest'
@@ -462,12 +450,6 @@ paths:
       - api
       requestBody:
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedDocumentsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedDocumentsRequest'
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedDocumentsRequest'
@@ -496,6 +478,28 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Documents/{id}/download/:
+    get:
+      operationId: api_Documents_download_retrieve
+      description: Download the actual file
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Document.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Documents'
+          description: ''
   /api/Employees-Options/:
     get:
       operationId: api_Employees_Options_list
@@ -1266,6 +1270,68 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Groups/:
+    get:
+      operationId: api_Groups_list
+      description: ViewSet for Django Groups - read only for selection purposes
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGroupList'
+          description: ''
+  /api/Groups/{id}/:
+    get:
+      operationId: api_Groups_retrieve
+      description: ViewSet for Django Groups - read only for selection purposes
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this group.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+          description: ''
   /api/HubspotGates/:
     get:
       operationId: api_HubspotGates_list
@@ -2950,6 +3016,7 @@ paths:
           type: string
           enum:
           - every_nth_part
+          - exact_count
           - first_n_parts
           - last_n_parts
           - percentage
@@ -2960,6 +3027,7 @@ paths:
           * `random` - Pure Random
           * `first_n_parts` - First N Parts
           * `last_n_parts` - Last N Parts
+          * `exact_count` - Exact Count (No Variance)
       - in: query
         name: ruleset
         schema:
@@ -4005,6 +4073,50 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/WorkOrders/{id}/qa_documents/:
+    get:
+      operationId: api_WorkOrders_qa_documents_retrieve
+      description: Get documents relevant to QA for this work order
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
+  /api/WorkOrders/{id}/qa_summary/:
+    get:
+      operationId: api_WorkOrders_qa_summary_retrieve
+      description: Get QA summary for work order including batch status
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrder'
+          description: ''
   /api/WorkOrders/upload_csv/:
     post:
       operationId: api_WorkOrders_upload_csv_create
@@ -4032,6 +4144,195 @@ paths:
                 type: object
                 additionalProperties: {}
           description: Multi-status response with per-row success/failure
+  /api/ai/embedding/embed_query/:
+    post:
+      operationId: api_ai_embedding_embed_query_create
+      description: Embed a single query for vector search
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbedQueryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmbedQueryRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmbedQueryRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbedQueryResponse'
+          description: ''
+  /api/ai/query/execute_read_only/:
+    post:
+      operationId: api_ai_query_execute_read_only_create
+      description: Execute SAFE READ-ONLY ORM queries with strict validation
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteQueryRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExecuteQueryRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExecuteQueryRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteQueryResponse'
+          description: ''
+  /api/ai/query/schema_info/:
+    get:
+      operationId: api_ai_query_schema_info_retrieve
+      description: Return model schema information for safe ORM query building
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuerySchemaResponse'
+          description: ''
+  /api/ai/search/get_context_window/:
+    post:
+      operationId: api_ai_search_get_context_window_create
+      description: Get chunk plus surrounding chunks using span_meta ordering
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextWindowRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ContextWindowRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ContextWindowRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextWindowResponse'
+          description: ''
+  /api/ai/search/hybrid_search/:
+    post:
+      operationId: api_ai_search_hybrid_search_create
+      description: Combine vector similarity and keyword search results
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HybridSearchRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/HybridSearchRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/HybridSearchRequestRequest'
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HybridSearchResponse'
+          description: ''
+  /api/ai/search/keyword_search/:
+    get:
+      operationId: api_ai_search_keyword_search_retrieve
+      description: Full-text search on document chunks
+      parameters:
+      - in: query
+        name: doc_ids
+        schema:
+          type: array
+          items:
+            type: integer
+        description: Filter to specific document IDs (can be provided multiple times)
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 'Max results to return (default: 20)'
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search query text
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeywordSearchResponse'
+          description: ''
+  /api/ai/search/vector_search/:
+    post:
+      operationId: api_ai_search_vector_search_create
+      description: Vector similarity search on document chunks
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VectorSearchRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VectorSearchRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VectorSearchRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VectorSearchResponse'
+          description: ''
   /api/auditlog/:
     get:
       operationId: api_auditlog_list
@@ -4950,6 +5251,39 @@ components:
       - app_label
       - id
       - model
+    ContextWindowRequestRequest:
+      type: object
+      properties:
+        chunk_id:
+          type: integer
+          description: ID of the chunk to center the window on
+        window_size:
+          type: integer
+          description: 'Number of chunks before/after center (default: 2)'
+      required:
+      - chunk_id
+    ContextWindowResponse:
+      type: object
+      properties:
+        center_chunk_id:
+          type: integer
+        center_index:
+          type: integer
+        window_size:
+          type: integer
+        doc_name:
+          type: string
+        chunks:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - center_chunk_id
+      - center_index
+      - chunks
+      - doc_name
+      - window_size
     Documents:
       type: object
       description: Enhanced documents serializer using model methods
@@ -5094,6 +5428,25 @@ components:
       required:
       - file
       - file_name
+    EmbedQueryRequestRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          description: Text to embed for vector search
+      required:
+      - query
+    EmbedQueryResponse:
+      type: object
+      properties:
+        embedding:
+          type: array
+          items:
+            type: number
+            format: double
+      required:
+      - embedding
     EquipmentType:
       type: object
       description: Equipment type serializer
@@ -5190,6 +5543,55 @@ components:
           nullable: true
       required:
       - name
+    ExecuteQueryRequestRequest:
+      type: object
+      properties:
+        model:
+          type: string
+          minLength: 1
+          description: Model name to query
+        filters:
+          type: object
+          additionalProperties: {}
+          description: Filters to apply
+        fields:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          description: Specific fields to return
+        limit:
+          type: integer
+          description: Max results (up to 100)
+        aggregate:
+          type: string
+          minLength: 1
+          description: Aggregation function (count)
+      required:
+      - model
+    ExecuteQueryResponse:
+      type: object
+      properties:
+        model:
+          type: string
+        filters:
+          type: object
+          additionalProperties: {}
+        count:
+          type: integer
+        limit:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - count
+      - filters
+      - limit
+      - model
+      - results
     ExternalAPIOrderIdentifier:
       type: object
       description: External API order identifier serializer
@@ -5262,6 +5664,89 @@ components:
       required:
       - API_id
       - stage_name
+    Group:
+      type: object
+      description: Serializer for Django Groups
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+      required:
+      - id
+      - name
+    GroupRequest:
+      type: object
+      description: Serializer for Django Groups
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+      required:
+      - name
+    HybridSearchRequestRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 1
+          description: Text query for keyword search
+        embedding:
+          type: array
+          items:
+            type: number
+            format: double
+          description: Pre-computed embedding vector for similarity search
+        limit:
+          type: integer
+          description: Max results to return
+        vector_threshold:
+          type: number
+          format: double
+          description: Minimum similarity threshold
+        doc_ids:
+          type: array
+          items:
+            type: integer
+          description: Filter to specific document IDs
+    HybridSearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        has_embedding:
+          type: boolean
+        total_results:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - has_embedding
+      - query
+      - results
+      - total_results
+    KeywordSearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        total_results:
+          type: integer
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - query
+      - results
+      - total_results
     LoginRequest:
       type: object
       properties:
@@ -5288,28 +5773,23 @@ components:
         step_name:
           type: string
           readOnly: true
-        allow_override:
-          type: boolean
-        allow_remeasure:
-          type: boolean
-        allow_quarantine:
-          type: boolean
         unit:
           type: string
           maxLength: 50
-        require_qa_review:
-          type: boolean
         nominal:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         required:
           type: boolean
@@ -5332,28 +5812,23 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-        allow_override:
-          type: boolean
-        allow_remeasure:
-          type: boolean
-        allow_quarantine:
-          type: boolean
         unit:
           type: string
           maxLength: 50
-        require_qa_review:
-          type: boolean
         nominal:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         required:
           type: boolean
@@ -5397,15 +5872,19 @@ components:
           maxLength: 500
         customer:
           type: integer
+          nullable: true
         customer_info:
           allOf:
           - $ref: '#/components/schemas/UserSelect'
+          nullable: true
           readOnly: true
         company:
           type: integer
+          nullable: true
         company_info:
           allOf:
           - $ref: '#/components/schemas/Company'
+          nullable: true
           readOnly: true
         estimated_completion:
           type: string
@@ -5426,12 +5905,15 @@ components:
           readOnly: true
         customer_first_name:
           type: string
+          nullable: true
           readOnly: true
         customer_last_name:
           type: string
+          nullable: true
           readOnly: true
         company_name:
           type: string
+          nullable: true
           readOnly: true
         created_at:
           type: string
@@ -5446,11 +5928,9 @@ components:
           readOnly: true
       required:
       - archived
-      - company
       - company_info
       - company_name
       - created_at
-      - customer
       - customer_first_name
       - customer_info
       - customer_last_name
@@ -5474,8 +5954,10 @@ components:
           maxLength: 500
         customer:
           type: integer
+          nullable: true
         company:
           type: integer
+          nullable: true
         estimated_completion:
           type: string
           format: date
@@ -5486,8 +5968,6 @@ components:
           type: integer
           nullable: true
       required:
-      - company
-      - customer
       - name
       - order_status
     PaginatedAuditLogList:
@@ -5628,6 +6108,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Equipments'
+    PaginatedGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
     PaginatedMeasurementDefinitionList:
       type: object
       required:
@@ -6164,6 +6667,9 @@ components:
           type: object
           additionalProperties: {}
           readOnly: true
+        is_from_batch_process:
+          type: boolean
+          readOnly: true
         sampling_rule:
           type: integer
           nullable: true
@@ -6171,17 +6677,22 @@ components:
           type: integer
           nullable: true
         sampling_context: {}
+        process:
+          type: integer
+          readOnly: true
       required:
       - ERP_id
       - archived
       - created_at
       - has_error
       - id
+      - is_from_batch_process
       - order_info
       - order_name
       - part_type
       - part_type_info
       - part_type_name
+      - process
       - process_name
       - quality_info
       - quality_status
@@ -6401,28 +6912,23 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-        allow_override:
-          type: boolean
-        allow_remeasure:
-          type: boolean
-        allow_quarantine:
-          type: boolean
         unit:
           type: string
           maxLength: 50
-        require_qa_review:
-          type: boolean
         nominal:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
-          type: number
-          format: double
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
           nullable: true
         required:
           type: boolean
@@ -6442,8 +6948,10 @@ components:
           maxLength: 500
         customer:
           type: integer
+          nullable: true
         company:
           type: integer
+          nullable: true
         estimated_completion:
           type: string
           format: date
@@ -6530,6 +7038,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
     PatchedProcessesRequest:
       type: object
       description: Processes serializer
@@ -6556,6 +7067,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
         previous_version:
           type: integer
           nullable: true
@@ -6819,6 +7333,12 @@ components:
           type: integer
           writeOnly: true
           nullable: true
+        group_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
     PatchedWorkOrderRequest:
       type: object
       description: Enhanced work order serializer
@@ -6876,6 +7396,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
       required:
       - id
       - name
@@ -6902,6 +7425,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
       required:
       - name
       - num_steps
@@ -6951,6 +7477,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
         previous_version:
           type: integer
           nullable: true
@@ -6991,6 +7520,9 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
         previous_version:
           type: integer
           nullable: true
@@ -7140,6 +7672,26 @@ components:
       required:
       - measurements
       - status
+    QuerySchemaResponse:
+      type: object
+      properties:
+        allowed_models:
+          type: object
+          additionalProperties: {}
+          description: Available models and their queryable fields
+        allowed_operations:
+          type: array
+          items:
+            type: string
+          description: Allowed filter operations (exact, contains, etc.)
+        examples:
+          type: object
+          additionalProperties: {}
+          description: Example query structures
+      required:
+      - allowed_models
+      - allowed_operations
+      - examples
     RegisterRequest:
       type: object
       properties:
@@ -7188,6 +7740,7 @@ components:
       - random
       - first_n_parts
       - last_n_parts
+      - exact_count
       type: string
       description: |-
         * `every_nth_part` - Every Nth Part
@@ -7195,6 +7748,7 @@ components:
         * `random` - Pure Random
         * `first_n_parts` - First N Parts
         * `last_n_parts` - Last N Parts
+        * `exact_count` - Exact Count (No Variance)
     SamplingRule:
       type: object
       description: Enhanced sampling rule serializer
@@ -7776,9 +8330,15 @@ components:
           - $ref: '#/components/schemas/Company'
           readOnly: true
           nullable: true
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
+          readOnly: true
       required:
       - date_joined
       - full_name
+      - groups
       - id
       - parent_company
       - username
@@ -7948,6 +8508,12 @@ components:
           type: integer
           writeOnly: true
           nullable: true
+        group_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
       required:
       - username
     UserSelect:
@@ -7987,6 +8553,35 @@ components:
       - id
       - is_active
       - username
+    VectorSearchRequestRequest:
+      type: object
+      properties:
+        embedding:
+          type: array
+          items:
+            type: number
+            format: double
+        limit:
+          type: integer
+          default: 10
+        threshold:
+          type: number
+          format: double
+          default: 0.7
+        doc_ids:
+          type: array
+          items:
+            type: integer
+      required:
+      - embedding
+    VectorSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items: {}
+      required:
+      - results
     VerifyEmailRequest:
       type: object
       properties:
@@ -8018,10 +8613,12 @@ components:
         related_order_info:
           type: object
           additionalProperties: {}
+          nullable: true
           readOnly: true
         related_order_detail:
           allOf:
           - $ref: '#/components/schemas/Orders'
+          nullable: true
           readOnly: true
         expected_completion:
           type: string
@@ -8045,6 +8642,9 @@ components:
           type: object
           additionalProperties: {}
           readOnly: true
+        is_batch_work_order:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -8061,6 +8661,7 @@ components:
       - archived
       - created_at
       - id
+      - is_batch_work_order
       - parts_summary
       - related_order_detail
       - related_order_info

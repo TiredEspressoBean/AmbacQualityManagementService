@@ -11,6 +11,8 @@ from django.utils import timezone
 
 from auditlog.models import LogEntry
 
+from pgvector.django import VectorField
+
 from PartsTrackerApp import settings
 from Tracker.hubspot.api import update_deal_stage
 from Tracker.sampling import SamplingFallbackApplier
@@ -670,6 +672,104 @@ class Documents(SecureModel):
                                                  ClassificationLevel.CONFIDENTIAL])
         else:
             return qs.none()
+
+    def embed_inline(self) -> bool:
+        """
+        Minimal, synchronous embedding for small text files and PDFs.
+        Returns True if chunks were embedded, False if skipped.
+        """
+        import os
+        from django.conf import settings
+        from django.db import transaction
+        from Tracker.ai_embed import embed_texts, chunk_text
+
+        if not settings.AI_EMBED_ENABLED:
+            return False
+
+        if not self.file or not os.path.exists(self.file.path):
+            return False
+        if os.path.getsize(self.file.path) > settings.AI_EMBED_MAX_FILE_BYTES:
+            return False
+
+        # Extract text based on file type
+        text = self._extract_text_from_file()
+        if not text or not text.strip():
+            return False
+
+        chunks = chunk_text(text, max_chars=settings.AI_EMBED_CHUNK_CHARS, max_chunks=settings.AI_EMBED_MAX_CHUNKS)
+        if not chunks:
+            return False
+
+        vecs = embed_texts(chunks)
+        # (optional) sanity check on dimensions:
+        assert len(vecs[0]) == settings.AI_EMBED_DIM
+
+        rows = [
+            DocChunk(doc=self, preview_text=t[:300], full_text=t, span_meta={"i": i}, embedding=v)
+            for i, (t, v) in enumerate(zip(chunks, vecs))
+        ]
+        with transaction.atomic():
+            DocChunk.objects.filter(doc=self).delete()
+            DocChunk.objects.bulk_create(rows, batch_size=50)
+            self.ai_readable = True
+            self.save(update_fields=["ai_readable"])
+        return True
+
+    def _extract_text_from_file(self) -> str:
+        """
+        Extract text from various file formats (PDF, text files, etc.)
+        Returns empty string if extraction fails
+        """
+        import os
+        from django.conf import settings
+        
+        file_path = self.file.path
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        try:
+            if file_ext == '.pdf':
+                return self._extract_pdf_text(file_path)
+            else:
+                # Handle as text file
+                return self._extract_text_file(file_path)
+        except Exception:
+            return ""
+    
+    def _extract_pdf_text(self, file_path: str) -> str:
+        """Extract text from PDF file using PyPDF2"""
+        try:
+            import PyPDF2
+            text = ""
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+            
+            # Remove null bytes that cause PostgreSQL issues
+            text = text.replace('\x00', '')
+            return text.strip()
+        except ImportError:
+            # PyPDF2 not available, return empty
+            return ""
+        except Exception:
+            # PDF extraction failed
+            return ""
+    
+    def _extract_text_file(self, file_path: str) -> str:
+        """Extract text from regular text files"""
+        try:
+            from django.conf import settings
+            with open(file_path, "rb") as f:
+                data = f.read(settings.AI_EMBED_MAX_FILE_BYTES + 1)
+            
+            text = data.decode("utf-8", errors="ignore")
+            # Remove null bytes that cause PostgreSQL issues
+            text = text.replace('\x00', '')
+            return text.strip()
+        except Exception:
+            return ""
 
 
 class PartTypes(SecureModel):
@@ -2310,3 +2410,14 @@ class SamplingAnalytics(SecureModel):
     def __str__(self):
         return f"Analytics for {self.ruleset} - WO {self.work_order.ERP_id}"
 
+
+class DocChunk(models.Model):
+    doc = models.ForeignKey('Tracker.Documents', on_delete=models.CASCADE, related_name='chunks')
+    embedding = VectorField(dimensions=settings.AI_EMBED_DIM)  # uses settings
+    preview_text = models.TextField(blank=True)
+    full_text = models.TextField(blank=True)
+    span_meta = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = 'doc_chunks'
+        indexes = [models.Index(fields=['doc'])]

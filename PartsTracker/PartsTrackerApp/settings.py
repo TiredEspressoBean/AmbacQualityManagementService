@@ -269,3 +269,16 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "smtp365062@ambac.net")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "Ghn083KucqxYuW167zZLOwXduYj3m4kS")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sales@ambacinternational.com")
+
+# --- AI / RAG minimal settings ---
+AI_EMBED_ENABLED = os.getenv("AI_EMBED_ENABLED", "true").lower() in {"1", "true", "yes"}
+
+# Model + dimensions (MiniLM-L6-v2 = 384)
+AI_EMBED_MODEL_NAME = os.getenv("AI_EMBED_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
+AI_EMBED_DIM = int(os.getenv("AI_EMBED_DIM", "384"))
+
+# Inline embedding guards
+AI_EMBED_MAX_FILE_BYTES = int(os.getenv("AI_EMBED_MAX_FILE_BYTES", "2000000"))  # ~2MB
+AI_EMBED_CHUNK_CHARS    = int(os.getenv("AI_EMBED_CHUNK_CHARS", "1200"))
+AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
+AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))

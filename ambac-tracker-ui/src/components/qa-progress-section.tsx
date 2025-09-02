@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, Package, Users } from "lucide-react";
+import { FileText, Calendar, Package } from "lucide-react";
 import { MeasurementProgressChart } from "./measurement-progress-chart";
 
 type QaProgressSectionProps = {

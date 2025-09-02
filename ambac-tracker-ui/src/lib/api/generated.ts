@@ -2724,6 +2724,88 @@ const PatchedWorkOrderRequest: z.ZodType<PatchedWorkOrderRequest> = z
   })
   .partial()
   .passthrough();
+const EmbedQueryRequestRequest = z
+  .object({ query: z.string().min(1) })
+  .passthrough();
+const EmbedQueryResponse = z
+  .object({ embedding: z.array(z.number()) })
+  .passthrough();
+const ExecuteQueryRequestRequest = z
+  .object({
+    model: z.string().min(1),
+    filters: z.object({}).partial().passthrough().optional(),
+    fields: z.array(z.string().min(1)).optional(),
+    limit: z.number().int().optional(),
+    aggregate: z.string().min(1).optional(),
+  })
+  .passthrough();
+const ExecuteQueryResponse = z
+  .object({
+    model: z.string(),
+    filters: z.object({}).partial().passthrough(),
+    count: z.number().int(),
+    limit: z.number().int(),
+    results: z.array(z.object({}).partial().passthrough()),
+  })
+  .passthrough();
+const QuerySchemaResponse = z
+  .object({
+    allowed_models: z.object({}).partial().passthrough(),
+    allowed_operations: z.array(z.string()),
+    examples: z.object({}).partial().passthrough(),
+  })
+  .passthrough();
+const ContextWindowRequestRequest = z
+  .object({
+    chunk_id: z.number().int(),
+    window_size: z.number().int().optional(),
+  })
+  .passthrough();
+const ContextWindowResponse = z
+  .object({
+    center_chunk_id: z.number().int(),
+    center_index: z.number().int(),
+    window_size: z.number().int(),
+    doc_name: z.string(),
+    chunks: z.array(z.object({}).partial().passthrough()),
+  })
+  .passthrough();
+const HybridSearchRequestRequest = z
+  .object({
+    query: z.string().min(1),
+    embedding: z.array(z.number()),
+    limit: z.number().int(),
+    vector_threshold: z.number(),
+    doc_ids: z.array(z.number().int()),
+  })
+  .partial()
+  .passthrough();
+const HybridSearchResponse = z
+  .object({
+    query: z.string(),
+    has_embedding: z.boolean(),
+    total_results: z.number().int(),
+    results: z.array(z.object({}).partial().passthrough()),
+  })
+  .passthrough();
+const KeywordSearchResponse = z
+  .object({
+    query: z.string(),
+    total_results: z.number().int(),
+    results: z.array(z.object({}).partial().passthrough()),
+  })
+  .passthrough();
+const VectorSearchRequestRequest = z
+  .object({
+    embedding: z.array(z.number()),
+    limit: z.number().int().optional().default(10),
+    threshold: z.number().optional().default(0.7),
+    doc_ids: z.array(z.number().int()).optional(),
+  })
+  .passthrough();
+const VectorSearchResponse = z
+  .object({ results: z.array(z.unknown()) })
+  .passthrough();
 const ActionEnum = z.union([
   z.literal(0),
   z.literal(1),
@@ -2944,6 +3026,18 @@ export const schemas = {
   PaginatedWorkOrderList,
   WorkOrderRequest,
   PatchedWorkOrderRequest,
+  EmbedQueryRequestRequest,
+  EmbedQueryResponse,
+  ExecuteQueryRequestRequest,
+  ExecuteQueryResponse,
+  QuerySchemaResponse,
+  ContextWindowRequestRequest,
+  ContextWindowResponse,
+  HybridSearchRequestRequest,
+  HybridSearchResponse,
+  KeywordSearchResponse,
+  VectorSearchRequestRequest,
+  VectorSearchResponse,
   ActionEnum,
   AuditLog,
   PaginatedAuditLogList,
@@ -2965,6 +3059,114 @@ export const schemas = {
 };
 
 const endpoints = makeApi([
+  {
+    method: "post",
+    path: "/api/ai/embedding/embed_query/",
+    alias: "api_ai_embedding_embed_query_create",
+    description: `Embed a single query for vector search`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ query: z.string().min(1) }).passthrough(),
+      },
+    ],
+    response: EmbedQueryResponse,
+  },
+  {
+    method: "post",
+    path: "/api/ai/query/execute_read_only/",
+    alias: "api_ai_query_execute_read_only_create",
+    description: `Execute SAFE READ-ONLY ORM queries with strict validation`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ExecuteQueryRequestRequest,
+      },
+    ],
+    response: ExecuteQueryResponse,
+  },
+  {
+    method: "get",
+    path: "/api/ai/query/schema_info/",
+    alias: "api_ai_query_schema_info_retrieve",
+    description: `Return model schema information for safe ORM query building`,
+    requestFormat: "json",
+    response: QuerySchemaResponse,
+  },
+  {
+    method: "post",
+    path: "/api/ai/search/get_context_window/",
+    alias: "api_ai_search_get_context_window_create",
+    description: `Get chunk plus surrounding chunks using span_meta ordering`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ContextWindowRequestRequest,
+      },
+    ],
+    response: ContextWindowResponse,
+  },
+  {
+    method: "post",
+    path: "/api/ai/search/hybrid_search/",
+    alias: "api_ai_search_hybrid_search_create",
+    description: `Combine vector similarity and keyword search results`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: HybridSearchRequestRequest,
+      },
+    ],
+    response: HybridSearchResponse,
+  },
+  {
+    method: "get",
+    path: "/api/ai/search/keyword_search/",
+    alias: "api_ai_search_keyword_search_retrieve",
+    description: `Full-text search on document chunks`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "doc_ids",
+        type: "Query",
+        schema: z.array(z.number().int()).optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "q",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: KeywordSearchResponse,
+  },
+  {
+    method: "post",
+    path: "/api/ai/search/vector_search/",
+    alias: "api_ai_search_vector_search_create",
+    description: `Vector similarity search on document chunks`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: VectorSearchRequestRequest,
+      },
+    ],
+    response: z.object({ results: z.array(z.unknown()) }).passthrough(),
+  },
   {
     method: "get",
     path: "/api/auditlog/",
@@ -3324,7 +3526,7 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Documents/",
     alias: "api_Documents_create",
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -3352,7 +3554,7 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Documents/:id/",
     alias: "api_Documents_update",
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -3371,7 +3573,7 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Documents/:id/",
     alias: "api_Documents_partial_update",
-    requestFormat: "json",
+    requestFormat: "form-data",
     parameters: [
       {
         name: "body",
@@ -3399,6 +3601,21 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Documents/:id/download/",
+    alias: "api_Documents_download_retrieve",
+    description: `Download the actual file`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: Documents,
   },
   {
     method: "get",

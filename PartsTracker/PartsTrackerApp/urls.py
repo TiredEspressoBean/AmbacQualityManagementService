@@ -23,6 +23,7 @@ from rest_framework.routers import DefaultRouter
 
 from Tracker import views
 from Tracker.Viewsets import *
+from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet
 from Tracker.api_views import get_csrf_token
 from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
@@ -170,6 +171,11 @@ router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 router.register("User", UserViewSet, basename="User")
 router.register("Groups", GroupViewSet, basename="Groups")
+
+# AI/RAG endpoints for LangGraph integration
+router.register("ai/search", AISearchViewSet, basename="ai-search")
+router.register("ai/query", QueryViewSet, basename="ai-query")
+router.register("ai/embedding", EmbeddingViewSet, basename="ai-embedding")
 
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),

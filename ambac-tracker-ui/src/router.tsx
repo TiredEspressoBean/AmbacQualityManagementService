@@ -45,6 +45,7 @@ import {CompaniesEditorPage} from "@/pages/editors/CompaniesEditorPage.tsx";
 import UsersFormPage from "@/pages/editors/forms/EditUserFormPage.tsx";
 import { UserEditorPage} from "@/pages/editors/UserEditorPage.tsx";
 import { QaWorkOrderDetailPage } from "@/pages/editors/QaWorkOrderDetailPage.tsx";
+import AiChatPage from "@/pages/AiChatPage.tsx";
 
 
 
@@ -390,6 +391,12 @@ export const qaWorkOrderDetailRoute = createRoute({
     component: () => <QaWorkOrderDetailPage />,
 });
 
+export const aiChatRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ai-chat',
+    component: () => <AiChatPage />,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRote,
@@ -444,7 +451,8 @@ const routeTree = rootRoute.addChildren([
     userEditorRoute,
     usersEditRoute,
     usersCreateRoute,
-    qaWorkOrderDetailRoute
+    qaWorkOrderDetailRoute,
+    aiChatRoute
 ])
 
 export const router = new Router({routeTree})

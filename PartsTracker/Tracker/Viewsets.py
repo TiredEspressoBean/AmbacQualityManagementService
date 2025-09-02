@@ -13,8 +13,8 @@ from django.contrib.auth.models import Group
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, inline_serializer, OpenApiResponse, OpenApiRequest, \
-    OpenApiParameter, OpenApiTypes
-from rest_framework import viewsets, status, filters, serializers
+    OpenApiParameter, OpenApiTypes, extend_schema
+from rest_framework import viewsets, status, filters, serializers, parsers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import ListAPIView
@@ -760,8 +760,26 @@ class ErrorTypeViewSet(viewsets.ModelViewSet):
         return QualityErrorsList.objects.for_user(self.request.user)
 
 
+@extend_schema_view(
+    create=extend_schema(
+        request={
+            'multipart/form-data': DocumentsSerializer
+        }
+    ),
+    update=extend_schema(
+        request={
+            'multipart/form-data': DocumentsSerializer
+        }
+    ),
+    partial_update=extend_schema(
+        request={
+            'multipart/form-data': DocumentsSerializer
+        }
+    )
+)
 class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentsSerializer  # Updated to match existing serializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["content_type", "object_id", "is_image"]
     search_fields = ["file_name", "uploaded_by__username"]
@@ -771,14 +789,71 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Documents.objects.none()
-
-        # Use model method for user-based filtering, then optimize
-        user_accessible_qs = Documents.get_user_accessible_queryset(self.request.user)
-        # The model method should already include select_related, but add it to be sure
-        return user_accessible_qs.select_related("uploaded_by", "content_type")
+        return Documents.get_user_accessible_queryset(self.request.user).select_related("uploaded_by", "content_type")
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+        doc = serializer.save(uploaded_by=self.request.user)
+        
+        # Only try to embed if user wants it to be AI readable and it's not archived
+        if doc.ai_readable and not doc.archived:
+            try:
+                success = doc.embed_inline()
+                if not success:
+                    # Embedding failed, set ai_readable to False
+                    doc.ai_readable = False
+                    doc.save(update_fields=['ai_readable'])
+            except Exception as e:
+                # Log the error and set ai_readable to False
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to embed document {doc.id}: {e}")
+                doc.ai_readable = False
+                doc.save(update_fields=['ai_readable'])
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        old_file = instance.file
+        old_ai_readable = instance.ai_readable
+        doc = serializer.save()
+        
+        # Handle AI readability changes
+        if doc.archived:
+            # Archived documents should not be AI readable
+            if doc.ai_readable:
+                doc.ai_readable = False
+                doc.save(update_fields=["ai_readable"])
+                # Clean up existing chunks
+                doc.chunks.all().delete()
+        elif doc.ai_readable and not old_ai_readable:
+            # User wants to make it AI readable
+            try:
+                success = doc.embed_inline()
+                if not success:
+                    doc.ai_readable = False
+                    doc.save(update_fields=["ai_readable"])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to embed document {doc.id}: {e}")
+                doc.ai_readable = False
+                doc.save(update_fields=["ai_readable"])
+        elif not doc.ai_readable and old_ai_readable:
+            # User wants to make it NOT AI readable - clean up chunks
+            doc.chunks.all().delete()
+        elif doc.ai_readable and 'file' in serializer.validated_data and old_file != doc.file:
+            # File changed and user wants it to remain AI readable - re-embed
+            try:
+                doc.chunks.all().delete()  # Clean up old chunks
+                success = doc.embed_inline()
+                if not success:
+                    doc.ai_readable = False
+                    doc.save(update_fields=["ai_readable"])
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Failed to re-embed document {doc.id}: {e}")
+                doc.ai_readable = False
+                doc.save(update_fields=["ai_readable"])
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -787,6 +862,27 @@ class DocumentViewSet(viewsets.ModelViewSet):
         instance.log_access(request.user, request)
 
         return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        """Download the actual file"""
+        document = self.get_object()
+        
+        # Log access
+        document.log_access(request.user, request)
+        
+        if not document.file:
+            return Response({"detail": "No file attached"}, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            response = FileResponse(
+                document.file.open('rb'),
+                as_attachment=True,
+                filename=document.file_name or os.path.basename(document.file.name)
+            )
+            return response
+        except Exception as e:
+            return Response({"detail": f"Error serving file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ProcessWithStepsViewSet(viewsets.ModelViewSet):

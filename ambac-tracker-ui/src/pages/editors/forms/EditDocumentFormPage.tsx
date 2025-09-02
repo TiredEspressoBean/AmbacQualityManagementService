@@ -15,6 +15,7 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     FileInput,
     FileUploader,
@@ -78,22 +79,23 @@ const formSchema = z.object({
             (file) => file instanceof File || (Array.isArray(file) && file.length > 0), 
             "A file is required - please select a document to upload (PDF, DOCX, or image up to 10MB)"
         ),
-    classification_level: z
+    classification: z
         .string()
         .min(1, "Classification level is required - please select the security level for this document"),
     content_type: z.string().optional(),
     object_id: z.number().optional(),
+    ai_readable: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 const contentTypeOptions = [
-    { label: "Part Type", value: "tracker.parttype" },
-    { label: "Part", value: "tracker.part" },
-    { label: "Order", value: "tracker.order" },
-    { label: "Work Order", value: "tracker.workorder" },
-    { label: "Process", value: "tracker.process" },
-    { label: "Step", value: "tracker.step" },
+    { label: "Part Type", value: "tracker.parttype", id: 1 },
+    { label: "Part", value: "tracker.part", id: 2 },
+    { label: "Order", value: "tracker.order", id: 3 },
+    { label: "Work Order", value: "tracker.workorder", id: 4 },
+    { label: "Process", value: "tracker.process", id: 5 },
+    { label: "Step", value: "tracker.step", id: 6 },
 ];
 
 export default function DocumentFormPage() {
@@ -105,7 +107,7 @@ export default function DocumentFormPage() {
     const mode = params.id ? "edit" : "create";
     const documentId = params.id ? parseInt(params.id, 10) : undefined;
 
-    const { data: document } = useRetrieveDocument({ params: { id: documentId! } }, { enabled: mode === "edit" && !!documentId });
+    const { data: document } = useRetrieveDocument(documentId);
     const createDocument = useCreateDocument();
     const updateDocument = useUpdateDocument();
 
@@ -113,18 +115,20 @@ export default function DocumentFormPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             file: undefined,
-            classification_level: "",
+            classification: "",
             content_type: undefined,
             object_id: undefined,
+            ai_readable: false,
         },
     });
 
     useEffect(() => {
         if (mode === "edit" && document) {
             form.reset({
-                classification_level: document.classification ?? "",
-                content_type: document.content_type_model ? `tracker.${document.content_type_model}` : undefined,
+                classification: document.classification ?? "",
+                content_type: document.content_type ? `tracker.${document.content_type}` : undefined,
                 object_id: document.object_id ?? undefined,
+                ai_readable: document.ai_readable ?? false,
                 file: undefined,
             });
         }
@@ -159,11 +163,30 @@ export default function DocumentFormPage() {
 
     async function onSubmit(values: FormValues) {
         try {
-            const payload = new FormData();
-            payload.append("file", values.file);
-            payload.append("classification_level", values.classification_level);
-            if (values.content_type) payload.append("content_type", values.content_type);
-            if (values.object_id) payload.append("object_id", values.object_id.toString());
+            // Validate file exists and is proper File object
+            if (!values.file || !(values.file instanceof File)) {
+                console.error("Invalid file:", values.file);
+                toast.error("Please select a valid file to upload");
+                return;
+            }
+
+            // Get content type ID from the selected value
+            const contentTypeOption = values.content_type ? 
+                contentTypeOptions.find(opt => opt.value === values.content_type) : 
+                null;
+
+            // Prepare the data object (not FormData - let the API client handle that)
+            const payload = {
+                file: values.file,
+                file_name: values.file.name,
+                classification: values.classification,
+                ai_readable: values.ai_readable ?? false,
+                ...(contentTypeOption && { content_type: contentTypeOption.id }),
+                ...(values.object_id && { object_id: values.object_id }),
+            };
+
+            // Debug logging
+            console.log("Submitting with payload:", payload);
 
             if (mode === "edit" && documentId) {
                 await updateDocument.mutateAsync({ id: documentId, data: payload });
@@ -198,7 +221,11 @@ export default function DocumentFormPage() {
                                     value={files}
                                     onValueChange={(newFiles) => {
                                         setFiles(newFiles);
-                                        form.setValue("file", newFiles?.[0]);
+                                        if (newFiles && newFiles.length > 0) {
+                                            form.setValue("file", newFiles[0]);
+                                        } else {
+                                            form.setValue("file", undefined);
+                                        }
                                     }}
                                     dropzoneOptions={{maxFiles: 1, maxSize: 1024 * 1024 * 10}}
                                     className="relative bg-background rounded-lg p-2"
@@ -235,7 +262,7 @@ export default function DocumentFormPage() {
 
                 <FormField
                     control={form.control}
-                    name="classification_level"
+                    name="classification"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Classification Level *</FormLabel>
@@ -399,6 +426,26 @@ export default function DocumentFormPage() {
                     />
                 )}
 
+                <FormField
+                    control={form.control}
+                    name="ai_readable"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>AI Readable</FormLabel>
+                                <FormDescription>
+                                    Allow AI systems to read and analyze this document. When enabled, the document content may be processed by AI for search, recommendations, and automation features.
+                                </FormDescription>
+                            </div>
+                        </FormItem>
+                    )}
+                />
 
                 <Button type="submit">Submit</Button>
             </form>
