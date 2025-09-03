@@ -32,7 +32,7 @@ govtracker.ambac.local {
     
     # Handle LangGraph API
     handle /lg/* {
-        reverse_proxy http://host.docker.internal:8123 {
+        reverse_proxy host.docker.internal:8123 {
             header_up -X-Forwarded-Proto
         }
         header {
