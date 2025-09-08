@@ -96,3 +96,5 @@ networks:
 volumes:
   postgres_data:
   frontend-dist:
+  caddy_data:
+  caddy_config:
