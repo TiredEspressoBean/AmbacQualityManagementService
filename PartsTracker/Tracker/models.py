@@ -375,7 +375,14 @@ def part_doc_upload_path(self, filename):
     """
     today = date.today().isoformat()
     ext = filename.split('.')[-1]
-    new_filename = f"{self.file_name}.{ext}"
+    
+    # Check if file_name already has an extension to avoid double extensions
+    file_name = self.file_name
+    if file_name.endswith(f'.{ext}'):
+        new_filename = file_name
+    else:
+        new_filename = f"{file_name}.{ext}"
+    
     return os.path.join("parts_docs", today, new_filename)
 
 
