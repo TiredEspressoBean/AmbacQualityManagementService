@@ -1,12 +1,14 @@
 import json
 
 from django.contrib.auth import login, logout, authenticate
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_protect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from rest_framework.authtoken.models import Token
 from drf_spectacular.utils import extend_schema
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -48,8 +50,9 @@ def logout_view(request):
     }
 )
 @api_view(['POST'])
-@login_required
-@ensure_csrf_cookie
+@permission_classes([IsAuthenticated])           # overrides global defaults (no DjangoModelPermissions here)
+@authentication_classes([SessionAuthentication]) # use the browser session
+@csrf_protect                                    # POST must include X-CSRFToken
 def get_user_api_token(request):
     """
     Get or create an API token for the current session-authenticated user.
