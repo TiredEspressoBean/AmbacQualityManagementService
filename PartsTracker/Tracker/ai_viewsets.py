@@ -13,6 +13,7 @@ from .serializer import DocumentsSerializer
 
 class EmbeddingViewSet(viewsets.ViewSet):
     permission_classes = [AllowAny]
+
     
     def dispatch(self, request, *args, **kwargs):
         """Debug auth token from LangGraph"""
