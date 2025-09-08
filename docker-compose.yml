@@ -41,10 +41,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      ambactracker-network:
-        aliases:
-          - tracker-backend
+
 
   # Build frontend static files
   frontend-builder:
