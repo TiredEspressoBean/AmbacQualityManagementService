@@ -57,7 +57,7 @@ services:
     command: ["npm", "run", "build"]
 
 #   Caddy reverse proxy and static file server (DISABLED FOR LOCAL DEV)
-    caddy:
+  caddy:
      image: caddy:2-alpine
      restart: unless-stopped
      ports:
