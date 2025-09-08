@@ -2748,13 +2748,6 @@ const ExecuteQueryResponse = z
     results: z.array(z.object({}).partial().passthrough()),
   })
   .passthrough();
-const QuerySchemaResponse = z
-  .object({
-    allowed_models: z.object({}).partial().passthrough(),
-    allowed_operations: z.array(z.string()),
-    examples: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
 const ContextWindowRequestRequest = z
   .object({
     chunk_id: z.number().int(),
@@ -3030,7 +3023,6 @@ export const schemas = {
   EmbedQueryResponse,
   ExecuteQueryRequestRequest,
   ExecuteQueryResponse,
-  QuerySchemaResponse,
   ContextWindowRequestRequest,
   ContextWindowResponse,
   HybridSearchRequestRequest,
@@ -3095,7 +3087,7 @@ const endpoints = makeApi([
     alias: "api_ai_query_schema_info_retrieve",
     description: `Return model schema information for safe ORM query building`,
     requestFormat: "json",
-    response: QuerySchemaResponse,
+    response: z.void(),
   },
   {
     method: "post",
@@ -6146,6 +6138,27 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/user/token/",
+    alias: "get_user_api_token",
+    description: `Get or create an API token for the current session-authenticated user`,
+    requestFormat: "json",
+    response: z
+      .object({ token: z.string(), created: z.boolean() })
+      .partial()
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        schema: z.unknown(),
+      },
+      {
+        status: 500,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",

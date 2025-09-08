@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from pgvector.django import CosineDistance
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, inline_serializer
@@ -12,7 +12,7 @@ from .serializer import DocumentsSerializer
 
 
 class EmbeddingViewSet(viewsets.ViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     @extend_schema(
         request=inline_serializer(
@@ -47,7 +47,7 @@ class EmbeddingViewSet(viewsets.ViewSet):
 
 
 class AISearchViewSet(viewsets.ViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     @extend_schema(
         request=inline_serializer(
@@ -72,8 +72,9 @@ class AISearchViewSet(viewsets.ViewSet):
         if not query_embedding:
             return Response({"detail": "embedding required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        chunks = DocChunk.objects.all()
-        # .filter(doc__in=Documents.get_user_accessible_queryset(request.user))
+        chunks = DocChunk.objects.filter(
+            doc__in=Documents.objects.for_user(request.user)
+        )
         
         # Filter by specific documents if provided
         if doc_ids:
@@ -143,8 +144,9 @@ class AISearchViewSet(viewsets.ViewSet):
         if not query:
             return Response({"detail": "query parameter 'q' required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        chunks = DocChunk.objects.select_related('doc')
-        # .filter(doc__in=Documents.get_user_accessible_queryset(request.user))
+        chunks = DocChunk.objects.select_related('doc').filter(
+            doc__in=Documents.objects.for_user(request.user)
+        )
         
         # Filter by specific documents if provided
         if doc_ids:
@@ -221,8 +223,9 @@ class AISearchViewSet(viewsets.ViewSet):
         
         # Vector search if embedding provided
         if query_embedding:
-            vector_chunks = DocChunk.objects.all()
-            # .filter(doc__in=Documents.get_user_accessible_queryset(request.user))
+            vector_chunks = DocChunk.objects.filter(
+                doc__in=Documents.objects.for_user(request.user)
+            )
             if doc_ids:
                 vector_chunks = vector_chunks.filter(doc_id__in=doc_ids)
             
@@ -246,8 +249,9 @@ class AISearchViewSet(viewsets.ViewSet):
         
         # Keyword search if query provided
         if query:
-            keyword_chunks = DocChunk.objects.select_related('doc')
-            # .filter(doc__in=Documents.get_user_accessible_queryset(request.user))
+            keyword_chunks = DocChunk.objects.select_related('doc').filter(
+                doc__in=Documents.objects.for_user(request.user)
+            )
             if doc_ids:
                 keyword_chunks = keyword_chunks.filter(doc_id__in=doc_ids)
             
@@ -310,8 +314,10 @@ class AISearchViewSet(viewsets.ViewSet):
             return Response({"detail": "chunk_id required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            center_chunk = DocChunk.objects.select_related('doc').get(id=chunk_id)
-            # doc__in=Documents.get_user_accessible_queryset(request.user)
+            center_chunk = DocChunk.objects.select_related('doc').get(
+                id=chunk_id,
+                doc__in=Documents.objects.for_user(request.user)
+            )
         except DocChunk.DoesNotExist:
             return Response({"detail": "Chunk not found or not accessible"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -346,7 +352,7 @@ class AISearchViewSet(viewsets.ViewSet):
 
 class QueryViewSet(viewsets.ViewSet):
     """READ-ONLY query interface for safe ORM operations via LLM"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     
     # Whitelist of allowed models for read operations
     ALLOWED_MODELS = {
@@ -653,10 +659,10 @@ class QueryViewSet(viewsets.ViewSet):
             model_class = apps.get_model('Tracker', model_name)
             
             # Apply user permission filtering if model has SecureManager
-            # if hasattr(model_class, 'objects') and hasattr(model_class.objects, 'for_user'):
-            #     queryset = model_class.objects.for_user(request.user)
-            # else:
-            queryset = model_class.objects.all()
+            if hasattr(model_class, 'objects') and hasattr(model_class.objects, 'for_user'):
+                queryset = model_class.objects.for_user(request.user)
+            else:
+                queryset = model_class.objects.all()
             
             # Apply filters
             if filters:

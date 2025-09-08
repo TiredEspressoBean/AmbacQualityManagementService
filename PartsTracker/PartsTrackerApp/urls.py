@@ -21,10 +21,11 @@ from django.urls.conf import include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
+
 from Tracker import views
 from Tracker.Viewsets import *
 from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet
-from Tracker.api_views import get_csrf_token
+from Tracker.api_views import get_csrf_token, get_user_api_token
 from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
 from Tracker.hubspot_view import hubspot_webhook
@@ -139,6 +140,7 @@ urlpatterns += [
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/csrf/", get_csrf_token),
+    path("api/user/token/", get_user_api_token, name="get_user_api_token"),
     path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"),
                                 namespace="django_browser_reload")),
 

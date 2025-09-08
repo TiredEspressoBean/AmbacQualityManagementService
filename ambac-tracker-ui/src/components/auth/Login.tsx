@@ -28,6 +28,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 
 import { api, schemas } from '@/lib/api/generated'
 import { router } from "@/router"
+import { getCookie } from '@/lib/utils'
 
 // Make sure you’ve done this somewhere globally:
 api.axios.defaults.withCredentials = true
@@ -46,9 +47,12 @@ export default function LoginPreview() {
     async function onSubmit(values: z.infer<typeof Login>) {
         try {
             console.log(values)
+            
             const { key } = await api.auth_login_create({
                 email: values.email,
                 password: values.password
+            }, {
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
             })
 
             // Optional: store token (not required for session auth)

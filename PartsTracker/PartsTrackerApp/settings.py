@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     "formtools",
     'auditlog',
     'widget_tweaks',
-
     "rest_framework",
     "rest_framework.authtoken",
     "dj_rest_auth",
@@ -184,6 +183,7 @@ ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",  # for browser session login
+        "rest_framework.authentication.TokenAuthentication",  # for API tokens
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # default gate
@@ -257,9 +257,12 @@ else:
     PASSWORD_RESET_PROTOCOL = 'https'
 
 REST_AUTH = {
-    'PASSWORD_RESET_SERIALIZER': 'Tracker.serializer.PasswordResetSerializer',  # Replace 'your_app'
+    'PASSWORD_RESET_SERIALIZER': 'Tracker.serializer.PasswordResetSerializer',
     'PASSWORD_RESET_CONFIRM_URL': 'http://localhost:5173/reset-password/{uid}/{token}/',
     'PASSWORD_RESET_USE_SITES_DOMAIN': False,
+    'USE_JWT': False,
+    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
+    'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
