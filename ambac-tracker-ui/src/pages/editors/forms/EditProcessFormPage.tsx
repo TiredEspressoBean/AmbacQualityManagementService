@@ -111,7 +111,7 @@ export default function ProcessFormPage() {
 
     useEffect(() => {
         if (mode !== "create") return;
-        if (typeof debouncedNumSteps !== "number" || debouncedNumSteps < 1) return;
+        if (false || debouncedNumSteps < 1) return;
 
         const currentSteps = form.getValues("steps");
         const currentLength = currentSteps?.length;

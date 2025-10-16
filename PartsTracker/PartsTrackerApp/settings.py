@@ -17,8 +17,8 @@ from dotenv import load_dotenv, dotenv_values
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env file from project root (one level up from PartsTracker/)
-# load_dotenv(dotenv_path=BASE_DIR.parent / '.env')
+# Load .env file from project root
+load_dotenv(dotenv_path=BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -27,10 +27,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-CHANGE-ME")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', True)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-# ALLOWED_HOSTS = ["192.168.99.1", "localhost", "127.0.0.1"]
-ALLOWED_HOSTS = ["*"]
+# Custom test runner for vector extension support
+TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
+
+# Parse ALLOWED_HOSTS from environment variable (comma-separated)
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 
 INSTALLED_APPS = [
@@ -46,7 +49,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.microsoft",
-    'Tracker',
+    'Tracker.apps.TrackerConfig',
     "tailwind",
     "theme",
     "django_browser_reload",
@@ -59,21 +62,24 @@ INSTALLED_APPS = [
     "dj_rest_auth.registration",
     "corsheaders",
     "drf_spectacular",
-    'django_crontab',
+    "django_celery_beat",
+    "django_celery_results",
 ]
+
+
 
 MIDDLEWARE = [
     'auditlog.middleware.AuditlogMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    "django.middleware.csrf.CsrfViewMiddleware",
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",
     "django_browser_reload.middleware.BrowserReloadMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
 ROOT_URLCONF = 'PartsTrackerApp.urls'
@@ -81,8 +87,7 @@ ROOT_URLCONF = 'PartsTrackerApp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -103,9 +108,9 @@ WSGI_APPLICATION = 'PartsTrackerApp.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'tracker_AMBAC'),
-        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', "Annoy1ng"),
+        'NAME': os.environ.get('POSTGRES_DB', 'tracker_ambac'),
+        'USER': os.environ.get('POSTGRES_USER'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
@@ -144,6 +149,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -217,8 +223,6 @@ CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173"
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:5173").split(",")
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
 
-DJANGO_DEBUG = os.environ.get('DJANGO_DEBUG', True)
-
 LOGIN_REDIRECT_URL = '/tracker'
 
 LOGOUT_REDIRECT_URL = '/tracker'
@@ -231,11 +235,6 @@ TAILWIND_APP_NAME = 'theme'
 
 INTERNAL_IPS = [
     "127.0.0.1",
-]
-
-CRONJOBS = [
-    # Tuesday at 3:00 PM - send weekly customer emails
-    ('0 15 * * 2', 'django.core.management.call_command', ['send_weekly_emails']),
 ]
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
@@ -265,23 +264,90 @@ REST_AUTH = {
     'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "smtp365062@ambac.net")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "Ghn083KucqxYuW167zZLOwXduYj3m4kS")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "sales@ambacinternational.com")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
 # --- AI / RAG minimal settings ---
 AI_EMBED_ENABLED = os.getenv("AI_EMBED_ENABLED", "true").lower() in {"1", "true", "yes"}
 
-# Model + dimensions (MiniLM-L6-v2 = 384)
-AI_EMBED_MODEL_NAME = os.getenv("AI_EMBED_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
-AI_EMBED_DIM = int(os.getenv("AI_EMBED_DIM", "384"))
+# Ollama configuration
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+AI_EMBED_DIM = int(os.getenv("AI_EMBED_DIM", "768"))  # nomic-embed-text uses 768 dimensions
 
 # Inline embedding guards
 AI_EMBED_MAX_FILE_BYTES = int(os.getenv("AI_EMBED_MAX_FILE_BYTES", "2000000"))  # ~2MB
 AI_EMBED_CHUNK_CHARS    = int(os.getenv("AI_EMBED_CHUNK_CHARS", "1200"))
 AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
 AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))
+
+# --- Redis Caching ---
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
+        'OPTIONS': {
+            'db': '1',  # Use database 1 for cache (0 is for Celery)
+            'parser_class': 'redis.connection.PythonParser',
+            'pool_class': 'redis.BlockingConnectionPool',
+        },
+        'KEY_PREFIX': 'ambactracker',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# Session storage (optional: use Redis for sessions instead of DB)
+# Uncomment the lines below to use Redis for session storage
+# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+# SESSION_CACHE_ALIAS = 'default'
+
+# --- Celery ---
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "django-db")
+
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_TIME_LIMIT = 30*60
+CELERY_TASK_SOFT_TIME_LIMIT = 20*60
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TIMEZONE = 'America/New_York'
+
+# Celery Beat (scheduled tasks)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Celery Beat Schedule (default schedule, can be overridden in Django admin)
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'send-weekly-customer-emails': {
+        'task': 'Tracker.tasks.send_weekly_emails_to_all_customers',
+        'schedule': crontab(day_of_week='tuesday', hour=15, minute=0),  # Tuesday at 3:00 PM
+        'options': {
+            'expires': 3600,  # Task expires after 1 hour if not picked up
+        }
+    },
+    # New unified notification system
+    'dispatch-pending-notifications': {
+        'task': 'Tracker.tasks.dispatch_pending_notifications',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        'options': {
+            'expires': 240,  # Task expires after 4 minutes if not picked up
+        }
+    },
+    # HubSpot sync
+    'sync-hubspot-deals-hourly': {
+        'task': 'Tracker.tasks.sync_hubspot_deals_task',
+        'schedule': crontab(minute=0),  # Every hour at :00
+        'options': {
+            'expires': 1800,  # Task expires after 30 minutes if not picked up
+        }
+    },
+}

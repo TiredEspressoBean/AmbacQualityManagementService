@@ -8,12 +8,26 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tracker_AMBAC}"]
       interval: 30s
       timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 5
 
   backend:
@@ -28,26 +42,69 @@ services:
       python manage.py create_temp_admin &&
       python manage.py tailwind install &&
       python manage.py tailwind build &&
-      python manage.py crontab add &&
-      service cron start &&
       python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
     environment:
       - POSTGRES_HOST=postgres
       - NPM_BIN_PATH=/usr/bin/npm
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
     volumes:
       - ./PartsTracker:/app
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
+  celery-worker:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A PartsTrackerApp worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+    volumes:
+      - ./PartsTracker:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: celery -A PartsTrackerApp beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+    volumes:
+      - ./PartsTracker:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # Build frontend static files
   frontend-builder:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
+    profiles:
+      - production
     env_file:
       - .env
     environment:
@@ -61,6 +118,8 @@ services:
   caddy:
      image: caddy:2-alpine
      restart: unless-stopped
+     profiles:
+       - production
      ports:
        - "80:80"
        - "443:443"
@@ -96,6 +155,7 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
   frontend-dist:
   caddy_data:
   caddy_config:

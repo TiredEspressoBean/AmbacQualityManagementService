@@ -182,6 +182,62 @@ type DocumentsRequest = {
    */
   number | undefined;
 };
+type HeatMapAnnotations = {
+  id: number;
+  model: number;
+  model_display: string;
+  part: number;
+  part_display: string;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  measurement_value?: (number | null) | undefined;
+  defect_type?:
+    | /**
+     * @maxLength 255
+     */
+    (string | null)
+    | undefined;
+  severity?: (SeverityEnum | BlankEnum | NullEnum | null) | undefined;
+  notes?: string | undefined;
+  created_by: number | null;
+  created_by_display: string;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+  deleted_at: string | null;
+};
+type SeverityEnum =
+  /**
+   * * `low` - Low
+   * `medium` - Medium
+   * `high` - High
+   * `critical` - Critical
+   *
+   * @enum low, medium, high, critical
+   */
+  "low" | "medium" | "high" | "critical";
+type BlankEnum =
+  /**
+   * @enum
+   */
+  unknown;
+type HeatMapAnnotationsRequest = {
+  model: number;
+  part: number;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  measurement_value?: (number | null) | undefined;
+  defect_type?:
+    | /**
+     * @maxLength 255
+     */
+    (string | null)
+    | undefined;
+  severity?: (SeverityEnum | BlankEnum | NullEnum | null) | undefined;
+  notes?: string | undefined;
+};
 type MeasurementDefinition = {
   id: number;
   /**
@@ -253,6 +309,173 @@ type MeasurementDefinitionRequest = {
     | undefined;
   required?: boolean | undefined;
   type: TypeEnum;
+};
+type MeasurementResult = {
+  report: string;
+  definition: number;
+  value_numeric?: (number | null) | undefined;
+  value_pass_fail?:
+    | (ValuePassFailEnum | BlankEnum | NullEnum | null)
+    | undefined;
+  is_within_spec: boolean;
+  created_by: number;
+};
+type ValuePassFailEnum =
+  /**
+   * * `PASS` - Pass
+   * `FAIL` - Fail
+   *
+   * @enum PASS, FAIL
+   */
+  "PASS" | "FAIL";
+type MeasurementResultRequest = {
+  definition: number;
+  value_numeric?: (number | null) | undefined;
+  value_pass_fail?:
+    | (ValuePassFailEnum | BlankEnum | NullEnum | null)
+    | undefined;
+};
+type NotificationPreference = {
+  id: number;
+  notification_type: NotificationTypeEnum;
+  notification_type_display: string;
+  channel_type?: ChannelTypeEnum | undefined;
+  channel_type_display: string;
+  status: NotificationPreferenceStatusEnum;
+  status_display: string;
+  schedule?: NotificationSchedule | undefined;
+  /**
+   * When this notification should be sent (UTC)
+   */
+  next_send_at: string;
+  next_send_at_display: string | null;
+  last_sent_at: string | null;
+  last_sent_at_display: string | null;
+  attempt_count: number;
+  max_attempts?:
+    | /**
+     * Max sends before stopping. Null = infinite
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  created_at: string;
+  updated_at: string;
+};
+type NotificationTypeEnum =
+  /**
+   * * `WEEKLY_REPORT` - Weekly Order Report
+   * `CAPA_REMINDER` - CAPA Reminder
+   *
+   * @enum WEEKLY_REPORT, CAPA_REMINDER
+   */
+  "WEEKLY_REPORT" | "CAPA_REMINDER";
+type ChannelTypeEnum =
+  /**
+   * * `email` - Email
+   * `in_app` - In-App Notification
+   * `sms` - SMS
+   *
+   * @enum email, in_app, sms
+   */
+  "email" | "in_app" | "sms";
+type NotificationPreferenceStatusEnum =
+  /**
+   * * `pending` - Pending
+   * `sent` - Sent
+   * `failed` - Failed
+   * `cancelled` - Cancelled
+   *
+   * @enum pending, sent, failed, cancelled
+   */
+  "pending" | "sent" | "failed" | "cancelled";
+type NotificationSchedule = {
+  interval_type: IntervalTypeEnum;
+  day_of_week?:
+    | /**
+     * 0=Monday, 6=Sunday
+     *
+     * @minimum 0
+     * @maximum 6
+     */
+    (number | null)
+    | undefined;
+  time?:
+    | /**
+     * Time in user's local timezone
+     */
+    (string | null)
+    | undefined;
+  interval_weeks?:
+    | /**
+     * Number of weeks between sends
+     *
+     * @minimum 1
+     */
+    (number | null)
+    | undefined;
+  escalation_tiers?:
+    | /**
+     * List of [threshold_days, interval_days] tuples
+     */
+    (Array<Array<number>> | null)
+    | undefined;
+};
+type IntervalTypeEnum =
+  /**
+   * * `fixed` - fixed
+   * `deadline_based` - deadline_based
+   *
+   * @enum fixed, deadline_based
+   */
+  "fixed" | "deadline_based";
+type NotificationPreferenceRequest = {
+  notification_type: NotificationTypeEnum;
+  channel_type?: ChannelTypeEnum | undefined;
+  schedule?: NotificationScheduleRequest | undefined;
+  max_attempts?:
+    | /**
+     * Max sends before stopping. Null = infinite
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+};
+type NotificationScheduleRequest = {
+  interval_type: IntervalTypeEnum;
+  day_of_week?:
+    | /**
+     * 0=Monday, 6=Sunday
+     *
+     * @minimum 0
+     * @maximum 6
+     */
+    (number | null)
+    | undefined;
+  time?:
+    | /**
+     * Time in user's local timezone
+     */
+    (string | null)
+    | undefined;
+  interval_weeks?:
+    | /**
+     * Number of weeks between sends
+     *
+     * @minimum 1
+     */
+    (number | null)
+    | undefined;
+  escalation_tiers?:
+    | /**
+     * List of [threshold_days, interval_days] tuples
+     */
+    (Array<Array<number>> | null)
+    | undefined;
 };
 type Orders = {
   id: number;
@@ -530,6 +753,25 @@ type Group = {
    */
   name: string;
 };
+type PaginatedHeatMapAnnotationsList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<HeatMapAnnotations>;
+};
 type PaginatedMeasurementDefinitionList = {
   /**
    * @example 123
@@ -548,6 +790,25 @@ type PaginatedMeasurementDefinitionList = {
     (string | null)
     | undefined;
   results: Array<MeasurementDefinition>;
+};
+type PaginatedNotificationPreferenceList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<NotificationPreference>;
 };
 type PaginatedOrdersList = {
   /**
@@ -670,6 +931,7 @@ type Parts = {
   sampling_ruleset?: (number | null) | undefined;
   sampling_context?: unknown | undefined;
   process: number;
+  total_rework_count: number;
 };
 type PaginatedProcessWithStepsList = {
   /**
@@ -841,7 +1103,7 @@ type QualityReports = {
    * @maxLength 50
    */
   string | undefined;
-  status: StatusEnum;
+  status: QualityReportsStatusEnum;
   description?:
     | /**
      * @maxLength 300
@@ -858,7 +1120,7 @@ type QualityReports = {
     (number | null)
     | undefined;
 };
-type StatusEnum =
+type QualityReportsStatusEnum =
   /**
    * * `PASS` - Pass
    * `FAIL` - Fail
@@ -867,6 +1129,69 @@ type StatusEnum =
    * @enum PASS, FAIL, PENDING
    */
   "PASS" | "FAIL" | "PENDING";
+type PaginatedQuarantineDispositionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<QuarantineDisposition>;
+};
+type QuarantineDisposition = {
+  id: number;
+  disposition_number: string;
+  current_state?: CurrentStateEnum | undefined;
+  disposition_type?: (DispositionTypeEnum | BlankEnum) | undefined;
+  assigned_to?: (number | null) | undefined;
+  description?: string | undefined;
+  resolution_notes?: string | undefined;
+  resolution_completed?: boolean | undefined;
+  resolution_completed_by?: (number | null) | undefined;
+  resolution_completed_by_name: string;
+  resolution_completed_at?: (string | null) | undefined;
+  part?: (number | null) | undefined;
+  step?: (number | null) | undefined;
+  step_info: {};
+  rework_attempt_at_step?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  rework_limit_exceeded: boolean;
+  quality_reports: Array<number>;
+  assignee_name: string;
+  choices_data: {};
+};
+type CurrentStateEnum =
+  /**
+   * * `OPEN` - Open
+   * `IN_PROGRESS` - In Progress
+   * `CLOSED` - Closed
+   *
+   * @enum OPEN, IN_PROGRESS, CLOSED
+   */
+  "OPEN" | "IN_PROGRESS" | "CLOSED";
+type DispositionTypeEnum =
+  /**
+   * * `REWORK` - Rework
+   * `SCRAP` - Scrap
+   * `USE_AS_IS` - Use As Is
+   * `RETURN_TO_SUPPLIER` - Return to Supplier
+   *
+   * @enum REWORK, SCRAP, USE_AS_IS, RETURN_TO_SUPPLIER
+   */
+  "REWORK" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
 type PaginatedSamplingRuleList = {
   /**
    * @example 123
@@ -1083,6 +1408,87 @@ type Steps = {
   updated_at: string;
   archived: boolean;
 };
+type PaginatedThreeDModelList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ThreeDModel>;
+};
+type ThreeDModel = {
+  id: number;
+  /**
+   * @maxLength 255
+   */
+  name: string;
+  file: string;
+  part_type?: (number | null) | undefined;
+  part_type_display: string;
+  step?:
+    | /**
+     * Optional: Link to specific step if this shows intermediate state
+     */
+    (number | null)
+    | undefined;
+  step_display: string;
+  uploaded_at: string;
+  /**
+   * e.g., glb, gltf, obj
+   */
+  file_type: string;
+  annotation_count: number;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+  deleted_at: string | null;
+};
+type PaginatedUserInvitationList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<UserInvitation>;
+};
+type UserInvitation = {
+  id: number;
+  user: number;
+  user_email: string;
+  user_name: string;
+  invited_by?: (number | null) | undefined;
+  invited_by_name: string;
+  sent_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  is_expired: boolean;
+  is_valid: boolean;
+  accepted_ip_address: string | null;
+  accepted_user_agent: string | null;
+  invitation_url: string;
+};
 type PaginatedUserList = {
   /**
    * @example 123
@@ -1274,6 +1680,20 @@ type PatchedDocumentsRequest = Partial<{
    */
   version: number;
 }>;
+type PatchedHeatMapAnnotationsRequest = Partial<{
+  model: number;
+  part: number;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  measurement_value: number | null;
+  /**
+   * @maxLength 255
+   */
+  defect_type: string | null;
+  severity: SeverityEnum | BlankEnum | NullEnum | null;
+  notes: string;
+}>;
 type PatchedMeasurementDefinitionRequest = Partial<{
   /**
    * @minLength 1
@@ -1298,6 +1718,18 @@ type PatchedMeasurementDefinitionRequest = Partial<{
   lower_tol: string | null;
   required: boolean;
   type: TypeEnum;
+}>;
+type PatchedNotificationPreferenceRequest = Partial<{
+  notification_type: NotificationTypeEnum;
+  channel_type: ChannelTypeEnum;
+  schedule: NotificationScheduleRequest;
+  /**
+   * Max sends before stopping. Null = infinite
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  max_attempts: number | null;
 }>;
 type PatchedOrdersRequest = Partial<{
   /**
@@ -1381,18 +1813,36 @@ type PatchedQualityReportsRequest = Partial<{
    * @maxLength 50
    */
   sampling_method: string;
-  status: StatusEnum;
+  status: QualityReportsStatusEnum;
   /**
    * @maxLength 300
    */
   description: string | null;
   file: number | null;
   errors: Array<number>;
-  measurements: Array<MeasurementDefinitionRequest>;
+  measurements: Array<MeasurementResultRequest>;
   /**
    * Links to the sampling decision that triggered this inspection
    */
   sampling_audit_log: number | null;
+}>;
+type PatchedQuarantineDispositionRequest = Partial<{
+  current_state: CurrentStateEnum;
+  disposition_type: DispositionTypeEnum | BlankEnum;
+  assigned_to: number | null;
+  description: string;
+  resolution_notes: string;
+  resolution_completed: boolean;
+  resolution_completed_by: number | null;
+  resolution_completed_at: string | null;
+  part: number | null;
+  step: number | null;
+  /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  rework_attempt_at_step: number;
+  quality_reports: Array<number>;
 }>;
 type PatchedSamplingRuleRequest = Partial<{
   rule_type: RuleTypeEnum;
@@ -1469,7 +1919,7 @@ type QualityReportsRequest = {
    * @maxLength 50
    */
   string | undefined;
-  status: StatusEnum;
+  status: QualityReportsStatusEnum;
   description?:
     | /**
      * @maxLength 300
@@ -1478,13 +1928,31 @@ type QualityReportsRequest = {
     | undefined;
   file?: (number | null) | undefined;
   errors?: Array<number> | undefined;
-  measurements: Array<MeasurementDefinitionRequest>;
+  measurements: Array<MeasurementResultRequest>;
   sampling_audit_log?:
     | /**
      * Links to the sampling decision that triggered this inspection
      */
     (number | null)
     | undefined;
+};
+type QuarantineDispositionRequest = {
+  current_state?: CurrentStateEnum | undefined;
+  disposition_type?: (DispositionTypeEnum | BlankEnum) | undefined;
+  assigned_to?: (number | null) | undefined;
+  description?: string | undefined;
+  resolution_notes?: string | undefined;
+  resolution_completed?: boolean | undefined;
+  resolution_completed_by?: (number | null) | undefined;
+  resolution_completed_at?: (string | null) | undefined;
+  part?: (number | null) | undefined;
+  step?: (number | null) | undefined;
+  rework_attempt_at_step?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  quality_reports: Array<number>;
 };
 type SamplingRuleRequest = {
   rule_type: RuleTypeEnum;
@@ -1850,7 +2318,7 @@ const PatchedQualityErrorsListRequest = z
   })
   .partial()
   .passthrough();
-const StatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
+const QualityReportsStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
 const QualityReports: z.ZodType<QualityReports> = z
   .object({
     id: z.number().int(),
@@ -1860,7 +2328,7 @@ const QualityReports: z.ZodType<QualityReports> = z
     operator: z.array(z.number().int()).optional(),
     sampling_rule: z.number().int().nullish(),
     sampling_method: z.string().max(50).optional(),
-    status: StatusEnum,
+    status: QualityReportsStatusEnum,
     description: z.string().max(300).nullish(),
     file: z.number().int().nullish(),
     created_at: z.string().datetime({ offset: true }),
@@ -1876,25 +2344,15 @@ const PaginatedQualityReportsList: z.ZodType<PaginatedQualityReportsList> = z
     results: z.array(QualityReports),
   })
   .passthrough();
-const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
-const MeasurementDefinitionRequest: z.ZodType<MeasurementDefinitionRequest> = z
+const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
+const BlankEnum = z.unknown();
+const MeasurementResultRequest: z.ZodType<MeasurementResultRequest> = z
   .object({
-    label: z.string().min(1).max(100),
-    unit: z.string().max(50).optional(),
-    nominal: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    definition: z.number().int(),
+    value_numeric: z.number().nullish(),
+    value_pass_fail: z
+      .union([ValuePassFailEnum, BlankEnum, NullEnum])
       .nullish(),
-    upper_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    lower_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    required: z.boolean().optional(),
-    type: TypeEnum,
   })
   .passthrough();
 const QualityReportsRequest: z.ZodType<QualityReportsRequest> = z
@@ -1905,11 +2363,11 @@ const QualityReportsRequest: z.ZodType<QualityReportsRequest> = z
     operator: z.array(z.number().int()).optional(),
     sampling_rule: z.number().int().nullish(),
     sampling_method: z.string().min(1).max(50).optional(),
-    status: StatusEnum,
+    status: QualityReportsStatusEnum,
     description: z.string().max(300).nullish(),
     file: z.number().int().nullish(),
     errors: z.array(z.number().int()).optional(),
-    measurements: z.array(MeasurementDefinitionRequest),
+    measurements: z.array(MeasurementResultRequest),
     sampling_audit_log: z.number().int().nullish(),
   })
   .passthrough();
@@ -1921,11 +2379,11 @@ const PatchedQualityReportsRequest: z.ZodType<PatchedQualityReportsRequest> = z
     operator: z.array(z.number().int()),
     sampling_rule: z.number().int().nullable(),
     sampling_method: z.string().min(1).max(50),
-    status: StatusEnum,
+    status: QualityReportsStatusEnum,
     description: z.string().max(300).nullable(),
     file: z.number().int().nullable(),
     errors: z.array(z.number().int()),
-    measurements: z.array(MeasurementDefinitionRequest),
+    measurements: z.array(MeasurementResultRequest),
     sampling_audit_log: z.number().int().nullable(),
   })
   .partial()
@@ -1941,6 +2399,66 @@ const PaginatedGroupList: z.ZodType<PaginatedGroupList> = z
     results: z.array(Group),
   })
   .passthrough();
+const SeverityEnum = z.enum(["low", "medium", "high", "critical"]);
+const HeatMapAnnotations: z.ZodType<HeatMapAnnotations> = z
+  .object({
+    id: z.number().int(),
+    model: z.number().int(),
+    model_display: z.string(),
+    part: z.number().int(),
+    part_display: z.string(),
+    position_x: z.number(),
+    position_y: z.number(),
+    position_z: z.number(),
+    measurement_value: z.number().nullish(),
+    defect_type: z.string().max(255).nullish(),
+    severity: z.union([SeverityEnum, BlankEnum, NullEnum]).nullish(),
+    notes: z.string().optional(),
+    created_by: z.number().int().nullable(),
+    created_by_display: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .passthrough();
+const PaginatedHeatMapAnnotationsList: z.ZodType<PaginatedHeatMapAnnotationsList> =
+  z
+    .object({
+      count: z.number().int(),
+      next: z.string().url().nullish(),
+      previous: z.string().url().nullish(),
+      results: z.array(HeatMapAnnotations),
+    })
+    .passthrough();
+const HeatMapAnnotationsRequest: z.ZodType<HeatMapAnnotationsRequest> = z
+  .object({
+    model: z.number().int(),
+    part: z.number().int(),
+    position_x: z.number(),
+    position_y: z.number(),
+    position_z: z.number(),
+    measurement_value: z.number().nullish(),
+    defect_type: z.string().max(255).nullish(),
+    severity: z.union([SeverityEnum, BlankEnum, NullEnum]).nullish(),
+    notes: z.string().optional(),
+  })
+  .passthrough();
+const PatchedHeatMapAnnotationsRequest: z.ZodType<PatchedHeatMapAnnotationsRequest> =
+  z
+    .object({
+      model: z.number().int(),
+      part: z.number().int(),
+      position_x: z.number(),
+      position_y: z.number(),
+      position_z: z.number(),
+      measurement_value: z.number().nullable(),
+      defect_type: z.string().max(255).nullable(),
+      severity: z.union([SeverityEnum, BlankEnum, NullEnum]).nullable(),
+      notes: z.string(),
+    })
+    .partial()
+    .passthrough();
 const ExternalAPIOrderIdentifier = z
   .object({
     id: z.number().int(),
@@ -1952,6 +2470,9 @@ const ExternalAPIOrderIdentifier = z
     is_current_version: z.boolean().optional(),
     stage_name: z.string().max(100),
     API_id: z.string().max(50),
+    pipeline_id: z.string().max(50).nullish(),
+    display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+    last_synced_at: z.string().datetime({ offset: true }).nullish(),
     previous_version: z.number().int().nullish(),
   })
   .passthrough();
@@ -1963,6 +2484,9 @@ const ExternalAPIOrderIdentifierRequest = z
     is_current_version: z.boolean().optional(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
+    pipeline_id: z.string().max(50).nullish(),
+    display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+    last_synced_at: z.string().datetime({ offset: true }).nullish(),
     previous_version: z.number().int().nullish(),
   })
   .passthrough();
@@ -1974,10 +2498,14 @@ const PatchedExternalAPIOrderIdentifierRequest = z
     is_current_version: z.boolean(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
+    pipeline_id: z.string().max(50).nullable(),
+    display_order: z.number().int().gte(-2147483648).lte(2147483647),
+    last_synced_at: z.string().datetime({ offset: true }).nullable(),
     previous_version: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
+const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
 const MeasurementDefinition: z.ZodType<MeasurementDefinition> = z
   .object({
     id: z.number().int(),
@@ -2010,6 +2538,26 @@ const PaginatedMeasurementDefinitionList: z.ZodType<PaginatedMeasurementDefiniti
       results: z.array(MeasurementDefinition),
     })
     .passthrough();
+const MeasurementDefinitionRequest: z.ZodType<MeasurementDefinitionRequest> = z
+  .object({
+    label: z.string().min(1).max(100),
+    unit: z.string().max(50).optional(),
+    nominal: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    upper_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    lower_tol: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .nullish(),
+    required: z.boolean().optional(),
+    type: TypeEnum,
+  })
+  .passthrough();
 const PatchedMeasurementDefinitionRequest: z.ZodType<PatchedMeasurementDefinitionRequest> =
   z
     .object({
@@ -2032,6 +2580,92 @@ const PatchedMeasurementDefinitionRequest: z.ZodType<PatchedMeasurementDefinitio
     })
     .partial()
     .passthrough();
+const NotificationTypeEnum = z.enum(["WEEKLY_REPORT", "CAPA_REMINDER"]);
+const ChannelTypeEnum = z.enum(["email", "in_app", "sms"]);
+const NotificationPreferenceStatusEnum = z.enum([
+  "pending",
+  "sent",
+  "failed",
+  "cancelled",
+]);
+const IntervalTypeEnum = z.enum(["fixed", "deadline_based"]);
+const NotificationSchedule: z.ZodType<NotificationSchedule> = z
+  .object({
+    interval_type: IntervalTypeEnum,
+    day_of_week: z.number().int().gte(0).lte(6).nullish(),
+    time: z.string().nullish(),
+    interval_weeks: z.number().int().gte(1).nullish(),
+    escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
+  })
+  .passthrough();
+const NotificationPreference: z.ZodType<NotificationPreference> = z
+  .object({
+    id: z.number().int(),
+    notification_type: NotificationTypeEnum,
+    notification_type_display: z.string(),
+    channel_type: ChannelTypeEnum.optional(),
+    channel_type_display: z.string(),
+    status: NotificationPreferenceStatusEnum,
+    status_display: z.string(),
+    schedule: NotificationSchedule.optional(),
+    next_send_at: z.string().datetime({ offset: true }),
+    next_send_at_display: z.string().datetime({ offset: true }).nullable(),
+    last_sent_at: z.string().datetime({ offset: true }).nullable(),
+    last_sent_at_display: z.string().datetime({ offset: true }).nullable(),
+    attempt_count: z.number().int(),
+    max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const PaginatedNotificationPreferenceList: z.ZodType<PaginatedNotificationPreferenceList> =
+  z
+    .object({
+      count: z.number().int(),
+      next: z.string().url().nullish(),
+      previous: z.string().url().nullish(),
+      results: z.array(NotificationPreference),
+    })
+    .passthrough();
+const NotificationScheduleRequest: z.ZodType<NotificationScheduleRequest> = z
+  .object({
+    interval_type: IntervalTypeEnum,
+    day_of_week: z.number().int().gte(0).lte(6).nullish(),
+    time: z.string().nullish(),
+    interval_weeks: z.number().int().gte(1).nullish(),
+    escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
+  })
+  .passthrough();
+const NotificationPreferenceRequest: z.ZodType<NotificationPreferenceRequest> =
+  z
+    .object({
+      notification_type: NotificationTypeEnum,
+      channel_type: ChannelTypeEnum.optional(),
+      schedule: NotificationScheduleRequest.optional(),
+      max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+    })
+    .passthrough();
+const PatchedNotificationPreferenceRequest: z.ZodType<PatchedNotificationPreferenceRequest> =
+  z
+    .object({
+      notification_type: NotificationTypeEnum,
+      channel_type: ChannelTypeEnum,
+      schedule: NotificationScheduleRequest,
+      max_attempts: z
+        .number()
+        .int()
+        .gte(-2147483648)
+        .lte(2147483647)
+        .nullable(),
+    })
+    .partial()
+    .passthrough();
+const TestSendResponse = z
+  .object({ status: z.string(), message: z.string() })
+  .passthrough();
+const AvailableNotificationTypes = z
+  .object({ notification_types: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
 const OrderStatusEnum = z.enum([
   "RFI",
   "PENDING",
@@ -2219,6 +2853,7 @@ const Parts: z.ZodType<Parts> = z
     sampling_ruleset: z.number().int().nullish(),
     sampling_context: z.unknown().optional(),
     process: z.number().int(),
+    total_rework_count: z.number().int(),
   })
   .passthrough();
 const PaginatedPartsList: z.ZodType<PaginatedPartsList> = z
@@ -2378,6 +3013,89 @@ const PatchedProcessWithStepsRequest: z.ZodType<PatchedProcessWithStepsRequest> 
       steps: z.array(StepRequest),
       num_steps: z.number().int().gte(-2147483648).lte(2147483647),
       is_batch_process: z.boolean(),
+    })
+    .partial()
+    .passthrough();
+const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
+const DispositionTypeEnum = z.enum([
+  "REWORK",
+  "SCRAP",
+  "USE_AS_IS",
+  "RETURN_TO_SUPPLIER",
+]);
+const QuarantineDisposition: z.ZodType<QuarantineDisposition> = z
+  .object({
+    id: z.number().int(),
+    disposition_number: z.string(),
+    current_state: CurrentStateEnum.optional(),
+    disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
+    assigned_to: z.number().int().nullish(),
+    description: z.string().optional(),
+    resolution_notes: z.string().optional(),
+    resolution_completed: z.boolean().optional(),
+    resolution_completed_by: z.number().int().nullish(),
+    resolution_completed_by_name: z.string(),
+    resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+    part: z.number().int().nullish(),
+    step: z.number().int().nullish(),
+    step_info: z.object({}).partial().passthrough().nullable(),
+    rework_attempt_at_step: z
+      .number()
+      .int()
+      .gte(-2147483648)
+      .lte(2147483647)
+      .optional(),
+    rework_limit_exceeded: z.boolean(),
+    quality_reports: z.array(z.number().int()),
+    assignee_name: z.string(),
+    choices_data: z.object({}).partial().passthrough(),
+  })
+  .passthrough();
+const PaginatedQuarantineDispositionList: z.ZodType<PaginatedQuarantineDispositionList> =
+  z
+    .object({
+      count: z.number().int(),
+      next: z.string().url().nullish(),
+      previous: z.string().url().nullish(),
+      results: z.array(QuarantineDisposition),
+    })
+    .passthrough();
+const QuarantineDispositionRequest: z.ZodType<QuarantineDispositionRequest> = z
+  .object({
+    current_state: CurrentStateEnum.optional(),
+    disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
+    assigned_to: z.number().int().nullish(),
+    description: z.string().optional(),
+    resolution_notes: z.string().optional(),
+    resolution_completed: z.boolean().optional(),
+    resolution_completed_by: z.number().int().nullish(),
+    resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+    part: z.number().int().nullish(),
+    step: z.number().int().nullish(),
+    rework_attempt_at_step: z
+      .number()
+      .int()
+      .gte(-2147483648)
+      .lte(2147483647)
+      .optional(),
+    quality_reports: z.array(z.number().int()),
+  })
+  .passthrough();
+const PatchedQuarantineDispositionRequest: z.ZodType<PatchedQuarantineDispositionRequest> =
+  z
+    .object({
+      current_state: CurrentStateEnum,
+      disposition_type: z.union([DispositionTypeEnum, BlankEnum]),
+      assigned_to: z.number().int().nullable(),
+      description: z.string(),
+      resolution_notes: z.string(),
+      resolution_completed: z.boolean(),
+      resolution_completed_by: z.number().int().nullable(),
+      resolution_completed_at: z.string().datetime({ offset: true }).nullable(),
+      part: z.number().int().nullable(),
+      step: z.number().int().nullable(),
+      rework_attempt_at_step: z.number().int().gte(-2147483648).lte(2147483647),
+      quality_reports: z.array(z.number().int()),
     })
     .partial()
     .passthrough();
@@ -2592,6 +3310,49 @@ const StepSamplingRulesUpdateRequest: z.ZodType<StepSamplingRulesUpdateRequest> 
       fallback_duration: z.number().int().optional(),
     })
     .passthrough();
+const ThreeDModel: z.ZodType<ThreeDModel> = z
+  .object({
+    id: z.number().int(),
+    name: z.string().max(255),
+    file: z.string().url(),
+    part_type: z.number().int().nullish(),
+    part_type_display: z.string(),
+    step: z.number().int().nullish(),
+    step_display: z.string(),
+    uploaded_at: z.string().datetime({ offset: true }),
+    file_type: z.string(),
+    annotation_count: z.number().int(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean(),
+    deleted_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .passthrough();
+const PaginatedThreeDModelList: z.ZodType<PaginatedThreeDModelList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(ThreeDModel),
+  })
+  .passthrough();
+const ThreeDModelRequest = z
+  .object({
+    name: z.string().min(1).max(255),
+    file: z.instanceof(File),
+    part_type: z.number().int().nullish(),
+    step: z.number().int().nullish(),
+  })
+  .passthrough();
+const PatchedThreeDModelRequest = z
+  .object({
+    name: z.string().min(1).max(255),
+    file: z.instanceof(File),
+    part_type: z.number().int().nullable(),
+    step: z.number().int().nullable(),
+  })
+  .partial()
+  .passthrough();
 const User: z.ZodType<User> = z
   .object({
     id: z.number().int(),
@@ -2658,6 +3419,59 @@ const BulkCompanyAssignmentInputRequest = z
   .object({
     user_ids: z.array(z.number().int()),
     company_id: z.number().int().nullable(),
+  })
+  .passthrough();
+const SendInvitationInputRequest = z
+  .object({ user_id: z.number().int() })
+  .passthrough();
+const UserInvitation: z.ZodType<UserInvitation> = z
+  .object({
+    id: z.number().int(),
+    user: z.number().int(),
+    user_email: z.string().email(),
+    user_name: z.string(),
+    invited_by: z.number().int().nullish(),
+    invited_by_name: z.string(),
+    sent_at: z.string().datetime({ offset: true }),
+    expires_at: z.string().datetime({ offset: true }),
+    accepted_at: z.string().datetime({ offset: true }).nullable(),
+    is_expired: z.boolean(),
+    is_valid: z.boolean(),
+    accepted_ip_address: z.string().nullable(),
+    accepted_user_agent: z.string().nullable(),
+    invitation_url: z.string(),
+  })
+  .passthrough();
+const PaginatedUserInvitationList: z.ZodType<PaginatedUserInvitationList> = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(UserInvitation),
+  })
+  .passthrough();
+const AcceptInvitationInputRequest = z
+  .object({
+    token: z.string().min(1),
+    password: z.string().min(1),
+    opt_in_notifications: z.boolean().optional().default(false),
+  })
+  .passthrough();
+const AcceptInvitationResponse = z
+  .object({ detail: z.string(), user_id: z.number().int() })
+  .passthrough();
+const ResendInvitationInputRequest = z
+  .object({ invitation_id: z.number().int() })
+  .passthrough();
+const ValidateTokenInputRequest = z
+  .object({ token: z.string().min(1) })
+  .passthrough();
+const ValidateTokenResponse = z
+  .object({
+    valid: z.boolean(),
+    user_email: z.string().email(),
+    expires_at: z.string().datetime({ offset: true }),
+    expired: z.boolean(),
   })
   .passthrough();
 const WorkorderStatusEnum = z.enum([
@@ -2919,6 +3733,18 @@ const PatchedUserDetailsRequest = z
 const GroupRequest = z
   .object({ name: z.string().min(1).max(150) })
   .passthrough();
+const MeasurementResult: z.ZodType<MeasurementResult> = z
+  .object({
+    report: z.string(),
+    definition: z.number().int(),
+    value_numeric: z.number().nullish(),
+    value_pass_fail: z
+      .union([ValuePassFailEnum, BlankEnum, NullEnum])
+      .nullish(),
+    is_within_spec: z.boolean(),
+    created_by: z.number().int(),
+  })
+  .passthrough();
 
 export const schemas = {
   Company,
@@ -2948,21 +3774,41 @@ export const schemas = {
   PaginatedQualityErrorsListList,
   QualityErrorsListRequest,
   PatchedQualityErrorsListRequest,
-  StatusEnum,
+  QualityReportsStatusEnum,
   QualityReports,
   PaginatedQualityReportsList,
-  TypeEnum,
-  MeasurementDefinitionRequest,
+  ValuePassFailEnum,
+  BlankEnum,
+  MeasurementResultRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
   Group,
   PaginatedGroupList,
+  SeverityEnum,
+  HeatMapAnnotations,
+  PaginatedHeatMapAnnotationsList,
+  HeatMapAnnotationsRequest,
+  PatchedHeatMapAnnotationsRequest,
   ExternalAPIOrderIdentifier,
   ExternalAPIOrderIdentifierRequest,
   PatchedExternalAPIOrderIdentifierRequest,
+  TypeEnum,
   MeasurementDefinition,
   PaginatedMeasurementDefinitionList,
+  MeasurementDefinitionRequest,
   PatchedMeasurementDefinitionRequest,
+  NotificationTypeEnum,
+  ChannelTypeEnum,
+  NotificationPreferenceStatusEnum,
+  IntervalTypeEnum,
+  NotificationSchedule,
+  NotificationPreference,
+  PaginatedNotificationPreferenceList,
+  NotificationScheduleRequest,
+  NotificationPreferenceRequest,
+  PatchedNotificationPreferenceRequest,
+  TestSendResponse,
+  AvailableNotificationTypes,
   OrderStatusEnum,
   Orders,
   PaginatedOrdersList,
@@ -2993,6 +3839,12 @@ export const schemas = {
   StepRequest,
   ProcessWithStepsRequest,
   PatchedProcessWithStepsRequest,
+  CurrentStateEnum,
+  DispositionTypeEnum,
+  QuarantineDisposition,
+  PaginatedQuarantineDispositionList,
+  QuarantineDispositionRequest,
+  PatchedQuarantineDispositionRequest,
   SamplingRuleSet,
   PaginatedSamplingRuleSetList,
   SamplingRuleSetRequest,
@@ -3008,12 +3860,24 @@ export const schemas = {
   PatchedStepsRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
+  ThreeDModel,
+  PaginatedThreeDModelList,
+  ThreeDModelRequest,
+  PatchedThreeDModelRequest,
   User,
   PaginatedUserList,
   UserRequest,
   PatchedUserRequest,
   BulkUserActivationInputRequest,
   BulkCompanyAssignmentInputRequest,
+  SendInvitationInputRequest,
+  UserInvitation,
+  PaginatedUserInvitationList,
+  AcceptInvitationInputRequest,
+  AcceptInvitationResponse,
+  ResendInvitationInputRequest,
+  ValidateTokenInputRequest,
+  ValidateTokenResponse,
   WorkorderStatusEnum,
   WorkOrder,
   PaginatedWorkOrderList,
@@ -3048,6 +3912,7 @@ export const schemas = {
   UserDetailsRequest,
   PatchedUserDetailsRequest,
   GroupRequest,
+  MeasurementResult,
 };
 
 const endpoints = makeApi([
@@ -3228,6 +4093,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Companies/",
     alias: "api_Companies_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3262,6 +4149,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Companies/",
     alias: "api_Companies_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3276,6 +4185,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Companies/:id/",
     alias: "api_Companies_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3290,6 +4221,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Companies/:id/",
     alias: "api_Companies_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3309,6 +4262,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Companies/:id/",
     alias: "api_Companies_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3328,6 +4303,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Companies/:id/",
     alias: "api_Companies_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3337,6 +4334,26 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Companies/export-excel/",
+    alias: "api_Companies_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
   },
   {
     method: "get",
@@ -3380,6 +4397,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Customers/",
     alias: "api_Customers_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3394,6 +4433,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Customers/",
     alias: "api_Customers_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3408,6 +4469,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Customers/:id/",
     alias: "api_Customers_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3422,6 +4505,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Customers/:id/",
     alias: "api_Customers_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3441,6 +4546,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Customers/:id/",
     alias: "api_Customers_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3460,6 +4587,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Customers/:id/",
     alias: "api_Customers_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3472,8 +4621,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Customers/export-excel/",
+    alias: "api_Customers_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Documents/",
     alias: "api_Documents_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3518,6 +4709,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Documents/",
     alias: "api_Documents_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "form-data",
     parameters: [
       {
@@ -3532,6 +4745,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Documents/:id/",
     alias: "api_Documents_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3546,6 +4781,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Documents/:id/",
     alias: "api_Documents_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "form-data",
     parameters: [
       {
@@ -3565,6 +4822,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Documents/:id/",
     alias: "api_Documents_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "form-data",
     parameters: [
       {
@@ -3584,6 +4863,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Documents/:id/",
     alias: "api_Documents_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3608,6 +4909,26 @@ const endpoints = makeApi([
       },
     ],
     response: Documents,
+  },
+  {
+    method: "get",
+    path: "/api/Documents/export-excel/",
+    alias: "api_Documents_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
   },
   {
     method: "get",
@@ -3689,6 +5010,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Equipment-types/",
     alias: "api_Equipment_types_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3723,6 +5066,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Equipment-types/",
     alias: "api_Equipment_types_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3737,6 +5102,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Equipment-types/:id/",
     alias: "api_Equipment_types_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3751,6 +5138,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Equipment-types/:id/",
     alias: "api_Equipment_types_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3770,6 +5179,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Equipment-types/:id/",
     alias: "api_Equipment_types_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3789,6 +5220,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Equipment-types/:id/",
     alias: "api_Equipment_types_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3801,8 +5254,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Equipment-types/export-excel/",
+    alias: "api_Equipment_types_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Equipment/",
     alias: "api_Equipment_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3837,6 +5332,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Equipment/",
     alias: "api_Equipment_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3851,6 +5368,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Equipment/:id/",
     alias: "api_Equipment_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3865,6 +5404,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Equipment/:id/",
     alias: "api_Equipment_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3884,6 +5445,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Equipment/:id/",
     alias: "api_Equipment_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3903,6 +5486,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Equipment/:id/",
     alias: "api_Equipment_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3915,8 +5520,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Equipment/export-excel/",
+    alias: "api_Equipment_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Error-types/",
     alias: "api_Error_types_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3951,6 +5598,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Error-types/",
     alias: "api_Error_types_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3965,6 +5634,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Error-types/:id/",
     alias: "api_Error_types_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3979,6 +5670,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Error-types/:id/",
     alias: "api_Error_types_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -3998,6 +5711,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Error-types/:id/",
     alias: "api_Error_types_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4017,6 +5752,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Error-types/:id/",
     alias: "api_Error_types_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4029,8 +5786,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Error-types/export-excel/",
+    alias: "api_Error_types_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/ErrorReports/",
     alias: "api_ErrorReports_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4055,6 +5854,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/ErrorReports/",
     alias: "api_ErrorReports_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4069,6 +5890,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/ErrorReports/:id/",
     alias: "api_ErrorReports_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4083,6 +5926,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/ErrorReports/:id/",
     alias: "api_ErrorReports_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4102,6 +5967,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/ErrorReports/:id/",
     alias: "api_ErrorReports_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4121,6 +6008,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/ErrorReports/:id/",
     alias: "api_ErrorReports_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4130,6 +6039,26 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/ErrorReports/export-excel/",
+    alias: "api_ErrorReports_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
   },
   {
     method: "get",
@@ -4178,8 +6107,245 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/HeatMapAnnotation/",
+    alias: "api_HeatMapAnnotation_list",
+    description: `List heatmap annotations with filtering and search capabilities`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "created_at",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "created_at__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "created_at__lte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "created_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "defect_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "defect_type__icontains",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "measurement_value",
+        type: "Query",
+        schema: z.number().optional(),
+      },
+      {
+        name: "measurement_value__gte",
+        type: "Query",
+        schema: z.number().optional(),
+      },
+      {
+        name: "measurement_value__lte",
+        type: "Query",
+        schema: z.number().optional(),
+      },
+      {
+        name: "model",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "model__file_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "part__work_order",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "severity",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "updated_at__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "updated_at__lte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+    ],
+    response: PaginatedHeatMapAnnotationsList,
+  },
+  {
+    method: "post",
+    path: "/api/HeatMapAnnotation/",
+    alias: "api_HeatMapAnnotation_create",
+    description: `Create a new heatmap annotation on a 3D model`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: HeatMapAnnotationsRequest,
+      },
+    ],
+    response: HeatMapAnnotations,
+  },
+  {
+    method: "get",
+    path: "/api/HeatMapAnnotation/:id/",
+    alias: "api_HeatMapAnnotation_retrieve",
+    description: `Retrieve a specific heatmap annotation`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: HeatMapAnnotations,
+  },
+  {
+    method: "put",
+    path: "/api/HeatMapAnnotation/:id/",
+    alias: "api_HeatMapAnnotation_update",
+    description: `Update a heatmap annotation`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: HeatMapAnnotationsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: HeatMapAnnotations,
+  },
+  {
+    method: "patch",
+    path: "/api/HeatMapAnnotation/:id/",
+    alias: "api_HeatMapAnnotation_partial_update",
+    description: `Partially update a heatmap annotation`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedHeatMapAnnotationsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: HeatMapAnnotations,
+  },
+  {
+    method: "delete",
+    path: "/api/HeatMapAnnotation/:id/",
+    alias: "api_HeatMapAnnotation_destroy",
+    description: `Soft delete a heatmap annotation`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/HeatMapAnnotation/export-excel/",
+    alias: "api_HeatMapAnnotation_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/HubspotGates/",
     alias: "api_HubspotGates_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4194,6 +6360,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/HubspotGates/",
     alias: "api_HubspotGates_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4208,6 +6396,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/HubspotGates/:id/",
     alias: "api_HubspotGates_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4222,6 +6432,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/HubspotGates/:id/",
     alias: "api_HubspotGates_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4241,6 +6473,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/HubspotGates/:id/",
     alias: "api_HubspotGates_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4260,6 +6514,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/HubspotGates/:id/",
     alias: "api_HubspotGates_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4272,8 +6548,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/HubspotGates/export-excel/",
+    alias: "api_HubspotGates_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/MeasurementDefinitions/",
     alias: "api_MeasurementDefinitions_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4318,6 +6636,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/MeasurementDefinitions/",
     alias: "api_MeasurementDefinitions_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4332,6 +6672,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/MeasurementDefinitions/:id/",
     alias: "api_MeasurementDefinitions_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4346,6 +6708,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/MeasurementDefinitions/:id/",
     alias: "api_MeasurementDefinitions_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4365,6 +6749,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/MeasurementDefinitions/:id/",
     alias: "api_MeasurementDefinitions_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4384,6 +6790,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/MeasurementDefinitions/:id/",
     alias: "api_MeasurementDefinitions_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4396,8 +6824,258 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/MeasurementDefinitions/export-excel/",
+    alias: "api_MeasurementDefinitions_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/NotificationPreferences/",
+    alias: "api_NotificationPreferences_list",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "channel_type",
+        type: "Query",
+        schema: z.enum(["email", "in_app", "sms"]).optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "notification_type",
+        type: "Query",
+        schema: z.enum(["CAPA_REMINDER", "WEEKLY_REPORT"]).optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["cancelled", "failed", "pending", "sent"]).optional(),
+      },
+    ],
+    response: PaginatedNotificationPreferenceList,
+  },
+  {
+    method: "post",
+    path: "/api/NotificationPreferences/",
+    alias: "api_NotificationPreferences_create",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationPreferenceRequest,
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "get",
+    path: "/api/NotificationPreferences/:id/",
+    alias: "api_NotificationPreferences_retrieve",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "put",
+    path: "/api/NotificationPreferences/:id/",
+    alias: "api_NotificationPreferences_update",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationPreferenceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "patch",
+    path: "/api/NotificationPreferences/:id/",
+    alias: "api_NotificationPreferences_partial_update",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedNotificationPreferenceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "delete",
+    path: "/api/NotificationPreferences/:id/",
+    alias: "api_NotificationPreferences_destroy",
+    description: `ViewSet for managing user notification preferences.
+
+Provides CRUD operations for notification preferences including:
+- Weekly order reports (recurring, fixed schedule)
+- CAPA reminders (escalating, deadline-based)
+
+Automatically handles timezone conversion between user&#x27;s local time and UTC.
+
+Permissions:
+- Users can only see and manage their own notification preferences
+- Only authenticated users can access this endpoint`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/NotificationPreferences/:id/test-send/",
+    alias: "api_NotificationPreferences_test_send_create",
+    description: `Test send a notification immediately (for testing purposes)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: TestSendResponse,
+  },
+  {
+    method: "get",
+    path: "/api/NotificationPreferences/available-types/",
+    alias: "api_NotificationPreferences_available_types_retrieve",
+    description: `Get available notification types that users can configure`,
+    requestFormat: "json",
+    response: AvailableNotificationTypes,
+  },
+  {
+    method: "get",
     path: "/api/Orders/",
     alias: "api_Orders_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4467,6 +7145,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Orders/",
     alias: "api_Orders_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4481,6 +7181,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Orders/:id/",
     alias: "api_Orders_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4495,6 +7217,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Orders/:id/",
     alias: "api_Orders_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4514,6 +7258,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Orders/:id/",
     alias: "api_Orders_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4533,6 +7299,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Orders/:id/",
     alias: "api_Orders_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4547,6 +7335,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Orders/:id/increment-step/",
     alias: "api_Orders_increment_step_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4566,6 +7376,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Orders/:id/parts/bulk-add/",
     alias: "api_Orders_parts_bulk_add_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4585,6 +7417,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Orders/:id/parts/bulk-remove/",
     alias: "api_Orders_parts_bulk_remove_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4604,6 +7458,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Orders/:id/step-distribution/",
     alias: "api_Orders_step_distribution_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4660,8 +7536,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Orders/export-excel/",
+    alias: "api_Orders_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Parts/",
     alias: "api_Parts_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4741,6 +7659,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Parts/",
     alias: "api_Parts_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4760,6 +7700,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Parts/:id/",
     alias: "api_Parts_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4779,6 +7741,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Parts/:id/",
     alias: "api_Parts_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4803,6 +7787,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Parts/:id/",
     alias: "api_Parts_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4827,6 +7833,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Parts/:id/",
     alias: "api_Parts_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4846,6 +7874,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Parts/:id/increment/",
     alias: "api_Parts_increment_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4863,8 +7913,55 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Parts/export-excel/",
+    alias: "api_Parts_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/PartTypes/",
     alias: "api_PartTypes_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4904,6 +8001,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/PartTypes/",
     alias: "api_PartTypes_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4923,6 +8042,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/PartTypes/:id/",
     alias: "api_PartTypes_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4942,6 +8083,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/PartTypes/:id/",
     alias: "api_PartTypes_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4966,6 +8129,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/PartTypes/:id/",
     alias: "api_PartTypes_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -4990,6 +8175,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/PartTypes/:id/",
     alias: "api_PartTypes_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5007,8 +8214,55 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/PartTypes/export-excel/",
+    alias: "api_PartTypes_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Processes_with_steps/",
     alias: "api_Processes_with_steps_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5033,6 +8287,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Processes_with_steps/",
     alias: "api_Processes_with_steps_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5047,6 +8323,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Processes_with_steps/:id/",
     alias: "api_Processes_with_steps_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5061,6 +8359,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Processes_with_steps/:id/",
     alias: "api_Processes_with_steps_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5080,6 +8400,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Processes_with_steps/:id/",
     alias: "api_Processes_with_steps_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5099,6 +8441,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Processes_with_steps/:id/",
     alias: "api_Processes_with_steps_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5111,8 +8475,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Processes_with_steps/export-excel/",
+    alias: "api_Processes_with_steps_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Processes/",
     alias: "api_Processes_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5147,6 +8553,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Processes/",
     alias: "api_Processes_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5161,6 +8589,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Processes/:id/",
     alias: "api_Processes_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5175,6 +8625,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Processes/:id/",
     alias: "api_Processes_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5194,6 +8666,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Processes/:id/",
     alias: "api_Processes_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5213,6 +8707,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Processes/:id/",
     alias: "api_Processes_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5225,8 +8741,358 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Processes/export-excel/",
+    alias: "api_Processes_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/QuarantineDispositions/",
+    alias: "api_QuarantineDispositions_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "current_state",
+        type: "Query",
+        schema: z.enum(["CLOSED", "IN_PROGRESS", "OPEN"]).optional(),
+      },
+      {
+        name: "disposition_number",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "disposition_type",
+        type: "Query",
+        schema: z
+          .enum(["RETURN_TO_SUPPLIER", "REWORK", "SCRAP", "USE_AS_IS"])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "part__ERP_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part__part_type__name",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "resolution_completed",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "resolution_completed_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedQuarantineDispositionList,
+  },
+  {
+    method: "post",
+    path: "/api/QuarantineDispositions/",
+    alias: "api_QuarantineDispositions_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: QuarantineDispositionRequest,
+      },
+    ],
+    response: QuarantineDisposition,
+  },
+  {
+    method: "get",
+    path: "/api/QuarantineDispositions/:id/",
+    alias: "api_QuarantineDispositions_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: QuarantineDisposition,
+  },
+  {
+    method: "put",
+    path: "/api/QuarantineDispositions/:id/",
+    alias: "api_QuarantineDispositions_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: QuarantineDispositionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: QuarantineDisposition,
+  },
+  {
+    method: "patch",
+    path: "/api/QuarantineDispositions/:id/",
+    alias: "api_QuarantineDispositions_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedQuarantineDispositionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: QuarantineDisposition,
+  },
+  {
+    method: "delete",
+    path: "/api/QuarantineDispositions/:id/",
+    alias: "api_QuarantineDispositions_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/QuarantineDispositions/export-excel/",
+    alias: "api_QuarantineDispositions_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Sampling-rule-sets/",
     alias: "api_Sampling_rule_sets_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5281,6 +9147,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Sampling-rule-sets/",
     alias: "api_Sampling_rule_sets_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5295,6 +9183,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Sampling-rule-sets/:id/",
     alias: "api_Sampling_rule_sets_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5309,6 +9219,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Sampling-rule-sets/:id/",
     alias: "api_Sampling_rule_sets_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5328,6 +9260,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Sampling-rule-sets/:id/",
     alias: "api_Sampling_rule_sets_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5347,6 +9301,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Sampling-rule-sets/:id/",
     alias: "api_Sampling_rule_sets_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5359,8 +9335,50 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/api/Sampling-rule-sets/export-excel/",
+    alias: "api_Sampling_rule_sets_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/Sampling-rules/",
     alias: "api_Sampling_rules_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5409,6 +9427,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Sampling-rules/",
     alias: "api_Sampling_rules_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5423,6 +9463,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5437,6 +9499,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5456,6 +9540,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5475,6 +9581,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5484,6 +9612,26 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Sampling-rules/export-excel/",
+    alias: "api_Sampling_rules_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
   },
   {
     method: "get",
@@ -5614,6 +9762,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Steps/",
     alias: "api_Steps_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5658,6 +9828,28 @@ const endpoints = makeApi([
     method: "post",
     path: "/api/Steps/",
     alias: "api_Steps_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5682,6 +9874,28 @@ const endpoints = makeApi([
     method: "get",
     path: "/api/Steps/:id/",
     alias: "api_Steps_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5706,6 +9920,28 @@ const endpoints = makeApi([
     method: "put",
     path: "/api/Steps/:id/",
     alias: "api_Steps_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5735,6 +9971,28 @@ const endpoints = makeApi([
     method: "patch",
     path: "/api/Steps/:id/",
     alias: "api_Steps_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5764,6 +10022,28 @@ const endpoints = makeApi([
     method: "delete",
     path: "/api/Steps/:id/",
     alias: "api_Steps_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5842,8 +10122,345 @@ Returns the active + fallback rulesets for a given step`,
   },
   {
     method: "get",
+    path: "/api/Steps/export-excel/",
+    alias: "api_Steps_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/ThreeDModels/",
+    alias: "api_ThreeDModels_list",
+    description: `List 3D models with filtering and search capabilities`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "file_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "file_type__icontains",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "uploaded_at",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "uploaded_at__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "uploaded_at__lte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+    ],
+    response: PaginatedThreeDModelList,
+  },
+  {
+    method: "post",
+    path: "/api/ThreeDModels/",
+    alias: "api_ThreeDModels_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ThreeDModelRequest,
+      },
+    ],
+    response: ThreeDModel,
+  },
+  {
+    method: "get",
+    path: "/api/ThreeDModels/:id/",
+    alias: "api_ThreeDModels_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: ThreeDModel,
+  },
+  {
+    method: "put",
+    path: "/api/ThreeDModels/:id/",
+    alias: "api_ThreeDModels_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ThreeDModelRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: ThreeDModel,
+  },
+  {
+    method: "patch",
+    path: "/api/ThreeDModels/:id/",
+    alias: "api_ThreeDModels_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedThreeDModelRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: ThreeDModel,
+  },
+  {
+    method: "delete",
+    path: "/api/ThreeDModels/:id/",
+    alias: "api_ThreeDModels_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/ThreeDModels/export-excel/",
+    alias: "api_ThreeDModels_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
     path: "/api/TrackerOrders/",
     alias: "api_TrackerOrders_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5868,6 +10485,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "post",
     path: "/api/TrackerOrders/",
     alias: "api_TrackerOrders_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5882,6 +10521,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "get",
     path: "/api/TrackerOrders/:id/",
     alias: "api_TrackerOrders_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5896,6 +10557,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "put",
     path: "/api/TrackerOrders/:id/",
     alias: "api_TrackerOrders_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5915,6 +10598,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "patch",
     path: "/api/TrackerOrders/:id/",
     alias: "api_TrackerOrders_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5934,6 +10639,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "delete",
     path: "/api/TrackerOrders/:id/",
     alias: "api_TrackerOrders_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -5943,6 +10670,26 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/TrackerOrders/export-excel/",
+    alias: "api_TrackerOrders_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
   },
   {
     method: "get",
@@ -6140,6 +10887,41 @@ Returns the active + fallback rulesets for a given step`,
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "get",
+    path: "/api/User/export-excel/",
+    alias: "api_User_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/User/send-invitation/",
+    alias: "api_User_send_invitation_create",
+    description: `Send invitation email to a user`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ user_id: z.number().int() }).passthrough(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "post",
     path: "/api/user/token/",
     alias: "get_user_api_token",
@@ -6162,8 +10944,215 @@ Returns the active + fallback rulesets for a given step`,
   },
   {
     method: "get",
+    path: "/api/UserInvitations/",
+    alias: "api_UserInvitations_list",
+    description: `List user&#x27;s notification preferences`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "accepted_at",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "channel_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "invited_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "notification_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "user",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: PaginatedUserInvitationList,
+  },
+  {
+    method: "post",
+    path: "/api/UserInvitations/",
+    alias: "api_UserInvitations_create",
+    description: `Create a new notification preference for the current user`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationPreferenceRequest,
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "get",
+    path: "/api/UserInvitations/:id/",
+    alias: "api_UserInvitations_retrieve",
+    description: `Retrieve a specific notification preference`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: UserInvitation,
+  },
+  {
+    method: "put",
+    path: "/api/UserInvitations/:id/",
+    alias: "api_UserInvitations_update",
+    description: `Update a notification preference`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationPreferenceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "patch",
+    path: "/api/UserInvitations/:id/",
+    alias: "api_UserInvitations_partial_update",
+    description: `Partially update a notification preference`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedNotificationPreferenceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: NotificationPreference,
+  },
+  {
+    method: "delete",
+    path: "/api/UserInvitations/:id/",
+    alias: "api_UserInvitations_destroy",
+    description: `Delete a notification preference`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/UserInvitations/accept/",
+    alias: "api_UserInvitations_accept_create",
+    description: `Accept an invitation and set up user account (public endpoint)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: AcceptInvitationInputRequest,
+      },
+    ],
+    response: AcceptInvitationResponse,
+  },
+  {
+    method: "post",
+    path: "/api/UserInvitations/resend/",
+    alias: "api_UserInvitations_resend_create",
+    description: `Resend an invitation (staff only)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ invitation_id: z.number().int() }).passthrough(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/UserInvitations/validate-token/",
+    alias: "api_UserInvitations_validate_token_create",
+    description: `Validate an invitation token (public endpoint)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ token: z.string().min(1) }).passthrough(),
+      },
+    ],
+    response: ValidateTokenResponse,
+  },
+  {
+    method: "get",
     path: "/api/WorkOrders/",
     alias: "api_WorkOrders_list",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6198,6 +11187,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "post",
     path: "/api/WorkOrders/",
     alias: "api_WorkOrders_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6212,6 +11223,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "get",
     path: "/api/WorkOrders/:id/",
     alias: "api_WorkOrders_retrieve",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6226,6 +11259,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "put",
     path: "/api/WorkOrders/:id/",
     alias: "api_WorkOrders_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6245,6 +11300,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "patch",
     path: "/api/WorkOrders/:id/",
     alias: "api_WorkOrders_partial_update",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6264,6 +11341,28 @@ Returns the active + fallback rulesets for a given step`,
     method: "delete",
     path: "/api/WorkOrders/:id/",
     alias: "api_WorkOrders_destroy",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "json",
     parameters: [
       {
@@ -6305,9 +11404,51 @@ Returns the active + fallback rulesets for a given step`,
     response: WorkOrder,
   },
   {
+    method: "get",
+    path: "/api/WorkOrders/export-excel/",
+    alias: "api_WorkOrders_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
     method: "post",
     path: "/api/WorkOrders/upload_csv/",
     alias: "api_WorkOrders_upload_csv_create",
+    description: `Mixin to add Excel export functionality to ViewSets.
+
+Current features:
+- Exports all non-relation fields by default
+- Respects filtering, search, and ordering from list view
+- Supports query param ?fields&#x3D;id,name,status to select specific fields
+- Supports query param ?filename&#x3D;custom.xlsx for custom filename
+
+Future enhancements (TODO):
+- Add ExportConfiguration model for user-saved preferences
+- Add available_fields() action to return list of exportable fields
+- Add save_export_config() action to save user preferences
+- Frontend: React modal with field checkboxes and &quot;Save as Default&quot; button
+
+Usage:
+    class MyViewSet(ExcelExportMixin, viewsets.ModelViewSet):
+        excel_fields &#x3D; [&#x27;id&#x27;, &#x27;name&#x27;, &#x27;status&#x27;]  # Optional: override default fields
+        excel_filename &#x3D; &#x27;my_export.xlsx&#x27;  # Optional: override default filename
+
+    GET /api/my-model/export_excel/
+    GET /api/my-model/export_excel/?fields&#x3D;id,name
+    GET /api/my-model/export_excel/?filename&#x3D;custom_export.xlsx`,
     requestFormat: "form-data",
     parameters: [
       {

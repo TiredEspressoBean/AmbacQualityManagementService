@@ -8,9 +8,11 @@ import {
 import { useState } from "react"
 import { schemas } from "@/lib/api/generated"
 import { z } from "zod"
-import { PartQualityForm } from "@/components/part-quality-form"
+import PartDispositionForm from '@/components/part-disposition-form'
 import { useUpdatePart } from "@/hooks/useUpdatePart"
+import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions"
 import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 type PartType = z.infer<typeof schemas.Parts>
 
@@ -22,8 +24,21 @@ interface PartActionsCellProps {
 }
 
 export function QaQuarantineActionsCell({ part, onError }: PartActionsCellProps) {
-    const [sheet, setSheet] = useState<"quality" | null>(null)
+    const [sheet, setSheet] = useState<"disposition" | null>(null)
     const updatePart = useUpdatePart()
+
+    const { data: dispositionsData, isLoading: dispositionsLoading } = useRetrieveQuarantineDispositions({
+        queries: {
+            part: part.id
+        }
+    }, {
+        enabled: sheet === "disposition"
+    })
+
+    // Find the first non-closed disposition
+    const activeDisposition = dispositionsData?.results?.find(d => d.current_state !== "CLOSED")
+
+    console.log(dispositionsData)
 
     const handleStatusChange = (newStatus: "SCRAPPED" | "REWORK_NEEDED") => {
         updatePart.mutate(
@@ -45,42 +60,36 @@ export function QaQuarantineActionsCell({ part, onError }: PartActionsCellProps)
     return (
         <>
             <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => setSheet("quality")}>
-                    Quality Report
-                </Button>
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleStatusChange("SCRAPPED")}
-                >
-                    Mark Scrap
-                </Button>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleStatusChange("REWORK_NEEDED")}
-                >
-                    Mark Rework
+                <Button size="sm" onClick={() => setSheet("disposition")}>
+                    Disposition
                 </Button>
             </div>
 
             <Sheet open={sheet !== null} onOpenChange={(open) => !open && setSheet(null)}>
                 <SheetContent side="right" className="p-0 w-full">
-                    <form className="flex h-full w-full flex-col">
+                    <div className="flex h-full w-full flex-col">
                         <SheetHeader className="flex-none border-b p-6 text-left">
-                            <SheetTitle>Submit Quality Report</SheetTitle>
+                            <SheetTitle>Submit Disposition Report</SheetTitle>
                         </SheetHeader>
 
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <PartQualityForm
-                                part={part}
-                                onClose={() => {
-                                    onError?.(part)
-                                    handleClose()
-                                }}
-                            />
+                        <div className="flex-1 overflow-y-auto">
+                            {dispositionsLoading ? (
+                                <div className="flex h-full items-center justify-center p-6">
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    <p className="text-sm text-muted-foreground">Loading disposition...</p>
+                                </div>
+                            ) : (
+                                <PartDispositionForm
+                                    part={part}
+                                    disposition={activeDisposition}
+                                    onClose={() => {
+                                        onError?.(part);
+                                        handleClose()
+                                    }}
+                                />
+                            )}
                         </div>
-                    </form>
+                    </div>
                 </SheetContent>
             </Sheet>
         </>

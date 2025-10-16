@@ -10,10 +10,11 @@ import {
     AlertDialogAction
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Pencil, Delete } from "lucide-react";
+import { Pencil, Delete, Mail } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useDeleteUser } from "@/hooks/useDeleteUser.ts";
+import { useSendUserInvitation } from "@/hooks/useSendUserInvitation.ts";
 import { toast } from "sonner";
 
 type Props = {
@@ -24,6 +25,7 @@ export function EditUserActionsCell({ userId }: Props) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const deleteUser = useDeleteUser();
+    const sendInvitation = useSendUserInvitation();
 
     const handleEditUser = () => {
         navigate({
@@ -45,6 +47,18 @@ export function EditUserActionsCell({ userId }: Props) {
         });
     };
 
+    const handleSendInvitation = () => {
+        sendInvitation.mutate(userId, {
+            onSuccess: () => {
+                toast.success(`Invitation sent to user #${userId} successfully.`);
+            },
+            onError: (error) => {
+                console.error("Failed to send invitation:", error);
+                toast.error("Failed to send invitation.");
+            },
+        });
+    };
+
     return (
         <div className="flex items-center gap-1">
             <Button
@@ -54,6 +68,15 @@ export function EditUserActionsCell({ userId }: Props) {
                 title="Edit User"
             >
                 <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSendInvitation}
+                title="Send Invitation"
+                disabled={sendInvitation.isPending}
+            >
+                <Mail className="h-4 w-4" />
             </Button>
             <AlertDialog open={open} onOpenChange={setOpen}>
                 <AlertDialogTrigger asChild>

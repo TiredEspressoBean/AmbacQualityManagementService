@@ -15,7 +15,7 @@ import { useState } from "react";
 export function QaWorkOrderDetailPage() {
     const { workOrderId } = useParams({ from: "/qa/workorder/$workOrderId" });
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState("qa-form");
+    const [activeTab, setActiveTab] = useState("qa-forms");
 
     console.log(workOrderId)
 
@@ -99,40 +99,40 @@ export function QaWorkOrderDetailPage() {
 
             {/* Resizable Panel Layout */}
             <ResizablePanelGroup direction="horizontal" className="w-full max-w-[1600px] mx-auto rounded-lg border min-h-[calc(100vh-200px)]">
-                {/* Left Panel - Work Order Context */}
-                <ResizablePanel defaultSize={35} minSize={25} className="p-6">
-                    <QaProgressSection 
-                        workOrder={workOrder}
-                        parts={parts}
-                        isLoadingParts={isLoadingParts}
-                    />
-                </ResizablePanel>
-
-                <ResizableHandle />
-
-                {/* Right Panel - Main Work Area */}
-                <ResizablePanel defaultSize={65} minSize={40} className="p-6">
+                {/* Left Panel - Work Order Info & QA Forms */}
+                <ResizablePanel defaultSize={40} minSize={30} className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
                         <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="qa-form">QA Form</TabsTrigger>
-                            <TabsTrigger value="documents">Documents</TabsTrigger>
+                            <TabsTrigger value="overview">Overview</TabsTrigger>
+                            <TabsTrigger value="qa-forms">QA Forms</TabsTrigger>
                         </TabsList>
-                        
-                        <TabsContent value="qa-form" className="mt-6 h-full">
-                            <QaFormSection 
+
+                        <TabsContent value="overview" className="mt-6 h-full">
+                            <QaProgressSection
+                                workOrder={workOrder}
+                                parts={parts}
+                                isLoadingParts={isLoadingParts}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="qa-forms" className="mt-6 h-full">
+                            <QaFormSection
                                 workOrder={workOrder}
                                 parts={parts}
                                 isLoadingParts={isLoadingParts}
                                 isBatchProcess={isBatchProcess}
                             />
                         </TabsContent>
-                        
-                        <TabsContent value="documents" className="mt-6 h-full">
-                            <QaDocumentsSection 
-                                workOrder={workOrder}
-                            />
-                        </TabsContent>
                     </Tabs>
+                </ResizablePanel>
+
+                <ResizableHandle />
+
+                {/* Right Panel - Documents (Always Visible) */}
+                <ResizablePanel defaultSize={60} minSize={40} className="p-6">
+                    <QaDocumentsSection
+                        workOrder={workOrder}
+                    />
                 </ResizablePanel>
             </ResizablePanelGroup>
         </div>

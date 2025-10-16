@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             host: '0.0.0.0',
-            https: true,
+            https: false,
             proxy: {
                 '/api': {
                     target: API_TARGET,
@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 "/lg": {
-                    target: "http://10.1.2.205:8123",
+                    target: LANGGRAPH_API_TARGET,
                     changeOrigin: true,
                     secure: false,
                     rewrite: (p) => p.replace(/^\/lg/, ""),
@@ -62,7 +62,7 @@ export default defineConfig(({ mode }) => {
                             // Handle OPTIONS requests at proxy level
                             if (req.method === 'OPTIONS') {
                                 res.writeHead(200, {
-                                    'Access-Control-Allow-Origin': '10.1.2.205:8123',
+                                    'Access-Control-Allow-Origin': '*',
                                     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
                                     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
                                     'Access-Control-Max-Age': '3600',

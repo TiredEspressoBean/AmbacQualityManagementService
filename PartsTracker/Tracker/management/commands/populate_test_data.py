@@ -11,7 +11,7 @@ from faker import Faker
 from Tracker.models import (Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents, Equipments,
                             EquipmentType, QualityErrorsList, QualityReports, WorkOrder, SamplingRuleSet, SamplingRule,
                             MeasurementDefinition, MeasurementResult, PartsStatus, OrdersStatus, SamplingTriggerState,
-                            SamplingAuditLog, SamplingAnalytics, MeasurementDisposition, ExternalAPIOrderIdentifier,
+                            SamplingAuditLog, SamplingAnalytics, ExternalAPIOrderIdentifier,
                             WorkOrderStatus, ClassificationLevel)
 
 

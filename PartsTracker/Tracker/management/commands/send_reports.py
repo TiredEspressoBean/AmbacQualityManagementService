@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from Tracker.models import Orders  # adjust as needed
-from Tracker.email import send_weekly_order_report
+from Tracker.email_handler import send_weekly_order_report
 
 class Command(BaseCommand):
     help = 'Send weekly order status reports to customers with active orders'

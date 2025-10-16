@@ -1,32 +1,25 @@
 from typing import List
 from django.conf import settings
+import requests
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-    SentenceTransformer = None
 
-_model = None
+def xts(texts: List[str]) -> List[List[float]]:
+    """Generate embeddings using Ollama API"""
+    ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
+    model_name = getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 
-def _get_model():
-    if not SENTENCE_TRANSFORMERS_AVAILABLE:
-        raise ImportError("sentence-transformers library is not installed. Install with: pip install sentence-transformers")
-    
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(settings.AI_EMBED_MODEL_NAME, device="cpu")
-    return _model
+    embeddings = []
+    for text in texts:
+        response = requests.post(
+            f'{ollama_url}/api/embeddings',
+            json={
+                'model': model_name,
+                'prompt': text
+            }
+        )
+        response.raise_for_status()
+        embeddings.append(response.json()['embedding'])
 
-def embed_texts(texts: List[str]) -> List[List[float]]:
-    if not SENTENCE_TRANSFORMERS_AVAILABLE:
-        raise ImportError("sentence-transformers library is not installed. Install with: pip install sentence-transformers")
-    
-    m = _get_model()
-    bs = max(1, min(settings.AI_EMBED_BATCH_SIZE, len(texts)))
-    embeddings = m.encode(texts, normalize_embeddings=True, convert_to_numpy=False, batch_size=bs)
-    # embeddings is already a list when convert_to_numpy=False
     return embeddings
 
 

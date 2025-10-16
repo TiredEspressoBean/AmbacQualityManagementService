@@ -194,19 +194,46 @@ def update_deal_stage(deal_id, new_stage, order):
         return None
 
 def update_stages(pipeline_id):
+    """
+    Sync pipeline stages from HubSpot API.
+
+    Fetches all stages for a given pipeline and updates the local database
+    with stage names, display order, and metadata.
+
+    Args:
+        pipeline_id: HubSpot pipeline ID
+
+    Returns:
+        int: Number of stages synced, or None if error
+    """
+    from django.utils import timezone
     from Tracker.models import ExternalAPIOrderIdentifier
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     url = f"{HUBSPOT_API_BASE_URL}v3/pipelines/deals/{pipeline_id}/stages"
     try:
         response = requests.get(url, headers=get_hubspot_headers())
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"Error updating stages: {e}")
+        logger.error(f"Error fetching pipeline stages for {pipeline_id}: {e}")
         return None
+
     results_json = response.json()
-    for result in results_json["results"]:
+    stages_updated = 0
+
+    for result in results_json.get("results", []):
         ExternalAPIOrderIdentifier.objects.update_or_create(
             API_id=result["id"],
             defaults={
-                "stage_name": result["label"]
+                "stage_name": result["label"],
+                "pipeline_id": pipeline_id,
+                "display_order": result.get("displayOrder", 0),
+                "last_synced_at": timezone.now()
             }
         )
+        stages_updated += 1
+
+    logger.info(f"Synced {stages_updated} stages for pipeline {pipeline_id}")
+    return stages_updated

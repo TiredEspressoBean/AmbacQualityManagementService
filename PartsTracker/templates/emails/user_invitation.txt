@@ -1,0 +1,12 @@
+{{ company_name }} Tracker Invitation
+
+Hello {{ user.first_name|default:user.username }},
+
+You have been invited to join {{ company_name }} Tracker by {{ invited_by.first_name|default:invited_by.username }}.
+
+To create your account, visit the following link:
+{{ signup_url }}
+
+This invitation expires on {{ expires_at|date:"F d, Y H:i" }} UTC.
+
+© {{ company_name }} | {{ company_name }} Tracker

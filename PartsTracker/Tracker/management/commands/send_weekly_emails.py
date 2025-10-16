@@ -85,9 +85,11 @@ class Command(BaseCommand):
                 self.stdout.write(f"Orders: {[order.name for order in active_orders]}")
                 continue
 
-            # Send email
+            # Send email using new email notification system
             try:
-                self.send_customer_email(customer, email_data)
+                from Tracker.email_notifications import send_weekly_order_update
+                # Use immediate=True to send synchronously in management command
+                send_weekly_order_update(customer.id, email_data, immediate=True)
                 sent_count += 1
                 self.stdout.write(f"✓ Sent update to {customer.email}")
             except Exception as e:

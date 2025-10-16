@@ -7,11 +7,13 @@ import {
 import Layout from "@/components/layout";
 import Home from "@/pages/Home";
 import Login from '@/components/auth/Login'
+import SignupPage from '@/pages/SignupPage'
 import QaPartsPage from '@/pages/QaPartsPage.tsx'
 // import TrackerPage from "@/pages/TrackerPage.tsx";
 import TrackerPageDemo from "@/pages/TrackerPage.tsx";
 import {OrderDetailsPage} from "@/pages/OrderDetailsPage.tsx";
 import {PartAnnotator} from "@/pages/PartAnnotator.tsx";
+import {HeatMapViewer} from "@/pages/HeatMapViewer.tsx";
 import EditLandingPage from "./pages/EditLandingPage";
 import OrdersEditorPage from "@/pages/editors/OrdersEditorPage.tsx";
 import EditOrdersPartsPage from "@/components/edit-orders-parts-page.tsx";
@@ -46,6 +48,9 @@ import UsersFormPage from "@/pages/editors/forms/EditUserFormPage.tsx";
 import { UserEditorPage} from "@/pages/editors/UserEditorPage.tsx";
 import { QaWorkOrderDetailPage } from "@/pages/editors/QaWorkOrderDetailPage.tsx";
 import AiChatPage from "@/pages/AiChatPage.tsx";
+import { ThreeDModelsEditorPage } from "@/pages/editors/ThreeDModelsEditorPage.tsx";
+import ThreeDModelFormPage from "@/pages/editors/forms/EditThreeDModelFormPage.tsx";
+import { UserProfilePage } from "@/pages/UserProfilePage.tsx";
 
 
 
@@ -64,6 +69,12 @@ const loginRote = createRoute({
     getParentRoute: () => rootRoute,
     path: "/login",
     component: () => <Login />,
+})
+
+const signupRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/signup",
+    component: () => <SignupPage />,
 })
 
 const passwordResetRequestRoute = createRoute({
@@ -106,7 +117,21 @@ const orderDetailsRoute = createRoute({
 const partAnnotatorRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/partAnnotator",
-    component: () => <PartAnnotator/>
+    component: () => <PartAnnotator
+        modelId={1}
+        partId={1}
+        modelUrl="/models/Duck.glb"
+    />
+})
+
+const heatMapViewerRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/heatMapViewer",
+    component: () => <HeatMapViewer
+        modelId={1}
+        partId={1}
+        modelUrl="/models/Duck.glb"
+    />
 })
 
 const QAPage = createRoute({
@@ -397,14 +422,40 @@ export const aiChatRoute = createRoute({
     component: () => <AiChatPage />,
 });
 
+export const threeDModelsEditorRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'editor/ThreeDModels',
+    component: ThreeDModelsEditorPage
+})
+
+export const threeDModelsCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ThreeDModelsForm/create',
+    component: ThreeDModelFormPage,
+})
+
+export const threeDModelsEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ThreeDModelsForm/edit/$id',
+    component: ThreeDModelFormPage,
+});
+
+export const userProfileRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/profile',
+    component: UserProfilePage,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRote,
+    signupRoute,
     passwordResetRequestRoute,
     passwordResetConfirmRoute,
     trackerRoute,
     orderDetailsRoute,
     partAnnotatorRoute,
+    heatMapViewerRoute,
     QAPage,
     ordersCreateFormRoute,
     ordersEditFormRoute,
@@ -452,7 +503,11 @@ const routeTree = rootRoute.addChildren([
     usersEditRoute,
     usersCreateRoute,
     qaWorkOrderDetailRoute,
-    aiChatRoute
+    aiChatRoute,
+    threeDModelsEditorRoute,
+    threeDModelsCreateRoute,
+    threeDModelsEditRoute,
+    userProfileRoute
 ])
 
 export const router = new Router({routeTree})

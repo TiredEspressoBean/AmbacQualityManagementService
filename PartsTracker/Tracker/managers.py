@@ -20,7 +20,7 @@ class SecureQuerySet(models.QuerySet):
         # to ensure proper logging with django-auditlog
         deleted_count = 0
         for obj in self:
-            if not obj.is_deleted:
+            if not obj.archived:
                 obj.delete()  # This calls the model's delete() method
                 deleted_count += 1
         return deleted_count, {}
@@ -28,15 +28,15 @@ class SecureQuerySet(models.QuerySet):
     def bulk_soft_delete(self, actor=None, reason="bulk_operation"):
         """Fast bulk soft delete WITH audit logging"""
         # Get objects that will be affected
-        objects_to_delete = list(self.filter(is_deleted=False).values('id', 'pk'))
+        objects_to_delete = list(self.filter(archived=False).values('id', 'pk'))
 
         if not objects_to_delete:
             return 0
 
         # Perform the bulk update
-        updated_count = self.filter(is_deleted=False).update(
+        updated_count = self.filter(archived=False).update(
             deleted_at=timezone.now(),
-            is_deleted=True
+            archived=True
         )
 
         # Create bulk audit log entries
@@ -53,15 +53,15 @@ class SecureQuerySet(models.QuerySet):
     def bulk_restore(self, actor=None, reason="bulk_restore"):
         """Bulk restore WITH audit logging"""
         # Get objects that will be affected
-        objects_to_restore = list(self.filter(is_deleted=True).values('id', 'pk'))
+        objects_to_restore = list(self.filter(archived=True).values('id', 'pk'))
 
         if not objects_to_restore:
             return 0
 
         # Perform the bulk update
-        updated_count = self.filter(is_deleted=True).update(
+        updated_count = self.filter(archived=True).update(
             deleted_at=None,
-            is_deleted=False
+            archived=False
         )
 
         # Create bulk audit log entries
@@ -92,7 +92,7 @@ class SecureQuerySet(models.QuerySet):
                 object_repr=f"{self.model.__name__} (id={obj_data['id']})",
                 action=LogEntry.Action.UPDATE,
                 changes=json.dumps({
-                    'is_deleted': [False, True] if 'delete' in action else [True, False],
+                    'archived': [False, True] if 'delete' in action else [True, False],
                     'bulk_operation': action,
                     'reason': reason
                 }),
@@ -126,11 +126,11 @@ class SecureQuerySet(models.QuerySet):
 
     def active(self):
         """Get non-deleted objects"""
-        return self.filter(is_deleted=False)
+        return self.filter(archived=False)
 
     def deleted(self):
         """Get soft-deleted objects"""
-        return self.filter(is_deleted=True)
+        return self.filter(archived=True)
 
 
 class SecureManager(models.Manager):

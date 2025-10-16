@@ -173,6 +173,15 @@ router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 router.register("User", UserViewSet, basename="User")
 router.register("Groups", GroupViewSet, basename="Groups")
+router.register("QuarantineDispositions", QuarantineDispositionViewSet, basename="QuarantineDispositions")
+router.register("HeatMapAnnotation", HeatMapAnnotationsViewSet, basename="HeatMapAnnotation")
+router.register("ThreeDModels", ThreeDModelViewSet, basename="ThreeDModels")
+
+# Notification preferences endpoint
+router.register("NotificationPreferences", NotificationPreferenceViewSet, basename="NotificationPreferences")
+
+# User invitation endpoints
+router.register("UserInvitations", UserInvitationViewSet, basename="UserInvitations")
 
 # AI/RAG endpoints for LangGraph integration
 router.register("ai/search", AISearchViewSet, basename="ai-search")

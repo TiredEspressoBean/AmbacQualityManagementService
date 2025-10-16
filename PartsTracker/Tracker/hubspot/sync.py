@@ -1,103 +1,138 @@
+import logging
 from django.core.exceptions import ObjectDoesNotExist
-
-from Tracker.hubspot.api import (get_all_deals, get_contacts_from_deal_id, get_company_ids_from_deal_id, extract_ids,
-                                 get_company_info_from_company_ids, get_contact_info_from_contact_ids,
-                                 update_stages)
-from Tracker.models import Orders, Companies, User, ExternalAPIOrderIdentifier
 from django.conf import settings
+from django.utils import timezone
+
+from Tracker.hubspot.api import (
+    get_all_deals, get_contacts_from_deal_id, get_company_ids_from_deal_id, extract_ids,
+    get_company_info_from_company_ids, get_contact_info_from_contact_ids, update_stages
+)
+from Tracker.models import Orders, Companies, User, ExternalAPIOrderIdentifier, HubSpotSyncLog
+
+logger = logging.getLogger(__name__)
+
+
+def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict):
+    """Extract order data from HubSpot deal (eliminates code duplication)."""
+    deal_id = deal['id']
+
+    # Get pipeline stage
+    try:
+        current_gate = ExternalAPIOrderIdentifier.objects.get(API_id=deal["properties"]["dealstage"])
+    except ObjectDoesNotExist:
+        current_gate = None
+
+    # Get company (use first if multiple)
+    company = None
+    if deal_id in deal_to_companies and deal_to_companies[deal_id]:
+        company_info = company_dict.get(str(deal_to_companies[deal_id][0]))
+        if company_info:
+            company, _ = Companies.objects.get_or_create(
+                name=company_info['name'],
+                defaults={}
+            )
+
+    # Get customer (use first contact)
+    customer = None
+    if deal_id in deal_to_contacts and deal_to_contacts[deal_id]:
+        contact_info = contact_dict.get(str(deal_to_contacts[deal_id][0]))
+        if contact_info and contact_info.get('email'):
+            customer, _ = User.objects.get_or_create(
+                email=contact_info['email'],
+                defaults={
+                    'first_name': contact_info.get('first_name', ''),
+                    'last_name': contact_info.get('last_name', ''),
+                    'username': contact_info['email']
+                }
+            )
+
+    return {
+        'name': deal['properties'].get('dealname', f'Deal {deal_id}'),
+        'company': company,
+        'customer': customer,
+        'current_hubspot_gate': current_gate,
+        'archived': deal.get('archived', False),
+        'hubspot_last_synced_at': timezone.now(),
+    }
 
 
 def sync_all_deals():
-    deals_data = get_all_deals()
-    if not deals_data:
-        return "Failed to retrieve all deals from HubSpot."
+    """Sync deals from HubSpot. Only touches orders with hubspot_deal_id."""
+    # Create sync log
+    sync_log = HubSpotSyncLog.objects.create(sync_type='full', status='running')
 
-    result = []
+    try:
+        # Fetch deals
+        deals_data = get_all_deals()
+        if not deals_data:
+            sync_log.status = 'failed'
+            sync_log.error_message = 'Failed to retrieve deals'
+            sync_log.completed_at = timezone.now()
+            sync_log.save()
+            return {'status': 'error', 'message': 'Failed to retrieve deals'}
 
-    deal_id_list = []
-    deal_ids = {}
-    for deal in deals_data:
-        deal_ids[deal['id']] = {}
-        deal_id_list.append(deal['id'])
+        # Sync pipeline stages ONCE per unique pipeline (not per deal)
+        pipelines = {deal["properties"]["pipeline"] for deal in deals_data if deal["properties"].get("pipeline")}
+        for pipeline_id in pipelines:
+            update_stages(pipeline_id)
 
-    deal_ids_to_contacts_ids = get_contacts_from_deal_id(deal_id_list)
-    deal_ids_to_companies_ids = get_company_ids_from_deal_id(deal_id_list)
+        # Batch fetch associated data
+        deal_id_list = [deal['id'] for deal in deals_data]
+        deal_to_contacts = get_contacts_from_deal_id(deal_id_list)
+        deal_to_companies = get_company_ids_from_deal_id(deal_id_list)
 
-    contact_ids = extract_ids(deal_ids_to_contacts_ids)
-    company_ids = extract_ids(deal_ids_to_companies_ids)
+        contact_dict = get_contact_info_from_contact_ids(extract_ids(deal_to_contacts))
+        company_dict = get_company_info_from_company_ids(extract_ids(deal_to_companies))
 
-    contact_dictionary = get_contact_info_from_contact_ids(contact_ids)
-    company_dictionary = get_company_info_from_company_ids(company_ids)
+        # Process deals
+        created_count = 0
+        updated_count = 0
+        is_debug = getattr(settings, "HUBSPOT_DEBUG", False)
 
-    update_stages(deal["properties"]["pipeline"])
+        for deal in deals_data:
+            # Skip if debug mode and not the debug deal
+            if is_debug and deal["properties"].get("dealname") != "Ghost Pepper":
+                continue
 
-    for deal in deals_data:
-        try:
-            current_gate = ExternalAPIOrderIdentifier.objects.get(API_id=deal["properties"]["dealstage"])
-        except ObjectDoesNotExist:
-            current_gate = None  # or handle it however you want
+            # Use helper to prepare order data
+            order_data = _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict)
 
-        if getattr(settings, "HUBSPOT_DEBUG"):
-            if deal["properties"]["dealname"] == "Ghost Pepper":
-                customers = []
-                companies = []
-                if deal["id"] in deal_ids_to_companies_ids.keys():
-                    company = Companies.objects.update_or_create(
-                        name=str(deal_ids_to_companies_ids[deal["id"]][-1]),
-                        defaults={}
-                    )
-                if deal["id"] in deal_ids_to_contacts_ids.keys():
-                    for id in deal_ids_to_contacts_ids[deal["id"]]:
-                        customer_information = contact_dictionary[str(id)]
-                        customer = User.objects.update_or_create(
-                            email = customer_information["email"],
-                            defaults={
-                                "first_name": customer_information["first_name"],
-                                "last_name": customer_information["last_name"],
-                                "username": customer_information["email"]
-                            }
-                        )
-                        customers.append(customer)
-                obj, created = Orders.objects.update_or_create(
-                    hubspot_deal_id=deal["id"],
-                    defaults={
-                        "name": deal["properties"]["dealname"],
-                        "company_id": companies[-1] if companies else None,
-                        "customer_id": customers[-1] if customers else None,
-                        "current_hubspot_gate": current_gate,
-                        "archived": deal["archived"]
-                    }
-                )
-                result.append(deal["properties"]["dealname"])
-        else:
-            customers = []
-            companies = []
-            if deal["id"] in deal_ids_to_companies_ids.keys():
-                company = Companies.objects.update_or_create(
-                    name=str(deal_ids_to_companies_ids[deal["id"]][-1]),
-                    defaults={}
-                )
-            if deal["id"] in deal_ids_to_contacts_ids.keys():
-                for id in deal_ids_to_contacts_ids[deal["id"]]:
-                    customer_information = contact_dictionary[str(id)]
-                    customer = User.objects.update_or_create(
-                        email=customer_information["email"],
-                        defaults={
-                            "first_name": customer_information["first_name"],
-                            "last_name": customer_information["last_name"],
-                            "username": customer_information["email"]
-                        }
-                    )
-                    customers.append(customer)
+            # Create or update order
             obj, created = Orders.objects.update_or_create(
                 hubspot_deal_id=deal["id"],
-                defaults={
-                    "name": deal["properties"]["dealname"],
-                    "company_id": companies[-1] if companies else None,
-                    "customer_id": customers[-1] if customers else None,
-                    "current_hubspot_gate": current_gate,
-                    "archived": deal["archived"]
-                }
+                defaults=order_data
             )
-            result.append(deal["properties"]["dealname"])
-    return result
+
+            # Set flag to prevent infinite loop
+            obj._skip_hubspot_push = True
+            obj.save()
+
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        # Update sync log
+        sync_log.status = 'success'
+        sync_log.deals_processed = len(deals_data) if not is_debug else (created_count + updated_count)
+        sync_log.deals_created = created_count
+        sync_log.deals_updated = updated_count
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+
+        logger.info(f"HubSpot sync completed: {created_count} created, {updated_count} updated")
+
+        return {
+            'status': 'success',
+            'created': created_count,
+            'updated': updated_count,
+            'processed': sync_log.deals_processed
+        }
+
+    except Exception as e:
+        sync_log.status = 'failed'
+        sync_log.error_message = str(e)
+        sync_log.completed_at = timezone.now()
+        sync_log.save()
+        logger.error(f"HubSpot sync failed: {e}", exc_info=True)
+        return {'status': 'error', 'message': str(e)}

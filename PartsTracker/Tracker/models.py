@@ -3,14 +3,12 @@ import os
 import random
 from datetime import date
 
+from auditlog.models import LogEntry
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
-
-from auditlog.models import LogEntry
-
 from pgvector.django import VectorField
 
 from PartsTrackerApp import settings
@@ -36,10 +34,7 @@ class SecureQuerySet(models.QuerySet):
         if not objects_to_delete:
             return 0
 
-        updated_count = self.filter(archived=False).update(
-            deleted_at=timezone.now(),
-            archived=True
-        )
+        updated_count = self.filter(archived=False).update(deleted_at=timezone.now(), archived=True)
 
         if updated_count > 0:
             self._create_bulk_audit_logs(objects_to_delete, 'soft_delete_bulk', actor, reason)
@@ -52,10 +47,7 @@ class SecureQuerySet(models.QuerySet):
         if not objects_to_restore:
             return 0
 
-        updated_count = self.filter(archived=True).update(
-            deleted_at=None,
-            archived=False
-        )
+        updated_count = self.filter(archived=True).update(deleted_at=None, archived=False)
 
         if updated_count > 0:
             self._create_bulk_audit_logs(objects_to_restore, 'restore_bulk', actor, reason)
@@ -72,21 +64,11 @@ class SecureQuerySet(models.QuerySet):
 
         for obj_data in object_list:
             log_entries.append(
-                LogEntry(
-                    content_type=content_type,
-                    object_pk=str(obj_data['pk']),
-                    object_id=obj_data['id'],
-                    object_repr=f"{self.model.__name__} (id={obj_data['id']})",
-                    action=LogEntry.Action.UPDATE,
-                    changes=json.dumps({
-                        'archived': [False, True] if 'delete' in action else [True, False],
-                        'bulk_operation': action,
-                        'reason': reason
-                    }),
-                    actor=actor,
-                    timestamp=timezone.now()
-                )
-            )
+                LogEntry(content_type=content_type, object_pk=str(obj_data['pk']), object_id=obj_data['id'],
+                         object_repr=f"{self.model.__name__} (id={obj_data['id']})", action=LogEntry.Action.UPDATE,
+                         changes=json.dumps({'archived': [False, True] if 'delete' in action else [True, False],
+                                             'bulk_operation': action, 'reason': reason}), actor=actor,
+                         timestamp=timezone.now()))
 
         LogEntry.objects.bulk_create(log_entries)
 
@@ -219,6 +201,9 @@ class SecureManager(models.Manager):
 class SecureModel(models.Model):
     """Base model with soft delete, timestamps, versioning, and audit logging"""
 
+
+
+
     # Soft delete fields
     archived = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -229,13 +214,8 @@ class SecureModel(models.Model):
 
     # Versioning fields
     version = models.PositiveIntegerField(default=1)
-    previous_version = models.ForeignKey(
-        'self',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='next_versions'
-    )
+    previous_version = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='next_versions')
     is_current_version = models.BooleanField(default=True)
 
     # Single manager that does everything
@@ -272,11 +252,8 @@ class SecureModel(models.Model):
         try:
             from django.contrib.contenttypes.models import ContentType
             content_type = ContentType.objects.get_for_model(self.__class__)
-            ArchiveReason.objects.update_or_create(
-                content_type=content_type,
-                object_id=self.pk,
-                defaults={"reason": reason, "notes": notes, "user": user}
-            )
+            ArchiveReason.objects.update_or_create(content_type=content_type, object_id=self.pk,
+                                                   defaults={"reason": reason, "notes": notes, "user": user})
         except Exception:
             # If ArchiveReason model doesn't exist or other issues, 
             # still complete the archive operation
@@ -312,11 +289,7 @@ class SecureModel(models.Model):
 
         # Apply updates
         new_data.update(field_updates)
-        new_data.update({
-            'version': self.version + 1,
-            'previous_version': self,
-            'is_current_version': True,
-        })
+        new_data.update({'version': self.version + 1, 'previous_version': self, 'is_current_version': True, })
 
         new_version = self.__class__.objects.create(**new_data)
         return new_version
@@ -375,14 +348,14 @@ def part_doc_upload_path(self, filename):
     """
     today = date.today().isoformat()
     ext = filename.split('.')[-1]
-    
+
     # Check if file_name already has an extension to avoid double extensions
     file_name = self.file_name
     if file_name.endswith(f'.{ext}'):
         new_filename = file_name
     else:
         new_filename = f"{file_name}.{ext}"
-    
+
     return os.path.join("parts_docs", today, new_filename)
 
 
@@ -476,6 +449,66 @@ class User(AbstractUser):
         return f"{self.username}: {self.first_name} {self.last_name}"
 
 
+class UserInvitation(models.Model):
+    """
+    Tracks invitation tokens for user account activation.
+
+    Allows staff to invite customers to create accounts with secure, time-limited tokens.
+    Maintains history of invitations sent, accepted, and expired.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invitations')
+    """The user being invited."""
+
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    """Secure random token for invitation link."""
+
+    invited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='invitations_sent')
+    """Staff member who sent the invitation."""
+
+    sent_at = models.DateTimeField(auto_now_add=True)
+    """Timestamp when invitation was sent."""
+
+    expires_at = models.DateTimeField()
+    """Expiration timestamp for the invitation token."""
+
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    """Timestamp when user accepted invitation and completed signup."""
+
+    accepted_ip_address = models.GenericIPAddressField(null=True, blank=True)
+    """IP address from which the invitation was accepted."""
+
+    accepted_user_agent = models.TextField(null=True, blank=True)
+    """User agent string from the browser used to accept invitation."""
+
+    class Meta:
+        verbose_name = 'User Invitation'
+        verbose_name_plural = 'User Invitations'
+        ordering = ['-sent_at']
+        indexes = [
+            models.Index(fields=['token']),
+            models.Index(fields=['user', '-sent_at']),
+        ]
+
+    def __str__(self):
+        status = "accepted" if self.accepted_at else ("expired" if self.is_expired() else "pending")
+        return f"Invitation for {self.user.email} ({status})"
+
+    def is_expired(self):
+        """Check if invitation has expired."""
+        return timezone.now() > self.expires_at and not self.accepted_at
+
+    def is_valid(self):
+        """Check if invitation is still valid (not expired and not yet accepted)."""
+        return not self.accepted_at and not self.is_expired()
+
+    @classmethod
+    def generate_token(cls):
+        """Generate a secure random token."""
+        import secrets
+        return secrets.token_urlsafe(48)
+
+
 class Documents(SecureModel):
     """
     Represents a file uploaded and optionally associated with a specific part.
@@ -498,14 +531,10 @@ class Documents(SecureModel):
         parts_docs/part_<part_id>/<YYYY-MM-DD>/<file_name>.<ext>
     """
 
-    classification = models.CharField(
-        max_length=20,
-        choices=ClassificationLevel.choices,
-        default=ClassificationLevel.INTERNAL,
-        help_text="Security classification level for document access control",
-        null=True,
-        blank=False
-    )
+    classification = models.CharField(max_length=20, choices=ClassificationLevel.choices,
+                                      default=ClassificationLevel.INTERNAL,
+                                      help_text="Security classification level for document access control", null=True,
+                                      blank=False)
 
     ai_readable = models.BooleanField(default=False)
 
@@ -532,7 +561,6 @@ class Documents(SecureModel):
 
     content_object = GenericForeignKey('content_type', 'object_id')
     """Optional reference to the Object this document relates to."""
-
 
     class Meta:
         verbose_name_plural = 'Documents'
@@ -597,54 +625,32 @@ class Documents(SecureModel):
                 remote_addr = request.META.get('REMOTE_ADDR')
 
         # Log document access
-        LogEntry.objects.create(
-            content_type=ContentType.objects.get_for_model(self),
-            object_pk=str(self.pk),
-            object_id=self.id,
-            object_repr=str(self),
-            action=LogEntry.Action.ACCESS,  # Use proper Action enum
-            changes=json.dumps({
-                'action_type': 'document_viewed',
-                'file_name': self.file_name,
-                'classification': self.classification,
-                'is_image': self.is_image
-            }),
-            actor=user,
-            remote_addr=remote_addr,
-            timestamp=timezone.now(),
-            additional_data=json.dumps({
-                'actor_email': user.email if user else None,
-                'user_agent': request.META.get('HTTP_USER_AGENT') if request else None,
-                'referer': request.META.get('HTTP_REFERER') if request else None
-            })
-        )
+        LogEntry.objects.create(content_type=ContentType.objects.get_for_model(self), object_pk=str(self.pk),
+                                object_id=self.id, object_repr=str(self), action=LogEntry.Action.ACCESS,
+                                # Use proper Action enum
+                                changes=json.dumps({'action_type': 'document_viewed', 'file_name': self.file_name,
+                                                    'classification': self.classification, 'is_image': self.is_image}),
+                                actor=user, remote_addr=remote_addr, timestamp=timezone.now(),
+                                additional_data=json.dumps({'actor_email': user.email if user else None,
+                                                            'user_agent': request.META.get(
+                                                                'HTTP_USER_AGENT') if request else None,
+                                                            'referer': request.META.get(
+                                                                'HTTP_REFERER') if request else None}))
 
         # Log access to related object if it exists
         if self.content_object:
-            LogEntry.objects.create(
-                content_type=ContentType.objects.get_for_model(self.content_object),
-                object_pk=str(self.content_object.pk),
-                object_id=self.content_object.id,
-                object_repr=str(self.content_object),
-                action=LogEntry.Action.ACCESS,
-                changes=json.dumps({
-                    'action_type': 'related_object_accessed_via_document',
-                    'document_id': self.id,
-                    'document_name': self.file_name
-                }),
-                actor=user,
-                remote_addr=remote_addr,
-                timestamp=timezone.now(),
-                additional_data=json.dumps({
-                    'access_method': 'document_view',
-                    'document_classification': self.classification
-                })
-            )
+            LogEntry.objects.create(content_type=ContentType.objects.get_for_model(self.content_object),
+                                    object_pk=str(self.content_object.pk), object_id=self.content_object.id,
+                                    object_repr=str(self.content_object), action=LogEntry.Action.ACCESS,
+                                    changes=json.dumps(
+                                        {'action_type': 'related_object_accessed_via_document', 'document_id': self.id,
+                                         'document_name': self.file_name}), actor=user, remote_addr=remote_addr,
+                                    timestamp=timezone.now(), additional_data=json.dumps(
+                    {'access_method': 'document_view', 'document_classification': self.classification}))
 
     def auto_detect_properties(self, file=None):
         """Auto-detect document properties from uploaded file"""
         from mimetypes import guess_type
-        from django.db.models import Max
 
         file = file or self.file
         if not file:
@@ -659,7 +665,6 @@ class Documents(SecureModel):
         # Auto-set file name if not provided
         if not self.file_name:
             properties['file_name'] = file.name
-
 
         return properties
 
@@ -680,10 +685,22 @@ class Documents(SecureModel):
         else:
             return qs.none()
 
+    def embed_async(self):
+        """
+        Trigger asynchronous embedding of this document via Celery.
+        Returns the Celery task result object.
+
+        Use this method to queue embedding in the background without blocking.
+        """
+        from Tracker.tasks import embed_document_async
+        return embed_document_async.delay(self.id)
+
     def embed_inline(self) -> bool:
         """
         Minimal, synchronous embedding for small text files and PDFs.
         Returns True if chunks were embedded, False if skipped.
+
+        Note: Consider using embed_async() instead to avoid blocking requests.
         """
         import os
         from django.conf import settings
@@ -711,10 +728,8 @@ class Documents(SecureModel):
         # (optional) sanity check on dimensions:
         assert len(vecs[0]) == settings.AI_EMBED_DIM
 
-        rows = [
-            DocChunk(doc=self, preview_text=t[:300], full_text=t, span_meta={"i": i}, embedding=v)
-            for i, (t, v) in enumerate(zip(chunks, vecs))
-        ]
+        rows = [DocChunk(doc=self, preview_text=t[:300], full_text=t, span_meta={"i": i}, embedding=v) for i, (t, v) in
+                enumerate(zip(chunks, vecs))]
         with transaction.atomic():
             DocChunk.objects.filter(doc=self).delete()
             DocChunk.objects.bulk_create(rows, batch_size=50)
@@ -728,11 +743,10 @@ class Documents(SecureModel):
         Returns empty string if extraction fails
         """
         import os
-        from django.conf import settings
-        
+
         file_path = self.file.path
         file_ext = os.path.splitext(file_path)[1].lower()
-        
+
         try:
             if file_ext == '.pdf':
                 return self._extract_pdf_text(file_path)
@@ -741,7 +755,7 @@ class Documents(SecureModel):
                 return self._extract_text_file(file_path)
         except Exception:
             return ""
-    
+
     def _extract_pdf_text(self, file_path: str) -> str:
         """Extract text from PDF file using PyPDF2"""
         try:
@@ -753,7 +767,7 @@ class Documents(SecureModel):
                     page_text = page.extract_text()
                     if page_text:
                         text += page_text + "\n"
-            
+
             # Remove null bytes that cause PostgreSQL issues
             text = text.replace('\x00', '')
             return text.strip()
@@ -763,14 +777,14 @@ class Documents(SecureModel):
         except Exception:
             # PDF extraction failed
             return ""
-    
+
     def _extract_text_file(self, file_path: str) -> str:
         """Extract text from regular text files"""
         try:
             from django.conf import settings
             with open(file_path, "rb") as f:
                 data = f.read(settings.AI_EMBED_MAX_FILE_BYTES + 1)
-            
+
             text = data.decode("utf-8", errors="ignore")
             # Remove null bytes that cause PostgreSQL issues
             text = text.replace('\x00', '')
@@ -790,21 +804,17 @@ class PartTypes(SecureModel):
     documents = GenericRelation(Documents)
     """Optional Document related to this type of part"""
 
-
-
     name = models.CharField(max_length=50)
     """Name of the part type, e.g., 'Fuel Injector'."""
 
     ID_prefix = models.CharField(max_length=50, null=True, blank=True)
     """Optional prefix for autogenerated part IDs, e.g., 'FJ-'."""
 
-
     ERP_id = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'Part Types'
         verbose_name = 'Part Type'
-
 
     def __str__(self):
         """
@@ -824,7 +834,6 @@ class Processes(SecureModel):
     documents = GenericRelation(Documents)
     """Optional Document related to this type of process"""
 
-
     name = models.CharField(max_length=50)
     """Name of the process, e.g., 'Assembly Line A'."""
 
@@ -837,10 +846,8 @@ class Processes(SecureModel):
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE, related_name='processes')
     """ForeignKey to the PartType this process is associated with."""
 
-    is_batch_process = models.BooleanField(
-        default=False,
-        help_text="If True, UI treats work order parts as a batch unit"
-    )
+    is_batch_process = models.BooleanField(default=False,
+                                           help_text="If True, UI treats work order parts as a batch unit")
     """Indicates whether this process should be handled as batch-level tracking in the UI."""
 
     class Meta:
@@ -875,7 +882,6 @@ class Processes(SecureModel):
             new_steps[-1].is_last_step = True
 
         Steps.objects.bulk_create(new_steps)
-
 
     def __str__(self):
         """
@@ -963,20 +969,19 @@ class Steps(SecureModel):
             fallback_ruleset = primary_ruleset.fallback_ruleset
 
         return {'active_ruleset': {'id': primary_ruleset.id if primary_ruleset else None,
-            'name': primary_ruleset.name if primary_ruleset else None, 'rules': list(
+                                   'name': primary_ruleset.name if primary_ruleset else None, 'rules': list(
                 primary_ruleset.rules.all().values('id', 'rule_type', 'value', 'order')) if primary_ruleset else [],
-            'fallback_threshold': primary_ruleset.fallback_threshold if primary_ruleset else None,
-            'fallback_duration': primary_ruleset.fallback_duration if primary_ruleset else None},
-            'fallback_ruleset': {'id': fallback_ruleset.id if fallback_ruleset else None,
-                'name': fallback_ruleset.name if fallback_ruleset else None, 'rules': list(
-                    fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
-                        'order')) if fallback_ruleset else []} if fallback_ruleset else None}
+                                   'fallback_threshold': primary_ruleset.fallback_threshold if primary_ruleset else None,
+                                   'fallback_duration': primary_ruleset.fallback_duration if primary_ruleset else None},
+                'fallback_ruleset': {'id': fallback_ruleset.id if fallback_ruleset else None,
+                                     'name': fallback_ruleset.name if fallback_ruleset else None, 'rules': list(
+                        fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
+                                                            'order')) if fallback_ruleset else []} if fallback_ruleset else None}
 
     def apply_sampling_rules_update(self, rules_data, fallback_rules_data=None, fallback_threshold=None,
                                     fallback_duration=None, user=None):
         """Apply sampling rules update with proper versioning and activation"""
         from django.db import transaction
-        from django.db.models import Max
 
         with transaction.atomic():
             # Archive existing rulesets
@@ -986,20 +991,22 @@ class Steps(SecureModel):
             fallback_ruleset = None
             if fallback_rules_data:
                 fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
-                    step=self, name=f"Fallback for Step {self.id}",
-                    rules=fallback_rules_data, created_by=user, origin="serializer-update", active=True,
-                    is_fallback=True)
+                                                                     step=self, name=f"Fallback for Step {self.id}",
+                                                                     rules=fallback_rules_data, created_by=user,
+                                                                     origin="serializer-update", active=True,
+                                                                     is_fallback=True)
 
             # Create main ruleset
             main_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self,
-                name=f"Rules for Step {self.id}", rules=rules_data,
-                fallback_ruleset=fallback_ruleset, fallback_threshold=fallback_threshold,
-                fallback_duration=fallback_duration, created_by=user, origin="serializer-update", active=True,
-                is_fallback=False)
+                                                             name=f"Rules for Step {self.id}", rules=rules_data,
+                                                             fallback_ruleset=fallback_ruleset,
+                                                             fallback_threshold=fallback_threshold,
+                                                             fallback_duration=fallback_duration, created_by=user,
+                                                             origin="serializer-update", active=True, is_fallback=False)
 
             # Re-evaluate sampling for any active parts at this step
             active_parts = Parts.objects.filter(step=self,
-                part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
+                                                part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
 
             if active_parts.exists():
                 self._reevaluate_parts_sampling(list(active_parts))
@@ -1021,7 +1028,7 @@ class Steps(SecureModel):
 
         # Bulk update for efficiency
         Parts.objects.bulk_update(updates,
-            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
 
     def update_sampling_rules(self, rules_data, fallback_rules_data=None, fallback_threshold=None,
                               fallback_duration=None, user=None):
@@ -1031,22 +1038,24 @@ class Steps(SecureModel):
         with transaction.atomic():
             # Get or create primary ruleset
             primary_ruleset = SamplingRuleSet.objects.filter(step=self, part_type=self.part_type, active=True,
-                is_fallback=False).first()
+                                                             is_fallback=False).first()
 
             if primary_ruleset:
                 # Supersede existing ruleset
                 new_ruleset = primary_ruleset.supersede_with(name=f"{self.name} Rules v{primary_ruleset.version + 1}",
-                    rules=rules_data, created_by=user)
+                                                             rules=rules_data, created_by=user)
             else:
                 # Create new ruleset
                 new_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
-                    step=self, name=f"{self.name} Rules v1", rules=rules_data, created_by=user)
+                                                                step=self, name=f"{self.name} Rules v1",
+                                                                rules=rules_data, created_by=user)
 
             # Handle fallback ruleset if provided
             if fallback_rules_data:
                 fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process,
-                    step=self, name=f"{self.name} Fallback Rules v1", rules=fallback_rules_data, created_by=user,
-                    is_fallback=True)
+                                                                     step=self, name=f"{self.name} Fallback Rules v1",
+                                                                     rules=fallback_rules_data, created_by=user,
+                                                                     is_fallback=True)
 
                 # Link fallback to primary
                 new_ruleset.fallback_ruleset = fallback_ruleset
@@ -1095,9 +1104,9 @@ class Steps(SecureModel):
         inspected_parts = QualityReports.objects.filter(part__work_order=work_order, step=self).count()
 
         return {'total_parts': total_parts, 'sampled_parts': sampled_parts, 'inspected_parts': inspected_parts,
-            'sampling_rate': (sampled_parts / total_parts * 100) if total_parts > 0 else 0,
-            'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
-            'meets_minimum': self.validate_sampling_coverage(work_order)}
+                'sampling_rate': (sampled_parts / total_parts * 100) if total_parts > 0 else 0,
+                'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
+                'meets_minimum': self.validate_sampling_coverage(work_order)}
 
 
 class OrdersStatus(models.TextChoices):
@@ -1116,8 +1125,6 @@ class Orders(SecureModel):
     Orders define the high-level context for a batch of parts tied to a customer and company.
     Supports lifecycle tracking via status, estimated deadlines, and soft-archiving for traceability.
     """
-
-
 
     name = models.CharField(max_length=50)
     """Internal or customer-facing name for the order."""
@@ -1155,17 +1162,21 @@ class Orders(SecureModel):
 
     """Optional field to track HubSpot pipeline status or stage."""
 
-
     # --- HubSpot Integration Fields ---
     hubspot_deal_id = models.CharField(max_length=60, unique=True, null=True, blank=True)
+    """HubSpot deal ID - NULL if order was created locally, not from HubSpot."""
+
     last_synced_hubspot_stage = models.CharField(max_length=100, null=True, blank=True)
+    """Cached stage name from last sync."""
+
+    hubspot_last_synced_at = models.DateTimeField(null=True, blank=True)
+    """When this order was last synced from HubSpot - NULL if never synced or not a HubSpot order."""
 
     class Meta:
         verbose_name = 'Order'
 
-
-
     def push_to_hubspot(self):
+        """Push order stage changes back to HubSpot."""
         if not self.hubspot_deal_id:
             return
 
@@ -1183,8 +1194,21 @@ class Orders(SecureModel):
 
         super().save(*args, **kwargs)
 
-        if is_update and self.current_hubspot_gate != old_stage:
-            self.push_to_hubspot()
+        # Only push to HubSpot if:
+        # 1. This IS a HubSpot order (has hubspot_deal_id)
+        # 2. Stage changed
+        # 3. Not currently syncing FROM HubSpot (_skip_hubspot_push flag)
+        if (is_update and
+            self.hubspot_deal_id and
+            self.current_hubspot_gate != old_stage and
+            not getattr(self, '_skip_hubspot_push', False)):
+            # Queue async task to push to HubSpot
+            from Tracker.tasks import update_hubspot_deal_stage_task
+            update_hubspot_deal_stage_task.delay(
+                self.hubspot_deal_id,
+                self.current_hubspot_gate.id,
+                self.id
+            )
 
     def get_step_distribution(self, exclude_completed=True):
         """Get distribution of parts across steps for this order"""
@@ -1346,8 +1370,6 @@ class WorkOrder(SecureModel):
     ERP_id = models.CharField(max_length=50)
     """External ERP identifier used to sync or reference the work order."""
 
-
-
     related_order = models.ForeignKey('Orders', on_delete=models.PROTECT, related_name='related_orders', null=True,
                                       blank=True)
     """The customer-facing order this work order is derived from."""
@@ -1474,7 +1496,7 @@ class WorkOrder(SecureModel):
         # CRITICAL FIX: Get fresh parts from DB with IDs for proper sampling evaluation
         # Only get the parts that were just created (latest by ID)
         fresh_parts = list(Parts.objects.filter(work_order=self, part_type=part_type, step=step).order_by('id'))
-        
+
         # Now evaluate sampling for all parts using fresh objects with IDs
         self._bulk_evaluate_sampling(fresh_parts)
 
@@ -1588,16 +1610,10 @@ class SamplingRuleSet(SecureModel):
     # CSP fallback support
     fallback_ruleset = models.OneToOneField("self", null=True, blank=True, on_delete=models.SET_NULL,
                                             related_name="used_as_fallback_for")
-    fallback_threshold = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Number of consecutive failures before switching to fallback"
-    )
-    fallback_duration = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Number of good parts required before reverting to this ruleset"
-    )
+    fallback_threshold = models.PositiveIntegerField(null=True, blank=True,
+                                                     help_text="Number of consecutive failures before switching to fallback")
+    fallback_duration = models.PositiveIntegerField(null=True, blank=True,
+                                                    help_text="Number of good parts required before reverting to this ruleset")
 
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     modified_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -1612,8 +1628,7 @@ class SamplingRuleSet(SecureModel):
 
     def supersede_with(self, *, name, rules, created_by):
         return SamplingRuleSet.create_with_rules(part_type=self.part_type, process=self.process, step=self.step,
-                                                 name=name, rules=rules, supersedes=self,
-                                                 created_by=created_by, )
+                                                 name=name, rules=rules, supersedes=self, created_by=created_by, )
 
     @classmethod
     def create_with_rules(cls, *, part_type, process, step, name, rules=None, fallback_ruleset=None,
@@ -1632,7 +1647,7 @@ class SamplingRuleSet(SecureModel):
         """Activate this ruleset and deactivate others"""
         # Deactivate other rulesets for same step/part_type
         SamplingRuleSet.objects.filter(step=self.step, part_type=self.part_type, active=True,
-            is_fallback=self.is_fallback).exclude(pk=self.pk).update(active=False)
+                                       is_fallback=self.is_fallback).exclude(pk=self.pk).update(active=False)
 
         # Activate this ruleset
         self.active = True
@@ -1645,7 +1660,7 @@ class SamplingRuleSet(SecureModel):
     def _reevaluate_active_parts(self, user=None):
         """Re-evaluate sampling for parts currently at this step"""
         active_parts = Parts.objects.filter(step=self.step, part_type=self.part_type,
-            part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
+                                            part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
 
         updates = []
         for part in active_parts:
@@ -1660,7 +1675,7 @@ class SamplingRuleSet(SecureModel):
 
         # Bulk update
         Parts.objects.bulk_update(updates,
-            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
 
     def create_fallback_trigger(self, triggering_part, quality_report):
         """Create fallback trigger and re-evaluate remaining parts"""
@@ -1668,7 +1683,8 @@ class SamplingRuleSet(SecureModel):
             return None
 
         trigger_state = SamplingTriggerState.objects.create(ruleset=self.fallback_ruleset,
-            work_order=triggering_part.work_order, step=self.step, triggered_by=quality_report)
+                                                            work_order=triggering_part.work_order, step=self.step,
+                                                            triggered_by=quality_report)
 
         # Re-evaluate remaining parts with fallback rules
         self._apply_fallback_to_remaining_parts(triggering_part)
@@ -1678,8 +1694,9 @@ class SamplingRuleSet(SecureModel):
     def _apply_fallback_to_remaining_parts(self, triggering_part):
         """Apply fallback sampling to remaining parts in work order"""
         remaining_parts = Parts.objects.filter(work_order=triggering_part.work_order, step=self.step,
-            part_type=self.part_type, part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
-            id__gt=triggering_part.id)
+                                               part_type=self.part_type,
+                                               part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
+                                               id__gt=triggering_part.id)
 
         updates = []
         for part in remaining_parts:
@@ -1693,7 +1710,7 @@ class SamplingRuleSet(SecureModel):
             updates.append(part)
 
         Parts.objects.bulk_update(updates,
-            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
 
 
 class SamplingRule(SecureModel):
@@ -1761,7 +1778,6 @@ class Parts(SecureModel):
     part_status = models.CharField(max_length=50, choices=PartsStatus.choices, default=PartsStatus.PENDING)
     """Lifecycle status indicating part progress through the workflow."""
 
-
     work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name='parts')
     """Optional reference to the internal Work Order this part is attached to."""
 
@@ -1779,6 +1795,8 @@ class Parts(SecureModel):
     sampling_context = models.JSONField(default=dict, blank=True)
     """Context data for sampling decisions, used by SamplingFallbackApplier."""
 
+    total_rework_count = models.IntegerField(default=0)
+    """Total number of times this part has been reworked across all steps."""
 
     def increment_step(self):
         """
@@ -1840,7 +1858,6 @@ class Parts(SecureModel):
 
         return "full_work_order_advanced"
 
-
     def has_quality_errors(self):
         """Check if part has any quality errors"""
         return self.error_reports.filter(status='FAIL').exists()
@@ -1871,26 +1888,24 @@ class Parts(SecureModel):
     def get_sampling_history(self):
         """Get complete sampling history for this part"""
         return {'current_sampling': {'requires_sampling': self.requires_sampling,
-            'rule': {'id': self.sampling_rule.id, 'rule_type': self.sampling_rule.rule_type,
-                'value': self.sampling_rule.value, 'order': self.sampling_rule.order} if self.sampling_rule else None,
-            # ✅ Convert to dict
-            'ruleset': {'id': self.sampling_ruleset.id, 'name': self.sampling_ruleset.name,
-                'version': self.sampling_ruleset.version,
-                'active': self.sampling_ruleset.active} if self.sampling_ruleset else None,  # ✅ Convert to dict
-            'context': self.sampling_context}, 'quality_reports': list(
+                                     'rule': {'id': self.sampling_rule.id, 'rule_type': self.sampling_rule.rule_type,
+                                              'value': self.sampling_rule.value,
+                                              'order': self.sampling_rule.order} if self.sampling_rule else None,
+                                     # ✅ Convert to dict
+                                     'ruleset': {'id': self.sampling_ruleset.id, 'name': self.sampling_ruleset.name,
+                                                 'version': self.sampling_ruleset.version,
+                                                 'active': self.sampling_ruleset.active} if self.sampling_ruleset else None,
+                                     # ✅ Convert to dict
+                                     'context': self.sampling_context}, 'quality_reports': list(
             self.error_reports.all().values('status', 'created_at', 'sampling_method', 'description')),
-            'audit_logs': list(
-    SamplingAuditLog.objects.filter(part=self).values(
-        'sampling_decision', 'timestamp', 'ruleset_type'
-    )
-) if 'SamplingAuditLog' in globals() else []}
+                'audit_logs': list(SamplingAuditLog.objects.filter(part=self).values('sampling_decision', 'timestamp',
+                                                                                     'ruleset_type')) if 'SamplingAuditLog' in globals() else []}
 
     @classmethod
     def get_filtered_queryset(cls, user=None, filters=None):
         """Get optimized queryset with common select_related/prefetch_related"""
-        qs = cls.objects.select_related(
-            'part_type', 'step', 'order', 'work_order', 'sampling_rule', 'sampling_ruleset'
-        ).prefetch_related('error_reports')
+        qs = cls.objects.select_related('part_type', 'step', 'order', 'work_order', 'sampling_rule',
+                                        'sampling_ruleset').prefetch_related('error_reports')
 
         # Filter to only show customer's orders if user is in 'customer' group
         if user and user.groups.filter(name='customer').exists():
@@ -1920,8 +1935,9 @@ class Parts(SecureModel):
 
         # Save without triggering recursion
         Parts.objects.filter(pk=self.pk).update(requires_sampling=self.requires_sampling,
-            sampling_rule=self.sampling_rule, sampling_ruleset=self.sampling_ruleset,
-            sampling_context=self.sampling_context)
+                                                sampling_rule=self.sampling_rule,
+                                                sampling_ruleset=self.sampling_ruleset,
+                                                sampling_context=self.sampling_context)
 
     def __str__(self):
         """
@@ -2026,7 +2042,6 @@ class QualityReports(SecureModel):
     file = models.ForeignKey(Documents, null=True, blank=True, on_delete=models.SET_NULL)
     """Optional file attachment providing supporting evidence (e.g., photo, scan, or log)."""
 
-
     errors = models.ManyToManyField(QualityErrorsList, blank=True)
     """List of known quality errors that this report corresponds to."""
 
@@ -2060,7 +2075,7 @@ class QualityReports(SecureModel):
             # Trigger fallback if failure
             if self.status == "FAIL":
                 self._trigger_sampling_fallback()
-                
+
                 # Auto-quarantine part on FAIL
                 if self.part:
                     self.part.part_status = PartsStatus.QUARANTINED
@@ -2085,7 +2100,7 @@ class QualityReports(SecureModel):
         if self.part and self.part.sampling_ruleset:
             # Use the new method instead
             trigger_state = self.part.sampling_ruleset.create_fallback_trigger(triggering_part=self.part,
-                quality_report=self)
+                                                                               quality_report=self)
             return trigger_state
 
         # Fallback to original method
@@ -2133,8 +2148,15 @@ class MeasurementResult(SecureModel):
     is_within_spec = models.BooleanField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
+    def save(self, *args, **kwargs):
+        # Auto-calculate is_within_spec before saving
+        self.is_within_spec = self.evaluate_spec()
+        super().save(*args, **kwargs)
+
     def evaluate_spec(self):
         if self.definition.type == "NUMERIC":
+            if self.value_numeric is None:
+                return False
             return (
                     self.definition.nominal - self.definition.lower_tol <= self.value_numeric <= self.definition.nominal + self.definition.upper_tol)
         if self.definition.type == "PASS_FAIL":
@@ -2186,28 +2208,110 @@ class EquipmentUsage(SecureModel):
 
 class ExternalAPIOrderIdentifier(SecureModel):
     """
-    Maps internal order objects to external API identifiers.
+    Maps HubSpot pipeline stage IDs to human-readable names.
 
-    This model is used to associate a local `Orders` instance with an identifier used by
-    an external system (such as a customer ERP or third-party integration platform).
-    It supports integrations that require reconciliation between internal and external IDs.
+    When HubSpot API returns cryptic stage IDs (e.g., '123456789'),
+    this model provides the human-readable name (e.g., 'Qualification').
+    Supports tracking which pipeline each stage belongs to and stage ordering.
     """
 
     stage_name = models.CharField(max_length=100, unique=True)
-    """The internal `Order` object this external identifier corresponds to."""
+    """Human-readable stage name (e.g., 'Qualification', 'Closed Won')."""
 
     API_id = models.CharField(max_length=50)
-    """The external system’s identifier for the order (e.g., from HubSpot, ERP, etc.)."""
+    """The external system's identifier for the stage (e.g., from HubSpot API)."""
+
+    pipeline_id = models.CharField(max_length=50, null=True, blank=True)
+    """HubSpot pipeline ID this stage belongs to."""
+
+    display_order = models.IntegerField(default=0)
+    """Order in which this stage appears in the pipeline (for progress tracking)."""
+
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    """When this stage was last synced from HubSpot."""
 
     class Meta:
         verbose_name = "External API Order Identifier"
         verbose_name_plural = "External API Order Identifiers"
+        ordering = ['pipeline_id', 'display_order']
+        indexes = [
+            models.Index(fields=['pipeline_id', 'display_order']),
+            models.Index(fields=['API_id']),
+        ]
 
     def __str__(self):
         """
-        Returns a string that clearly represents the external mapping.
+        Returns a string that clearly represents the stage.
         """
-        return f"Hubspot deal stage: {self.stage_name}, id: {self.API_id}"
+        return self.stage_name
+
+
+class HubSpotSyncLog(models.Model):
+    """
+    Tracks HubSpot sync operations for debugging and monitoring.
+
+    Records each sync attempt with timing, counts, and error details.
+    Useful for audit trails and identifying sync issues.
+    """
+
+    SYNC_TYPE_CHOICES = [
+        ('full', 'Full Sync'),
+        ('incremental', 'Incremental Sync'),
+        ('single', 'Single Deal Sync'),
+    ]
+
+    STATUS_CHOICES = [
+        ('running', 'Running'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+    ]
+
+    sync_type = models.CharField(max_length=20, choices=SYNC_TYPE_CHOICES, default='full')
+    """Type of sync operation performed."""
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    """When the sync operation began."""
+
+    completed_at = models.DateTimeField(null=True, blank=True)
+    """When the sync operation finished (null if still running)."""
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='running')
+    """Current status of the sync operation."""
+
+    deals_processed = models.IntegerField(default=0)
+    """Total number of deals processed during this sync."""
+
+    deals_created = models.IntegerField(default=0)
+    """Number of new orders created from HubSpot deals."""
+
+    deals_updated = models.IntegerField(default=0)
+    """Number of existing orders updated from HubSpot deals."""
+
+    error_message = models.TextField(null=True, blank=True)
+    """Error details if the sync failed."""
+
+    class Meta:
+        verbose_name = "HubSpot Sync Log"
+        verbose_name_plural = "HubSpot Sync Logs"
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['-started_at']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        duration = ""
+        if self.completed_at:
+            delta = self.completed_at - self.started_at
+            duration = f" ({delta.total_seconds():.1f}s)"
+        return f"{self.get_sync_type_display()} - {self.get_status_display()} at {self.started_at}{duration}"
+
+    @property
+    def duration(self):
+        """Calculate sync duration in seconds."""
+        if self.completed_at:
+            return (self.completed_at - self.started_at).total_seconds()
+        return None
 
 
 class ArchiveReason(SecureModel):
@@ -2353,14 +2457,157 @@ class QaApproval(SecureModel):
     qa_staff = models.ForeignKey(User, related_name='qa_approvals', on_delete=models.PROTECT)
 
 
-class MeasurementDisposition(SecureModel):
-    measurement = models.OneToOneField(MeasurementResult, on_delete=models.CASCADE, related_name="disposition")
-    disposition_type = models.CharField(
-        choices=[("QUARANTINE", "Quarantined"), ("REMEASURE", "Re-measured"), ("OVERRIDDEN", "Overridden by QA"),
-                 ("ESCALATED", "Escalated for Review"), ])
-    resolved_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
-    notes = models.TextField(blank=True)
-    resolved_at = models.DateTimeField(auto_now_add=True)
+class QuarantineDisposition(SecureModel):
+    """Minimal disposition for failed quality reports"""
+
+    STATE_CHOICES = [('OPEN', 'Open'), ('IN_PROGRESS', 'In Progress'), ('CLOSED', 'Closed'), ]
+
+    DISPOSITION_TYPES = [('REWORK', 'Rework'), ('SCRAP', 'Scrap'), ('USE_AS_IS', 'Use As Is'),
+        ('RETURN_TO_SUPPLIER', 'Return to Supplier'), ]
+
+    # Basic fields
+    disposition_number = models.CharField(max_length=20, unique=True, editable=False)
+    current_state = models.CharField(max_length=15, choices=STATE_CHOICES, default='OPEN')
+    disposition_type = models.CharField(max_length=20, choices=DISPOSITION_TYPES, blank=True)
+
+    # QA workflow
+    assigned_to = models.ForeignKey(User, on_delete=models.PROTECT, related_name='assigned_dispositions', null=True,
+                                    blank=True)
+    description = models.TextField(blank=True)
+    resolution_notes = models.TextField(blank=True)
+
+    # Resolution tracking
+    resolution_completed = models.BooleanField(default=False)
+    resolution_completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='completed_dispositions')
+    resolution_completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Relationships
+    part = models.ForeignKey('Parts', on_delete=models.PROTECT, null=True, blank=True)
+    step = models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
+    quality_reports = models.ManyToManyField('QualityReports', related_name='dispositions')
+    documents = GenericRelation('Documents')
+
+    # Rework tracking
+    rework_attempt_at_step = models.IntegerField(default=1)
+    """Which rework attempt this is at the specific step (1st, 2nd, 3rd, etc.)"""
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Disposition'
+        verbose_name_plural = 'Dispositions'
+
+    def __str__(self):
+        return f"{self.disposition_number} - {self.get_current_state_display()}"
+
+    def save(self, *args, **kwargs):
+        old_disposition_type = None
+        old_state = None
+
+        # Track changes for status updates
+        if self.pk:
+            try:
+                old_instance = QuarantineDisposition.objects.get(pk=self.pk)
+                old_disposition_type = old_instance.disposition_type
+                old_state = old_instance.current_state
+            except QuarantineDisposition.DoesNotExist:
+                pass
+
+        if not self.disposition_number:
+            self.disposition_number = self._generate_disposition_number()
+
+        # Auto-transition from OPEN to IN_PROGRESS when disposition type is set
+        if self.disposition_type and self.current_state == 'OPEN':
+            self.current_state = 'IN_PROGRESS'
+
+        super().save(*args, **kwargs)
+
+        # Update part status when disposition type changes or state changes
+        if (old_disposition_type != self.disposition_type or old_state != self.current_state) and self.part:
+            self._update_part_status()
+
+    def _generate_disposition_number(self):
+        year = timezone.now().year
+        latest = QuarantineDisposition.objects.filter(disposition_number__startswith=f'DISP-{year}-').order_by(
+            'disposition_number').last()
+
+        next_num = 1
+        if latest:
+            last_num = int(latest.disposition_number.split('-')[-1])
+            next_num = last_num + 1
+
+        return f'DISP-{year}-{next_num:06d}'
+
+    def complete_resolution(self, completed_by_user):
+        """Mark resolution as completed and close disposition if appropriate"""
+        self.resolution_completed = True
+        self.resolution_completed_by = completed_by_user
+        self.resolution_completed_at = timezone.now()
+
+        # Auto-close if currently in progress
+        if self.current_state == 'IN_PROGRESS':
+            self.current_state = 'CLOSED'
+
+        self.save()
+        return self
+
+    def _update_part_status(self):
+        """Update part status based on disposition type and state"""
+        if not self.part or not self.disposition_type:
+            return
+
+        # Only update if disposition is being implemented/closed
+        if self.current_state not in ['IN_PROGRESS', 'CLOSED']:
+            return
+
+        # Map disposition types to part statuses (QMS standard workflow)
+        status_mapping = {'REWORK': PartsStatus.REWORK_NEEDED, 'SCRAP': PartsStatus.SCRAPPED,
+            'USE_AS_IS': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
+            'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED, }
+
+        new_status = status_mapping.get(self.disposition_type)
+
+        if new_status and self.part.part_status != new_status:
+            self.part.part_status = new_status
+
+            # Increment rework counter if rework disposition
+            if self.disposition_type == 'REWORK':
+                self.part.total_rework_count += 1
+
+            self.part.save(update_fields=['part_status', 'total_rework_count'])
+
+    def can_be_completed(self):
+        """Check if disposition is ready to be marked as completed"""
+        return (self.disposition_type and  # Must have a disposition decision
+                self.current_state in ['OPEN', 'IN_PROGRESS'] and  # Must be active
+                not self.resolution_completed  # Not already completed
+        )
+
+    def get_step_rework_count(self):
+        """Get number of rework attempts at this step for this part"""
+        if not self.part or not self.step:
+            return 0
+
+        return QuarantineDisposition.objects.filter(part=self.part, step=self.step, disposition_type='REWORK',
+            current_state='CLOSED').count()
+
+    def check_rework_limit_exceeded(self, max_attempts=2):
+        """Check if rework limit exceeded at this step (default 2 attempts)"""
+        if not self.step or self.disposition_type != 'REWORK':
+            return False
+
+        current_count = self.get_step_rework_count()
+        return current_count >= max_attempts
+
+    def calculate_rework_attempt_number(self):
+        """Calculate which rework attempt this is at the current step"""
+        if not self.part or not self.step:
+            return 1
+
+        existing_rework_count = QuarantineDisposition.objects.filter(part=self.part, step=self.step,
+            disposition_type='REWORK').count()
+
+        return existing_rework_count + 1
 
 
 class SamplingAuditLog(SecureModel):
@@ -2372,10 +2619,8 @@ class SamplingAuditLog(SecureModel):
     rule = models.ForeignKey(SamplingRule, on_delete=models.CASCADE)
     sampling_decision = models.BooleanField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    ruleset_type = models.CharField(
-        max_length=20,
-        choices=[('PRIMARY', 'Primary Ruleset'), ('FALLBACK', 'Fallback Ruleset')]
-    )
+    ruleset_type = models.CharField(max_length=20,
+                                    choices=[('PRIMARY', 'Primary Ruleset'), ('FALLBACK', 'Fallback Ruleset')])
 
     class Meta:
         indexes = [models.Index(fields=['part', 'timestamp']), models.Index(fields=['rule', 'sampling_decision']), ]
@@ -2418,6 +2663,7 @@ class SamplingAnalytics(SecureModel):
         return f"Analytics for {self.ruleset} - WO {self.work_order.ERP_id}"
 
 
+# TODO: See about how to get classifications to inherit the classification of the related document
 class DocChunk(models.Model):
     doc = models.ForeignKey('Tracker.Documents', on_delete=models.CASCADE, related_name='chunks')
     embedding = VectorField(dimensions=settings.AI_EMBED_DIM)  # uses settings
@@ -2428,3 +2674,244 @@ class DocChunk(models.Model):
     class Meta:
         db_table = 'doc_chunks'
         indexes = [models.Index(fields=['doc'])]
+
+class ThreeDModel(SecureModel):
+    """3D model files for heatmap visualization"""
+    name = models.CharField(max_length=255)
+    file = models.FileField(upload_to='models/')
+    part_type = models.ForeignKey('PartTypes', on_delete=models.CASCADE, related_name='three_d_models', null=True, blank=True)
+    step = models.ForeignKey('Steps', on_delete=models.CASCADE, related_name='three_d_models', null=True, blank=True,
+                             help_text="Optional: Link to specific step if this shows intermediate state")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    file_type = models.CharField(max_length=50, help_text="e.g., glb, gltf, obj")
+
+    class Meta:
+        verbose_name = '3D Model'
+        verbose_name_plural = '3D Models'
+        unique_together = [['part_type', 'step']]  # One model per part_type+step combination
+
+    def __str__(self):
+        return f"{self.name} ({self.file_type})"
+
+
+class HeatMapAnnotations(SecureModel):
+    """User-placed annotations on 3D models for heatmap visualization"""
+    model = models.ForeignKey(ThreeDModel, on_delete=models.CASCADE, related_name='annotations')
+    part = models.ForeignKey('Parts', on_delete=models.CASCADE, related_name='heatmap_annotations')
+
+    # 3D position data (x, y, z coordinates)
+    position_x = models.FloatField()
+    position_y = models.FloatField()
+    position_z = models.FloatField()
+
+    # Measurement/defect data
+    measurement_value = models.FloatField(null=True, blank=True)
+    defect_type = models.CharField(max_length=255, null=True, blank=True)
+    severity = models.CharField(
+        max_length=50,
+        choices=[
+            ('low', 'Low'),
+            ('medium', 'Medium'),
+            ('high', 'High'),
+            ('critical', 'Critical')
+        ],
+        null=True,
+        blank=True
+    )
+
+    # Metadata
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey('Tracker.User', on_delete=models.SET_NULL, null=True, related_name='heatmap_annotations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Heatmap Annotation'
+        verbose_name_plural = 'Heatmap Annotations'
+        indexes = [
+            models.Index(fields=['model', 'part']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"Annotation on {self.model.name} for {self.part} at ({self.position_x}, {self.position_y}, {self.position_z})"
+
+
+class NotificationTask(models.Model):
+    """
+    Unified notification task supporting both recurring (fixed interval)
+    and escalating (deadline-based) notifications.
+
+    Supports multiple channels (email, in-app, SMS, etc.) via simple channel_type field.
+
+    Examples:
+    - Weekly order reports: interval_type='fixed', day_of_week=4, time='15:00', interval_weeks=1
+    - CAPA reminders: interval_type='deadline_based', deadline=due_date, escalation_tiers=[...]
+    """
+
+    # Notification types (hardcoded for now, can move to separate table later if needed)
+    NOTIFICATION_TYPES = [
+        ('WEEKLY_REPORT', 'Weekly Order Report'),
+        ('CAPA_REMINDER', 'CAPA Reminder'),
+    ]
+
+    # Interval types
+    INTERVAL_TYPES = [
+        ('fixed', 'Fixed Interval'),
+        ('deadline_based', 'Deadline Based'),
+    ]
+
+    # Notification status
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    # Channel types (email only for now, but structured for extension)
+    CHANNEL_TYPES = [
+        ('email', 'Email'),
+        ('in_app', 'In-App Notification'),
+        ('sms', 'SMS'),
+    ]
+
+    # Core fields
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_tasks')
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPES, default='email')
+    interval_type = models.CharField(max_length=20, choices=INTERVAL_TYPES)
+
+    # Fixed interval fields (for recurring notifications)
+    day_of_week = models.IntegerField(null=True, blank=True, help_text="0=Monday, 6=Sunday")
+    time = models.TimeField(null=True, blank=True, help_text="Time in UTC")
+    interval_weeks = models.IntegerField(null=True, blank=True, help_text="Number of weeks between sends")
+
+    # Deadline-based fields (for escalating notifications)
+    deadline = models.DateTimeField(null=True, blank=True, help_text="Deadline for escalation calculation")
+    escalation_tiers = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="List of [threshold_days, interval_days] tuples. Example: [[28, 28], [14, 7], [0, 3.5], [-999, 1]]"
+    )
+
+    # State tracking
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    attempt_count = models.IntegerField(default=0)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    next_send_at = models.DateTimeField(db_index=True, help_text="When this notification should be sent (UTC)")
+    max_attempts = models.IntegerField(null=True, blank=True, help_text="Max sends before stopping. Null = infinite")
+
+    # Related object (optional, for context)
+    related_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    related_object_id = models.PositiveIntegerField(null=True, blank=True)
+    related_object = GenericForeignKey('related_content_type', 'related_object_id')
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Notification Task'
+        verbose_name_plural = 'Notification Tasks'
+        indexes = [
+            models.Index(fields=['recipient', 'notification_type', 'channel_type']),
+            models.Index(fields=['status', 'next_send_at']),
+            models.Index(fields=['related_content_type', 'related_object_id']),
+        ]
+        ordering = ['next_send_at']
+
+    def __str__(self):
+        return f"{self.get_notification_type_display()} to {self.recipient.email} via {self.channel_type}"
+
+    def calculate_next_send(self):
+        """
+        Calculate when this notification should be sent next.
+        Returns a datetime object.
+        """
+        from datetime import timedelta
+
+        base_time = self.last_sent_at or self.created_at
+
+        if self.interval_type == 'fixed':
+            # Fixed interval with specific day/time
+            if self.last_sent_at:
+                # Add interval_weeks to last send
+                next_date = self.last_sent_at.date() + timedelta(weeks=self.interval_weeks)
+            else:
+                # First occurrence - find next target day
+                now = timezone.now()
+                days_ahead = (self.day_of_week - now.weekday()) % 7
+                if days_ahead == 0 and now.time() > self.time:
+                    days_ahead = 7
+                next_date = (now + timedelta(days=days_ahead)).date()
+
+            # Combine date with time
+            from datetime import datetime
+            import pytz
+            next_dt = datetime.combine(next_date, self.time)
+            # Make timezone aware in UTC
+            return timezone.make_aware(next_dt, pytz.UTC)
+
+        elif self.interval_type == 'deadline_based':
+            # Deadline-based: use escalation tiers
+            interval_days = self._get_current_interval()
+            return base_time + timedelta(days=interval_days)
+
+        else:
+            raise ValueError(f"Unknown interval_type: {self.interval_type}")
+
+    def _get_current_interval(self):
+        """Get the interval (in days) until next send based on escalation tier."""
+        if self.interval_type == 'fixed':
+            return self.interval_weeks * 7
+
+        elif self.interval_type == 'deadline_based':
+            tier = self._find_matching_tier()
+            return tier[1] if tier else 1  # Default to 1 day if no tier found
+
+        else:
+            raise ValueError(f"Unknown interval_type: {self.interval_type}")
+
+    def _find_matching_tier(self):
+        """Find the matching escalation tier based on days until deadline."""
+        if self.interval_type != 'deadline_based' or not self.escalation_tiers or not self.deadline:
+            return None
+
+        base_time = self.last_sent_at or self.created_at
+        days_until = (self.deadline - base_time).days
+
+        # Find first matching tier
+        for tier in self.escalation_tiers:
+            if days_until > tier[0]:
+                return tier
+
+        # Fallback to last tier
+        return self.escalation_tiers[-1] if self.escalation_tiers else None
+
+    def should_send(self):
+        """Check if this notification should be sent now."""
+        if self.status != 'pending':
+            return False
+
+        if timezone.now() < self.next_send_at:
+            return False
+
+        return True
+
+    def mark_sent(self, success=True, sent_at=None):
+        """Update state after send attempt."""
+        self.attempt_count += 1
+        self.last_sent_at = sent_at or self.next_send_at
+
+        if success:
+            self.status = 'sent'
+
+            # Check if we should continue sending
+            if self.max_attempts is None or self.attempt_count < self.max_attempts:
+                self.status = 'pending'
+                self.next_send_at = self.calculate_next_send()
+        else:
+            self.status = 'failed'
+
+        self.save()

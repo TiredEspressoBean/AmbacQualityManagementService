@@ -36,7 +36,7 @@ export function QaQuarantinePage() {
     const navigate = useNavigate();
     return (
         <ModelEditorPage
-            title="Parts"
+            title="Quarantined Parts"
             modelName="Parts"
             showDetailsLink={true}
             useList={usePartsList}
@@ -54,7 +54,6 @@ export function QaQuarantinePage() {
                 { header: "Created At", renderCell: (p: any) => new Date(p.created_at).toLocaleString() },
             ]}
             renderActions={(part) => <QaQuarantineActionsCell part={part} />}
-            onCreate={() => navigate({ to: "/PartForm/create" })}
         />
     );
 }

@@ -438,6 +438,7 @@ export default function DocumentFormPage() {
                                 />
                             </FormControl>
                             <div className="space-y-1 leading-none">
+
                                 <FormLabel>AI Readable</FormLabel>
                                 <FormDescription>
                                     Allow AI systems to read and analyze this document. When enabled, the document content may be processed by AI for search, recommendations, and automation features.

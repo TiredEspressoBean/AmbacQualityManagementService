@@ -2,6 +2,9 @@ import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+import dotenv
+dotenv.load_dotenv()
+
 
 User = get_user_model()
 
@@ -13,6 +16,7 @@ class Command(BaseCommand):
         username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
         email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
         password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
+        print(username, email, password)
 
         if not all([username, email, password]):
             self.stdout.write(

@@ -2,17 +2,19 @@
 
 import {
     ChevronsUpDown,
+    User,
 } from "lucide-react"
 import {
     Avatar, AvatarFallback,
 } from "@/components/ui/avatar"
 import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
     SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar"
 import {LogoutMenuItem} from '@/components/auth/Logout.tsx'
+import { Link } from "@tanstack/react-router"
 
 
 export function NavUser({
@@ -50,14 +52,19 @@ export function NavUser({
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-                        side={isMobile ? "bottom" : "top"}
+                        className="w-56"
+                        side={isMobile ? "bottom" : "right"}
                         align="end"
-                        sideOffset={4}
+                        sideOffset={8}
                     >
-                        <DropdownMenuItem>
-                            <LogoutMenuItem/>
+                        <DropdownMenuItem asChild>
+                            <Link to="/profile" className="cursor-pointer">
+                                <User className="mr-2 h-4 w-4" />
+                                <span>Profile</span>
+                            </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <LogoutMenuItem/>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>

@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "@/lib/api/generated";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
+import { useCreateErrorType } from "@/hooks/useCreateErrorType";
+import { useCreateDocument } from "@/hooks/useCreateDocument";
 import { getCookie } from "@/lib/utils";
+import { schemas } from "@/lib/api/generated";
 import {
     Popover,
     PopoverTrigger,
@@ -38,8 +42,15 @@ import {
     FormMessage,
     FormDescription,
 } from "@/components/ui/form";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 const formSchema = z.object({
     part: z.number(),
@@ -49,6 +60,9 @@ const formSchema = z.object({
     status: z.enum(["PASS", "FAIL", "PENDING"]),
     sampling_rule: z.number().optional(),
     step: z.number(),
+    errors: z.array(z.number()).optional(),
+    file: z.instanceof(File).optional(),
+    classification: schemas.ClassificationEnum.optional(),
     measurements: z.array(z.object({
         definition: z.number(),
         value_numeric: z.number().optional(),
@@ -66,8 +80,15 @@ type FormValues = z.infer<typeof formSchema>;
 export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => void }) {
     const [operatorPopoverOpen, setOperatorPopoverOpen] = React.useState(false);
     const [machinePopoverOpen, setMachinePopoverOpen] = React.useState(false);
+    const [errorTypesPopoverOpen, setErrorTypesPopoverOpen] = React.useState(false);
     const [operatorSearch, setOperatorSearch] = React.useState("");
     const [machineSearch, setMachineSearch] = React.useState("");
+    const [errorTypesSearch, setErrorTypesSearch] = React.useState("");
+    const [newErrorDialogOpen, setNewErrorDialogOpen] = React.useState(false);
+    const [newErrorName, setNewErrorName] = React.useState("");
+    const [newErrorExample, setNewErrorExample] = React.useState("");
+    const [fileInputKey, setFileInputKey] = React.useState(Date.now());
+    const [isUploadingDocument, setIsUploadingDocument] = React.useState(false);
 
     const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery({
         queryKey: ["employee-options"],
@@ -82,6 +103,14 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         getNextPageParam: (lastPage, pages) => lastPage?.results.length === 100 ? pages.length * 100 : undefined,
         initialPageParam: 0,
     });
+
+
+    const { data: errorTypes, isLoading: errorTypesLoading, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
+        queries: { search: {part_type: part?.part_type?.id || part?.part_type} }
+    });
+
+    const createErrorType = useCreateErrorType();
+    const { mutate: uploadDocument } = useCreateDocument();
 
     const {
         data: measurementDefs,
@@ -110,6 +139,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
             step: part?.step?.id || part?.step,
             sampling_rule: part?.sampling_rule,
             measurements: [],
+            classification: "internal",
         },
     });
 
@@ -157,11 +187,37 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const onSubmit = async (values: FormValues) => {
         console.log("Form submitted with values:", values);
         try {
-            await api.api_ErrorReports_create(values, {
+            // Create the quality report first
+            const createdReport = await api.api_ErrorReports_create(values, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             });
-            toast.success("Quality Report Submitted");
-            onClose?.();
+
+            // If a file was selected, upload it
+            if (values.file && values.classification) {
+                setIsUploadingDocument(true);
+                const formData = new FormData();
+                formData.append("file", values.file);
+                formData.append("classification", values.classification);
+                formData.append("object_id", String(createdReport.id));
+                formData.append("content_type", "qualityreports");
+
+                uploadDocument(formData, {
+                    onSuccess: () => {
+                        setIsUploadingDocument(false);
+                        toast.success("Quality Report and Document Submitted");
+                        onClose?.();
+                    },
+                    onError: (err) => {
+                        setIsUploadingDocument(false);
+                        console.error("Document upload error:", err);
+                        toast.error("Report created, but document upload failed");
+                        onClose?.();
+                    },
+                });
+            } else {
+                toast.success("Quality Report Submitted");
+                onClose?.();
+            }
         } catch (err) {
             console.error("API Error:", err);
             toast.error("Failed to submit Quality Report");
@@ -175,6 +231,33 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const filteredMachines = machines.filter((m) =>
         m.name.toLowerCase().includes(machineSearch.toLowerCase())
     );
+
+    const filteredErrorTypes = errorTypes?.results?.filter((et) =>
+        et.error_name.toLowerCase().includes(errorTypesSearch.toLowerCase())
+    ) ?? [];
+
+    const handleCreateErrorType = async () => {
+        if (!newErrorName.trim()) {
+            toast.error("Error name is required");
+            return;
+        }
+
+        try {
+            await createErrorType.mutateAsync({
+                error_name: newErrorName,
+                error_example: newErrorExample,
+                part_type: part?.part_type?.id || part?.part_type,
+            });
+            toast.success("Error type created successfully");
+            setNewErrorName("");
+            setNewErrorExample("");
+            setNewErrorDialogOpen(false);
+            refetchErrorTypes();
+        } catch (err) {
+            console.error("Failed to create error type:", err);
+            toast.error("Failed to create error type");
+        }
+    };
 
     return (
         <Form {...form}>
@@ -327,6 +410,105 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     )}
                 />
 
+                {/* Error Types Field */}
+                <FormField
+                    control={control}
+                    name="errors"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Error Types</FormLabel>
+                            <Popover open={errorTypesPopoverOpen} onOpenChange={setErrorTypesPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={errorTypesPopoverOpen}
+                                            className="w-full justify-between"
+                                        >
+                                            {field.value && field.value.length > 0
+                                                ? `${field.value.length} error type${field.value.length > 1 ? 's' : ''} selected`
+                                                : "Select error types"
+                                            }
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0">
+                                    <Command>
+                                        <CommandInput
+                                            placeholder="Search error types..."
+                                            value={errorTypesSearch}
+                                            onValueChange={setErrorTypesSearch}
+                                        />
+                                        <CommandEmpty>
+                                            <div className="flex flex-col items-center gap-2 py-6">
+                                                <p className="text-sm text-muted-foreground">No error types found.</p>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setErrorTypesPopoverOpen(false);
+                                                        setNewErrorDialogOpen(true);
+                                                    }}
+                                                    className="gap-1"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                    Add New Error Type
+                                                </Button>
+                                            </div>
+                                        </CommandEmpty>
+                                        <CommandGroup className="max-h-64 overflow-auto">
+                                            {filteredErrorTypes.map((errorType) => {
+                                                const isSelected = field.value?.includes(errorType.id) ?? false;
+                                                return (
+                                                    <CommandItem
+                                                        key={errorType.id}
+                                                        onSelect={() => {
+                                                            const updated = isSelected
+                                                                ? (field.value?.filter((id) => id !== errorType.id) ?? [])
+                                                                : [...(field.value ?? []), errorType.id];
+                                                            field.onChange(updated);
+                                                        }}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isSelected}
+                                                            className="mr-2"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span>{errorType.error_name}</span>
+                                                            {errorType.error_example && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {errorType.error_example}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </CommandItem>
+                                                );
+                                            })}
+                                            <CommandItem
+                                                onSelect={() => {
+                                                    setErrorTypesPopoverOpen(false);
+                                                    setNewErrorDialogOpen(true);
+                                                }}
+                                                className="border-t"
+                                            >
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Add New Error Type
+                                            </CommandItem>
+                                        </CommandGroup>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <FormDescription>
+                                Select error types for this part or add a new one
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
                 {/* Description Field */}
                 <FormField
                     control={control}
@@ -408,6 +590,55 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     </div>
                 )}
 
+                {/* Document Upload Section */}
+                <div className="border-t pt-4 space-y-4">
+                    <h3 className="text-lg font-medium">Attach Document (Optional)</h3>
+
+                    <FormField
+                        control={control}
+                        name="file"
+                        render={({ field: { onChange, ...field } }) => (
+                            <FormItem>
+                                <FormLabel>File</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        key={fileInputKey}
+                                        type="file"
+                                        accept="*/*"
+                                        onChange={(e) => onChange(e.target.files?.[0])}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={control}
+                        name="classification"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Classification</FormLabel>
+                                <FormControl>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select classification" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {schemas.ClassificationEnum.options.map((level) => (
+                                                <SelectItem key={level} value={level}>
+                                                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 {/* Submit Button */}
                 <div className="flex justify-end space-x-2 pt-4 border-t">
                     {onClose && (
@@ -418,7 +649,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     <Button
                         type="submit"
                         variant="destructive"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isUploadingDocument}
                         className="min-w-[120px]"
                     >
                         {isSubmitting ? (
@@ -426,12 +657,78 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Submitting...
                             </>
+                        ) : isUploadingDocument ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Uploading Document...
+                            </>
                         ) : (
                             "Submit Report"
                         )}
                     </Button>
                 </div>
             </form>
+
+            {/* Create New Error Type Dialog */}
+            <Dialog open={newErrorDialogOpen} onOpenChange={setNewErrorDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add New Error Type</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label htmlFor="error-name" className="text-sm font-medium">
+                                Error Name *
+                            </label>
+                            <Input
+                                id="error-name"
+                                placeholder="Enter error name"
+                                value={newErrorName}
+                                onChange={(e) => setNewErrorName(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label htmlFor="error-example" className="text-sm font-medium">
+                                Example (Optional)
+                            </label>
+                            <Textarea
+                                id="error-example"
+                                placeholder="Enter an example of this error"
+                                value={newErrorExample}
+                                onChange={(e) => setNewErrorExample(e.target.value)}
+                                className="min-h-[80px]"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setNewErrorDialogOpen(false);
+                                setNewErrorName("");
+                                setNewErrorExample("");
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleCreateErrorType}
+                            disabled={createErrorType.isPending}
+                        >
+                            {createErrorType.isPending ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Creating...
+                                </>
+                            ) : (
+                                "Create Error Type"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Form>
     );
 }
