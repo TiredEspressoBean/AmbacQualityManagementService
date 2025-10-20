@@ -59,6 +59,13 @@ docker-compose.override.yml
 .env.docker
 init.sql
 
+# ---- Azure Deployment ----
+# Ignore parameter files with secrets (keep only .example files)
+azure/parameters.json
+azure/parameters-*.json
+!azure/parameters-*.example.json
+azure/deployment-output.json
+
 # ---- JetBrains IDE ----
 .idea/
 *.iml
