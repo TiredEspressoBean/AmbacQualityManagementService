@@ -51,6 +51,17 @@ jobs:
           name: python-app
           path: ./app-content
 
+      - name: Show directory structure before zipping
+        run: |
+          echo "=== Directory structure of app-content ==="
+          ls -la app-content/
+          echo ""
+          echo "=== Checking for key Python files ==="
+          ls -la app-content/requirements.txt app-content/manage.py app-content/runtime.txt 2>/dev/null || echo "WARNING: Some key files missing!"
+          echo ""
+          echo "=== Full directory tree (first 50 lines) ==="
+          find app-content -type f | head -50
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
