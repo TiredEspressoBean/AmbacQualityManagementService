@@ -10,6 +10,7 @@ import {api} from "@/lib/api/generated";
 import {getCookie} from "@/lib/utils";
 
 
+
 const API_URL = (import.meta.env.VITE_LANGGRAPH_API_URL as string) || `${window.location.origin}/lg`;
 console.log('LangGraph API URL:', API_URL);
 const ASSISTANT_ID = (import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID as string) ?? "agent";
