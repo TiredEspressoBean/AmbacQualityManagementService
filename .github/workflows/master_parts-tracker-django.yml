@@ -49,18 +49,28 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
-          path: ./app-content
+          # Downloads to current directory
 
       - name: Show directory structure before deployment
         run: |
-          echo "=== Directory structure of app-content ==="
-          ls -la app-content/
+          echo "=== Current directory contents ==="
+          ls -la
           echo ""
-          echo "=== Checking for key Python files ==="
-          ls -la app-content/requirements.txt app-content/manage.py app-content/runtime.txt 2>/dev/null || echo "WARNING: Some key files missing!"
-          echo ""
-          echo "=== Full directory tree (first 50 lines) ==="
-          find app-content -type f | head -50
+          echo "=== Checking if python-app directory exists ==="
+          if [ -d "python-app" ]; then
+            echo "Found python-app directory"
+            ls -la python-app/
+            echo ""
+            echo "=== Checking for key Python files ==="
+            ls -la python-app/requirements.txt python-app/manage.py python-app/runtime.txt 2>/dev/null || echo "WARNING: Some key files missing!"
+            echo ""
+            echo "=== First 50 files in python-app ==="
+            find python-app -type f | head -50
+          else
+            echo "ERROR: python-app directory not found!"
+            echo "Available directories:"
+            ls -la
+          fi
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -74,18 +84,18 @@ jobs:
         with:
           app-name: 'Parts-tracker-django'
           slot-name: 'Production'
-          package: ./app-content
+          package: ./python-app
 
       - name: 'Deploy to Celery Worker'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-worker'
           slot-name: 'Production'
-          package: ./app-content
+          package: ./python-app
 
       - name: 'Deploy to Celery Beat'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-beat'
           slot-name: 'Production'
-          package: ./app-content
+          package: ./python-app
