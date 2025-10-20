@@ -61,7 +61,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: python-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -69,10 +69,20 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D0F5033F7FA442309649C563C02819E1 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6B16089ABB6140E59B61D4BD52C77673 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: 'Deploy to Backend (Django Web)'
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
         with:
           app-name: 'Parts-tracker-django'
           slot-name: 'Production'
-          
+
+      - name: 'Deploy to Celery Worker'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'ambactracker-celery-worker'
+          slot-name: 'Production'
+
+      - name: 'Deploy to Celery Beat'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'ambactracker-celery-beat'
+          slot-name: 'Production'
