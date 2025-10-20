@@ -72,6 +72,18 @@ jobs:
             ls -la
           fi
 
+      - name: Create test ZIP to verify structure
+        run: |
+          echo "=== Creating test ZIP to verify what will be deployed ==="
+          cd .
+          zip -r test-structure.zip . -x '*.git*'
+          echo ""
+          echo "=== First 30 files in ZIP ==="
+          unzip -l test-structure.zip | head -30
+          echo ""
+          echo "=== Looking for key Python files in ZIP ==="
+          unzip -l test-structure.zip | grep -E "(requirements.txt|manage.py|runtime.txt)" || echo "ERROR: Key files not found in ZIP!"
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
