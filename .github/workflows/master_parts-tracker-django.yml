@@ -61,9 +61,22 @@ jobs:
       - name: Zip artifact for deployment
         run: |
           cd app-content
-          zip -r ../deploy.zip . -x '*.git*' '*__pycache__*' '*.pyc' '*.venv/*' '*venv/*'
+          zip -r ../deploy.zip . \
+            -x '*.git*' \
+            -x '*__pycache__*' \
+            -x '*.pyc' \
+            -x '*.venv/*' \
+            -x '*venv/*' \
+            -x 'media/*' \
+            -x '.idea/*' \
+            -x 'db.sqlite3' \
+            -x '.env' \
+            -x '.pytest_cache/*' \
+            -x 'scratch/*'
           cd ..
           ls -lh deploy.zip
+          echo "Verifying ZIP contains requirements.txt and manage.py:"
+          unzip -l deploy.zip | grep -E "(requirements.txt|manage.py|runtime.txt)"
 
       - name: 'Deploy to Backend (Django Web)'
         uses: azure/webapps-deploy@v3

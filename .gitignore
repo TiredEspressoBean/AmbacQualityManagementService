@@ -85,3 +85,4 @@ Desktop.ini
 htmlcov/
 coverage.xml
 pytestdebug.log
+/PartsTracker/media/
