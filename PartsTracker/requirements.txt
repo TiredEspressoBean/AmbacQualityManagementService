@@ -151,6 +151,7 @@ uritemplate
 cascadio==0.0.13
 psycopg2-binary
 celery[redis]
+django-redis
 django_rediscache
 django-celery-results
 django-celery-beat
