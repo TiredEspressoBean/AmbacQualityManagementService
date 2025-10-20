@@ -95,19 +95,16 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'Parts-tracker-django'
-          slot-name: 'Production'
           package: .
 
       - name: 'Deploy to Celery Worker'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-worker'
-          slot-name: 'Production'
           package: .
 
       - name: 'Deploy to Celery Beat'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-beat'
-          slot-name: 'Production'
           package: .
