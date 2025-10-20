@@ -51,7 +51,7 @@ jobs:
           name: python-app
           path: ./app-content
 
-      - name: Show directory structure before zipping
+      - name: Show directory structure before deployment
         run: |
           echo "=== Directory structure of app-content ==="
           ls -la app-content/
@@ -69,43 +69,23 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D0F5033F7FA442309649C563C02819E1 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6B16089ABB6140E59B61D4BD52C77673 }}
 
-      - name: Zip artifact for deployment
-        run: |
-          cd app-content
-          zip -r ../deploy.zip . \
-            -x '*.git*' \
-            -x '*__pycache__*' \
-            -x '*.pyc' \
-            -x '*.venv/*' \
-            -x '*venv/*' \
-            -x 'media/*' \
-            -x '.idea/*' \
-            -x 'db.sqlite3' \
-            -x '.env' \
-            -x '.pytest_cache/*' \
-            -x 'scratch/*'
-          cd ..
-          ls -lh deploy.zip
-          echo "Verifying ZIP contains requirements.txt and manage.py:"
-          unzip -l deploy.zip | grep -E "(requirements.txt|manage.py|runtime.txt)"
-
       - name: 'Deploy to Backend (Django Web)'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'Parts-tracker-django'
           slot-name: 'Production'
-          package: deploy.zip
+          package: ./app-content
 
       - name: 'Deploy to Celery Worker'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-worker'
           slot-name: 'Production'
-          package: deploy.zip
+          package: ./app-content
 
       - name: 'Deploy to Celery Beat'
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ambactracker-celery-beat'
           slot-name: 'Production'
-          package: deploy.zip
+          package: ./app-content
