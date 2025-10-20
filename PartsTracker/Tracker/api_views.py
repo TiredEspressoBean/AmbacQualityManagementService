@@ -34,10 +34,12 @@ def logout_view(request):
 
 
 @extend_schema(operation_id="get_user_api_token",
-    description="Get or create an API token for the current session-authenticated user", request=None, responses={
-        200: {"type": "object", "properties": {"token": {"type": "string", "description": "The API token"},
-            "created": {"type": "boolean", "description": "Whether a new token was created"}}},
-        401: {"description": "Authentication required"}, 500: {"description": "Internal server error"}})
+               description="Get or create an API token for the current session-authenticated user", request=None,
+               responses={200: {"type": "object",
+                                "properties": {"token": {"type": "string", "description": "The API token"},
+                                               "created": {"type": "boolean",
+                                                           "description": "Whether a new token was created"}}},
+                   401: {"description": "Authentication required"}, 500: {"description": "Internal server error"}})
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])  # overrides global defaults (no DjangoModelPermissions here)
 @authentication_classes([SessionAuthentication])  # use the browser session
