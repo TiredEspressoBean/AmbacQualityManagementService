@@ -39,7 +39,8 @@ def logout_view(request):
                                 "properties": {"token": {"type": "string", "description": "The API token"},
                                                "created": {"type": "boolean",
                                                            "description": "Whether a new token was created"}}},
-                   401: {"description": "Authentication required"}, 500: {"description": "Internal server error"}})
+                          401: {"description": "Authentication required"},
+                          500: {"description": "Internal server error"}})
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])  # overrides global defaults (no DjangoModelPermissions here)
 @authentication_classes([SessionAuthentication])  # use the browser session
