@@ -1,0 +1,26 @@
+{
+  "routes": [
+    {
+      "route": "/api/*",
+      "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/api/{path}"
+    },
+    {
+      "route": "/auth/*",
+      "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/auth/{path}"
+    },
+    {
+      "route": "/accounts/*",
+      "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/accounts/{path}"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/auth/*", "/accounts/*"]
+  },
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  }
+}
