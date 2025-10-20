@@ -28,3 +28,5 @@ jobs:
           app_location: "./ambac-tracker-ui"
           api_location: ""
           output_location: "dist"
+        env:
+          VITE_API_TARGET: "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net"
