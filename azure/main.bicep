@@ -170,6 +170,7 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-01-01' = {
   properties: {
     WEBSITES_PORT: '8000'
     SCM_DO_BUILD_DURING_DEPLOYMENT: '1'
+    POST_BUILD_COMMAND: 'python manage.py collectstatic --noinput'
     DJANGO_SETTINGS_MODULE: 'PartsTrackerApp.settings_azure'
     DJANGO_SECRET_KEY: djangoSecretKey
     DJANGO_DEBUG: djangoDebug
