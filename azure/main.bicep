@@ -217,7 +217,7 @@ resource celeryWorkerApp 'Microsoft.Web/sites@2023-01-01' = {
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.12'
       alwaysOn: true
-      appCommandLine: 'celery -A PartsTrackerApp.celery_app worker --loglevel=info'
+      appCommandLine: 'python -m celery -A PartsTrackerApp.celery_app worker --loglevel=info'
       appSettings: [
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -305,7 +305,7 @@ resource celeryBeatApp 'Microsoft.Web/sites@2023-01-01' = {
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.12'
       alwaysOn: true
-      appCommandLine: 'celery -A PartsTrackerApp.celery_app beat --loglevel=info'
+      appCommandLine: 'python -m celery -A PartsTrackerApp.celery_app beat --loglevel=info'
       appSettings: [
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'

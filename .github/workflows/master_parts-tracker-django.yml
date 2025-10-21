@@ -118,15 +118,19 @@ jobs:
       - name: 'Deploy to Celery Worker'
         run: |
           echo "Deploying to ambactracker-celery-worker..."
-          az webapp deployment source config-zip \
+          az webapp deploy \
             --resource-group PartsTracker \
             --name ambactracker-celery-worker \
-            --src deploy.zip
+            --src-path deploy.zip \
+            --type zip \
+            --async true
 
       - name: 'Deploy to Celery Beat'
         run: |
           echo "Deploying to ambactracker-celery-beat..."
-          az webapp deployment source config-zip \
+          az webapp deploy \
             --resource-group PartsTracker \
             --name ambactracker-celery-beat \
-            --src deploy.zip
+            --src-path deploy.zip \
+            --type zip \
+            --async true
