@@ -15,6 +15,9 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+# Required for cross-origin session cookies (Static Web App + Django backend on different domains)
+SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies
+CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-origin CSRF cookies
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
