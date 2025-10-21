@@ -52,6 +52,7 @@ param emailHostPassword string = ''
 
 // Django configuration
 param djangoDebug string = 'False'
+param hubspotDebug string = 'false'
 param djangoSuperuserUsername string = 'admin'
 param djangoSuperuserEmail string = 'admin@email.com'
 @secure()
@@ -190,6 +191,7 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-01-01' = {
     AZURE_STORAGE_CONTAINER_NAME_MEDIA: 'media'
     AZURE_STORAGE_CONTAINER_NAME_STATIC: 'static'
     HUBSPOT_API_KEY: hubspotApiKey
+    HUBSPOT_DEBUG: hubspotDebug
     LANGSMITH_API_KEY: langsmithApiKey
     MICROSOFT_CLIENT_ID: microsoftClientId
     MICROSOFT_CLIENT_SECRET: microsoftClientSecret
@@ -198,8 +200,8 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-01-01' = {
     EMAIL_HOST_PASSWORD: emailHostPassword
     EMAIL_BACKEND: emailBackend
     ALLOWED_HOSTS: '${backendApp.properties.defaultHostName}'
-    CORS_ALLOWED_ORIGINS: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${customFrontendDomain}'
-    CSRF_TRUSTED_ORIGINS: 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname}'
+    CORS_ALLOWED_ORIGINS: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${staticWebApp.properties.defaultHostname},https://${customFrontendDomain}'
+    CSRF_TRUSTED_ORIGINS: empty(customFrontendDomain) ? 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname}' : 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname},https://${customFrontendDomain}'
     FRONTEND_URL: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${customFrontendDomain}'
   }
 }
@@ -282,6 +284,10 @@ resource celeryWorkerApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'HUBSPOT_API_KEY'
           value: hubspotApiKey
+        }
+        {
+          name: 'HUBSPOT_DEBUG'
+          value: hubspotDebug
         }
         {
           name: 'LANGSMITH_API_KEY'
@@ -370,6 +376,10 @@ resource celeryBeatApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'HUBSPOT_API_KEY'
           value: hubspotApiKey
+        }
+        {
+          name: 'HUBSPOT_DEBUG'
+          value: hubspotDebug
         }
         {
           name: 'LANGSMITH_API_KEY'

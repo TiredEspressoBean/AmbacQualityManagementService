@@ -256,7 +256,7 @@ NPM_BIN_PATH = os.environ.get("NPM_BIN_PATH")
 
 AUDITLOG_INCLUDE_ALL_MODELS = True
 
-HUBSPOT_DEBUG = True
+HUBSPOT_DEBUG = os.getenv("HUBSPOT_DEBUG", "false").lower() in {"1", "true", "yes"}
 
 if DEBUG:
     PASSWORD_RESET_DOMAIN = 'localhost:5173'
