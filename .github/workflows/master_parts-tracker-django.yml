@@ -36,6 +36,7 @@ jobs:
         run: |
           cd PartsTracker
           pip install -r requirements.txt
+          export NPM_BIN_PATH=$(which npm)
           python manage.py tailwind install
           python manage.py tailwind build
           python manage.py collectstatic --noinput
