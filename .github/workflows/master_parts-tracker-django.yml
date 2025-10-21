@@ -115,7 +115,7 @@ jobs:
           zip -r deploy.zip . -x '*.git*' 'test-structure.zip'
           ls -lh deploy.zip
 
-      - name: 'Deploy to Celery Worker'
+      - name: 'Deploy to Celery Worker (background)'
         run: |
           echo "Deploying to ambactracker-celery-worker..."
           az webapp deploy \
@@ -123,9 +123,10 @@ jobs:
             --name ambactracker-celery-worker \
             --src-path deploy.zip \
             --type zip \
-            --async true
+            --async true &
+          echo "Celery Worker deployment started in background"
 
-      - name: 'Deploy to Celery Beat'
+      - name: 'Deploy to Celery Beat (background)'
         run: |
           echo "Deploying to ambactracker-celery-beat..."
           az webapp deploy \
@@ -133,4 +134,11 @@ jobs:
             --name ambactracker-celery-beat \
             --src-path deploy.zip \
             --type zip \
-            --async true
+            --async true &
+          echo "Celery Beat deployment started in background"
+
+      - name: 'Wait for background deployments'
+        run: |
+          echo "Waiting a moment for deployments to upload..."
+          sleep 30
+          echo "Deployments are processing in Azure. Check Azure Portal for status."
