@@ -33,7 +33,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net, 169.254.131.3').split(',')
 # Application definition
 
 if os.getenv("WEBSITE_HOSTNAME"):
