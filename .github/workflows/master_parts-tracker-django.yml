@@ -27,7 +27,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      # No need to create venv - let Oryx handle it on Azure
+      - name: Set up Node.js for Tailwind CSS build
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies and build Tailwind CSS
+        run: |
+          cd PartsTracker
+          pip install -r requirements.txt
+          python manage.py tailwind install
+          python manage.py tailwind build
+          python manage.py collectstatic --noinput
 
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
@@ -96,11 +107,6 @@ jobs:
         with:
           app-name: 'Parts-tracker-django'
           package: .
-
-      - name: 'Run collectstatic to upload files to Azure Blob Storage'
-        run: |
-          echo "Running collectstatic via Kudu API..."
-          az webapp ssh --name Parts-tracker-django --resource-group PartsTracker --command "cd /home/site/wwwroot && python manage.py collectstatic --noinput" || echo "collectstatic failed, check logs"
 
       - name: 'Create deployment package for Celery apps'
         run: |

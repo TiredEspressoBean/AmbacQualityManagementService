@@ -155,3 +155,4 @@ django-redis
 django-celery-results
 django-celery-beat
 django-storages[azure]
+whitenoise
