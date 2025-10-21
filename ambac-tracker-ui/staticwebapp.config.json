@@ -2,14 +2,17 @@
   "routes": [
     {
       "route": "/api/*",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/api/{path}"
     },
     {
       "route": "/auth/*",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/auth/{path}"
     },
     {
       "route": "/accounts/*",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "rewrite": "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net/accounts/{path}"
     }
   ],
