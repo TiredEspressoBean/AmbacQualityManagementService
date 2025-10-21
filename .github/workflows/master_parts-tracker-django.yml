@@ -97,6 +97,11 @@ jobs:
           app-name: 'Parts-tracker-django'
           package: .
 
+      - name: 'Run collectstatic to upload files to Azure Blob Storage'
+        run: |
+          echo "Running collectstatic via Kudu API..."
+          az webapp ssh --name Parts-tracker-django --resource-group PartsTracker --command "cd /home/site/wwwroot && python manage.py collectstatic --noinput" || echo "collectstatic failed, check logs"
+
       - name: 'Create deployment package for Celery apps'
         run: |
           echo "Creating deployment ZIP..."
