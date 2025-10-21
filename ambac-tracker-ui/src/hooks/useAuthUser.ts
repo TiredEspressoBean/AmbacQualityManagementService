@@ -1,22 +1,12 @@
 // src/hooks/useAuthUser.ts
 import { useQuery } from '@tanstack/react-query'
-import { getCookie } from '@/lib/utils'
+import { api } from '@/lib/api/generated'
 
 export function useAuthUser() {
     return useQuery({
         queryKey: ['authUser'],
-        queryFn: async () => {
-            const res = await fetch('/auth/user/', {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') ?? '',
-                },
-            })
-            if (!res.ok) throw new Error('Not authenticated')
-            return res.json()
-        },
+        queryFn: () => api.auth_user_retrieve(),
         staleTime: 5 * 60 * 1000, // optional: treat as fresh for 5 minutes
-        retry: false,             // optional: don’t retry if unauthenticated
+        retry: false,             // optional: don't retry if unauthenticated
     })
 }

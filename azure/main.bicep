@@ -199,7 +199,7 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-01-01' = {
     EMAIL_BACKEND: emailBackend
     ALLOWED_HOSTS: '${backendApp.properties.defaultHostName}'
     CORS_ALLOWED_ORIGINS: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${customFrontendDomain}'
-    CSRF_TRUSTED_ORIGINS: 'https://${backendApp.properties.defaultHostName}'
+    CSRF_TRUSTED_ORIGINS: 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname}'
     FRONTEND_URL: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${customFrontendDomain}'
   }
 }

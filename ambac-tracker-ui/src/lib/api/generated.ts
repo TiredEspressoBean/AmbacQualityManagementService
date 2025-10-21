@@ -11690,16 +11690,23 @@ Returns the success/fail message.`,
 ]);
 
 // Use VITE_API_TARGET environment variable for production builds
-// In development with Vite dev server, use empty string to rely on proxy
+// In development with Vite dev server, don't set base URL to rely on Vite proxy
 // In production, this will be replaced at build time with the actual backend URL
-const BASE_URL = import.meta.env.VITE_API_TARGET || "";
+const BASE_URL = import.meta.env.VITE_API_TARGET;
 
-export const api = new Zodios(BASE_URL, endpoints, {
-  axiosConfig: {
-    paramsSerializer: (params) =>
-      qs.stringify(params, { arrayFormat: "repeat" }),
-  },
-});
+export const api = BASE_URL
+  ? new Zodios(BASE_URL, endpoints, {
+      axiosConfig: {
+        paramsSerializer: (params) =>
+          qs.stringify(params, { arrayFormat: "repeat" }),
+      },
+    })
+  : new Zodios(endpoints, {
+      axiosConfig: {
+        paramsSerializer: (params) =>
+          qs.stringify(params, { arrayFormat: "repeat" }),
+      },
+    });
 
 export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
   return new Zodios(baseUrl, endpoints, {

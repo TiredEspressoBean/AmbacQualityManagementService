@@ -8,11 +8,13 @@ import {useEffect} from "react";
 import { queryClient } from '@/lib/queryClient'
 import React from "react";
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { api } from "@/lib/api/generated";
 
 export default function App() {
     useEffect(() => {
-        fetch("/api/csrf/", {
-            credentials: "include",
+        // Fetch CSRF token on app load using the api client's axios instance
+        api.axios.get("/api/csrf/", {
+            withCredentials: true,
         });
     }, []);
 

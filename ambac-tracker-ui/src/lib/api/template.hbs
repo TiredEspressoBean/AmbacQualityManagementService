@@ -80,7 +80,18 @@ const endpoints = makeApi([
 {{/each}}
 ]);
 
-export const {{options.apiClientName}} = new Zodios({{#if options.baseUrl}}"{{options.baseUrl}}", {{/if}}endpoints, {
+// Use VITE_API_TARGET environment variable for production builds
+// In development with Vite dev server, don't set base URL to rely on Vite proxy
+// In production, this will be replaced at build time with the actual backend URL
+const BASE_URL = import.meta.env.VITE_API_TARGET{{#if options.baseUrl}} || "{{options.baseUrl}}"{{/if}};
+
+export const {{options.apiClientName}} = BASE_URL
+? new Zodios(BASE_URL, endpoints, {
+axiosConfig: {
+paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
+},
+})
+: new Zodios(endpoints, {
 axiosConfig: {
 paramsSerializer: (params) => qs.stringify(params, { arrayFormat: "repeat" }),
 },
