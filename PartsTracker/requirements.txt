@@ -150,7 +150,6 @@ inflection
 uritemplate
 cascadio==0.0.13
 psycopg2-binary
-redis>=5.0.0
 celery[redis]>=5.3.0
 django-redis>=5.4.0
 django-celery-results>=2.5.0
