@@ -58,21 +58,23 @@ DATABASES = {
 # Azure Blob Storage for static and media files (optional)
 # Requires: pip install django-storages[azure]
 if os.environ.get('AZURE_STORAGE_ACCOUNT_NAME'):
-    try:
-        DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
-        STATICFILES_STORAGE = 'storages.backends.azure_storage.AzureStorage'
-    except ImportError:
-        # Fallback to local storage if django-storages is not installed
-        pass
-    
     AZURE_ACCOUNT_NAME = os.environ.get('AZURE_STORAGE_ACCOUNT_NAME')
     AZURE_ACCOUNT_KEY = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY')
-    AZURE_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER_NAME_MEDIA', 'media')
     AZURE_CUSTOM_DOMAIN = f'{AZURE_ACCOUNT_NAME}.blob.core.windows.net'
-    
-    # Static files
-    STATIC_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{os.environ.get("AZURE_STORAGE_CONTAINER_NAME_STATIC", "static")}/'
-    MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_CONTAINER}/'
+
+    # Static files configuration
+    STATICFILES_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    AZURE_STATIC_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER_NAME_STATIC', 'static')
+    STATIC_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_STATIC_CONTAINER}/'
+
+    # Media files configuration
+    DEFAULT_FILE_STORAGE = 'storages.backends.azure_storage.AzureStorage'
+    AZURE_MEDIA_CONTAINER = os.environ.get('AZURE_STORAGE_CONTAINER_NAME_MEDIA', 'media')
+    MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/{AZURE_MEDIA_CONTAINER}/'
+
+    # Azure storage settings for both static and media
+    AZURE_LOCATION = 'static'  # Default location for collectstatic
+    AZURE_CONTAINER = AZURE_STATIC_CONTAINER  # Used by collectstatic
 else:
     # Use container local storage
     STATIC_URL = '/static/'
