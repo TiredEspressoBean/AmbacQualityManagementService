@@ -175,6 +175,7 @@ AUTH_USER_MODEL = 'Tracker.User'
 
 STATICFILES_DIRS = (
     BASE_DIR / 'Tracker/static',
+    BASE_DIR / 'theme/static',
 )
 
 SITE_ID = 1
