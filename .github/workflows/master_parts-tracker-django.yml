@@ -97,14 +97,24 @@ jobs:
           app-name: 'Parts-tracker-django'
           package: .
 
+      - name: 'Create deployment package for Celery apps'
+        run: |
+          echo "Creating deployment ZIP..."
+          zip -r deploy.zip . -x '*.git*' 'test-structure.zip'
+          ls -lh deploy.zip
+
       - name: 'Deploy to Celery Worker'
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'ambactracker-celery-worker'
-          package: .
+        run: |
+          echo "Deploying to ambactracker-celery-worker..."
+          az webapp deployment source config-zip \
+            --resource-group PartsTracker \
+            --name ambactracker-celery-worker \
+            --src deploy.zip
 
       - name: 'Deploy to Celery Beat'
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'ambactracker-celery-beat'
-          package: .
+        run: |
+          echo "Deploying to ambactracker-celery-beat..."
+          az webapp deployment source config-zip \
+            --resource-group PartsTracker \
+            --name ambactracker-celery-beat \
+            --src deploy.zip
