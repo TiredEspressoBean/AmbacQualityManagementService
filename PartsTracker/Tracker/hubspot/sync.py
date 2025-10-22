@@ -25,10 +25,13 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
     # Get company (use first if multiple)
     company = None
     if deal_id in deal_to_companies and deal_to_companies[deal_id]:
-        company_info = company_dict.get(str(deal_to_companies[deal_id][0]))
+        company_id = deal_to_companies[deal_id][0]
+        company_info = company_dict.get(str(company_id))
         if company_info:
+            # Use company ID as fallback if name is missing
+            company_name = company_info.get('name') or f"Company {company_id}"
             company, _ = Companies.objects.get_or_create(
-                name=company_info['name'],
+                name=company_name,
                 defaults={}
             )
 
