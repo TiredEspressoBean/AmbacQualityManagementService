@@ -160,7 +160,7 @@ resource backendAppConfig 'Microsoft.Web/sites/config@2023-01-01' = {
   parent: backendApp
   name: 'web'
   properties: {
-    appCommandLine: 'gunicorn --bind=0.0.0.0 --timeout 600 --chdir /home/site/wwwroot PartsTrackerApp.wsgi'
+    appCommandLine: 'gunicorn --bind=0.0.0.0 --timeout 600 PartsTrackerApp.wsgi'
   }
 }
 
