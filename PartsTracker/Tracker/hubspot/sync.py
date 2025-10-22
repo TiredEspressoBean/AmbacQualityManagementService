@@ -56,6 +56,7 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
     }
 
 
+
 def sync_all_deals():
     """Sync deals from HubSpot. Only touches orders with hubspot_deal_id."""
     # Create sync log
