@@ -419,6 +419,12 @@ class User(AbstractUser):
     Includes a timestamp for user registration and optional organizational linkage for access scoping.
     """
 
+    first_name = models.CharField(max_length=150, blank=True, null=True)
+    """User's first name - nullable to support HubSpot contacts without complete information."""
+
+    last_name = models.CharField(max_length=150, blank=True, null=True)
+    """User's last name - nullable to support HubSpot contacts without complete information."""
+
     date_joined = models.DateTimeField(default=timezone.now)
     """Timestamp for when the user account was created."""
 
