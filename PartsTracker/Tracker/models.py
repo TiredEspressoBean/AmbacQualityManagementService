@@ -1126,7 +1126,7 @@ class Orders(SecureModel):
     Supports lifecycle tracking via status, estimated deadlines, and soft-archiving for traceability.
     """
 
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=200)
     """Internal or customer-facing name for the order."""
 
     customer_note = models.TextField(max_length=500, null=True, blank=True)
