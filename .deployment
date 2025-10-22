@@ -1,3 +1,2 @@
 [config]
-project = PartsTracker
 SCM_DO_BUILD_DURING_DEPLOYMENT = true
