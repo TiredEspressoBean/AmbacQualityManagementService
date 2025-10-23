@@ -11706,6 +11706,20 @@ Returns the success/fail message.`,
   },
 ]);
 
+// Helper function to get CSRF token from cookies
+function getCsrfToken(): string | null {
+  const name = "csrftoken=";
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookies = decodedCookie.split(";");
+  for (let cookie of cookies) {
+    cookie = cookie.trim();
+    if (cookie.indexOf(name) === 0) {
+      return cookie.substring(name.length);
+    }
+  }
+  return null;
+}
+
 // Use VITE_API_TARGET environment variable for production builds
 // In development with Vite dev server, don't set base URL to rely on Vite proxy
 // In production, this will be replaced at build time with the actual backend URL
@@ -11714,23 +11728,45 @@ const BASE_URL = import.meta.env.VITE_API_TARGET;
 export const api = BASE_URL
   ? new Zodios(BASE_URL, endpoints, {
       axiosConfig: {
+        withCredentials: true,
         paramsSerializer: (params) =>
           qs.stringify(params, { arrayFormat: "repeat" }),
+        headers: {
+          "X-CSRFToken": getCsrfToken() || "",
+        },
       },
     })
   : new Zodios(endpoints, {
       axiosConfig: {
+        withCredentials: true,
         paramsSerializer: (params) =>
           qs.stringify(params, { arrayFormat: "repeat" }),
+        headers: {
+          "X-CSRFToken": getCsrfToken() || "",
+        },
       },
     });
+
+// Axios interceptor to refresh CSRF token before each request
+api.axios.interceptors.request.use((config) => {
+  const csrfToken = getCsrfToken();
+  if (csrfToken && config.headers) {
+    config.headers["X-CSRFToken"] = csrfToken;
+  }
+  return config;
+});
 
 export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
   return new Zodios(baseUrl, endpoints, {
     axiosConfig: {
+      withCredentials: true,
       ...options?.axiosConfig,
       paramsSerializer: (params) =>
         qs.stringify(params, { arrayFormat: "repeat" }),
+      headers: {
+        "X-CSRFToken": getCsrfToken() || "",
+        ...options?.axiosConfig?.headers,
+      },
     },
     ...options,
   });
