@@ -21,6 +21,7 @@ CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-origin CSRF cookies
 # Share cookies across subdomains (api.ambacinternational.com and tracker.ambacinternational.com)
 SESSION_COOKIE_DOMAIN = '.ambacinternational.com'
 CSRF_COOKIE_DOMAIN = '.ambacinternational.com'
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
