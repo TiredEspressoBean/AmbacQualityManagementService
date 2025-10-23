@@ -1,9 +1,9 @@
-WEEKLY ORDER UPDATE
+ORDER UPDATE
 Week ending {{ week_ending|date:"F d, Y" }}
 
 Hi {{ customer.first_name|default:"there" }}!
 
-Here's your weekly update on your {{ total_orders }} active order{{ total_orders|pluralize }}:
+Here's your update on your {{ total_orders }} active order{{ total_orders|pluralize }}:
 
 {% for order in orders %}
 =====================================

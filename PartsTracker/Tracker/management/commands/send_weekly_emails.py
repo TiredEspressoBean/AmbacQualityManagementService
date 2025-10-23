@@ -115,7 +115,7 @@ class Command(BaseCommand):
         }
 
         # Render email
-        subject = f"Weekly Order Update - {timezone.now().strftime('%B %d, %Y')}"
+        subject = f"Order Update - {timezone.now().strftime('%B %d, %Y')}"
         html_content = render_to_string('emails/weekly_customer_update.html', context)
         text_content = render_to_string('emails/weekly_customer_update.txt', context)
 
@@ -235,7 +235,7 @@ class Command(BaseCommand):
             }
 
             # Render email
-            subject = f"[TEST] Weekly Order Update - {timezone.now().strftime('%B %d, %Y')} - Customer: {customer.username}"
+            subject = f"Weekly Order Update - {timezone.now().strftime('%B %d, %Y')} - Customer: {customer.username}"
             html_content = render_to_string('emails/weekly_customer_update.html', context)
             text_content = render_to_string('emails/weekly_customer_update.txt', context)
 
