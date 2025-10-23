@@ -29,4 +29,4 @@ jobs:
           api_location: ""
           output_location: "dist"
         env:
-          VITE_API_TARGET: "https://parts-tracker-django-gqfygdhsejamauh3.centralus-01.azurewebsites.net"
+          VITE_API_TARGET: "https://api.ambacinternational.com"

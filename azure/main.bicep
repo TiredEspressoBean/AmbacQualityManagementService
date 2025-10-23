@@ -199,9 +199,9 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2023-01-01' = {
     EMAIL_HOST_USER: emailHostUser
     EMAIL_HOST_PASSWORD: emailHostPassword
     EMAIL_BACKEND: emailBackend
-    ALLOWED_HOSTS: '${backendApp.properties.defaultHostName}'
+    ALLOWED_HOSTS: empty(customBackendDomain) ? '${backendApp.properties.defaultHostName}' : '${backendApp.properties.defaultHostName},${customBackendDomain}'
     CORS_ALLOWED_ORIGINS: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${staticWebApp.properties.defaultHostname},https://${customFrontendDomain}'
-    CSRF_TRUSTED_ORIGINS: empty(customFrontendDomain) ? 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname}' : 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname},https://${customFrontendDomain}'
+    CSRF_TRUSTED_ORIGINS: empty(customFrontendDomain) && empty(customBackendDomain) ? 'https://${backendApp.properties.defaultHostName},https://${staticWebApp.properties.defaultHostname}' : 'https://${backendApp.properties.defaultHostName}${empty(customBackendDomain) ? '' : ',https://${customBackendDomain}'},https://${staticWebApp.properties.defaultHostname}${empty(customFrontendDomain) ? '' : ',https://${customFrontendDomain}'}'
     FRONTEND_URL: empty(customFrontendDomain) ? 'https://${staticWebApp.properties.defaultHostname}' : 'https://${customFrontendDomain}'
   }
 }
