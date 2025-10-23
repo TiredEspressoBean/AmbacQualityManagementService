@@ -103,18 +103,35 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D0F5033F7FA442309649C563C02819E1 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6B16089ABB6140E59B61D4BD52C77673 }}
 
-      - name: 'Deploy to Backend (Django Web)'
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'Parts-tracker-django'
-          package: .
-          startup-command: 'gunicorn --bind=0.0.0.0 --timeout 600 PartsTrackerApp.wsgi'
-
-      - name: 'Create deployment package for Celery apps'
+      - name: 'Create deployment package for all apps'
         run: |
           echo "Creating deployment ZIP..."
           zip -r deploy.zip . -x '*.git*' 'test-structure.zip'
           ls -lh deploy.zip
+          echo "Contents of ZIP (first 30 files):"
+          unzip -l deploy.zip | head -30
+
+      - name: 'Deploy to Backend (Django Web)'
+        run: |
+          echo "Deploying to Parts-tracker-django..."
+          az webapp deploy \
+            --resource-group PartsTracker \
+            --name Parts-tracker-django \
+            --src-path deploy.zip \
+            --type zip \
+            --async false
+          echo "Backend deployment completed"
+
+      - name: 'Ensure startup command is preserved'
+        run: |
+          echo "Verifying startup command after deployment..."
+          az webapp config set \
+            --resource-group PartsTracker \
+            --name Parts-tracker-django \
+            --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 PartsTrackerApp.wsgi"
+
+          echo "Restarting app to apply configuration..."
+          az webapp restart --resource-group PartsTracker --name Parts-tracker-django
 
       - name: 'Deploy to Celery Worker (background)'
         run: |
