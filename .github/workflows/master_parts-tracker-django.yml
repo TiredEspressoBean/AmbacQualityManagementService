@@ -111,15 +111,22 @@ jobs:
           echo "Contents of ZIP (first 30 files):"
           unzip -l deploy.zip | head -30
 
-      - name: 'Deploy to Backend (Django Web)'
+      - name: 'Deploy to Backend (Django Web) using ZipDeploy'
         run: |
-          echo "Deploying to Parts-tracker-django..."
-          az webapp deploy \
-            --resource-group PartsTracker \
-            --name Parts-tracker-django \
-            --src-path deploy.zip \
-            --type zip \
-            --async false
+          echo "Deploying to Parts-tracker-django using ZipDeploy..."
+
+          # Get publishing credentials
+          CREDS=$(az webapp deployment list-publishing-credentials --resource-group PartsTracker --name Parts-tracker-django --query "{username:publishingUserName, password:publishingPassword}" -o json)
+          USERNAME=$(echo $CREDS | jq -r '.username')
+          PASSWORD=$(echo $CREDS | jq -r '.password')
+
+          # Deploy using Kudu ZipDeploy API (triggers build and extraction)
+          curl -X POST \
+            -u "$USERNAME:$PASSWORD" \
+            --data-binary @deploy.zip \
+            -H "Content-Type: application/zip" \
+            https://parts-tracker-django-gqfygdhsejamauh3.scm.centralus-01.azurewebsites.net/api/zipdeploy
+
           echo "Backend deployment completed"
 
       - name: 'Ensure startup command is preserved'
