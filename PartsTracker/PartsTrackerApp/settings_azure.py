@@ -35,8 +35,15 @@ if cors_origins_str:
     CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 else:
     CORS_ALLOWED_ORIGINS = []
-    
+
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF trusted origins (for cross-domain POST requests)
+csrf_trusted_origins_str = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if csrf_trusted_origins_str:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_trusted_origins_str.split(',') if origin.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = []
 
 # Database configuration for Azure PostgreSQL
 db_host = os.environ.get('POSTGRES_HOST', 'localhost')
