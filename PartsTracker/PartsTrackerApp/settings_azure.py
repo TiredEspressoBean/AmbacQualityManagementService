@@ -18,6 +18,9 @@ CSRF_COOKIE_SECURE = not DEBUG
 # Required for cross-origin session cookies (Static Web App + Django backend on different domains)
 SESSION_COOKIE_SAMESITE = 'None'  # Allow cross-origin cookies
 CSRF_COOKIE_SAMESITE = 'None'     # Allow cross-origin CSRF cookies
+# Share cookies across subdomains (api.ambacinternational.com and tracker.ambacinternational.com)
+SESSION_COOKIE_DOMAIN = '.ambacinternational.com'
+CSRF_COOKIE_DOMAIN = '.ambacinternational.com'
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
