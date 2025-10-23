@@ -1233,6 +1233,63 @@ class Orders(SecureModel):
         return [{"id": step["step_id"], "name": step_id_to_name.get(step["step_id"], f"Step {step['step_id']}"),
                  "count": step["count"]} for step in step_counts]
 
+    def get_gate_info(self):
+        """
+        Get HubSpot gate progress information for customer display.
+
+        Returns dict with current gate info and progress through active gates,
+        or None if no current gate is set.
+        """
+        if not self.current_hubspot_gate:
+            return None
+
+        current_gate = self.current_hubspot_gate
+        current_gate_name = current_gate.get_customer_display_name()
+
+        # Get all gates that should be included in progress tracking
+        active_gates = ExternalAPIOrderIdentifier.objects.filter(
+            pipeline_id=current_gate.pipeline_id,
+            include_in_progress=True
+        ).order_by('display_order')
+
+        result = {
+            'current_gate_name': current_gate_name,
+            'current_gate_full_name': current_gate.stage_name,
+            'is_in_progress': current_gate.include_in_progress,
+            'gates': [],  # List of all gates with their status
+        }
+
+        # Build list of gates with their status
+        current_index = None
+        for idx, gate in enumerate(active_gates):
+            gate_data = {
+                'name': gate.get_customer_display_name(),
+                'full_name': gate.stage_name,
+                'is_current': gate.id == current_gate.id,
+                'is_completed': False,  # We'll determine this below
+            }
+
+            if gate.id == current_gate.id:
+                current_index = idx
+
+            result['gates'].append(gate_data)
+
+        # Mark completed gates (all gates before current)
+        if current_index is not None:
+            for i in range(current_index):
+                result['gates'][i]['is_completed'] = True
+
+        # Only calculate progress if current gate is part of active pipeline
+        if current_gate.include_in_progress and current_index is not None:
+            try:
+                result['current_position'] = current_index + 1
+                result['total_gates'] = len(active_gates)
+                result['progress_percent'] = round(((current_index + 1) / len(active_gates)) * 100, 1)
+            except ZeroDivisionError:
+                pass
+
+        return result
+
     def bulk_increment_parts_at_step(self, step_id):
         """Increment all parts at a specific step"""
         try:
@@ -2236,6 +2293,9 @@ class ExternalAPIOrderIdentifier(SecureModel):
     last_synced_at = models.DateTimeField(null=True, blank=True)
     """When this stage was last synced from HubSpot."""
 
+    include_in_progress = models.BooleanField(default=False)
+    """Whether to include this gate in customer progress tracking. Set to True for active pipeline gates."""
+
     class Meta:
         verbose_name = "External API Order Identifier"
         verbose_name_plural = "External API Order Identifiers"
@@ -2250,6 +2310,22 @@ class ExternalAPIOrderIdentifier(SecureModel):
         Returns a string that clearly represents the stage.
         """
         return self.stage_name
+
+    def get_customer_display_name(self):
+        """
+        Get customer-facing display name by removing 'Gate [Number]' prefix.
+
+        Examples:
+            'Gate One Quotation' -> 'Quotation'
+            'Gate Two Design Review' -> 'Design Review'
+            'Gate Five' -> 'Gate Five'
+            'Closed Won' -> 'Closed Won'
+        """
+        import re
+        # Remove "Gate [Word] " prefix if present
+        cleaned = re.sub(r'^Gate\s+\w+\s+', '', self.stage_name)
+        # If nothing was removed or result is empty, return original
+        return cleaned if cleaned and cleaned != self.stage_name else self.stage_name
 
 
 class HubSpotSyncLog(models.Model):

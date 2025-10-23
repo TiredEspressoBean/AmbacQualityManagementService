@@ -153,7 +153,8 @@ def get_contact_info_from_contact_ids(contact_ids):
         "properties": [
             "firstname",
             "lastname",
-            "email"
+            "email",
+            "associatedcompanyid"
         ],
         "inputs": [{"id": company_id} for company_id in contact_ids],
     }
@@ -166,9 +167,10 @@ def get_contact_info_from_contact_ids(contact_ids):
 
     for result in json_response["results"]:
         contacts_data[result["id"]] = {
-            "first_name": result['properties']["firstname"],
-            "last_name": result['properties']['lastname'],
-            "email": result['properties']['email'],
+            "first_name": result['properties'].get("firstname", ""),
+            "last_name": result['properties'].get("lastname", ""),
+            "email": result['properties'].get('email'),
+            "associated_company_id": result['properties'].get('associatedcompanyid'),
         }
 
     return contacts_data
@@ -224,12 +226,17 @@ def update_stages(pipeline_id):
     stages_updated = 0
 
     for result in results_json.get("results", []):
+        stage_name = result["label"]
+        # Include in progress tracking if stage name starts with "Gate"
+        include_in_progress = stage_name.startswith("Gate")
+
         ExternalAPIOrderIdentifier.objects.update_or_create(
             API_id=result["id"],
             defaults={
-                "stage_name": result["label"],
+                "stage_name": stage_name,
                 "pipeline_id": pipeline_id,
                 "display_order": result.get("displayOrder", 0),
+                "include_in_progress": include_in_progress,
                 "last_synced_at": timezone.now()
             }
         )

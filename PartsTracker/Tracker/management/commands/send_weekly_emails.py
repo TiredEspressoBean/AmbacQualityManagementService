@@ -77,8 +77,9 @@ class Command(BaseCommand):
             if not active_orders.exists():
                 continue
 
-            # Prepare email data
-            email_data = self.prepare_order_data(active_orders)
+            # Prepare email data using shared function from tasks
+            from Tracker.tasks import _prepare_order_data
+            email_data = _prepare_order_data(active_orders)
 
             if dry_run:
                 self.stdout.write(f"Would send email to: {customer.email}")
@@ -103,56 +104,6 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f'Successfully sent updates to {sent_count} customers')
             )
-
-    def prepare_order_data(self, orders):
-        """Prepare simplified order data for email"""
-        order_summaries = []
-
-        for order in orders:
-            # Get simple stats
-            total_parts = order.parts.count()
-            completed_parts = order.parts.filter(part_status='COMPLETED', archived=False).count()
-
-            parts_qs = order.parts.filter(archived=False).select_related('step')
-
-            total_parts = parts_qs.filter(archived=False).count()
-
-            # Average current step index (your intended metric)
-            avg_step = parts_qs.aggregate(a=Avg('step__order'))['a'] or 0
-
-            # All processes for the parts in this order
-            process_ids = parts_qs.values_list('step__process_id', flat=True).distinct()
-
-            # True max step across those processes
-            max_step = (
-                           Steps.objects.filter(process_id__in=process_ids)
-                           .aggregate(m=Max('order'))['m']
-                       ) or 0
-
-            print("AVG STEP: ", avg_step, "MAX STEP: ", max_step)
-
-            progress = int(round(100 * (avg_step / max_step))) if max_step else 0
-
-            # Get current stage
-            current_stage = "Not Started"
-            if order.parts.exists():
-                # Get the most common step name
-                first_part = order.parts.first()
-                if first_part and first_part.step:
-                    current_stage = first_part.step.name
-
-            order_summaries.append({
-                'name': order.name,
-                'status': order.get_order_status_display(),
-                'progress': round(progress),
-                'current_stage': current_stage,
-                'completion_date': order.estimated_completion,
-                'original_completion': order.original_completion_date,
-                'total_parts': total_parts,
-                'completed_parts': completed_parts,
-            })
-
-        return order_summaries
 
     def send_customer_email(self, customer, order_data):
         """Send weekly update email to customer"""
@@ -204,8 +155,9 @@ class Command(BaseCommand):
             self.stdout.write(f'No active orders found for {email}')
             return
 
-        # Prepare email data
-        email_data = self.prepare_order_data(active_orders)
+        # Prepare email data using shared function from tasks
+        from Tracker.tasks import _prepare_order_data
+        email_data = _prepare_order_data(active_orders)
 
         context = {
             'customer': customer,
@@ -269,8 +221,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'No active orders found for customer {customer.username}'))
             return
 
-        # Prepare email data
-        email_data = self.prepare_order_data(active_orders)
+        # Prepare email data using shared function from tasks
+        from Tracker.tasks import _prepare_order_data
+        email_data = _prepare_order_data(active_orders)
 
         # Send email to test address instead of customer email
         try:

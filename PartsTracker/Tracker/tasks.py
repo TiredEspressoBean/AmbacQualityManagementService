@@ -257,6 +257,10 @@ def _prepare_order_data(orders):
     """
     Helper function to prepare order data for email.
     Extracted from management command logic.
+
+    Filters orders to only include those with:
+    - Active gate progress (is_in_progress=True), OR
+    - Production parts in progress
     """
     from django.db.models import Avg, Max
     from Tracker.models import Steps
@@ -289,6 +293,17 @@ def _prepare_order_data(orders):
             if first_part and first_part.step:
                 current_stage = first_part.step.name
 
+        gate_info = order.get_gate_info()
+
+        # Filter: Only include orders with active gate progress OR production progress
+        has_gate_progress = gate_info and gate_info.get('is_in_progress', False)
+        has_production_progress = total_parts > 0 and current_stage != "Not Started"
+
+        if not (has_gate_progress or has_production_progress):
+            # Skip orders in terminal gate states with no production
+            logger.debug(f"Skipping order {order.name} - no active progress (gate={has_gate_progress}, production={has_production_progress})")
+            continue
+
         order_summaries.append({
             'name': order.name,
             'status': order.get_order_status_display(),
@@ -298,6 +313,7 @@ def _prepare_order_data(orders):
             'original_completion': order.original_completion_date,
             'total_parts': total_parts,
             'completed_parts': completed_parts,
+            'gate_info': gate_info,
         })
 
     return order_summaries

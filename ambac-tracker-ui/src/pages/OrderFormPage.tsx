@@ -97,7 +97,7 @@ export default function OrderFormPage() {
             customer_note: "",
             estimated_completion: undefined,
             order_status: ORDER_STATUS[0],
-            current_hubspot_gate: undefined,
+            current_hubspot_gate: null,
             company: 0,
             archived: false,
         },
@@ -112,12 +112,12 @@ export default function OrderFormPage() {
                 customer_note: order.customer_note || "",
                 estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
-                current_hubspot_gate: order.current_hubspot_gate || undefined,
+                current_hubspot_gate: order.current_hubspot_gate ?? null,
                 company: order.company || 0,
                 archived: order.archived || false,
             });
         }
-    }, [isEditing, order, form]);
+    }, [isEditing, order, form, hubspotGates.length]);
 
     function onSubmit(values: z.infer<typeof formSchema>) {
         const submitData = {
@@ -410,33 +410,37 @@ export default function OrderFormPage() {
                     <FormField
                         control={form.control}
                         name="current_hubspot_gate"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Current HubSpot Gate</FormLabel>
-                                <Select 
-                                    onValueChange={(value) => field.onChange(value === "null" ? undefined : Number(value))}
-                                    value={field.value ? String(field.value) : "null"}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select HubSpot gate" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="null">No gate selected</SelectItem>
-                                        {hubspotGates.map((gate) => (
-                                            <SelectItem key={gate.id} value={String(gate.id)}>
-                                                {gate.stage_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormDescription>
-                                    Current HubSpot pipeline gate
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                        render={({ field }) => {
+                            const stringValue = field.value !== null && field.value !== undefined ? String(field.value) : "null";
+                            return (
+                                <FormItem>
+                                    <FormLabel>Current HubSpot Gate</FormLabel>
+                                    <Select
+                                        key={`hubspot-gate-${stringValue}`}
+                                        onValueChange={(value) => field.onChange(value === "null" ? null : Number(value))}
+                                        defaultValue={stringValue}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select HubSpot gate" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="null">No gate selected</SelectItem>
+                                            {hubspotGates.map((gate) => (
+                                                <SelectItem key={gate.id} value={String(gate.id)}>
+                                                    {gate.stage_name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        Current HubSpot pipeline gate
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            );
+                        }}
                     />
 
                     <FormField

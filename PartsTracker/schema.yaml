@@ -10924,6 +10924,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        include_in_progress:
+          type: boolean
         previous_version:
           type: integer
           nullable: true
@@ -10969,6 +10971,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        include_in_progress:
+          type: boolean
         previous_version:
           type: integer
           nullable: true
@@ -11550,7 +11554,7 @@ components:
           readOnly: true
         name:
           type: string
-          maxLength: 50
+          maxLength: 200
         customer_note:
           type: string
           nullable: true
@@ -11588,6 +11592,11 @@ components:
           type: array
           items: {}
           readOnly: true
+        gate_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         customer_first_name:
           type: string
           nullable: true
@@ -11619,6 +11628,7 @@ components:
       - customer_first_name
       - customer_info
       - customer_last_name
+      - gate_info
       - id
       - name
       - order_status
@@ -11632,7 +11642,7 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 50
+          maxLength: 200
         customer_note:
           type: string
           nullable: true
@@ -12717,6 +12727,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        include_in_progress:
+          type: boolean
         previous_version:
           type: integer
           nullable: true
@@ -12812,7 +12824,7 @@ components:
         name:
           type: string
           minLength: 1
-          maxLength: 50
+          maxLength: 200
         customer_note:
           type: string
           nullable: true
@@ -13189,9 +13201,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -13223,9 +13237,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
     PatchedUserRequest:
       type: object
@@ -13240,9 +13256,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -14447,9 +14465,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -14504,9 +14524,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -14549,9 +14571,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -14593,9 +14617,11 @@ components:
           title: Email address
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
       required:
       - email
@@ -14614,9 +14640,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
       required:
       - username
@@ -14698,9 +14726,11 @@ components:
           maxLength: 150
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string
@@ -14742,9 +14772,11 @@ components:
             only.
         first_name:
           type: string
+          nullable: true
           maxLength: 150
         last_name:
           type: string
+          nullable: true
           maxLength: 150
         email:
           type: string

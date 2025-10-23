@@ -1,4 +1,5 @@
 import logging
+import secrets
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.utils import timezone
@@ -40,14 +41,37 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
     if deal_id in deal_to_contacts and deal_to_contacts[deal_id]:
         contact_info = contact_dict.get(str(deal_to_contacts[deal_id][0]))
         if contact_info and contact_info.get('email'):
-            customer, _ = User.objects.get_or_create(
+            # Get the contact's associated company (not the deal's company)
+            contact_company = None
+            if contact_info.get('associated_company_id'):
+                contact_company_id = contact_info['associated_company_id']
+                contact_company_info = company_dict.get(str(contact_company_id))
+                if contact_company_info:
+                    company_name = contact_company_info.get('name') or f"Company {contact_company_id}"
+                    contact_company, _ = Companies.objects.get_or_create(
+                        name=company_name,
+                        defaults={}
+                    )
+
+            customer, created = User.objects.update_or_create(
                 email=contact_info['email'],
                 defaults={
                     'first_name': contact_info.get('first_name', ''),
                     'last_name': contact_info.get('last_name', ''),
-                    'username': contact_info['email']
+                    'username': contact_info['email'],
+                    'parent_company': contact_company,
+                    'is_active': True,
                 }
             )
+            # Set a secure placeholder password for new users only
+            if created:
+                # Generate a 64-character random password that's extremely unlikely to be guessed
+                placeholder_password = f"HUBSPOT_PLACEHOLDER_{secrets.token_urlsafe(48)}"
+                customer.set_password(placeholder_password)
+                customer.save()
+                logger.info(f"Created new user from HubSpot contact: {customer.email} with company: {contact_company.name if contact_company else 'None'}")
+            else:
+                logger.info(f"Updated user from HubSpot contact: {customer.email} with company: {contact_company.name if contact_company else 'None'}")
 
     return {
         'name': deal['properties'].get('dealname', f'Deal {deal_id}'),
@@ -85,8 +109,17 @@ def sync_all_deals():
         deal_to_contacts = get_contacts_from_deal_id(deal_id_list)
         deal_to_companies = get_company_ids_from_deal_id(deal_id_list)
 
+        # Fetch contact info (including their associated company IDs)
         contact_dict = get_contact_info_from_contact_ids(extract_ids(deal_to_contacts))
-        company_dict = get_company_info_from_company_ids(extract_ids(deal_to_companies))
+
+        # Collect all company IDs: from deals AND from contacts
+        all_company_ids = set(extract_ids(deal_to_companies))
+        for contact_info in contact_dict.values():
+            if contact_info.get('associated_company_id'):
+                all_company_ids.add(contact_info['associated_company_id'])
+
+        # Fetch all companies in one batch
+        company_dict = get_company_info_from_company_ids(list(all_company_ids))
 
         # Process deals
         created_count = 0

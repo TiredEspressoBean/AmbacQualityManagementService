@@ -480,7 +480,7 @@ type NotificationScheduleRequest = {
 type Orders = {
   id: number;
   /**
-   * @maxLength 50
+   * @maxLength 200
    */
   name: string;
   customer_note?:
@@ -498,6 +498,7 @@ type Orders = {
   current_hubspot_gate?: (number | null) | undefined;
   parts_summary: {};
   process_stages: Array<unknown>;
+  gate_info: {};
   customer_first_name: string | null;
   customer_last_name: string | null;
   company_name: string | null;
@@ -511,14 +512,18 @@ type UserSelect = {
    * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
    */
   username: string;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
   email?: /**
    * @maxLength 254
    */
@@ -560,7 +565,7 @@ type OrderStatusEnum =
 type OrdersRequest = {
   /**
    * @minLength 1
-   * @maxLength 50
+   * @maxLength 200
    */
   name: string;
   customer_note?:
@@ -1517,14 +1522,18 @@ type User = {
    * @pattern ^[\w.@+-]+$
    */
   username: string;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
   email?: /**
    * @maxLength 254
    */
@@ -1734,7 +1743,7 @@ type PatchedNotificationPreferenceRequest = Partial<{
 type PatchedOrdersRequest = Partial<{
   /**
    * @minLength 1
-   * @maxLength 50
+   * @maxLength 200
    */
   name: string;
   /**
@@ -1999,14 +2008,18 @@ type UserDetail = {
    * @pattern ^[\w.@+-]+$
    */
   username: string;
-  first_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
-  last_name?: /**
-   * @maxLength 150
-   */
-  string | undefined;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
   email?: /**
    * @maxLength 254
    */
@@ -2089,8 +2102,8 @@ const UserDetail: z.ZodType<UserDetail> = z
       .string()
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
     email: z.string().max(254).email().optional(),
     is_staff: z.boolean().optional(),
     is_active: z.boolean().optional(),
@@ -2105,8 +2118,8 @@ const UserDetailRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
     email: z.string().max(254).email().optional(),
     is_staff: z.boolean().optional(),
     is_active: z.boolean().optional(),
@@ -2120,8 +2133,8 @@ const PatchedUserDetailRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150),
-    last_name: z.string().max(150),
+    first_name: z.string().max(150).nullable(),
+    last_name: z.string().max(150).nullable(),
     email: z.string().max(254).email(),
     is_staff: z.boolean(),
     is_active: z.boolean(),
@@ -2199,8 +2212,8 @@ const UserSelect: z.ZodType<UserSelect> = z
   .object({
     id: z.number().int(),
     username: z.string(),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
     email: z.string().max(254).email().optional(),
     full_name: z.string(),
     is_active: z.boolean(),
@@ -2473,6 +2486,7 @@ const ExternalAPIOrderIdentifier = z
     pipeline_id: z.string().max(50).nullish(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     last_synced_at: z.string().datetime({ offset: true }).nullish(),
+    include_in_progress: z.boolean().optional(),
     previous_version: z.number().int().nullish(),
   })
   .passthrough();
@@ -2487,6 +2501,7 @@ const ExternalAPIOrderIdentifierRequest = z
     pipeline_id: z.string().max(50).nullish(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     last_synced_at: z.string().datetime({ offset: true }).nullish(),
+    include_in_progress: z.boolean().optional(),
     previous_version: z.number().int().nullish(),
   })
   .passthrough();
@@ -2501,6 +2516,7 @@ const PatchedExternalAPIOrderIdentifierRequest = z
     pipeline_id: z.string().max(50).nullable(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647),
     last_synced_at: z.string().datetime({ offset: true }).nullable(),
+    include_in_progress: z.boolean(),
     previous_version: z.number().int().nullable(),
   })
   .partial()
@@ -2677,7 +2693,7 @@ const OrderStatusEnum = z.enum([
 const Orders: z.ZodType<Orders> = z
   .object({
     id: z.number().int(),
-    name: z.string().max(50),
+    name: z.string().max(200),
     customer_note: z.string().max(500).nullish(),
     customer: z.number().int().nullish(),
     customer_info: UserSelect.nullable(),
@@ -2688,6 +2704,7 @@ const Orders: z.ZodType<Orders> = z
     current_hubspot_gate: z.number().int().nullish(),
     parts_summary: z.object({}).partial().passthrough(),
     process_stages: z.array(z.unknown()),
+    gate_info: z.object({}).partial().passthrough().nullable(),
     customer_first_name: z.string().nullable(),
     customer_last_name: z.string().nullable(),
     company_name: z.string().nullable(),
@@ -2706,7 +2723,7 @@ const PaginatedOrdersList: z.ZodType<PaginatedOrdersList> = z
   .passthrough();
 const OrdersRequest: z.ZodType<OrdersRequest> = z
   .object({
-    name: z.string().min(1).max(50),
+    name: z.string().min(1).max(200),
     customer_note: z.string().max(500).nullish(),
     customer: z.number().int().nullish(),
     company: z.number().int().nullish(),
@@ -2717,7 +2734,7 @@ const OrdersRequest: z.ZodType<OrdersRequest> = z
   .passthrough();
 const PatchedOrdersRequest: z.ZodType<PatchedOrdersRequest> = z
   .object({
-    name: z.string().min(1).max(50),
+    name: z.string().min(1).max(200),
     customer_note: z.string().max(500).nullable(),
     customer: z.number().int().nullable(),
     company: z.number().int().nullable(),
@@ -3360,8 +3377,8 @@ const User: z.ZodType<User> = z
       .string()
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
     email: z.string().max(254).email().optional(),
     full_name: z.string(),
     is_staff: z.boolean().optional(),
@@ -3386,8 +3403,8 @@ const UserRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
     email: z.string().max(254).email().optional(),
     is_staff: z.boolean().optional(),
     is_active: z.boolean().optional(),
@@ -3402,8 +3419,8 @@ const PatchedUserRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150),
-    last_name: z.string().max(150),
+    first_name: z.string().max(150).nullable(),
+    last_name: z.string().max(150).nullable(),
     email: z.string().max(254).email(),
     is_staff: z.boolean(),
     is_active: z.boolean(),
@@ -3703,8 +3720,8 @@ const UserDetails = z
       .max(150)
       .regex(/^[\w.@+-]+$/),
     email: z.string().email(),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
   })
   .passthrough();
 const UserDetailsRequest = z
@@ -3714,8 +3731,8 @@ const UserDetailsRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).optional(),
-    last_name: z.string().max(150).optional(),
+    first_name: z.string().max(150).nullish(),
+    last_name: z.string().max(150).nullish(),
   })
   .passthrough();
 const PatchedUserDetailsRequest = z
@@ -3725,8 +3742,8 @@ const PatchedUserDetailsRequest = z
       .min(1)
       .max(150)
       .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150),
-    last_name: z.string().max(150),
+    first_name: z.string().max(150).nullable(),
+    last_name: z.string().max(150).nullable(),
   })
   .partial()
   .passthrough();

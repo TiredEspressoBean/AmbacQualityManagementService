@@ -414,11 +414,22 @@ class UserViewSet(ExcelExportMixin, viewsets.ModelViewSet):
         # User model doesn't inherit from SecureModel, so filter by company manually
         user = self.request.user
         if user.is_staff:
-            # Staff users can see all users in their company or all users if no company
-            if user.parent_company:
-                return User.objects.filter(parent_company=user.parent_company).select_related('parent_company')
-            else:
+            # Superusers always see all users
+            if user.is_superuser:
                 return User.objects.all().select_related('parent_company')
+
+            # Check if user has any groups that are NOT 'Customers'
+            non_customer_groups = user.groups.exclude(name='Customers').exists()
+            if non_customer_groups:
+                # Staff with non-customer groups (Employees, QA, Admin, Manager, Operator, etc.) see all users
+                return User.objects.all().select_related('parent_company')
+
+            # Staff with no company see all users (system-level staff)
+            if not user.parent_company:
+                return User.objects.all().select_related('parent_company')
+
+            # Other staff (or staff only in Customers group) see their company's users
+            return User.objects.filter(parent_company=user.parent_company).select_related('parent_company')
         else:
             # Non-staff users can only see themselves
             return User.objects.filter(id=user.id).select_related('parent_company')

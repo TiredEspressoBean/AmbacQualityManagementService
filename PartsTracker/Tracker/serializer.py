@@ -126,6 +126,7 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
     company_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
     process_stages = serializers.SerializerMethodField()
+    gate_info = serializers.SerializerMethodField()
 
     # Legacy fields for compatibility - using SerializerMethodField to handle null relations safely
     customer_first_name = serializers.SerializerMethodField(required=False, allow_null=True)
@@ -142,10 +143,10 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
         model = Orders
         fields = (
         'id', 'name', 'customer_note', 'customer', 'customer_info', 'company', 'company_info', 'estimated_completion',
-        'order_status', 'current_hubspot_gate', 'parts_summary', 'process_stages', 'customer_first_name',
+        'order_status', 'current_hubspot_gate', 'parts_summary', 'process_stages', 'gate_info', 'customer_first_name',
         'customer_last_name', 'company_name', 'created_at', 'updated_at', 'archived', 'archived')
         read_only_fields = (
-            'created_at', 'updated_at', 'archived', 'parts_summary', 'process_stages', 'customer_info', 'company_info',
+            'created_at', 'updated_at', 'archived', 'parts_summary', 'process_stages', 'gate_info', 'customer_info', 'company_info',
             'customer_first_name', 'customer_last_name', 'company_name')
 
     @extend_schema_field(UserSelectSerializer(allow_null=True))
@@ -185,6 +186,11 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
     def get_process_stages(self, obj):
         """Use enhanced model method for detailed stage info"""
         return obj.get_detailed_stage_info()
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_gate_info(self, obj):
+        """Get HubSpot gate progress information"""
+        return obj.get_gate_info()
 
 
 class TrackerPageOrderSerializer(serializers.ModelSerializer):
