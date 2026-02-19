@@ -30,14 +30,14 @@ export default function EditOrdersPartsPage() {
     const { orderId } = useParams({ from: "/editOrdersParts/$orderId" });
 
     const queryClient = useQueryClient();
-    const [selectedPartIds, setSelectedPartIds] = useState<number[]>([]);
+    const [selectedPartIds, setSelectedPartIds] = useState<string[]>([]);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [filters, setFilters] = useState({ERP_id: "", ordering: ""});
     const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
     const debouncedFilters = useDebounce(filters, 100);
 
-    const addParts = useAddPartsMutation(Number(orderId), {
+    const addParts = useAddPartsMutation(orderId, {
         onSuccess: () => {
             toast.success("Parts added");
             queryClient.invalidateQueries({ queryKey: ["parts"] });
@@ -55,13 +55,11 @@ export default function EditOrdersPartsPage() {
 
 
     const partsQuery = useRetrieveParts({
-        queries: {
-            order: Number(orderId),
-            ...debouncedFilters,
-        }
+        order: orderId,
+        ...debouncedFilters,
     });
 
-    const removeParts = useRemovePartsMutation({orderId:Number(orderId),
+    const removeParts = useRemovePartsMutation({orderId,
         invalidateQueryKeys:["parts"]}, {
         onSuccess: () => {
             toast.success("Parts removed");
@@ -147,8 +145,7 @@ export default function EditOrdersPartsPage() {
 
     useEffect(() => {
         const ids = Object.keys(rowSelection)
-            .filter((key) => rowSelection[key])
-            .map(Number);
+            .filter((key) => rowSelection[key]);
         setSelectedPartIds(ids);
     }, [rowSelection]);
 

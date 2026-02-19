@@ -12,6 +12,8 @@ import {QAOrderActionsCell} from "@/components/qa_orders_action_cell.tsx";
 const SORT_OPTIONS = [
     { label: "Created (Newest)", value: "-created_at" },
     { label: "Created (Oldest)", value: "created_at" },
+    { label: "Order # (A-Z)", value: "order_number" },
+    { label: "Order # (Z-A)", value: "-order_number" },
     { label: "Name (A-Z)", value: "name" },
     { label: "Name (Z-A)", value: "-name" },
 ]
@@ -25,11 +27,9 @@ export default function QAOrdersTable() {
     // const debouncedSearch = useDebounce(filters, 300);
 
     const {data, isLoading, error} = useRetrieveOrders({
-        queries: {
-            offset: offset,
-            ordering: ordering,
-            archived: false,
-        }
+        offset: offset,
+        ordering: ordering,
+        archived: false,
     })
 
     if (isLoading) return <Skeleton className="h-32 w-full"/>;
@@ -60,21 +60,29 @@ export default function QAOrdersTable() {
                 <TableCaption>Orders</TableCaption>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Order #</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Estimated Completion </TableHead>
-                        <TableHead>Customer Company </TableHead>
-                        <TableHead>Customer </TableHead>
+                        <TableHead>Estimated Completion</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {orders.map((order) => (
                         <TableRow key={order.id}>
+                            <TableCell>
+                                <span className="font-mono text-sm text-primary">{order.order_number || "—"}</span>
+                            </TableCell>
                             <TableCell>{order.name}</TableCell>
-                            <TableCell>{order.estimated_completion}</TableCell>
-                            <TableCell>{order.company_name}</TableCell>
-                            <TableCell>{order.customer_first_name} {order.customer_last_name}</TableCell>
-                            <QAOrderActionsCell order={order}/>
+                            <TableCell>{order.estimated_completion || "—"}</TableCell>
+                            <TableCell>{order.company_name || "—"}</TableCell>
+                            <TableCell>
+                                {order.customer_first_name || order.customer_last_name
+                                    ? `${order.customer_first_name || ""} ${order.customer_last_name || ""}`.trim()
+                                    : "—"}
+                            </TableCell>
+                            <QAOrderActionsCell order={order} />
                         </TableRow>
                     ))}
                 </TableBody>

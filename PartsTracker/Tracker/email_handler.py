@@ -1,9 +1,13 @@
+import logging
+
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
 
 from PartsTrackerApp import settings
+
+logger = logging.getLogger(__name__)
 
 
 def send_weekly_order_report(user, order_data):
@@ -76,6 +80,7 @@ def send_sampling_trigger_email(sampling_trigger):
 
 
     except Exception as e:
+        logger.error(f"Failed to send sampling trigger email for {sampling_trigger}: {e}")
         return
 
 
@@ -87,4 +92,5 @@ def resend_sampling_notification(sampling_trigger_id):
         send_sampling_trigger_email(trigger)
         return True
     except Exception as e:
+        logger.error(f"Failed to resend sampling notification {sampling_trigger_id}: {e}")
         return False

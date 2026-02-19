@@ -25,4 +25,4 @@ export function useUpdateThreeDModel() {
             queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
         },
     });
-};
+}

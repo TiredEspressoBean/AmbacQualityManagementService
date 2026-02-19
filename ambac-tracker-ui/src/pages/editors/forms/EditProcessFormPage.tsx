@@ -17,29 +17,26 @@ import {useParams} from "@tanstack/react-router";
 
 import {useRetrieveProcessWithSteps} from "@/hooks/useRetrieveProcessWithSteps.ts";
 import {useCreateProcessWithSteps} from "@/hooks/useCreateProcessWithSteps";
-import {useUpdateProcess} from "@/hooks/useUpdateProcess";
+import {useUpdateProcess} from "@/hooks/useUpdateProcessWithSteps";
 import {useRetrievePartTypes} from "@/hooks/useRetrievePartTypes";
 import StepFields from "@/components/step-fields";
 import {useDebounce} from "@/hooks/useDebounce.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
+import {parseDurationToMinutes, formatMinutesToDuration} from "@/lib/duration-utils";
+import {schemas} from "@/lib/api/generated";
+import {isFieldRequired} from "@/lib/zod-config";
 
+// Local schemas for nested form state (not directly in API schema)
 const samplingRuleSchema = z.object({
-    rule_type: z
-        .string()
-        .min(1, "Rule type is required - please select a sampling rule type"),
+    rule_type: z.string().min(1),
     value: z.union([z.string(), z.number(), z.null()]).optional(),
-    order: z.number().min(1, "Order must be at least 1").optional(),
+    order: z.number().min(1).optional(),
 });
 
 const stepSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Step name is required - please enter a descriptive name for this step")
-        .max(255, "Step name must be 255 characters or less"),
-    description: z
-        .string()
-        .min(1, "Step description is required - please describe what happens in this step")
-        .max(1000, "Step description must be 1000 characters or less"),
+    id: z.number().optional(),
+    name: z.string().min(1).max(255),
+    description: z.string().min(1).max(1000),
     expected_duration: z.number().nullable().optional(),
     sampling_rules: z.array(samplingRuleSchema).optional(),
     fallback_rules: z.array(samplingRuleSchema).optional(),
@@ -47,31 +44,34 @@ const stepSchema = z.object({
     fallback_duration: z.number().nullable().optional(),
 });
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Process name is required - please enter a descriptive name for this process")
-        .max(255, "Process name must be 255 characters or less"), is_remanufactured: z.boolean(),
-    part_type: z
-        .number()
-        .int("Part type must be selected - please choose a valid part type for this process")
-        .min(1, "Part type must be selected - please choose a valid part type for this process"),
-    num_steps: z
-        .number()
-        .min(1, "Number of steps must be at least 1 - please specify how many steps this process requires")
-        .max(50, "Number of steps cannot exceed 50 - please use a reasonable number of steps"),
-    is_batch_process: z.boolean(),
-    steps: z
-        .array(stepSchema)
-        .min(1, "At least one step is required - please define the steps for this process"),
+// Use generated schema for base process fields, extend with form-specific fields
+// Note: API uses nodes/edges for process flow, but form uses steps array for simpler editing
+const formSchema = schemas.ProcessWithStepsRequest.pick({
+    name: true,
+    is_remanufactured: true,
+    part_type: true,
+    is_batch_process: true,
+}).extend({
+    // Override part_type to be string (ID value from select)
+    part_type: z.string(),
+    // Form-specific: controls how many step forms to show
+    num_steps: z.number().min(1).max(50),
+    // Form-specific: linear step array (transformed to nodes/edges on submit)
+    steps: z.array(stepSchema).min(1),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;
 
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+    num_steps: isFieldRequired(formSchema.shape.num_steps),
+};
+
 export default function ProcessFormPage() {
     const params = useParams({strict: false});
     const mode = params.id ? "edit" : "create";
-    const processId = params.id ? parseInt(params.id, 10) : undefined;
+    const processId = params.id;
 
     const {
         data, isLoading
@@ -79,7 +79,7 @@ export default function ProcessFormPage() {
 
     const [partTypeSearch, setPartTypeSearch] = useState("");
     const debouncedSearch = useDebounce(partTypeSearch, 300);
-    const {data: partTypes} = useRetrievePartTypes({queries: {search: debouncedSearch}});
+    const {data: partTypes} = useRetrievePartTypes({search: debouncedSearch});
 
     const form = useForm<FormSchema>({
         resolver: zodResolver(formSchema), defaultValues: {
@@ -111,7 +111,7 @@ export default function ProcessFormPage() {
 
     useEffect(() => {
         if (mode !== "create") return;
-        if (false || debouncedNumSteps < 1) return;
+        if (debouncedNumSteps < 1) return;
 
         const currentSteps = form.getValues("steps");
         const currentLength = currentSteps?.length;
@@ -131,20 +131,29 @@ export default function ProcessFormPage() {
 
     useEffect(() => {
         if (mode === 'edit' && processId && !isLoading && data && data?.id !== undefined) {
-            const stepsData = Array.isArray(data.steps) ? data.steps : [];
-            const numSteps = data.num_steps ?? (stepsData.length || 1);
+            // Use process_steps (new structure) - each has a nested step object
+            const processSteps = Array.isArray(data.process_steps) ? data.process_steps : [];
+            const numSteps = data.num_steps ?? (processSteps.length || 1);
 
-            const formattedSteps = stepsData.length > 0 ? stepsData.map(step => ({
-                name: step.name || "",
-                description: step.description || "",
-                expected_duration: step.expected_duration ?? null,
-                sampling_rules: [],
-                fallback_rules: [],
-                fallback_threshold: null,
-                fallback_duration: null,
-            })) : Array.from({length: numSteps}, () => ({
-                name: "", 
-                description: "", 
+            // Sort by order and extract step data
+            const sortedProcessSteps = [...processSteps].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const formattedSteps = sortedProcessSteps.length > 0 ? sortedProcessSteps.map(ps => {
+                // Convert duration string to minutes for form
+                const durationMinutes = parseDurationToMinutes(ps.step?.expected_duration);
+                return {
+                    id: ps.step?.id, // Preserve step ID for updates
+                    name: ps.step?.name || "",
+                    description: ps.step?.description || "",
+                    expected_duration: durationMinutes === '' ? null : durationMinutes,
+                    sampling_rules: [],
+                    fallback_rules: [],
+                    fallback_threshold: null,
+                    fallback_duration: null,
+                };
+            }) : Array.from({length: numSteps}, () => ({
+                id: undefined,
+                name: "",
+                description: "",
                 expected_duration: null,
                 sampling_rules: [],
                 fallback_rules: [],
@@ -178,21 +187,32 @@ export default function ProcessFormPage() {
     const updateProcess = useUpdateProcess();
 
     function onSubmit(values: FormSchema) {
+        // Convert form steps to backend graph format (nodes + edges)
+        // Backend expects: nodes (step data with IDs) and edges (connections)
+        // Positive ID = existing step to update, negative ID = new step to create
+        const nodes = values.steps.map((step, index) => ({
+            id: step.id ?? -(index + 1), // Use real ID or negative temp ID for new steps
+            name: step.name,
+            description: step.description,
+            order: index + 1,
+            expected_duration: step.expected_duration ? formatMinutesToDuration(step.expected_duration) : null,
+        }));
+
+        // Create sequential edges for linear process (step1 → step2 → step3...)
+        const edges = values.steps.slice(0, -1).map((_, index) => ({
+            from_step: nodes[index].id,
+            to_step: nodes[index + 1].id,
+            edge_type: 'default',
+        }));
+
         const processed = {
-            ...values, 
-            steps: values.steps.map((step, index) => ({
-                ...step, 
-                order: index + 1,
-                // Preserve user-defined rule orders and normalize values
-                sampling_rules: step.sampling_rules?.map(rule => ({
-                    ...rule,
-                    value: rule.value ?? null, // prevent undefined
-                })) || [],
-                fallback_rules: step.fallback_rules?.map(rule => ({
-                    ...rule,
-                    value: rule.value ?? null, // prevent undefined  
-                })) || [],
-            })),
+            name: values.name,
+            is_remanufactured: values.is_remanufactured,
+            part_type: values.part_type,
+            num_steps: values.num_steps,
+            is_batch_process: values.is_batch_process,
+            nodes,
+            edges,
         };
 
         if (mode === "edit" && processId) {
@@ -224,7 +244,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="name"
                         render={({field}) => (<FormItem>
-                            <FormLabel>Name *</FormLabel>
+                            <FormLabel required={required.name}>Name</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g. Assembly Line 1" {...field} />
                             </FormControl>
@@ -253,7 +273,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="part_type"
                         render={({field}) => (<FormItem className="flex flex-col">
-                            <FormLabel>Part Type *</FormLabel>
+                            <FormLabel required={required.part_type}>Part Type</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -300,7 +320,7 @@ export default function ProcessFormPage() {
                         control={form.control}
                         name="num_steps"
                         render={({field}) => (<FormItem>
-                            <FormLabel>Number of Steps *</FormLabel>
+                            <FormLabel required={required.num_steps}>Number of Steps</FormLabel>
                             <FormControl>
                                 <Input
                                     type="number"
@@ -338,7 +358,12 @@ export default function ProcessFormPage() {
                     />
 
                     {fields.map((field, index) => {
-                        const existingStep = mode === 'edit' && data?.steps?.[index];
+                        // Get existing step from process_steps (sorted by order)
+                        const sortedProcessSteps = mode === 'edit' && data?.process_steps
+                            ? [...data.process_steps].sort((a, b) => (a.order || 0) - (b.order || 0))
+                            : [];
+                        const existingProcessStep = sortedProcessSteps[index];
+                        const existingStep = existingProcessStep?.step;
                         return (
                             <StepFields
                                 key={field.id}

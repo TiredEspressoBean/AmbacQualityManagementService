@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useUpdatePart } from "@/hooks/useUpdatePart"; // adjust path as needed
 
-export function ArchivePartDialog({ partId }: { partId: number }) {
+export function ArchivePartDialog({ partId }: { partId: string }) {
     const [open, setOpen] = React.useState(false);
     const { mutateAsync: updatePart } = useUpdatePart({ query: { archived: false } });
 
@@ -22,7 +22,7 @@ export function ArchivePartDialog({ partId }: { partId: number }) {
             try {
                 await updatePart({
                     id: partId,
-                    data: { archived: true },
+                    data: { archived: true } as any,
                 });
                 toast.success("Part archived");
                 setOpen(false);

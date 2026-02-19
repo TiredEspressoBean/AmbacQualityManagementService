@@ -9,7 +9,7 @@ export const useRetrieveMeasurementDefinition = (
     options?: UseQueryOptions<RetrieveMeasurementDefinitionResponse>
 ) => {
     return useQuery<RetrieveMeasurementDefinitionResponse>({
-        queryKey: ["measurementDefinition", input.params.id],
+        queryKey: ["measurementDefinition", input],
         queryFn: () => api.api_MeasurementDefinitions_retrieve(input),
         ...options,
     });

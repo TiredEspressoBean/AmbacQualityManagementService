@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { asOrderDetailInfo, asPartsSummary, withExtendedPartFields } from "@/lib/extended-types";
 import {
     Table,
     TableBody,
@@ -57,24 +58,20 @@ export default function QaWorkOrdersPage() {
 
     // Fetch work orders that have parts requiring QA
     const { data: workOrdersData, isLoading: isLoadingWorkOrders } = useRetrieveWorkOrders({
-        queries: {
-            offset: (currentPage - 1) * ITEMS_PER_PAGE,
-            limit: ITEMS_PER_PAGE,
-            search: debouncedSearch,
-            ordering: sortBy,
-            // Filter for work orders with parts needing QA
-            // status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
-        },
+        offset: (currentPage - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+        search: debouncedSearch,
+        ordering: sortBy,
+        // Filter for work orders with parts needing QA
+        // status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
     });
 
     // Fetch parts for the selected work order
     const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
-        queries: {
-            work_order: selectedWorkOrder?.id,
-            requires_sampling: true,
-            part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
-            limit: 100, // Get all parts for the work order
-        },
+        work_order: selectedWorkOrder?.id,
+        requires_sampling: true,
+        part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
+        limit: 100, // Get all parts for the work order
     }, {
         enabled: !!selectedWorkOrder?.id,
     });
@@ -171,17 +168,17 @@ export default function QaWorkOrdersPage() {
                                         </span>
                                     </TableCell>
                                     <TableCell>
-                                        {(workOrder.related_order_detail as any)?.name || "-"}
+                                        {asOrderDetailInfo(workOrder.related_order_detail)?.name || "-"}
                                     </TableCell>
                                     <TableCell>
-                                        {(workOrder.related_order_detail as any)?.company_name || "-"}
+                                        {asOrderDetailInfo(workOrder.related_order_detail)?.company_name || "-"}
                                     </TableCell>
                                     <TableCell>
                                         <span className="font-medium text-orange-600">
-                                            {(workOrder as any).parts_summary?.requiring_qa || "Unknown"}
+                                            {asPartsSummary(workOrder.parts_summary)?.requiring_qa ?? "Unknown"}
                                         </span>
-                                        {(workOrder as any).parts_summary?.total && 
-                                            ` / ${(workOrder as any).parts_summary.total}`
+                                        {asPartsSummary(workOrder.parts_summary)?.total &&
+                                            ` / ${asPartsSummary(workOrder.parts_summary)?.total}`
                                         }
                                     </TableCell>
                                     <TableCell>{workOrder.quantity}</TableCell>
@@ -265,7 +262,7 @@ export default function QaWorkOrdersPage() {
                                     </span>
                                 </div>
                                 <div className="text-sm text-muted-foreground">
-                                    {(part as any).step_name || (part as any).step_description} • {(part as any).process_name} • {(part as any).part_type_name}
+                                    {withExtendedPartFields(part).step_name || withExtendedPartFields(part).step_description} • {withExtendedPartFields(part).process_name} • {withExtendedPartFields(part).part_type_name}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                     Created: {new Date(part.created_at).toLocaleString()}
@@ -281,7 +278,7 @@ export default function QaWorkOrdersPage() {
         </div>
     );
 
-    const isBatchWorkOrder = selectedWorkOrder && parts.some(part => (part as any).is_batch_step);
+    const isBatchWorkOrder = selectedWorkOrder && parts.some(part => withExtendedPartFields(part).is_batch_step);
 
     return (
         <div className="space-y-6">
@@ -307,8 +304,8 @@ export default function QaWorkOrdersPage() {
                         </SheetTitle>
                         {selectedWorkOrder && (
                             <div className="text-sm text-muted-foreground space-y-1">
-                                <p><strong>Order:</strong> {(selectedWorkOrder.related_order_detail as any)?.name || "N/A"}</p>
-                                <p><strong>Company:</strong> {(selectedWorkOrder.related_order_detail as any)?.company_name || "N/A"}</p>
+                                <p><strong>Order:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_detail)?.name || "N/A"}</p>
+                                <p><strong>Company:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_detail)?.company_name || "N/A"}</p>
                                 <p><strong>Status:</strong> {selectedWorkOrder.workorder_status?.replace('_', ' ') || 'Unknown'}</p>
                                 <p><strong>Quantity:</strong> {selectedWorkOrder.quantity}</p>
                                 {selectedWorkOrder.notes && (

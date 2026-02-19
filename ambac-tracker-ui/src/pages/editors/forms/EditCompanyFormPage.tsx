@@ -21,33 +21,36 @@ import { useParams } from "@tanstack/react-router";
 import { useRetrieveCompany } from "@/hooks/useRetrieveCompany";
 import { useCreateCompanies } from "@/hooks/useCreateCompanies";
 import { useUpdateCompanies } from "@/hooks/useUpdateCompanies";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Company name is required - please enter the official company name")
-        .max(255, "Company name must be 255 characters or less"),
-    description: z
-        .string()
-        .min(1, "Description is required - please provide details about the company's business, focus, or operations")
-        .max(1000, "Description must be 1000 characters or less"),
-    hubspot_api_id: z
-        .string()
-        .min(1, "HubSpot API ID is required - please enter the unique company ID from HubSpot CRM")
-        .max(50, "HubSpot API ID must be 50 characters or less"),
+// Use generated schema directly - error messages handled by global error map
+const formSchema = schemas.CompanyRequest.pick({
+    name: true,
+    description: true,
+    hubspot_api_id: true,
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Pre-compute required fields for labels
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    description: isFieldRequired(formSchema.shape.description),
+    hubspot_api_id: isFieldRequired(formSchema.shape.hubspot_api_id),
+};
 
 export default function CompanyFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const companyId = params.id ? parseInt(params.id, 10) : undefined;
+    const companyId = params.id;
 
     const { data: company, isLoading: isLoadingCompany } = useRetrieveCompany(
         { params: { id: companyId! } },
         { enabled: mode === "edit" && !!companyId }
     );
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
@@ -70,7 +73,7 @@ export default function CompanyFormPage() {
     const createCompany = useCreateCompanies();
     const updateCompany = useUpdateCompanies();
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         const submitData = {
             name: values.name,
             description: values.description,
@@ -138,7 +141,7 @@ export default function CompanyFormPage() {
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Company Name *</FormLabel>
+                                <FormLabel required={required.name}>Company Name</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. Acme Manufacturing Corp"
@@ -158,7 +161,7 @@ export default function CompanyFormPage() {
                         name="description"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Description *</FormLabel>
+                                <FormLabel required={required.description}>Description</FormLabel>
                                 <FormControl>
                                     <Textarea
                                         placeholder="Describe the company, its business focus, location, or other relevant details..."
@@ -179,11 +182,12 @@ export default function CompanyFormPage() {
                         name="hubspot_api_id"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>HubSpot API ID *</FormLabel>
+                                <FormLabel required={required.hubspot_api_id}>HubSpot API ID</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. 12345678"
                                         {...field}
+                                        value={field.value ?? ""}
                                     />
                                 </FormControl>
                                 <FormDescription>

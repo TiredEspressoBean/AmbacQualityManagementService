@@ -1,24 +1,91 @@
+import logging
 from django.db.models import Q
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.response import Response
 from pgvector.django import CosineDistance
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, inline_serializer
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes, inline_serializer
+from auditlog.models import LogEntry
 
 from .models import DocChunk, Documents
-from .serializer import DocumentsSerializer
+from .serializers import DocumentsSerializer
+
+logger = logging.getLogger(__name__)
 
 
-class EmbeddingViewSet(viewsets.ViewSet):
-    permission_classes = [AllowAny]
+def log_ai_data_access(user, model_class, query_params, result_count, access_type='ai_query'):
+    """
+    Log data access via AI/LLM interfaces to the audit log.
 
-    
+    Uses LogEntry.Action.ACCESS (3) to indicate read-only access.
+    Stores AI-specific metadata in additional_data field.
+
+    Args:
+        user: The user who made the request
+        model_class: The Django model class being queried
+        query_params: Dict of filters/parameters used in the query
+        result_count: Number of records returned
+        access_type: Type of AI access ('ai_query', 'vector_search', 'hybrid_search')
+    """
+    try:
+        content_type = ContentType.objects.get_for_model(model_class)
+
+        LogEntry.objects.create(
+            content_type=content_type,
+            object_pk='',  # No specific object - this is a query/search
+            object_repr=f"AI {access_type}: {model_class.__name__} ({result_count} results)",
+            action=LogEntry.Action.ACCESS,
+            actor=user if user.is_authenticated else None,
+            changes={
+                'query_params': query_params,
+                'result_count': result_count,
+            },
+            additional_data={
+                'access_type': access_type,
+                'model': model_class.__name__,
+                'is_ai_access': True,
+            }
+        )
+    except Exception as e:
+        # Don't let audit logging failures break the request
+        logger.warning(f"Failed to log AI data access: {e}")
+
+
+class EmbedQueryRequestSerializer(serializers.Serializer):
+    """Request serializer for embedding queries."""
+    query = serializers.CharField(help_text='Text to embed for vector search')
+
+
+class EmbeddingViewSet(viewsets.GenericViewSet):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
+    serializer_class = EmbedQueryRequestSerializer
+
+
     def dispatch(self, request, *args, **kwargs):
         """Debug auth token from LangGraph"""
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        print(f"EmbeddingViewSet - Auth header: {auth_header}")
+        print(f"EmbeddingViewSet - Auth header: '{auth_header}'")
+        print(f"EmbeddingViewSet - Auth header bytes: {auth_header.encode()}")
+
+        # Try manual token auth to see error
+        if auth_header.startswith('Token '):
+            token_key = auth_header[6:].strip()
+            print(f"EmbeddingViewSet - Token key: '{token_key}' (len={len(token_key)})")
+            from rest_framework.authtoken.models import Token
+            try:
+                token = Token.objects.select_related('user').get(key=token_key)
+                print(f"EmbeddingViewSet - Token found for user: {token.user}, active: {token.user.is_active}")
+            except Token.DoesNotExist:
+                print(f"EmbeddingViewSet - Token NOT FOUND in DB")
+            except Exception as e:
+                print(f"EmbeddingViewSet - Token lookup error: {e}")
+
         if hasattr(request, 'user'):
             print(f"EmbeddingViewSet - User: {request.user}, authenticated: {request.user.is_authenticated}")
         return super().dispatch(request, *args, **kwargs)
@@ -49,23 +116,28 @@ class EmbeddingViewSet(viewsets.ViewSet):
             embeddings = embed_texts([query])
             return Response({'embedding': embeddings[0]})
         except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Embedding failed: {e}")
             return Response(
-                {"detail": f"Embedding failed: {str(e)}"},
+                {"detail": "Embedding failed"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
-class AISearchViewSet(viewsets.ViewSet):
-    permission_classes = [AllowAny]
-    
-    def dispatch(self, request, *args, **kwargs):
-        """Debug auth token from LangGraph"""
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        print(f"AISearchViewSet - Auth header: {auth_header}")
-        if hasattr(request, 'user'):
-            print(f"AISearchViewSet - User: {request.user}, authenticated: {request.user.is_authenticated}")
-        return super().dispatch(request, *args, **kwargs)
-    
+class VectorSearchRequestSerializer(serializers.Serializer):
+    """Request serializer for vector search."""
+    embedding = serializers.ListField(child=serializers.FloatField())
+    limit = serializers.IntegerField(default=10)
+    threshold = serializers.FloatField(default=0.7)
+    doc_ids = serializers.ListField(child=serializers.UUIDField(), required=False)
+
+
+class AISearchViewSet(viewsets.GenericViewSet):
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
+    serializer_class = VectorSearchRequestSerializer
+
     @extend_schema(
         request=inline_serializer(
             name='VectorSearchRequest',
@@ -73,7 +145,7 @@ class AISearchViewSet(viewsets.ViewSet):
                 'embedding': serializers.ListField(child=serializers.FloatField()),
                 'limit': serializers.IntegerField(default=10),
                 'threshold': serializers.FloatField(default=0.7),
-                'doc_ids': serializers.ListField(child=serializers.IntegerField(), required=False)
+                'doc_ids': serializers.ListField(child=serializers.UUIDField(), required=False)
             }
         ),
         responses=inline_serializer(name='VectorSearchResponse', fields={'results': serializers.ListField()})
@@ -88,9 +160,10 @@ class AISearchViewSet(viewsets.ViewSet):
         
         if not query_embedding:
             return Response({"detail": "embedding required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        chunks = DocChunk.objects.all()
-        
+
+        # Filter chunks based on user's document classification permissions
+        chunks = DocChunk.objects.for_user(request.user)
+
         # Filter by specific documents if provided
         if doc_ids:
             chunks = chunks.filter(doc_id__in=doc_ids)
@@ -100,22 +173,33 @@ class AISearchViewSet(viewsets.ViewSet):
         ).filter(
             similarity__gte=threshold
         ).order_by('-similarity')[:limit]
-        
+
+        results = [{
+            'id': chunk.id,
+            'similarity': float(chunk.similarity),
+            'preview_text': chunk.preview_text,
+            'full_text': chunk.full_text,
+            'span_meta': chunk.span_meta,
+            'doc_id': chunk.doc_id,
+            'doc_name': chunk.doc.file_name
+        } for chunk in chunks]
+
+        # Log AI vector search access
+        log_ai_data_access(
+            user=request.user,
+            model_class=DocChunk,
+            query_params={'limit': limit, 'threshold': threshold, 'doc_ids': doc_ids},
+            result_count=len(results),
+            access_type='vector_search'
+        )
+
         return Response({
             'query_params': {
                 'limit': limit,
                 'threshold': threshold,
                 'doc_filter_count': len(doc_ids) if doc_ids else None
             },
-            'results': [{
-                'id': chunk.id,
-                'similarity': float(chunk.similarity),
-                'preview_text': chunk.preview_text,
-                'full_text': chunk.full_text,
-                'span_meta': chunk.span_meta,
-                'doc_id': chunk.doc_id,
-                'doc_name': chunk.doc.file_name
-            } for chunk in chunks]
+            'results': results
         })
     
     @extend_schema(
@@ -158,8 +242,9 @@ class AISearchViewSet(viewsets.ViewSet):
         
         if not query:
             return Response({"detail": "query parameter 'q' required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        chunks = DocChunk.objects.select_related('doc').all()
+
+        # Filter chunks based on user's document classification permissions
+        chunks = DocChunk.objects.for_user(request.user).select_related('doc')
         
         # Filter by specific documents if provided
         if doc_ids:
@@ -173,22 +258,33 @@ class AISearchViewSet(viewsets.ViewSet):
         ).filter(
             search_vector=search_query
         ).order_by('-rank')[:limit]
-        
+
+        results = [{
+            'id': chunk.id,
+            'rank': float(chunk.rank),
+            'preview_text': chunk.preview_text,
+            'full_text': chunk.full_text,
+            'span_meta': chunk.span_meta,
+            'doc_id': chunk.doc_id,
+            'doc_name': chunk.doc.file_name
+        } for chunk in chunks]
+
+        # Log AI keyword search access
+        log_ai_data_access(
+            user=request.user,
+            model_class=DocChunk,
+            query_params={'query': query, 'limit': limit, 'doc_ids': doc_ids},
+            result_count=len(results),
+            access_type='keyword_search'
+        )
+
         return Response({
             'query': query,
             'query_params': {
                 'limit': limit,
                 'doc_filter_count': len(doc_ids) if doc_ids else None
             },
-            'results': [{
-                'id': chunk.id,
-                'rank': float(chunk.rank),
-                'preview_text': chunk.preview_text,
-                'full_text': chunk.full_text,
-                'span_meta': chunk.span_meta,
-                'doc_id': chunk.doc_id,
-                'doc_name': chunk.doc.file_name
-            } for chunk in chunks]
+            'results': results
         })
     
     @extend_schema(
@@ -204,9 +300,9 @@ class AISearchViewSet(viewsets.ViewSet):
                 'limit': serializers.IntegerField(required=False, help_text='Max results to return'),
                 'vector_threshold': serializers.FloatField(required=False, help_text='Minimum similarity threshold'),
                 'doc_ids': serializers.ListField(
-                    child=serializers.IntegerField(),
+                    child=serializers.UUIDField(),
                     required=False,
-                    help_text='Filter to specific document IDs'
+                    help_text='Filter to specific document UUIDs'
                 )
             }
         ),
@@ -236,7 +332,8 @@ class AISearchViewSet(viewsets.ViewSet):
         
         # Vector search if embedding provided
         if query_embedding:
-            vector_chunks = DocChunk.objects.all()
+            # Filter chunks based on user's document classification permissions
+            vector_chunks = DocChunk.objects.for_user(request.user)
             if doc_ids:
                 vector_chunks = vector_chunks.filter(doc_id__in=doc_ids)
             
@@ -260,7 +357,8 @@ class AISearchViewSet(viewsets.ViewSet):
         
         # Keyword search if query provided
         if query:
-            keyword_chunks = DocChunk.objects.select_related('doc').all()
+            # Filter chunks based on user's document classification permissions
+            keyword_chunks = DocChunk.objects.for_user(request.user).select_related('doc')
             if doc_ids:
                 keyword_chunks = keyword_chunks.filter(doc_id__in=doc_ids)
             
@@ -286,7 +384,22 @@ class AISearchViewSet(viewsets.ViewSet):
                         'doc_id': chunk.doc_id,
                         'doc_name': chunk.doc.file_name
                     })
-        
+
+        # Log AI hybrid search access
+        log_ai_data_access(
+            user=request.user,
+            model_class=DocChunk,
+            query_params={
+                'query': query,
+                'has_embedding': bool(query_embedding),
+                'limit': limit,
+                'vector_threshold': vector_threshold,
+                'doc_ids': doc_ids
+            },
+            result_count=len(results),
+            access_type='hybrid_search'
+        )
+
         return Response({
             'query': query,
             'has_embedding': bool(query_embedding),
@@ -298,14 +411,14 @@ class AISearchViewSet(viewsets.ViewSet):
         request=inline_serializer(
             name='ContextWindowRequest',
             fields={
-                'chunk_id': serializers.IntegerField(help_text='ID of the chunk to center the window on'),
+                'chunk_id': serializers.UUIDField(help_text='ID of the chunk to center the window on'),
                 'window_size': serializers.IntegerField(required=False, help_text='Number of chunks before/after center (default: 2)')
             }
         ),
         responses=inline_serializer(
             name='ContextWindowResponse',
             fields={
-                'center_chunk_id': serializers.IntegerField(),
+                'center_chunk_id': serializers.UUIDField(),
                 'center_index': serializers.IntegerField(),
                 'window_size': serializers.IntegerField(),
                 'doc_name': serializers.CharField(),
@@ -323,20 +436,22 @@ class AISearchViewSet(viewsets.ViewSet):
             return Response({"detail": "chunk_id required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            center_chunk = DocChunk.objects.select_related('doc').get(
+            # Filter chunks based on user's document classification permissions
+            center_chunk = DocChunk.objects.for_user(request.user).select_related('doc').get(
                 id=chunk_id
             )
         except DocChunk.DoesNotExist:
             return Response({"detail": "Chunk not found or not accessible"}, status=status.HTTP_404_NOT_FOUND)
-        
+
         center_index = center_chunk.span_meta.get('i', 0)
         doc_id = center_chunk.doc_id
-        
+
         # Get chunks in window range
         min_index = max(0, center_index - window_size)
         max_index = center_index + window_size
-        
-        window_chunks = DocChunk.objects.filter(
+
+        # Filter window chunks based on user permissions
+        window_chunks = DocChunk.objects.for_user(request.user).filter(
             doc_id=doc_id,
             span_meta__i__gte=min_index,
             span_meta__i__lte=max_index
@@ -358,10 +473,27 @@ class AISearchViewSet(viewsets.ViewSet):
         })
 
 
-class QueryViewSet(viewsets.ViewSet):
-    """READ-ONLY query interface for safe ORM operations via LLM"""
-    permission_classes = [AllowAny]
-    
+class QueryRequestSerializer(serializers.Serializer):
+    """Request serializer for QueryViewSet execute action."""
+    model = serializers.CharField(help_text='Model name to query')
+    filters = serializers.DictField(required=False, help_text='Filters to apply')
+    fields = serializers.ListField(child=serializers.CharField(), required=False)
+    limit = serializers.IntegerField(required=False, help_text='Max results (up to 100)')
+    aggregate = serializers.CharField(required=False, help_text='Aggregation function')
+
+
+@extend_schema(tags=['ai-query'])
+class QueryViewSet(viewsets.GenericViewSet):
+    """READ-ONLY query interface for safe ORM operations via LLM.
+
+    This viewset provides custom actions only (schema_info, execute).
+    Default list/retrieve endpoints are not implemented.
+    """
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
+    serializer_class = QueryRequestSerializer  # Default serializer for schema generation
+
     def dispatch(self, request, *args, **kwargs):
         """Debug auth token from LangGraph"""
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
@@ -481,7 +613,7 @@ class QueryViewSet(viewsets.ViewSet):
             'part__ERP_id', 'part__part_status', 'equipment__name', 'operator__username'
         },
         'Steps': {
-            'process__name', 'process__part_type__name'
+            'part_type__name', 'part_type__ID_prefix'
         },
         'Processes': {
             'part_type__name', 'part_type__ID_prefix'
@@ -599,14 +731,66 @@ class QueryViewSet(viewsets.ViewSet):
             }
         )
     )
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['get', 'post'])
     def execute_read_only(self, request):
-        """Execute SAFE READ-ONLY ORM queries with strict validation"""
+        """Execute SAFE READ-ONLY ORM queries with strict validation.
+
+        GET: Returns usage information and allowed models/operations.
+        POST: Executes the query.
+        """
+        # GET requests return usage info (prevents "Method Not Allowed" logs)
+        if request.method == 'GET':
+            return Response({
+                "method": "POST",
+                "description": "Execute read-only ORM queries",
+                "allowed_models": list(self.ALLOWED_MODELS.keys()),
+                "allowed_operations": self.ALLOWED_OPERATIONS,
+                "example_request": {
+                    "model": "Orders",
+                    "filters": {"order_status": "PENDING"},
+                    "limit": 50
+                }
+            })
+        import json
+
         model_name = request.data.get('model')
         filters = request.data.get('filters', {})
         fields = request.data.get('fields', [])
         limit = min(request.data.get('limit', 50), 100)  # Max 100 results
         aggregate = request.data.get('aggregate')  # count, max, min, avg
+
+        # Parse filters if they come as a string
+        if isinstance(filters, str):
+            try:
+                filters = json.loads(filters)
+            except json.JSONDecodeError:
+                # Try using ast.literal_eval for Python dict strings
+                import ast
+                try:
+                    filters = ast.literal_eval(filters)
+                except (ValueError, SyntaxError):
+                    return Response({
+                        "error": "Invalid filters format. Must be a valid JSON object or Python dict."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure filters is a dict
+        if not isinstance(filters, dict):
+            return Response({
+                "error": "Filters must be a dictionary"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse fields if they come as a string
+        if isinstance(fields, str):
+            try:
+                fields = json.loads(fields)
+            except json.JSONDecodeError:
+                import ast
+                try:
+                    fields = ast.literal_eval(fields)
+                except (ValueError, SyntaxError):
+                    return Response({
+                        "error": "Invalid fields format. Must be a valid JSON array."
+                    }, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate model is allowed
         if model_name not in self.ALLOWED_MODELS:
@@ -711,7 +895,16 @@ class QueryViewSet(viewsets.ViewSet):
                 queryset = queryset.values(*safe_fields)
 
             results = list(queryset[:limit])
-            
+
+            # Log AI data access for compliance
+            log_ai_data_access(
+                user=request.user,
+                model_class=model_class,
+                query_params={'filters': filters, 'fields': fields, 'limit': limit},
+                result_count=len(results),
+                access_type='ai_query'
+            )
+
             return Response({
                 "model": model_name,
                 "filters": filters,
@@ -721,6 +914,8 @@ class QueryViewSet(viewsets.ViewSet):
             })
             
         except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Query execution failed: {e}")
             return Response({
-                "error": f"Query execution failed: {str(e)}"
+                "error": "Query execution failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

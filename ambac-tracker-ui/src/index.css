@@ -6,15 +6,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Branding Architecture:
+ *
+ * Brand colors are set via JS (applyBrandingColors) as:
+ *   --brand-primary-light, --brand-primary-dark
+ *   --brand-primary-foreground-light, --brand-primary-foreground-dark
+ *   --brand-accent-light, --brand-accent-dark
+ *   --brand-ring-light, --brand-ring-dark
+ *   --brand-hue, --brand-chroma
+ *
+ * These override the defaults below when a tenant has branding configured.
+ * Each mode (light/dark) gets its own computed variant for optimal contrast.
+ */
+
 :root {
+  /* Enable light-dark() function */
+  color-scheme: light dark;
+
+  /* Sidebar - uses brand colors when available */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-primary: var(--brand-primary-light, oklch(0.21 0.006 285.885));
+  --sidebar-primary-foreground: var(--brand-primary-foreground-light, oklch(0.985 0 0));
+  --sidebar-accent: var(--brand-accent-light, oklch(0.967 0.001 286.375));
+  --sidebar-accent-foreground: var(--brand-accent-foreground-light, oklch(0.21 0.006 285.885));
   --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --sidebar-ring: var(--brand-ring-light, oklch(0.705 0.015 286.067));
+
+  /* Layout */
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -22,18 +42,32 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
+
+  /* Primary - brand color with fallback to slate */
+  --primary: var(--brand-primary-light, oklch(0.21 0.006 285.885));
+  --primary-foreground: var(--brand-primary-foreground-light, oklch(0.985 0 0));
+
+  /* Secondary - uses brand secondary when available, fallback to neutral */
+  --secondary: var(--brand-secondary-light, oklch(0.967 0.001 286.375));
+  --secondary-foreground: var(--brand-secondary-foreground-light, oklch(0.21 0.006 285.885));
+
+  /* Muted - neutral, unaffected by branding */
   --muted: oklch(0.967 0.001 286.375);
   --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+
+  /* Accent - uses brand tint when available */
+  --accent: var(--brand-accent-light, oklch(0.967 0.001 286.375));
+  --accent-foreground: var(--brand-accent-foreground-light, oklch(0.21 0.006 285.885));
+
+  /* Destructive - always red, semantic color */
   --destructive: oklch(0.577 0.245 27.325);
+
+  /* Form elements */
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
+  --ring: var(--brand-ring-light, oklch(0.705 0.015 286.067));
+
+  /* Charts - could optionally use brand hue for chart-1 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -42,32 +76,52 @@
 }
 
 .dark {
+  /* Force dark color scheme */
+  color-scheme: dark;
+
+  /* Sidebar - uses brand dark variants */
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--brand-primary-dark, oklch(0.488 0.243 264.376));
+  --sidebar-primary-foreground: var(--brand-primary-foreground-dark, oklch(0.985 0 0));
+  --sidebar-accent: var(--brand-accent-dark, oklch(0.274 0.006 286.033));
+  --sidebar-accent-foreground: var(--brand-accent-foreground-dark, oklch(0.985 0 0));
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --sidebar-ring: var(--brand-ring-dark, oklch(0.552 0.016 285.938));
+
+  /* Layout */
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
+
+  /* Primary - brand dark variant with fallback */
+  --primary: var(--brand-primary-dark, oklch(0.92 0.004 286.32));
+  --primary-foreground: var(--brand-primary-foreground-dark, oklch(0.21 0.006 285.885));
+
+  /* Secondary - uses brand secondary dark variant */
+  --secondary: var(--brand-secondary-dark, oklch(0.274 0.006 286.033));
+  --secondary-foreground: var(--brand-secondary-foreground-dark, oklch(0.985 0 0));
+
+  /* Muted */
   --muted: oklch(0.274 0.006 286.033);
   --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
+
+  /* Accent - brand dark variant */
+  --accent: var(--brand-accent-dark, oklch(0.274 0.006 286.033));
+  --accent-foreground: var(--brand-accent-foreground-dark, oklch(0.985 0 0));
+
+  /* Destructive - lighter red for dark mode */
   --destructive: oklch(0.704 0.191 22.216);
+
+  /* Form elements */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
+  --ring: var(--brand-ring-dark, oklch(0.552 0.016 285.938));
+
+  /* Charts */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -116,8 +170,91 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Firefox scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Webkit (Chrome, Safari, Edge) scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* React Flow theming - uses shadcn CSS variables */
+.react-flow__controls {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__controls-button {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  fill: var(--foreground) !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--muted) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--foreground) !important;
+}
+
+.react-flow__minimap {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__minimap-mask {
+  fill: var(--background) !important;
+  opacity: 0.8 !important;
+}
+
+.react-flow__minimap-node {
+  fill: var(--primary) !important;
+  stroke: var(--border) !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--muted-foreground) !important;
+  stroke-width: 2 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--primary) !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
 }

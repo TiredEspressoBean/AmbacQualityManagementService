@@ -10,12 +10,12 @@ import qs from "qs";
 
 {{#if types}}
     {{#each types}}
-        {{{this}}};
+        export {{{this}}};
     {{/each}}
 {{/if}}
 
 {{#each schemas}}
-    const {{@key}}{{#if (lookup ../emittedType @key)}}: z.ZodType<{{@key}}>{{/if}} = {{{this}}};
+    const {{@key}} = {{{this}}};
 {{/each}}
 
 {{#ifNotEmptyObj schemas}}

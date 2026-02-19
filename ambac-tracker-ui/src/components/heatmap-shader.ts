@@ -15,6 +15,7 @@ const vertexShader = `
 // Fragment shader
 const fragmentShader = `
   uniform vec3 annotationPositions[50];
+  uniform float annotationIntensities[50];
   uniform int annotationCount;
   uniform float heatRadius;
   uniform float heatIntensity;
@@ -57,8 +58,11 @@ const fragmentShader = `
       vec3 annotationPos = annotationPositions[i];
       float dist = distance(vWorldPosition, annotationPos);
 
+      // Per-annotation intensity multiplied by global intensity
+      float localIntensity = heatIntensity * annotationIntensities[i];
+
       // Inverse distance falloff
-      float heat = heatIntensity / (1.0 + dist / heatRadius);
+      float heat = localIntensity / (1.0 + dist / heatRadius);
       totalHeat += heat;
     }
 
@@ -80,6 +84,7 @@ const fragmentShader = `
 
 export interface HeatMapShaderProps {
   annotationPositions: THREE.Vector3[];
+  annotationIntensities?: number[];  // Per-annotation intensity weights (0-1+)
   heatRadius?: number;
   heatIntensity?: number;
   baseColor?: THREE.Color;
@@ -87,22 +92,27 @@ export interface HeatMapShaderProps {
 
 export function createHeatMapMaterial({
   annotationPositions,
+  annotationIntensities,
   heatRadius = 0.5,
   heatIntensity = 1.0,
   baseColor = new THREE.Color(0x94a3b8),
 }: HeatMapShaderProps): THREE.ShaderMaterial {
   // Pad positions array to 50 (shader limit)
   const paddedPositions = new Float32Array(150); // 50 * 3 (x, y, z)
+  const paddedIntensities = new Float32Array(50); // 50 intensities
 
   annotationPositions.slice(0, 50).forEach((pos, i) => {
     paddedPositions[i * 3] = pos.x;
     paddedPositions[i * 3 + 1] = pos.y;
     paddedPositions[i * 3 + 2] = pos.z;
+    // Use provided intensity or default to 1.0
+    paddedIntensities[i] = annotationIntensities?.[i] ?? 1.0;
   });
 
   return new THREE.ShaderMaterial({
     uniforms: {
       annotationPositions: { value: paddedPositions },
+      annotationIntensities: { value: paddedIntensities },
       annotationCount: { value: Math.min(annotationPositions.length, 50) },
       heatRadius: { value: heatRadius },
       heatIntensity: { value: heatIntensity },

@@ -17,4 +17,4 @@ export function useCreateThreeDModel() {
             queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
         },
     });
-};
+}

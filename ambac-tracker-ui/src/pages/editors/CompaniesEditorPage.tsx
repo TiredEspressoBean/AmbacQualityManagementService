@@ -2,6 +2,27 @@ import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditCompanyActionsCell } from "@/components/edit-company-action-cell.tsx";
+import { api } from "@/lib/api/generated";
+import type { QueryClient } from "@tanstack/react-query";
+
+// Default params that match what useCompaniesList passes on initial render
+const DEFAULT_LIST_PARAMS = {
+    offset: 0,
+    limit: 25,
+    search: "",
+};
+
+// Prefetch function for route loader
+export const prefetchCompaniesEditor = (queryClient: QueryClient) => {
+    queryClient.prefetchQuery({
+        queryKey: ["company", DEFAULT_LIST_PARAMS],
+        queryFn: () => api.api_Companies_list(DEFAULT_LIST_PARAMS),
+    });
+    queryClient.prefetchQuery({
+        queryKey: ["metadata", "Companies", "Companies"],
+        queryFn: () => api.api_Companies_metadata_retrieve(),
+    });
+};
 
 // Custom wrapper hook for consistent usage
 function useCompaniesList({
@@ -9,19 +30,20 @@ function useCompaniesList({
                               limit,
                               ordering,
                               search,
+                              filters,
                           }: {
     offset: number;
     limit: number;
     ordering?: string;
     search?: string;
+    filters?: Record<string, string>;
 }) {
     return useRetrieveCompanies({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
+        offset,
+        limit,
+        ordering,
+        search,
+        ...filters,
     });
 }
 
@@ -33,20 +55,10 @@ export function CompaniesEditorPage() {
             title="Companies"
             modelName="Companies"
             useList={useCompaniesList}
-            sortOptions={[
-                { label: "Name (A-Z)", value: "name" },
-                { label: "Name (Z-A)", value: "-name" },
-                { label: "Created (Newest)", value: "-created_at" },
-                { label: "Created (Oldest)", value: "created_at" },
-                { label: "Updated (Newest)", value: "-updated_at" },
-                { label: "Updated (Oldest)", value: "updated_at" },
-                { label: "HubSpot API ID (A-Z)", value: "hubspot_api_id" },
-                { label: "HubSpot API ID (Z-A)", value: "-hubspot_api_id" },
-            ]}
             columns={[
-                { header: "Name", renderCell: (company: any) => company.name },
-                { header: "Description", renderCell: (company: any) => company.description },
-                { header: "HubSpot API ID", renderCell: (company: any) => company.hubspot_api_id },
+                { header: "Name", renderCell: (company: any) => company.name, priority: 1 },
+                { header: "Description", renderCell: (company: any) => company.description, priority: 5 },
+                { header: "HubSpot API ID", renderCell: (company: any) => company.hubspot_api_id, priority: 4 },
             ]}
             renderActions={(company) => <EditCompanyActionsCell companyId={company.id} />}
             onCreate={() => navigate({ to: "/CompaniesForm/create" })}

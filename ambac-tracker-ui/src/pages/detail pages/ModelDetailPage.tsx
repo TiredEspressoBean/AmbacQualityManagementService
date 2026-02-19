@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
     Card, CardHeader, CardTitle, CardContent, CardDescription,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
+import { useQueries } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import DocumentsSection from "@/pages/detail pages/DocumentsSection";
 import AuditTrailComponent from "@/pages/detail pages/AuditTrail";
+import { useNavigate } from "@tanstack/react-router";
 
 type InfoSection = {
     title: string;
@@ -20,12 +24,22 @@ type RelatedModel = {
     modelType: string;
     fieldName: string; // The field that contains the related model ID
     label: string; // Display name for the relationship
-    getValue?: (modelData: any) => number | null; // Custom getter for the related ID
+    getValue?: (modelData: any) => string | number | null; // Custom getter for the related ID
 };
 
-type FieldsConfig = {
+type ActionButton = {
+    label: string;
+    icon?: React.ReactNode;
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    // Function that returns the URL to navigate to, receives modelData
+    getUrl: (modelData: ModelData) => string;
+    // Optional condition to show/hide the button
+    condition?: (modelData: ModelData) => boolean;
+};
+
+export type FieldsConfig = {
     fields: Record<string, { label: string }>;
-    customRenderers?: Record<string, (value: any) => React.ReactNode>;
+    customRenderers?: Record<string, (value: any, modelData?: any) => React.ReactNode>;
     fetcher: (id: string) => Promise<any>;
     sections: {
         header: any[];
@@ -36,6 +50,8 @@ type FieldsConfig = {
     };
     // New: Define related models whose documents should be included
     relatedModels?: RelatedModel[];
+    // Action buttons to display in the header
+    actionButtons?: ActionButton[];
     subcomponents?: {
         RendererSidebarComponent?: React.FC<{
             modelType: string;
@@ -49,7 +65,7 @@ type FieldsConfig = {
 };
 
 type ModelData = {
-    id: number;
+    id: string | number;
     name?: string;
     [key: string]: any;
 };
@@ -73,15 +89,24 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                                                              RendererSidebarComponent,
                                                          }) => {
     const [selectedDocument, setSelectedDocument] = useState<DocumentWithSource | null>(null);
+    const navigate = useNavigate();
+
+    // Filter action buttons based on their conditions
+    const visibleActionButtons = (fieldsConfig.actionButtons || []).filter(
+        (button) => !button.condition || button.condition(modelData)
+    );
 
     const {
-        data: contentTypes,
+        data: contentTypesData,
         isLoading: isLoadingContentTypes,
         error: contentTypeError,
     } = useRetrieveContentTypes({});
 
+    // Normalize content types (handles both array and paginated formats)
+    const contentTypes = Array.isArray(contentTypesData) ? contentTypesData : contentTypesData?.results || [];
+
     // Get content type for main model
-    const mainContentTypeId = contentTypes?.results?.find(
+    const mainContentTypeId = contentTypes.find(
         (ct) => ct.model?.toLowerCase() === modelType.toLowerCase()
     )?.id;
 
@@ -92,38 +117,35 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
         error: mainDocumentError,
     } = useRetrieveDocuments(
         {
-            queries: {
-                object_id: modelData.id,
-                content_type: mainContentTypeId,
-            },
+            object_id: modelData.id,
+            content_type: mainContentTypeId,
         },
         {
             enabled: !!mainContentTypeId && !!modelData.id,
         }
     );
 
-    // Hook for each related model's documents
-    const relatedDocumentQueries = (fieldsConfig.relatedModels || []).map(relatedModel => {
-        const relatedId = relatedModel.getValue
-            ? relatedModel.getValue(modelData)
-            : modelData[relatedModel.fieldName];
+    // Build query configs for related model documents
+    const relatedQueryConfigs = useMemo(() => {
+        return (fieldsConfig.relatedModels || []).map(relatedModel => {
+            const relatedId = relatedModel.getValue
+                ? relatedModel.getValue(modelData)
+                : modelData[relatedModel.fieldName];
 
-        const relatedContentTypeId = contentTypes?.results?.find(
-            (ct) => ct.model?.toLowerCase() === relatedModel.modelType.toLowerCase()
-        )?.id;
+            const relatedContentTypeId = contentTypes.find(
+                (ct) => ct.model?.toLowerCase() === relatedModel.modelType.toLowerCase()
+            )?.id;
 
-        return useRetrieveDocuments(
-            {
-                queries: {
-                    object_id: relatedId,
-                    content_type: relatedContentTypeId,
-                },
-            },
-            {
+            return {
+                queryKey: ["document", { object_id: relatedId, content_type: relatedContentTypeId }],
+                queryFn: () => api.api_Documents_list({ queries: { object_id: relatedId, content_type: relatedContentTypeId } }),
                 enabled: !!relatedContentTypeId && !!relatedId,
-            }
-        );
-    });
+            };
+        });
+    }, [fieldsConfig.relatedModels, modelData, contentTypes]);
+
+    // Use batch queries for related model documents
+    const relatedDocumentQueries = useQueries({ queries: relatedQueryConfigs });
 
     // Combine all documents with source information
     const allDocuments: DocumentWithSource[] = [
@@ -152,7 +174,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
 
     const renderField = (field: string, value: any) => {
         const customRenderer = fieldsConfig.customRenderers?.[field];
-        if (customRenderer) return customRenderer(value);
+        if (customRenderer) return customRenderer(value, modelData);
 
         if (value === null || value === undefined || value === "") {
             return <span className="text-muted-foreground italic">—</span>;
@@ -222,14 +244,30 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
             <ResizablePanel defaultSize={34} minSize={20} className="p-6">
                 <Card className="mb-6">
                     <CardHeader>
-                        <CardTitle>
-                            <div className="flex flex-col gap-1">
-                                <h1 className="text-xl font-bold tracking-tight">
-                                    {modelData.name || `${modelType} Detail`}
-                                </h1>
-                                <p className="text-sm text-muted-foreground">ID: {modelData.id}</p>
-                            </div>
-                        </CardTitle>
+                        <div className="flex items-start justify-between">
+                            <CardTitle>
+                                <div className="flex flex-col gap-1">
+                                    <h1 className="text-xl font-bold tracking-tight">
+                                        {modelData.name || `${modelType} Detail`}
+                                    </h1>
+                                    <p className="text-sm text-muted-foreground">ID: {modelData.id}</p>
+                                </div>
+                            </CardTitle>
+                            {visibleActionButtons.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    {visibleActionButtons.map((button, idx) => (
+                                        <Button
+                                            key={idx}
+                                            variant={button.variant || "default"}
+                                            onClick={() => navigate({ to: button.getUrl(modelData) })}
+                                        >
+                                            {button.icon}
+                                            {button.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </CardHeader>
 
                     <CardContent className="space-y-8">

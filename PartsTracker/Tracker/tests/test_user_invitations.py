@@ -5,8 +5,9 @@ from django.db import connection
 from rest_framework.test import APIClient
 from rest_framework import status
 from unittest import skipIf
-from Tracker.models import UserInvitation, NotificationTask
+from Tracker.models import UserInvitation, NotificationTask, Tenant, TenantGroup, UserRole
 from Tracker.tests.base import VectorTestCase
+from django.contrib.auth.models import Permission
 
 def is_vector_extension_available():
     try:
@@ -21,38 +22,50 @@ User = get_user_model()
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
 class UserInvitationTestCase(VectorTestCase):
     def setUp(self):
-        from django.contrib.contenttypes.models import ContentType
-        from django.contrib.auth.models import Permission
+        # Create tenant for multi-tenancy
+        self.tenant = Tenant.objects.create(
+            name="Test Tenant",
+            slug="test-tenant",
+            tier="pro"
+        )
 
         # Create a staff user who can send invitations
         self.staff_user = User.objects.create_user(
             username='staffuser',
             email='staff@example.com',
             password='staffpassword',
-            is_staff=True
+            is_staff=True,
+            tenant=self.tenant
         )
 
-        # Grant UserInvitation permissions to staff user
-        invitation_ct = ContentType.objects.get_for_model(UserInvitation)
-        invitation_perms = Permission.objects.filter(content_type=invitation_ct)
-        self.staff_user.user_permissions.add(*invitation_perms)
+        # Create TenantGroup with required permissions
+        self.admin_group = TenantGroup.objects.create(
+            tenant=self.tenant,
+            name="Admin",
+            description="Admin group with all permissions",
+            is_custom=False
+        )
 
-        # Grant User model permissions (needed for UserViewSet actions)
-        user_ct = ContentType.objects.get_for_model(User)
-        user_perms = Permission.objects.filter(content_type=user_ct)
-        self.staff_user.user_permissions.add(*user_perms)
+        # Grant all permissions to admin group
+        all_perms = Permission.objects.all()
+        self.admin_group.permissions.add(*all_perms)
 
-        # Create a user to be invited
+        # Link staff user to admin group
+        UserRole.objects.create(user=self.staff_user, group=self.admin_group)
+
+        # Create a user to be invited (in same tenant)
         self.invited_user = User.objects.create_user(
             username='inviteduser',
             email='invited@example.com',
             password='temporarypassword',
-            is_active=False
+            is_active=False,
+            tenant=self.tenant
         )
 
-        # Create API client for testing
+        # Create API client for testing with tenant header
         self.client = APIClient()
         self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
 
     def test_invitation_creation(self):
         """Test creating a user invitation"""

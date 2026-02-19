@@ -17,7 +17,7 @@ import { useDeleteThreeDModel } from "@/hooks/useDeleteThreeDModel.ts";
 import { toast } from "sonner";
 
 type Props = {
-    modelId: number;
+    modelId: string;
 };
 
 export function EditThreeDModelActionsCell({ modelId }: Props) {

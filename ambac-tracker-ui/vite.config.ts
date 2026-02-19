@@ -25,6 +25,20 @@ export default defineConfig(({ mode }) => {
                 '@': path.resolve(__dirname, './src'),
             },
         },
+        optimizeDeps: {
+            include: [
+                'react',
+                'react-dom',
+                '@tanstack/react-query',
+                '@tanstack/react-router',
+                '@tanstack/react-table',
+                'three',
+                'recharts',
+                'framer-motion',
+                'date-fns',
+                'zod',
+            ],
+        },
         build: {
             sourcemap: true,
         },
@@ -48,6 +62,11 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                 },
                 '/accounts': {
+                    target: API_TARGET,
+                    changeOrigin: true,
+                    secure: false,
+                },
+                '/media': {
                     target: API_TARGET,
                     changeOrigin: true,
                     secure: false,

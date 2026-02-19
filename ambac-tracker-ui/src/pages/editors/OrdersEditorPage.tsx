@@ -1,127 +1,99 @@
-import {
-    Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {useState} from "react";
-import {Skeleton} from "@/components/ui/skeleton.tsx";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select.tsx";
-import {Button} from "@/components/ui/button.tsx";
-import {useRetrieveOrders} from "@/hooks/useRetrieveOrders.ts";
-import {EditOrderActionsCell} from "@/components/edit-orders-action-cell.tsx";
-import {Input} from "@/components/ui/input.tsx";
-import {useDebounce} from "@/hooks/useDebounce.ts";
-import {useNavigate} from "@tanstack/react-router";
-import {ordersCreateFormRoute} from "@/router"
+import { useNavigate } from "@tanstack/react-router";
+import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { useRetrieveOrders } from "@/hooks/useRetrieveOrders";
+import { EditOrderActionsCell } from "@/components/edit-orders-action-cell";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { format } from "date-fns";
+import { api } from "@/lib/api/generated";
+import type { QueryClient } from "@tanstack/react-query";
 
-const SORT_OPTIONS = [{label: "Created (Newest)", value: "-created_at"}, {
-    label: "Created (Oldest)",
-    value: "created_at"
-}, {label: "Name (A-Z)", value: "name"}, {label: "Name (Z-A)", value: "-name"},];
+// Default params that match what useOrdersList passes on initial render
+const DEFAULT_LIST_PARAMS = {
+    offset: 0,
+    limit: 25,
+    search: "",
+    archived: false,
+    active_pipeline: true,
+};
+
+// Prefetch function for route loader
+export const prefetchOrdersEditor = (queryClient: QueryClient) => {
+    queryClient.prefetchQuery({
+        queryKey: ["order", DEFAULT_LIST_PARAMS],
+        queryFn: () => api.api_Orders_list(DEFAULT_LIST_PARAMS),
+    });
+    queryClient.prefetchQuery({
+        queryKey: ["metadata", "Orders", "Orders"],
+        queryFn: () => api.api_Orders_metadata_retrieve(),
+    });
+};
+
+function useOrdersList({
+    offset,
+    limit,
+    ordering,
+    search,
+    filters,
+}: {
+    offset: number;
+    limit: number;
+    ordering?: string;
+    search?: string;
+    filters?: Record<string, string>;
+}) {
+    return useRetrieveOrders({
+        offset,
+        limit,
+        ordering,
+        search,
+        archived: false,
+        active_pipeline: true,
+        ...filters, // Spread filter params into queries
+    });
+}
 
 export default function OrdersEditorPage() {
-
     const navigate = useNavigate();
 
-    // paging + sort + search state
-    const [offset, setOffset] = useState(0);
-    const [limit] = useState(10);
-    const [ordering, setOrdering] = useState<string | undefined>(undefined);
-    const [search, setSearch] = useState("");
-
-  // Debounce the search term
-  const debouncedSearch = useDebounce(search, 1000);
-
-    const {data, isLoading, error} = useRetrieveOrders({
-        queries: {
-            offset: offset, ordering: ordering, archived: false, search:debouncedSearch
-        }
-    })
-
-    if (isLoading) return <Skeleton className="h-32 w-full"/>;
-    if (error) {
-        console.error(error);
-        return <p className="text-red-500">Error loading orders</p>;
-    }
-
-    const orders = data?.results ?? [];
-    const total = data?.count ?? 0;
-    const page = Math.floor(offset / limit) + 1;
-    const pageCount = Math.ceil(total / limit);
-
-    return (<div className="space-y-4">
-            <div className="items-center space-x-2">
-                <h2 className="text-xl font-semibold">Manage Orders</h2>
-                <div className="flex justify-between my-4 gap-4">
-                    <div className="flex-1">
-                        <Input
-                            placeholder="Search orders…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-
-
-                    <Select onValueChange={setOrdering} value={ordering}>
-                        <SelectTrigger className="w-[220px]">
-                            <SelectValue placeholder="Sort by..."/>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {SORT_OPTIONS.map((option) => (<SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                            </SelectItem>))}
-                        </SelectContent>
-                    </Select>
-
-                    <div>
-                        {/* … your list UI … */}
-                        <Button onClick={() => navigate({to:ordersCreateFormRoute.id})}>
-                            New Order
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        <Table>
-            <TableCaption>Orders List</TableCaption>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Name</TableHead>
-                        <TableHead>Est. Completion</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {orders.map((order) => (<TableRow key={order.id}>
-                            <TableCell>{order.name}</TableCell>
-                            <TableCell>{order.estimated_completion}</TableCell>
-                            <TableCell>{order.company_name}</TableCell>
-                            <TableCell>
-                                {order.customer_first_name} {order.customer_last_name}
-                            </TableCell>
-                            <TableCell>
-                                <EditOrderActionsCell orderId={order.id}/>
-                            </TableCell>
-                        </TableRow>))}
-                </TableBody>
-            </Table>
-            <div className="flex justify-between items-center">
-                <Button
-                    variant="secondary"
-                    onClick={() => setOffset(Math.max(offset - limit, 0))}
-                    disabled={offset === 0}
-                >
-                    Previous
-                </Button>
-                <span>
-          Page {page} of {pageCount}
-                </span>
-                <Button
-                    variant="secondary"
-                    onClick={() => setOffset(offset + limit)}
-                    disabled={offset + limit >= total}
-                >
-                    Next
-                </Button>
-            </div>
-        </div>);
+    return (
+        <ModelEditorPage
+            title="Orders"
+            modelName="Orders"
+            useList={useOrdersList}
+            columns={[
+                {
+                    header: "Order #",
+                    renderCell: (order: any) => (
+                        <span className="font-mono text-sm text-primary">{order.order_number || "—"}</span>
+                    ),
+                    priority: 1,
+                },
+                { header: "Name", renderCell: (order: any) => order.name, priority: 1 },
+                {
+                    header: "Status",
+                    renderCell: (order: any) => order.order_status
+                        ? <StatusBadge status={order.order_status} />
+                        : "—",
+                    priority: 1,
+                },
+                { header: "Company", renderCell: (order: any) => order.company_name || "—", priority: 2 },
+                {
+                    header: "Customer",
+                    renderCell: (order: any) =>
+                        `${order.customer_first_name || ""} ${order.customer_last_name || ""}`.trim() || "—",
+                    priority: 2,
+                },
+                {
+                    header: "Est. Completion",
+                    renderCell: (order: any) =>
+                        order.estimated_completion
+                            ? format(new Date(order.estimated_completion), "MMM d, yyyy")
+                            : "—",
+                    priority: 4,
+                },
+            ]}
+            renderActions={(order) => <EditOrderActionsCell orderId={order.id} />}
+            onCreate={() => navigate({ to: "/OrderForm" })}
+        />
+    );
 }

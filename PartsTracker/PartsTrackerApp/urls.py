@@ -23,7 +23,8 @@ from rest_framework.routers import DefaultRouter
 
 
 from Tracker import views
-from Tracker.Viewsets import *
+# Note: Updated to use new modular viewsets structure
+from Tracker.viewsets import *
 from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet
 from Tracker.api_views import get_csrf_token, get_user_api_token
 from Tracker.forms import DealForm
@@ -34,6 +35,11 @@ from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
 from Tracker.AI_view import chat_ai_view
 from Tracker.health_views import health_check, ready_check
+from Tracker.viewsets.tenant import (
+    CurrentTenantView, TenantSettingsView, TenantLogoView, TenantViewSet, SignupView,
+    TenantGroupViewSet, PermissionListView, PresetListView, EffectivePermissionsView,
+    UserTenantsView, SwitchTenantView
+)
 
 urlpatterns = [
     # Health check endpoints for Azure Container Apps
@@ -136,11 +142,28 @@ urlpatterns += [
         PasswordResetConfirmView.as_view(),
         name="password_reset_confirm",
     ),
+    # Note: UserDetailsView is imported via wildcard from Tracker.viewsets
     path("auth/user/", UserDetailsView.as_view(), name="rest_user_details"),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/csrf/", get_csrf_token),
     path("api/user/token/", get_user_api_token, name="get_user_api_token"),
+
+    # Tenant endpoints
+    path("api/tenant/current/", CurrentTenantView.as_view(), name="tenant-current"),
+    path("api/tenant/settings/", TenantSettingsView.as_view(), name="tenant-settings"),
+    path("api/tenant/logo/", TenantLogoView.as_view(), name="tenant-logo"),
+    path("api/tenants/signup/", SignupView.as_view(), name="tenant-signup"),
+
+    # User tenant management (multi-tenant switching)
+    path("api/user/tenants/", UserTenantsView.as_view(), name="user-tenants"),
+    path("api/user/tenants/switch/", SwitchTenantView.as_view(), name="switch-tenant"),
+
+    # Tenant Group Management - self-service endpoints
+    path("api/permissions/", PermissionListView.as_view(), name="permission-list"),
+    path("api/presets/", PresetListView.as_view(), name="preset-list"),
+    path("api/users/<uuid:user_id>/effective-permissions/", EffectivePermissionsView.as_view(), name="effective-permissions"),
+    path("api/users/me/effective-permissions/", EffectivePermissionsView.as_view(), name="my-effective-permissions"),
     path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"),
                                 namespace="django_browser_reload")),
 
@@ -158,6 +181,7 @@ router.register(r"HubspotGates", HubspotGatesViewSet, basename="HubspotGates")
 router.register(r"Customers", CustomerViewSet, basename="Customers")
 router.register(r"Companies", CompanyViewSet, basename="Companies")
 router.register(r"Steps", StepsViewSet, basename="Steps")
+router.register(r"StepExecutions", StepExecutionViewSet, basename="StepExecutions")
 router.register(r"Processes", ProcessViewSet, basename="Processes")
 router.register(r"PartTypes", PartTypeViewSet, basename="PartTypes")
 router.register(r"WorkOrders", WorkOrderViewSet, basename="WorkOrders")
@@ -165,6 +189,7 @@ router.register(r"Equipment", EquipmentViewSet, basename="equipment")
 router.register(r"Equipment-types", EquipmentTypeViewSet, basename="equipmenttype")
 router.register(r"Error-types", ErrorTypeViewSet, basename="errortype")
 router.register(r"Documents", DocumentViewSet, basename="documents")
+router.register(r"DocumentTypes", DocumentTypeViewSet, basename="documenttypes")
 router.register(r'Processes_with_steps', ProcessWithStepsViewSet)
 router.register("Sampling-rule-sets", SamplingRuleSetViewSet, basename="sampling-rule-sets")
 router.register("Sampling-rules", SamplingRuleViewSet, basename="sampling-rules")
@@ -173,6 +198,8 @@ router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 router.register("User", UserViewSet, basename="User")
 router.register("Groups", GroupViewSet, basename="Groups")
+router.register("TenantGroups", TenantGroupViewSet, basename="TenantGroups")
+router.register("Tenants", TenantViewSet, basename="Tenants")
 router.register("QuarantineDispositions", QuarantineDispositionViewSet, basename="QuarantineDispositions")
 router.register("HeatMapAnnotation", HeatMapAnnotationsViewSet, basename="HeatMapAnnotation")
 router.register("ThreeDModels", ThreeDModelViewSet, basename="ThreeDModels")
@@ -183,13 +210,81 @@ router.register("NotificationPreferences", NotificationPreferenceViewSet, basena
 # User invitation endpoints
 router.register("UserInvitations", UserInvitationViewSet, basename="UserInvitations")
 
+# Approval Workflow endpoints
+router.register("ApprovalTemplates", ApprovalTemplateViewSet, basename="ApprovalTemplates")
+router.register("ApprovalRequests", ApprovalRequestViewSet, basename="ApprovalRequests")
+router.register("ApprovalResponses", ApprovalResponseViewSet, basename="ApprovalResponses")
+
+# CAPA (Corrective and Preventive Action) endpoints
+router.register("CAPAs", CAPAViewSet, basename="CAPAs")
+router.register("CapaTasks", CapaTasksViewSet, basename="CapaTasks")
+router.register("RcaRecords", RcaRecordViewSet, basename="RcaRecords")
+router.register("CapaVerifications", CapaVerificationViewSet, basename="CapaVerifications")
+router.register("FiveWhys", FiveWhysViewSet, basename="FiveWhys")
+router.register("Fishbone", FishboneViewSet, basename="Fishbone")
+
 # AI/RAG endpoints for LangGraph integration
 router.register("ai/search", AISearchViewSet, basename="ai-search")
 router.register("ai/query", QueryViewSet, basename="ai-query")
 router.register("ai/embedding", EmbeddingViewSet, basename="ai-embedding")
 
+# Scope endpoint for graph traversal queries
+router.register("scope", ScopeView, basename="scope")
+
+# Reports endpoint for PDF generation
+router.register("reports", ReportViewSet, basename="reports")
+
+# SPC (Statistical Process Control) endpoints
+router.register("spc", SPCViewSet, basename="spc")
+router.register("spc-baselines", SPCBaselineViewSet, basename="spc-baselines")
+
+# Dashboard (Quality Analytics) endpoints
+router.register("dashboard", DashboardViewSet, basename="dashboard")
+
+# Chat Sessions (AI chat history)
+router.register("ChatSessions", ChatSessionViewSet, basename="ChatSessions")
+
+# ===== MES STANDARD VIEWSETS =====
+# Work Centers
+router.register(r'WorkCenters', WorkCenterViewSet, basename='WorkCenters')
+router.register(r'WorkCenters-Options', WorkCenterSelectViewSet, basename='WorkCenters-Options')
+
+# Shifts & Scheduling
+router.register(r'Shifts', ShiftViewSet, basename='Shifts')
+router.register(r'ScheduleSlots', ScheduleSlotViewSet, basename='ScheduleSlots')
+
+# Downtime
+router.register(r'DowntimeEvents', DowntimeEventViewSet, basename='DowntimeEvents')
+
+# Material Lots & Usage
+router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
+router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
+
+# Time Entries
+router.register(r'TimeEntries', TimeEntryViewSet, basename='TimeEntries')
+
+# BOMs
+router.register(r'BOMs', BOMViewSet, basename='BOMs')
+router.register(r'BOMLines', BOMLineViewSet, basename='BOMLines')
+
+# Assembly Usage
+router.register(r'AssemblyUsages', AssemblyUsageViewSet, basename='AssemblyUsages')
+
+# ===== REMAN VIEWSETS =====
+router.register(r'Cores', CoreViewSet, basename='Cores')
+router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='HarvestedComponents')
+router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
+
+# ===== TRAINING VIEWSETS =====
+router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')
+router.register(r'TrainingRecords', TrainingRecordViewSet, basename='TrainingRecords')
+router.register(r'TrainingRequirements', TrainingRequirementViewSet, basename='TrainingRequirements')
+
+# ===== CALIBRATION VIEWSETS =====
+router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')
+
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),
     path('api/', include(router.urls)),  # ✅ Adds /api/TrackerOrders/
-    path("api/orders/<int:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list")
+    path("api/orders/<uuid:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list")
 ]

@@ -5,9 +5,11 @@ interface AnnotationPointProps {
     selected: boolean;
     onClick: () => void;
     severity?: string;
+    mode?: "navigate" | "annotate";
 }
 
-export function AnnotationPoint({ position, selected, onClick, severity }: AnnotationPointProps) {
+export function AnnotationPoint({ position, selected, onClick, severity, mode: _mode = "navigate" }: AnnotationPointProps) {
+
     const getColor = () => {
         if (selected) return "yellow";
         switch (severity) {
@@ -20,10 +22,11 @@ export function AnnotationPoint({ position, selected, onClick, severity }: Annot
     };
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation(); // Prevent event from bubbling to the model
+        e.stopPropagation();
         onClick();
     };
 
+    // Always render as a 3D sphere, clickable in both modes
     return (
         <mesh position={position} onClick={handleClick}>
             <sphereGeometry args={[0.025, 16, 16]} />

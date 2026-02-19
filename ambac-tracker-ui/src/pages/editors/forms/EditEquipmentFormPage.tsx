@@ -17,6 +17,14 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useParams } from "@tanstack/react-router";
 
 import { useRetrieveEquipment } from "@/hooks/useRetrieveEquipment";
@@ -34,19 +42,41 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Equipment name is required - please enter a descriptive name for this equipment")
-        .max(255, "Equipment name must be 255 characters or less"),
-    equipment_type: z.number().nullable().optional(),
+const EQUIPMENT_STATUS_OPTIONS = schemas.EquipmentsStatusEnum.options;
+
+// Use generated schema - error messages handled by global error map
+const formSchema = schemas.EquipmentsRequest.pick({
+    name: true,
+    equipment_type: true,
+    serial_number: true,
+    manufacturer: true,
+    model_number: true,
+    location: true,
+    status: true,
+    notes: true,
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Pre-compute required fields for labels
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    equipment_type: isFieldRequired(formSchema.shape.equipment_type),
+    serial_number: isFieldRequired(formSchema.shape.serial_number),
+    manufacturer: isFieldRequired(formSchema.shape.manufacturer),
+    model_number: isFieldRequired(formSchema.shape.model_number),
+    location: isFieldRequired(formSchema.shape.location),
+    status: isFieldRequired(formSchema.shape.status),
+    notes: isFieldRequired(formSchema.shape.notes),
+};
 
 export default function EquipmentFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const equipmentId = params.id ? parseInt(params.id, 10) : undefined;
+    const equipmentId = params.id;
     const [equipmentTypeSearch, setEquipmentTypeSearch] = useState("");
     const [open, setOpen] = useState(false);
 
@@ -56,14 +86,20 @@ export default function EquipmentFormPage() {
     );
 
     const { data: equipmentTypes, isLoading: isLoadingEquipmentTypes } = useRetrieveEquipmentTypes({
-        queries: { search: equipmentTypeSearch },
+        search: equipmentTypeSearch,
     });
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
             equipment_type: undefined,
+            serial_number: "",
+            manufacturer: "",
+            model_number: "",
+            location: "",
+            status: undefined,
+            notes: "",
         },
     });
 
@@ -71,8 +107,14 @@ export default function EquipmentFormPage() {
     useEffect(() => {
         if (mode === "edit" && equipment) {
             form.reset({
-                name: equipment.name || "",
-                equipment_type: equipment.equipment_type || undefined,
+                name: equipment.name ?? "",
+                equipment_type: equipment.equipment_type ?? undefined,
+                serial_number: equipment.serial_number ?? "",
+                manufacturer: equipment.manufacturer ?? "",
+                model_number: equipment.model_number ?? "",
+                location: equipment.location ?? "",
+                status: equipment.status ?? undefined,
+                notes: equipment.notes ?? "",
             });
         }
     }, [mode, equipment, form]);
@@ -80,10 +122,16 @@ export default function EquipmentFormPage() {
     const createEquipment = useCreateEquipment();
     const updateEquipment = useUpdateEquipment();
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         const submitData = {
             name: values.name,
             equipment_type: values.equipment_type || null,
+            serial_number: values.serial_number || undefined,
+            manufacturer: values.manufacturer || undefined,
+            model_number: values.model_number || undefined,
+            location: values.location || undefined,
+            status: values.status || undefined,
+            notes: values.notes || undefined,
         };
 
         if (mode === "edit" && equipmentId) {
@@ -149,7 +197,7 @@ export default function EquipmentFormPage() {
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Equipment Name *</FormLabel>
+                                <FormLabel required={required.name}>Equipment Name</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. CNC Machine #1, Inspection Station A"
@@ -169,7 +217,7 @@ export default function EquipmentFormPage() {
                         name="equipment_type"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Equipment Type (Optional)</FormLabel>
+                                <FormLabel required={required.equipment_type}>Equipment Type</FormLabel>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -243,6 +291,126 @@ export default function EquipmentFormPage() {
                                 <FormDescription>
                                     Categorize this equipment by type, or leave blank for general equipment
                                 </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="serial_number"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel required={required.serial_number}>Serial Number</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. SN-2024-001" {...field} value={field.value ?? ""} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Unique serial number for this equipment
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="manufacturer"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel required={required.manufacturer}>Manufacturer</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. Haas, Fanuc, Keyence" {...field} value={field.value ?? ""} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Equipment manufacturer
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="model_number"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel required={required.model_number}>Model Number</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. VF-2, M-20iA" {...field} value={field.value ?? ""} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Model or part number
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="location"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel required={required.location}>Location</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g. Building A, Bay 3" {...field} value={field.value ?? ""} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Physical location of the equipment
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel required={required.status}>Status</FormLabel>
+                                <Select
+                                    value={field.value || ""}
+                                    onValueChange={(value) => field.onChange(value || undefined)}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select equipment status" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {EQUIPMENT_STATUS_OPTIONS.map((status) => (
+                                            <SelectItem key={status} value={status}>
+                                                {status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Current operational status of the equipment
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel required={required.notes}>Notes</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        placeholder="Additional notes about this equipment (calibration info, maintenance history, etc.)"
+                                        className="min-h-[100px]"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

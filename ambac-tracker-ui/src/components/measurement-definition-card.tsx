@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import MeasurementDefinitionForm from "./measurement-definition-form";
 
 interface MeasurementDefinition {
-  id: number;
+  id: string;
   label: string;
   type: "NUMERIC" | "PASS_FAIL";
   unit?: string;
@@ -20,7 +20,7 @@ interface MeasurementDefinition {
   upper_tol?: string | null;
   lower_tol?: string | null;
   required?: boolean;
-  step: number;
+  step: string;
 }
 
 interface MeasurementDefinitionCardProps {

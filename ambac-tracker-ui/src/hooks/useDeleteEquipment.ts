@@ -6,7 +6,7 @@ export function useDeleteEquipment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: number) =>
+        mutationFn: (id: string) =>
             api.api_Equipment_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },

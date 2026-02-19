@@ -16,30 +16,37 @@ from dotenv import load_dotenv, dotenv_values
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent  # AmbacTracker/
 
-# Load .env file from project root
-load_dotenv(dotenv_path=BASE_DIR / '.env')
+# Load .env file - check project root first (for local dev), then Django root (for Docker)
+if (PROJECT_ROOT / '.env').exists():
+    load_dotenv(dotenv_path=PROJECT_ROOT / '.env')
+else:
+    load_dotenv(dotenv_path=BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-CHANGE-ME")
+# In production, DJANGO_SECRET_KEY must be set. Fallback only for local development.
+_secret_key = os.environ.get("DJANGO_SECRET_KEY")
+if not _secret_key and os.environ.get("DJANGO_DEBUG", "").lower() not in ("true", "1", "yes"):
+    raise ValueError("DJANGO_SECRET_KEY environment variable is required in production")
+SECRET_KEY = _secret_key or "dev-secret-key-DO-NOT-USE-IN-PRODUCTION"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+# Defaults to False for safety - must explicitly enable with DJANGO_DEBUG=true
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 # Custom test runner for vector extension support
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net, 169.254.131.2').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,169.254.131.*').split(',')
 # Application definition
 
 if os.getenv("WEBSITE_HOSTNAME"):
     ALLOWED_HOSTS.append(os.getenv("WEBSITE_HOSTNAME"))
-
-ALLOWED_HOSTS.append("169.254.131.2")
 
 
 
@@ -77,7 +84,6 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
-    'auditlog.middleware.AuditlogMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise right after SecurityMiddleware
     "corsheaders.middleware.CorsMiddleware",
@@ -85,11 +91,15 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     "django.middleware.csrf.CsrfViewMiddleware",
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'auditlog.middleware.AuditlogMiddleware',  # Must come AFTER AuthenticationMiddleware to capture user
+    'Tracker.middleware.TenantMiddleware',  # Tenant resolution (after auth)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",
-    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
+
+if DEBUG:
+    MIDDLEWARE.append("django_browser_reload.middleware.BrowserReloadMiddleware")
 
 ROOT_URLCONF = 'PartsTrackerApp.urls'
 
@@ -122,6 +132,8 @@ DATABASES = {
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
         'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        # Required for RLS: SET LOCAL tenant_id only persists within a transaction
+        'ATOMIC_REQUESTS': True,
     }
 }
 
@@ -168,11 +180,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #### Non boilerplate starts here ####
 
 AUTHENTICATION_BACKENDS = (
-    "django.contrib.auth.backends.ModelBackend",
+    "Tracker.backends.TenantPermissionBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 )
 
 AUTH_USER_MODEL = 'Tracker.User'
+
+# Allauth adapter for tenant-aware user creation
+ACCOUNT_ADAPTER = 'Tracker.adapters.TenantAccountAdapter'
 
 STATICFILES_DIRS = (
     BASE_DIR / 'Tracker/static',
@@ -181,20 +196,35 @@ STATICFILES_DIRS = (
 
 SITE_ID = 1
 
+# Azure AD / Microsoft SSO Configuration
+# Set these in .env:
+#   AZURE_CLIENT_ID=your-app-registration-client-id
+#   AZURE_CLIENT_SECRET=your-client-secret
+#   AZURE_TENANT_ID=common (or specific tenant ID for single-tenant)
 SOCIALACCOUNT_PROVIDERS = {
     "microsoft": {
         "APP": {
-            "client_id": "YOUR_CLIENT_ID",
-            "secret": "YOUR_CLIENT_SECRET",
+            "client_id": os.environ.get("AZURE_CLIENT_ID", ""),
+            "secret": os.environ.get("AZURE_CLIENT_SECRET", ""),
             "key": "",
         },
-        "SCOPE": ["email", "profile"],
+        # Use 'common' for multi-tenant (any Azure AD), or specific tenant ID
+        "TENANT": os.environ.get("AZURE_TENANT_ID", "common"),
+        "SCOPE": ["openid", "email", "profile", "User.Read"],
         "AUTH_PARAMS": {"response_type": "code"},
     }
 }
 
-ACCOUNT_LOGIN_METHODS = ["email"]
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+# Allauth social account adapter for tenant-aware SSO
+SOCIALACCOUNT_ADAPTER = 'Tracker.adapters.TenantSocialAccountAdapter'
+
+# Allauth behavior settings (using non-deprecated format)
+ACCOUNT_LOGIN_METHODS = {'email'}  # Login with email only
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # Required signup fields
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # or 'mandatory' for stricter security
+SOCIALACCOUNT_AUTO_SIGNUP = True  # Auto-create user on first SSO login
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # Allow linking by email
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # Auto-link existing users by email
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -224,9 +254,43 @@ SPECTACULAR_SETTINGS = {
     "SKIP_WRITE_ONLY_FIELDS": True,
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
-        # "Tracker.models.Orders.order_status": "OrderStatusEnum",
-        # "Tracker.models.Parts.part_status": "PartStatusEnum",
-        # "Tracker.models.WorkOrder.workorder_status": "WorkOrderStatusEnum",
+        # Status enums - resolve collision between different 'status' fields
+        "CapaStatusEnum": "Tracker.models.qms.CapaStatus.choices",
+        "CapaTaskStatusEnum": "Tracker.models.qms.CapaTaskStatus.choices",
+        "ApprovalStatusEnum": "Tracker.models.core.Approval_Status_Type.choices",
+        "BaselineStatusEnum": "Tracker.models.spc.BaselineStatus.choices",
+        "RcaReviewStatusEnum": "Tracker.models.qms.RcaReviewStatus.choices",
+        "RootCauseVerificationStatusEnum": "Tracker.models.qms.RootCauseVerificationStatus.choices",
+        "PartsStatusEnum": "Tracker.models.mes_lite.PartsStatus.choices",
+        "OrdersStatusEnum": "Tracker.models.mes_lite.OrdersStatus.choices",
+        "WorkOrderStatusEnum": "Tracker.models.mes_lite.WorkOrderStatus.choices",
+        "ProcessStatusEnum": "Tracker.models.mes_lite.ProcessStatus.choices",
+        # Approval workflow enums
+        "ApprovalFlowTypeEnum": "Tracker.models.core.ApprovalFlows.choices",
+        "ApprovalSequenceEnum": "Tracker.models.core.SequenceTypes.choices",
+        # Severity enum - both CAPA and Disposition use same values, use single name
+        "SeverityEnum": "Tracker.models.qms.CapaSeverity.choices",
+        # Step/workflow enums - reference the choices lists on the Steps model
+        "StepTypeEnum": "Tracker.models.mes_lite.Steps.STEP_TYPE_CHOICES",
+        "TerminalStatusEnum": "Tracker.models.mes_lite.Steps.TERMINAL_STATUS_CHOICES",
+        "DecisionTypeEnum": "Tracker.models.mes_lite.Steps.DECISION_TYPE_CHOICES",
+        # Other status enums
+        "NotificationTaskStatusEnum": "Tracker.models.core.NotificationTask.STATUS_CHOICES",
+        "QualityReportStatusEnum": "Tracker.models.qms.QualityReports.STATUS_CHOICES",
+        "StepExecutionStatusEnum": "Tracker.models.mes_lite.StepExecution.EXECUTION_STATUS_CHOICES",
+        # MES Standard status enums
+        "BOMStatusEnum": "Tracker.models.mes_standard.BOM.BOM_STATUS_CHOICES",
+        "BOMTypeEnum": "Tracker.models.mes_standard.BOM.BOM_TYPE_CHOICES",
+        "ScheduleSlotStatusEnum": "Tracker.models.mes_standard.ScheduleSlot.STATUS_CHOICES",
+        "DowntimeCategoryEnum": "Tracker.models.mes_standard.DowntimeEvent.DOWNTIME_CATEGORY_CHOICES",
+        "MaterialLotStatusEnum": "Tracker.models.mes_standard.MaterialLot.LOT_STATUS_CHOICES",
+        "TimeEntryTypeEnum": "Tracker.models.mes_standard.TimeEntry.ENTRY_TYPE_CHOICES",
+        # Reman status enums
+        "CoreStatusEnum": "Tracker.models.reman.Core.CORE_STATUS_CHOICES",
+        "ConditionGradeEnum": "Tracker.models.reman.Core.CONDITION_GRADE_CHOICES",  # Shared by Core and HarvestedComponent
+        "SourceTypeEnum": "Tracker.models.reman.Core.SOURCE_TYPE_CHOICES",
+        # Traveler serializer status (non-model inline choices)
+        "TravelerStepStatusEnum": ["COMPLETED", "IN_PROGRESS", "PENDING", "SKIPPED"],
     },
 }
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
@@ -258,29 +322,47 @@ AUDITLOG_INCLUDE_ALL_MODELS = True
 
 HUBSPOT_DEBUG = os.getenv("HUBSPOT_DEBUG", "false").lower() in {"1", "true", "yes"}
 
+# Password reset URL configuration
+# FRONTEND_URL should be full URL like https://app.example.com
+_frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 if DEBUG:
-    PASSWORD_RESET_DOMAIN = 'localhost:5173'
     PASSWORD_RESET_PROTOCOL = 'http'
+    PASSWORD_RESET_DOMAIN = 'localhost:5173'
 else:
-    PASSWORD_RESET_DOMAIN = os.environ.get("FRONTEND_URL", "")
-    PASSWORD_RESET_PROTOCOL = 'https'
+    # Parse protocol and domain from FRONTEND_URL
+    if _frontend_url.startswith('https://'):
+        PASSWORD_RESET_PROTOCOL = 'https'
+        PASSWORD_RESET_DOMAIN = _frontend_url.replace('https://', '')
+    elif _frontend_url.startswith('http://'):
+        PASSWORD_RESET_PROTOCOL = 'http'
+        PASSWORD_RESET_DOMAIN = _frontend_url.replace('http://', '')
+    else:
+        PASSWORD_RESET_PROTOCOL = 'https'
+        PASSWORD_RESET_DOMAIN = _frontend_url
 
 REST_AUTH = {
-    'PASSWORD_RESET_SERIALIZER': 'Tracker.serializer.PasswordResetSerializer',
-    'PASSWORD_RESET_CONFIRM_URL': 'http://localhost:5173/reset-password/{uid}/{token}/',
+    'PASSWORD_RESET_SERIALIZER': 'Tracker.serializers.PasswordResetSerializer',
+    'PASSWORD_RESET_CONFIRM_URL': f'{PASSWORD_RESET_PROTOCOL}://{PASSWORD_RESET_DOMAIN}/reset-password/{{uid}}/{{token}}/',
     'PASSWORD_RESET_USE_SITES_DOMAIN': False,
     'USE_JWT': False,
     'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
     'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = os.environ.get("EMAIL_HOST")
+# PDF Generation / Frontend URL for Playwright
+# This URL is used by the backend to access the frontend for PDF generation
+# In development: http://localhost:5173
+# In Docker: Use service name like http://frontend:5173
+# In production: Use the actual frontend URL
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@example.com")
 
 # --- AI / RAG minimal settings ---
 AI_EMBED_ENABLED = os.getenv("AI_EMBED_ENABLED", "true").lower() in {"1", "true", "yes"}
@@ -296,68 +378,167 @@ AI_EMBED_CHUNK_CHARS    = int(os.getenv("AI_EMBED_CHUNK_CHARS", "1200"))
 AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
 AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))
 
-# --- Redis Caching ---
-
+# ---------------- Redis cache ----------------
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
-        'OPTIONS': {
-            'db': '1',  # Use database 1 for cache (0 is for Celery)
-            'parser_class': 'redis.connection.PythonParser',
-            'pool_class': 'redis.BlockingConnectionPool',
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        # Override in Docker with REDIS_CACHE_URL=redis://redis:6379/1
+        "LOCATION": os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
+        "OPTIONS": {
+            "pool_class": "redis.BlockingConnectionPool",
+            "socket_keepalive": True,
+            "socket_timeout": 5,          # seconds
+            "retry_on_timeout": True,
         },
-        'KEY_PREFIX': 'ambactracker',
-        'TIMEOUT': 300,  # 5 minutes default
+        "KEY_PREFIX": "ambactracker",
+        "TIMEOUT": 300,  # 5 minutes
     }
 }
 
-# Session storage (optional: use Redis for sessions instead of DB)
-# Uncomment the lines below to use Redis for session storage
-# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-# SESSION_CACHE_ALIAS = 'default'
+# Session settings - persist sessions for 2 weeks
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 2 weeks in seconds
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on each request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire when browser closes
 
-# --- Celery ---
+# Optional: Redis-backed sessions
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# SESSION_CACHE_ALIAS = "default"
 
+# ---------------- Celery core ----------------
+# Override in Docker:
+#   CELERY_BROKER_URL=redis://redis:6379/0
+#   CELERY_RESULT_BACKEND=django-db
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "django-db")
 
+CELERY_TIMEZONE = "America/New_York"
 CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_TIME_LIMIT = 30*60
-CELERY_TASK_SOFT_TIME_LIMIT = 20*60
+
+# Timeouts & reliability
+CELERY_TASK_TIME_LIMIT = 30 * 60        # hard limit
+CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60   # soft limit
+broker_transport_options = {"visibility_timeout": 60 * 60}  # > hard limit
+task_acks_late = True                   # make tasks idempotent!
+task_reject_on_worker_lost = True
+
+# Global retry defaults (can be overridden per-task)
+CELERY_TASK_ANNOTATIONS = {
+    '*': {
+        'max_retries': 3,
+        'default_retry_delay': 60,  # 60 seconds between retries
+    }
+}
+worker_cancel_long_running_tasks_on_connection_loss = True
+worker_prefetch_multiplier = 1          # fairness on single queue
+broker_heartbeat = 30
+broker_pool_limit = 20
+
+# Single queue
+task_default_queue = "default"
+
+# Celery results kept lean (since they're in Postgres and included in backups)
+result_expires = 60 * 60 * 24          # 24h; adjust if needed
+
+# Legacy serialization settings (kept for compatibility)
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TIMEZONE = 'America/New_York'
 
-# Celery Beat (scheduled tasks)
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-
-# Celery Beat Schedule (default schedule, can be overridden in Django admin)
+# ---------------- Celery Beat ----------------
 from celery.schedules import crontab
 
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
-    'send-weekly-customer-emails': {
-        'task': 'Tracker.tasks.send_weekly_emails_to_all_customers',
-        'schedule': crontab(day_of_week='tuesday', hour=15, minute=0),  # Tuesday at 3:00 PM
-        'options': {
-            'expires': 3600,  # Task expires after 1 hour if not picked up
-        }
+    # Your existing jobs
+    "send-weekly-customer-emails": {
+        "task": "Tracker.tasks.send_weekly_emails_to_all_customers",
+        "schedule": crontab(day_of_week="tuesday", hour=15, minute=0),
+        "options": {"expires": 3600},
     },
-    # New unified notification system
-    'dispatch-pending-notifications': {
-        'task': 'Tracker.tasks.dispatch_pending_notifications',
-        'schedule': crontab(minute='*/5'),  # Every 5 minutes
-        'options': {
-            'expires': 240,  # Task expires after 4 minutes if not picked up
-        }
+    "dispatch-pending-notifications": {
+        "task": "Tracker.tasks.dispatch_pending_notifications",
+        "schedule": crontab(minute="*/5"),
+        "options": {"expires": 240},
     },
-    # HubSpot sync
-    'sync-hubspot-deals-hourly': {
-        'task': 'Tracker.tasks.sync_hubspot_deals_task',
-        'schedule': crontab(minute=0),  # Every hour at :00
-        'options': {
-            'expires': 1800,  # Task expires after 30 minutes if not picked up
-        }
+    "sync-hubspot-deals-hourly": {
+        "task": "Tracker.tasks.sync_hubspot_deals_task",
+        "schedule": crontab(minute=0),
+        "options": {"expires": 1800},
     },
+
+    # Keep django-db Celery results small before backups
+    "cleanup-celery-results": {
+        "task": "django_celery_results.tasks.cleanup_expired_results",
+        "schedule": crontab(minute=5),
+    },
+
+    # If you trigger backups via Celery, add them here (still single queue):
+    # "backup-hourly": {
+    #     "task": "ops.tasks.run_backup",  # calls /scripts/backup.sh
+    #     "schedule": crontab(minute=0),
+    # },
+    # "backup-prune-nightly": {
+    #     "task": "ops.tasks.prune_backups",
+    #     "schedule": crontab(minute=30, hour=2),
+    # },
 }
+
+# ---------------- Multi-Tenancy ----------------
+# =============================================================================
+# MULTI-TENANCY CONFIGURATION
+# =============================================================================
+
+# Deployment mode: 'saas' or 'dedicated'
+# - saas: Multi-tenant with subdomain routing, self-service signup
+#         Demo tenants are just tenants with is_demo=True
+# - dedicated: Single tenant, simplified UX, no tenant selection
+DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "dedicated")
+
+# Derived convenience flags
+SAAS_MODE = DEPLOYMENT_MODE == "saas"
+DEDICATED_MODE = DEPLOYMENT_MODE == "dedicated"
+
+# Default tenant for dedicated mode (auto-created on first run)
+DEFAULT_TENANT_SLUG = os.getenv("DEFAULT_TENANT_SLUG", "default")
+DEFAULT_TENANT_NAME = os.getenv("DEFAULT_TENANT_NAME", "My Company")
+
+# Demo tenant slug (convenience pointer for SaaS mode)
+# The demo tenant is just a regular tenant with is_demo=True
+DEMO_TENANT_SLUG = os.getenv("DEMO_TENANT_SLUG", "demo")
+
+# Base domain for subdomain-based tenant resolution (SaaS mode)
+# e.g., "example.com" -> "acme.example.com" resolves to tenant "acme"
+TENANT_BASE_DOMAIN = os.getenv("TENANT_BASE_DOMAIN", "localhost")
+
+# Enable Row-Level Security (requires non-superuser DB role)
+# Set to True once RLS policies are deployed and app_user role is configured
+ENABLE_RLS = os.getenv("ENABLE_RLS", "false").lower() in {"1", "true", "yes"}
+
+# =============================================================================
+# PRODUCTION SECURITY SETTINGS
+# =============================================================================
+# These settings are applied only in production (when DEBUG=False)
+
+if not DEBUG:
+    # HTTPS/SSL settings
+    # Note: Railway/Heroku handle SSL termination at the load balancer,
+    # so SECURE_SSL_REDIRECT may not be needed if using proxy headers
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() in {"1", "true", "yes"}
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # HSTS (HTTP Strict Transport Security)
+    # Start with a low value, increase once confirmed working
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Secure cookies
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Prevent content type sniffing
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # X-Frame-Options - DENY prevents all framing
+    # Keep SAMEORIGIN if embedding is needed within the app
+    X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")

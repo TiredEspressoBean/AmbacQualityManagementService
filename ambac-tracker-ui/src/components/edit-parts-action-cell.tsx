@@ -17,7 +17,7 @@ import { useUpdatePart } from "@/hooks/useUpdatePart";
 import {toast} from "sonner"; // <- adjust path as needed
 
 type Props = {
-    partId: number;
+    partId: string;
 };
 
 export function EditPartActionsCell({ partId }: Props) {
@@ -36,7 +36,7 @@ export function EditPartActionsCell({ partId }: Props) {
         updatePart.mutate(
             {
                 id: partId,
-                data:{archived:true}
+                data:{archived:true} as any
             },
             {
                 onSuccess: () => {

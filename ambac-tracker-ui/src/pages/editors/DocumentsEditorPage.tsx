@@ -1,59 +1,147 @@
-import {useRetrieveDocuments} from "@/hooks/useRetrieveDocuments";
-import { useNavigate } from "@tanstack/react-router";
-import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
-import {EditDocumentsActionsCell} from "@/components/edit-documents-action-cell.tsx";
+import { useState } from "react";
+import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { EditDocumentsActionsCell } from "@/components/edit-documents-action-cell";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { FileSignature } from "lucide-react";
+import { api } from "@/lib/api/generated";
+import type { QueryClient } from "@tanstack/react-query";
 
-// Custom wrapper hook for consistent usage
-function useDocumentsList({
-                              offset,
-                              limit,
-                              ordering,
-                              search,
-                          }: {
-    offset: number;
-    limit: number;
-    ordering?: string;
-    search?: string;
-}) {
+// Default params that match what useDocumentsList passes on initial render
+const DEFAULT_LIST_PARAMS = {
+    offset: 0,
+    limit: 25,
+    search: "",
+};
 
-    return useRetrieveDocuments({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
-    })
+// Prefetch function for route loader
+export const prefetchDocumentsEditor = (queryClient: QueryClient) => {
+    queryClient.prefetchQuery({
+        queryKey: ["document", DEFAULT_LIST_PARAMS],
+        queryFn: () => api.api_Documents_list(DEFAULT_LIST_PARAMS),
+    });
+    queryClient.prefetchQuery({
+        queryKey: ["metadata", "Documents", "Documents"],
+        queryFn: () => api.api_Documents_metadata_retrieve(),
+    });
+};
+
+// Custom wrapper hook with filter support
+function useDocumentsListWithFilter(needsMyApproval: boolean) {
+    return function useDocumentsList({
+        offset,
+        limit,
+        ordering,
+        search,
+        filters,
+    }: {
+        offset: number;
+        limit: number;
+        ordering?: string;
+        search?: string;
+        filters?: Record<string, string>;
+    }) {
+        return useRetrieveDocuments(
+            {
+                offset,
+                limit,
+                ordering,
+                search,
+                needs_my_approval: needsMyApproval ? true : undefined,
+                ...filters,
+            } as any,
+        );
+    };
 }
 
 export function DocumentsEditorPage() {
     const navigate = useNavigate();
+    const [needsMyApproval, setNeedsMyApproval] = useState(false);
+
+    const filterToolbar = (
+        <Button
+            variant={needsMyApproval ? "default" : "outline"}
+            size="sm"
+            onClick={() => setNeedsMyApproval(!needsMyApproval)}
+            className="gap-2"
+        >
+            <FileSignature className="h-4 w-4" />
+            Needs My Approval
+        </Button>
+    );
+
     return (
         <ModelEditorPage
             title="Documents"
             modelName="Documents"
-            useList={useDocumentsList}
-            showDetailsLink={true}
-            sortOptions={[
-                { label: "Created (Newest)", value: "-created_at" },
-                { label: "Created (Oldest)", value: "created_at" },
-                { label: "Updated (Newest)", value: "-updated_at" },
-                { label: "Updated (Oldest)", value: "updated_at" },
-                { label: "Name (A-Z)", value: "name" },
-                { label: "Name (Z-A)", value: "-name" },
-                { label: "ID prefix (A-Z)", value: "ID_prefix" },
-                { label: "ID prefix (Z-A)", value: "-ID_prefix" },
-            ]}
+            useList={useDocumentsListWithFilter(needsMyApproval)}
+            extraToolbarContent={filterToolbar}
             columns={[
-                { header: "File Name", renderCell: (p: any) => p.file_name },
-                { header: "ID prefix", renderCell: (p: any) => p.ID_prefix },
-                { header: "Version", renderCell: (p: any) => p.version || "-" }, // depending on serialization
-                { header: "Uploaded At", renderCell: (p: any) => new Date(p.upload_date).toLocaleString() },
-                { header: "Uploaded By", renderCell: (p: any) => p.uploaded_by_name },
-                { header: "Version", renderCell: (p: any) => p.version || "-" },
+                {
+                    header: "File Name",
+                    renderCell: (doc: any) => (
+                        <Link
+                            to="/documents/$id"
+                            params={{ id: String(doc.id) }}
+                            className="text-primary hover:underline font-medium"
+                        >
+                            {doc.file_name}
+                        </Link>
+                    ),
+                    priority: 1,
+                },
+                {
+                    header: "ID",
+                    renderCell: (doc: any) => (
+                        <span className="font-mono text-sm">{doc.id}</span>
+                    ),
+                    priority: 1,
+                },
+                {
+                    header: "Version",
+                    renderCell: (doc: any) => (
+                        <span className="font-mono">v{doc.version || 1}</span>
+                    ),
+                    priority: 2,
+                },
+                {
+                    header: "Status",
+                    renderCell: (doc: any) => (
+                        <StatusBadge status={doc.status} label={doc.status_display} />
+                    ),
+                    priority: 1,
+                },
+                {
+                    header: "Classification",
+                    renderCell: (doc: any) => doc.classification ? (
+                        <StatusBadge status={doc.classification} />
+                    ) : (
+                        <span className="text-muted-foreground">—</span>
+                    ),
+                    priority: 2,
+                },
+                {
+                    header: "Uploaded",
+                    renderCell: (doc: any) => (
+                        <span className="text-sm">
+                            {doc.upload_date
+                                ? new Date(doc.upload_date).toLocaleDateString()
+                                : "—"}
+                        </span>
+                    ),
+                    priority: 4,
+                },
+                {
+                    header: "Uploaded By",
+                    renderCell: (doc: any) => doc.uploaded_by_info?.full_name || doc.uploaded_by_info?.email || "—",
+                    priority: 5,
+                },
             ]}
             renderActions={(document) => <EditDocumentsActionsCell documentId={document.id} />}
             onCreate={() => navigate({ to: "/DocumentForm/create" })}
+            showDetailsLink={false}
         />
     );
 }

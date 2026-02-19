@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Edit, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { ruleTypes } from "@/lib/RuleTypesEnum.ts";
 import SamplingRuleForm from "./sampling-rule-form";
 
@@ -41,86 +40,88 @@ export default function SamplingRuleCard({
     onDelete?.();
   };
 
-  const getRuleTypeLabel = (value: string) => {
-    const ruleType = ruleTypes.find(type => type.value === value);
-    return ruleType?.label || value;
-  };
-
-  const formatValue = (value: number | null): string => {
-    if (value === null || value === undefined) return "—";
-    return value.toString();
+  // Format rule as a readable description
+  const formatRuleDescription = (): string => {
+    const value = rule.value;
+    switch (rule.rule_type) {
+      case "EVERY_NTH":
+        return `Every ${value ?? "N"}th part`;
+      case "PERCENTAGE":
+        return `${value ?? 0}% random sampling`;
+      case "FIRST_N":
+        return `First ${value ?? "N"} parts`;
+      case "LAST_N":
+        return `Last ${value ?? "N"} parts`;
+      case "FIRST_AND_LAST":
+        return "First and last parts";
+      case "ALL":
+        return "100% inspection";
+      case "NONE":
+        return "No sampling";
+      default: {
+        const ruleType = ruleTypes.find(type => type.value === rule.rule_type);
+        return ruleType?.label || rule.rule_type;
+      }
+    }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">
-          Rule #{index + 1}
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline">
-            {getRuleTypeLabel(rule.rule_type)}
-          </Badge>
-          <div className="flex items-center space-x-1">
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Edit Sampling Rule</DialogTitle>
-                </DialogHeader>
-                <SamplingRuleForm
-                  existingRule={rule}
-                  onSuccess={handleEditSuccess}
-                  onCancel={() => setIsEditDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
+    <div className="group flex items-center gap-3 px-3 py-2 rounded-md border bg-card hover:bg-accent/50 transition-colors">
+      {/* Order badge */}
+      <Badge variant="secondary" className="h-6 w-6 p-0 flex items-center justify-center text-xs shrink-0">
+        {index + 1}
+      </Badge>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Sampling Rule</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this sampling rule? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Type:</span>
-          <span className="font-medium">{getRuleTypeLabel(rule.rule_type)}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Value:</span>
-          <span className="font-mono">{formatValue(rule.value)}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Order:</span>
-          <span className="font-mono">{rule.order}</span>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Rule description - full width, no truncation */}
+      <span className="flex-1 text-sm font-medium">
+        {formatRuleDescription()}
+      </span>
+
+      {/* Actions - always visible for better discoverability */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Edit Sampling Rule</DialogTitle>
+            </DialogHeader>
+            <SamplingRuleForm
+              existingRule={rule}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setIsEditDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Sampling Rule</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this sampling rule? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
   );
 }

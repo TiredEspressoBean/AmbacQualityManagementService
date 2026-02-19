@@ -6,7 +6,7 @@ export function useDeleteUser() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: number) =>
+        mutationFn: (id: string) =>
             api.api_User_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },

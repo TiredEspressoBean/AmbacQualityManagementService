@@ -17,7 +17,7 @@ import { useDeleteCompany } from "@/hooks/useDeleteCompany.ts";
 import { toast } from "sonner";
 
 type Props = {
-    companyId: number;
+    companyId: string;
 };
 
 export function EditCompanyActionsCell({ companyId }: Props) {

@@ -1,0 +1,4 @@
+web: gunicorn PartsTrackerApp.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+worker: celery -A PartsTrackerApp worker --loglevel=info --concurrency=2
+beat: celery -A PartsTrackerApp beat --loglevel=info
+release: python manage.py migrate && python manage.py setup_defaults

@@ -1,0 +1,86 @@
+Field,Entity,HubSpot,PartsTracker,ERP,Customer Portal,Notes
+,,,,,,
+## HUBSPOT - CONTACT FIELDS,,,,,,
+Customer First Name,User,Source,Stores,-,Displays,contact.firstname
+Customer Last Name,User,Source,Stores,-,Displays,contact.lastname
+Customer Email,User,Source,Stores,-,-,contact.email - used for login/notifications
+Customer Phone,User,Source,Stores,-,-,contact.phone
+Contact Owner,User,Source,-,-,-,contact.hubspot_owner_id - for internal routing
+Lifecycle Stage,User,Source,-,-,-,contact.lifecyclestage
+HubSpot Contact ID,User,Source,Stores,-,-,contact.hs_object_id - links user to HubSpot
+,,,,,,
+## HUBSPOT - COMPANY FIELDS,,,,,,
+Company Name,Companies,Source,Stores,-,Displays,company.name
+Company Domain,Companies,Source,Stores,-,-,company.domain
+Company Address,Companies,Source,Stores,-,-,company.address
+Company City,Companies,Source,Stores,-,-,company.city
+Company State,Companies,Source,Stores,-,-,company.state
+Company Country,Companies,Source,Stores,-,-,company.country
+Company Industry,Companies,Source,Stores,-,-,company.industry
+HubSpot Company ID,Companies,Source,Stores,-,-,company.hs_object_id - links to HubSpot
+,,,,,,
+## HUBSPOT - DEAL FIELDS,,,,,,
+HubSpot Deal ID,Orders,Source,Stores,-,-,deal.hs_object_id - links order to deal
+Deal Name,Orders,Source,Stores,-,-,deal.dealname - may map to Order Name
+Deal Amount,Orders,Source,Stores,-,-,deal.amount
+Deal Close Date,Orders,Source,Stores,-,-,deal.closedate - may inform estimated completion
+Deal Pipeline,Orders,Source,Stores,-,-,deal.pipeline - which pipeline this deal is in
+Deal Stage,Orders,Source,Stores,-,Displays,deal.dealstage - current pipeline stage
+Deal Owner,Orders,Source,-,-,-,deal.hubspot_owner_id
+,,,,,,
+## HUBSPOT - PIPELINE/GATE FIELDS,,,,,,
+Pipeline ID,ExternalAPIOrderIdentifier,Source,Stores,-,-,pipeline.id
+Pipeline Label,ExternalAPIOrderIdentifier,Source,Stores,-,-,pipeline.label
+Stage ID,ExternalAPIOrderIdentifier,Source,Stores,-,-,stage.id
+Stage Label,ExternalAPIOrderIdentifier,Source,Stores,-,Displays,stage.label - gate name shown to customer
+Stage Display Order,ExternalAPIOrderIdentifier,Source,Stores,-,-,stage.displayOrder - for sorting gates
+Stage Probability,ExternalAPIOrderIdentifier,Source,Stores,-,-,stage.metadata.probability
+Gate Progress,Orders,Source,Stores,-,Displays,Calculated from current stage position
+,,,,,,
+## HUBSPOT - OUTBOUND (PartsTracker -> HubSpot),,,,,,
+Customer Note,Orders,Stores,Source,-,Displays,POST /crm/v3/objects/notes - pushed as deal activity
+Order Status Update,Orders,Stores,Source,-,-,Optional: PATCH deal custom property
+Completion Notification,Orders,Stores,Source,-,-,Optional: POST note when order completes
+,,,,,,
+## PARTSTACKER - ORDER FIELDS,,,,,,
+Order Name,Orders,-,Source,-,Displays,Primary identifier shown to customer
+Order Status,Orders,-,Source,-,Displays,RFI/PENDING/IN_PROGRESS/COMPLETED/ON_HOLD/CANCELLED
+Estimated Completion,Orders,-,Source,-,Displays,Expected delivery date
+Original Completion Date,Orders,-,Source,-,Displays,Shown strikethrough if changed
+Created At,Orders,-,Source,-,Displays,Order creation timestamp
+Updated At,Orders,-,Source,-,-,Internal tracking only
+Parts Total,Orders,-,Source,-,Displays,Calculated - total parts in order
+Parts Completed,Orders,-,Source,-,Displays,Calculated - completed parts count
+Progress Percent,Orders,-,Source,-,Displays,Calculated from parts/stages
+,,,,,,
+## PARTSTACKER - PART FIELDS,,,,,,
+Part ERP ID,Parts,-,Source,-,Displays,Unique part identifier
+Part Type Name,PartTypes,-,Source,-,Displays,Internal part classification
+Part Status,Parts,-,Source,-,Displays,PENDING/IN_PROGRESS/COMPLETED/REWORK_NEEDED/etc.
+Current Step,Parts,-,Source,-,Displays,Where part is in process
+Step Description,Steps,-,Source,-,Displays,Details about manufacturing step
+Requires Sampling,Parts,-,Source,-,-,QA sampling flag
+Total Rework Count,Parts,-,Source,-,Displays,How many rework attempts
+,,,,,,
+## PARTSTACKER - WORK ORDER FIELDS,,,,,,
+Work Order ERP ID,WorkOrder,-,Source,-,Displays,Work order identifier
+Work Order Status,WorkOrder,-,Source,-,-,PENDING/IN_PROGRESS/COMPLETED/ON_HOLD/CANCELLED
+Work Order Quantity,WorkOrder,-,Source,-,-,Parts to produce
+,,,,,,
+## PARTSTACKER - PROCESS/STAGE FIELDS,,,,,,
+Process Stages,Steps,-,Source,-,Displays,Manufacturing process steps
+Stage Completion Status,Parts,-,Source,-,Displays,Calculated from parts at each step
+Stage Timestamps,StepTransitionLog,-,Source,-,Displays,When each stage was reached
+,,,,,,
+## PARTSTACKER - QUALITY FIELDS,,,,,,
+QA Status,QualityReports,-,Source,-,Displays,PASS/FAIL/PENDING
+QA Error Count,QualityReports,-,Source,-,Displays,Number of quality issues
+,,,,,,
+## PARTSTACKER - DOCUMENT FIELDS,,,,,,
+Document File Name,Documents,-,Source,-,Displays,Order/part attached documents
+Document Upload Date,Documents,-,Source,-,Displays,When document was uploaded
+,,,,,,
+## ERP - TBD FIELDS,,,,,,
+Inventory Quantity,-,-,-,-,-,TBD - potential ERP integration
+Part Cost,-,-,-,-,-,TBD - potential ERP integration
+Material Specs,-,-,-,-,-,TBD - potential ERP integration

@@ -1,16 +1,19 @@
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.contrib.auth.models import User
-from .models import QualityReports, QuarantineDisposition, ThreeDModel, Documents
-import os
-from django.core.files.base import ContentFile
+import logging
 from pathlib import Path
 
-try:
-    import cascadio
-    CASCADIO_AVAILABLE = True
-except ImportError:
-    CASCADIO_AVAILABLE = False
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+
+from .models import (
+    QualityReports, QuarantineDisposition, ThreeDModel, Documents,
+    ApprovalRequest, ApprovalResponse,
+    CAPA, CapaTasks, CapaVerification,
+    Tenant,
+)
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 @receiver(post_save, sender=QualityReports)
@@ -21,7 +24,7 @@ def auto_create_disposition(sender, instance, created, **kwargs):
         if not instance.dispositions.filter(current_state__in=['OPEN', 'IN_PROGRESS']).exists():
             # Find a QA user to assign to (or use the operator)
             qa_user = User.objects.filter(groups__name='QA').first()
-            assigned_user = qa_user or instance.operator.first()
+            assigned_user = qa_user or instance.operators.first() or instance.detected_by
 
             if assigned_user:
                 # Calculate rework attempt number for this step
@@ -44,49 +47,39 @@ def auto_create_disposition(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=ThreeDModel)
-def convert_step_to_glb(sender, instance, created, **kwargs):
-    """Convert uploaded STEP files to GLB using cascadio Python library"""
+def queue_3d_model_processing(sender, instance, created, **kwargs):
+    """
+    Queue uploaded 3D model for async processing.
+
+    Supports multiple formats:
+    - CAD: STEP (.step, .stp) - converted via cascadio
+    - Mesh: STL, OBJ, PLY - optimized via trimesh
+    - glTF: GLB, glTF - optimized if needed
+
+    Processing runs asynchronously in Celery to avoid blocking requests.
+    """
     if not created or not instance.file:
         return
 
-    # Skip if cascadio is not available
-    if not CASCADIO_AVAILABLE:
-        print("Cascadio not available - skipping STEP to GLB conversion")
-        return
+    from Tracker.services.model_processor import ACCEPTED_EXTENSIONS
+    from Tracker.models import ModelProcessingStatus
 
-    file_path = instance.file.path
-    file_ext = Path(file_path).suffix.lower()
+    file_ext = Path(instance.file.name).suffix.lower()
 
-    # Only process STEP files
-    if file_ext not in ['.step', '.stp']:
-        return
-
-    try:
-        # Output path for GLB
-        output_path = file_path.rsplit('.', 1)[0] + '.glb'
-
-        # Convert using cascadio Python library
-        # Parameters: linear_deflection (0.1), angular_deflection (0.5)
-        cascadio.step_to_glb(file_path, output_path, 0.1, 0.5)
-
-        if os.path.exists(output_path):
-            # Read the converted GLB file
-            with open(output_path, 'rb') as glb_file:
-                glb_content = glb_file.read()
-
-            # Update the model instance with GLB file
-            glb_filename = Path(output_path).name
-            instance.file.save(glb_filename, ContentFile(glb_content), save=False)
-            instance.file_type = 'glb'
-            instance.save(update_fields=['file', 'file_type'])
-
-            # Clean up the temporary GLB file
-            os.remove(output_path)
-        else:
-            print(f"Cascadio conversion failed - output file not created")
-
-    except Exception as e:
-        print(f"Error converting STEP to GLB: {str(e)}")
+    if file_ext in ACCEPTED_EXTENSIONS:
+        # Queue for async processing
+        from .tasks import process_3d_model
+        process_3d_model.delay(str(instance.id))
+        logger.info(f"Queued 3D model {instance.id} ({instance.name}) for processing")
+    else:
+        # Unsupported format - mark as failed immediately
+        instance.processing_status = ModelProcessingStatus.FAILED
+        instance.processing_error = (
+            f"Unsupported format: {file_ext}. "
+            f"Supported: {', '.join(ACCEPTED_EXTENSIONS)}"
+        )
+        instance.save(update_fields=['processing_status', 'processing_error'])
+        logger.warning(f"Unsupported 3D model format {file_ext} for {instance.id}")
 
 
 @receiver(post_save, sender=Documents)
@@ -112,3 +105,292 @@ def auto_embed_document(sender, instance, created, **kwargs):
     # Trigger async embedding
     # Note: The signal runs after save, so the file should be available
     instance.embed_async()
+
+
+@receiver(post_save, sender=ApprovalResponse)
+def update_approval_status_on_response(sender, instance, created, **kwargs):
+    """Update approval request status when response is submitted"""
+    if created:
+        approval_request = instance.approval_request
+        approval_request.update_status()
+
+        # For sequential approvals, notify the next approver if still pending
+        from .models import SequenceTypes, ApprovalDecision
+        if (approval_request.sequence_type == SequenceTypes.SEQUENTIAL and
+            instance.decision == ApprovalDecision.APPROVED and
+            approval_request.status == 'PENDING'):
+            # Notify the next approver in sequence
+            approval_request.notify_approvers()
+
+
+@receiver(post_save, sender=ApprovalRequest)
+def notify_requester_on_decision(sender, instance, **kwargs):
+    """Send notification to requester when approval is completed (approved/rejected)"""
+    # Check if status changed (using _old_status set by model's save method)
+    old_status = getattr(instance, '_old_status', None)
+    if old_status and old_status != instance.status and instance.status in ['APPROVED', 'REJECTED']:
+        # Notify requester of decision
+        instance.notify_status_change(instance.status)
+
+
+@receiver(post_save, sender=ApprovalRequest)
+def handle_approval_decision(sender, instance, **kwargs):
+    """Update related content object when approval is approved/rejected"""
+    old_status = getattr(instance, '_old_status', None)
+
+    # Only process when status actually changed to APPROVED or REJECTED
+    if not old_status or old_status == instance.status:
+        return
+
+    if instance.status not in ['APPROVED', 'REJECTED']:
+        return
+
+    # Update the content object based on its type
+    content_object = instance.content_object
+    if not content_object:
+        return
+
+    # Handle Documents approval
+    if hasattr(content_object, 'status') and type(content_object).__name__ == 'Documents':
+        if instance.status == 'APPROVED':
+            content_object.status = 'APPROVED'
+            content_object.approved_by = instance.get_primary_approver()
+            content_object.approved_at = instance.completed_at
+            content_object.save(update_fields=['status', 'approved_by', 'approved_at'])
+        elif instance.status == 'REJECTED':
+            content_object.status = 'DRAFT'
+            content_object.save(update_fields=['status'])
+
+    # Handle CAPA approval
+    elif hasattr(content_object, 'approval_status') and type(content_object).__name__ == 'CAPA':
+        if instance.status == 'APPROVED':
+            content_object.approval_status = 'APPROVED'
+            content_object.approved_by = instance.get_primary_approver()
+            content_object.approved_at = instance.completed_at
+            content_object.save(update_fields=['approval_status', 'approved_by', 'approved_at'])
+        elif instance.status == 'REJECTED':
+            # Set approval status to REJECTED and allow re-submission
+            content_object.approval_status = 'REJECTED'
+            content_object.approval_required = False  # Reset so they can re-request
+            content_object.save(update_fields=['approval_status', 'approval_required'])
+
+    # Handle Process approval
+    elif type(content_object).__name__ == 'Processes':
+        if instance.status == 'APPROVED':
+            # Use the model's approve method to handle status change
+            content_object.approve(user=instance.get_primary_approver())
+        elif instance.status == 'REJECTED':
+            # Use the model's reject_approval method
+            content_object.reject_approval()
+
+
+@receiver(post_save, sender=CAPA)
+def create_initial_containment_task(sender, instance, created, **kwargs):
+    """Auto-create initial containment task when CAPA is created"""
+    if created and instance.immediate_action:
+        from .models import CapaTasks, CapaTaskType
+        # task_number auto-generated by CapaTasks.save() with race condition protection
+        CapaTasks.objects.create(
+            capa=instance,
+            tenant=instance.tenant,  # Ensure tenant is set for proper sequence generation
+            task_type=CapaTaskType.CONTAINMENT,
+            description=f"Containment: {instance.immediate_action}",
+            assigned_to=instance.assigned_to,
+            due_date=instance.initiated_date
+        )
+
+
+@receiver(post_save, sender=CAPA)
+def notify_assignment(sender, instance, created, **kwargs):
+    """Notify assigned user when CAPA is created or reassigned"""
+    if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
+        from .tasks import send_capa_assignment_notification
+        send_capa_assignment_notification.delay(instance.id)
+
+
+@receiver(post_save, sender=CAPA)
+def trigger_approval_for_critical_capa(sender, instance, created, **kwargs):
+    """Automatically create approval request for Critical/Major CAPAs"""
+    from .models import ApprovalTemplate, CapaSeverity
+
+    # Only trigger on creation and for Critical/Major severity
+    if not created:
+        return
+
+    if instance.severity not in [CapaSeverity.CRITICAL, CapaSeverity.MAJOR]:
+        return
+
+    # Get the CAPA_APPROVAL template (filtered by tenant)
+    try:
+        template = ApprovalTemplate.objects.get(
+            approval_type='CAPA_APPROVAL',
+            tenant=instance.tenant
+        )
+    except ApprovalTemplate.DoesNotExist:
+        # No template configured, skip automatic approval
+        return
+
+    # Create approval request
+    from .models import ApprovalRequest
+    ApprovalRequest.create_from_template(
+        content_object=instance,
+        template=template,
+        requested_by=instance.initiated_by,
+        reason=f"CAPA Approval: {instance.capa_number} - {instance.get_severity_display()}"
+    )
+
+    # Update CAPA to reflect approval is required and pending
+    instance.approval_required = True
+    instance.approval_status = 'PENDING'
+    instance.save(update_fields=['approval_required', 'approval_status'])
+
+
+@receiver(post_save, sender=CapaTasks)
+def notify_task_assignment(sender, instance, created, **kwargs):
+    """Notify assignee when task is created or reassigned"""
+    if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
+        from .tasks import send_capa_task_assignment_notification
+        send_capa_task_assignment_notification.delay(instance.id)
+
+
+@receiver(post_save, sender=CapaTasks)
+def check_capa_ready_for_verification(sender, instance, **kwargs):
+    """Check if CAPA can move to verification after task completion"""
+    if instance.status == 'COMPLETED':
+        capa = instance.capa
+        if capa.all_tasks_completed() and capa.rca_complete():
+            from .tasks import send_capa_ready_for_verification_notification
+            send_capa_ready_for_verification_notification.delay(capa.id)
+
+
+@receiver(post_save, sender=CapaVerification)
+def handle_verification_outcome(sender, instance, **kwargs):
+    """Handle actions based on verification result"""
+    if instance.effectiveness_result == 'CONFIRMED':
+        # Notify that CAPA is ready to close
+        from .tasks import send_capa_verification_complete_notification
+        send_capa_verification_complete_notification.delay(instance.capa.id)
+    elif instance.effectiveness_result == 'NOT_EFFECTIVE':
+        # Notification already handled in verify_effectiveness method
+        # RCA review status already set
+        pass
+
+
+# =============================================================================
+# DOCUMENT CHUNK CLEANUP
+# =============================================================================
+
+@receiver(post_save, sender=Documents)
+def cleanup_chunks_on_archive(sender, instance, **kwargs):
+    """
+    Clean up DocChunks when a Document is soft-deleted (archived).
+
+    DocChunk uses CASCADE on hard delete, but SecureModel.delete() does soft delete.
+    Without this signal, chunks would accumulate forever for archived documents.
+    """
+    if instance.archived:
+        from .models.dms import DocChunk
+        deleted_count, _ = DocChunk.objects.filter(doc=instance).delete()
+        if deleted_count > 0:
+            logger.info(f"Cleaned up {deleted_count} chunks for archived document {instance.id}")
+
+
+# =============================================================================
+# TENANT GROUP SEEDING
+# =============================================================================
+
+@receiver(post_save, sender=Tenant)
+def seed_tenant_defaults(sender, instance, created, **kwargs):
+    """
+    Seed default groups and reference data when a new Tenant is created.
+
+    Each tenant gets:
+    - Default groups from GroupSeeder (using GROUP_PRESETS from presets.py)
+    - Default document types
+    - Default approval templates
+    """
+    if created:
+        from .groups import GroupSeeder
+        from .services.defaults_service import seed_reference_data_for_tenant
+
+        # Seed groups (with permissions)
+        GroupSeeder.seed_for_tenant(instance)
+
+        # Seed reference data (document types, approval templates)
+        seed_reference_data_for_tenant(instance)
+
+
+# =============================================================================
+# PERMISSION CACHE INVALIDATION
+# =============================================================================
+
+from django.db.models.signals import m2m_changed, post_delete
+
+
+@receiver(m2m_changed, sender='Tracker.TenantGroup_permissions')
+def clear_group_permission_cache(sender, instance, action, **kwargs):
+    """
+    Clear permission cache for all users in a group when its permissions change.
+
+    Triggered when permissions are added/removed from a TenantGroup.
+    """
+    if action in ('post_add', 'post_remove', 'post_clear'):
+        # instance is the TenantGroup
+        for role in instance.role_assignments.select_related('user'):
+            role.user.clear_permission_cache(instance.tenant)
+
+
+@receiver(post_save, sender='Tracker.UserRole')
+def clear_user_permission_cache_on_role_save(sender, instance, **kwargs):
+    """Clear permission cache when user's role is created or updated."""
+    tenant = instance.group.tenant
+    instance.user.clear_permission_cache(tenant)
+
+
+@receiver(post_delete, sender='Tracker.UserRole')
+def clear_user_permission_cache_on_role_delete(sender, instance, **kwargs):
+    """Clear permission cache when user's role is deleted."""
+    tenant = instance.group.tenant
+    instance.user.clear_permission_cache(tenant)
+
+
+# =============================================================================
+# CALIBRATION SIGNALS
+# =============================================================================
+
+@receiver(post_save, sender='Tracker.CalibrationRecord')
+def handle_calibration_result(sender, instance, created, **kwargs):
+    """
+    Update equipment status based on calibration result.
+
+    When calibration fails:
+    - Set equipment status to OUT_OF_SERVICE
+    - Log the change
+
+    When calibration passes (and equipment was out of service):
+    - Set equipment status back to IN_SERVICE
+    """
+    from .models.mes_standard import EquipmentStatus
+
+    equipment = instance.equipment
+
+    if instance.result == 'fail':
+        # Failed calibration - take equipment out of service
+        if equipment.status != EquipmentStatus.OUT_OF_SERVICE:
+            old_status = equipment.status
+            equipment.status = EquipmentStatus.OUT_OF_SERVICE
+            equipment.save(update_fields=['status'])
+            logger.info(
+                f"Equipment {equipment.name} ({equipment.id}) set to OUT_OF_SERVICE "
+                f"due to failed calibration (was: {old_status})"
+            )
+
+    elif instance.result in ('pass', 'limited'):
+        # Passed or limited - return to service if it was out due to calibration
+        if equipment.status == EquipmentStatus.OUT_OF_SERVICE:
+            equipment.status = EquipmentStatus.IN_SERVICE
+            equipment.save(update_fields=['status'])
+            logger.info(
+                f"Equipment {equipment.name} ({equipment.id}) returned to IN_SERVICE "
+                f"after {'passing' if instance.result == 'pass' else 'limited'} calibration"
+            )

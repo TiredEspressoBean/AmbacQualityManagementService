@@ -1,11 +1,10 @@
-import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartQualityForm } from "./part-quality-form";
-import { useState } from "react";
-import { CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Lock } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -14,17 +13,93 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+type FpiStatus = 'not_required' | 'pending' | 'passed' | 'failed';
+
 type QaFormSectionProps = {
     workOrder: any;
     parts: any[];
     isLoadingParts: boolean;
     isBatchProcess: boolean;
+    selectedPart: any | null;
+    onPartSelect: (part: any | null) => void;
+    /** Quality reports for this work order - used to check FPI status */
+    qualityReports?: any[];
+    /** Step info with requires_first_piece_inspection flag */
+    stepInfo?: { requires_first_piece_inspection?: boolean };
 };
 
-export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess }: QaFormSectionProps) {
-    const [selectedPart, setSelectedPart] = useState<any | null>(null);
+/**
+ * Compute FPI status for a step based on parts and quality reports
+ */
+function computeFpiStatus(
+    parts: any[],
+    qualityReports: any[],
+    stepRequiresFpi: boolean
+): { status: FpiStatus; firstPiecePart: any | null; fpiReport: any | null } {
+    if (!stepRequiresFpi) {
+        return { status: 'not_required', firstPiecePart: null, fpiReport: null };
+    }
+
+    // Find FPI reports for this step
+    const fpiReports = qualityReports.filter(qr => qr.is_first_piece);
+
+    // Check for passing FPI
+    const passingFpi = fpiReports.find(qr => qr.status === 'PASS');
+    if (passingFpi) {
+        const fpiPart = parts.find(p => p.id === passingFpi.part);
+        return { status: 'passed', firstPiecePart: fpiPart, fpiReport: passingFpi };
+    }
+
+    // Check for failing FPI
+    const failingFpi = fpiReports.find(qr => qr.status === 'FAIL');
+    if (failingFpi) {
+        const fpiPart = parts.find(p => p.id === failingFpi.part);
+        return { status: 'failed', firstPiecePart: fpiPart, fpiReport: failingFpi };
+    }
+
+    // No FPI yet - find the first piece candidate (earliest created_at)
+    const sortedParts = [...parts].sort((a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const firstPiecePart = sortedParts[0] || null;
+
+    return { status: 'pending', firstPiecePart, fpiReport: null };
+}
+
+export function QaFormSection({
+    _workOrder,
+    parts,
+    isLoadingParts,
+    isBatchProcess,
+    selectedPart,
+    onPartSelect,
+    qualityReports = [],
+    stepInfo
+}: QaFormSectionProps) {
     const [showQaForm, setShowQaForm] = useState(false);
     const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
+
+    // Compute FPI status
+    const fpiStatus = useMemo(() => {
+        const requiresFpi = stepInfo?.requires_first_piece_inspection ?? false;
+        return computeFpiStatus(parts, qualityReports, requiresFpi);
+    }, [parts, qualityReports, stepInfo?.requires_first_piece_inspection]);
+
+    // Check if a part is blocked by FPI
+    const isBlockedByFpi = (part: any) => {
+        if (fpiStatus.status === 'not_required' || fpiStatus.status === 'passed') {
+            return false;
+        }
+        // In pending or failed state, all parts except the first piece candidate are blocked
+        return part.id !== fpiStatus.firstPiecePart?.id;
+    };
+
+    // Check if a part is the first piece candidate
+    const isFirstPieceCandidate = (part: any) => {
+        return fpiStatus.status !== 'not_required' &&
+               fpiStatus.firstPiecePart?.id === part.id;
+    };
+
     if (isLoadingParts) {
         return (
             <div className="space-y-6">
@@ -99,12 +174,12 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
     const handleNextPart = () => {
         if (isBatchProcess && currentBatchIndex < parts.length - 1) {
             setCurrentBatchIndex(currentBatchIndex + 1);
-            setSelectedPart(parts[currentBatchIndex + 1]);
+            onPartSelect(parts[currentBatchIndex + 1]);
             setShowQaForm(true);
         } else if (!isBatchProcess) {
             const currentIndex = availableParts.findIndex(p => p.id === selectedPart?.id);
             if (currentIndex >= 0 && currentIndex < availableParts.length - 1) {
-                setSelectedPart(availableParts[currentIndex + 1]);
+                onPartSelect(availableParts[currentIndex + 1]);
                 setShowQaForm(true);
             }
         }
@@ -112,6 +187,46 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
 
     return (
         <div className="space-y-4">
+            {/* FPI Status Banner */}
+            {fpiStatus.status !== 'not_required' && !showQaForm && (
+                <div className={`rounded-lg p-3 border ${
+                    fpiStatus.status === 'passed'
+                        ? 'bg-green-500/10 border-green-500/50'
+                        : fpiStatus.status === 'failed'
+                        ? 'bg-red-500/10 border-red-500/50'
+                        : 'bg-amber-500/10 border-amber-500/50'
+                }`}>
+                    <div className="flex items-center gap-3">
+                        {fpiStatus.status === 'passed' ? (
+                            <ShieldCheck className="h-5 w-5 text-green-600" />
+                        ) : fpiStatus.status === 'failed' ? (
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                        ) : (
+                            <Lock className="h-5 w-5 text-amber-600" />
+                        )}
+                        <div className="flex-1">
+                            <p className="font-medium text-sm">
+                                First Piece Inspection {fpiStatus.status === 'passed' ? 'Passed' : fpiStatus.status === 'failed' ? 'Failed' : 'Required'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {fpiStatus.status === 'passed' ? (
+                                    'All parts can now proceed through this step.'
+                                ) : fpiStatus.status === 'failed' ? (
+                                    'FPI failed. Re-inspect or fix setup before other parts can proceed.'
+                                ) : (
+                                    `Part ${fpiStatus.firstPiecePart?.ERP_id || 'TBD'} must pass inspection before other parts can proceed.`
+                                )}
+                            </p>
+                        </div>
+                        {fpiStatus.status !== 'passed' && fpiStatus.firstPiecePart && (
+                            <Badge variant={fpiStatus.status === 'failed' ? 'destructive' : 'secondary'}>
+                                {parts.filter(p => p.id !== fpiStatus.firstPiecePart?.id).length} blocked
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Compact Batch Header */}
             {isBatchProcess && availableParts.length > 0 && !showQaForm && (
                 <div className="bg-blue-500/10 border border-blue-500/50 dark:bg-blue-500/20 dark:border-blue-500/60 rounded-lg p-3">
@@ -131,7 +246,7 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                             size="sm"
                             onClick={() => {
                                 setCurrentBatchIndex(0);
-                                setSelectedPart(availableParts[0]);
+                                onPartSelect(availableParts[0]);
                                 setShowQaForm(true);
                             }}
                         >
@@ -157,9 +272,9 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                             <Select
                                 value={selectedPart?.id?.toString() || ""}
                                 onValueChange={(value) => {
-                                    const part = availableParts.find(p => p.id === parseInt(value));
+                                    const part = availableParts.find(p => p.id === value);
                                     if (part) {
-                                        setSelectedPart(part);
+                                        onPartSelect(part);
                                     }
                                 }}
                             >
@@ -168,8 +283,27 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                                 </SelectTrigger>
                                 <SelectContent>
                                     {availableParts.map((part) => (
-                                        <SelectItem key={part.id} value={part.id.toString()}>
-                                            {part.ERP_id} - {part.part_status?.replace('_', ' ')}
+                                        <SelectItem
+                                            key={part.id}
+                                            value={part.id.toString()}
+                                            disabled={isBlockedByFpi(part)}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={isBlockedByFpi(part) ? 'text-muted-foreground' : ''}>
+                                                    {part.ERP_id} - {part.part_status?.replace('_', ' ')}
+                                                </span>
+                                                {isFirstPieceCandidate(part) && (
+                                                    <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                                        First Piece
+                                                    </Badge>
+                                                )}
+                                                {isBlockedByFpi(part) && (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        <Lock className="h-3 w-3 mr-1" />
+                                                        Waiting FPI
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -211,13 +345,19 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                                     Batch
                                 </Badge>
                             )}
+                            {isFirstPieceCandidate(selectedPart) && (
+                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                    <ShieldCheck className="h-3 w-3 mr-1" />
+                                    First Piece Inspection
+                                </Badge>
+                            )}
                         </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
                                 setShowQaForm(false);
-                                setSelectedPart(null);
+                                onPartSelect(null);
                             }}
                         >
                             Close
@@ -237,7 +377,7 @@ export function QaFormSection({ workOrder, parts, isLoadingParts, isBatchProcess
                                 handleNextPart();
                             } else {
                                 setShowQaForm(false);
-                                setSelectedPart(null);
+                                onPartSelect(null);
                             }
                         }}
                     />

@@ -29,38 +29,48 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes"
 import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses"
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps"
+import { schemas } from "@/lib/api/generated"
+import { isFieldRequired } from "@/lib/zod-config"
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Rule set name is required - please enter a descriptive name for this sampling rule set")
-        .max(255, "Rule set name must be 255 characters or less"),
-    active: z.boolean().optional(),
-    part_type: z
-        .number()
-        .min(1, "Part type must be selected - please choose which part type this rule set applies to"),
-    process: z
-        .number()
-        .min(1, "Process must be selected - please choose which process this rule set is related to"),
-    step: z
-        .number()
-        .min(1, "Step must be selected - please choose which manufacturing step this rule set applies to"),
+// Use generated schema, extending process to be required for this form
+const formSchema = schemas.SamplingRuleSetRequest.pick({
+    name: true,
+    active: true,
+    part_type: true,
+    step: true,
+}).extend({
+    // Process is optional in API but required for this form
+    process: z.string().min(1),
 })
+
+type FormValues = z.infer<typeof formSchema>;
+
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+    process: isFieldRequired(formSchema.shape.process),
+    step: isFieldRequired(formSchema.shape.step),
+};
 
 export default function SamplingRuleSetsFormPage() {
     const [partTypeSearch, setPartTypeSearch] = useState("")
     const [processSearch, setProcessSearch] = useState("")
     const [stepSearch, setStepSearch] = useState("")
-    const [selectedPartTypeId, setSelectedPartTypeId] = useState<number | null>(null)
-    const [selectedProcessId, setSelectedProcessId] = useState<number | null>(null)
+    const [selectedPartTypeId, setSelectedPartTypeId] = useState<string | null>(null)
+    const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null)
 
-    const { data: partTypes } = useRetrievePartTypes({ queries: { search: partTypeSearch } })
-    const { data: processes } = useRetrieveProcesses({ queries: { search: processSearch, part_type: selectedPartTypeId ?? undefined } })
-    const { data: steps } = useRetrieveSteps({ queries: { search: stepSearch, process: selectedProcessId ?? undefined } })
+    const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
+    const { data: processes } = useRetrieveProcesses({ search: processSearch, part_type: selectedPartTypeId ?? undefined })
+    // Steps filter: use process_memberships__process (junction table) and part_type
+    const { data: steps } = useRetrieveSteps({
+        search: stepSearch,
+        process_memberships__process: selectedProcessId ?? undefined,
+        part_type: selectedPartTypeId ?? undefined,
+    })
 
     const params = useParams({ strict: false })
     const mode = params.id ? "edit" : "create"
-    const ruleSetId = params.id ? parseInt(params.id, 10) : undefined
+    const ruleSetId = params.id
 
     const { data: ruleSet } = useRetrieveSamplingRuleSet(
         { params: { id: ruleSetId! } },
@@ -70,7 +80,7 @@ export default function SamplingRuleSetsFormPage() {
     const createRuleSet = useCreateSamplingRuleSet()
     const updateRuleSet = useUpdateSamplingRuleSet()
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
     })
 
@@ -88,7 +98,7 @@ export default function SamplingRuleSetsFormPage() {
         }
     }, [mode, ruleSet, form])
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: FormValues) {
         try {
             if (mode === "edit" && ruleSetId) {
                 await updateRuleSet.mutateAsync({ id: ruleSetId, data: values })
@@ -120,7 +130,7 @@ export default function SamplingRuleSetsFormPage() {
                     name="name"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Name *</FormLabel>
+                            <FormLabel required={required.name}>Name</FormLabel>
                             <FormControl>
                                 <Input placeholder="Sampling rule set name" {...field} />
                             </FormControl>
@@ -157,7 +167,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = partTypes?.results.find(pt => pt.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Part Type *</FormLabel>
+                                <FormLabel required={required.part_type}>Part Type</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -212,7 +222,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = processes?.results.find(p => p.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Process *</FormLabel>
+                                <FormLabel required={required.process}>Process</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -265,7 +275,7 @@ export default function SamplingRuleSetsFormPage() {
                         const selected = steps?.results.find(s => s.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Step *</FormLabel>
+                                <FormLabel required={required.step}>Step</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>

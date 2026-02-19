@@ -28,7 +28,7 @@ export function PassByStepForm({ order, onSuccess }: PassByStepFormProps) {
         },
         onSubmit: async ({ value }) => {
             await mutation.mutateAsync(
-                { orderId: order.id, stepId: Number(value.stepId) },
+                { orderId: order.id, stepId: value.stepId },
                 {
                     onSuccess: () => {
                         toast.success("Part passed to next step.");

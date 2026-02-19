@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
 export function useRetrieveWorkOrder(
-    id: number,
+    id: string,
     options?: { enabled?: boolean }
 ) {
     return useQuery({

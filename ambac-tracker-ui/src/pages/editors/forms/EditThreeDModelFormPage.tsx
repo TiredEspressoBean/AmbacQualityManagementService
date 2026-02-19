@@ -42,28 +42,35 @@ import { useRetrieveThreeDModel } from "@/hooks/useRetrieveThreeDModel";
 import { useCreateThreeDModel } from "@/hooks/useCreateThreeDModel";
 import { useUpdateThreeDModel } from "@/hooks/useUpdateThreeDModel";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+import { useRetrievePartType } from "@/hooks/useRetrievePartType";
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps";
+import { useRetrieveStep } from "@/hooks/useRetrieveStep";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Model name is required")
-        .max(255, "Model name must be 255 characters or less"),
-    file: z
-        .any()
-        .refine(
-            (file) => file instanceof File || (Array.isArray(file) && file.length > 0),
-            "A 3D model file is required - please select a file to upload (GLB, STEP up to 50MB)"
-        )
-        .optional(),
-    part_type: z.string().optional(),
-    step: z.string().optional(),
+// Use generated schema with custom file handling
+const formSchema = schemas.ThreeDModelRequest.pick({
+    name: true,
+    part_type: true,
+    step: true,
+}).extend({
+    // Override file to be optional for edit mode
+    file: z.any().optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Pre-compute required fields for labels
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+    step: isFieldRequired(formSchema.shape.step),
+};
 
 export default function ThreeDModelFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const modelId = params.id ? parseInt(params.id, 10) : undefined;
+    const modelId = params.id;
 
     const [files, setFiles] = useState<File[] | null>(null);
     const [partTypeSearch, setPartTypeSearch] = useState("");
@@ -72,6 +79,16 @@ export default function ThreeDModelFormPage() {
     const [rawStepSearch, setRawStepSearch] = useState("");
 
     const { data: model, isLoading: isLoadingModel } = useRetrieveThreeDModel(modelId!);
+
+    // Fetch the specific part type and step if they exist on the model
+    const { data: selectedPartTypeData } = useRetrievePartType(
+        { params: { id: model?.part_type ?? 0 } },
+        { enabled: !!model?.part_type }
+    );
+    const { data: selectedStepData } = useRetrieveStep(
+        { params: { id: model?.step ?? 0 } },
+        { enabled: !!model?.step }
+    );
 
     // Debounce part type search
     useEffect(() => {
@@ -89,7 +106,7 @@ export default function ThreeDModelFormPage() {
         return () => clearTimeout(timeout);
     }, [rawStepSearch]);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
@@ -101,15 +118,13 @@ export default function ThreeDModelFormPage() {
     const selectedPartType = form.watch("part_type");
 
     const { data: partTypesData } = useRetrievePartTypes({
-        queries: { limit: 1000, search: partTypeSearch },
+        limit: 1000, search: partTypeSearch,
     });
 
     const { data: stepsData } = useRetrieveSteps({
-        queries: {
-            limit: 1000,
-            search: stepSearch,
-            process__part_type: selectedPartType ? parseInt(selectedPartType) : undefined
-        },
+        limit: 1000,
+        search: stepSearch,
+        process__part_type: selectedPartType || undefined
     });
 
     // Reset form when model data loads
@@ -129,7 +144,7 @@ export default function ThreeDModelFormPage() {
             // Only clear if there's a current step selected
             const currentStep = form.getValues("step");
             if (currentStep) {
-                form.setValue("step", undefined);
+                form.setValue("step", "");
             }
         }
     }, [selectedPartType]);
@@ -137,7 +152,7 @@ export default function ThreeDModelFormPage() {
     const createModel = useCreateThreeDModel();
     const updateModel = useUpdateThreeDModel();
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: FormValues) {
         try {
             // Validate file exists for create mode
             if (mode === "create" && (!values.file || !(values.file instanceof File))) {
@@ -145,24 +160,17 @@ export default function ThreeDModelFormPage() {
                 return;
             }
 
-            // Build the payload according to API schema
-            const payload: {
-                name: string;
-                file?: File;
-                part_type?: number | null;
-                step?: number | null;
-            } = {
+            // Build payload as plain object - zodios converts to form-data
+            const payload: any = {
                 name: values.name,
-                part_type: values.part_type ? parseInt(values.part_type) : null,
-                step: values.step ? parseInt(values.step) : null,
+                part_type: values.part_type,
+                ...(values.step && values.step.trim() !== "" && { step: values.step }),
             };
 
             // Only include file if one was selected
             if (values.file && values.file instanceof File) {
                 payload.file = values.file;
             }
-
-            console.log("Submitting with payload:", payload);
 
             if (mode === "edit" && modelId) {
                 await updateModel.mutateAsync({ id: modelId, data: payload });
@@ -206,7 +214,7 @@ export default function ThreeDModelFormPage() {
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Model Name *</FormLabel>
+                                <FormLabel required={required.name}>Model Name</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. Part Assembly v1.0"
@@ -226,8 +234,8 @@ export default function ThreeDModelFormPage() {
                         name="file"
                         render={() => (
                             <FormItem>
-                                <FormLabel>
-                                    3D Model File {mode === "create" ? "*" : ""}
+                                <FormLabel required={mode === "create"}>
+                                    3D Model File
                                 </FormLabel>
                                 <FormControl>
                                     <FileUploader
@@ -297,9 +305,13 @@ export default function ThreeDModelFormPage() {
                             const selected = partTypesData?.results?.find(
                                 (pt: any) => String(pt.id) === field.value
                             );
+                            // Use fetched part type data if not found in search results
+                            const displayName = selected?.name
+                                || (field.value && selectedPartTypeData?.name)
+                                || "Select part type";
                             return (
                                 <FormItem>
-                                    <FormLabel>Part Type (Optional)</FormLabel>
+                                    <FormLabel required={required.part_type}>Part Type</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -311,7 +323,7 @@ export default function ThreeDModelFormPage() {
                                                         !field.value && "text-muted-foreground"
                                                     )}
                                                 >
-                                                    {selected?.name ?? "Select part type"}
+                                                    {displayName}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -329,7 +341,7 @@ export default function ThreeDModelFormPage() {
                                                         <CommandItem
                                                             value="none"
                                                             onSelect={() => {
-                                                                form.setValue("part_type", undefined);
+                                                                form.setValue("part_type", "");
                                                                 setPartTypeSearch("");
                                                                 setRawPartTypeSearch("");
                                                             }}
@@ -342,7 +354,7 @@ export default function ThreeDModelFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {partTypesData?.results?.map((partType: any) => (
+                                                        {partTypesData?.results?.map((partType: { id: string | number }) => (
                                                             <CommandItem
                                                                 key={partType.id}
                                                                 value={partType.id.toString()}
@@ -369,7 +381,7 @@ export default function ThreeDModelFormPage() {
                                         </PopoverContent>
                                     </Popover>
                                     <FormDescription>
-                                        Associate this model with a specific part type
+                                        Required for traceability - links this 3D model to a part type for quality inspection
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -384,9 +396,13 @@ export default function ThreeDModelFormPage() {
                             const selected = stepsData?.results?.find(
                                 (s: any) => String(s.id) === field.value
                             );
+                            // Use fetched step data if not found in search results
+                            const displayName = selected?.name
+                                || (field.value && selectedStepData?.name)
+                                || "Select step";
                             return (
                                 <FormItem>
-                                    <FormLabel>Step (Optional)</FormLabel>
+                                    <FormLabel required={required.step}>Step</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -398,7 +414,7 @@ export default function ThreeDModelFormPage() {
                                                         !field.value && "text-muted-foreground"
                                                     )}
                                                 >
-                                                    {selected?.name ?? "Select step"}
+                                                    {displayName}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -416,7 +432,7 @@ export default function ThreeDModelFormPage() {
                                                         <CommandItem
                                                             value="none"
                                                             onSelect={() => {
-                                                                form.setValue("step", undefined);
+                                                                form.setValue("step", "");
                                                                 setStepSearch("");
                                                                 setRawStepSearch("");
                                                             }}
@@ -429,7 +445,7 @@ export default function ThreeDModelFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {stepsData?.results?.map((step: any) => (
+                                                        {stepsData?.results?.map((step: { id: string | number }) => (
                                                             <CommandItem
                                                                 key={step.id}
                                                                 value={step.id.toString()}

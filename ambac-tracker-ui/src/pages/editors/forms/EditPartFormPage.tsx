@@ -26,55 +26,58 @@ import {useRetrieveOrder} from "@/hooks/useRetrieveOrder.ts";
 import {useCreatePart} from "@/hooks/useCreatePart.ts";
 import {useUpdatePart} from "@/hooks/useUpdatePart.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
+import {isFieldRequired} from "@/lib/zod-config";
 
-const PART_STATUS = schemas.PartStatusEnum.options;
+const PART_STATUS = schemas.PartsStatusEnum.options;
 
-const formSchema = z.object({
-    ERP_id: z
-        .string()
-        .min(1, "ERP ID is required - please enter the unique identifier from your ERP system")
-        .max(100, "ERP ID must be 100 characters or less"),
-    part_status: schemas.PartStatusEnum.optional(),
-    order: z.number().optional(),
-    part_type: z
-        .number()
-        .min(1, "Part type must be selected - please choose which type of part this is"),
-    step: z
-        .number()
-        .min(1, "Step must be selected - please choose which manufacturing step this part is in"),
-    work_order: z.number().optional(),
+// Use generated schema with extension for archived field (not in API schema)
+const formSchema = schemas.PartsRequest.pick({
+    ERP_id: true,
+    part_status: true,
+    order: true,
+    part_type: true,
+    step: true,
+    work_order: true,
+}).extend({
+    // archived is a UI field, may not be in generated schema
     archived: z.boolean().default(false).optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>;
+
+const required = {
+    ERP_id: isFieldRequired(formSchema.shape.ERP_id),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+    step: isFieldRequired(formSchema.shape.step),
+};
 
 export default function PartFormPage() {
     const params = useParams({strict: false});
     const mode = params.id ? 'edit' : 'create';
-    const partId = params.id ? parseInt(params.id, 10) : undefined;
+    const partId = params.id;
 
     // Fetch part data if in edit mode
     const {data: part} = useRetrievePart({params: {id: partId!}}, {enabled: mode === 'edit' && !!partId});
 
     const [search, setSearch] = useState("")
     const {data: orders} = useRetrieveOrders({
-        queries: {search: search}
+        search: search
     })
     const [partTypeSearch, setPartTypeSearch] = useState("")
     const {data: partTypes} = useRetrievePartTypes({
-        queries: {search: partTypeSearch}
+        search: partTypeSearch
     })
 
     const [workOrderSearch, setWorkOrderSearch] = useState("")
     const {data: workOrders} = useRetrieveWorkOrders({
-        queries: {search: workOrderSearch},
+        search: workOrderSearch,
     })
 
     const {data: selectedOrder} = useRetrieveOrder(part?.order ?? 0, {
         enabled: !!part?.order,
     });
 
-    const form = useForm<FormData>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             ERP_id: part?.ERP_id ?? "",
@@ -104,23 +107,21 @@ export default function PartFormPage() {
     const selectedPartType = form.watch("part_type")
     
     // Process selection for filtering steps (not submitted to API)
-    const [selectedProcess, setSelectedProcess] = useState<number | undefined>(undefined)
+    const [selectedProcess, setSelectedProcess] = useState<string | undefined>(undefined)
 
     const {data: processes} = useRetrieveProcesses({
-        queries: {part_type: selectedPartType}
+        part_type: selectedPartType
     });
 
     const {data: steps} = useRetrieveSteps({
-        queries: {
-            part_type: selectedPartType,
-            process: selectedProcess || undefined,
-        },
+        part_type: selectedPartType,
+        process: selectedProcess || undefined,
     })
     
     // Auto-select process when editing and we have part data
     useEffect(() => {
         if (mode === "edit" && part?.process && processes?.results) {
-            const processId = typeof part.process === 'string' ? parseInt(part.process) : part.process;
+            const processId = String(part.process);
             const matchingProcess = processes.results.find(p => p.id === processId);
             if (matchingProcess && selectedProcess !== processId) {
                 setSelectedProcess(matchingProcess.id);
@@ -136,7 +137,7 @@ export default function PartFormPage() {
     const createPart = useCreatePart();
     const updatePart = useUpdatePart();
 
-    function onSubmit(values: FormData) {
+    function onSubmit(values: FormValues) {
         if (mode === "edit" && partId) {
             updatePart.mutate({
                 id: partId, data: values,
@@ -177,7 +178,7 @@ export default function PartFormPage() {
                         control={form.control}
                         name="ERP_id"
                         render={({field}) => (<FormItem>
-                            <FormLabel>ERP Id *</FormLabel>
+                            <FormLabel required={required.ERP_id}>ERP Id</FormLabel>
                             <FormControl>
                                 <Input
                                     placeholder=""
@@ -263,7 +264,7 @@ export default function PartFormPage() {
                         render={({field}) => {
                             const selectedPartType = partTypes?.results.find(pt => pt.id === field.value)
                             return (<FormItem className="flex flex-col">
-                                <FormLabel>Part Type *</FormLabel>
+                                <FormLabel required={required.part_type}>Part Type</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -366,7 +367,7 @@ export default function PartFormPage() {
                         control={form.control}
                         name="step"
                         render={({field}) => (<FormItem className="flex flex-col">
-                            <FormLabel>Step *</FormLabel>
+                            <FormLabel required={required.step}>Step</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>

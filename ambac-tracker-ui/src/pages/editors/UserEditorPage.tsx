@@ -2,6 +2,27 @@ import { useRetrieveUsers } from "@/hooks/useRetrieveUsers.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditUserActionsCell } from "@/components/edit-user-action-cell.tsx";
+import { api } from "@/lib/api/generated";
+import type { QueryClient } from "@tanstack/react-query";
+
+// Default params that match what useUsersList passes on initial render
+const DEFAULT_LIST_PARAMS = {
+    offset: 0,
+    limit: 25,
+    search: "",
+};
+
+// Prefetch function for route loader
+export const prefetchUsersEditor = (queryClient: QueryClient) => {
+    queryClient.prefetchQuery({
+        queryKey: ["user", DEFAULT_LIST_PARAMS],
+        queryFn: () => api.api_User_list(DEFAULT_LIST_PARAMS),
+    });
+    queryClient.prefetchQuery({
+        queryKey: ["metadata", "Users", "User"],
+        queryFn: () => api.api_User_metadata_retrieve(),
+    });
+};
 
 // Custom wrapper hook for consistent usage
 function useUsersList({
@@ -9,19 +30,20 @@ function useUsersList({
                           limit,
                           ordering,
                           search,
+                          filters,
                       }: {
     offset: number;
     limit: number;
     ordering?: string;
     search?: string;
+    filters?: Record<string, string>;
 }) {
     return useRetrieveUsers({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
+        offset,
+        limit,
+        ordering,
+        search,
+        ...filters,
     });
 }
 
@@ -33,37 +55,22 @@ export function UserEditorPage() {
             title="Users"
             modelName="Users"
             useList={useUsersList}
-            sortOptions={[
-                { label: "Username (A-Z)", value: "username" },
-                { label: "Username (Z-A)", value: "-username" },
-                { label: "First Name (A-Z)", value: "first_name" },
-                { label: "First Name (Z-A)", value: "-first_name" },
-                { label: "Last Name (A-Z)", value: "last_name" },
-                { label: "Last Name (Z-A)", value: "-last_name" },
-                { label: "Email (A-Z)", value: "email" },
-                { label: "Email (Z-A)", value: "-email" },
-                { label: "Date Joined (Newest)", value: "-date_joined" },
-                { label: "Date Joined (Oldest)", value: "date_joined" },
-                { label: "Active Users First", value: "-is_active" },
-                { label: "Inactive Users First", value: "is_active" },
-                { label: "Staff Users First", value: "-is_staff" },
-                { label: "Non-Staff Users First", value: "is_staff" },
-            ]}
             columns={[
-                { header: "Username", renderCell: (user: any) => user.username },
-                { 
-                    header: "Full Name", 
+                { header: "Username", renderCell: (user: any) => user.username, priority: 1 },
+                {
+                    header: "Full Name",
                     renderCell: (user: any) => {
                         const firstName = user.first_name || "";
                         const lastName = user.last_name || "";
                         const fullName = `${firstName} ${lastName}`.trim();
                         return fullName || "-";
-                    }
+                    },
+                    priority: 1
                 },
-                { header: "Email", renderCell: (user: any) => user.email || "-" },
-                { header: "Company", renderCell: (user: any) => user.parent_company?.name || "-" },
-                { 
-                    header: "Status", 
+                { header: "Email", renderCell: (user: any) => user.email || "-", priority: 1 },
+                { header: "Company", renderCell: (user: any) => user.parent_company?.name || "-", priority: 5 },
+                {
+                    header: "Status",
                     renderCell: (user: any) => (
                         <div className="flex gap-2">
                             {user.is_active ? (
@@ -81,16 +88,18 @@ export function UserEditorPage() {
                                 </span>
                             )}
                         </div>
-                    )
+                    ),
+                    priority: 1
                 },
-                { 
-                    header: "Joined", 
+                {
+                    header: "Joined",
                     renderCell: (user: any) => {
                         if (user.date_joined) {
                             return new Date(user.date_joined).toLocaleDateString();
                         }
                         return "-";
-                    }
+                    },
+                    priority: 4
                 },
             ]}
             renderActions={(user) => <EditUserActionsCell userId={user.id} />}

@@ -16,20 +16,18 @@ function usePartsList({
     search?: string;
 }) {
     return useRetrieveParts({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-            archived: false,
-            requires_sampling: true,
-            status__in: [
-                "PENDING",
-                "IN_PROGRESS",
-                "REWORK_NEEDED",
-                "REWORK_IN_PROGRESS",
-            ],
-        },
+        offset,
+        limit,
+        ordering,
+        search,
+        archived: false,
+        requires_sampling: true,
+        status__in: [
+            "PENDING",
+            "IN_PROGRESS",
+            "REWORK_NEEDED",
+            "REWORK_IN_PROGRESS",
+        ],
     });
 }
 

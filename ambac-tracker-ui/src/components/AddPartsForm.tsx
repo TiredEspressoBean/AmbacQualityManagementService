@@ -15,10 +15,10 @@ import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes.ts";
 import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses.ts";
 
 // Zod schema and types
-type AddPartsData = z.infer<typeof schemas.BulkAddPartsRequest>;
-const AddPartsSchema = schemas.BulkAddPartsRequest;
-const PartStatusEnum = schemas.PartStatusEnum.options;
-const PartStatusValues = schemas.PartStatusEnum.options;
+type AddPartsData = z.infer<typeof schemas.BulkAddPartsInputRequest>;
+const AddPartsSchema = schemas.BulkAddPartsInputRequest;
+const PartStatusEnum = schemas.PartsStatusEnum.options;
+const PartStatusValues = schemas.PartsStatusEnum.options;
 type PartStatus = (typeof PartStatusValues)[number];
 
 const defaults = {} as z.infer<typeof AddPartsSchema>;
@@ -42,12 +42,14 @@ const { Field, Subscribe, store } = form;
   const processId = useStore(store, (s) => s.values.process_id);
   const stepId = useStore(store, (s) => s.values.step);
 
-    const partTypesQuery = useRetrievePartTypes({});
-    const processQuery = useRetrieveProcesses({ queries: { part_type: partTypeId || undefined } });
+    const partTypesQuery = useRetrievePartTypes();
+    const processQuery = useRetrieveProcesses({ part_type: partTypeId || undefined });
 
     const selectedPartType = partTypesQuery.data?.results?.find((pt) => pt.id === partTypeId);
     const selectedProcess = processQuery.data?.results?.find((p) => p.id === processId);
-    const steps = selectedProcess?.steps || [];
+    // Process steps are accessed via process_steps junction table
+    const processSteps = (selectedProcess as unknown as { process_steps?: Array<{ step: { id: string; name: string; description?: string } }> })?.process_steps || [];
+    const steps = processSteps.map((ps) => ps.step);
 
     const [openPartType, setOpenPartType] = useState(false);
     const [openProcess, setOpenProcess] = useState(false);
@@ -110,7 +112,9 @@ const { Field, Subscribe, store } = form;
                    listeners={{
                        onChange: ({ fieldApi, value }) => {
                            // default step to first step of the selected process
-                           const proc = processQuery.data?.results?.find((p) => p.id === value);const firstStepId = proc?.steps?.[0]?.id;
+                           const proc = processQuery.data?.results?.find((p) => p.id === value);
+                           const procSteps = (proc as unknown as { process_steps?: Array<{ step: { id: string } }> })?.process_steps || [];
+                           const firstStepId = procSteps[0]?.step?.id;
                            if (firstStepId !== undefined) {
                                fieldApi.form.setFieldValue("step", firstStepId);
                            }
@@ -184,14 +188,14 @@ const { Field, Subscribe, store } = form;
                                     disabled={!steps.length}
                                     onClick={() => setOpenStep(true)}
                                 >
-                                    {steps.find((s) => s.id === stepId)?.description || "Select step"}
+                                    {steps.find((s: { id: string; name: string; description?: string }) => s.id === stepId)?.name || "Select step"}
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="p-0 w-full">
                                 <Command>
                                     <CommandInput placeholder="Search step..." />
                                     <CommandList>
-                                        {steps.map((step) => (
+                                        {steps.map((step: { id: string; name: string; description?: string }) => (
                                             <CommandItem
                                                 key={step.id}
                                                 onSelect={() => {

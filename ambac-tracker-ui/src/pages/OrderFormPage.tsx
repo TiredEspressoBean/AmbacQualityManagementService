@@ -6,8 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMatchRoute, useNavigate } from '@tanstack/react-router';
-import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { format, formatDistanceToNow } from "date-fns";
+import { CalendarIcon, Check, ChevronsUpDown, Send, ChevronDown, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,22 +43,35 @@ import { useCreateOrder } from '@/hooks/useCreateOrder';
 import { useListHubspotGates } from '@/hooks/useListHubspotGates';
 import { useRetrieveCustomers } from '@/hooks/useRetrieveCustomers';
 import { useRetrieveCompanies } from '@/hooks/useRetrieveCompanies';
-import { schemas } from '@/lib/api/generated';
+import { api, schemas } from '@/lib/api/generated';
 import { ordersEditFormRoute } from "@/router";
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const ORDER_STATUS = schemas.OrderStatusEnum.options;
+const ORDER_STATUS = schemas.OrdersStatusEnum.options;
 
-const formSchema = z.object({
-    name: z.string().min(1, "Order name is required"),
-    customer: z.number().min(1, "Customer is required"),
-    customer_note: z.string().optional(),
+// Use generated schema with form-specific overrides
+// Note: customer_note is managed via notes timeline on OrderDetailsPage
+const formSchema = schemas.OrdersRequest.pick({
+    name: true,
+    customer: true,
+    order_status: true,
+    company: true,
+    current_hubspot_gate: true,
+}).extend({
+    // Form uses Date object, converted to string on submit
     estimated_completion: z.date().optional(),
-    order_status: z.enum(ORDER_STATUS as [string, ...string[]]),
-    current_hubspot_gate: z.number().nullable().optional(),
-    company: z.number().min(1, "Company is required"),
+    // Not in generated schema but needed for form
     archived: z.boolean().optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    company: isFieldRequired(formSchema.shape.company),
+    customer: isFieldRequired(formSchema.shape.customer),
+};
 
 export default function OrderFormPage() {
     const navigate = useNavigate();
@@ -65,40 +80,62 @@ export default function OrderFormPage() {
     const [customerSearch, setCustomerSearch] = useState("");
     const [companyOpen, setCompanyOpen] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
+    const [newNote, setNewNote] = useState("");
+    const [noteVisibility, setNoteVisibility] = useState<"visible" | "internal">("visible");
+    const [notesExpanded, setNotesExpanded] = useState(false);
+    const queryClient = useQueryClient();
 
     const isEditing = !!matchRoute({ to: ordersEditFormRoute.id, fuzzy: true });
 
-    let orderId: number | undefined = undefined;
+    let orderId: string | undefined = undefined;
     if (isEditing) {
         const { id } = ordersEditFormRoute.useParams();
-        orderId = Number(id);
+        orderId = id;
     }
 
-    const { data: order, isLoading } = useRetrieveOrder(orderId ?? 0, {
+    const { data: order, isLoading } = useRetrieveOrder(orderId ?? "", {
         enabled: !!orderId,
     });
 
     const { data: hubspotGates = [] } = useListHubspotGates({});
     const { data: customers = [] } = useRetrieveCustomers({
-        queries: { search: customerSearch },
+        search: customerSearch,
     });
     const { data: companies } = useRetrieveCompanies({
-        queries: { search: companySearch },
+        search: companySearch,
     });
 
     const updateOrder = useUpdateOrder();
     const createOrder = useCreateOrder();
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    // Add note mutation (only available in edit mode)
+    const addNoteMutation = useMutation({
+        mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
+            if (!orderId) throw new Error("Order ID required");
+            return await api.api_Orders_add_note_create({
+                params: { id: orderId },
+                body: { message, visibility } as any,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+            setNewNote("");
+            toast.success("Note added");
+        },
+        onError: () => {
+            toast.error("Failed to add note");
+        },
+    });
+
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
-            customer: 0,
-            customer_note: "",
+            customer: undefined,
             estimated_completion: undefined,
             order_status: ORDER_STATUS[0],
-            current_hubspot_gate: null,
-            company: 0,
+            current_hubspot_gate: undefined,
+            company: undefined,
             archived: false,
         },
     });
@@ -108,21 +145,19 @@ export default function OrderFormPage() {
         if (isEditing && order) {
             form.reset({
                 name: order.name || "",
-                customer: order.customer || 0,
-                customer_note: order.customer_note || "",
+                customer: order.customer ?? undefined,
                 estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
-                current_hubspot_gate: order.current_hubspot_gate ?? null,
-                company: order.company || 0,
+                current_hubspot_gate: order.current_hubspot_gate ?? undefined,
+                company: order.company ?? undefined,
                 archived: order.archived || false,
             });
         }
     }, [isEditing, order, form, hubspotGates.length]);
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         const submitData = {
             ...values,
-            customer_note: values.customer_note || undefined,
             estimated_completion: values.estimated_completion ? format(values.estimated_completion, "yyyy-MM-dd") : undefined,
             current_hubspot_gate: values.current_hubspot_gate || undefined,
         };
@@ -188,7 +223,7 @@ export default function OrderFormPage() {
                         name="name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Order Name *</FormLabel>
+                                <FormLabel required={required.name}>Order Name</FormLabel>
                                 <FormControl>
                                     <Input placeholder="e.g. Order #12345" {...field} />
                                 </FormControl>
@@ -206,7 +241,7 @@ export default function OrderFormPage() {
                             name="company"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Company *</FormLabel>
+                                    <FormLabel required={required.company}>Company</FormLabel>
                                     <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -272,7 +307,7 @@ export default function OrderFormPage() {
                             name="customer"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Customer *</FormLabel>
+                                    <FormLabel required={required.customer}>Customer</FormLabel>
                                     <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -445,28 +480,6 @@ export default function OrderFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="customer_note"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Customer Notes</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="Any special requirements or notes about this order..."
-                                        className="min-h-[100px]"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormDescription>
-                                    Notes to pass to the customer
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-
-                    <FormField
-                        control={form.control}
                         name="archived"
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
@@ -487,6 +500,93 @@ export default function OrderFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {/* Notes Timeline - Only in edit mode */}
+                    {isEditing && order && (
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-base">Notes</CardTitle>
+                                    {order.notes_timeline && (order.notes_timeline as any[]).length > 1 && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setNotesExpanded(!notesExpanded)}
+                                        >
+                                            {notesExpanded ? "Show Latest" : `Show All (${(order.notes_timeline as any[]).length})`}
+                                            <ChevronDown className={cn("h-4 w-4 ml-1 transition-transform", notesExpanded && "rotate-180")} />
+                                        </Button>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {/* Add Note Input */}
+                                <div className="flex gap-2">
+                                    <Textarea
+                                        placeholder="Add a note..."
+                                        value={newNote}
+                                        onChange={(e) => setNewNote(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey && newNote.trim()) {
+                                                e.preventDefault();
+                                                addNoteMutation.mutate({ message: newNote, visibility: noteVisibility });
+                                            }
+                                        }}
+                                        className="flex-1 min-h-[60px] resize-none"
+                                    />
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => setNoteVisibility(noteVisibility === "visible" ? "internal" : "visible")}
+                                            title={noteVisibility === "visible" ? "Visible to customer" : "Internal only"}
+                                        >
+                                            {noteVisibility === "visible" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            disabled={!newNote.trim() || addNoteMutation.isPending}
+                                            onClick={() => addNoteMutation.mutate({ message: newNote, visibility: noteVisibility })}
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Notes Timeline */}
+                                {order.notes_timeline && (order.notes_timeline as any[]).length > 0 ? (
+                                    <div className="space-y-3 pt-2 border-t">
+                                        {(notesExpanded
+                                            ? (order.notes_timeline as any[])
+                                            : [order.latest_note]
+                                        ).filter(Boolean).map((note: any, idx: number) => (
+                                            <div key={idx} className="flex gap-3 text-sm">
+                                                <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                                                        <span className="font-medium text-foreground">{note.user}</span>
+                                                        <span>•</span>
+                                                        <span>{note.timestamp ? formatDistanceToNow(new Date(note.timestamp), { addSuffix: true }) : ""}</span>
+                                                        {note.visibility === "internal" && (
+                                                            <span className="text-orange-500 flex items-center gap-1">
+                                                                <EyeOff className="h-3 w-3" /> Internal
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-foreground whitespace-pre-wrap">{note.message}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No notes yet</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <div className="flex gap-4">
                         <Button

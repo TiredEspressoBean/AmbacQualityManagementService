@@ -1,0 +1,248 @@
+Category,Module,Feature,Model Evidence,API Evidence,UI Evidence,Status,Score,Tier,MES_Tier,QT9,1Factory,ProShop,Qualio,Notes
+QMS,Document Control,Create/upload documents,Documents model with file field,POST /api/Documents/,DocumentsEditorPage + DocumentUploader,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,Table stakes
+QMS,Document Control,Version history,Documents with versioning via SecureModel,GET /api/Documents/{id}/version-history/,DocumentVersionsTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,Table stakes
+QMS,Document Control,Document approval workflow,ApprovalRequest + ApprovalResponse + ApprovalTemplate,POST /api/Documents/{id}/submit-for-approval/,DocumentApprovalTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,Table stakes
+QMS,Document Control,Document revisions,Documents.revise method,POST /api/Documents/{id}/revise/,document-revision-modal.tsx,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Document Control,Document types/classification,DocumentType model + classification field,CRUD /api/DocumentTypes/,DocumentTypesEditorPage,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Document Control,Security classification,Documents.classification (PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED/SECRET),Filtering by classification,Classification shown in UI,Complete,100%,Standard,Standard,Yes,Partial,Yes,Yes,5-level classification
+QMS,Document Control,Document audit trail,AuditLog integration,GET /api/auditlog/,DocumentAuditTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Document Control,Document statistics,N/A,GET /api/Documents/stats/,DocumentsDashboardPage,Complete,95%,Standard,Standard,Partial,Partial,Partial,Partial,
+QMS,Document Control,ECR/ECN change control,Missing,Missing,Missing,Missing,0%,Standard,Standard,Yes,Partial,Yes,Yes,GAP
+QMS,CAPA,Create CAPA,CAPA model with full fields,POST /api/CAPAs/,CreateCapaPage,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,Table stakes
+QMS,CAPA,CAPA types (Corrective/Preventive/etc),capa_type field with 5 choices,Filtering by type,Shown in UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Severity levels,severity field (CRITICAL/MAJOR/MINOR),Filtering by severity,Shown in UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,CAPA status workflow,status field with transitions,Status updates via PATCH,CapaOverviewTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Auto-numbering,capa_number auto-generated,Read-only in API,Displayed in UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,CAPA tasks,CapaTasks model with full workflow,CRUD /api/CapaTasks/ + complete action,CapaTasksTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Multi-person task assignment,CapaTaskAssignee + completion_mode field,Task assignment via API,Multi-assignee UI,Complete,100%,Differentiator,Standard,Partial,Partial,Partial,Partial,DIFFERENTIATOR
+QMS,CAPA,Task signatures,requires_signature + completion_signature fields,Signature capture in complete action,Signature UI,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Root Cause Analysis,RcaRecord model,CRUD /api/RcaRecords/,CapaRcaTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,5 Whys method,FiveWhys model,CRUD /api/FiveWhys/,5 Whys form in RCA tab,Complete,100%,Standard,Standard,Yes,Yes,Partial,Yes,
+QMS,CAPA,Fishbone/Ishikawa,Fishbone model with 6M categories,CRUD /api/Fishbone/,Fishbone form in RCA tab,Complete,100%,Standard,Standard,Yes,Yes,Partial,Yes,
+QMS,CAPA,Root cause categorization,RootCause model with category field,Part of RCA endpoints,Root cause entry UI,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+QMS,CAPA,CAPA verification,CapaVerification model,CRUD /api/CapaVerifications/,CapaVerificationTab,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Effectiveness confirmation,effectiveness_result field,Update via PATCH,Verification result UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Self-verification controls,allow_self_verification + self_verified fields,Enforced in API,UI respects setting,Complete,100%,Differentiator,Standard,Partial,No,Partial,Partial,DIFFERENTIATOR
+QMS,CAPA,CAPA approval workflow,approval_required + ApprovalRequest integration,POST /api/CAPAs/{id}/request-approval/,CapaApprovalTab,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Blocking items tracking,get_blocking_items method,GET /api/CAPAs/{id}/blocking-items/,Blocking items shown in UI,Complete,100%,Differentiator,Standard,Partial,No,Partial,Partial,DIFFERENTIATOR
+QMS,CAPA,Completion percentage,completion_percentage property,GET /api/CAPAs/{id}/completion-percentage/,Progress indicator,Complete,100%,Differentiator,Standard,Partial,Partial,Partial,Partial,DIFFERENTIATOR
+QMS,CAPA,CAPA statistics,N/A,GET /api/CAPAs/stats/,capa-stats-cards.tsx + QualityDashboardPage,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+QMS,CAPA,Link to quality reports,quality_reports M2M field,Included in serializer,Links in UI,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,
+QMS,CAPA,Link to dispositions,dispositions M2M field,Included in serializer,Links in UI,Complete,100%,Standard,Standard,Partial,Yes,Yes,Partial,
+QMS,Quality Records,Create quality report,QualityReports model,POST /api/ErrorReports/,PartQualityForm,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quality Records,Pass/Fail status,status field (PASS/FAIL/PENDING),Status updates,Status shown in forms,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quality Records,Link errors/defects,errors M2M to QualityErrorsList,Error selection in API,Error type picker,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quality Records,Operator tracking,operator M2M field,Operator assignment,Operator selection,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quality Records,Equipment tracking,machine FK field,Equipment selection,Equipment picker,Complete,100%,Standard,Standard,Yes,Yes,Yes,No,
+QMS,Quality Records,File attachments,file FK to Documents,Document linking,File upload in form,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Quality Records,Auto-quarantine on fail,Signal triggers quarantine,Automatic via save,N/A - automatic,Complete,100%,Differentiator,Standard,Partial,Yes,Yes,No,
+QMS,Quality Records,Sampling audit linkage,sampling_audit_log FK,Included in response,Shown in reports,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Measurements,Define measurement specs,MeasurementDefinition model,CRUD /api/MeasurementDefinitions/,Step editor measurement config,Complete,100%,Core,Standard,Yes,Yes,Yes,Partial,
+QMS,Measurements,Numeric tolerances,nominal/upper_tol/lower_tol fields,Tolerance validation,Tolerance display,Complete,100%,Core,Standard,Yes,Yes,Yes,Partial,
+QMS,Measurements,Pass/Fail measurements,type field with PASS_FAIL option,Boolean capture,Pass/Fail toggle,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Measurements,Record measurement values,MeasurementResult model,Created with QualityReport,Measurement entry form,Complete,100%,Core,Standard,Yes,Yes,Yes,Partial,
+QMS,Measurements,Auto spec compliance check,is_within_spec computed field,Returned in API,Visual pass/fail indicator,Complete,100%,Standard,Standard,Yes,Yes,Yes,Partial,
+QMS,SPC,Control charts (X-bar R),SPCBaseline with XBAR_R type + SPC data endpoint,GET /api/spc/data/,SpcPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,SPC,Control charts (X-bar S),SPCBaseline with XBAR_S type,GET /api/spc/data/,SpcPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,SPC,Control charts (I-MR),SPCBaseline with I_MR type,GET /api/spc/data/,SpcPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,SPC,Process capability (Cp/Cpk),Calculated in capability endpoint,GET /api/spc/capability/,Capability display in SpcPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,SPC,Freeze baselines,SPCBaseline model,POST /api/spc-baselines/{id}/freeze/,Freeze button in UI,Complete,100%,Differentiator,Standard,No,Partial,No,No,DIFFERENTIATOR
+QMS,SPC,Baseline versioning,superseded_by + superseded_at fields,Supersession tracking,Version history shown,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,SPC,Baseline audit trail,frozen_by + frozen_at + notes,Audit fields in response,Audit info displayed,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,SPC,SPC print/export,N/A,Report generation,SpcPrintPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,SPC,Hierarchy navigation,N/A,GET /api/spc/hierarchy/,Dropdown selectors,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Approval Workflows,Approval templates,ApprovalTemplate model,CRUD /api/ApprovalTemplates/,ApprovalTemplatesEditorPage,Complete,100%,Core,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,Multi-level approval,required_approvers + optional_approvers M2M,Approver management,Approver selection UI,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,
+QMS,Approval Workflows,Group-based approval,approver_groups M2M,Group selection,Group picker,Complete,100%,Standard,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,Parallel approval,sequence_type PARALLEL option,Parallel processing,Parallel indicator,Complete,100%,Standard,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,Sequential approval,sequence_type SEQUENTIAL option,Sequential processing,Sequential indicator,Complete,100%,Standard,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,Threshold approval,flow_type THRESHOLD + threshold field,Threshold logic,Threshold config,Complete,100%,Differentiator,Standard,Partial,No,No,Partial,DIFFERENTIATOR
+QMS,Approval Workflows,Approval responses,ApprovalResponse model,POST /api/ApprovalRequests/{id}/submit-response/,Approval decision UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Approval Workflows,Delegation,delegated_to field + delegate action,POST /api/ApprovalResponses/{id}/delegate/,Delegate button,Complete,100%,Standard,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,Signature capture,signature_data + signature_meaning fields,Signature in response,Signature pad UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Approval Workflows,Self-approval controls,allow_self_approval field,Enforced in API,UI respects setting,Complete,100%,Differentiator,Standard,Partial,No,No,Partial,DIFFERENTIATOR
+QMS,Approval Workflows,Escalation,escalation_days + escalate_to fields,Escalation tracking,Escalation config,Complete,90%,Standard,Standard,Yes,Partial,Partial,Yes,
+QMS,Approval Workflows,My pending approvals,N/A,GET /api/ApprovalRequests/my-pending/,InboxPage,Complete,100%,Core,Standard,Yes,Partial,Yes,Yes,
+QMS,Sampling,Sampling rule sets,SamplingRuleSet model,CRUD /api/Sampling-rule-sets/,SamplingRuleSetsEditorPage,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Sampling,Multiple rule types,SamplingRule with 6 rule_type options,Rule type selection,Rule type dropdown,Complete,100%,Differentiator,Standard,Partial,Yes,Partial,No,DIFFERENTIATOR - 6 types
+QMS,Sampling,Primary/fallback rules,fallback_ruleset + fallback_threshold fields,Fallback configuration,Fallback setup UI,Complete,100%,Differentiator,Standard,No,Partial,No,No,DIFFERENTIATOR
+QMS,Sampling,Automatic fallback trigger,SamplingTriggerState model,Automatic via signals,N/A - automatic,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,Sampling,Sampling audit log,SamplingAuditLog model,Audit entries created,Audit shown in reports,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Sampling,Sampling analytics,SamplingAnalytics model,Analytics data,Analytics display,Complete,90%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Sampling,Part sampling assignment,Parts.sampling_rule + sampling_ruleset fields,Assignment via API,Assignment in part form,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,3D Visualization,Upload 3D models,ThreeDModel model,CRUD /api/ThreeDModels/,ThreeDModelsEditorPage,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,3D Visualization,View 3D models,File serving,File download,three-d-model-viewer.tsx,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,3D Visualization,Defect annotations,HeatMapAnnotations model,CRUD /api/HeatMapAnnotation/,PartAnnotator,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,3D Visualization,Heatmap visualization,HeatMapAnnotations with position/severity,Annotation data,HeatMapViewer,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,3D Visualization,Link to quality reports,quality_reports M2M field,Report linkage,Links in annotation,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,Quarantine,Quarantine dispositions,QuarantineDisposition model,CRUD /api/QuarantineDispositions/,QaQuarantinePage,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quarantine,Disposition types,disposition_type field (REWORK/SCRAP/USE_AS_IS/RETURN),Type selection,Disposition picker,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quarantine,Disposition workflow,current_state field (OPEN/IN_PROGRESS/CLOSED),State transitions,State indicator,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quarantine,Resolution tracking,resolution_notes + resolution_completed fields,Resolution updates,Resolution form,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Quarantine,Auto part status update,Signal updates part_status,Automatic via save,N/A - automatic,Complete,100%,Differentiator,Standard,Partial,Yes,Yes,No,
+QMS,Quarantine,Rework tracking,rework_attempt_at_step + total_rework_count,Counter tracking,Rework count shown,Complete,100%,Standard,Standard,Partial,Yes,Yes,Partial,
+QMS,Error Types,Error type catalog,QualityErrorsList model,CRUD /api/Error-types/,ErrorTypeEditorPage,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+QMS,Error Types,Error examples,error_example field,Example text,Example display,Complete,100%,Standard,Standard,Yes,Yes,Partial,Partial,
+QMS,Error Types,Part type scoping,part_type FK,Filtering by part type,Part type filter,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+QMS,Error Types,3D annotation requirement,requires_3d_annotation flag,Flag in response,Flag indicator,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,AI Assistant,Document search,Embeddings + search logic,POST /api/embeddings/vector-search/ and hybrid-search/,AiChatPage,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,AI Assistant,Document query,Query endpoint,POST /api/embeddings/keyword-search/,AiChatPage,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,AI Assistant,Document embeddings,DocChunk model with vectors,POST /api/embeddings/embed-query/,Automatic on upload,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+QMS,Reports,PDF generation,GeneratedReport model + PdfGenerator service,POST /api/reports/generate/,Report buttons in UI,Complete,100%,Core,Standard,Yes,Yes,Yes,Yes,
+QMS,Reports,Email reports,Email integration in task,Automatic with generation,N/A - automatic,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,
+QMS,Reports,Report history,GeneratedReport tracking,GET /api/reports/history/,Report history view,Complete,90%,Standard,Standard,Partial,Partial,Yes,Partial,
+QMS,Reports,Report types config,REPORT_CONFIG in PdfGenerator,GET /api/reports/types/,Report type selection,Complete,100%,Standard,Standard,Yes,Yes,Yes,Partial,
+QMS,Audit Trail,Model change history,Django Auditlog integration,GET /api/auditlog/,AuditTrail.tsx,Complete,100%,Core,Lite,Yes,Yes,Yes,Yes,
+QMS,Audit Trail,Permission change log,PermissionChangeLog model,Logged on changes,History viewable,Complete,100%,Differentiator,Standard,Partial,Partial,Partial,Partial,DIFFERENTIATOR
+QMS,Training Records,Training types catalog,TrainingType model,CRUD /api/TrainingTypes/,TrainingTypesPage + EditTrainingTypeFormPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,Full CRUD with validity_period_days
+QMS,Training Records,Training records,TrainingRecord model with user + training_type + dates,CRUD /api/TrainingRecords/,TrainingRecordsPage + EditTrainingRecordFormPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,Full CRUD with expiration tracking
+QMS,Training Records,Training requirements,TrainingRequirement model linking to Step/Process/EquipmentType,CRUD /api/TrainingRequirements/,TrainingTypesPage,Complete,100%,Standard,Standard,Yes,Partial,Yes,Yes,Scope constraints implemented
+QMS,Training Records,Training status tracking,is_current + status properties on TrainingRecord,GET /api/TrainingRecords/ with status,TrainingDashboardPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,Yes,current/expiring_soon/expired status displayed
+QMS,Calibration,Calibration records,CalibrationRecord model with full fields,CRUD /api/CalibrationRecords/,CalibrationRecordsPage + EditCalibrationRecordFormPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,No,Full CRUD with result/type/traceability
+QMS,Calibration,Calibration due dates,due_date field + status/days_until_due properties,GET /api/CalibrationRecords/ with status,CalibrationDashboardPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,No,overdue/due_soon/current status displayed
+QMS,Calibration,Calibration traceability,certificate_number + standards_used + as_found fields,Included in CalibrationRecord response,CalibrationRecordsPage,Complete,100%,Standard,Standard,Yes,Yes,Yes,No,ISO 9001 traceability support
+QMS,Calibration,Affected parts lookup,get_affected_parts method on CalibrationRecord,GET /api/CalibrationRecords/{id}/affected-parts/,CalibrationRecordsPage,Complete,90%,Standard,Standard,Partial,Yes,Partial,No,Parts inspected during calibration period
+QMS,Customer Complaints,Complaint intake,CAPA with capa_type=CUSTOMER_COMPLAINT,POST /api/CAPAs/ with type,CreateCapaPage,Partial,50%,Standard,Standard,Yes,Partial,Partial,Yes,Handled via CAPA-CC - no separate intake form
+QMS,Customer Complaints,Complaint workflow,Full CAPA workflow applies,CAPA endpoints,CAPA UI,Partial,70%,Standard,Standard,Yes,Partial,Partial,Yes,Uses CAPA workflow - no complaint-specific SLAs
+QMS,Customer Complaints,Complaint resolution,CAPA verification + closure,CAPA endpoints,CAPA UI,Partial,60%,Standard,Standard,Yes,Partial,Partial,Yes,Via CAPA - no complaint trending
+QMS,Risk Management,FMEA,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Yes,Yes,No,Yes,GAP - 1Factory has auto-PFMEA
+QMS,Risk Management,Risk register,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Yes,Partial,No,Yes,GAP
+QMS,Audit Management,Audit scheduling,Missing,Missing,Missing,Missing,0%,Standard,Standard,Yes,Partial,Yes,Yes,GAP
+QMS,Audit Management,Audit findings tracking,Missing,Missing,Missing,Missing,0%,Standard,Standard,Yes,Partial,Yes,Yes,GAP
+QMS,Supplier Quality,Supplier scorecards,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Yes,Partial,Partial,Yes,GAP
+QMS,Supplier Quality,Supplier audits,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Yes,Partial,Partial,Yes,GAP
+QMS,PPAP,1. Design Records,Documents model with versioning,CRUD /api/Documents/,DocumentsEditorPage,Complete,100%,Stretch,Standard,Yes,Yes,Yes,No,Element 1 - drawings/specs storage
+QMS,PPAP,2. Engineering Change Documents,Document revisions exist,POST /api/Documents/{id}/revise/,document-revision-modal,Partial,60%,Stretch,Standard,Yes,Yes,Yes,No,Element 2 - no formal ECN workflow
+QMS,PPAP,3. Customer Engineering Approval,Missing,Missing,Missing,Missing,0%,Stretch,Standard,Yes,Yes,Yes,No,GAP - no customer approval tracking
+QMS,PPAP,4. Design FMEA,Can store as document,Document upload,DocumentsEditorPage,Partial,30%,Stretch,Enterprise,Yes,Yes,Yes,No,Element 4 - no RPN tracking
+QMS,PPAP,5. Process Flow Diagram,Process/Steps model,GET /api/Processes_with_steps/,ProcessEditorPage,Complete,100%,Stretch,Standard,Yes,Yes,Yes,No,Element 5
+QMS,PPAP,6. Process FMEA,Can store as document,Document upload,DocumentsEditorPage,Partial,30%,Stretch,Enterprise,Yes,Yes,Yes,No,Element 6 - no RPN tracking
+QMS,PPAP,7. Control Plan,Can store as document,Document upload,DocumentsEditorPage,Partial,30%,Stretch,Standard,Yes,Yes,Yes,No,Element 7 - no structured model
+QMS,PPAP,8. MSA / Gage R&R,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Partial,Yes,Partial,No,GAP - no study workflow
+QMS,PPAP,9. Dimensional Results,MeasurementResult + SPC,GET /api/spc/data/,SpcPage,Complete,100%,Stretch,Standard,Partial,Yes,Partial,No,Element 9 - full SPC
+QMS,PPAP,10. Material/Performance Test Results,QualityReports exist,CRUD /api/ErrorReports/,QualityReportsEditorPage,Partial,50%,Stretch,Standard,Yes,Yes,Yes,No,Element 10 - no cert linking
+QMS,PPAP,11. Initial Process Studies (Cpk),Full SPC with Cpk/Ppk,GET /api/spc/capability/,SpcPage,Complete,100%,Stretch,Standard,Partial,Yes,Partial,No,Element 11 - complete
+QMS,PPAP,12. Qualified Lab Documentation,Can store as document,Document upload,DocumentsEditorPage,Partial,40%,Stretch,Standard,Yes,Yes,Yes,No,Element 12
+QMS,PPAP,13. Appearance Approval Report,Missing,Missing,Missing,Missing,0%,Stretch,Standard,Partial,Yes,Partial,No,GAP - no structured AAR form
+QMS,PPAP,14-15. Sample Parts / Master Sample,N/A - physical,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,Physical items not software
+QMS,PPAP,16. Checking Aids,Equipment model exists,CRUD /api/Equipment/,EquipmentsEditorPage,Partial,50%,Stretch,Standard,Partial,Yes,Partial,No,Element 16
+QMS,PPAP,17. Customer-Specific Requirements,Missing,Missing,Missing,Missing,0%,Stretch,Standard,Yes,Yes,Yes,No,GAP - no structured tracking
+QMS,PPAP,18. Part Submission Warrant (PSW),Missing,Missing,Missing,Missing,0%,Stretch,Standard,Yes,Yes,Yes,No,GAP - the submission form
+QMS,PPAP,PPAP Submission Tracker,Missing,Missing,Missing,Missing,0%,Stretch,Standard,Yes,Yes,Yes,No,GAP - track submission status per part/customer
+QMS,PPAP,Drawing extraction/ballooning,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Yes,No,No,GAP - 1Factory strength (auto-balloon)
+QMS,PPAP,Auto-PFMEA population,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Yes,No,No,GAP - 1Factory strength
+MES,Work Orders,Create work order,WorkOrder model,POST /api/WorkOrders/,WorkOrdersEditorPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Work Orders,Work order status,workorder_status field,Status updates,Status display,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Work Orders,Link to order,related_order FK,Order linkage,Order selection,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Work Orders,Expected completion,expected_completion field,Date field,Date picker,Complete,100%,Core,Lite,Partial,Partial,Yes,No,
+MES,Work Orders,Expected duration,expected_duration field,Duration field,Duration input,Complete,100%,Standard,Lite,Partial,Partial,Yes,No,
+MES,Work Orders,Actual completion,true_completion field,Completion tracking,Completion display,Complete,100%,Standard,Lite,Partial,Partial,Yes,No,
+MES,Work Orders,Actual duration,true_duration field,Duration tracking,Duration display,Complete,100%,Standard,Lite,Partial,Partial,Yes,No,
+MES,Work Orders,Work order notes,notes field,Notes update,Notes field,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Work Orders,Quantity tracking,quantity field,Quantity field,Quantity input,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Work Orders,Due date tracking,expected_completion used,Filtering by date,Date shown,Partial,70%,Standard,Lite,Partial,Partial,Yes,No,No overdue alerts
+MES,Work Orders,Priority/sequencing,Missing,Missing,Missing,Missing,0%,Stretch,Standard,No,No,Yes,No,GAP - ProShop strength
+MES,Work Orders,Labor hours tracking,TimeEntry model with user/work_order/duration,CRUD /api/TimeEntries/,Needs UI,API-Ready,70%,Stretch,Standard,No,Partial,Yes,No,Model and API exist - needs UI
+MES,Work Orders,Work order costing,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Partial,Yes,No,GAP - ProShop strength
+MES,Work Orders,Work order templates,Missing,Missing,Missing,Missing,0%,Standard,Standard,No,Partial,Yes,No,GAP
+MES,Orders,Create order,Orders model,POST /api/Orders/,OrderFormPage,Complete,100%,Core,Lite,Partial,Partial,Yes,No,
+MES,Orders,Order status,order_status field,Status updates,Status display,Complete,100%,Core,Lite,Partial,Partial,Yes,No,
+MES,Orders,Customer linkage,customer FK,Customer selection,Customer picker,Complete,100%,Core,Lite,Partial,Partial,Yes,No,
+MES,Orders,Customer notes/timeline,customer_note TextField,Notes updates,Notes timeline UI,Complete,100%,Differentiator,Lite,No,No,Partial,No,DIFFERENTIATOR
+MES,Orders,Order viewers,viewers M2M,Viewer management,Invite modal,Complete,100%,Differentiator,Lite,No,No,Partial,No,DIFFERENTIATOR
+MES,Orders,Estimated completion,estimated_completion field,Date field,Date picker,Complete,100%,Core,Lite,Partial,Partial,Yes,No,
+MES,Orders,HubSpot integration,hubspot_deal_id + current_hubspot_gate,HubSpot sync,HubSpot status shown,Complete,100%,Differentiator,Standard,Partial,No,Partial,No,DIFFERENTIATOR
+MES,Orders,Step distribution view,N/A,GET /api/Orders/{id}/step-distribution/,OrderDetailsPage,Complete,100%,Standard,Lite,No,Partial,Partial,No,
+MES,Orders,Bulk part operations,N/A,POST bulk-add/bulk-remove,Bulk buttons,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Parts,Create parts,Parts model,POST /api/Parts/,PartsEditorPage,Complete,100%,Core,Lite,Yes,Yes,Yes,No,
+MES,Parts,Part status tracking,part_status field,Status updates,Status display,Complete,100%,Core,Lite,Yes,Yes,Yes,No,
+MES,Parts,Part type assignment,part_type FK,Type selection,Type picker,Complete,100%,Core,Lite,Yes,Yes,Yes,No,
+MES,Parts,Step assignment,step FK,Step tracking,Step display,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Parts,Order/WO linkage,order + work_order FKs,Linkage fields,Linkage selectors,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Parts,ERP ID,ERP_id field,ID field,ID display,Complete,100%,Standard,Lite,Yes,Yes,Yes,No,
+MES,Parts,Advance to next step,increment_step method,POST /api/Parts/{id}/increment/,Increment button,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Parts,Sampling assignment,requires_sampling + sampling_rule fields,Sampling config,Sampling setup,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Parts,Rework counter,total_rework_count field,Counter tracking,Counter display,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Parts,Part selection endpoint,N/A,GET /api/Parts/select/,Dropdown optimization,Complete,100%,Standard,Lite,Partial,Partial,Partial,No,
+MES,Parts,Batch operations,N/A,Order bulk endpoints,Batch UI,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Parts,Parent-child genealogy,MaterialLot.parent FK + children relation,GET /api/MaterialLots/ with parent/children,Needs UI,API-Ready,60%,Stretch,Standard,No,Partial,Partial,No,MaterialLot has parent FK and children reverse relation
+MES,Parts,Lot merge/split,MaterialLot.split() method,POST /api/MaterialLots/{id}/split/,Needs UI,Partial,50%,Stretch,Standard,No,Partial,Partial,No,Split exists - merge not implemented
+MES,Process Definition,Create process,Processes model,POST /api/Processes/,ProcessEditorPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Process Definition,Process steps,num_steps + Steps relation,Steps in process,Steps editor,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Process Definition,Batch process flag,is_batch_process field,Batch config,Batch toggle,Complete,100%,Standard,Standard,Partial,Partial,Yes,No,
+MES,Process Definition,Remanufacturing flag,is_remanufactured field,Reman config,Reman toggle,Complete,100%,Differentiator,Standard,No,No,Partial,No,DIFFERENTIATOR
+MES,Process Definition,Process with steps view,N/A,GET /api/Processes_with_steps/,Hierarchical view,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Process Definition,Step branching/routing,StepEdge model with edge_type,CRUD /api/Steps/ with edges,ProcessFlowPage visual editor,Complete,100%,Stretch,Enterprise,No,Partial,Yes,No,Full React Flow visual editor
+MES,Process Definition,Decision points,decision_type field on Steps,Decision config in Steps API,ProcessFlowPage node editor,Complete,100%,Stretch,Enterprise,No,Partial,Yes,No,Visual decision point configuration
+MES,Process Definition,Rework loops,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Partial,Yes,No,GAP - Phase 1
+MES,Steps,Create steps,Steps model,POST /api/Steps/,StepEditorPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Steps,Step ordering,order field,Order field,Order input,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Steps,Expected duration,expected_duration field,Duration field,Duration input,Complete,100%,Standard,Lite,Partial,Partial,Yes,No,
+MES,Steps,Pass threshold,pass_threshold field,Threshold config,Threshold input,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Steps,QA signoff requirement,requires_qa_signoff field,Signoff flag,Signoff toggle,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Steps,Quarantine blocking,block_on_quarantine field,Blocking flag,Blocking toggle,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Steps,Sampling requirement,sampling_required + min_sampling_rate,Sampling config,Sampling setup,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Steps,Last step flag,is_last_step field,Last step flag,Last step toggle,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Steps,Measurement definitions,MeasurementDefinition relation,Measurements per step,Measurement config,Complete,100%,Core,Standard,Partial,Yes,Yes,No,
+MES,Steps,Next step routing,Missing (uses order+1),Missing,Missing,Missing,0%,Stretch,Enterprise,No,Partial,Yes,No,GAP - Phase 1
+MES,Equipment,Equipment types,EquipmentType model,CRUD /api/Equipment-types/,EquipmentTypeEditorPage,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Equipment,Equipment instances,Equipments model,CRUD /api/Equipment/,EquipmentsEditorPage,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Equipment,Equipment usage tracking,EquipmentUsage model,Usage recorded,Usage in QA forms,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Equipment,Equipment-error correlation,error_report FK in EquipmentUsage,Error linkage,Error correlation,Complete,100%,Standard,Standard,Partial,Partial,Partial,No,
+MES,Equipment,Equipment documents,Documents generic relation,Document linking,Document tab,Complete,100%,Standard,Standard,Partial,Partial,Yes,No,
+MES,Equipment,Maintenance scheduling,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Partial,Yes,No,GAP - ProShop has CMMS
+MES,Equipment,Maintenance work orders,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,Partial,Yes,No,GAP
+MES,Part Types,Part type catalog,PartTypes model,CRUD /api/PartTypes/,PartTypesEditorPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Part Types,ID prefix,ID_prefix field,Prefix config,Prefix input,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Part Types,ERP linkage,ERP_id field,ERP ID,ERP input,Complete,100%,Standard,Lite,Yes,Yes,Yes,No,
+MES,Operator Station,QA work order view,N/A,GET /api/WorkOrders/ filtered,QaWorkOrderDetailPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Operator Station,Part selection,Part dropdown/list,Parts by WO endpoint,QaFormSection,Complete,100%,Core,Lite,Partial,Yes,Yes,No,
+MES,Operator Station,QA form entry,QualityReports creation,POST /api/ErrorReports/,PartQualityForm,Complete,100%,Core,Standard,Partial,Yes,Yes,No,
+MES,Operator Station,Measurement entry,MeasurementResult creation,With QualityReport,Measurement fields,Complete,100%,Core,Standard,Partial,Yes,Yes,No,
+MES,Operator Station,Documents at station,Documents by scope,GET /api/scope/,QaRightPanel,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Operator Station,3D model at station,ThreeDModel by part type,Model serving,three-d-model-viewer,Complete,100%,Differentiator,Standard,No,No,No,No,DIFFERENTIATOR
+MES,Operator Station,Batch processing,is_batch_work_order logic,Batch mode,Batch UI flow,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Operator Station,Progress overview,Part status counts,Aggregation queries,QaProgressSection,Complete,100%,Standard,Lite,Partial,Yes,Yes,No,
+MES,Operator Station,General step completion,Missing (QA only),Missing,Missing,Partial,60%,Standard,Lite,Partial,Yes,Yes,No,Only QA steps
+MES,Operator Station,Barcode scanning,N/A - scanners are USB keyboards,Text input fields work,Text input fields work,Complete,100%,Standard,Lite,No,Yes,Yes,No,Non-issue - barcode scanners are keyboard input
+MES,Operator Station,Operator login/badge,Missing,Missing,Missing,Missing,0%,Stretch,Standard,No,Partial,Yes,No,GAP
+MES,Traceability,Step transition log,StepTransitionLog model,Logged on transition,History viewable,Complete,100%,Core,Lite,Partial,Yes,Yes,Partial,
+MES,Traceability,Operator attribution,operator FK in logs,Operator tracking,Operator shown,Complete,100%,Core,Lite,Partial,Yes,Yes,Partial,
+MES,Traceability,Equipment usage log,EquipmentUsage model,Usage tracking,Usage history,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Traceability,Audit log,Django Auditlog,GET /api/auditlog/,AuditTrail component,Complete,100%,Core,Lite,Yes,Yes,Yes,Yes,
+MES,Traceability,QA approval log,QaApproval model,Approval tracking,Approval history,Complete,100%,Standard,Standard,Partial,Yes,Yes,Partial,
+MES,Traceability,Full genealogy,Missing,Missing,Missing,Missing,0%,Stretch,Standard,No,Partial,Partial,No,GAP
+MES,Traceability,Material lot tracking,MaterialLot + MaterialUsage models,CRUD endpoints,Needs UI,API-Ready,60%,Stretch,Standard,No,Partial,Partial,No,Models exist per MES_FEATURE_TIERS
+MES,Dashboard,KPI display,Computed metrics,GET /api/dashboard/kpis/,AnalysisPage KPI cards,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,
+MES,Dashboard,FPY trend,FPY calculation,GET /api/dashboard/fpy-trend/,AnalysisPage FPY chart with 30/60/90d toggle,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Defect pareto,Error aggregation,GET /api/dashboard/defect-pareto/,AnalysisPage mini pareto + DefectAnalysisPage full,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,CAPA status,CAPA counts,GET /api/dashboard/capa-status/,CAPA status widget,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+MES,Dashboard,In-process actions,Active CAPA list,GET /api/dashboard/in-process-actions/,Action list,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+MES,Dashboard,Failed inspections,Failed QR list,GET /api/dashboard/failed-inspections/,Failed list,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Open dispositions,Disposition list,GET /api/dashboard/open-dispositions/,Disposition list,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,
+MES,Dashboard,Big screen mode,N/A,Dashboard endpoints,BigScreenPage,Complete,100%,Differentiator,Lite,No,Partial,Partial,No,DIFFERENTIATOR
+MES,Dashboard,Quality rates (scrap/rework),QualityReports + QuarantineDisposition,GET /api/dashboard/quality-rates/,AnalysisPage scrap/rework KPI cards,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Defect trend chart,QualityReports aggregation,GET /api/dashboard/defect-trend/,DefectAnalysisPage trend chart,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Defect records drill-down,QualityReports filtered,GET /api/dashboard/defect-records/,DefectAnalysisPage records table,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Filter options,Aggregated filter values,GET /api/dashboard/filter-options/,DefectAnalysisPage filter dropdowns,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Defects by process,QualityReports by step,GET /api/dashboard/defects-by-process/,DefectAnalysisPage process breakdown,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,NCR trend,QuarantineDisposition over time,GET /api/dashboard/ncr-trend/,NcrAnalysisPage created vs closed chart,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,NCR aging buckets,QuarantineDisposition age calc,GET /api/dashboard/ncr-aging/,NcrAnalysisPage aging chart,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Disposition breakdown,QuarantineDisposition by type,GET /api/dashboard/disposition-breakdown/,NcrAnalysisPage donut chart,Complete,100%,Standard,Standard,Partial,Yes,Partial,No,
+MES,Dashboard,Needs attention alerts,N/A,GET /api/dashboard/needs-attention/,AnalysisPage attention panel,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+MES,Dashboard,OEE calculation,Missing,Missing,Missing,Missing,0%,Stretch,Standard,No,Partial,Yes,No,GAP
+MES,Task Management,My tasks view,N/A,Various my-* endpoints,MyTasksPage,Complete,90%,Core,Standard,Yes,Partial,Yes,Yes,
+MES,Task Management,Inbox,ApprovalRequest pending,GET /api/ApprovalRequests/my-pending/,InboxPage,Complete,100%,Core,Standard,Yes,Partial,Yes,Yes,
+MES,Task Management,CAPA tasks assigned,CapaTasks assignment,GET /api/CapaTasks/my-tasks/,Task list,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+MES,Task Management,Work queue,Missing,Missing,Missing,Partial,40%,Standard,Standard,Partial,Yes,Yes,No,GAP
+MES,Scheduling,Job sequencing,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,No,Yes,No,GAP - ProShop strength
+MES,Scheduling,Capacity planning,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,No,Yes,No,GAP
+MES,Scheduling,Due date alerts,Missing,Missing,Missing,Missing,0%,Standard,Standard,Partial,Partial,Yes,Partial,GAP
+MES,Scheduling,Gantt view,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,No,No,Yes,No,GAP - ProShop strength
+MES,Customer Portal,Order tracking,TrackerOrders read-only,GET /api/TrackerOrders/,TrackerPage,Complete,100%,Differentiator,Lite,No,Partial,Partial,No,DIFFERENTIATOR
+MES,Customer Portal,Invite viewers,Order.viewers M2M,POST /api/TrackerOrders/{id}/invite/,invite-to-order-modal,Complete,100%,Differentiator,Lite,No,No,Partial,No,DIFFERENTIATOR
+MES,Customer Portal,Document access,Classification filtering,Scoped document access,Documents shown,Complete,100%,Standard,Standard,Partial,Partial,Partial,Partial,
+MES,Integration,HubSpot CRM,hubspot_deal_id + gates,HubSpot sync endpoints,HubSpot status,Complete,90%,Differentiator,Standard,Partial,No,Partial,No,DIFFERENTIATOR
+MES,Integration,Excel export,Export mixin on viewsets,GET /api/{resource}/export-excel/,Export buttons,Complete,100%,Standard,Lite,Yes,Yes,Yes,Yes,
+MES,Integration,API documentation,drf-spectacular,GET /api/docs/ + /api/schema/,Swagger UI,Complete,100%,Standard,Lite,Yes,Yes,Yes,Yes,
+MES,Integration,ERP integration,ERP_id fields only,ID fields,ID display,Partial,30%,Standard,Standard,Yes,Partial,Yes,Partial,GAP - no real-time sync

@@ -1,7 +1,8 @@
-import { useUserOrders } from "@/hooks/useUserOrderTracker.ts"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { ExpandableOrderTracker } from "@/components/TrackerCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useRef } from "react"
+import { api } from "@/lib/api/generated"
 
 export default function TrackerPage() {
     const {
@@ -11,7 +12,25 @@ export default function TrackerPage() {
         fetchNextPage,
         hasNextPage,
         isFetchingNextPage
-    } = useUserOrders()
+    } = useInfiniteQuery({
+        queryKey: ['trackerOrders'],
+        queryFn: async ({ pageParam = 0 }) => {
+            return await api.api_TrackerOrders_list({
+                queries: {
+                    limit: 25,
+                    offset: pageParam,
+                }
+            });
+        },
+        getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.next) {
+                const totalLoaded = allPages.reduce((acc, page) => acc + (page.results?.length ?? 0), 0);
+                return totalLoaded;
+            }
+            return undefined;
+        },
+        initialPageParam: 0,
+    })
 
     const observerTarget = useRef<HTMLDivElement>(null)
 
@@ -67,12 +86,13 @@ export default function TrackerPage() {
             {visibleOrders.map((order) => (
                 <ExpandableOrderTracker
                     key={order.id}
-                    orderNumber={order.id.toString()}
-                    customerName={order.company_info?.name ?? "Unknown Customer"}
+                    orderId={order.id.toString()}
+                    orderName={order.name}
+                    companyName={order.company_name ?? undefined}
                     estimatedCompletion={order.estimated_completion}
-                    gateInfo={order.gate_info}
-                    customerNote={order.customer_note}
-                    stages={order.process_stages.map(stage => ({
+                    gateInfo={order.gate_info as any}
+                    latestNote={(order as any).latest_note}
+                    stages={(order.process_stages ?? []).map((stage: any) => ({
                         name: stage.name,
                         timestamp: stage.timestamp,
                         is_completed: stage.is_completed,

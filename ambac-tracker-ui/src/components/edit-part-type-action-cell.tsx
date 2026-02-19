@@ -17,7 +17,7 @@ import {useDeletePartType} from "@/hooks/useDeletePartType.ts";
 import {toast} from "sonner"; // <- adjust path as needed
 
 type Props = {
-    partTypeId: number;
+    partTypeId: string;
 };
 
 export function EditPartTypeActionsCell({partTypeId}: Props) {

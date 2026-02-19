@@ -1,17 +1,28 @@
-// src/components/theme-provider.tsx
-import {type ReactNode, useEffect } from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { type ReactNode } from "react"
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-    useEffect(() => {
-        const stored = localStorage.getItem("vite-ui-theme");
-        const systemPrefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+type ThemeProviderProps = {
+    children: ReactNode
+    defaultTheme?: string
+    storageKey?: string
+}
 
-        const resolvedTheme =
-            stored === "dark" || (!stored && systemPrefersDark) ? "dark" : "light";
-
-        document.documentElement.classList.remove("light", "dark");
-        document.documentElement.classList.add(resolvedTheme);
-    }, []);
-
-    return <>{children}</>;
+export function ThemeProvider({
+    children,
+    defaultTheme = "system",
+    storageKey = "vite-ui-theme",
+    ...props
+}: ThemeProviderProps) {
+    return (
+        <NextThemesProvider
+            attribute="class"
+            defaultTheme={defaultTheme}
+            storageKey={storageKey}
+            enableSystem
+            disableTransitionOnChange
+            {...props}
+        >
+            {children}
+        </NextThemesProvider>
+    )
 }

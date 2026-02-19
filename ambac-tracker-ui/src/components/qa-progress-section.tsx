@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, Package, CheckCircle2, Circle, ArrowRight } from "lucide-react";
+import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip } from "lucide-react";
 import { MeasurementProgressChart } from "./measurement-progress-chart";
-import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
+import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
 
 type QaProgressSectionProps = {
     workOrder: any;
@@ -24,16 +24,13 @@ export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgre
     ).length;
     const progressPercentage = totalParts > 0 ? Math.round((completedParts / totalParts) * 100) : 0;
 
-    // Get current step from first part (all parts in QA should be on same step)
-    const currentPart = parts[0];
-    const processId = currentPart?.process;
-    const currentStepId = currentPart?.step;
-
-    // Fetch process with all steps
-    const { data: processWithSteps, isLoading: processLoading } = useRetrieveProcessWithSteps(
-        { params: { id: processId! } },
-        { enabled: !!processId && processId !== undefined }
+    // Fetch step history for digital traveler
+    const { data: stepHistoryData, isLoading: stepHistoryLoading } = useWorkOrderStepHistory(
+        workOrder?.id,
+        { enabled: !!workOrder?.id }
     );
+
+    const stepHistory = stepHistoryData?.step_history || [];
 
     return (
         <div className="space-y-6">
@@ -143,78 +140,148 @@ export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgre
             {/* Measurement Progress Chart */}
             <MeasurementProgressChart workOrder={workOrder} parts={parts} />
 
-            {/* Process Steps */}
-            {processWithSteps && processWithSteps.steps && processWithSteps.steps.length > 0 && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Process Steps</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+            {/* Digital Traveler - Step History */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Digital Traveler</CardTitle>
+                    {stepHistoryData?.process_name && (
+                        <p className="text-sm text-muted-foreground">{stepHistoryData.process_name}</p>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {stepHistoryLoading ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                            Loading step history...
+                        </p>
+                    ) : stepHistory.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                            No step history available
+                        </p>
+                    ) : (
                         <div className="space-y-2">
-                            {processWithSteps.steps
-                                .sort((a, b) => a.order - b.order)
-                                .map((step, index) => {
-                                    const isCurrentStep = step.id === currentStepId;
-                                    const isPastStep = step.order < (currentPart?.step_info as any)?.order;
-                                    const isFutureStep = step.order > (currentPart?.step_info as any)?.order;
+                            {stepHistory
+                                .sort((a, b) => a.step_order - b.step_order)
+                                .map((step) => {
+                                    const isCompleted = step.status === 'COMPLETED';
+                                    const isInProgress = step.status === 'IN_PROGRESS';
+                                    const _isPending = step.status === 'PENDING';
+                                    const isSkipped = step.status === 'SKIPPED';
+
+                                    const hasDefects = step.defect_count > 0;
+                                    const hasMeasurements = step.measurement_count > 0;
+                                    const hasAttachments = step.attachment_count > 0;
 
                                     return (
                                         <div
-                                            key={step.id}
-                                            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
-                                                isCurrentStep
+                                            key={step.step_id}
+                                            className={`p-3 rounded-lg border transition-colors ${
+                                                isInProgress
                                                     ? 'bg-blue-500/10 border-blue-500/50 dark:bg-blue-500/20 dark:border-blue-500/60'
-                                                    : isPastStep
+                                                    : isCompleted
                                                     ? 'bg-green-500/10 border-green-500/50 dark:bg-green-500/20 dark:border-green-500/60'
+                                                    : isSkipped
+                                                    ? 'bg-yellow-500/10 border-yellow-500/50 dark:bg-yellow-500/20 dark:border-yellow-500/60'
                                                     : 'bg-muted/30 border-muted'
                                             }`}
                                         >
-                                            <div className="flex-shrink-0 mt-0.5">
-                                                {isPastStep ? (
-                                                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                                ) : isCurrentStep ? (
-                                                    <Circle className="h-5 w-5 text-blue-600 fill-blue-600 dark:text-blue-400 dark:fill-blue-400" />
-                                                ) : (
-                                                    <Circle className="h-5 w-5 text-muted-foreground" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-medium text-sm">
-                                                        {step.name}
-                                                    </p>
-                                                    {isCurrentStep && (
-                                                        <Badge variant="default" className="text-xs">
-                                                            Current
-                                                        </Badge>
-                                                    )}
-                                                    {step.sampling_required && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            QA Required
-                                                        </Badge>
+                                            <div className="flex items-start gap-3">
+                                                <div className="flex-shrink-0 mt-0.5">
+                                                    {isCompleted ? (
+                                                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                                    ) : isInProgress ? (
+                                                        <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                                    ) : (
+                                                        <Circle className="h-5 w-5 text-muted-foreground" />
                                                     )}
                                                 </div>
-                                                {step.description && (
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {step.description}
-                                                    </p>
-                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-medium text-sm">
+                                                            {step.step_name}
+                                                        </p>
+                                                        {isInProgress && (
+                                                            <Badge variant="default" className="text-xs">
+                                                                In Progress
+                                                            </Badge>
+                                                        )}
+                                                        {isCompleted && step.quality_status && (
+                                                            <Badge
+                                                                variant={step.quality_status === 'PASS' ? 'default' : 'destructive'}
+                                                                className="text-xs"
+                                                            >
+                                                                {step.quality_status}
+                                                            </Badge>
+                                                        )}
+                                                        {isSkipped && (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                Skipped
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Step details for completed/in-progress steps */}
+                                                    {(isCompleted || isInProgress) && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {/* Operator & Timing */}
+                                                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                                {step.operator_name && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <User className="h-3 w-3" />
+                                                                        {step.operator_name}
+                                                                    </span>
+                                                                )}
+                                                                {step.completed_at && (
+                                                                    <span>
+                                                                        {new Date(step.completed_at).toLocaleDateString()}
+                                                                    </span>
+                                                                )}
+                                                                {step.duration_seconds && (
+                                                                    <span>
+                                                                        {Math.round(step.duration_seconds / 60)}m
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Parts progress */}
+                                                            {(step.parts_at_step > 0 || step.parts_completed > 0) && (
+                                                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                                    <Package className="h-3 w-3" />
+                                                                    <span>{step.parts_completed}/{step.parts_at_step + step.parts_completed} parts</span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Counts */}
+                                                            <div className="flex items-center gap-3 text-xs">
+                                                                {hasMeasurements && (
+                                                                    <span className="flex items-center gap-1 text-muted-foreground">
+                                                                        <Gauge className="h-3 w-3" />
+                                                                        {step.measurement_count}
+                                                                    </span>
+                                                                )}
+                                                                {hasDefects && (
+                                                                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                                        <AlertTriangle className="h-3 w-3" />
+                                                                        {step.defect_count}
+                                                                    </span>
+                                                                )}
+                                                                {hasAttachments && (
+                                                                    <span className="flex items-center gap-1 text-muted-foreground">
+                                                                        <Paperclip className="h-3 w-3" />
+                                                                        {step.attachment_count}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            {index < processWithSteps.steps.length - 1 && (
-                                                <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                                            )}
                                         </div>
                                     );
                                 })}
                         </div>
-                        {processLoading && (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                                Loading process steps...
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Notes */}
             {workOrder.notes && (

@@ -17,7 +17,7 @@ import { useDeleteEquipment } from "@/hooks/useDeleteEquipment.ts"; // <- hook f
 import { toast } from "sonner";
 
 type Props = {
-    equipmentId: number;
+    equipmentId: string;
 };
 
 export function EditEquipmentActionsCell({ equipmentId }: Props) {

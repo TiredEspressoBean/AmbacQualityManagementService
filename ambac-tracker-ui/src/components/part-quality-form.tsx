@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { api } from "@/lib/api/generated";
+import { api, type PaginatedUserSelectList, type PaginatedEquipmentsList, type PaginatedMeasurementDefinitionList } from "@/lib/api/generated";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
 import { useCreateErrorType } from "@/hooks/useCreateErrorType";
@@ -51,23 +51,23 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import { isFieldRequired } from "@/lib/zod-config";
 
 const formSchema = z.object({
-    part: z.number(),
+    part: z.string(),
     operator: z.array(z.number()).min(1, "At least one operator must be selected"),
-    machine: z.number({ required_error: "Machine selection is required" }),
+    machine: z.string({ required_error: "Machine selection is required" }),
     description: z.string().optional(),
-    status: z.enum(["PASS", "FAIL", "PENDING"]),
-    sampling_rule: z.number().optional(),
-    step: z.number(),
-    errors: z.array(z.number()).optional(),
+    status: schemas.QualityReportStatusEnum,
+    sampling_rule: z.string().optional(),
+    step: z.string(),
     file: z.instanceof(File).optional(),
     classification: schemas.ClassificationEnum.optional(),
-    measurements: z.array(z.object({
-        definition: z.number(),
-        value_numeric: z.number().optional(),
-        value_pass_fail: z.enum(["PASS", "FAIL"]).optional(),
-    })).refine(
+    detected_by: z.number().optional(),
+    verified_by: z.number().optional(),
+    is_first_piece: z.boolean().default(false),
+    // Use generated schema for measurements - definition is a UUID string, not number
+    measurements: z.array(schemas.MeasurementResultRequest).refine(
         (measurements) => measurements.every(m =>
             m.value_numeric !== undefined || m.value_pass_fail !== undefined
         ),
@@ -77,36 +77,45 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const required = {
+    operator: isFieldRequired(formSchema.shape.operator),
+    machine: isFieldRequired(formSchema.shape.machine),
+};
+
 export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => void }) {
     const [operatorPopoverOpen, setOperatorPopoverOpen] = React.useState(false);
     const [machinePopoverOpen, setMachinePopoverOpen] = React.useState(false);
     const [errorTypesPopoverOpen, setErrorTypesPopoverOpen] = React.useState(false);
+    const [detectedByPopoverOpen, setDetectedByPopoverOpen] = React.useState(false);
+    const [verifiedByPopoverOpen, setVerifiedByPopoverOpen] = React.useState(false);
     const [operatorSearch, setOperatorSearch] = React.useState("");
     const [machineSearch, setMachineSearch] = React.useState("");
     const [errorTypesSearch, setErrorTypesSearch] = React.useState("");
+    const [detectedBySearch, setDetectedBySearch] = React.useState("");
+    const [verifiedBySearch, setVerifiedBySearch] = React.useState("");
     const [newErrorDialogOpen, setNewErrorDialogOpen] = React.useState(false);
     const [newErrorName, setNewErrorName] = React.useState("");
     const [newErrorExample, setNewErrorExample] = React.useState("");
-    const [fileInputKey, setFileInputKey] = React.useState(Date.now());
+    const [_fileInputKey, _setFileInputKey] = React.useState(Date.now());
     const [isUploadingDocument, setIsUploadingDocument] = React.useState(false);
 
-    const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery({
+    const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
         queryKey: ["employee-options"],
         queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam } }),
-        getNextPageParam: (lastPage, pages) => lastPage?.results.length === 100 ? pages.length * 100 : undefined,
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
         initialPageParam: 0,
     });
 
-    const { data: machinePages, isLoading: machinesLoading } = useInfiniteQuery({
+    const { data: machinePages, isLoading: machinesLoading } = useInfiniteQuery<PaginatedEquipmentsList, Error>({
         queryKey: ["equipment-options"],
         queryFn: ({ pageParam = 0 }) => api.api_Equipment_Options_list({ queries: { offset: pageParam } }),
-        getNextPageParam: (lastPage, pages) => lastPage?.results.length === 100 ? pages.length * 100 : undefined,
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
         initialPageParam: 0,
     });
 
 
-    const { data: errorTypes, isLoading: errorTypesLoading, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
-        queries: { search: {part_type: part?.part_type?.id || part?.part_type} }
+    const { data: errorTypes, isLoading: _errorTypesLoading, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
+        part_type: part?.part_type?.id || part?.part_type
     });
 
     const createErrorType = useCreateErrorType();
@@ -117,7 +126,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         error: measurementError,
         isError: measurementIsError,
         isLoading: measurementLoading
-    } = useQuery({
+    } = useQuery<PaginatedMeasurementDefinitionList, Error>({
         queryKey: ["measurement-definitions", { queries: { step: part?.step?.id || part?.step }}],
         queryFn: () => api.api_MeasurementDefinitions_list({
             queries: { step: part?.step?.id || part?.step }
@@ -140,6 +149,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
             sampling_rule: part?.sampling_rule,
             measurements: [],
             classification: "internal",
+            is_first_piece: false,
         },
     });
 
@@ -149,7 +159,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     // Initialize measurements when definitions are loaded
     React.useEffect(() => {
         if (measurementDefs?.results) {
-            const initial = measurementDefs.results.map((def: any) => ({
+            const initial = measurementDefs.results.map((def: { id: string }) => ({
                 definition: def.id,
                 value_numeric: undefined,
                 value_pass_fail: undefined,
@@ -236,6 +246,14 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         et.error_name.toLowerCase().includes(errorTypesSearch.toLowerCase())
     ) ?? [];
 
+    const filteredDetectedBy = operators.filter((op) =>
+        `${op.first_name} ${op.last_name}`.toLowerCase().includes(detectedBySearch.toLowerCase())
+    );
+
+    const filteredVerifiedBy = operators.filter((op) =>
+        `${op.first_name} ${op.last_name}`.toLowerCase().includes(verifiedBySearch.toLowerCase())
+    );
+
     const handleCreateErrorType = async () => {
         if (!newErrorName.trim()) {
             toast.error("Error name is required");
@@ -268,7 +286,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     name="operator"
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Operators *</FormLabel>
+                            <FormLabel required={required.operator}>Operators</FormLabel>
                             <Popover open={operatorPopoverOpen} onOpenChange={setOperatorPopoverOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -333,7 +351,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     name="machine"
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Machine *</FormLabel>
+                            <FormLabel required={required.machine}>Machine</FormLabel>
                             <Popover open={machinePopoverOpen} onOpenChange={setMachinePopoverOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -400,9 +418,11 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="PASS">Pass</SelectItem>
-                                    <SelectItem value="FAIL">Fail</SelectItem>
-                                    <SelectItem value="PENDING">Pending</SelectItem>
+                                    {schemas.QualityReportStatusEnum.options.map((status) => (
+                                        <SelectItem key={status} value={status}>
+                                            {status.charAt(0) + status.slice(1).toLowerCase()}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -531,6 +551,155 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     )}
                 />
 
+                {/* First Piece Inspection Flag */}
+                <FormField
+                    control={control}
+                    name="is_first_piece"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-amber-50 dark:bg-amber-950/20">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>First Piece Inspection (FPI)</FormLabel>
+                                <FormDescription>
+                                    Mark this as the first piece inspection for setup verification. Required before other parts can proceed at this step.
+                                </FormDescription>
+                            </div>
+                        </FormItem>
+                    )}
+                />
+
+                {/* Traceability Section */}
+                <div className="grid gap-4 md:grid-cols-2">
+                    {/* Detected By Field */}
+                    <FormField
+                        control={control}
+                        name="detected_by"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Detected By</FormLabel>
+                                <Popover open={detectedByPopoverOpen} onOpenChange={setDetectedByPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={detectedByPopoverOpen}
+                                                className="w-full justify-between"
+                                            >
+                                                {field.value
+                                                    ? `${operators.find((op) => op.id === field.value)?.first_name} ${operators.find((op) => op.id === field.value)?.last_name}`
+                                                    : "Select inspector"
+                                                }
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search..."
+                                                value={detectedBySearch}
+                                                onValueChange={setDetectedBySearch}
+                                            />
+                                            <CommandEmpty>No employees found.</CommandEmpty>
+                                            <CommandGroup className="max-h-64 overflow-auto">
+                                                {filteredDetectedBy.map((emp) => (
+                                                    <CommandItem
+                                                        key={emp.id}
+                                                        onSelect={() => {
+                                                            field.onChange(emp.id);
+                                                            setDetectedByPopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                field.value === emp.id ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {emp.first_name} {emp.last_name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormDescription>
+                                    Inspector who detected the defect
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* Verified By Field */}
+                    <FormField
+                        control={control}
+                        name="verified_by"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Verified By</FormLabel>
+                                <Popover open={verifiedByPopoverOpen} onOpenChange={setVerifiedByPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={verifiedByPopoverOpen}
+                                                className="w-full justify-between"
+                                            >
+                                                {field.value
+                                                    ? `${operators.find((op) => op.id === field.value)?.first_name} ${operators.find((op) => op.id === field.value)?.last_name}`
+                                                    : "Select verifier (optional)"
+                                                }
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search..."
+                                                value={verifiedBySearch}
+                                                onValueChange={setVerifiedBySearch}
+                                            />
+                                            <CommandEmpty>No employees found.</CommandEmpty>
+                                            <CommandGroup className="max-h-64 overflow-auto">
+                                                {filteredVerifiedBy.map((emp) => (
+                                                    <CommandItem
+                                                        key={emp.id}
+                                                        onSelect={() => {
+                                                            field.onChange(emp.id);
+                                                            setVerifiedByPopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                field.value === emp.id ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {emp.first_name} {emp.last_name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormDescription>
+                                    Second signature for critical inspections
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 {/* Measurements */}
                 {fields.length > 0 && (
                     <div className="space-y-4">
@@ -538,7 +707,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                             <h3 className="text-lg font-medium mb-4">Measurements</h3>
                             <div className="space-y-4">
                                 {fields.map((field, index) => {
-                                    const def = measurementDefs?.results.find((d: any) => d.id === field.definition);
+                                    const def = measurementDefs?.results.find((d: { id: string }) => d.id === field.definition);
                                     if (!def) return null;
 
                                     return (
@@ -573,8 +742,11 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                                                     <SelectValue placeholder="Select result" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="PASS">Pass</SelectItem>
-                                                                    <SelectItem value="FAIL">Fail</SelectItem>
+                                                                    {schemas.ValuePassFailEnum.options.map((val) => (
+                                                                        <SelectItem key={val} value={val}>
+                                                                            {val.charAt(0) + val.slice(1).toLowerCase()}
+                                                                        </SelectItem>
+                                                                    ))}
                                                                 </SelectContent>
                                                             </Select>
                                                         )}
@@ -597,7 +769,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     <FormField
                         control={control}
                         name="file"
-                        render={({ field: { onChange, ...field } }) => (
+                        render={({ field: { onChange } }) => (
                             <FormItem>
                                 <FormLabel>File</FormLabel>
                                 <FormControl>

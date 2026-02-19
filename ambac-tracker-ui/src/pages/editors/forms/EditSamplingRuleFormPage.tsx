@@ -39,33 +39,36 @@ import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {ruleTypes, ruleTypesEnum} from "@/lib/RuleTypesEnum.ts"
+import {schemas} from "@/lib/api/generated";
+import {isFieldRequired} from "@/lib/zod-config";
 
-
-const ruleTypeEnum = ruleTypesEnum;
-
-const samplingRuleFormSchema = z.object({
-  ruleset: z
-    .number()
-    .min(1, "Rule set must be selected - please choose which rule set this sampling rule belongs to"),
-  rule_type: ruleTypeEnum,
+// Use generated schema for base fields, extend with form-specific validation
+const samplingRuleFormSchema = schemas.SamplingRuleRequest.pick({
+  ruleset: true,
+  rule_type: true,
+  order: true,
+}).extend({
+  // Override rule_type to use our local enum with labels
+  rule_type: ruleTypesEnum,
+  // Override value with form-specific validation (required with min/max)
   value: z
     .coerce.number()
-    .min(1, "Value must be at least 1 - please enter a positive number for the sampling rule value")
-    .max(100, "Value cannot exceed 100 for percentage rules"),
-  order: z
-    .coerce.number()
-    .int()
-    .min(0, "Order must be 0 or greater - please enter a valid priority order")
-    .max(2147483647, "Order value is too large")
-    .optional(),
+    .min(1)
+    .max(100),
 });
 
 export type SamplingRuleFormValues = z.infer<typeof samplingRuleFormSchema>;
 
+const required = {
+    ruleset: isFieldRequired(samplingRuleFormSchema.shape.ruleset),
+    rule_type: isFieldRequired(samplingRuleFormSchema.shape.rule_type),
+    value: isFieldRequired(samplingRuleFormSchema.shape.value),
+};
+
 export default function SamplingRuleFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const ruleId = params.id ? parseInt(params.id, 10) : undefined;
+    const ruleId = params.id;
 
     const { data: rule } = useRetrieveSamplingRule(
         { params: { id: ruleId! } },
@@ -74,14 +77,12 @@ export default function SamplingRuleFormPage() {
 
     const [rulesetQuery, setRulesetQuery] = useState("");
     const debouncedQuery = useDebounce(rulesetQuery, 300);
-    const { data: ruleSets = { results: [] } } = useRetrieveSamplingRulesSets({
-        queries: { search: debouncedQuery },
-    });
+    const { data: ruleSets = { results: [] } } = useRetrieveSamplingRulesSets({ search: debouncedQuery });
 
     const form = useForm<SamplingRuleFormValues>({
         resolver: zodResolver(samplingRuleFormSchema),
         defaultValues: {
-            ruleset: 0,
+            ruleset: undefined,
             rule_type: undefined,
             value: 1,
             order: undefined,
@@ -148,7 +149,7 @@ export default function SamplingRuleFormPage() {
 
                         return (
                             <FormItem>
-                                <FormLabel>Rule Set *</FormLabel>
+                                <FormLabel required={required.ruleset}>Rule Set</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button
@@ -202,7 +203,7 @@ export default function SamplingRuleFormPage() {
                     name="rule_type"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Rule Type *</FormLabel>
+                            <FormLabel required={required.rule_type}>Rule Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
@@ -228,7 +229,7 @@ export default function SamplingRuleFormPage() {
                     name="value"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Sampling Rule Value *</FormLabel>
+                            <FormLabel required={required.value}>Sampling Rule Value</FormLabel>
                             <FormControl>
                                 <Input type="number" {...field} />
                             </FormControl>

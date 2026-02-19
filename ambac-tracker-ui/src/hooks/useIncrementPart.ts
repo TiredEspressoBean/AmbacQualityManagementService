@@ -6,7 +6,7 @@ export function usePartIncrementMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: number) =>
+        mutationFn: (id: string) =>
             api.api_Parts_increment_create(undefined, {
                 params: { id },
                 headers: {

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useParams } from "@tanstack/react-router";
 
 import { useRetrieveErrorType } from "@/hooks/useRetrieveErrorType";
@@ -35,23 +36,34 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const formSchema = z.object({
-    error_name: z
-        .string()
-        .min(1, "Error name is required - please enter a descriptive name for this error type")
-        .max(255, "Error name must be 255 characters or less"),
-    error_example: z
-        .string()
-        .min(1, "Error example is required - please provide a detailed description to help operators identify this error")
-        .max(1000, "Error example must be 1000 characters or less"),
-    part_type: z.number().nullable().optional(), // Allow null/undefined for no selection
+// Use generated schema - error messages handled by global error map
+const formSchema = schemas.QualityErrorsListRequest.pick({
+    error_name: true,
+    error_example: true,
+    part_type: true,
+    requires_3d_annotation: true,
+}).extend({
+    // Override part_type to be string (nullable and optional for flexible selection)
+    part_type: z.string().nullable().optional(),
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Pre-compute required fields for labels
+const required = {
+    error_name: isFieldRequired(formSchema.shape.error_name),
+    error_example: isFieldRequired(formSchema.shape.error_example),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+    requires_3d_annotation: isFieldRequired(formSchema.shape.requires_3d_annotation),
+};
 
 export default function ErrorTypeFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const errorTypeId = params.id ? parseInt(params.id, 10) : undefined;
+    const errorTypeId = params.id;
     const [partTypeSearch, setPartTypeSearch] = useState("");
     const [open, setOpen] = useState(false);
 
@@ -61,15 +73,16 @@ export default function ErrorTypeFormPage() {
     );
 
     const { data: partTypes, isLoading: isLoadingPartTypes } = useRetrievePartTypes({
-        queries: { search: partTypeSearch },
+        search: partTypeSearch,
     });
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             error_name: "",
             error_example: "",
             part_type: undefined,
+            requires_3d_annotation: false,
         },
     });
 
@@ -79,7 +92,8 @@ export default function ErrorTypeFormPage() {
             form.reset({
                 error_name: errorType.error_name || "",
                 error_example: errorType.error_example || "",
-                part_type: errorType.part_type || undefined,
+                part_type: errorType.part_type ?? undefined,
+                requires_3d_annotation: errorType.requires_3d_annotation ?? false,
             });
         }
     }, [mode, errorType, form]);
@@ -87,12 +101,13 @@ export default function ErrorTypeFormPage() {
     const createErrorType = useCreateErrorType();
     const updateErrorType = useUpdateErrorType();
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         // Clean up the data before sending
         const submitData = {
             error_name: values.error_name,
             error_example: values.error_example,
             part_type: values.part_type || null, // Convert undefined to null
+            requires_3d_annotation: values.requires_3d_annotation,
         };
 
         if (mode === "edit" && errorTypeId) {
@@ -158,7 +173,7 @@ export default function ErrorTypeFormPage() {
                         name="error_name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Error Name *</FormLabel>
+                                <FormLabel required={required.error_name}>Error Name</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. Surface Crack, Dimensional Out of Tolerance"
@@ -178,7 +193,7 @@ export default function ErrorTypeFormPage() {
                         name="error_example"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Error Example *</FormLabel>
+                                <FormLabel required={required.error_example}>Error Example</FormLabel>
                                 <FormControl>
                                     <Textarea
                                         placeholder="Describe what this error looks like, how to identify it, when it typically occurs..."
@@ -199,7 +214,7 @@ export default function ErrorTypeFormPage() {
                         name="part_type"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Part Type (Optional)</FormLabel>
+                                <FormLabel required={required.part_type}>Part Type</FormLabel>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -275,6 +290,29 @@ export default function ErrorTypeFormPage() {
                                     Link this error to a specific part type, or leave blank for general errors
                                 </FormDescription>
                                 <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="requires_3d_annotation"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>
+                                        Requires 3D Annotation
+                                    </FormLabel>
+                                    <FormDescription>
+                                        Enable this if defects of this type should be documented with 3D annotations on the part model
+                                    </FormDescription>
+                                </div>
                             </FormItem>
                         )}
                     />

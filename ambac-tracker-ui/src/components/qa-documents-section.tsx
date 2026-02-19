@@ -16,7 +16,6 @@ import type { schemas } from "@/lib/api/generated";
 import { useQaDocuments } from "@/hooks/useQaDocuments";
 import { useState, useEffect } from "react";
 import DocumentRenderer from "@/pages/detail pages/DocumentRenderer";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 type Document = z.infer<typeof schemas.Documents>;
 type WorkOrder = z.infer<typeof schemas.WorkOrder>;
@@ -42,25 +41,25 @@ export function QaDocumentsSection({ workOrder }: Props) {
 
                 // Add work order docs
                 if (qaDocumentsData.work_order_documents) {
-                    combinedDocs.push(...qaDocumentsData.work_order_documents.map((doc: any) => ({ 
-                        ...doc, 
-                        source: 'Work Order' as const 
+                    combinedDocs.push(...qaDocumentsData.work_order_documents.map((doc: { id: string; [key: string]: any }) => ({
+                        ...doc,
+                        source: 'Work Order' as const
                     })));
                 }
 
                 // Add current step docs
                 if (qaDocumentsData.current_step_documents) {
-                    combinedDocs.push(...qaDocumentsData.current_step_documents.map((doc: any) => ({ 
-                        ...doc, 
-                        source: 'Current Step' as const 
+                    combinedDocs.push(...qaDocumentsData.current_step_documents.map((doc: { id: string; [key: string]: any }) => ({
+                        ...doc,
+                        source: 'Current Step' as const
                     })));
                 }
 
                 // Add part type docs
                 if (qaDocumentsData.part_type_documents) {
-                    combinedDocs.push(...qaDocumentsData.part_type_documents.map((doc: any) => ({ 
-                        ...doc, 
-                        source: 'Part Type' as const 
+                    combinedDocs.push(...qaDocumentsData.part_type_documents.map((doc: { id: string; [key: string]: any }) => ({
+                        ...doc,
+                        source: 'Part Type' as const
                     })));
                 }
 

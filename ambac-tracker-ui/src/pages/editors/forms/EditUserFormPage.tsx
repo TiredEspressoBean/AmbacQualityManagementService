@@ -36,36 +36,39 @@ import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRetrieveGroups } from "@/hooks/useRetrieveGroups";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const formSchema = z.object({
-    username: z
-        .string()
-        .min(1, "Username is required - please enter a unique username for this user")
-        .max(150, "Username must be 150 characters or less")
-        .regex(/^[\w.@+-]+$/, "Username can only contain letters, digits and @/./+/-/_ characters"),
-    first_name: z
-        .string()
-        .max(150, "First name must be 150 characters or less")
-        .optional(),
-    last_name: z
-        .string()
-        .max(150, "Last name must be 150 characters or less")
-        .optional(),
-    email: z
-        .string()
-        .email("Please enter a valid email address in the format: user@domain.com")
-        .max(254, "Email must be 254 characters or less")
-        .optional(),
-    is_staff: z.boolean().optional(),
-    is_active: z.boolean().optional(),
-    parent_company_id: z.number().nullable().optional(),
-    group_ids: z.array(z.number()).optional(),
+// Use generated schema - error messages handled by global error map
+const formSchema = schemas.UserRequest.pick({
+    username: true,
+    first_name: true,
+    last_name: true,
+    email: true,
+    is_staff: true,
+    is_active: true,
+    parent_company_id: true,
+    group_ids: true,
 });
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Pre-compute required fields for labels
+const required = {
+    username: isFieldRequired(formSchema.shape.username),
+    first_name: isFieldRequired(formSchema.shape.first_name),
+    last_name: isFieldRequired(formSchema.shape.last_name),
+    email: isFieldRequired(formSchema.shape.email),
+    is_staff: isFieldRequired(formSchema.shape.is_staff),
+    is_active: isFieldRequired(formSchema.shape.is_active),
+    parent_company_id: isFieldRequired(formSchema.shape.parent_company_id),
+    group_ids: isFieldRequired(formSchema.shape.group_ids),
+};
 
 export default function UserFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const userId = params.id ? parseInt(params.id, 10) : undefined;
+    const userId = params.id;
     const [companySearch, setCompanySearch] = useState("");
     const [open, setOpen] = useState(false);
     const [groupSearch, setGroupSearch] = useState("");
@@ -77,14 +80,14 @@ export default function UserFormPage() {
     );
 
     const { data: companies, isLoading: isLoadingCompanies } = useRetrieveCompanies({
-        queries: { search: companySearch },
+        search: companySearch,
     });
 
     const { data: groups, isLoading: isLoadingGroups } = useRetrieveGroups({
-        queries: { search: groupSearch },
+        search: groupSearch,
     });
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             username: "",
@@ -102,14 +105,14 @@ export default function UserFormPage() {
     useEffect(() => {
         if (mode === "edit" && user) {
             form.reset({
-                username: user.username || "",
-                first_name: user.first_name || "",
-                last_name: user.last_name || "",
-                email: user.email || "",
-                is_staff: user.is_staff || false,
-                is_active: user.is_active !== undefined ? user.is_active : true,
-                parent_company_id: user.parent_company?.id || undefined,
-                group_ids: user.groups?.map(group => group.id) || [],
+                username: user.username ?? "",
+                first_name: user.first_name ?? "",
+                last_name: user.last_name ?? "",
+                email: user.email ?? "",
+                is_staff: user.is_staff ?? false,
+                is_active: user.is_active ?? true,
+                parent_company_id: user.parent_company?.id ?? undefined,
+                group_ids: user.groups?.map(group => group.id) ?? [],
             });
         }
     }, [mode, user, form]);
@@ -117,7 +120,7 @@ export default function UserFormPage() {
     const createUser = useCreateUser();
     const updateUser = useUpdateUser();
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         // Clean up the data before sending
         const submitData = {
             username: values.username,
@@ -194,7 +197,7 @@ export default function UserFormPage() {
                         name="username"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Username *</FormLabel>
+                                <FormLabel required={required.username}>Username</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="e.g. john.doe or user@company.com"
@@ -202,7 +205,7 @@ export default function UserFormPage() {
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+                                    150 characters or fewer. Letters, digits and @/./+/-/_ only.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -215,15 +218,16 @@ export default function UserFormPage() {
                             name="first_name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>First Name</FormLabel>
+                                    <FormLabel required={required.first_name}>First Name</FormLabel>
                                     <FormControl>
                                         <Input
                                             placeholder="e.g. John"
                                             {...field}
+                                            value={field.value ?? ""}
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Optional. Up to 150 characters.
+                                        Up to 150 characters.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -235,15 +239,16 @@ export default function UserFormPage() {
                             name="last_name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Last Name</FormLabel>
+                                    <FormLabel required={required.last_name}>Last Name</FormLabel>
                                     <FormControl>
                                         <Input
                                             placeholder="e.g. Doe"
                                             {...field}
+                                            value={field.value ?? ""}
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        Optional. Up to 150 characters.
+                                        Up to 150 characters.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -256,16 +261,17 @@ export default function UserFormPage() {
                         name="email"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Email</FormLabel>
+                                <FormLabel required={required.email}>Email</FormLabel>
                                 <FormControl>
                                     <Input
                                         type="email"
                                         placeholder="e.g. john.doe@company.com"
                                         {...field}
+                                        value={field.value ?? ""}
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    Optional. Valid email address up to 254 characters.
+                                    Valid email address up to 254 characters.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -277,7 +283,7 @@ export default function UserFormPage() {
                         name="parent_company_id"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Company (Optional)</FormLabel>
+                                <FormLabel required={required.parent_company_id}>Company</FormLabel>
                                 <Popover open={open} onOpenChange={setOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -362,7 +368,7 @@ export default function UserFormPage() {
                         name="group_ids"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Groups (Optional)</FormLabel>
+                                <FormLabel required={required.group_ids}>Groups</FormLabel>
                                 <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>

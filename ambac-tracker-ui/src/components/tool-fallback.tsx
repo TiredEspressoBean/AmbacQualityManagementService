@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, Loader2Icon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -14,15 +14,21 @@ export const ToolFallback = ({
   result,
 }: ToolFallbackProps) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const isRunning = result === undefined;
+
   return (
     <div className="mb-4 flex w-full flex-col gap-3 rounded-lg border py-3">
       <div className="flex items-center gap-2 px-4">
-        <CheckIcon className="size-4" />
+        {isRunning ? (
+          <Loader2Icon className="size-4 animate-spin" />
+        ) : (
+          <CheckIcon className="size-4" />
+        )}
         <p className="flex-grow">
-          Used tool: <b>{toolName}</b>
+          {isRunning ? "Running" : "Used"} tool: <b>{toolName}</b>
         </p>
-        <Button onClick={() => setIsCollapsed(!isCollapsed)}>
-          {isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
+        <Button size="sm" variant="ghost" onClick={() => setIsCollapsed(!isCollapsed)}>
+          {isCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
         </Button>
       </div>
       {!isCollapsed && (

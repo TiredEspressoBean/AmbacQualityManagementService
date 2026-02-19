@@ -3,8 +3,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy and install dependencies
-COPY ./package*.json ./
-RUN npm install
+COPY ./package.json ./package-lock.json* ./
+RUN npm install --legacy-peer-deps
 
 # Copy rest of the frontend source
 COPY . .

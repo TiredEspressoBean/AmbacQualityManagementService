@@ -34,9 +34,15 @@ type FormValues = z.infer<typeof formSchema>;
 export function DocumentUploader({
                                      objectId,
                                      contentType,
+                                     documentTypeCode,
+                                     title = "Attach Document",
+                                     compact = false,
                                  }: {
-    objectId: number;
+    objectId: string | number;
     contentType: string;
+    documentTypeCode?: string; // e.g., "CUST_APPR" for customer approval evidence
+    title?: string;
+    compact?: boolean;
 }) {
     const [fileInputKey, setFileInputKey] = useState(Date.now());
 
@@ -47,7 +53,7 @@ export function DocumentUploader({
         },
     });
 
-    const { mutate: uploadDocument, isLoading, isSuccess } = useCreateDocument();
+    const { mutate: uploadDocument, isPending, isSuccess } = useCreateDocument();
 
     function onSubmit(values: FormValues) {
         const formData = new FormData();
@@ -55,6 +61,9 @@ export function DocumentUploader({
         formData.append("classification", values.classification);
         formData.append("object_id", String(objectId));
         formData.append("content_type", contentType);
+        if (documentTypeCode) {
+            formData.append("document_type_code", documentTypeCode);
+        }
 
         // backend now fills file_name automatically from the file if omitted
 
@@ -67,14 +76,14 @@ export function DocumentUploader({
     }
 
     return (
-        <div className="border p-4 rounded-xl space-y-4">
-            <h3 className="text-lg font-medium">Attach Document</h3>
+        <div className={compact ? "space-y-2" : "space-y-4"}>
+            {!compact && <h4 className="font-medium">{title}</h4>}
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className={compact ? "flex items-end gap-2" : "space-y-4"}>
                     <FormField
                         control={form.control}
                         name="file"
-                        render={({ field: { onChange, ...field } }) => (
+                        render={({ field: { onChange } }) => (
                             <FormItem>
                                 <FormLabel>File</FormLabel>
                                 <FormControl>
@@ -115,8 +124,8 @@ export function DocumentUploader({
                         )}
                     />
 
-                    <Button type="submit" disabled={isLoading}>
-                        {isLoading ? "Uploading..." : "Upload"}
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? "Uploading..." : "Upload"}
                     </Button>
                 </form>
             </Form>

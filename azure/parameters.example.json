@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "projectName": {
+      "value": "ambactracker"
+    },
+    "environment": {
+      "value": "prod"
+    },
+    "existingPostgresServer": {
+      "value": "parts-tracker-django-server"
+    },
+    "existingBackendApp": {
+      "value": "Parts-tracker-django"
+    },
+    "existingAppServicePlan": {
+      "value": "ASP-PartsTracker-8077"
+    },
+    "postgresPassword": {
+      "value": "YOUR_POSTGRES_PASSWORD_HERE"
+    },
+    "djangoSecretKey": {
+      "value": "YOUR_DJANGO_SECRET_KEY_HERE"
+    }
+  }
+}

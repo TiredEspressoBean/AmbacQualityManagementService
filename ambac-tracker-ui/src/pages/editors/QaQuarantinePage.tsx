@@ -16,19 +16,17 @@ function usePartsList({
     search?: string;
 }) {
     return useRetrieveParts({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-            archived: false,
-            status__in: [
-                "AWAITING_QA",
-                "QUARANTINED",
-                "REWORK_NEEDED",
-                "REWORK_IN_PROGRESS",
-            ],
-        },
+        offset,
+        limit,
+        ordering,
+        search,
+        archived: false,
+        status__in: [
+            "AWAITING_QA",
+            "QUARANTINED",
+            "REWORK_NEEDED",
+            "REWORK_IN_PROGRESS",
+        ],
     });
 }
 

@@ -16,7 +16,7 @@ import {useState} from "react";
 import {useUpdateOrder} from "@/hooks/useUpdateOrder";
 
 type Props = {
-    orderId: number;
+    orderId: string;
 };
 
 export function EditOrderActionsCell({ orderId }: Props) {
@@ -44,7 +44,7 @@ export function EditOrderActionsCell({ orderId }: Props) {
                 id: orderId,
                 newData: {
                     archived:true
-                }
+                } as any
             },
             {
                 onSuccess: () => {

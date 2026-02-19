@@ -470,10 +470,9 @@ class qa_page(View):
 
         if action == "Pass":
             try:
-                result = part.increment_step()
-                StepTransitionLog.objects.create(part=part, step=part.step, operator=request.user)
+                result = part.increment_step(operator=request.user)
 
-                if result == "completed":
+                if result == "completed_workorder":
                     messages.success(request, f"Part {part.ERP_id} marked as completed.")
                 else:
                     messages.info(request, f"Part {part.ERP_id} moved to next step.")
@@ -563,13 +562,16 @@ class ErrorFormView(FormView):
 
         report = form.save(commit=False)
         report.part = self.part
-        report.operator = operator
 
         other_error = form.cleaned_data.get("other_error", "").strip()
         if other_error:
             report.description = (report.description or "") + f"\nOther error: {other_error}"
 
         report.save()
+
+        # Add operator (M2M field, must be after save)
+        if operator:
+            report.operators.add(operator)
 
         # Combine selected errors from both groups
         selected_errors = list(form.cleaned_data['errors_associated']) + list(form.cleaned_data['errors_unassociated'])

@@ -6,7 +6,7 @@ export function usePartsIncrementMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ orderId, stepId }: { orderId: number; stepId: number }) =>
+        mutationFn: ({ orderId, stepId }: { orderId: string; stepId: string }) =>
             api.api_Orders_increment_step_create(
                 { order_id: orderId, step_id: stepId },
                 {

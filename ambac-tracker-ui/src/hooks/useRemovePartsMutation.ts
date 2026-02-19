@@ -5,17 +5,17 @@ import { getCookie } from "@/lib/utils";
 type RemovePartsResult = Awaited<ReturnType<typeof api.api_Orders_parts_bulk_remove_create>>;
 
 interface UseRemovePartsMutationArgs {
-    orderId: number;
+    orderId: string;
     invalidateQueryKeys?: Array<string | unknown[]>;
 }
 
 export function useRemovePartsMutation(
     { orderId, invalidateQueryKeys }: UseRemovePartsMutationArgs,
-    options?: UseMutationOptions<RemovePartsResult, unknown, number[]>
+    options?: UseMutationOptions<RemovePartsResult, unknown, string[]>
 ) {
     const queryClient = useQueryClient();
 
-    return useMutation<RemovePartsResult, unknown, number[]>({
+    return useMutation<RemovePartsResult, unknown, string[]>({
         mutationFn: (ids) =>
             api.api_Orders_parts_bulk_remove_create(
                 { ids },

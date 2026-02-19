@@ -10,20 +10,27 @@ import {
     AlertDialogAction
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Pencil, Delete } from "lucide-react";
+import { Pencil, Delete, Eye } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useDeleteDocuments } from "@/hooks/useDeleteDocuments.ts"; // <- hook for deleting documents
 import { toast } from "sonner";
 
 type Props = {
-    documentId: number;
+    documentId: string;
 };
 
 export function EditDocumentsActionsCell({ documentId }: Props) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const deleteDocument = useDeleteDocuments();
+
+    const handleViewDetails = () => {
+        navigate({
+            to: "/documents/$id",
+            params: { id: String(documentId) },
+        });
+    };
 
     const handleEditDocument = () => {
         navigate({
@@ -47,6 +54,14 @@ export function EditDocumentsActionsCell({ documentId }: Props) {
 
     return (
         <div className="flex items-center gap-1">
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleViewDetails}
+                title="View Details"
+            >
+                <Eye className="h-4 w-4" />
+            </Button>
             <Button
                 variant="ghost"
                 size="icon"

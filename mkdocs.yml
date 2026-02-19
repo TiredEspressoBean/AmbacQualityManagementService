@@ -1,0 +1,137 @@
+site_name: Ambac Tracker Documentation
+site_description: User documentation for Ambac Tracker QMS/MES
+site_url: https://docs.ambactracker.com
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - python
+    - javascript
+    - typescript
+    - bash
+    - yaml
+    - json
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - def_list
+  - attr_list
+  - md_in_html
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Welcome: getting-started/welcome.md
+    - First Login: getting-started/first-login.md
+    - Navigation Tour: getting-started/navigation.md
+    - Your First Order: getting-started/first-order.md
+    - Glossary: getting-started/glossary.md
+  - Role Guides:
+    - Overview: roles/index.md
+    - Operator: roles/operator.md
+    - QA Inspector: roles/qa-inspector.md
+    - QA Manager: roles/qa-manager.md
+    - Production Manager: roles/production-manager.md
+    - Document Controller: roles/document-controller.md
+    - Administrator: roles/administrator.md
+    - Customer Portal: roles/customer.md
+  - Training:
+    - Training Program: training/index.md
+    - Operator Training: training/operator.md
+    - QA Inspector Training: training/qa-inspector.md
+    - QA Manager Training: training/qa-manager.md
+    - Production Manager Training: training/production-manager.md
+    - Document Controller Training: training/document-controller.md
+    - Administrator Training: training/administrator.md
+  - Core Workflows:
+    - Overview: workflows/index.md
+    - Orders & Parts:
+      - Creating Orders: workflows/orders/creating-orders.md
+      - Adding Parts: workflows/orders/adding-parts.md
+      - Order Status: workflows/orders/order-status.md
+      - Order Documents: workflows/orders/order-documents.md
+    - Parts Tracking:
+      - Tracker Overview: workflows/tracking/tracker-overview.md
+      - Moving Parts Forward: workflows/tracking/moving-parts.md
+      - Recording Measurements: workflows/tracking/measurements.md
+      - Flagging Issues: workflows/tracking/flagging-issues.md
+      - Part History: workflows/tracking/part-history.md
+    - Work Orders:
+      - Work Order Basics: workflows/work-orders/basics.md
+      - Assigning Work Orders: workflows/work-orders/assigning.md
+      - Work Order Progress: workflows/work-orders/progress.md
+      - First Piece Inspection: workflows/work-orders/fpi.md
+    - Quality Control:
+      - Quality Reports: workflows/quality/quality-reports.md
+      - Dispositions: workflows/quality/dispositions.md
+      - Quarantine: workflows/quality/quarantine.md
+      - Sampling Rules: workflows/quality/sampling.md
+    - CAPA:
+      - CAPA Overview: workflows/capa/overview.md
+      - Creating a CAPA: workflows/capa/creating.md
+      - CAPA Tasks: workflows/capa/tasks.md
+      - Verification & Closure: workflows/capa/verification.md
+    - Documents:
+      - Document Library: workflows/documents/library.md
+      - Uploading Documents: workflows/documents/uploading.md
+      - Document Revisions: workflows/documents/revisions.md
+      - Document Approval: workflows/documents/approval.md
+  - Analysis & Reporting:
+    - Dashboard Overview: analysis/dashboard.md
+    - SPC Charts: analysis/spc.md
+    - Defect Analysis: analysis/defects.md
+    - Heat Maps: analysis/heatmaps.md
+    - Exporting Data: analysis/exporting.md
+    - Audit Trail: analysis/audit-trail.md
+  - 3D Models & Annotations:
+    - Uploading Models: 3d-models/uploading.md
+    - Viewing Models: 3d-models/viewing.md
+    - Creating Annotations: 3d-models/annotations.md
+    - Heat Map Visualization: 3d-models/heatmap-viz.md
+  - Administration:
+    - Overview: admin/index.md
+    - User Management:
+      - Adding Users: admin/users/adding.md
+      - Roles & Groups: admin/users/roles.md
+      - Permissions: admin/users/permissions.md
+      - Deactivating Users: admin/users/deactivating.md
+    - Process Configuration:
+      - Process Overview: admin/processes/overview.md
+      - Creating Processes: admin/processes/creating.md
+      - Step Configuration: admin/processes/steps.md
+      - Measurement Definitions: admin/processes/measurements.md
+    - System Setup:
+      - Companies: admin/setup/companies.md
+      - Part Types: admin/setup/part-types.md
+      - Equipment: admin/setup/equipment.md
+      - Error Types: admin/setup/error-types.md
+      - Document Types: admin/setup/document-types.md
+      - Approval Templates: admin/setup/approval-templates.md
+      - Sampling Rules: admin/setup/sampling-rules.md
+  - Compliance:
+    - Audit Trails: compliance/audit-trails.md
+    - Electronic Signatures: compliance/signatures.md
+    - Document Control: compliance/document-control.md
+    - Export Controls: compliance/export-controls.md
+    - Compliance Reports: compliance/reports.md
+  - Integrations:
+    - SSO / Azure AD: integrations/sso.md
+    - HubSpot: integrations/hubspot.md
+    - API Overview: integrations/api.md
+  - Troubleshooting:
+    - Common Issues: troubleshooting/common-issues.md
+    - FAQ: troubleshooting/faq.md
+    - Getting Help: troubleshooting/help.md
+
+repo_url: https://github.com/ambac
+repo_name: ambac

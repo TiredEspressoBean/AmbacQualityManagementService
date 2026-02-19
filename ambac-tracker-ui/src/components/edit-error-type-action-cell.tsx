@@ -17,7 +17,7 @@ import { useDeleteErrorType } from "@/hooks/useDeleteErrorType.ts"; // <- hook f
 import { toast } from "sonner";
 
 type Props = {
-    errorTypeId: number;
+    errorTypeId: string;
 };
 
 export function EditErrorTypeActionsCell({ errorTypeId }: Props) {

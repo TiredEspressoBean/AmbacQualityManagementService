@@ -1,4 +1,4 @@
-# Main site
+# Main site (production)
 govtracker.ambac.local {
     tls /etc/caddy/certs/Govtracker.crt /etc/caddy/certs/Govtracker.key
 

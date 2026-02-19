@@ -1,6 +1,6 @@
 'use client'
 
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -27,15 +27,21 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 
 import { api, schemas } from '@/lib/api/generated'
-import { router } from "@/router"
 import { getCookie } from '@/lib/utils'
+import { isFieldRequired } from '@/lib/zod-config'
 
-// Make sure you’ve done this somewhere globally:
+// Make sure you've done this somewhere globally:
 api.axios.defaults.withCredentials = true
 const Login = schemas.LoginRequest
 
+const required = {
+    email: isFieldRequired(Login.shape.email),
+    password: isFieldRequired(Login.shape.password),
+}
+
 
 export default function LoginPreview() {
+    const router = useRouter()
     const form = useForm<z.infer<typeof Login>>({
         resolver: zodResolver(Login),
         defaultValues: {
@@ -46,8 +52,6 @@ export default function LoginPreview() {
 
     async function onSubmit(values: z.infer<typeof Login>) {
         try {
-            console.log(values)
-            
             const { key } = await api.auth_login_create({
                 email: values.email,
                 password: values.password
@@ -65,8 +69,25 @@ export default function LoginPreview() {
             await queryClient.invalidateQueries({ queryKey: ['authUser'] })
             router.navigate({ to: "/" })
 
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Login failed")
+        } catch (error: any) {
+            // Extract user-friendly error message from API response
+            const apiError = error?.response?.data;
+            let message = "Login failed";
+
+            if (apiError?.non_field_errors?.[0]) {
+                // DRF returns "Unable to log in with provided credentials."
+                message = "Invalid email or password";
+            } else if (apiError?.email?.[0]) {
+                message = apiError.email[0];
+            } else if (apiError?.password?.[0]) {
+                message = apiError.password[0];
+            } else if (apiError?.detail) {
+                message = apiError.detail;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+
+            toast.error(message);
         }
     }
 
@@ -88,7 +109,7 @@ export default function LoginPreview() {
                                     name="email"
                                     render={({ field }) => (
                                         <FormItem className="grid gap-2">
-                                            <FormLabel htmlFor="email">email</FormLabel>
+                                            <FormLabel htmlFor="email" required={required.email}>Email</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     id="email"
@@ -107,7 +128,7 @@ export default function LoginPreview() {
                                     render={({ field }) => (
                                         <FormItem className="grid gap-2">
                                             <div className="flex justify-between items-center">
-                                                <FormLabel htmlFor="password">Password</FormLabel>
+                                                <FormLabel htmlFor="password" required={required.password}>Password</FormLabel>
                                                 <Link
                                                     to="/password-reset-request"
                                                     className="ml-auto inline-block text-sm underline"

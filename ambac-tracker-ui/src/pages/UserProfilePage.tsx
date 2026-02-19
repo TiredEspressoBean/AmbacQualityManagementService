@@ -6,19 +6,19 @@ import { toast } from "sonner";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
+import { api } from "@/lib/api/generated";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Save, User as UserIcon } from "lucide-react";
+import { Loader2, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NotificationPreferencesCard } from "@/components/notification-preferences-card";
 
@@ -46,30 +46,32 @@ export function UserProfilePage() {
 
     const updateProfileMutation = useMutation({
         mutationFn: async (data: ProfileFormData) => {
-            const res = await fetch("/auth/user/", {
-                method: "PATCH",
-                credentials: "include",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken") ?? "",
-                },
-                body: JSON.stringify(data),
+            return api.auth_user_partial_update(data, {
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || "Failed to update profile");
-            }
-
-            return res.json();
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["authUser"] });
             toast.success("Profile updated successfully");
             setIsEditing(false);
         },
-        onError: (error: Error) => {
-            toast.error(error.message || "Failed to update profile");
+        onError: (err: any) => {
+            const apiError = err?.response?.data;
+            let message = "Failed to update profile";
+
+            if (apiError?.first_name?.[0]) {
+                message = `First name: ${apiError.first_name[0]}`;
+            } else if (apiError?.last_name?.[0]) {
+                message = `Last name: ${apiError.last_name[0]}`;
+            } else if (apiError?.email?.[0]) {
+                message = `Email: ${apiError.email[0]}`;
+            } else if (apiError?.detail) {
+                message = apiError.detail;
+            } else if (err?.message) {
+                message = err.message;
+            }
+
+            toast.error(message);
         },
     });
 
@@ -146,6 +148,19 @@ export function UserProfilePage() {
                                         {user.groups.map((group) => (
                                             <Badge key={group.id} variant="outline">
                                                 {group.name}
+                                            </Badge>
+                                        ))}
+                                    </dd>
+                                </div>
+                            )}
+                            {user.tenant_groups && user.tenant_groups.length > 0 && (
+                                <div className="flex items-center justify-between py-2">
+                                    <dt className="text-sm font-medium text-muted-foreground">Tenant Groups</dt>
+                                    <dd className="flex flex-wrap gap-2 justify-end">
+                                        {user.tenant_groups.map((group) => (
+                                            <Badge key={group.id} variant="secondary">
+                                                {group.name}
+                                                {group.role_type && <span className="ml-1 text-xs opacity-70">({group.role_type})</span>}
                                             </Badge>
                                         ))}
                                     </dd>

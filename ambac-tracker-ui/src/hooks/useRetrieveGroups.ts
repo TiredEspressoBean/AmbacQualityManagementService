@@ -1,13 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
-export const useRetrieveGroups = (
-  params?: Parameters<typeof api.api_Groups_list>[0],
-  options: any = {}
-) => {
+export function useRetrieveGroups(
+  queries?: Parameters<typeof api.api_Groups_list>[0],
+  options?: Omit<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof api.api_Groups_list>>,
+      Error
+    >,
+    "queryKey" | "queryFn"
+  >
+) {
   return useQuery({
-    queryKey: ["groups", params],
-    queryFn: () => api.api_Groups_list(params),
+    queryKey: ["groups", queries],
+    queryFn: () => api.api_Groups_list(queries),
     ...options,
   });
-};
+}

@@ -28,9 +28,10 @@ export const useUpdateEquipment = () => {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {
+            // Invalidate both singular (detail) and plural (list) queries
             queryClient.invalidateQueries({
-                queryKey: ["equipment"],
-                predicate: (query) => query.queryKey[0] === "equipment",
+                predicate: (query) =>
+                    query.queryKey[0] === "equipment" || query.queryKey[0] === "equipments",
             });
         },
     });

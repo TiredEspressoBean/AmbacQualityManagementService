@@ -1,0 +1,7 @@
+# Dependencies for installation scripts
+rich>=13.0.0
+python-dotenv>=1.0.0
+
+# For compiling to standalone binary (optional)
+# pip install pyinstaller
+# pyinstaller --onefile install.py

@@ -1,0 +1,493 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "15004994213998508050"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "centralus"
+    },
+    "projectName": {
+      "type": "string",
+      "defaultValue": "ambactracker"
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "prod"
+    },
+    "existingPostgresServer": {
+      "type": "string",
+      "defaultValue": "parts-tracker-django-server"
+    },
+    "existingBackendApp": {
+      "type": "string",
+      "defaultValue": "Parts-tracker-django"
+    },
+    "existingAppServicePlan": {
+      "type": "string",
+      "defaultValue": "ASP-PartsTracker-8077"
+    },
+    "redisName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-redis', parameters('projectName'))]"
+    },
+    "redisSku": {
+      "type": "string",
+      "defaultValue": "Basic"
+    },
+    "celeryWorkerAppName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-celery-worker', parameters('projectName'))]"
+    },
+    "celeryBeatAppName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-celery-beat', parameters('projectName'))]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('{0}storage{1}', parameters('projectName'), parameters('environment'))]"
+    },
+    "frontendAppName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-frontend', parameters('projectName'))]"
+    },
+    "postgresDatabase": {
+      "type": "string",
+      "defaultValue": "parts-tracker-django-database"
+    },
+    "postgresUser": {
+      "type": "string",
+      "defaultValue": "kdezfhzdbd"
+    },
+    "postgresPassword": {
+      "type": "securestring"
+    },
+    "djangoSecretKey": {
+      "type": "securestring"
+    },
+    "hubspotApiKey": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "langsmithApiKey": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "microsoftClientId": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "microsoftClientSecret": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "emailHostPassword": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "djangoDebug": {
+      "type": "string",
+      "defaultValue": "False"
+    },
+    "hubspotDebug": {
+      "type": "string",
+      "defaultValue": "false"
+    },
+    "djangoSuperuserUsername": {
+      "type": "string",
+      "defaultValue": "admin"
+    },
+    "djangoSuperuserEmail": {
+      "type": "string",
+      "defaultValue": "admin@email.com"
+    },
+    "djangoSuperuserPassword": {
+      "type": "securestring"
+    },
+    "emailHost": {
+      "type": "string",
+      "defaultValue": "outbound-us1.ppe-hosted.com"
+    },
+    "emailHostUser": {
+      "type": "string",
+      "defaultValue": "sales@ambacinternational.com"
+    },
+    "emailBackend": {
+      "type": "string",
+      "defaultValue": "django.core.mail.backends.smtp.EmailBackend"
+    },
+    "customFrontendDomain": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "customBackendDomain": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}/{1}', parameters('existingPostgresServer'), 'azure.extensions')]",
+      "properties": {
+        "value": "VECTOR",
+        "source": "user-override"
+      }
+    },
+    {
+      "type": "Microsoft.Cache/redis",
+      "apiVersion": "2023-08-01",
+      "name": "[parameters('redisName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "[parameters('redisSku')]",
+          "family": "C",
+          "capacity": 0
+        },
+        "enableNonSslPort": false,
+        "minimumTlsVersion": "1.2",
+        "redisConfiguration": {
+          "maxmemory-policy": "allkeys-lru"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": true,
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'media')]",
+      "properties": {
+        "publicAccess": "Blob"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'static')]",
+      "properties": {
+        "publicAccess": "Blob"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('existingBackendApp'), 'web')]",
+      "properties": {
+        "appCommandLine": "gunicorn --bind=0.0.0.0 --timeout 600 --chdir /home/site/wwwroot PartsTrackerApp.wsgi"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('existingBackendApp'), 'appsettings')]",
+      "properties": {
+        "WEBSITES_PORT": "8000",
+        "SCM_DO_BUILD_DURING_DEPLOYMENT": "1",
+        "POST_BUILD_COMMAND": "python manage.py collectstatic --noinput",
+        "DJANGO_SETTINGS_MODULE": "PartsTrackerApp.settings_azure",
+        "DJANGO_SECRET_KEY": "[parameters('djangoSecretKey')]",
+        "DJANGO_DEBUG": "[parameters('djangoDebug')]",
+        "DJANGO_SUPERUSER_USERNAME": "[parameters('djangoSuperuserUsername')]",
+        "DJANGO_SUPERUSER_EMAIL": "[parameters('djangoSuperuserEmail')]",
+        "DJANGO_SUPERUSER_PASSWORD": "[parameters('djangoSuperuserPassword')]",
+        "POSTGRES_HOST": "[format('{0}.postgres.database.azure.com', parameters('existingPostgresServer'))]",
+        "POSTGRES_DB": "[parameters('postgresDatabase')]",
+        "POSTGRES_USER": "[parameters('postgresUser')]",
+        "POSTGRES_PASSWORD": "[parameters('postgresPassword')]",
+        "POSTGRES_PORT": "5432",
+        "REDIS_URL": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]",
+        "CELERY_BROKER_URL": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]",
+        "REDIS_HOST": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName]",
+        "AZURE_STORAGE_ACCOUNT_NAME": "[parameters('storageAccountName')]",
+        "AZURE_STORAGE_ACCOUNT_KEY": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value]",
+        "AZURE_STORAGE_CONTAINER_NAME_MEDIA": "media",
+        "AZURE_STORAGE_CONTAINER_NAME_STATIC": "static",
+        "HUBSPOT_API_KEY": "[parameters('hubspotApiKey')]",
+        "HUBSPOT_DEBUG": "[parameters('hubspotDebug')]",
+        "LANGSMITH_API_KEY": "[parameters('langsmithApiKey')]",
+        "MICROSOFT_CLIENT_ID": "[parameters('microsoftClientId')]",
+        "MICROSOFT_CLIENT_SECRET": "[parameters('microsoftClientSecret')]",
+        "EMAIL_HOST": "[parameters('emailHost')]",
+        "EMAIL_HOST_USER": "[parameters('emailHostUser')]",
+        "EMAIL_HOST_PASSWORD": "[parameters('emailHostPassword')]",
+        "EMAIL_BACKEND": "[parameters('emailBackend')]",
+        "ALLOWED_HOSTS": "[format('{0}', reference(resourceId('Microsoft.Web/sites', parameters('existingBackendApp')), '2023-01-01').defaultHostName)]",
+        "CORS_ALLOWED_ORIGINS": "[if(empty(parameters('customFrontendDomain')), format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname), format('https://{0},https://{1}', reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname, parameters('customFrontendDomain')))]",
+        "CSRF_TRUSTED_ORIGINS": "[if(empty(parameters('customFrontendDomain')), format('https://{0},https://{1}', reference(resourceId('Microsoft.Web/sites', parameters('existingBackendApp')), '2023-01-01').defaultHostName, reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname), format('https://{0},https://{1},https://{2}', reference(resourceId('Microsoft.Web/sites', parameters('existingBackendApp')), '2023-01-01').defaultHostName, reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname, parameters('customFrontendDomain')))]",
+        "FRONTEND_URL": "[if(empty(parameters('customFrontendDomain')), format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname), format('https://{0}', parameters('customFrontendDomain')))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites/config', parameters('existingBackendApp'), 'web')]",
+        "[resourceId('Microsoft.Cache/redis', parameters('redisName'))]",
+        "[resourceId('Microsoft.Web/staticSites', parameters('frontendAppName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('celeryWorkerAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('existingAppServicePlan'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "PYTHON|3.12",
+          "alwaysOn": true,
+          "appCommandLine": "python -m celery -A PartsTrackerApp.celery_app worker --loglevel=info",
+          "appSettings": [
+            {
+              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+              "value": "1"
+            },
+            {
+              "name": "DJANGO_SETTINGS_MODULE",
+              "value": "PartsTrackerApp.settings_azure"
+            },
+            {
+              "name": "DJANGO_SECRET_KEY",
+              "value": "[parameters('djangoSecretKey')]"
+            },
+            {
+              "name": "POSTGRES_HOST",
+              "value": "[format('{0}.postgres.database.azure.com', parameters('existingPostgresServer'))]"
+            },
+            {
+              "name": "POSTGRES_DB",
+              "value": "[parameters('postgresDatabase')]"
+            },
+            {
+              "name": "POSTGRES_USER",
+              "value": "[parameters('postgresUser')]"
+            },
+            {
+              "name": "POSTGRES_PASSWORD",
+              "value": "[parameters('postgresPassword')]"
+            },
+            {
+              "name": "POSTGRES_PORT",
+              "value": "5432"
+            },
+            {
+              "name": "REDIS_URL",
+              "value": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]"
+            },
+            {
+              "name": "CELERY_BROKER_URL",
+              "value": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]"
+            },
+            {
+              "name": "REDIS_HOST",
+              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName]"
+            },
+            {
+              "name": "AZURE_STORAGE_ACCOUNT_NAME",
+              "value": "[parameters('storageAccountName')]"
+            },
+            {
+              "name": "AZURE_STORAGE_ACCOUNT_KEY",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value]"
+            },
+            {
+              "name": "AZURE_STORAGE_CONTAINER_NAME_MEDIA",
+              "value": "media"
+            },
+            {
+              "name": "AZURE_STORAGE_CONTAINER_NAME_STATIC",
+              "value": "static"
+            },
+            {
+              "name": "HUBSPOT_API_KEY",
+              "value": "[parameters('hubspotApiKey')]"
+            },
+            {
+              "name": "HUBSPOT_DEBUG",
+              "value": "[parameters('hubspotDebug')]"
+            },
+            {
+              "name": "LANGSMITH_API_KEY",
+              "value": "[parameters('langsmithApiKey')]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Cache/redis', parameters('redisName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('celeryBeatAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('existingAppServicePlan'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "linuxFxVersion": "PYTHON|3.12",
+          "alwaysOn": true,
+          "appCommandLine": "python -m celery -A PartsTrackerApp.celery_app beat --loglevel=info",
+          "appSettings": [
+            {
+              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+              "value": "1"
+            },
+            {
+              "name": "DJANGO_SETTINGS_MODULE",
+              "value": "PartsTrackerApp.settings_azure"
+            },
+            {
+              "name": "DJANGO_SECRET_KEY",
+              "value": "[parameters('djangoSecretKey')]"
+            },
+            {
+              "name": "POSTGRES_HOST",
+              "value": "[format('{0}.postgres.database.azure.com', parameters('existingPostgresServer'))]"
+            },
+            {
+              "name": "POSTGRES_DB",
+              "value": "[parameters('postgresDatabase')]"
+            },
+            {
+              "name": "POSTGRES_USER",
+              "value": "[parameters('postgresUser')]"
+            },
+            {
+              "name": "POSTGRES_PASSWORD",
+              "value": "[parameters('postgresPassword')]"
+            },
+            {
+              "name": "POSTGRES_PORT",
+              "value": "5432"
+            },
+            {
+              "name": "REDIS_URL",
+              "value": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]"
+            },
+            {
+              "name": "CELERY_BROKER_URL",
+              "value": "[format('rediss://:{0}@{1}:6380/0', listKeys(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName)]"
+            },
+            {
+              "name": "REDIS_HOST",
+              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName]"
+            },
+            {
+              "name": "AZURE_STORAGE_ACCOUNT_NAME",
+              "value": "[parameters('storageAccountName')]"
+            },
+            {
+              "name": "AZURE_STORAGE_ACCOUNT_KEY",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value]"
+            },
+            {
+              "name": "AZURE_STORAGE_CONTAINER_NAME_MEDIA",
+              "value": "media"
+            },
+            {
+              "name": "AZURE_STORAGE_CONTAINER_NAME_STATIC",
+              "value": "static"
+            },
+            {
+              "name": "HUBSPOT_API_KEY",
+              "value": "[parameters('hubspotApiKey')]"
+            },
+            {
+              "name": "HUBSPOT_DEBUG",
+              "value": "[parameters('hubspotDebug')]"
+            },
+            {
+              "name": "LANGSMITH_API_KEY",
+              "value": "[parameters('langsmithApiKey')]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Cache/redis', parameters('redisName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/staticSites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('frontendAppName')]",
+      "location": "eastus2",
+      "sku": {
+        "name": "Free",
+        "tier": "Free"
+      },
+      "properties": {
+        "buildProperties": {
+          "appLocation": "/ambac-tracker-ui",
+          "outputLocation": "dist"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "redisHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('redisName')), '2023-08-01').hostName]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[parameters('storageAccountName')]"
+    },
+    "backendUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('existingBackendApp')), '2023-01-01').defaultHostName]"
+    },
+    "celeryWorkerUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('celeryWorkerAppName')), '2023-01-01').defaultHostName]"
+    },
+    "celeryBeatUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('celeryBeatAppName')), '2023-01-01').defaultHostName]"
+    },
+    "frontendUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/staticSites', parameters('frontendAppName')), '2023-01-01').defaultHostname]"
+    }
+  }
+}

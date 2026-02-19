@@ -8,8 +8,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { DurationInput } from "@/components/ui/duration-input";
 import type { Control } from "react-hook-form";
-import SamplingRulesEditor from "@/components/SamplingRulesEditor"; // ✅ adjust path as needed
+import SamplingRulesEditor from "@/components/SamplingRulesEditor";
 import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
 
 type StepFieldsProps = {
@@ -58,9 +59,13 @@ export default function StepFields({ name, index, control, existingStepId, exist
                 name={`${name}.${index}.expected_duration`}
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Expected Duration (minutes)</FormLabel>
+                        <FormLabel>Expected Duration</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="e.g. 30" {...field} />
+                            <DurationInput
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder="HH:MM:SS"
+                            />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

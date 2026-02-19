@@ -32,8 +32,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Check, ChevronsUpDown } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes"
-import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses"
 import { useCreateStep } from "@/hooks/useCreateStep"
 import { useRetrieveStepWithSamplingRules } from "@/hooks/useRetrieveStepWithSamplingRules"
 import { useUpdateStep } from "@/hooks/useUpdateStep"
@@ -42,51 +42,47 @@ import SamplingRulesEditor from "@/components/SamplingRulesEditor.tsx";
 import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
+// Local schema for sampling rules (not in generated API schema)
 const samplingRuleSchema = z.object({
-    rule_type: z
-        .string()
-        .min(1, "Rule type is required - please select a sampling rule type"),
+    rule_type: z.string().min(1),
     value: z.union([z.string(), z.number(), z.null()]),
     order: z.number().min(0),
-})
+});
 
-const formSchema = z.object({
-    name: z
-        .string()
-        .min(1, "Step name is required - please enter a descriptive name for this step")
-        .max(255, "Step name must be 255 characters or less"),
-    order: z
-        .number()
-        .min(1, "Step order must be at least 1 - please specify the position of this step in the process")
-        .max(100, "Step order cannot exceed 100 - please use a reasonable step number"),
-    description: z
-        .string()
-        .min(1, "Step description is required - please describe what happens in this step")
-        .max(1000, "Step description must be 1000 characters or less"),
-    part_type: z
-        .number()
-        .min(1, "Part type must be selected - please choose which part type this step applies to"),
-    process: z
-        .number()
-        .min(1, "Process must be selected - please choose which process this step belongs to"),
+// Use generated schema for step fields, extend with sampling rules for local form state
+const formSchema = schemas.StepsRequest.pick({
+    name: true,
+    description: true,
+    part_type: true,
+    requires_first_piece_inspection: true,
+}).extend({
+    // Override part_type to be string (ID value from select)
+    part_type: z.string(),
+    // Sampling rules are managed separately via useUpdateStepSamplingRules
     rules: z.array(samplingRuleSchema),
     fallback_rules: z.array(samplingRuleSchema).optional(),
     fallback_threshold: z.number().optional(),
     fallback_duration: z.number().optional(),
-})
+});
+
+const required = {
+    name: isFieldRequired(formSchema.shape.name),
+    description: isFieldRequired(formSchema.shape.description),
+    part_type: isFieldRequired(formSchema.shape.part_type),
+};
 
 export default function StepFormPage() {
     const params = useParams({ strict: false })
     const mode = params.id ? "edit" : "create"
-    const stepId = params.id ? parseInt(params.id, 10) : undefined
+    const stepId = params.id
 
     const [partTypeSearch, setPartTypeSearch] = useState("")
-    const [processSearch, setProcessSearch] = useState("")
-    const [selectedPartTypeId, setSelectedPartTypeId] = useState<number | null>(null)
+    const [selectedPartTypeId, setSelectedPartTypeId] = useState<string | null>(null)
 
-    const { data: partTypes } = useRetrievePartTypes({ queries: { search: partTypeSearch } })
-    const { data: processes } = useRetrieveProcesses({ queries: { search: processSearch, part_type: selectedPartTypeId ?? undefined } })
+    const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
     const { data: step } = useRetrieveStepWithSamplingRules(
         { params: { id: stepId! } },
         { enabled: mode === "edit" && !!stepId }
@@ -100,10 +96,9 @@ export default function StepFormPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
-            order: 1,
             description: "",
             part_type: undefined,
-            process: undefined,
+            requires_first_piece_inspection: false,
             rules: [],
             fallback_rules: [],
             fallback_threshold: undefined,
@@ -115,10 +110,9 @@ export default function StepFormPage() {
         if (mode === "edit" && step) {
             form.reset({
                 name: step.name ?? "",
-                order: step.order ?? 1,
                 description: step.description ?? "",
                 part_type: step.part_type,
-                process: step.process,
+                requires_first_piece_inspection: step.requires_first_piece_inspection ?? false,
                 rules: step.active_ruleset?.rules ?? [],
                 fallback_rules: step.fallback_ruleset?.rules ?? [],
                 fallback_threshold: step.active_ruleset?.fallback_threshold ?? undefined,
@@ -228,7 +222,7 @@ export default function StepFormPage() {
                         name="name"
                         render={({field}) => (
                             <FormItem>
-                                <FormLabel>Step Name *</FormLabel>
+                                <FormLabel required={required.name}>Step Name</FormLabel>
                                 <FormControl>
                                     <Input placeholder="e.g. Machining, Assembly, Quality Check" {...field} />
                                 </FormControl>
@@ -240,25 +234,10 @@ export default function StepFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="order"
-                        render={({field}) => (
-                            <FormItem>
-                                <FormLabel>Step Number *</FormLabel>
-                                <FormControl>
-                                    <Input type="number" {...field} />
-                                </FormControl>
-                                <FormDescription>Position of the step in the process</FormDescription>
-                                <FormMessage/>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
                         name="description"
                         render={({field}) => (
                             <FormItem>
-                                <FormLabel>Description *</FormLabel>
+                                <FormLabel required={required.description}>Description</FormLabel>
                                 <FormControl>
                                     <Textarea className="resize-none" {...field} />
                                 </FormControl>
@@ -275,7 +254,7 @@ export default function StepFormPage() {
                             const selected = partTypes?.results.find(pt => pt.id === field.value)
                             return (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Part Type *</FormLabel>
+                                    <FormLabel required={required.part_type}>Part Type</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
@@ -329,60 +308,23 @@ export default function StepFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="process"
-                        render={({field}) => {
-                            const selected = processes?.results.find(p => p.id === field.value)
-                            return (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Process *</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selected?.name ?? "Select a process"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={processSearch}
-                                                    onValueChange={setProcessSearch}
-                                                    placeholder="Search processes..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No processes found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {processes?.results.map((p) => (
-                                                            <CommandItem
-                                                                key={p.id}
-                                                                value={p.name}
-                                                                onSelect={() => {
-                                                                    form.setValue("process", p.id)
-                                                                    setProcessSearch("")
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", p.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {p.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormDescription>Choose the process this step is part of</FormDescription>
-                                    <FormMessage/>
-                                </FormItem>
-                            )
-                        }}
+                        name="requires_first_piece_inspection"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>Require First Piece Inspection</FormLabel>
+                                    <FormDescription>
+                                        First part of each work order at this step must pass inspection before others can proceed
+                                    </FormDescription>
+                                </div>
+                            </FormItem>
+                        )}
                     />
 
                     <div className="space-y-4">

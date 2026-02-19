@@ -82,9 +82,23 @@ export default function SignupPage() {
 
         } catch (error: any) {
             console.error('Signup error:', error)
-            const errorMessage = error?.response?.data?.detail
-                || error?.message
-                || 'Failed to create account. Please try again.'
+            const apiError = error?.response?.data;
+            let errorMessage = 'Failed to create account. Please try again.';
+
+            if (apiError?.email?.[0]) {
+                errorMessage = `Email: ${apiError.email[0]}`;
+            } else if (apiError?.password1?.[0]) {
+                errorMessage = apiError.password1[0];
+            } else if (apiError?.password2?.[0]) {
+                errorMessage = apiError.password2[0];
+            } else if (apiError?.non_field_errors?.[0]) {
+                errorMessage = apiError.non_field_errors[0];
+            } else if (apiError?.detail) {
+                errorMessage = apiError.detail;
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+
             toast.error(errorMessage)
         }
     }

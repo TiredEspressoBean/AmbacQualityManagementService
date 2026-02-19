@@ -17,7 +17,7 @@ import { useDeleteStep } from "@/hooks/useDeleteStep"; // <- hook for deleting s
 import { toast } from "sonner";
 
 type Props = {
-    stepId: number;
+    stepId: string;
 };
 
 export function EditStepActionsCell({ stepId }: Props) {

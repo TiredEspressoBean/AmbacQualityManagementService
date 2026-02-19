@@ -32,7 +32,7 @@ const SORT_OPTIONS = [
     { label: "Status", value: "status" },
 ];
 
-type PartStatus = z.infer<typeof schemas.PartStatusEnum>;
+type PartStatus = z.infer<typeof schemas.PartsStatusEnum>;
 
 function formatStatusLabel(status: string | null | undefined): string {
     if (!status) return "—";
@@ -49,20 +49,18 @@ export default function QaPartsTable() {
     const [limit] = useState(25);
     const [ordering, setOrdering] = useState<string | undefined>(undefined);
     const [filters, setFilters] = useState<{ ERP_id?: string; status?: PartStatus }>({});
-    const STATUS_OPTIONS = schemas.PartStatusEnum.options
+    const STATUS_OPTIONS = schemas.PartsStatusEnum.options
 
     // Debounce the search term
     const debouncedSearch = useDebounce(filters, 300);
 
     const { data, isLoading, error } = useRetrieveParts({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            archived: false,
-            requires_sampling: true,
-            ...debouncedSearch,
-        },
+        offset,
+        limit,
+        ordering,
+        archived: false,
+        requires_sampling: true,
+        ...debouncedSearch,
     });
 
     if (isLoading) return <Skeleton className="h-32 w-full" />;

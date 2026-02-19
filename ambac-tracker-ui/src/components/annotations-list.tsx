@@ -37,7 +37,7 @@ export function AnnotationsList({
     return (
         <>
             {/* Floating List Button */}
-            <div className="absolute bottom-4 left-4">
+            <div className="absolute bottom-4 right-4">
                 <Button
                     onClick={onToggleExpanded}
                     className="rounded-full w-12 h-12 shadow-lg"
@@ -55,20 +55,20 @@ export function AnnotationsList({
                 </Button>
             </div>
 
-            {/* Bottom Sheet */}
+            {/* Right Side Panel */}
             {expanded && (
-                <div className="absolute bottom-0 left-0 right-0 bg-background border-t rounded-t-lg shadow-lg max-h-48 sm:max-h-64 overflow-hidden z-10">
+                <div className="absolute top-0 right-0 bottom-0 w-80 bg-background border-l shadow-lg overflow-hidden z-10 flex flex-col">
                     <div
-                        className="flex items-center justify-between p-4 border-b cursor-pointer"
+                        className="flex items-center justify-between p-4 border-b cursor-pointer shrink-0"
                         onClick={onToggleExpanded}
                     >
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold">Annotations</h3>
                             <Badge variant="secondary">{annotations.length}</Badge>
                         </div>
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4 rotate-90" />
                     </div>
-                    <div className="overflow-y-auto max-h-32 sm:max-h-48 p-4 space-y-2">
+                    <div className="overflow-y-auto flex-1 p-4 space-y-2">
                         {annotations.length === 0 ? (
                             <div className="text-center py-6 text-sm text-muted-foreground">
                                 <AlertTriangle className="h-6 w-6 mx-auto mb-2 opacity-50" />
@@ -94,7 +94,7 @@ export function AnnotationsList({
                                         </Badge>
                                     </div>
                                     {annotation.notes && (
-                                        <p className="text-xs text-muted-foreground line-clamp-1">
+                                        <p className="text-xs text-muted-foreground line-clamp-2">
                                             {annotation.notes}
                                         </p>
                                     )}

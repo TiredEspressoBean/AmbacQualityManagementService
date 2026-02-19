@@ -37,19 +37,23 @@ services:
     restart: unless-stopped
     command: >
       sh -c "
-      python manage.py makemigrations &&
       python manage.py migrate &&
+      python manage.py setup_defaults &&
       python manage.py create_temp_admin &&
-      python manage.py tailwind install &&
-      python manage.py tailwind build &&
       python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
     environment:
       - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
       - NPM_BIN_PATH=/usr/bin/npm
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_CACHE_URL=redis://redis:6379/1
       - REDIS_HOST=redis
+      - CORS_ALLOW_CREDENTIALS=true
+      - CORS_ALLOWED_ORIGINS=https://localhost,https://govtracker.ambac.local,http://localhost,http://govtracker.ambac.local
+      - CSRF_TRUSTED_ORIGINS=https://localhost,https://govtracker.ambac.local,http://localhost,http://govtracker.ambac.local
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -57,23 +61,38 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
 
   celery-worker:
     build:
       context: ./PartsTracker
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: celery -A PartsTrackerApp worker --loglevel=info
+    command: celery -A PartsTrackerApp worker --loglevel=info --concurrency=2
     env_file:
       - .env
     environment:
       - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
       - CELERY_BROKER_URL=redis://redis:6379/0
       - REDIS_HOST=redis
     volumes:
       - ./PartsTracker:/app
+    # Memory limit for 3D model processing (STEP conversion can use 500MB+ per file)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     depends_on:
-      postgres:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -88,33 +107,83 @@ services:
       - .env
     environment:
       - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
       - CELERY_BROKER_URL=redis://redis:6379/0
       - REDIS_HOST=redis
     volumes:
       - ./PartsTracker:/app
     depends_on:
-      postgres:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  # Build frontend static files
-  frontend-builder:
+  # Backup service - run with: docker compose --profile backup run --rm backup
+  backup:
+    image: postgres:15-alpine
+    profiles:
+      - backup
+    volumes:
+      - ./backups:/backups
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+    command: >
+      sh -c "pg_dump -h postgres -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-tracker_AMBAC} | gzip > /backups/db_$$(date +%Y%m%d_%H%M%S).sql.gz && echo 'Backup complete'"
+    depends_on:
+      - postgres
+
+  # Build frontend for local development (uses relative URLs)
+  frontend-builder-local:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
+      args:
+        - VITE_API_TARGET=
     profiles:
-      - production
-    env_file:
-      - .env
+      - local
     environment:
-      # Frontend will make API calls to the same domain (handled by Caddy proxy)
-      - VITE_API_TARGET=https://govtracker.ambac.local
+      - VITE_API_TARGET=
     volumes:
       - frontend-dist:/app/dist
     command: ["npm", "run", "build"]
 
-#   Caddy reverse proxy and static file server (DISABLED FOR LOCAL DEV)
+  # Build frontend for production (uses configured domain)
+  frontend-builder:
+    build:
+      context: ./ambac-tracker-ui
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_TARGET=${VITE_API_TARGET:-https://govtracker.ambac.local}
+    profiles:
+      - production
+    env_file:
+      - .env
+    volumes:
+      - frontend-dist:/app/dist
+    command: ["npm", "run", "build"]
+
+  # Caddy for local development (auto self-signed cert)
+  caddy-local:
+     image: caddy:2-alpine
+     restart: unless-stopped
+     profiles:
+       - local
+     ports:
+       - "80:80"
+       - "443:443"
+     extra_hosts:
+       - "host.docker.internal:host-gateway"
+     volumes:
+       - ./conf/Caddyfile.local:/etc/caddy/Caddyfile
+       - frontend-dist:/usr/share/caddy
+       - caddy_data:/data
+       - caddy_config:/config
+     depends_on:
+       - backend
+       - frontend-builder-local
+
+  # Caddy for production (custom certs)
   caddy:
      image: caddy:2-alpine
      restart: unless-stopped
@@ -126,7 +195,7 @@ services:
      extra_hosts:
        - "host.docker.internal:host-gateway"
      volumes:
-       - ./conf:/etc/caddy
+       - ./conf/Caddyfile:/etc/caddy/Caddyfile
        - ./certs:/etc/caddy/certs:ro
        - frontend-dist:/usr/share/caddy
        - caddy_data:/data

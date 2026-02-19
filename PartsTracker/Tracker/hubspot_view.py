@@ -9,10 +9,12 @@ from django.conf import settings
 from .models import Orders
 
 def verify_signature(request):
-    """Optional: Verify the X-HubSpot-Signature header"""
+    """Verify the X-HubSpot-Signature header. Required in production."""
     secret = getattr(settings, "HUBSPOT_WEBHOOK_SECRET", None)
     if not secret:
-        return True  # skip if not configured
+        if settings.DEBUG:
+            return True  # Allow skipping in development only
+        return False  # Reject in production if not configured
 
     received_sig = request.headers.get("X-HubSpot-Signature", "")
     expected_sig = hmac.new(
@@ -48,4 +50,6 @@ def hubspot_webhook(request):
         return JsonResponse({"status": "success"})
 
     except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        import logging
+        logging.getLogger(__name__).error(f"HubSpot webhook error: {e}")
+        return JsonResponse({"status": "error", "message": "Failed to process webhook"}, status=400)

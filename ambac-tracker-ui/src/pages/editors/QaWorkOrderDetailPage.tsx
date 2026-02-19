@@ -2,13 +2,13 @@ import { useParams, useNavigate } from "@tanstack/react-router";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
 import { useRetrieveParts } from "@/hooks/useRetrieveParts";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ArrowLeft } from "lucide-react";
 import { QaProgressSection } from "@/components/qa-progress-section";
 import { QaFormSection } from "@/components/qa-form-section";
-import { QaDocumentsSection } from "@/components/qa-documents-section";
+import { QaRightPanel } from "@/components/qa-right-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 
@@ -16,22 +16,19 @@ export function QaWorkOrderDetailPage() {
     const { workOrderId } = useParams({ from: "/qa/workorder/$workOrderId" });
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("qa-forms");
-
-    console.log(workOrderId)
+    const [selectedPart, setSelectedPart] = useState<any | null>(null);
 
     // Fetch work order details
     const { data: workOrder, isLoading: isLoadingWorkOrder, error: workOrderError } = useRetrieveWorkOrder(
-        parseInt(workOrderId)
+        workOrderId
     );
 
     // Fetch parts for this work order that require QA
     const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
-        queries: {
-            work_order: parseInt(workOrderId),
-            requires_sampling: true,
-            part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
-            limit: 100,
-        },
+        work_order: workOrderId,
+        requires_sampling: true,
+        part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
+        limit: 100,
     });
 
     const parts = partsData?.results || [];
@@ -81,8 +78,8 @@ export function QaWorkOrderDetailPage() {
         <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button 
-                    variant="ghost" 
+                <Button
+                    variant="ghost"
                     onClick={() => navigate({ to: "/QA" })}
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -93,7 +90,12 @@ export function QaWorkOrderDetailPage() {
                         {workOrder.ERP_id}
                         {isBatchProcess && <span className="text-sm text-muted-foreground ml-2">(Batch Process)</span>}
                     </h1>
-                    <p className="text-muted-foreground">Quality Assurance</p>
+                    <p className="text-muted-foreground">
+                        Quality Assurance
+                        {(workOrder.process_info as any)?.name && (
+                            <span className="ml-2">• Process: {(workOrder.process_info as any).name}</span>
+                        )}
+                    </p>
                 </div>
             </div>
 
@@ -121,6 +123,8 @@ export function QaWorkOrderDetailPage() {
                                 parts={parts}
                                 isLoadingParts={isLoadingParts}
                                 isBatchProcess={isBatchProcess}
+                                selectedPart={selectedPart}
+                                onPartSelect={setSelectedPart}
                             />
                         </TabsContent>
                     </Tabs>
@@ -128,10 +132,11 @@ export function QaWorkOrderDetailPage() {
 
                 <ResizableHandle />
 
-                {/* Right Panel - Documents (Always Visible) */}
+                {/* Right Panel - Documents / 3D Annotations */}
                 <ResizablePanel defaultSize={60} minSize={40} className="p-6">
-                    <QaDocumentsSection
+                    <QaRightPanel
                         workOrder={workOrder}
+                        selectedPart={selectedPart}
                     />
                 </ResizablePanel>
             </ResizablePanelGroup>

@@ -19,23 +19,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
 import { toast } from "sonner";
+import { schemas } from "@/lib/api/generated";
+import { isFieldRequired } from "@/lib/zod-config";
 
-const measurementDefinitionSchema = z.object({
-  label: z.string().min(1, "Label is required").max(100, "Label must be 100 characters or less"),
-  type: z.enum(["NUMERIC", "PASS_FAIL"], { required_error: "Type is required" }),
-  unit: z.string().max(50, "Unit must be 50 characters or less").optional(),
-  nominal: z.string().nullable().optional(),
-  upper_tol: z.string().nullable().optional(),
-  lower_tol: z.string().nullable().optional(),
-  required: z.boolean().default(true),
+// Use generated schema
+const formSchema = schemas.MeasurementDefinitionRequest.pick({
+  label: true,
+  type: true,
+  unit: true,
+  nominal: true,
+  upper_tol: true,
+  lower_tol: true,
+  required: true,
 });
 
-type FormSchema = z.infer<typeof measurementDefinitionSchema>;
+type FormSchema = z.infer<typeof formSchema>;
+
+const required = {
+  label: isFieldRequired(formSchema.shape.label),
+  type: isFieldRequired(formSchema.shape.type),
+};
 
 interface MeasurementDefinitionFormProps {
-  stepId: number;
+  stepId: string;
   existingDefinition?: {
-    id: number;
+    id: string;
     label: string;
     type: "NUMERIC" | "PASS_FAIL";
     unit?: string;
@@ -57,7 +65,7 @@ export default function MeasurementDefinitionForm({
   const isEditing = !!existingDefinition;
   
   const form = useForm<FormSchema>({
-    resolver: zodResolver(measurementDefinitionSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       label: existingDefinition?.label || "",
       type: existingDefinition?.type || "NUMERIC",
@@ -128,7 +136,7 @@ export default function MeasurementDefinitionForm({
           name="label"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Label *</FormLabel>
+              <FormLabel required={required.label}>Label</FormLabel>
               <FormControl>
                 <Input placeholder="e.g. Outer Diameter" {...field} />
               </FormControl>
@@ -145,7 +153,7 @@ export default function MeasurementDefinitionForm({
           name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Type *</FormLabel>
+              <FormLabel required={required.type}>Type</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -153,8 +161,11 @@ export default function MeasurementDefinitionForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="NUMERIC">Numeric</SelectItem>
-                  <SelectItem value="PASS_FAIL">Pass/Fail</SelectItem>
+                  {schemas.TypeEnum.options.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t === "PASS_FAIL" ? "Pass/Fail" : t.charAt(0) + t.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormDescription>

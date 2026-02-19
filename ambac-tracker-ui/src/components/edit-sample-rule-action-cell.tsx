@@ -17,7 +17,7 @@ import { useDeleteSamplingRule } from "@/hooks/useDeleteSamplingRule";
 import { toast } from "sonner";
 
 type Props = {
-    ruleId: number;
+    ruleId: string;
 };
 
 export function EditSamplingRuleActionsCell({ ruleId }: Props) {

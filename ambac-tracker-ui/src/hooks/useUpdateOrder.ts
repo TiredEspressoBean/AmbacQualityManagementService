@@ -10,7 +10,7 @@ export const useUpdateOrder = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({id, newData}: { id: number; newData: PatchedOrderType }) => {
+        mutationFn: async ({id, newData}: { id: string; newData: PatchedOrderType }) => {
             return api.api_Orders_partial_update(newData, {
                 params: {id: id}, headers: {
                     "X-CSRFToken": getCookie("csrftoken")

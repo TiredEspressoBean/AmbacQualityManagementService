@@ -41,7 +41,7 @@ const editors = [
     },
     {
         name: "Error Types",
-        description: "Manage equipment.",
+        description: "Manage the types of recurring non conformance errors.",
         path: "/editor/errorTypes",
     },
     {
@@ -68,7 +68,32 @@ const editors = [
         name: "Users",
         description: "Manage users",
         path: "/editor/users",
-    }
+    },
+    {
+        name: "User Groups",
+        description: "View user groups and their permissions",
+        path: "/editor/groups",
+    },
+    {
+        name: "3D viewer models",
+        description: "Manage viewer models",
+        path: "/editor/ThreeDModels",
+    },
+    {
+        name: "Quality Reports",
+        description: "Manage quality reports",
+        path: "/editor/QualityReports",
+    },
+    {
+        name: "Document Types",
+        description: "Configure document categories (SOP, WI, Drawing, etc.)",
+        path: "/editor/documentTypes",
+    },
+    {
+        name: "Approval Templates",
+        description: "Configure approval workflows for documents and CAPAs",
+        path: "/editor/approvalTemplates",
+    },
 ];
 
 export default function EditLandingPage() {

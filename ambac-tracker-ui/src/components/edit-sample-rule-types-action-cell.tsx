@@ -17,7 +17,7 @@ import { useDeleteRuleType } from "@/hooks/useDeleteRuleType";
 import { toast } from "sonner";
 
 type Props = {
-    ruleSetId: number;
+    ruleSetId: string;
 };
 
 export function EditRuleTypeActionsCell({ ruleSetId }: Props) {

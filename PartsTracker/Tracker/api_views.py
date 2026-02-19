@@ -33,6 +33,95 @@ def logout_view(request):
     return JsonResponse({"success": True})
 
 
+@extend_schema(
+    operation_id="get_user_permissions",
+    description="Get the current user's permissions within their current tenant context",
+    request=None,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "permissions": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of permission codenames the user has in the current tenant"
+                },
+                "tenant": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "slug": {"type": "string"}
+                    },
+                    "nullable": True,
+                    "description": "Current tenant context"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of TenantGroup names the user belongs to"
+                },
+                "is_superuser": {
+                    "type": "boolean",
+                    "description": "Whether the user is a superuser (has all permissions)"
+                }
+            }
+        },
+        401: {"description": "Authentication required"}
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_permissions(request):
+    """
+    Get the current user's permissions within their current tenant context.
+
+    This endpoint is used by the frontend to:
+    - Determine which UI elements to show based on permissions
+    - Check if user can perform specific actions before attempting them
+    - Display tenant and group information
+
+    The permissions returned are tenant-scoped - the same user may have
+    different permissions in different tenants.
+    """
+    user = request.user
+    tenant = getattr(request, 'tenant', None)
+
+    # Get tenant-scoped permissions
+    if user.is_superuser:
+        # Superusers have all permissions
+        from django.contrib.auth.models import Permission
+        permissions = list(Permission.objects.values_list('codename', flat=True))
+    else:
+        permissions = user.get_tenant_permissions()
+
+    # Get user's groups in this tenant
+    groups = []
+    if tenant:
+        from Tracker.models import UserRole
+        group_names = UserRole.objects.filter(
+            user=user,
+            group__tenant=tenant
+        ).values_list('group__name', flat=True)
+        groups = list(group_names)
+
+    # Build tenant info
+    tenant_info = None
+    if tenant:
+        tenant_info = {
+            'id': str(tenant.id),
+            'name': tenant.name,
+            'slug': tenant.slug,
+        }
+
+    return Response({
+        'permissions': permissions,
+        'tenant': tenant_info,
+        'groups': groups,
+        'is_superuser': user.is_superuser,
+    })
+
+
 @extend_schema(operation_id="get_user_api_token",
                description="Get or create an API token for the current session-authenticated user", request=None,
                responses={200: {"type": "object",
@@ -56,4 +145,6 @@ def get_user_api_token(request):
 
         return Response({"token": token.key, "created": created}, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        import logging
+        logging.getLogger(__name__).error(f"Token creation failed: {e}")
+        return Response({"error": "Failed to get API token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

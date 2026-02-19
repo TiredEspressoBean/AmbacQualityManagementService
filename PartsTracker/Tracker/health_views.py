@@ -25,7 +25,7 @@ def health_check(request):
         
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        return HttpResponse(f"unhealthy: {str(e)}", status=503, content_type="text/plain")
+        return HttpResponse("unhealthy", status=503, content_type="text/plain")
 
 def ready_check(request):
     """
@@ -40,4 +40,4 @@ def ready_check(request):
         
     except Exception as e:
         logger.error(f"Readiness check failed: {e}")
-        return HttpResponse(f"not ready: {str(e)}", status=503, content_type="text/plain")
+        return HttpResponse("not ready", status=503, content_type="text/plain")

@@ -3,16 +3,22 @@ import {
     Collapsible,
     CollapsibleContent,
 } from "@/components/ui/collapsible"
-// import { Progress } from "@/components/ui/progress"
 import {
     CheckCircle,
     Clock,
     Circle,
+    Building2,
+    User,
+    ChevronDown,
+    ExternalLink,
+    Timer,
+    MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDistanceToNow, formatDistance } from "date-fns"
-import {Link} from "@tanstack/react-router";
-import ProgressLabel from "@/components/ProgressLabel.tsx";
+import { formatDistanceToNow, format, differenceInDays } from "date-fns"
+import { Link } from "@tanstack/react-router"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 type OrderStage = {
     name: string
@@ -38,169 +44,235 @@ type GateInfo = {
     gates: HubSpotGate[]
 }
 
-type OrderTrackerProps = {
-    orderNumber: string
-    customerName?: string
-    stages: OrderStage[]
-    estimatedCompletion?: string | null // ISO timestamp
-    gateInfo?: GateInfo | null
-    customerNote?: string | null
+type NoteEntry = {
+    timestamp: string | null
+    user: string
+    visibility: string
+    message: string
 }
 
-export function ExpandableOrderTracker({orderNumber, customerName, stages, estimatedCompletion, gateInfo, customerNote}: OrderTrackerProps) {
+type OrderTrackerProps = {
+    orderId: string
+    orderName?: string
+    customerName?: string
+    companyName?: string
+    stages: OrderStage[]
+    estimatedCompletion?: string | null
+    gateInfo?: GateInfo | null
+    latestNote?: NoteEntry | null
+}
+
+function getStatusIcon(stage: { is_completed: boolean; is_current: boolean }, size: "sm" | "md" = "md") {
+    const sizeClass = size === "sm" ? "w-4 h-4" : "w-5 h-5"
+    if (stage.is_completed) {
+        return <CheckCircle className={cn("text-green-500", sizeClass)} />
+    } else if (stage.is_current) {
+        return <Clock className={cn("text-yellow-500 animate-pulse", sizeClass)} />
+    } else {
+        return <Circle className={cn("text-muted-foreground/40", sizeClass)} />
+    }
+}
+
+export function ExpandableOrderTracker({
+    orderId,
+    orderName,
+    customerName,
+    companyName,
+    stages,
+    estimatedCompletion,
+    gateInfo,
+    latestNote
+}: OrderTrackerProps) {
     const [open, setOpen] = useState(false)
 
     const total = stages.length
     const completed = stages.filter(s => s.is_completed).length
-    const progress = (completed / total) * 100
+    const progress = total > 0 ? (completed / total) * 100 : 0
     const currentStage = stages.find(s => s.is_current)?.name || ""
 
-    function getStatusIcon(stage: OrderStage) {
-        if (stage.is_completed) {
-            return <CheckCircle className="text-green-600 w-5 h-5 mt-1"/>
-        } else if (stage.is_current) {
-            return <Clock className="text-yellow-500 animate-pulse w-5 h-5 mt-1" />
-        } else {
-            return <Circle className="text-gray-300 w-5 h-5 mt-1" />
-        }
-    }
+    // Calculate days until delivery
+    const daysUntilDelivery = estimatedCompletion
+        ? differenceInDays(new Date(estimatedCompletion), new Date())
+        : null
+
+    const displayName = orderName || `Order #${orderId}`
 
     return (
         <Collapsible open={open} onOpenChange={setOpen}>
             <div
                 onClick={() => setOpen(prev => !prev)}
                 className={cn(
-                    "cursor-pointer select-none bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-800",
-                    "rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md",
-                    "p-4 w-full max-w-xl mx-auto mb-4"
+                    "cursor-pointer select-none",
+                    "bg-card border rounded-xl shadow-sm transition-all duration-200 hover:shadow-md",
+                    "p-5 w-full max-w-2xl mx-auto mb-4",
+                    open && "ring-1 ring-primary/20"
                 )}
-                style={{ ['--progress-width' as string]: `${progress}%` }}
             >
-                <div className="flex items-center justify-between mb-3">
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Order #{orderNumber}</h3>
-                        {customerName && (
-                            <p className="text-sm text-muted-foreground">Customer: {customerName}</p>
-                        )}
-                        {estimatedCompletion && (
-                            <p className="text-sm text-muted-foreground">
-                                Estimated delivery in {formatDistance(new Date(), new Date(estimatedCompletion))}
-                            </p>
-                        )}
+                {/* Header Row */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-lg font-semibold truncate">{displayName}</h3>
+                            <ChevronDown className={cn(
+                                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                                open && "rotate-180"
+                            )} />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            {companyName && (
+                                <span className="flex items-center gap-1">
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    {companyName}
+                                </span>
+                            )}
+                            {customerName && (
+                                <span className="flex items-center gap-1">
+                                    <User className="h-3.5 w-3.5" />
+                                    {customerName}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <Link
-                        to={`/orders/$orderNumber`}
-                        className="text-sm text-blue-600 hover:underline"
-                        onClick={e => e.stopPropagation()}
-                        params={{orderNumber}}
-                    >
-                        View details
-                    </Link>
+
+                    {/* Delivery Date Badge */}
+                    {estimatedCompletion && (
+                        <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground mb-1">Delivery</p>
+                            <p className="text-sm font-semibold">
+                                {format(new Date(estimatedCompletion), "MMM d, yyyy")}
+                            </p>
+                            {daysUntilDelivery !== null && daysUntilDelivery >= 0 && (
+                                <Badge variant="outline" className="mt-1 text-xs">
+                                    <Timer className="h-3 w-3 mr-1" />
+                                    {daysUntilDelivery === 0 ? "Today" : `${daysUntilDelivery}d`}
+                                </Badge>
+                            )}
+                        </div>
+                    )}
                 </div>
 
+                {/* Progress Section */}
                 {stages.length > 0 && (
-                    <>
-                        <ProgressLabel currentStage={currentStage} progress={progress} />
-
-                        <p className="text-sm text-muted-foreground mb-2">
-                            {completed}/{total} stages completed
-                        </p>
-                    </>
-                )}
-
-                {/* HubSpot Gate Progress Section */}
-                {gateInfo && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        {gateInfo.is_in_progress && gateInfo.current_position && gateInfo.total_gates ? (
-                            <>
-                                <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2">
-                                    Order Stage: {gateInfo.current_gate_name}
-                                </p>
-                                <div className="relative w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
-                                    <div
-                                        className="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
-                                        style={{ width: `${gateInfo.progress_percent}%` }}
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Stage {gateInfo.current_position} of {gateInfo.total_gates} ({gateInfo.progress_percent?.toFixed(0)}%)
-                                </p>
-                            </>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                Status: <span className="font-medium">{gateInfo.current_gate_full_name}</span>
-                            </p>
-                        )}
+                    <div className="mb-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                            <span>{currentStage ? `Current: ${currentStage}` : "Not started"}</span>
+                            <span>{completed}/{total} stages</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                            <div
+                                className="bg-primary h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
                     </div>
                 )}
 
-                <CollapsibleContent className="space-y-4 pt-2">
-                    {/* Customer Note Section */}
-                    {customerNote && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-                            <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">Customer Note</p>
-                            <p className="text-sm text-blue-800 dark:text-blue-200">{customerNote}</p>
+                {/* HubSpot Gate Progress (collapsed view) */}
+                {gateInfo && gateInfo.is_in_progress && !open && (
+                    <div className="pt-3 border-t">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {gateInfo.current_gate_name}
+                            </span>
+                            <span>Stage {gateInfo.current_position}/{gateInfo.total_gates}</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                            <div
+                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                                style={{ width: `${gateInfo.progress_percent}%` }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* Expanded Content */}
+                <CollapsibleContent className="space-y-4 pt-4">
+                    {/* Latest Note */}
+                    {latestNote && (
+                        <div className="p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                                <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-medium">{latestNote.user}</span>
+                                {latestNote.timestamp && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {formatDistanceToNow(new Date(latestNote.timestamp), { addSuffix: true })}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{latestNote.message}</p>
                         </div>
                     )}
 
-                    {/* HubSpot Gates Section */}
+                    {/* HubSpot Gates (expanded) */}
                     {gateInfo && gateInfo.gates && gateInfo.gates.length > 0 && (
-                        <div className="mb-4">
-                            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">Order Pipeline Stages</h4>
-                            {gateInfo.gates.map((gate, idx) => (
-                                <div key={idx} className="flex items-start gap-3 mb-3">
-                                    {getStatusIcon({
-                                        name: gate.name,
-                                        is_current: gate.is_current,
-                                        is_completed: gate.is_completed,
-                                        timestamp: null
-                                    })}
-                                    <div>
-                                        <p
+                        <div>
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Pipeline Stages</h4>
+                            <div className="space-y-1.5">
+                                {gateInfo.gates.map((gate, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                        {getStatusIcon(gate, "sm")}
+                                        <span
                                             className={cn(
-                                                "text-sm font-medium",
-                                                gate.is_current ? "text-blue-800 dark:text-blue-300" :
-                                                    gate.is_completed ? "text-green-700 dark:text-green-400" : "text-gray-700 dark:text-gray-300"
+                                                "text-xs",
+                                                gate.is_current
+                                                    ? "font-medium text-blue-600 dark:text-blue-400"
+                                                    : gate.is_completed
+                                                        ? "text-green-600 dark:text-green-400"
+                                                        : "text-muted-foreground"
                                             )}
                                         >
                                             {gate.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {gate.is_completed ? "Completed" : gate.is_current ? "Current stage" : "Upcoming"}
-                                        </p>
+                                        </span>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
 
-                    {/* Production Stages Section */}
+                    {/* Production Stages (expanded) */}
                     {stages.length > 0 && (
                         <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Production Progress</h4>
-                            {stages.map((stage, idx) => (
-                                <div key={idx} className="flex items-start gap-3 mb-3">
-                                    {getStatusIcon(stage)}
-                                    <div>
-                                        <p
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Production Progress</h4>
+                            <div className="space-y-1.5">
+                                {stages.map((stage, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                        {getStatusIcon(stage, "sm")}
+                                        <span
                                             className={cn(
-                                                "text-sm font-medium",
-                                                stage.is_current ? "text-yellow-800 dark:text-yellow-300" :
-                                                    stage.is_completed ? "text-green-700 dark:text-green-400" : "text-gray-700 dark:text-gray-300"
+                                                "text-xs flex-1",
+                                                stage.is_current
+                                                    ? "font-medium text-yellow-600 dark:text-yellow-400"
+                                                    : stage.is_completed
+                                                        ? "text-green-600 dark:text-green-400"
+                                                        : "text-muted-foreground"
                                             )}
                                         >
                                             {stage.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
                                             {stage.timestamp
-                                                ? `Updated ${formatDistanceToNow(new Date(stage.timestamp), { addSuffix: true })}`
-                                                : "Pending"}
-                                        </p>
+                                                ? formatDistanceToNow(new Date(stage.timestamp), { addSuffix: true })
+                                                : ""}
+                                        </span>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
+
+                    {/* View Details Link */}
+                    <div className="pt-2 border-t">
+                        <Link
+                            to={`/orders/$orderNumber`}
+                            params={{ orderNumber: orderId }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <Button variant="outline" size="sm" className="w-full">
+                                View Full Details
+                                <ExternalLink className="h-3.5 w-3.5 ml-2" />
+                            </Button>
+                        </Link>
+                    </div>
                 </CollapsibleContent>
             </div>
         </Collapsible>

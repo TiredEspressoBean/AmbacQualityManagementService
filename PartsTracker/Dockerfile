@@ -1,5 +1,11 @@
 FROM python:3.12-slim
 
+# python:3.12-slim is Debian-based (glibc), required for:
+# - cascadio: OpenCASCADE bindings for STEP→GLB conversion (manylinux wheels)
+# - trimesh: 3D mesh processing
+# - fast-simplification: Mesh decimation (manylinux wheels)
+# DO NOT use Alpine (musl) - cascadio wheels are not available for musl
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 

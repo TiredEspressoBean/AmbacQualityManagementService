@@ -3,7 +3,7 @@ from django.conf import settings
 import requests
 
 
-def xts(texts: List[str]) -> List[List[float]]:
+def embed_texts(texts: List[str]) -> List[List[float]]:
     """Generate embeddings using Ollama API"""
     ollama_url = getattr(settings, 'OLLAMA_URL', 'http://localhost:11434')
     model_name = getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')

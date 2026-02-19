@@ -17,7 +17,7 @@ import {useDeleteWorkOrder} from "@/hooks/useDeleteWorkOrder.ts";
 import {toast} from "sonner"; // <- adjust path as needed
 
 type Props = {
-    workOrderId: number;
+    workOrderId: string;
 };
 
 export function EditWorkOrderActionsCell({workOrderId}: Props) {

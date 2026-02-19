@@ -10,14 +10,14 @@ import {
     AlertDialogAction
 } from "@/components/ui/alert-dialog";
 import {Button} from "@/components/ui/button";
-import {Pencil, Delete} from "lucide-react";
+import {Delete, Workflow} from "lucide-react";
 import {useNavigate} from "@tanstack/react-router";
 import {useState} from "react";
 import {useDeleteProcesses} from "@/hooks/useDeleteProcess.ts";
-import {toast} from "sonner"; // <- adjust path as needed
+import {toast} from "sonner";
 
 type Props = {
-    processId: number;
+    processId: string;
 };
 
 export function EditProcessActionsCell({processId}: Props) {
@@ -25,10 +25,10 @@ export function EditProcessActionsCell({processId}: Props) {
     const [open, setOpen] = useState(false);
     const deleteProcess = useDeleteProcesses();
 
-    const handleEditPart = () => {
+    const handleEditFlow = () => {
         navigate({
-            to: "/ProcessForm/edit/$id", // <- adjust if your edit route differs
-            params: {id: String(processId)},
+            to: "/process-flow",
+            search: { id: processId },
         });
     };
 
@@ -36,10 +36,9 @@ export function EditProcessActionsCell({processId}: Props) {
         deleteProcess.mutate(processId, {
             onSuccess: () => {
                 setOpen(false);
-                console.log(`Part ${processId} deleted`);
-                toast.success(`Part Type #${processId} deleted successfully.`);
+                toast.success(`Process deleted successfully.`);
             }, onError: (error) => {
-                console.error("Failed to archive part:", error);
+                console.error("Failed to delete process:", error);
             },
         });
     };
@@ -48,10 +47,10 @@ export function EditProcessActionsCell({processId}: Props) {
         <Button
             variant="ghost"
             size="icon"
-            onClick={handleEditPart}
-            title="Edit Part"
+            onClick={handleEditFlow}
+            title="Edit Process"
         >
-            <Pencil className="h-4 w-4"/>
+            <Workflow className="h-4 w-4"/>
         </Button>
         <AlertDialog open={open} onOpenChange={setOpen}>
             <AlertDialogTrigger asChild>
@@ -59,7 +58,7 @@ export function EditProcessActionsCell({processId}: Props) {
                     variant="ghost"
                     size="icon"
                     className="text-destructive"
-                    title="Delete Part Type"
+                    title="Delete Process"
                 >
                     <Delete className="h-4 w-4"/>
                 </Button>
@@ -67,11 +66,11 @@ export function EditProcessActionsCell({processId}: Props) {
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>
-                        Delete Part Type #{processId}?
+                        Delete this process?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                         This action is permanent and cannot be undone.
-                        The part will be removed from active tracking.
+                        The process will be removed.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

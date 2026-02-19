@@ -25,6 +25,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 import { PasswordInput } from '@/components/ui/password-input'
 
+// Helper to extract user-friendly error messages from API errors
+function getPasswordResetErrorMessage(error: unknown, fallback: string): string {
+    const apiError = (error as any)?.response?.data;
+    if (apiError?.email?.[0]) return apiError.email[0];
+    if (apiError?.new_password1?.[0]) return apiError.new_password1[0];
+    if (apiError?.new_password2?.[0]) return apiError.new_password2[0];
+    if (apiError?.non_field_errors?.[0]) return apiError.non_field_errors[0];
+    if (apiError?.detail) return apiError.detail;
+    if (apiError?.token?.[0]) return "Invalid or expired reset link";
+    if (apiError?.uid?.[0]) return "Invalid reset link";
+    if (error instanceof Error) return error.message;
+    return fallback;
+}
+
 // 🔗 Hook Types
 type PasswordResetRequestInput = Parameters<typeof api.auth_password_reset_create>[0]
 type PasswordResetRequestResponse = Awaited<ReturnType<typeof api.auth_password_reset_create>>
@@ -156,9 +170,7 @@ export const PasswordResetRequest = ({ onSuccess }: PasswordResetRequestProps) =
                                     <Alert variant="destructive">
                                         <AlertCircle className="h-4 w-4" />
                                         <AlertDescription>
-                                            {mutation.error instanceof Error
-                                                ? mutation.error.message
-                                                : 'An error occurred while sending the reset email'}
+                                            {getPasswordResetErrorMessage(mutation.error, 'An error occurred while sending the reset email')}
                                         </AlertDescription>
                                     </Alert>
                                 )}
@@ -292,9 +304,7 @@ export const PasswordResetConfirm = ({ token, uid, onSuccess }: PasswordResetCon
                                     <Alert variant="destructive">
                                         <AlertCircle className="h-4 w-4" />
                                         <AlertDescription>
-                                            {mutation.error instanceof Error
-                                                ? mutation.error.message
-                                                : 'An error occurred while resetting your password'}
+                                            {getPasswordResetErrorMessage(mutation.error, 'An error occurred while resetting your password')}
                                         </AlertDescription>
                                     </Alert>
                                 )}

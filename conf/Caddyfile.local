@@ -1,0 +1,50 @@
+# Local development (auto self-signed cert)
+localhost {
+    encode gzip
+
+    handle /auth/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /accounts/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /admin/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /media/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /static/* {
+        reverse_proxy backend:8000
+    }
+
+    handle /lg/* {
+        reverse_proxy host.docker.internal:8123 {
+            header_up -X-Forwarded-Proto
+        }
+        header {
+            Access-Control-Allow-Origin *
+            Access-Control-Allow-Methods "GET,POST,PUT,DELETE,OPTIONS"
+            Access-Control-Allow-Headers "Content-Type,Authorization"
+        }
+        uri strip_prefix /lg
+    }
+
+    handle {
+        root * /usr/share/caddy
+        try_files {path} /index.html
+        file_server
+    }
+
+    handle /ai/* {
+        reverse_proxy 127.0.0.1:11434
+    }
+}

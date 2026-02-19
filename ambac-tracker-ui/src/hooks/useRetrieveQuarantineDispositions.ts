@@ -1,13 +1,19 @@
-import { api } from "@/lib/api/generated.ts"
-import {useQuery} from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated.ts";
 
 export function useRetrieveQuarantineDispositions(
-    query: Parameters<typeof api.api_QuarantineDispositions_list>[0],
-    options?: { enabled?: boolean }
+  queries?: Parameters<typeof api.api_QuarantineDispositions_list>[0],
+  options?: Omit<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof api.api_QuarantineDispositions_list>>,
+      Error
+    >,
+    "queryKey" | "queryFn"
+  >
 ) {
-    return useQuery({
-        queryKey: ["quarantine-dispositions", query],
-        queryFn: () => api.api_QuarantineDispositions_list(query),
-        enabled: options?.enabled ?? true,
-    });
+  return useQuery({
+    queryKey: ["quarantine-disposition", queries],
+    queryFn: () => api.api_QuarantineDispositions_list(queries),
+    ...options,
+  });
 }

@@ -28,46 +28,66 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useParams } from "@tanstack/react-router"
 
 import { useRetrieveOrders } from '@/hooks/useRetrieveOrders'
+import { useRetrieveProcesses } from '@/hooks/useRetrieveProcesses'
 import { useCreateWorkOrder } from '@/hooks/useCreateWorkOrder'
 import { useUpdateWorkOrder } from '@/hooks/useUpdateWorkOrder'
 import { useRetrieveWorkOrder } from '@/hooks/useRetrieveWorkOrder'
 import { schemas } from '@/lib/api/generated'
-import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
+import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader.tsx";
+import { isFieldRequired } from '@/lib/zod-config'
 
-const WORKORDER_STATUS = schemas.WorkorderStatusEnum.options
+const WORKORDER_STATUS = schemas.WorkOrderStatusEnum.options
+const PRIORITY_OPTIONS = schemas.PriorityEnum.options
 
-const formSchema = z.object({
-    status: schemas.WorkorderStatusEnum,
-    ERP_id: z
-        .string()
-        .min(1, "ERP ID is required - please enter the unique identifier from your ERP system")
-        .max(100, "ERP ID must be 100 characters or less"),
-    notes: z
-        .string()
-        .max(1000, "Notes must be 1000 characters or less")
-        .optional(),
-    related_order: z
-        .number()
-        .min(1, "Related order must be selected - please choose which customer order this work order belongs to"),
-    expected_completion: z
-        .coerce.date({
-            errorMap: () => ({ message: "Expected completion date is required - please select when this work order should be completed" })
-        }),
+// Use generated schema fields with custom date handling
+const formSchema = schemas.WorkOrderRequest.pick({
+    ERP_id: true,
+    workorder_status: true,
+    priority: true,
+    notes: true,
+    related_order: true,
+    process: true,
+}).extend({
+    // Override related_order to be string (UUID from select)
+    related_order: z.string(),
+    // Handle date separately since form uses Date object
+    expected_completion: z.coerce.date(),
 })
+
+type FormValues = z.infer<typeof formSchema>
+
+// Pre-compute required fields for labels
+const required = {
+    ERP_id: isFieldRequired(formSchema.shape.ERP_id),
+    workorder_status: isFieldRequired(formSchema.shape.workorder_status),
+    priority: isFieldRequired(formSchema.shape.priority),
+    notes: isFieldRequired(formSchema.shape.notes),
+    related_order: true, // Overridden to required
+    process: isFieldRequired(formSchema.shape.process),
+    expected_completion: true,
+}
 
 export default function WorkOrderFormPage() {
     const params = useParams({ strict: false })
     const mode = params.id ? "edit" : "create"
-    const workOrderId = params.id ? parseInt(params.id, 10) : undefined
+    const workOrderId = params.id
 
     const [search, setSearch] = useState("")
-    const { data: orders } = useRetrieveOrders({ queries: { search } })
+    const [processSearch, setProcessSearch] = useState("")
+    const { data: orders } = useRetrieveOrders({ search })
+    const { data: processes } = useRetrieveProcesses({ search: processSearch })
 
-    const { data: workOrder } = useRetrieveWorkOrder({ params: { id: workOrderId! } }, { enabled: mode === "edit" && !!workOrderId })
+    const { data: workOrder } = useRetrieveWorkOrder(workOrderId!, { enabled: mode === "edit" && !!workOrderId })
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            ERP_id: "",
+            workorder_status: undefined,
+            priority: undefined,
+            notes: "",
+            related_order: undefined,
+            process: undefined,
             expected_completion: new Date(),
         },
     })
@@ -76,9 +96,11 @@ export default function WorkOrderFormPage() {
         if (mode === "edit" && workOrder) {
             form.reset({
                 ERP_id: workOrder.ERP_id ?? "",
-                status: workOrder.workorder_status,
+                workorder_status: workOrder.workorder_status,
+                priority: workOrder.priority ?? undefined,
                 notes: workOrder.notes ?? "",
                 related_order: workOrder.related_order,
+                process: workOrder.process ?? undefined,
                 expected_completion: workOrder.expected_completion ? new Date(workOrder.expected_completion) : new Date(),
             })
         }
@@ -87,12 +109,11 @@ export default function WorkOrderFormPage() {
     const createWorkOrder = useCreateWorkOrder()
     const updateWorkOrder = useUpdateWorkOrder()
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
+    function onSubmit(values: FormValues) {
         const payload = {
             ...values,
-            workorder_status: values.status, // map status → workorder_status
-            status: undefined, // remove frontend-only alias
-            expected_completion: values.expected_completion?.toISOString(), // <-- format to string
+            process: values.process || null,
+            expected_completion: values.expected_completion?.toISOString(),
         }
 
         if (mode === "edit" && workOrderId) {
@@ -122,38 +143,66 @@ export default function WorkOrderFormPage() {
                 {mode === "edit" ? "Edit Work Order" : "Create Work Order"}
             </h1>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto py-10">
-                <FormField
-                    control={form.control}
-                    name="status"
-                    render={({field}) => (
-                        <FormItem>
-                            <FormLabel>Status *</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select status"/>
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {WORKORDER_STATUS.map((status) => (
-                                        <SelectItem key={status} value={status}>
-                                            {status.replace(/_/g, " ")}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormDescription>Current Status of the work order</FormDescription>
-                            <FormMessage/>
-                        </FormItem>
-                    )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="workorder_status"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel required={required.workorder_status}>Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select status"/>
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {WORKORDER_STATUS.map((status) => (
+                                            <SelectItem key={status} value={status}>
+                                                {status.replace(/_/g, " ")}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>Current status of the work order</FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="priority"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel required={required.priority}>Priority</FormLabel>
+                                <Select onValueChange={(val) => field.onChange(parseInt(val, 10))} value={field.value?.toString()}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select priority"/>
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {PRIORITY_OPTIONS.map((priority) => (
+                                            <SelectItem key={priority} value={priority.toString()}>
+                                                {priority === 1 ? "Urgent" : priority === 2 ? "High" : priority === 3 ? "Normal" : "Low"}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>Work order scheduling priority</FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                </div>
 
                 <FormField
                     control={form.control}
                     name="ERP_id"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>ERP ID *</FormLabel>
+                            <FormLabel required={required.ERP_id}>ERP ID</FormLabel>
                             <FormControl>
                                 <Input placeholder="Enter ERP ID" {...field} />
                             </FormControl>
@@ -168,9 +217,9 @@ export default function WorkOrderFormPage() {
                     name="notes"
                     render={({field}) => (
                         <FormItem>
-                            <FormLabel>Notes</FormLabel>
+                            <FormLabel required={required.notes}>Notes</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="Optional notes" className="resize-none" {...field} />
+                                <Textarea placeholder="Optional notes" className="resize-none" {...field} value={field.value ?? ""} />
                             </FormControl>
                             <FormDescription>Short notes for this current work order</FormDescription>
                             <FormMessage/>
@@ -185,7 +234,7 @@ export default function WorkOrderFormPage() {
                         const selectedOrder = orders?.results.find((o) => o.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Related Order *</FormLabel>
+                                <FormLabel required={required.related_order}>Related Order</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -232,10 +281,79 @@ export default function WorkOrderFormPage() {
 
                 <FormField
                     control={form.control}
+                    name="process"
+                    render={({ field }) => {
+                        const selectedProcess = processes?.results.find((p) => p.id === field.value)
+                        return (
+                            <FormItem className="flex flex-col">
+                                <FormLabel required={required.process}>Process</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
+                                            >
+                                                {selectedProcess?.name || "Select a process (optional)"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0">
+                                        <Command>
+                                            <CommandInput
+                                                value={processSearch}
+                                                onValueChange={setProcessSearch}
+                                                placeholder="Search processes..."
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>No processes found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    <CommandItem
+                                                        onSelect={() => {
+                                                            form.setValue("process", undefined)
+                                                            setProcessSearch("")
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn("mr-2 h-4 w-4", !field.value ? "opacity-100" : "opacity-0")}
+                                                        />
+                                                        No process
+                                                    </CommandItem>
+                                                    {processes?.results.map((process) => (
+                                                        <CommandItem
+                                                            key={process.id}
+                                                            value={`${process.name}__${process.id}`}
+                                                            onSelect={() => {
+                                                                form.setValue("process", process.id)
+                                                                setProcessSearch("")
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn("mr-2 h-4 w-4", process.id === field.value ? "opacity-100" : "opacity-0")}
+                                                            />
+                                                            {process.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormDescription>The manufacturing process this work order follows</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )
+                    }}
+                />
+
+                <FormField
+                    control={form.control}
                     name="expected_completion"
                     render={({field}) => (
                         <FormItem className="flex flex-col">
-                            <FormLabel>Expected Completion Date *</FormLabel>
+                            <FormLabel required={required.expected_completion}>Expected Completion Date</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <FormControl>

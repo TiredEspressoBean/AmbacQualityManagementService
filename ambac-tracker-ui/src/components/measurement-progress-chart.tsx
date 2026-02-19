@@ -66,16 +66,16 @@ export function MeasurementProgressChart({ workOrder, parts }: Props) {
 
     // Process measurement data for visualization
     const measurementStats = definitions.map(def => {
-        const relatedReports = reports.filter(report => 
-            report.measurements?.some((m: any) => m.definition === def.id)
+        const relatedReports = reports.filter(report =>
+            report.measurements?.some((m: { definition?: string; [key: string]: any }) => m.definition === def.id)
         );
 
-        const measurements = relatedReports.flatMap(report => 
-            report.measurements?.filter((m: any) => m.definition === def.id) || []
+        const measurements = relatedReports.flatMap(report =>
+            report.measurements?.filter((m: { definition?: string; [key: string]: any }) => m.definition === def.id) || []
         );
 
         const totalMeasurements = measurements.length;
-        const passCount = measurements.filter((m: any) => {
+        const passCount = measurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) => {
             if (def.type === "PASS_FAIL") {
                 return m.value_pass_fail === "PASS";
             } else if (def.type === "NUMERIC") {
@@ -91,15 +91,15 @@ export function MeasurementProgressChart({ workOrder, parts }: Props) {
         // Calculate trend (simplified - comparing recent vs older measurements)
         const recentMeasurements = measurements.slice(-Math.ceil(measurements.length / 2));
         const olderMeasurements = measurements.slice(0, Math.floor(measurements.length / 2));
-        
-        const recentPassRate = recentMeasurements.length > 0 
-            ? (recentMeasurements.filter((m: any) => 
+
+        const recentPassRate = recentMeasurements.length > 0
+            ? (recentMeasurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) =>
                 def.type === "PASS_FAIL" ? m.value_pass_fail === "PASS" : m.is_within_spec === true
-            ).length / recentMeasurements.length) * 100 
+            ).length / recentMeasurements.length) * 100
             : 0;
 
         const olderPassRate = olderMeasurements.length > 0
-            ? (olderMeasurements.filter((m: any) => 
+            ? (olderMeasurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) =>
                 def.type === "PASS_FAIL" ? m.value_pass_fail === "PASS" : m.is_within_spec === true
             ).length / olderMeasurements.length) * 100
             : 0;
@@ -181,7 +181,7 @@ export function MeasurementProgressChart({ workOrder, parts }: Props) {
 
                 {/* Individual Measurement Progress */}
                 <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {measurementStats.map((stat, index) => (
+                    {measurementStats.map((stat, _index) => (
                         <div key={stat.definition.id} className="space-y-2 p-3 bg-muted/30 rounded-lg">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">

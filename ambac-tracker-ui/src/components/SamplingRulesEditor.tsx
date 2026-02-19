@@ -60,12 +60,12 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm">
+                        <Button type="button" size="sm">
                             <Plus className="h-4 w-4 mr-2" />
                             Add Rule
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="sm:max-w-xl">
                         <DialogHeader>
                             <DialogTitle>Create Sampling Rule</DialogTitle>
                         </DialogHeader>
@@ -84,7 +84,7 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
                     <p className="text-sm">Click "Add Rule" to get started.</p>
                 </div>
             ) : (
-                <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                <div className="space-y-2">
                     {fields.map((field, index) => (
                         <SamplingRuleCard
                             key={field.id}

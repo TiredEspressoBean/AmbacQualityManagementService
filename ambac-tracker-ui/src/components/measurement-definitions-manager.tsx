@@ -10,7 +10,7 @@ import MeasurementDefinitionCard from "./measurement-definition-card";
 import MeasurementDefinitionForm from "./measurement-definition-form";
 
 interface MeasurementDefinitionsManagerProps {
-  stepId: number;
+  stepId: string;
   stepName?: string;
 }
 

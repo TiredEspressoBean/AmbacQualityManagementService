@@ -1,3 +1,6 @@
 /.env
 
+# Generated PDF reports (from manage.py generate_pdf)
+/generated_reports/
+
 # Trigger deployment for static files

@@ -1,17 +1,19 @@
 import { useRetrieveAuditLogEntries } from "@/hooks/useRetrieveAuditLogEntries";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { formatDistanceToNow } from "date-fns";
-import { Separator } from "@/components/ui/separator";
 
 type Props = {
-    objectId: number;
+    objectId: string | number;
     modelType: string;
 };
 
 const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
-    const { data: contentTypes } = useRetrieveContentTypes({});
+    const { data: contentTypesRaw } = useRetrieveContentTypes({});
 
-    const contentTypeId = contentTypes?.results?.find(
+    // Normalize content types (handles both array and paginated formats)
+    const contentTypes = Array.isArray(contentTypesRaw) ? contentTypesRaw : contentTypesRaw?.results || [];
+
+    const contentTypeId = contentTypes.find(
         (ct) => ct.model?.toLowerCase() === modelType.toLowerCase()
     )?.id;
 

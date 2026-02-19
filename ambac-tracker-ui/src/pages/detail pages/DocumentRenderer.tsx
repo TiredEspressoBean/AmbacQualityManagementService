@@ -155,7 +155,7 @@ const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) =
 // Image viewer
 const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileName }) => {
     const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
-    const [imageLoaded, setImageLoaded] = React.useState(false);
+    const [_imageLoaded, _setImageLoaded] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [imageSrc, setImageSrc] = React.useState<string | null>(null);
     const [loading, setLoading] = React.useState(true);
