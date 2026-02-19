@@ -2299,6 +2299,9 @@ class Parts(SecureModel):
             # Also log to StepTransitionLog for backwards compatibility
             StepTransitionLog.objects.create(part=self, step=self.step, operator=operator)
 
+            # Cascade: check if WorkOrder should auto-complete
+            self._cascade_work_order_completion()
+
             return "completed"
 
         # Check if this was an escalation (cycle limit exceeded)
@@ -2418,6 +2421,48 @@ class Parts(SecureModel):
         StepTransitionLog.objects.create(part=self, step=next_step, operator=operator)
 
         return "escalated" if was_escalated else "advanced"
+
+    def _cascade_work_order_completion(self):
+        """
+        Check if all parts in work order have reached terminal status.
+        If so, auto-complete the WorkOrder.
+
+        Called after a part reaches a terminal step.
+        """
+        from django.utils import timezone
+
+        wo = self.work_order
+        if not wo:
+            return
+
+        # Terminal statuses for parts
+        terminal_statuses = [
+            PartsStatus.COMPLETED,
+            PartsStatus.SCRAPPED,
+            PartsStatus.CANCELLED,
+        ]
+
+        # Check if any parts are NOT at terminal status
+        non_terminal_parts = wo.parts.exclude(part_status__in=terminal_statuses)
+
+        if non_terminal_parts.exists():
+            # Not all parts done yet
+            return
+
+        # All parts at terminal status - determine WO status
+        all_parts_count = wo.parts.count()
+        completed_count = wo.parts.filter(part_status=PartsStatus.COMPLETED).count()
+        scrapped_count = wo.parts.filter(part_status=PartsStatus.SCRAPPED).count()
+
+        if scrapped_count == all_parts_count:
+            # All parts scrapped - mark as cancelled
+            wo.workorder_status = WorkOrderStatus.CANCELLED
+        else:
+            # At least some parts completed
+            wo.workorder_status = WorkOrderStatus.COMPLETED
+
+        wo.true_completion = timezone.now().date()
+        wo.save(update_fields=['workorder_status', 'true_completion'])
 
     def has_quality_errors(self):
         """Check if part has any quality errors"""

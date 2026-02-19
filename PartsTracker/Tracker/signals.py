@@ -10,6 +10,9 @@ from .models import (
     ApprovalRequest, ApprovalResponse,
     CAPA, CapaTasks, CapaVerification,
     Tenant,
+    WorkOrder, WorkOrderStatus,
+    OrdersStatus,
+    ScheduleSlot,
 )
 
 logger = logging.getLogger(__name__)
@@ -394,3 +397,70 @@ def handle_calibration_result(sender, instance, created, **kwargs):
                 f"Equipment {equipment.name} ({equipment.id}) returned to IN_SERVICE "
                 f"after {'passing' if instance.result == 'pass' else 'limited'} calibration"
             )
+
+
+# =============================================================================
+# WORK ORDER COMPLETION CASCADES
+# =============================================================================
+
+@receiver(post_save, sender=WorkOrder)
+def cascade_order_status_on_workorder_complete(sender, instance, **kwargs):
+    """
+    Cascade Order status when WorkOrder completes.
+
+    When all WorkOrders for an Order reach terminal status (COMPLETED or CANCELLED),
+    auto-update the Order status to COMPLETED.
+    """
+    # Only trigger when WorkOrder reaches COMPLETED or CANCELLED
+    if instance.workorder_status not in [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]:
+        return
+
+    order = instance.related_order
+    if not order:
+        return
+
+    # Check if any WorkOrders are still in progress
+    incomplete_wos = order.related_orders.exclude(
+        workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]
+    )
+
+    if incomplete_wos.exists():
+        # Not all WOs done yet
+        return
+
+    # All WOs at terminal status - update Order
+    if order.order_status != OrdersStatus.COMPLETED:
+        order.order_status = OrdersStatus.COMPLETED
+        order.save(update_fields=['order_status'])
+        logger.info(
+            f"Order {order.name} ({order.id}) auto-completed: "
+            f"all {order.related_orders.count()} work orders complete"
+        )
+
+
+@receiver(post_save, sender=WorkOrder)
+def cascade_schedule_slots_on_workorder_complete(sender, instance, **kwargs):
+    """
+    Complete all ScheduleSlots when WorkOrder completes.
+
+    When a WorkOrder reaches COMPLETED status, mark all its scheduled slots
+    as completed (if not already).
+    """
+    from django.utils import timezone
+
+    if instance.workorder_status != WorkOrderStatus.COMPLETED:
+        return
+
+    # Update any in_progress or scheduled slots to completed
+    updated = ScheduleSlot.objects.filter(
+        work_order=instance,
+        status__in=['scheduled', 'in_progress']
+    ).update(
+        status='completed',
+        actual_end=timezone.now()
+    )
+
+    if updated > 0:
+        logger.info(
+            f"Completed {updated} schedule slot(s) for WorkOrder {instance.ERP_id}"
+        )
