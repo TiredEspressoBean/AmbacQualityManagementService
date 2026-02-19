@@ -49,23 +49,31 @@ def build_weekly_report_context(task) -> Optional[Dict[str, Any]]:
     # Prepare order summaries
     order_summaries = []
     for order in active_orders:
-        parts_qs = order.parts.filter(archived=False).select_related('step')
+        parts_qs = order.parts.filter(archived=False).select_related('step', 'work_order', 'work_order__process')
         total_parts = parts_qs.count()
         completed_parts = parts_qs.filter(part_status='COMPLETED').count()
 
-        # Average current step index
-        avg_step = parts_qs.aggregate(a=Avg('step__order'))['a'] or 0
+        # Calculate progress based on work order's process
+        progress = 0
+        if total_parts > 0:
+            # Get unique processes from work orders
+            work_orders = order.related_orders.filter(archived=False).select_related('process')
+            if work_orders.exists():
+                # Use the first work order's process for progress calculation
+                first_wo = work_orders.first()
+                if first_wo and first_wo.process:
+                    process = first_wo.process
+                    max_step = process.process_steps.count()
 
-        # All processes for the parts in this order
-        process_ids = parts_qs.values_list('step__process_id', flat=True).distinct()
-
-        # True max step across those processes
-        max_step = (
-            Steps.objects.filter(process_id__in=process_ids)
-            .aggregate(m=Max('order'))['m']
-        ) or 0
-
-        progress = int(round(100 * (avg_step / max_step))) if max_step else 0
+                    if max_step > 0:
+                        # Calculate average step position using ProcessStep
+                        from Tracker.models import ProcessStep
+                        step_ids = parts_qs.values_list('step_id', flat=True).distinct()
+                        avg_order = ProcessStep.objects.filter(
+                            process=process,
+                            step_id__in=step_ids
+                        ).aggregate(a=Avg('order'))['a'] or 0
+                        progress = int(round(100 * (avg_order / max_step)))
 
         # Get current stage
         current_stage = "Not Started"
