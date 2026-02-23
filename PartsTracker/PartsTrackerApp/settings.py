@@ -554,9 +554,9 @@ ENABLE_RLS = os.getenv("ENABLE_RLS", "false").lower() in {"1", "true", "yes"}
 
 if not DEBUG:
     # HTTPS/SSL settings
-    # Note: Railway/Heroku handle SSL termination at the load balancer,
-    # so SECURE_SSL_REDIRECT may not be needed if using proxy headers
-    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "true").lower() in {"1", "true", "yes"}
+    # Railway handles SSL termination at the load balancer, so SECURE_SSL_REDIRECT
+    # should be False (it also breaks Railway's HTTP healthchecks)
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "false").lower() in {"1", "true", "yes"}
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
     # HSTS (HTTP Strict Transport Security)
