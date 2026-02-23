@@ -2,8 +2,10 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Copy and install dependencies
-COPY ./package.json ./package-lock.json* ./
+# Copy package.json only (ignore package-lock.json from Windows)
+COPY ./package.json ./
+
+# Fresh install for Linux platform
 RUN npm install --legacy-peer-deps
 
 # Copy rest of the frontend source
