@@ -202,10 +202,12 @@ AUTH_USER_MODEL = 'Tracker.User'
 # Allauth adapter for tenant-aware user creation
 ACCOUNT_ADAPTER = 'Tracker.adapters.TenantAccountAdapter'
 
-STATICFILES_DIRS = (
+# Only include static directories that exist
+_static_dirs = [
     BASE_DIR / 'Tracker/static',
     BASE_DIR / 'theme/static',
-)
+]
+STATICFILES_DIRS = tuple(d for d in _static_dirs if d.exists())
 
 SITE_ID = 1
 
@@ -306,8 +308,12 @@ SPECTACULAR_SETTINGS = {
         "TravelerStepStatusEnum": ["COMPLETED", "IN_PROGRESS", "PENDING", "SKIPPED"],
     },
 }
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",")
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:5173").split(",")
+# Filter out empty origins to avoid Django check errors
+_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip() and o.strip() != "https://"]
+
+_csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:5173")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip() and o.strip() != "https://"]
 CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
 
 LOGIN_REDIRECT_URL = '/tracker'
