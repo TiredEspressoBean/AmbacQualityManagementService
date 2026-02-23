@@ -43,6 +43,8 @@ class TenantMiddleware:
 
     # Paths that don't require tenant context (auth, health checks, admin)
     TENANT_EXEMPT_PATHS = [
+        '/health/',
+        '/ready/',
         '/api/health/',
         '/api/auth/',
         '/admin/',
