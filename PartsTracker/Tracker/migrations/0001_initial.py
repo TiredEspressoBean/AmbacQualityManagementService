@@ -22,6 +22,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Enable pgvector extension before any tables use vector type
+        migrations.RunSQL(
+            'CREATE EXTENSION IF NOT EXISTS vector;',
+            reverse_sql='DROP EXTENSION IF EXISTS vector;'
+        ),
         migrations.CreateModel(
             name='Tenant',
             fields=[
