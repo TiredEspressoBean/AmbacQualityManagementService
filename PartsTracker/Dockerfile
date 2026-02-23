@@ -30,5 +30,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Run migrations and start gunicorn
-CMD python manage.py migrate --noinput && gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 4
+# Run migrations and start gunicorn (Railway sets PORT env var)
+CMD python manage.py migrate --noinput && gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4
