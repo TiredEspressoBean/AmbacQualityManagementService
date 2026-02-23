@@ -44,8 +44,8 @@ export default defineConfig(({ mode }) => {
         },
         preview: {
             host: '0.0.0.0',
-            port: 4173,
-            allowedHosts: [env.FRONTEND_URL || 'localhost']
+            port: 5173,
+            allowedHosts: true,  // Allow all hosts (Railway generates dynamic subdomains)
         },
         server: {
             host: '0.0.0.0',
