@@ -43,7 +43,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,169.254.131.*').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,.railway.app,.up.railway.app,169.254.131.*').split(',')
 # Application definition
 
 if os.getenv("WEBSITE_HOSTNAME"):
@@ -409,11 +409,16 @@ AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
 AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))
 
 # ---------------- Redis cache ----------------
+# Redis cache - use REDIS_URL from Railway, append /1 for cache db
+_redis_url = os.getenv("REDIS_CACHE_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/1"
+# If using REDIS_URL, switch to db 1 for cache (db 0 is for Celery)
+if os.getenv("REDIS_URL") and not os.getenv("REDIS_CACHE_URL"):
+    _redis_url = _redis_url.rstrip('/') + '/1' if not _redis_url.endswith('/1') else _redis_url
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        # Override in Docker with REDIS_CACHE_URL=redis://redis:6379/1
-        "LOCATION": os.getenv("REDIS_CACHE_URL", "redis://localhost:6379/1"),
+        "LOCATION": _redis_url,
         "OPTIONS": {
             "pool_class": "redis.BlockingConnectionPool",
             "socket_keepalive": True,
@@ -435,10 +440,8 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire when browser closes
 # SESSION_CACHE_ALIAS = "default"
 
 # ---------------- Celery core ----------------
-# Override in Docker:
-#   CELERY_BROKER_URL=redis://redis:6379/0
-#   CELERY_RESULT_BACKEND=django-db
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+# Railway provides REDIS_URL, local dev uses CELERY_BROKER_URL or defaults to localhost
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "django-db")
 
 CELERY_TIMEZONE = "America/New_York"
