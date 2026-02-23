@@ -308,13 +308,24 @@ SPECTACULAR_SETTINGS = {
         "TravelerStepStatusEnum": ["COMPLETED", "IN_PROGRESS", "PENDING", "SKIPPED"],
     },
 }
-# Filter out empty origins to avoid Django check errors
-_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
-CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip() and o.strip() != "https://"]
+# CORS: Allow localhost for dev, Railway subdomains for production
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.railway\.app$",
+    r"^https://.*\.up\.railway\.app$",
+]
 
-_csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:5173")
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip() and o.strip() != "https://"]
-CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+# CSRF: Same pattern
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://*.railway.app",
+    "https://*.up.railway.app",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 LOGIN_REDIRECT_URL = '/tracker'
 
