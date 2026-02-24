@@ -139,12 +139,12 @@ Prepare data for external audits:
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_auditlog` | View full audit trail |
-| `export_auditlog` | Export audit data |
+| Permission | Allows | Groups |
+|------------|--------|--------|
+| `view_auditlog` | View full system audit trail | Admin, QA_Manager, Document_Controller |
+| `export_auditlog` | Export audit data for auditors | Admin |
 
-Standard users see history of records they can access.
+Standard users see history of records they can access via record detail pages.
 
 ## Best Practices
 

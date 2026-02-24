@@ -240,6 +240,84 @@ erDiagram
     }
 ```
 
+### 4.3.1 Step Workflow Control
+
+First Piece Inspection, overrides, rollbacks, and measurement tracking at the step execution level.
+
+```mermaid
+erDiagram
+    WorkOrders ||--o{ FPIRecord: "fpi_for"
+    Steps ||--o{ FPIRecord: "step"
+    Users ||--o{ FPIRecord: "designated_by"
+    Users ||--o{ FPIRecord: "verified_by"
+    Parts ||--o{ FPIRecord: "fpi_part"
+    StepExecution ||--o{ StepOverride: "execution"
+    Users ||--o{ StepOverride: "requested_by"
+    Users ||--o{ StepOverride: "approved_by"
+    StepExecution ||--o{ StepExecutionMeasurement: "execution"
+    MeasurementDefinition ||--o{ StepExecutionMeasurement: "definition"
+    Users ||--o{ StepExecutionMeasurement: "recorded_by"
+    StepExecution ||--o{ StepRollback: "execution"
+    Users ||--o{ StepRollback: "requested_by"
+    Users ||--o{ StepRollback: "approved_by"
+
+    FPIRecord {
+        string status "PENDING, PASSED, FAILED, WAIVED"
+        string fpi_scope "PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR"
+        datetime designated_at
+        datetime verified_at
+        text notes
+        int work_order_id FK
+        int step_id FK
+        int fpi_part_id FK
+        int designated_by_id FK
+        int verified_by_id FK
+    }
+
+    StepOverride {
+        string override_type "MISSING_QA, MEASUREMENT_FAIL, FPI_FAIL, TRAINING_EXPIRED, etc."
+        string status "REQUESTED, APPROVED, REJECTED, EXPIRED"
+        text reason
+        text approval_notes
+        datetime requested_at
+        datetime approved_at
+        datetime expires_at
+        int execution_id FK
+        int requested_by_id FK
+        int approved_by_id FK
+    }
+
+    StepExecutionMeasurement {
+        decimal value
+        string value_string
+        boolean is_within_spec
+        datetime recorded_at
+        int execution_id FK
+        int definition_id FK
+        int recorded_by_id FK
+    }
+
+    StepRollback {
+        string status "REQUESTED, APPROVED, REJECTED, COMPLETED"
+        text reason
+        text approval_notes
+        datetime requested_at
+        datetime approved_at
+        datetime completed_at
+        int execution_id FK
+        int requested_by_id FK
+        int approved_by_id FK
+    }
+```
+
+> **FPI (First Piece Inspection):** Validates setup at production start. FPIRecord tracks which part is designated for FPI, its verification status, and scope (per work order, shift, equipment, or operator).
+>
+> **StepOverride:** Escape hatch for blocked parts. When a part cannot advance due to missing QA, failed measurements, etc., an override can be requested and approved by supervisors.
+>
+> **StepExecutionMeasurement:** Tracks measurements at the execution level (not tied to QualityReports/sampling). Enables 100% measurement capture.
+>
+> **StepRollback:** Controlled mechanism to move parts backward through the process with approval workflow.
+
 ### 4.4 Equipment & Resources
 
 Equipment types, instances, and usage tracking.
@@ -729,6 +807,16 @@ erDiagram
 | **ApprovalRequest**  | Approval instance            | ApprovalTemplate, ApprovalResponse, Users    | Uses ContentType for Documents, CAPAs, etc.                  |
 | **ApprovalResponse** | Individual approval decision | ApprovalRequest, Users                       | Decisions: APPROVED, REJECTED, DELEGATED; signature capture  |
 
+#### Step Workflow Control
+
+| Entity                       | Description                       | Key Relationships                                    | Notes                                                              |
+|------------------------------|-----------------------------------|------------------------------------------------------|--------------------------------------------------------------------|
+| **FPIRecord**                | First Piece Inspection tracking   | WorkOrders, Steps, Parts, Users                      | Scopes: PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR     |
+| **StepOverride**             | Override for blocked steps        | StepExecution, Users                                 | Types: MISSING_QA, MEASUREMENT_FAIL, FPI_FAIL, TRAINING_EXPIRED    |
+| **StepExecutionMeasurement** | Measurements at execution level   | StepExecution, MeasurementDefinition, Users          | Enables 100% measurement capture (not tied to sampling)            |
+| **StepRollback**             | Controlled backward movement      | StepExecution, Users                                 | Status workflow: REQUESTED → APPROVED/REJECTED → COMPLETED         |
+| **StepRequirement**          | Configurable step gating rules    | Steps                                                | 10 types: measurement, document, signoff, training, FPI, etc.      |
+
 #### Equipment & Resources
 
 | Entity             | Description                 | Key Relationships                             | Notes                             |
@@ -1043,3 +1131,4 @@ The system runs as four separate Azure App Services sharing infrastructure:
 | 2025-12-31 | Claude Code  | Added SPCBaseline model to Section 4.5 (Sampling & SPC): Persisted control limits with full audit trail (frozen_by, frozen_at, superseded_at, superseded_reason). Supports XBAR_R, XBAR_S, I_MR chart types. Added to entity summary table.                                                                                                                                                                                             |
 | 2026-01-05 | Claude Code  | Added Section 4.10 (CAPA) and Section 4.11 (Approval Workflow): Full ERDs for CAPA system (CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification) and Approval workflow (ApprovalTemplate, ApprovalRequest, ApprovalResponse). Added entity summary tables for both. Removed CAPA from Planned Features (now complete).                                                                         |
 | 2026-02-06 | Claude Code  | Updated Section 1 TL;DR: Multi-tenancy no longer a non-goal (in progress). Updated Section 8 RBAC: Expanded from 7 to 10 role-based groups with permission counts, documented two-layer permission system (role_type for data filtering + permissions M2M for action control). Added links to MULTI_TENANCY_ROADMAP.md and PERMISSION_SYSTEM_REFACTOR.md.                                                                                |
+| 2026-02-20 | Claude Code  | Added Section 4.3.1 (Step Workflow Control): ERD and documentation for FPIRecord, StepOverride, StepExecutionMeasurement, StepRollback, StepRequirement models. Added Step Workflow Control section to Entity Summary table. These models support FPI tracking, override workflows, 100% measurement capture, and controlled rollback.                                                                                                   |

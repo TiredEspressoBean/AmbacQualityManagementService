@@ -81,7 +81,7 @@ By the end of this module, you will:
 | **Email** | Login ID, must be unique | Yes |
 | **First Name** | Display name | Yes |
 | **Last Name** | Display name | Yes |
-| **Role Type** | Staff, Customer, Auditor | Yes |
+| **User Type** | Internal or Portal | Yes |
 | **Groups** | Permission groups | Yes |
 | **Active** | Can login if checked | Yes |
 
@@ -96,7 +96,7 @@ By the end of this module, you will:
 3. Fill in:
    - Email address (will be login)
    - First and last name
-   - Role type (Staff for internal, Customer for external)
+   - User type (Internal for employees, Portal for external customers)
    - Assign to appropriate groups
 4. Save
 
@@ -113,21 +113,23 @@ By the end of this module, you will:
    - Email: trainee1@example.com
    - First Name: Training
    - Last Name: User One
-   - Role Type: Staff
-   - Groups: Add to "Operators" group
+   - User Type: Internal
+   - Groups: Add to "Production_Operator" group
 3. Save
 
 ---
 
-### 2.3 Role Types
+### 2.3 User Types
 
-| Role Type | Purpose | Access |
+| User Type | Purpose | Access |
 |-----------|---------|--------|
-| **Staff** | Internal employees | Full internal access |
-| **Customer** | External customers | Read-only, their data only |
-| **Auditor** | External auditors | Read-only, audit access |
+| **Internal** | Internal employees (staff) | Full internal access based on groups |
+| **Portal** | External customers | Limited portal access, their data only |
 
 Choose carefully - this limits available permissions.
+
+!!! note "Auditor Access"
+    There is no separate "Auditor" user type. Auditor access is achieved by creating an Internal user and assigning them to a group with read-only audit permissions.
 
 ---
 
@@ -163,7 +165,7 @@ Choose carefully - this limits available permissions.
 
 ### Knowledge Check: Module 2
 
-1. What's the difference between Staff and Customer role types?
+1. What's the difference between Internal and Portal user types?
 2. Why do you deactivate instead of delete users?
 3. How does a user set their initial password?
 
@@ -259,12 +261,12 @@ Users → Groups → Permissions
 
 | Group | Typical Permissions |
 |-------|---------------------|
-| **Operators** | View orders, pass parts, flag issues |
-| **QA Inspectors** | Above + quality reports, inspections |
-| **QA Managers** | Above + approve dispositions, manage CAPAs |
-| **Production Managers** | Create orders, work orders, view all |
-| **Document Controllers** | Manage documents, revisions |
-| **Administrators** | Full system access |
+| **Production_Operator** | View orders/parts, create parts |
+| **QA_Inspector** | Above + quality reports, initiate CAPAs, conduct RCA |
+| **QA_Manager** | Above + approve dispositions, manage CAPAs, approvals |
+| **Production_Manager** | Manage orders, work orders, view all |
+| **Document_Controller** | Manage documents, revisions, classifications |
+| **Admin** | Full system access |
 
 ---
 
@@ -502,17 +504,20 @@ By the end of this module, you will:
 
 ### 6.2 Integration Settings
 
-**Configure connections:**
+!!! warning "Coming Soon"
+    Integration configuration UI is under development. Currently, integrations are configured via backend settings.
+
+**Planned integrations:**
 
 - SSO/Azure AD: Single sign-on
 - HubSpot: CRM integration
-- API access: For integrations
+- API access: For custom integrations
 
 **Exercise 6.1:** Review Settings
 
 1. Go to Admin > Settings
 2. Review organization settings
-3. Check integration status
+3. Review branding settings
 4. Note what can be configured
 
 ---
@@ -666,7 +671,7 @@ By the end of this module, you will:
 
 1. Check their groups
 2. Verify group has permission
-3. Check role type restrictions
+3. Check user type restrictions (Internal vs Portal)
 4. Confirm tenant assignment (if multi-tenant)
 
 **Exercise 9.1:** Troubleshoot Access
@@ -757,7 +762,7 @@ Open user → Uncheck **Active** → **Save**
 Admin → Audit Log → Filter as needed → Export if required
 
 ### Troubleshoot Access
-Check: User active? → In groups? → Group has permission? → Role type allows?
+Check: User active? → In groups? → Group has permission? → User type allows?
 
 ---
 

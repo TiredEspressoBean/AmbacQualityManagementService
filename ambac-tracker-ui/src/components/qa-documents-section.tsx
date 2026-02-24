@@ -14,7 +14,7 @@ import {
 import { z } from "zod";
 import type { schemas } from "@/lib/api/generated";
 import { useQaDocuments } from "@/hooks/useQaDocuments";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import DocumentRenderer from "@/pages/detail pages/DocumentRenderer";
 
 type Document = z.infer<typeof schemas.Documents>;
@@ -26,7 +26,7 @@ type Props = {
     currentStepId?: number; // ID of the step currently being completed (not used with new API)
 };
 
-export function QaDocumentsSection({ workOrder }: Props) {
+export const QaDocumentsSection = memo(function QaDocumentsSection({ workOrder }: Props) {
     const [allDocuments, setAllDocuments] = useState<DocumentWithSource[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<DocumentWithSource | null>(null);
     const [activeDocumentTab, setActiveDocumentTab] = useState<string>("");
@@ -65,7 +65,7 @@ export function QaDocumentsSection({ workOrder }: Props) {
 
                 // Remove duplicates by id and sort by source priority
                 const uniqueDocs = combinedDocs
-                    .filter((doc, index, self) => 
+                    .filter((doc, index, self) =>
                         index === self.findIndex(d => d.id === doc.id)
                     )
                     .sort((a, b) => {
@@ -74,23 +74,23 @@ export function QaDocumentsSection({ workOrder }: Props) {
                     });
 
                 setAllDocuments(uniqueDocs);
-                
-                // Set first available tab as active
+
+                // Set first available tab as active (only on initial load)
                 const sources = Array.from(new Set(uniqueDocs.map(doc => doc.source || 'Other')));
-                if (!activeDocumentTab && sources.length > 0) {
-                    setActiveDocumentTab(sources[0]);
+                if (sources.length > 0) {
+                    setActiveDocumentTab(prev => prev || sources[0]);
                 }
-                
-                // Auto-select first document if none selected
-                if (!selectedDocument && uniqueDocs.length > 0) {
-                    setSelectedDocument(uniqueDocs[0]);
+
+                // Auto-select first document (only on initial load)
+                if (uniqueDocs.length > 0) {
+                    setSelectedDocument(prev => prev || uniqueDocs[0]);
                 }
             } catch (err) {
                 console.error('Failed to process QA documents:', err);
                 setAllDocuments([]);
             }
         }
-    }, [qaDocumentsData, isLoading, selectedDocument, activeDocumentTab]);
+    }, [qaDocumentsData, isLoading]);
 
     const getSourceIcon = (source: string) => {
         switch (source) {
@@ -235,4 +235,4 @@ export function QaDocumentsSection({ workOrder }: Props) {
             </div>
         </div>
     );
-}
+});

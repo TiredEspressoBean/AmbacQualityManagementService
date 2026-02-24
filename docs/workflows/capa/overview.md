@@ -79,24 +79,31 @@ D7: Preventive   D8: Close &
 
 | Status | Meaning |
 |--------|---------|
-| **Draft** | CAPA created, not yet active |
-| **Open** | Active investigation |
-| **Containment** | Containment actions in progress |
-| **Root Cause** | RCA phase |
-| **Action Planning** | Defining corrective actions |
-| **Implementation** | Actions being executed |
-| **Verification** | Verifying effectiveness |
-| **Pending Approval** | Awaiting closure approval |
-| **Closed** | CAPA complete |
+| **Open** | CAPA created, initial phase |
+| **In Progress** | Active work (tasks or RCA started) |
+| **Pending Verification** | All tasks complete, awaiting effectiveness verification |
+| **Closed** | CAPA complete with verified effectiveness |
+| **Cancelled** | CAPA cancelled |
 
-## CAPA Priority
+Note: Status transitions automatically based on task completion and RCA progress. The system calculates suggested status from current state.
 
-| Priority | Response Time | Examples |
-|----------|---------------|----------|
-| **Critical** | 24 hours containment | Safety issue, regulatory |
-| **High** | 48-72 hours | Customer complaint, major defect |
-| **Medium** | 1-2 weeks | Recurring minor issues |
-| **Low** | 30 days | Improvement opportunities |
+## CAPA Severity
+
+| Severity | When to Use |
+|----------|-------------|
+| **Critical** | Safety issues, regulatory concerns, immediate containment required |
+| **Major** | Significant quality escapes, customer complaints, functional defects |
+| **Minor** | Cosmetic issues, improvement opportunities, recurring minor issues |
+
+## CAPA Types
+
+| Type | Description |
+|------|-------------|
+| **Corrective Action** | Fix existing problem and prevent recurrence |
+| **Preventive Action** | Address potential problem before it occurs |
+| **Customer Complaint** | Response to field failure or customer report |
+| **Internal Audit** | Finding from internal quality audit |
+| **Supplier Issue** | Problem with supplier materials or processes |
 
 ## Linked Records
 
@@ -137,8 +144,10 @@ Track CAPA performance:
 | `view_capa` | View CAPAs |
 | `add_capa` | Create CAPAs |
 | `change_capa` | Edit CAPAs |
+| `initiate_capa` | Initiate new CAPAs |
 | `close_capa` | Close CAPAs |
-| `approve_capa` | Approve CAPA closure |
+| `approve_capa` | Approve CAPAs |
+| `verify_capa` | Verify CAPA effectiveness |
 
 ## Best Practices
 

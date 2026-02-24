@@ -147,8 +147,9 @@ For audit preparation.
 
 | Permission | Allows |
 |------------|--------|
-| `view_signatures` | View signature records |
-| `approve_*` | Ability to sign approvals |
+| `view_approvalresponse` | View signature/approval records |
+| `respond_to_approval` | Sign approvals when assigned |
+| `approve_*` (e.g., `approve_capa`) | Approve specific record types |
 
 ## Best Practices
 

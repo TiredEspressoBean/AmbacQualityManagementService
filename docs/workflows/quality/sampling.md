@@ -17,27 +17,33 @@ Every part inspected. Used for:
 
 - Critical dimensions
 - Safety-related features
-- New suppliers
+- New suppliers/processes
 - Poor quality history
 
-### AQL Sampling
-Acceptance Quality Level sampling per ANSI/ASQ Z1.4:
+### Every Nth Part
+Inspect at regular intervals:
 
-- Based on lot size
-- Defines sample size
-- Accept/reject criteria
+- Consistent coverage across lot
+- Example: Every 5th part = 20% sampling
 
-### Skip-Lot
-Skip lots based on quality history:
+### First/Last N Parts
+Setup and end-of-run verification:
 
-- After N consecutive good lots, skip inspection
-- Resume after skip period or on failure
+- **First N**: Verify setup is correct
+- **Last N**: Verify process stability at end
 
-### Reduced/Tightened
-Adjust sampling based on history:
+### Percentage Sampling
+Sample based on lot size:
 
-- **Reduced**: Good history → smaller samples
-- **Tightened**: Issues found → larger samples
+- Scales with production quantity
+- Example: 10% of lot size
+
+### Pure Random
+Hash-based random selection:
+
+- Unbiased sample
+- Audit-compliant algorithm
+- SHA-256 hash modulo arithmetic
 
 ## How Sampling Works
 
@@ -68,21 +74,22 @@ Sampling rules are configured by administrators:
 
 | Component | Description |
 |-----------|-------------|
-| **Rule Type** | AQL, Skip-lot, Fixed, etc. |
-| **Applies To** | Part type, supplier, step |
-| **Sample Size** | How many to inspect |
-| **Accept Criteria** | Pass/fail threshold |
-| **Effective Dates** | When rule applies |
+| **Rule Type** | Every Nth, Percentage, Random, First N, Last N, Exact Count |
+| **Ruleset** | Part type + Process + Step combination |
+| **Value** | The N value (interval, percentage, count) |
+| **Order** | Priority when multiple rules apply |
+| **Fallback Ruleset** | Tighter sampling triggered after consecutive failures |
 
 ### Rule Types
 
 | Type | Description |
 |------|-------------|
-| **AQL** | Standard AQL tables (0.65, 1.0, 2.5, etc.) |
-| **Fixed Quantity** | Always inspect N parts |
-| **Fixed Percentage** | Always inspect N% of lot |
-| **Skip-Lot** | Skip after consecutive passes |
-| **Attribute** | Go/no-go attributes |
+| **Every Nth Part** | Inspect at regular intervals (e.g., every 5th part) |
+| **Percentage** | Inspect a percentage of the lot |
+| **Pure Random** | SHA-256 hash-based random selection for unbiased sampling |
+| **First N Parts** | Inspect first N parts (setup verification) |
+| **Last N Parts** | Inspect last N parts (end-of-run check) |
+| **Exact Count** | Always inspect exactly N parts (no variance) |
 
 ## Viewing Sampling Requirements
 
@@ -119,17 +126,18 @@ Sample from different production periods:
 
 ## Accept/Reject Decisions
 
-Based on AQL tables:
+Based on quality report results:
 
-| Sample Size | Accept (Ac) | Reject (Re) |
-|-------------|-------------|-------------|
-| 8 | 0 | 1 |
-| 13 | 1 | 2 |
-| 20 | 2 | 3 |
+- **Pass**: Sampled parts pass quality check → lot continues
+- **Fail**: Sampled part fails → quality report created, lot may be held
 
-- If defects ≤ Ac → Accept lot
-- If defects ≥ Re → Reject lot
-- Between → Additional sampling
+### Quality Report Integration
+
+When a sampled part fails:
+1. Quality report is created automatically
+2. Part may be quarantined
+3. Disposition workflow triggers
+4. Remaining lot may need 100% inspection
 
 ## Lot Accept/Reject
 
@@ -145,23 +153,25 @@ Options:
 - Scrap entire lot
 - Sort and disposition
 
-## Skip-Lot Rules
+## Sampling Rule Sets
 
-After consistent good quality:
+Combine multiple rules for complex sampling strategies:
 
-1. Track consecutive accepted lots
-2. After N passes (e.g., 5), skip inspection
-3. Lot N+1 (and some after) skipped
-4. Resume inspection after skip period
-5. Any failure resets counter
+```
+Rule Set: Production Inspection
+├── First 3 Parts (setup verification)
+├── Every 10th Part (ongoing monitoring)
+└── Last 2 Parts (end-of-run check)
+```
 
-### Skip-Lot Configuration
+### Rule Set Evaluation
 
-| Parameter | Example |
-|-----------|---------|
-| Consecutive passes required | 5 lots |
-| Lots to skip | 2 lots |
-| Auto-reset on failure | Yes |
+1. Rules are evaluated in order
+2. Part is sampled if ANY rule matches
+3. Sampling status recorded in audit log
+4. Non-sampled parts may still require QA
+
+See [Sampling Rules Configuration](../../admin/setup/sampling-rules.md) for setup.
 
 ## Sampling History
 
@@ -172,15 +182,18 @@ Track sampling performance:
 - Sampling level changes
 - Skip-lot status
 
-## Switching Rules
+## Sampling Analytics
 
-Automatically adjust sampling:
+Track sampling performance:
 
-| Condition | Action |
-|-----------|--------|
-| 5 consecutive accepts | Switch to reduced |
-| 2 of 5 lots rejected | Switch to tightened |
-| On tightened, 5 accepts | Return to normal |
+| Metric | Description |
+|--------|-------------|
+| **Sample Rate** | % of parts sampled |
+| **Pass Rate** | % of samples passing |
+| **Rule Effectiveness** | Defect detection by rule |
+| **Audit Compliance** | Algorithm verification logs |
+
+View analytics in **Quality Dashboard** > **Sampling Analytics**.
 
 ## Sampling Audit Trail
 

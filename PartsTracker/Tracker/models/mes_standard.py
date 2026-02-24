@@ -847,6 +847,23 @@ class ScheduleSlot(SecureModel):
 
     notes = models.TextField(blank=True)
 
+    # Operator assignment
+    assigned_operator = models.ForeignKey(
+        'Tracker.User',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='assigned_slots',
+        help_text="Operator assigned to this schedule slot"
+    )
+    """Operator assigned to work this slot."""
+
+    needs_reassignment = models.BooleanField(
+        default=False,
+        help_text="Flag indicating operator reassignment is needed"
+    )
+    """Set when assigned operator is unavailable or a reassignment is requested."""
+
     class Meta:
         verbose_name = 'Schedule Slot'
         verbose_name_plural = 'Schedule Slots'

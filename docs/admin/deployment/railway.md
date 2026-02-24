@@ -4,7 +4,7 @@ This guide covers deploying and managing the application on Railway.
 
 ## Architecture
 
-The application runs as four services on Railway:
+The application runs as five services on Railway:
 
 | Service | Purpose | Config File |
 |---------|---------|-------------|
@@ -12,6 +12,7 @@ The application runs as four services on Railway:
 | celery-worker | Background task processing | `railway.celery.toml` |
 | celery-beat | Scheduled task scheduler | `railway.celery.toml` |
 | Frontend | React/Vite UI | `railway.toml` |
+| Docs | MkDocs documentation | `docs-service/railway.toml` |
 
 Plus two databases:
 - **pgvector** - PostgreSQL with vector extension
@@ -144,8 +145,59 @@ restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 ```
 
+## Documentation Service
+
+The docs service serves MkDocs-generated documentation.
+
+### Deploying the docs service
+
+1. In Railway dashboard, click "New Service"
+2. Select "GitHub Repo" and choose this repository
+3. Set **Root Directory** to `/` (repo root)
+4. Set **Config File Path** to `docs-service/railway.toml`
+5. Deploy
+
+The service builds documentation from `docs/` folder using MkDocs and serves via Caddy.
+
+### docs-service/railway.toml
+```toml
+[build]
+builder = "dockerfile"
+dockerfilePath = "docs-service/Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+```
+
+## Cloudflare Worker (Path-Based Routing)
+
+To serve all services under one domain with path-based routing (e.g., `/docs/*`, `/api/*`), use a Cloudflare Worker.
+
+### Setup
+
+1. In Cloudflare dashboard, go to **Workers & Pages** → **Create Worker**
+2. Paste the code from `cloudflare/worker.js`
+3. Add environment variables:
+   - `DOCS_ORIGIN`: Railway docs service URL (e.g., `https://docs-xxx.railway.app`)
+   - `API_ORIGIN`: Railway backend URL (e.g., `https://backend-xxx.railway.app`)
+   - `FRONTEND_ORIGIN`: Railway frontend URL (e.g., `https://frontend-xxx.railway.app`)
+4. Go to **Triggers** → **Add Route**
+5. Add route: `yourdomain.com/*` → this worker
+
+### Routing rules
+
+| Path | Destination |
+|------|-------------|
+| `/docs/*` | Docs service |
+| `/api/*`, `/auth/*`, `/admin/*` | Backend |
+| Everything else | Frontend |
+
 ## Useful Links
 
 - [Railway CLI Reference](https://docs.railway.com/reference/cli-api)
 - [Railway Healthchecks](https://docs.railway.com/reference/healthchecks)
 - [Railway Private Networking](https://docs.railway.com/guides/private-networking)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)

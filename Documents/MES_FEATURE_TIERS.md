@@ -1,6 +1,6 @@
 # MES Feature Tiers
 
-**Last Updated:** February 18, 2026
+**Last Updated:** February 20, 2026
 
 This document categorizes Manufacturing Execution System (MES) features by capability level. Each tier is **cumulative** - it includes all features from previous tiers plus new additions.
 
@@ -68,7 +68,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Process flow visualization
 - [x] Step estimated duration
 
-### 🟡 Standard MES (15 total)
+### 🟡 Standard MES (17 total)
 *Includes all Lite, plus:*
 - [x] Step-level inspection requirements
 - [x] Step dependencies (predecessor/successor) - *StepEdge model*
@@ -79,8 +79,10 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] Parallel step support (concurrent operations)
 - [x] Process approval workflow - *Processes.status (DRAFT/PENDING_APPROVAL/APPROVED/DEPRECATED), approve(), submit_for_approval() methods*
 - [ ] Revision comparison (diff view)
+- [x] Step override workflow - *StepOverride model with request/approve/reject/expire workflow for blocked parts*
+- [x] Controlled rollback - *StepRollback model with undo_window_minutes and rollback_requires_approval on Steps*
 
-### 🔴 Enterprise MES (18 total)
+### 🔴 Enterprise MES (20 total)
 *Includes all Standard, plus:*
 - [x] Dynamic routing (conditional paths) - *StepEdge with edge_type + decision_type on Steps*
 - [ ] Routing optimization suggestions
@@ -208,7 +210,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Pass/fail determination
 - [x] NCR creation on failure - *Auto-creates QuarantineDisposition on QualityReport fail*
 - [x] Quality holds on parts - *Auto-quarantine on fail; block_on_quarantine prevents advancement*
-- [x] First piece inspection (FPI) - setup verification per production run, operator-designated
+- [x] First piece inspection (FPI) - *FPIRecord model with scope options (PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR); FpiStatusBanner UI; designate/waive/verify actions*
 
 ### 🟡 Standard MES (17 total)
 *Includes all Lite, plus:*
@@ -399,7 +401,7 @@ Integration and connectivity features are platform concerns, not MES functionali
 | Category | Lite | Standard | Enterprise |
 |----------|------|----------|------------|
 | Work Orders | 8 | 14 | 19 |
-| Process/Routing | 6 | 15 | 18 |
+| Process/Routing | 6 | 17 | 20 |
 | Data Collection | 5 | 13 | 17 |
 | Production Tracking | 6 | 14 | 18 |
 | Equipment | 3 | 12 | 16 |
@@ -407,7 +409,7 @@ Integration and connectivity features are platform concerns, not MES functionali
 | Material | 3 | 13 | 16 |
 | Scheduling | 3 | 12 | 17 |
 | Reporting | 5 | 18 | 23 |
-| **TOTAL** | **44** | **128** | **169** |
+| **TOTAL** | **44** | **130** | **171** |
 
 ### Lite MES Progress (44 features)
 
@@ -434,12 +436,12 @@ All 44 Lite MES features are now implemented.
 3. Work order status report
 4. Overdue work order report
 
-### Standard MES Progress (84 features beyond Lite)
+### Standard MES Progress (86 features beyond Lite)
 
 | Category            | Done   | API Ready | Remaining | Progress |
 |---------------------|--------|-----------|-----------|----------|
 | Work Orders         | 0      | 0         | 6         | 0%       |
-| Process/Routing     | 4      | 0         | 5         | 44%      |
+| Process/Routing     | 6      | 0         | 5         | 55%      |
 | Data Collection     | 4      | 2         | 2         | 75%      |
 | Production Tracking | 1      | 2         | 5         | 38%      |
 | Equipment           | 3      | 6         | 0         | 100%     |
@@ -447,7 +449,7 @@ All 44 Lite MES features are now implemented.
 | Material            | 0      | 7         | 3         | 70%      |
 | Scheduling          | 0      | 3         | 6         | 33%      |
 | Reporting           | 5      | 5         | 3         | 77%      |
-| **TOTAL**           | **24** | **26**    | **34**    | **60%**  |
+| **TOTAL**           | **26** | **26**    | **34**    | **60%**  |
 
 > **Note:** "API Ready" means models + serializers + viewsets complete, pending UI implementation.
 

@@ -126,8 +126,8 @@ export default function EditOrdersPartsPage() {
                 id: "actions",
                 header: "Actions",
                 cell: ({ row }) => (
-                    // TODO: Edit part for go here? Perhaps as a sheet as well, or a dialog?
-                    <Button variant="outline" size="sm" onClick={() => console.log("edit", row.original.id)}>
+                    // TODO: Edit part functionality - perhaps as a sheet or dialog
+                    <Button variant="outline" size="sm" disabled title="Edit functionality coming soon">
                         <Pencil className="w-4 h-4 mr-1" />
                         Edit
                     </Button>

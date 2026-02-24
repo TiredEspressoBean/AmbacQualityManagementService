@@ -385,6 +385,7 @@ Good documentation:
 - Measurement data
 - Calibration records
 - Process logs
+- 3D model annotations (if applicable)
 
 **Steps:**
 
@@ -394,6 +395,9 @@ Good documentation:
 4. Select file or take photo
 5. Add description
 6. Save
+
+!!! tip "3D Part Annotations"
+    For parts with 3D models, you can use the Part Annotator to place visual annotations directly on the 3D model. Access this via the **Annotator** link on part details or quality reports.
 
 ---
 
@@ -438,6 +442,9 @@ By the end of this module, you will:
 - [ ] Read control charts
 - [ ] Identify trends requiring action
 
+!!! note "SPC Feature Status"
+    The SPC page provides visualization of measurement data and basic control charts. Advanced features like automated Cpk calculations and rule-based alerts are planned for future releases.
+
 ### 6.1 What is SPC?
 
 **Statistical Process Control (SPC):** Using data to monitor process stability and capability.
@@ -475,9 +482,12 @@ By the end of this module, you will:
 **Alert QA Manager when:**
 
 - Control chart shows out-of-control signals
-- Cpk drops below threshold
+- Measurements show concerning trends
 - Trend indicates deterioration
 - Process needs adjustment
+
+!!! tip "Manual Review"
+    Currently, SPC escalation requires manual review of charts. Monitor trends visually and communicate concerns to QA Manager directly.
 
 ---
 

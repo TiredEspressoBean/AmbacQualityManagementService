@@ -118,12 +118,21 @@ nav:
       - Document Types: admin/setup/document-types.md
       - Approval Templates: admin/setup/approval-templates.md
       - Sampling Rules: admin/setup/sampling-rules.md
+    - Deployment:
+      - Railway: admin/deployment/railway.md
   - Compliance:
+    - Overview: compliance/overview.md
     - Audit Trails: compliance/audit-trails.md
     - Electronic Signatures: compliance/signatures.md
     - Document Control: compliance/document-control.md
     - Export Controls: compliance/export-controls.md
     - Compliance Reports: compliance/reports.md
+    - Framework Mappings:
+      - ISO 9001: compliance/iso9001.md
+      - AS9100D: compliance/as9100.md
+      - IATF 16949: compliance/iatf-16949.md
+      - NIST 800-171: compliance/nist-800-171.md
+      - CMMC: compliance/cmmc.md
   - Integrations:
     - SSO / Azure AD: integrations/sso.md
     - HubSpot: integrations/hubspot.md

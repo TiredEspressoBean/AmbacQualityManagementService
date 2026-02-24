@@ -42,7 +42,8 @@ import {
     FormMessage,
     FormDescription,
 } from "@/components/ui/form";
-import { Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
     Dialog,
@@ -83,6 +84,10 @@ const required = {
 };
 
 export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => void }) {
+    // Extract IDs once to ensure consistency across all queries
+    const stepId = React.useMemo(() => part?.step?.id || part?.step, [part?.step?.id, part?.step]);
+    const partTypeId = React.useMemo(() => part?.part_type?.id || part?.part_type, [part?.part_type?.id, part?.part_type]);
+
     const [operatorPopoverOpen, setOperatorPopoverOpen] = React.useState(false);
     const [machinePopoverOpen, setMachinePopoverOpen] = React.useState(false);
     const [errorTypesPopoverOpen, setErrorTypesPopoverOpen] = React.useState(false);
@@ -96,7 +101,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const [newErrorDialogOpen, setNewErrorDialogOpen] = React.useState(false);
     const [newErrorName, setNewErrorName] = React.useState("");
     const [newErrorExample, setNewErrorExample] = React.useState("");
-    const [_fileInputKey, _setFileInputKey] = React.useState(Date.now());
+    const [fileInputKey, setFileInputKey] = React.useState(Date.now());
     const [isUploadingDocument, setIsUploadingDocument] = React.useState(false);
 
     const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
@@ -115,7 +120,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
 
 
     const { data: errorTypes, isLoading: _errorTypesLoading, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
-        part_type: part?.part_type?.id || part?.part_type
+        part_type: partTypeId
     });
 
     const createErrorType = useCreateErrorType();
@@ -127,11 +132,11 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         isError: measurementIsError,
         isLoading: measurementLoading
     } = useQuery<PaginatedMeasurementDefinitionList, Error>({
-        queryKey: ["measurement-definitions", { queries: { step: part?.step?.id || part?.step }}],
+        queryKey: ["measurement-definitions", stepId],
         queryFn: () => api.api_MeasurementDefinitions_list({
-            queries: { step: part?.step?.id || part?.step }
+            queries: { step: stepId }
         }),
-        enabled: !!(part?.step?.id || part?.step)
+        enabled: !!stepId
     });
 
     const operators = operatorPages?.pages.flatMap((p) => p.results) ?? [];
@@ -145,7 +150,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
             machine: undefined,
             status: "PENDING",
             description: "",
-            step: part?.step?.id || part?.step,
+            step: stepId,
             sampling_rule: part?.sampling_rule,
             measurements: [],
             classification: "internal",
@@ -155,25 +160,20 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
 
     const { control, handleSubmit, formState: { isSubmitting, errors } } = form;
     const { fields, replace } = useFieldArray({ control, name: "measurements" });
+    const measurementsInitialized = React.useRef(false);
 
-    // Initialize measurements when definitions are loaded
+    // Initialize measurements when definitions are loaded (only once)
     React.useEffect(() => {
-        if (measurementDefs?.results) {
+        if (measurementDefs?.results && !measurementsInitialized.current) {
             const initial = measurementDefs.results.map((def: { id: string }) => ({
                 definition: def.id,
                 value_numeric: undefined,
                 value_pass_fail: undefined,
             }));
             replace(initial);
+            measurementsInitialized.current = true;
         }
     }, [measurementDefs, replace]);
-
-    // Debug form errors
-    React.useEffect(() => {
-        if (Object.keys(errors).length > 0) {
-            console.log("Form validation errors:", errors);
-        }
-    }, [errors]);
 
     if (measurementLoading || operatorsLoading || machinesLoading) {
         return (
@@ -195,7 +195,6 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     }
 
     const onSubmit = async (values: FormValues) => {
-        console.log("Form submitted with values:", values);
         try {
             // Create the quality report first
             const createdReport = await api.api_ErrorReports_create(values, {
@@ -704,7 +703,22 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                 {fields.length > 0 && (
                     <div className="space-y-4">
                         <div className="border-t pt-4">
-                            <h3 className="text-lg font-medium mb-4">Measurements</h3>
+                            <div className="flex items-center gap-2 mb-4">
+                                <h3 className="text-lg font-medium">Measurements</h3>
+                                <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
+                                    Required
+                                </span>
+                            </div>
+
+                            {errors.measurements && (
+                                <Alert variant="destructive" className="mb-4">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        All measurements must be filled in before submitting the quality report.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             <div className="space-y-4">
                                 {fields.map((field, index) => {
                                     const def = measurementDefs?.results.find((d: { id: string }) => d.id === field.definition);
@@ -717,10 +731,21 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                             name={`measurements.${index}.${def.type === "NUMERIC" ? "value_numeric" : "value_pass_fail"}` as const}
                                             render={({ field: measurementField }) => (
                                                 <FormItem className="border rounded-md p-4">
-                                                    <FormLabel className="text-base">
+                                                    <FormLabel className="text-base flex items-center gap-2">
                                                         {def.label}
-                                                        {def.unit && <span className="text-muted-foreground ml-1">({def.unit})</span>}
+                                                        {def.unit && <span className="text-muted-foreground">({def.unit})</span>}
+                                                        {def.required && (
+                                                            <span className="text-xs text-destructive">*</span>
+                                                        )}
                                                     </FormLabel>
+                                                    {def.nominal !== null && def.nominal !== undefined && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Nominal: {def.nominal}
+                                                            {def.upper_tol && ` +${def.upper_tol}`}
+                                                            {def.lower_tol && ` -${def.lower_tol}`}
+                                                            {def.unit && ` ${def.unit}`}
+                                                        </p>
+                                                    )}
                                                     <FormControl>
                                                         {def.type === "NUMERIC" ? (
                                                             <Input

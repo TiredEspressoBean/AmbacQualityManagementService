@@ -53,11 +53,11 @@ Example template: "Engineering Approval"
 - Requires: 1 Engineering approval, 1 QA approval
 - Order: Sequential (Engineering first)
 
-## Pending Approval
+## Under Review
 
 After submission:
 
-1. Document status changes to **Pending Approval**
+1. Document status changes to **Under Review**
 2. Approvers are notified
 3. Document appears in approvers' queues
 4. Editing is locked during approval

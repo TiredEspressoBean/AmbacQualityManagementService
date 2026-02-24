@@ -54,7 +54,7 @@ class VectorAwareTestRunner(DiscoverRunner):
                 try:
                     self.connection.settings_dict['NAME'] = old_db_name
                     self.connection.close()
-                except:
+                except Exception:
                     pass
 
         # Monkey-patch the database creation method

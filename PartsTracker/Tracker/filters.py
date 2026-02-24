@@ -3,9 +3,9 @@ from django_filters.widgets import QueryArrayWidget
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from django.db.models import Q
-
-from .models import *
 import django_filters
+
+from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies
 
 
 class CharInFilter(BaseInFilter, CharFilter):

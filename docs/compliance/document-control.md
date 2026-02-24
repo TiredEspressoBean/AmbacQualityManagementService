@@ -161,11 +161,14 @@ Retention per document type:
 
 | Permission | Allows |
 |------------|--------|
-| `view_document` | View documents |
-| `add_document` | Create documents |
-| `change_document` | Edit, submit for approval |
-| `approve_document` | Approve documents |
-| `view_confidential_document` | Access confidential docs |
+| `view_documents` | View documents |
+| `add_documents` | Create documents |
+| `change_documents` | Edit, submit for approval |
+| `classify_documents` | Set document classification level |
+| `view_confidential_documents` | Access CONFIDENTIAL docs |
+| `view_restricted_documents` | Access RESTRICTED docs |
+| `view_secret_documents` | Access SECRET docs |
+| `respond_to_approval` | Approve documents when assigned |
 
 ## Best Practices
 

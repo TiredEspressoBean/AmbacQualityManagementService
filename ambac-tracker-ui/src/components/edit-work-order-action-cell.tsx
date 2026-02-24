@@ -36,10 +36,7 @@ export function EditWorkOrderActionsCell({workOrderId}: Props) {
         deleteWorkOrder.mutate(workOrderId, {
             onSuccess: () => {
                 setOpen(false);
-                console.log(`WorkOrder ${workOrderId} deleted`);
-                toast.success(`WorkOrder Type #${workOrderId} deleted successfully.`);
-            }, onError: (error) => {
-                console.error("Failed to archive part:", error);
+                toast.success(`WorkOrder #${workOrderId} deleted successfully.`);
             },
         });
     };

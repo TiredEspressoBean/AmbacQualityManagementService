@@ -66,7 +66,7 @@ A self-contained Quality Management System with:
 - **AI digital coworker** (local LLM with semantic document search)
 - **3D visual quality management** (GPU-accelerated defect heatmaps)
 - **Customer portal** (self-service visibility with notification preferences)
-- **Compliance-ready architecture** (80% NIST 800-171, AS9100D foundations)
+- **Compliance-ready architecture** (100% NIST 800-171/CMMC Level 2, AS9100D foundations)
 
 ### Key Differentiators
 
@@ -78,7 +78,7 @@ A self-contained Quality Management System with:
 - ✅ Full source code access (no vendor lock-in)
 
 **vs. Building From Scratch:**
-- ✅ 8 months to 80% NIST compliance (vs. 2-3 years typical)
+- ✅ 8 months to 100% NIST 800-171 compliance (vs. 2-3 years typical)
 - ✅ Modern stack (Django, React, LangGraph) vs. legacy tech
 - ✅ Novel features (3D viz, AI) built-in vs. bolt-on later
 

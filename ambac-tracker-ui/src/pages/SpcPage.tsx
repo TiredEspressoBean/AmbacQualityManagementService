@@ -692,16 +692,6 @@ export default function SpcPage() {
         enabled: selectedMeasurementId !== null,
     });
 
-    // Debug logging for SPC data
-    console.log('[SPC] State:', {
-        selectedMeasurementId,
-        isLoadingSpcData,
-        spcDataStatus,
-        spcDataError: spcDataError?.message,
-        capabilityError: capabilityError?.message,
-        dataPoints: spcApiData?.data_points?.length ?? 0,
-    });
-
     // Report email hook
     const { requestReport, isRequesting } = useReportEmail();
 
@@ -759,16 +749,11 @@ export default function SpcPage() {
 
     // Reset measurement when step changes
     const handleStepChange = (stepId: string) => {
-        console.log('[SPC] handleStepChange called with stepId:', stepId);
         setSelectedStepId(stepId);
         const step = selectedProcess?.steps.find(s => s.id === stepId);
-        console.log('[SPC] Found step:', step?.name, 'measurements:', step?.measurements?.length);
         if (step && step.measurements.length > 0) {
-            console.log('[SPC] Setting measurementId to:', step.measurements[0].id);
             setSelectedMeasurementId(step.measurements[0].id);
         } else {
-            console.log('[SPC] No measurements, setting measurementId to null');
-            // Reset to null if step has no measurements
             setSelectedMeasurementId(null);
         }
     };

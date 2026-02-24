@@ -1935,8 +1935,19 @@ def edit_model_page(request, model_name):
 def deal_pass(request, order_id):
     order = get_object_or_404(Orders, pk=order_id)
     parts = Parts.objects.filter(order_id=order.pk)
+    advanced = 0
+    failed = 0
     for part in parts:
-        part.increment_step()
+        try:
+            part.increment_step()
+            advanced += 1
+        except ValueError:
+            failed += 1
+            continue  # Skip parts that fail validation
+    if failed > 0:
+        messages.warning(request, f"Advanced {advanced} parts, {failed} parts could not be advanced due to validation requirements.")
+    else:
+        messages.success(request, f"Advanced {advanced} parts.")
     return redirect("qa_orders")
 
 def history(request):

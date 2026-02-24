@@ -46,20 +46,21 @@ An order may have multiple work orders if:
 
 | Status | Meaning |
 |--------|---------|
-| **Draft** | Created but not started |
-| **Released** | Ready to work |
+| **Pending** | Created but not started |
 | **In Progress** | Active production |
 | **On Hold** | Temporarily paused |
-| **Complete** | All parts finished |
+| **Waiting for Operator** | Ready to work, awaiting assignment |
+| **Completed** | All parts finished |
 | **Cancelled** | Work order cancelled |
 
 ## Priority Levels
 
-| Priority | SLA | Use When |
-|----------|-----|----------|
-| **Normal** | Standard lead time | Default priority |
-| **High** | Expedited | Important customer, tight deadline |
-| **Rush** | Immediate | Critical, drop everything |
+| Priority | Value | Use When |
+|----------|-------|----------|
+| **Urgent** | 1 | Critical, drop everything |
+| **High** | 2 | Important customer, tight deadline |
+| **Normal** | 3 | Default priority (standard lead time) |
+| **Low** | 4 | Can wait, no deadline pressure |
 
 Priority affects:
 

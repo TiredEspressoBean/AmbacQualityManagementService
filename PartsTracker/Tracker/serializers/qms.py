@@ -1268,3 +1268,270 @@ class CAPASerializer(serializers.ModelSerializer, SecureModelMixin):
         from Tracker.models.qms import CapaStatus
         status_displays = dict(CapaStatus.choices)
         return status_displays.get(obj.computed_status, obj.computed_status)
+
+
+class StepOverrideSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Serializer for step override requests."""
+    from Tracker.models import StepOverride
+
+    block_type_display = serializers.CharField(source='get_block_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    requested_by_info = serializers.SerializerMethodField()
+    approved_by_info = serializers.SerializerMethodField()
+    step_execution_info = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+
+    class Meta:
+        from Tracker.models import StepOverride
+        model = StepOverride
+        fields = (
+            'id',
+            'step_execution', 'step_execution_info',
+            'block_type', 'block_type_display',
+            'requested_by', 'requested_by_info',
+            'requested_at',
+            'reason',
+            'approved_by', 'approved_by_info',
+            'approved_at',
+            'status', 'status_display',
+            'expires_at', 'is_expired',
+            'used', 'used_at',
+            'created_at', 'updated_at', 'archived'
+        )
+        read_only_fields = (
+            'requested_at', 'approved_at', 'used_at',
+            'created_at', 'updated_at'
+        )
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_requested_by_info(self, obj):
+        if obj.requested_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.requested_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_approved_by_info(self, obj):
+        if obj.approved_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.approved_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_step_execution_info(self, obj):
+        if obj.step_execution:
+            return {
+                'id': str(obj.step_execution.id),
+                'part_id': str(obj.step_execution.part_id) if obj.step_execution.part_id else None,
+                'part_erp_id': obj.step_execution.part.ERP_id if obj.step_execution.part else None,
+                'step_name': obj.step_execution.step.name if obj.step_execution.step else None,
+                'status': obj.step_execution.status,
+            }
+        return None
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_expired(self, obj):
+        """Check if override has expired."""
+        from django.utils import timezone
+        if not obj.expires_at:
+            return False
+        return obj.expires_at < timezone.now()
+
+
+class FPIRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Serializer for First Piece Inspection records."""
+    from Tracker.models import FPIRecord
+
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    result_display = serializers.CharField(source='get_result_display', read_only=True)
+    work_order_info = serializers.SerializerMethodField()
+    step_info = serializers.SerializerMethodField()
+    part_type_info = serializers.SerializerMethodField()
+    designated_part_info = serializers.SerializerMethodField()
+    inspected_by_info = serializers.SerializerMethodField()
+    waived_by_info = serializers.SerializerMethodField()
+    equipment_info = serializers.SerializerMethodField()
+
+    class Meta:
+        from Tracker.models import FPIRecord
+        model = FPIRecord
+        fields = (
+            'id',
+            'work_order', 'work_order_info',
+            'step', 'step_info',
+            'part_type', 'part_type_info',
+            'designated_part', 'designated_part_info',
+            'equipment', 'equipment_info',
+            'shift_date',
+            'status', 'status_display',
+            'result', 'result_display',
+            'inspected_by', 'inspected_by_info',
+            'inspected_at',
+            'waived', 'waived_by', 'waived_by_info',
+            'waive_reason',
+            'created_at', 'updated_at', 'archived'
+        )
+        read_only_fields = (
+            'status', 'result', 'inspected_by', 'inspected_at',
+            'waived', 'waived_by', 'waive_reason',
+            'created_at', 'updated_at'
+        )
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_work_order_info(self, obj):
+        if obj.work_order:
+            return {
+                'id': str(obj.work_order.id),
+                'erp_id': obj.work_order.ERP_id,
+                'status': obj.work_order.workorder_status,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_step_info(self, obj):
+        if obj.step:
+            return {
+                'id': str(obj.step.id),
+                'name': obj.step.name,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_part_type_info(self, obj):
+        if obj.part_type:
+            return {
+                'id': str(obj.part_type.id),
+                'name': obj.part_type.name,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_designated_part_info(self, obj):
+        if obj.designated_part:
+            return {
+                'id': str(obj.designated_part.id),
+                'erp_id': obj.designated_part.ERP_id,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_inspected_by_info(self, obj):
+        if obj.inspected_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.inspected_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_waived_by_info(self, obj):
+        if obj.waived_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.waived_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_equipment_info(self, obj):
+        if obj.equipment:
+            return {
+                'id': str(obj.equipment.id),
+                'name': obj.equipment.name,
+            }
+        return None
+
+
+class StepExecutionMeasurementSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Serializer for step execution measurements."""
+    from Tracker.models import StepExecutionMeasurement
+
+    step_execution_info = serializers.SerializerMethodField()
+    measurement_definition_info = serializers.SerializerMethodField()
+    recorded_by_info = serializers.SerializerMethodField()
+    equipment_info = serializers.SerializerMethodField()
+    spec_status = serializers.SerializerMethodField()
+
+    class Meta:
+        from Tracker.models import StepExecutionMeasurement
+        model = StepExecutionMeasurement
+        fields = (
+            'id',
+            'step_execution', 'step_execution_info',
+            'measurement_definition', 'measurement_definition_info',
+            'value', 'string_value',
+            'is_within_spec', 'spec_status',
+            'recorded_by', 'recorded_by_info',
+            'recorded_at',
+            'equipment', 'equipment_info',
+            'created_at', 'updated_at', 'archived'
+        )
+        read_only_fields = ('is_within_spec', 'recorded_at', 'created_at', 'updated_at')
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_step_execution_info(self, obj):
+        if obj.step_execution:
+            return {
+                'id': str(obj.step_execution.id),
+                'part_id': str(obj.step_execution.part_id) if obj.step_execution.part_id else None,
+                'part_erp_id': obj.step_execution.part.ERP_id if obj.step_execution.part else None,
+                'step_name': obj.step_execution.step.name if obj.step_execution.step else None,
+                'status': obj.step_execution.status,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_measurement_definition_info(self, obj):
+        if obj.measurement_definition:
+            defn = obj.measurement_definition
+            return {
+                'id': str(defn.id),
+                'label': defn.label,
+                'type': defn.type,
+                'unit': defn.unit,
+                'nominal': float(defn.nominal) if defn.nominal else None,
+                'upper_tol': float(defn.upper_tol) if defn.upper_tol else None,
+                'lower_tol': float(defn.lower_tol) if defn.lower_tol else None,
+                'required': defn.required,
+            }
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_recorded_by_info(self, obj):
+        if obj.recorded_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.recorded_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_equipment_info(self, obj):
+        if obj.equipment:
+            return {
+                'id': str(obj.equipment.id),
+                'name': obj.equipment.name,
+            }
+        return None
+
+    @extend_schema_field(serializers.CharField())
+    def get_spec_status(self, obj):
+        """Human-readable spec status."""
+        if obj.is_within_spec is None:
+            return 'N/A'
+        return 'PASS' if obj.is_within_spec else 'FAIL'
+
+    def create(self, validated_data):
+        """Set recorded_by from request context."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['recorded_by'] = request.user
+        return super().create(validated_data)
+
+
+class StepExecutionMeasurementWriteSerializer(serializers.Serializer):
+    """Lightweight serializer for recording measurements."""
+    measurement_definition = serializers.UUIDField()
+    value = serializers.DecimalField(max_digits=12, decimal_places=4, required=False, allow_null=True)
+    string_value = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    equipment = serializers.UUIDField(required=False, allow_null=True)
+
+
+class BulkMeasurementSerializer(serializers.Serializer):
+    """Serializer for recording multiple measurements at once."""
+    step_execution = serializers.UUIDField()
+    measurements = StepExecutionMeasurementWriteSerializer(many=True)

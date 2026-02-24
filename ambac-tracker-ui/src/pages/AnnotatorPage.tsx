@@ -142,8 +142,6 @@ export function AnnotatorPage() {
                         showHeader={true}
                         startExpanded={true}
                         onSaveComplete={() => {
-                            console.log("Annotations saved successfully");
-                            // Optionally navigate back to selection
                             setStartAnnotating(false);
                             setSelectedReportIds([]);
                         }}

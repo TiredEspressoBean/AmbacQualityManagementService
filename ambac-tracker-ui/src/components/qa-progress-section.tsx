@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip } from "lucide-react";
 import { MeasurementProgressChart } from "./measurement-progress-chart";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
+import { memo } from "react";
 
 type QaProgressSectionProps = {
     workOrder: any;
@@ -11,7 +12,7 @@ type QaProgressSectionProps = {
     isLoadingParts: boolean;
 };
 
-export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgressSectionProps) {
+export const QaProgressSection = memo(function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgressSectionProps) {
     const isBatchProcess = workOrder?.is_batch_work_order || false;
 
     // Calculate progress stats
@@ -138,7 +139,7 @@ export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgre
             </Card>
 
             {/* Measurement Progress Chart */}
-            <MeasurementProgressChart workOrder={workOrder} parts={parts} />
+            <MeasurementProgressChart workOrder={workOrder} />
 
             {/* Digital Traveler - Step History */}
             <Card>
@@ -298,4 +299,4 @@ export function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgre
             )}
         </div>
     );
-}
+});

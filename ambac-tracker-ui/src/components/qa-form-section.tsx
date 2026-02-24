@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartQualityForm } from "./part-quality-form";
-import { useState, useMemo } from "react";
+import { FpiStatusBanner } from "./fpi-status-banner";
+import { useState } from "react";
 import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Lock } from "lucide-react";
 import {
     Select,
@@ -12,8 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
-type FpiStatus = 'not_required' | 'pending' | 'passed' | 'failed';
+import { useFpiCheckStatus } from "@/hooks/useFpiRecords";
 
 type QaFormSectionProps = {
     workOrder: any;
@@ -22,52 +22,14 @@ type QaFormSectionProps = {
     isBatchProcess: boolean;
     selectedPart: any | null;
     onPartSelect: (part: any | null) => void;
-    /** Quality reports for this work order - used to check FPI status */
+    /** Quality reports for this work order - used for legacy FPI check fallback */
     qualityReports?: any[];
     /** Step info with requires_first_piece_inspection flag */
-    stepInfo?: { requires_first_piece_inspection?: boolean };
+    stepInfo?: { id?: string; requires_first_piece_inspection?: boolean };
 };
 
-/**
- * Compute FPI status for a step based on parts and quality reports
- */
-function computeFpiStatus(
-    parts: any[],
-    qualityReports: any[],
-    stepRequiresFpi: boolean
-): { status: FpiStatus; firstPiecePart: any | null; fpiReport: any | null } {
-    if (!stepRequiresFpi) {
-        return { status: 'not_required', firstPiecePart: null, fpiReport: null };
-    }
-
-    // Find FPI reports for this step
-    const fpiReports = qualityReports.filter(qr => qr.is_first_piece);
-
-    // Check for passing FPI
-    const passingFpi = fpiReports.find(qr => qr.status === 'PASS');
-    if (passingFpi) {
-        const fpiPart = parts.find(p => p.id === passingFpi.part);
-        return { status: 'passed', firstPiecePart: fpiPart, fpiReport: passingFpi };
-    }
-
-    // Check for failing FPI
-    const failingFpi = fpiReports.find(qr => qr.status === 'FAIL');
-    if (failingFpi) {
-        const fpiPart = parts.find(p => p.id === failingFpi.part);
-        return { status: 'failed', firstPiecePart: fpiPart, fpiReport: failingFpi };
-    }
-
-    // No FPI yet - find the first piece candidate (earliest created_at)
-    const sortedParts = [...parts].sort((a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    const firstPiecePart = sortedParts[0] || null;
-
-    return { status: 'pending', firstPiecePart, fpiReport: null };
-}
-
 export function QaFormSection({
-    _workOrder,
+    workOrder,
     parts,
     isLoadingParts,
     isBatchProcess,
@@ -79,25 +41,36 @@ export function QaFormSection({
     const [showQaForm, setShowQaForm] = useState(false);
     const [currentBatchIndex, setCurrentBatchIndex] = useState(0);
 
-    // Compute FPI status
-    const fpiStatus = useMemo(() => {
-        const requiresFpi = stepInfo?.requires_first_piece_inspection ?? false;
-        return computeFpiStatus(parts, qualityReports, requiresFpi);
-    }, [parts, qualityReports, stepInfo?.requires_first_piece_inspection]);
+    // Use the new FPI API to check status
+    const workOrderId = workOrder?.id;
+    const stepId = stepInfo?.id;
 
-    // Check if a part is blocked by FPI
-    const isBlockedByFpi = (part: any) => {
-        if (fpiStatus.status === 'not_required' || fpiStatus.status === 'passed') {
+    const { data: fpiApiStatus, refetch: refetchFpi } = useFpiCheckStatus(
+        workOrderId,
+        stepId,
+        { enabled: !!workOrderId && !!stepId && stepInfo?.requires_first_piece_inspection }
+    );
+
+    // Check if a part is blocked by FPI using API response
+    const isBlockedByFpi = (_part: any) => {
+        // If FPI not required or satisfied, not blocked
+        if (!fpiApiStatus?.requires_fpi || fpiApiStatus?.satisfied) {
             return false;
         }
-        // In pending or failed state, all parts except the first piece candidate are blocked
-        return part.id !== fpiStatus.firstPiecePart?.id;
+        // If FPI is required but not satisfied, parts are blocked
+        // In the new model, we don't designate specific parts as "first piece" upfront
+        // The FPI record tracks this separately
+        return true;
     };
 
-    // Check if a part is the first piece candidate
-    const isFirstPieceCandidate = (part: any) => {
-        return fpiStatus.status !== 'not_required' &&
-               fpiStatus.firstPiecePart?.id === part.id;
+    // Check if FPI is pending (for UI display)
+    const isFpiPending = fpiApiStatus?.requires_fpi && !fpiApiStatus?.satisfied;
+
+    // Check if a part is the first piece candidate (legacy compatibility)
+    const isFirstPieceCandidate = (_part: any) => {
+        // With the new API model, the first piece is tracked in FPIRecord
+        // For now, return false as the banner handles this
+        return false;
     };
 
     if (isLoadingParts) {
@@ -187,44 +160,13 @@ export function QaFormSection({
 
     return (
         <div className="space-y-4">
-            {/* FPI Status Banner */}
-            {fpiStatus.status !== 'not_required' && !showQaForm && (
-                <div className={`rounded-lg p-3 border ${
-                    fpiStatus.status === 'passed'
-                        ? 'bg-green-500/10 border-green-500/50'
-                        : fpiStatus.status === 'failed'
-                        ? 'bg-red-500/10 border-red-500/50'
-                        : 'bg-amber-500/10 border-amber-500/50'
-                }`}>
-                    <div className="flex items-center gap-3">
-                        {fpiStatus.status === 'passed' ? (
-                            <ShieldCheck className="h-5 w-5 text-green-600" />
-                        ) : fpiStatus.status === 'failed' ? (
-                            <AlertTriangle className="h-5 w-5 text-red-600" />
-                        ) : (
-                            <Lock className="h-5 w-5 text-amber-600" />
-                        )}
-                        <div className="flex-1">
-                            <p className="font-medium text-sm">
-                                First Piece Inspection {fpiStatus.status === 'passed' ? 'Passed' : fpiStatus.status === 'failed' ? 'Failed' : 'Required'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                {fpiStatus.status === 'passed' ? (
-                                    'All parts can now proceed through this step.'
-                                ) : fpiStatus.status === 'failed' ? (
-                                    'FPI failed. Re-inspect or fix setup before other parts can proceed.'
-                                ) : (
-                                    `Part ${fpiStatus.firstPiecePart?.ERP_id || 'TBD'} must pass inspection before other parts can proceed.`
-                                )}
-                            </p>
-                        </div>
-                        {fpiStatus.status !== 'passed' && fpiStatus.firstPiecePart && (
-                            <Badge variant={fpiStatus.status === 'failed' ? 'destructive' : 'secondary'}>
-                                {parts.filter(p => p.id !== fpiStatus.firstPiecePart?.id).length} blocked
-                            </Badge>
-                        )}
-                    </div>
-                </div>
+            {/* FPI Status Banner - Now using API-driven component */}
+            {workOrderId && stepId && stepInfo?.requires_first_piece_inspection && !showQaForm && (
+                <FpiStatusBanner
+                    workOrderId={workOrderId}
+                    stepId={stepId}
+                    onStatusChange={() => refetchFpi()}
+                />
             )}
 
             {/* Compact Batch Header */}
@@ -266,6 +208,13 @@ export function QaFormSection({
                                 No parts available for QA at this time.
                             </p>
                         </div>
+                    ) : isFpiPending ? (
+                        <div className="text-center py-4">
+                            <Lock className="h-8 w-8 mx-auto text-amber-500 mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                                Complete First Piece Inspection above before selecting parts.
+                            </p>
+                        </div>
                     ) : (
                         <div className="flex items-center gap-3">
                             <label className="text-sm font-medium whitespace-nowrap">Select Part:</label>
@@ -286,23 +235,11 @@ export function QaFormSection({
                                         <SelectItem
                                             key={part.id}
                                             value={part.id.toString()}
-                                            disabled={isBlockedByFpi(part)}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className={isBlockedByFpi(part) ? 'text-muted-foreground' : ''}>
+                                                <span>
                                                     {part.ERP_id} - {part.part_status?.replace('_', ' ')}
                                                 </span>
-                                                {isFirstPieceCandidate(part) && (
-                                                    <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                                                        First Piece
-                                                    </Badge>
-                                                )}
-                                                {isBlockedByFpi(part) && (
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        <Lock className="h-3 w-3 mr-1" />
-                                                        Waiting FPI
-                                                    </Badge>
-                                                )}
                                             </div>
                                         </SelectItem>
                                     ))}
@@ -343,12 +280,6 @@ export function QaFormSection({
                             {isBatchProcess && (
                                 <Badge variant="secondary" className="text-xs">
                                     Batch
-                                </Badge>
-                            )}
-                            {isFirstPieceCandidate(selectedPart) && (
-                                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                                    <ShieldCheck className="h-3 w-3 mr-1" />
-                                    First Piece Inspection
                                 </Badge>
                             )}
                         </div>

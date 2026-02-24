@@ -8,6 +8,7 @@ import { z } from "zod";
 import { PartAnnotator } from "@/pages/PartAnnotator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useMemo, memo } from "react";
 
 type WorkOrder = z.infer<typeof schemas.WorkOrder>;
 type Part = z.infer<typeof schemas.Part>;
@@ -17,14 +18,17 @@ type Props = {
     selectedPart: Part | null;
 };
 
-export function QaRightPanel({ workOrder, selectedPart }: Props) {
+export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart }: Props) {
+    // Memoize queries to prevent unnecessary refetches when parent rerenders
+    const partTypeId = selectedPart?.part_type;
+    const threeDModelQueries = useMemo(() => ({
+        part_type: partTypeId,
+        limit: 1,
+    }), [partTypeId]);
+
     // Fetch 3D models for the selected part's part type (non-archived only)
     const { data: modelsData, isLoading: modelsLoading } = useRetrieveThreeDModels({
-        queries: {
-            part_type: selectedPart?.part_type,
-            // archived: false,
-            limit: 1,
-        },
+        queries: threeDModelQueries,
     });
 
     // Fetch part traveler when a part is selected
@@ -277,4 +281,4 @@ export function QaRightPanel({ workOrder, selectedPart }: Props) {
             )}
         </Tabs>
     );
-}
+});

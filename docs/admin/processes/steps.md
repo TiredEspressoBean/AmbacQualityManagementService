@@ -95,15 +95,34 @@ Enable FPI for this step:
 2. First part must pass FPI
 3. Remaining parts held until FPI passes
 
+#### FPI Scope
+
+Configure when FPI resets:
+
+| Scope | FPI Required |
+|-------|--------------|
+| **Per Work Order** | Once per work order |
+| **Per Shift** | Each shift change |
+| **Per Equipment** | Each machine/equipment change |
+| **Per Operator** | Each operator change |
+
 See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 
-### Approval Required
+### QA Sign-off Required
 
-Require sign-off to proceed:
+Require QA approval to advance:
 
-1. Toggle **Approval Required**
-2. Select approval template
+1. Toggle **Requires QA Sign-off**
+2. QA inspector must approve via QaApproval
 3. Parts wait for approval before advancing
+
+### Batch Completion
+
+Synchronize parts in batch:
+
+1. Toggle **Requires Batch Completion**
+2. All parts in work order must reach "Ready" status
+3. Parts advance together when batch is complete
 
 ### Hold Point
 
@@ -120,6 +139,24 @@ Enable automatic advancement:
 1. Toggle **Auto-Advance**
 2. Parts move forward when requirements met
 3. No manual action needed
+
+### Measurement Failure Blocking
+
+Block parts when measurements fail:
+
+1. Toggle **Block on Measurement Failure**
+2. Parts cannot advance if any measurement is out of spec
+3. Requires override approval to proceed
+
+### Override Settings
+
+Configure override behavior:
+
+| Setting | Description |
+|---------|-------------|
+| **Override Expiry Hours** | Hours until override expires (default: 24) |
+| **Undo Window Minutes** | Minutes during which completion can be undone (default: 15) |
+| **Rollback Requires Approval** | Whether rolling back requires supervisor approval |
 
 ## Sampling Configuration
 

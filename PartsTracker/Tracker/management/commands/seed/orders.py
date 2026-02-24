@@ -43,6 +43,7 @@ class OrderSeeder(BaseSeeder):
         """Create realistic orders with proper status distribution and timing."""
         orders = []
         config = self.config
+        created_count = 0
 
         # Demo-friendly status distribution
         status_weights = [
@@ -77,24 +78,33 @@ class OrderSeeder(BaseSeeder):
             customer = random.choice(customers)
             order_number = f"ORD-{order_date.strftime('%y%m')}-{i + 1:03d}"
 
-            order = Orders.objects.create(
+            # Use get_or_create to make seeder idempotent
+            order, created = Orders.objects.get_or_create(
                 tenant=self.tenant,
                 name=order_number,
-                customer=customer,
-                company=customer.parent_company,
-                order_status=status,
-                estimated_completion=estimated_completion,
-                customer_note=f"Diesel injector remanufacturing order for {customer.parent_company.name}"
+                defaults={
+                    'customer': customer,
+                    'company': customer.parent_company,
+                    'order_status': status,
+                    'estimated_completion': estimated_completion,
+                    'customer_note': f"Diesel injector remanufacturing order for {customer.parent_company.name}"
+                }
             )
 
-            # Backdate order
-            order_timestamp = timezone.make_aware(datetime.combine(order_date, datetime.min.time()))
-            Orders.objects.filter(pk=order.pk).update(created_at=order_timestamp, updated_at=order_timestamp)
-            order.refresh_from_db()
+            if created:
+                created_count += 1
+                # Backdate order (only for newly created)
+                order_timestamp = timezone.make_aware(datetime.combine(order_date, datetime.min.time()))
+                Orders.objects.filter(pk=order.pk).update(created_at=order_timestamp, updated_at=order_timestamp)
+                order.refresh_from_db()
 
             orders.append(order)
 
-        self.log(f"Created {config['orders']} orders with realistic status distribution")
+        skipped = config['orders'] - created_count
+        if skipped > 0:
+            self.log(f"Created {created_count} orders ({skipped} already existed)")
+        else:
+            self.log(f"Created {created_count} orders with realistic status distribution")
         return orders
 
     # =========================================================================
@@ -133,53 +143,62 @@ class OrderSeeder(BaseSeeder):
                     order, order_part_type, order_process, wo_index
                 )
 
-                work_order = WorkOrder.objects.create(
+                # Use get_or_create to make seeder idempotent
+                work_order, created = WorkOrder.objects.get_or_create(
                     tenant=self.tenant,
                     ERP_id=work_order_details['erp_id'],
-                    related_order=order,
-                    process=order_process,
-                    expected_completion=work_order_details['expected_completion'],
-                    quantity=work_order_details['quantity'],
-                    workorder_status=work_order_details['status']
-                )
-                total_work_orders += 1
-
-                # Backdate work order
-                self.backdate_object(
-                    WorkOrder, work_order.id, wo_timestamp,
-                    actor=random.choice(users.get('managers', users['employees']))
+                    defaults={
+                        'related_order': order,
+                        'process': order_process,
+                        'expected_completion': work_order_details['expected_completion'],
+                        'quantity': work_order_details['quantity'],
+                        'workorder_status': work_order_details['status']
+                    }
                 )
 
-                # Create parts using model method
+                if created:
+                    total_work_orders += 1
+
+                    # Backdate work order (only for new ones)
+                    self.backdate_object(
+                        WorkOrder, work_order.id, wo_timestamp,
+                        actor=random.choice(users.get('managers', users['employees']))
+                    )
+
+                # Create parts using model method (idempotent - won't create duplicates)
                 initial_step = order_steps[0]
                 parts = work_order.create_parts_batch(order_part_type, initial_step, work_order_details['quantity'])
 
-                # Set order reference
-                Parts.objects.filter(id__in=[p.id for p in parts]).update(order=work_order.related_order)
+                if created:
+                    # Only do setup for newly created work orders
+                    # Set order reference
+                    Parts.objects.filter(id__in=[p.id for p in parts]).update(order=work_order.related_order)
 
-                # Backdate parts
-                parts_timestamp = wo_timestamp + timedelta(minutes=random.randint(10, 60))
-                Parts.objects.filter(work_order=work_order).update(
-                    created_at=parts_timestamp,
-                    updated_at=parts_timestamp
-                )
+                    # Backdate parts
+                    parts_timestamp = wo_timestamp + timedelta(minutes=random.randint(10, 60))
+                    Parts.objects.filter(work_order=work_order).update(
+                        created_at=parts_timestamp,
+                        updated_at=parts_timestamp
+                    )
 
-                # Distribute parts across wave-front range (realistic progression)
-                self._distribute_parts_as_wave(
-                    work_order, order_steps, wave_min, wave_max,
-                    order.order_status, parts_timestamp
-                )
+                    # Distribute parts across wave-front range (realistic progression)
+                    self._distribute_parts_as_wave(
+                        work_order, order_steps, wave_min, wave_max,
+                        order.order_status, parts_timestamp
+                    )
 
-                # Note: Step transition logs are audit records protected by compliance triggers
-                # and cannot be backdated. They will use current timestamps.
+                    # Note: Step transition logs are audit records protected by compliance triggers
+                    # and cannot be backdated. They will use current timestamps.
 
-                # Ensure sampling is evaluated
-                work_order._bulk_evaluate_sampling(work_order.parts.all())
+                    # Ensure sampling is evaluated
+                    work_order._bulk_evaluate_sampling(work_order.parts.all())
 
-                # Quality reports will be created by the quality seeder
-                total_parts += len(parts)
+                    total_parts += len(parts)
 
-        self.log(f"Created {total_work_orders} work orders with {total_parts} parts")
+        if total_work_orders > 0:
+            self.log(f"Created {total_work_orders} new work orders with {total_parts} new parts")
+        else:
+            self.log(f"All work orders already existed (no new data created)")
 
     def _determine_work_orders_for_order(self, order):
         """Determine how many work orders this order should have."""

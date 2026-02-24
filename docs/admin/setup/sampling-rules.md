@@ -8,28 +8,24 @@ Sampling rules determine:
 
 - **How many** parts to inspect (sample size)
 - **When** to inspect (conditions)
-- **What level** of inspection (AQL, etc.)
+- **What level** of inspection (normal or fallback)
 - **Accept/reject criteria**
 
 ## Sampling Concepts
 
-### AQL (Acceptable Quality Level)
-Statistical sampling per ANSI/ASQ Z1.4:
-- Based on lot size
-- Defines acceptable defect rate
-- Standard tables for sample size
-
-### Skip-Lot
-Skip inspection for proven quality:
-- After N consecutive good lots
-- Resume on failure
-- Rewards good performance
+### Fallback Sampling
+When quality issues occur, tighter sampling is automatically triggered:
+- After N consecutive failures, fallback ruleset activates
+- Fallback remains active until N consecutive passes
+- Automatic deactivation rewards improved performance
 
 ### 100% Inspection
 Inspect every part:
 - For critical features
 - New products/suppliers
 - After quality issues
+
+Note: Full AQL tables per ANSI/ASQ Z1.4 are not currently implemented. Use percentage or fixed sampling for similar coverage.
 
 ## Creating Sampling Rules
 
@@ -40,7 +36,7 @@ Inspect every part:
 | Field | Description |
 |-------|-------------|
 | **Name** | Rule name |
-| **Rule Type** | AQL, Skip-lot, Fixed, etc. |
+| **Rule Type** | Every Nth, Percentage, First N, Last N, Exact, Random |
 | **Applies To** | Part type, supplier, step |
 | **Active** | Available for use |
 
@@ -49,40 +45,53 @@ Inspect every part:
 
 ## Rule Types
 
-### AQL Sampling
+### Every Nth Part
 
 | Parameter | Description |
 |-----------|-------------|
-| **AQL Level** | 0.65, 1.0, 2.5, 4.0, etc. |
-| **Inspection Level** | I, II, III (normal) |
-| **Lot Size Ranges** | Auto per ANSI tables |
+| **Value (N)** | Inspect every Nth part (e.g., 5 = every 5th part) |
 
-AQL tables determine sample size and accept/reject numbers.
+Use for consistent spread across the lot.
 
-### Fixed Quantity
+### Percentage of Parts
 
 | Parameter | Description |
 |-----------|-------------|
-| **Sample Size** | Always inspect N parts |
-| **Accept Number** | Max defects to accept |
+| **Value (%)** | Inspect N% of lot |
 
-Use when lot sizes are consistent.
+Scales with lot size.
 
-### Fixed Percentage
-
-| Parameter | Description |
-|-----------|-------------|
-| **Percentage** | Inspect X% of lot |
-| **Minimum** | At least N parts |
-| **Maximum** | No more than M parts |
-
-### Skip-Lot
+### First N Parts
 
 | Parameter | Description |
 |-----------|-------------|
-| **Qualify Count** | Consecutive passes to qualify |
-| **Skip Count** | Lots to skip after qualifying |
-| **Requalify on Fail** | Reset counter on rejection |
+| **Value (N)** | Inspect first N parts in the lot |
+
+Use for setup verification at production start.
+
+### Last N Parts
+
+| Parameter | Description |
+|-----------|-------------|
+| **Value (N)** | Inspect last N parts in the lot |
+
+Use to verify end-of-run quality.
+
+### Exact Count
+
+| Parameter | Description |
+|-----------|-------------|
+| **Value (N)** | Always inspect exactly N parts |
+
+Fixed sample size regardless of lot size.
+
+### Pure Random
+
+| Parameter | Description |
+|-----------|-------------|
+| **Value (N)** | Randomly select N parts |
+
+SHA-256 hash-based random selection for audit compliance.
 
 ## Applying Rules
 
@@ -104,23 +113,18 @@ Incoming inspection sampling:
 2. Set sampling rule
 3. Applies to material from supplier
 
-## Switching Rules
+## Rule Sets
 
-Configure automatic level changes:
+Group multiple rules with different triggers:
 
-### Normal to Tightened
-- After X rejects in Y lots
-- Increases sample size
-- Lower accept numbers
+```
+Rule Set: Production Inspection
+├── Rule 1: First 3 parts (every new setup)
+├── Rule 2: Every 10th part (ongoing production)
+└── Rule 3: Last 2 parts (end-of-run verification)
+```
 
-### Normal to Reduced
-- After X consecutive accepts
-- Decreases sample size
-- Reward for quality
-
-### Tightened to Normal
-- After X accepts while tightened
-- Return to standard sampling
+Rules are evaluated in order based on their `order` field.
 
 ## Sampling Rule Sets
 

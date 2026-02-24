@@ -65,7 +65,6 @@ export default function QaPartsTable() {
 
     if (isLoading) return <Skeleton className="h-32 w-full" />;
     if (error) {
-        console.log(error);
         return <p className="text-red-500">Error loading parts</p>;
     }
 

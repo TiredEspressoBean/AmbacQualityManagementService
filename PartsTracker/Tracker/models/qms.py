@@ -1588,8 +1588,10 @@ class CapaVerification(SecureModel):
         self.save()
 
         if self.effectiveness_result == EffectivenessResult.CONFIRMED:
-            # CAPA can be closed
-            pass
+            # Close the CAPA when effectiveness is confirmed
+            self.capa.status = CapaStatus.CLOSED
+            self.capa.completed_date = timezone.now().date()
+            self.capa.save(update_fields=['status', 'completed_date'])
         else:
             # Mark RCA for review and move CAPA back to IN_PROGRESS
             rca = self.capa.rca_records.first()
@@ -2371,3 +2373,820 @@ class CalibrationRecord(SecureModel):
             equipment=self.equipment,
             calibration_date__lt=self.calibration_date
         ).order_by('-calibration_date').first()
+
+
+# ===== STEP COMPLETION & WORKFLOW MODELS =====
+
+class FPIStatus(models.TextChoices):
+    """First Piece Inspection status choices."""
+    NOT_REQUIRED = 'not_required', 'Not Required'
+    PENDING = 'pending', 'Pending'
+    PASSED = 'passed', 'Passed'
+    FAILED = 'failed', 'Failed'
+    WAIVED = 'waived', 'Waived'
+
+
+class FPIResult(models.TextChoices):
+    """FPI result choices."""
+    PASS = 'pass', 'Pass'
+    FAIL = 'fail', 'Fail'
+    CONDITIONAL = 'conditional', 'Conditional Pass'
+
+
+class FPIRecord(SecureModel):
+    """
+    First Piece Inspection (FPI) record.
+
+    Tracks FPI requirements and results for a work order/step/equipment combination.
+    FPI verifies setup correctness before full production begins.
+
+    FPI scope options (defined on Step):
+    - per_workorder: One FPI per work order at this step
+    - per_shift: One FPI per shift per step
+    - per_equipment: One FPI per equipment per step per work order
+    - per_operator: One FPI per operator per step per work order
+    """
+
+    work_order = models.ForeignKey(
+        'Tracker.WorkOrder',
+        on_delete=models.CASCADE,
+        related_name='fpi_records'
+    )
+    step = models.ForeignKey(
+        'Tracker.Steps',
+        on_delete=models.PROTECT,
+        related_name='fpi_records'
+    )
+    part_type = models.ForeignKey(
+        'Tracker.PartTypes',
+        on_delete=models.PROTECT,
+        related_name='fpi_records'
+    )
+    designated_part = models.ForeignKey(
+        'Tracker.Parts',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='fpi_records',
+        help_text='The part designated for FPI'
+    )
+    equipment = models.ForeignKey(
+        'Tracker.Equipments',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='fpi_records',
+        help_text='Equipment being used (for per-equipment FPI)'
+    )
+    shift_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date of the shift for per-shift FPI'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=FPIStatus.choices,
+        default=FPIStatus.PENDING,
+        help_text='Current status of the FPI'
+    )
+    result = models.CharField(
+        max_length=20,
+        choices=FPIResult.choices,
+        blank=True,
+        help_text='Final result of the FPI'
+    )
+
+    inspected_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='fpi_inspections',
+        help_text='User who performed the inspection'
+    )
+    inspected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When inspection was completed'
+    )
+
+    waived = models.BooleanField(
+        default=False,
+        help_text='Whether FPI requirement was waived'
+    )
+    waived_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        help_text='User who waived the FPI'
+    )
+    waive_reason = models.TextField(
+        blank=True,
+        help_text='Reason for waiving FPI requirement'
+    )
+
+    class Meta:
+        verbose_name = 'FPI Record'
+        verbose_name_plural = 'FPI Records'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['work_order', 'step', 'status']),
+            models.Index(fields=['equipment', 'shift_date']),
+        ]
+
+    def __str__(self):
+        return f"FPI for WO-{self.work_order.ERP_id} @ {self.step.name}"
+
+    def pass_inspection(self, user, notes=''):
+        """Mark FPI as passed."""
+        self.status = FPIStatus.PASSED
+        self.result = FPIResult.PASS
+        self.inspected_by = user
+        self.inspected_at = timezone.now()
+        self.save()
+
+    def fail_inspection(self, user, notes=''):
+        """Mark FPI as failed."""
+        self.status = FPIStatus.FAILED
+        self.result = FPIResult.FAIL
+        self.inspected_by = user
+        self.inspected_at = timezone.now()
+        self.save()
+
+    def waive(self, user, reason):
+        """Waive the FPI requirement."""
+        if not reason or len(reason.strip()) < 10:
+            raise ValueError("Waive reason must be at least 10 characters")
+        self.status = FPIStatus.WAIVED
+        self.waived = True
+        self.waived_by = user
+        self.waive_reason = reason
+        self.save()
+
+
+class BlockType(models.TextChoices):
+    """Types of blocks that can prevent step advancement."""
+    QA_SIGNOFF = 'qa_signoff', 'QA Signoff Required'
+    FPI_REQUIRED = 'fpi_required', 'FPI Required'
+    MEASUREMENT_FAILED = 'measurement_failed', 'Measurement Failed'
+    QUARANTINE = 'quarantine', 'Part Quarantined'
+    SAMPLING_REQUIRED = 'sampling_required', 'Sampling Required'
+    BATCH_INCOMPLETE = 'batch_incomplete', 'Batch Incomplete'
+    TRAINING_EXPIRED = 'training_expired', 'Training Expired'
+    CALIBRATION_EXPIRED = 'calibration_expired', 'Calibration Expired'
+    REGULATORY_HOLD = 'regulatory_hold', 'Regulatory Hold'
+    ROLLBACK = 'rollback', 'Step Rollback'
+    OTHER = 'other', 'Other'
+
+
+class OverrideStatus(models.TextChoices):
+    """Status of an override request."""
+    PENDING = 'pending', 'Pending'
+    APPROVED = 'approved', 'Approved'
+    REJECTED = 'rejected', 'Rejected'
+    EXPIRED = 'expired', 'Expired'
+
+
+class StepOverride(SecureModel):
+    """
+    Override record for bypassing step advancement blocks.
+
+    Used when parts need to advance despite failing validation checks.
+    Requires approval workflow and maintains audit trail.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution',
+        on_delete=models.CASCADE,
+        related_name='overrides'
+    )
+    block_type = models.CharField(
+        max_length=30,
+        choices=BlockType.choices,
+        help_text='Type of block being overridden'
+    )
+
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='override_requests'
+    )
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When override was requested'
+    )
+    reason = models.TextField(
+        help_text='Justification for the override'
+    )
+
+    approved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='override_approvals',
+        help_text='User who approved/rejected the override'
+    )
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When override was approved'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OverrideStatus.choices,
+        default=OverrideStatus.PENDING,
+        help_text='Current status of the override request'
+    )
+
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When this override expires'
+    )
+    used = models.BooleanField(
+        default=False,
+        help_text='Whether this override has been used'
+    )
+    used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When this override was used'
+    )
+
+    class Meta:
+        verbose_name = 'Step Override'
+        verbose_name_plural = 'Step Overrides'
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['step_execution', 'status']),
+            models.Index(fields=['status', 'expires_at']),
+        ]
+
+    def __str__(self):
+        return f"Override for {self.step_execution}: {self.get_block_type_display()}"
+
+    def approve(self, user, expiry_hours=None):
+        """Approve the override request."""
+        from datetime import timedelta
+
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.status = OverrideStatus.APPROVED
+
+        # Set expiry based on step configuration or parameter
+        if expiry_hours:
+            self.expires_at = timezone.now() + timedelta(hours=expiry_hours)
+        elif hasattr(self.step_execution.step, 'override_expiry_hours'):
+            hours = self.step_execution.step.override_expiry_hours
+            self.expires_at = timezone.now() + timedelta(hours=hours)
+
+        self.save()
+
+    def reject(self, user, reason=''):
+        """Reject the override request."""
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.status = OverrideStatus.REJECTED
+        if reason:
+            self.reason = f"{self.reason}\n\n[REJECTED]: {reason}"
+        self.save()
+
+    def mark_used(self):
+        """Mark the override as used."""
+        if self.status != OverrideStatus.APPROVED:
+            raise ValueError("Only approved overrides can be used")
+        if self.expires_at and timezone.now() > self.expires_at:
+            self.status = OverrideStatus.EXPIRED
+            self.save()
+            raise ValueError("Override has expired")
+
+        self.used = True
+        self.used_at = timezone.now()
+        self.save()
+
+    @property
+    def is_valid(self):
+        """Check if override is approved and not expired or used."""
+        if self.status != OverrideStatus.APPROVED:
+            return False
+        if self.used:
+            return False
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False
+        return True
+
+
+class StepExecutionMeasurement(SecureModel):
+    """
+    Measurement recorded during step execution.
+
+    Links measurements to specific step executions rather than quality reports,
+    enabling real-time validation during production.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution',
+        on_delete=models.CASCADE,
+        related_name='measurements'
+    )
+    measurement_definition = models.ForeignKey(
+        'Tracker.MeasurementDefinition',
+        on_delete=models.PROTECT,
+        related_name='execution_measurements'
+    )
+
+    value = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text='Numeric measurement value'
+    )
+    string_value = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text='String value for pass/fail or text measurements'
+    )
+    is_within_spec = models.BooleanField(
+        null=True,
+        help_text='Whether measurement is within specification (auto-calculated)'
+    )
+
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='recorded_measurements'
+    )
+    recorded_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When measurement was recorded'
+    )
+    equipment = models.ForeignKey(
+        'Tracker.Equipments',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='step_measurements',
+        help_text='Equipment used for measurement'
+    )
+
+    class Meta:
+        verbose_name = 'Step Execution Measurement'
+        verbose_name_plural = 'Step Execution Measurements'
+        ordering = ['step_execution', 'recorded_at']
+        indexes = [
+            models.Index(fields=['step_execution', 'measurement_definition']),
+        ]
+
+    def __str__(self):
+        return f"{self.measurement_definition.label}: {self.value or self.string_value}"
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate is_within_spec
+        self.is_within_spec = self.evaluate_spec()
+        super().save(*args, **kwargs)
+
+    def evaluate_spec(self):
+        """Evaluate if measurement is within specification."""
+        defn = self.measurement_definition
+        if defn.type == "NUMERIC":
+            if self.value is None:
+                return None
+            from decimal import Decimal
+            if defn.nominal is None or defn.lower_tol is None or defn.upper_tol is None:
+                return None
+            lower = defn.nominal - defn.lower_tol
+            upper = defn.nominal + defn.upper_tol
+            return lower <= Decimal(str(self.value)) <= upper
+        elif defn.type == "PASS_FAIL":
+            return self.string_value.upper() == "PASS"
+        return None
+
+
+# =============================================================================
+# VOIDABLE MODEL MIXIN
+# =============================================================================
+
+class VoidableModel(models.Model):
+    """
+    Abstract mixin for models that can be voided instead of deleted.
+
+    Voiding preserves the record for audit trail while marking it as invalid.
+    Voided records can optionally point to a replacement record.
+    """
+    is_voided = models.BooleanField(
+        default=False,
+        help_text='Whether this record has been voided'
+    )
+    voided_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When this record was voided'
+    )
+    voided_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        help_text='User who voided this record'
+    )
+    void_reason = models.TextField(
+        blank=True,
+        help_text='Reason for voiding this record'
+    )
+
+    class Meta:
+        abstract = True
+
+    def void(self, user, reason):
+        """Void this record."""
+        from django.utils import timezone
+        self.is_voided = True
+        self.voided_at = timezone.now()
+        self.voided_by = user
+        self.void_reason = reason
+        self.save(update_fields=['is_voided', 'voided_at', 'voided_by', 'void_reason'])
+
+
+# =============================================================================
+# RECORD EDIT (AUDIT TRAIL)
+# =============================================================================
+
+class RecordEdit(SecureModel):
+    """
+    Tracks field-level edits to records for audit trail.
+
+    Used when records are edited (not voided) to maintain history
+    of what was changed, by whom, and why.
+    """
+    # What was edited (generic foreign key)
+    content_type = models.ForeignKey(
+        'contenttypes.ContentType',
+        on_delete=models.CASCADE,
+        help_text='Type of the edited record'
+    )
+    object_id = models.UUIDField(
+        help_text='ID of the edited record'
+    )
+
+    # Field-level tracking
+    field_name = models.CharField(
+        max_length=100,
+        help_text='Name of the field that was edited'
+    )
+    old_value = models.TextField(
+        blank=True,
+        help_text='Previous value (serialized)'
+    )
+    new_value = models.TextField(
+        blank=True,
+        help_text='New value (serialized)'
+    )
+
+    # Why
+    reason = models.TextField(
+        help_text='Reason for the edit'
+    )
+
+    # Who/when
+    edited_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='record_edits',
+        help_text='User who made the edit'
+    )
+    edited_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the edit was made'
+    )
+
+    class Meta:
+        ordering = ['-edited_at']
+        verbose_name = 'Record Edit'
+        verbose_name_plural = 'Record Edits'
+        indexes = [
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['edited_by', 'edited_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.content_type.model}.{self.field_name} edited by {self.edited_by}"
+
+
+# =============================================================================
+# STEP ROLLBACK
+# =============================================================================
+
+class RollbackReason(models.TextChoices):
+    """Standard reasons for rolling back a step."""
+    OPERATOR_ERROR = 'operator_error', 'Operator Error'
+    DATA_ENTRY_ERROR = 'data_entry_error', 'Data Entry Error'
+    WRONG_DECISION = 'wrong_decision', 'Wrong Decision Path'
+    DEFECT_FOUND = 'defect_found', 'Defect Found Later'
+    REWORK_REQUIRED = 'rework_required', 'Rework Required'
+    EQUIPMENT_ISSUE = 'equipment_issue', 'Equipment Issue Discovered'
+    PROCESS_DEVIATION = 'process_deviation', 'Process Deviation'
+    ENGINEERING_REQUEST = 'engineering_request', 'Engineering Request'
+    CUSTOMER_REJECTION = 'customer_rejection', 'Customer Rejection'
+    OTHER = 'other', 'Other'
+
+
+class RollbackStatus(models.TextChoices):
+    """Status of a rollback request."""
+    PENDING = 'pending', 'Pending Approval'
+    APPROVED = 'approved', 'Approved'
+    EXECUTED = 'executed', 'Executed'
+    REJECTED = 'rejected', 'Rejected'
+
+
+class StepRollback(SecureModel):
+    """
+    Records a rollback operation on a part.
+
+    Tracks what was rolled back, why, and what happened to affected records.
+    Supports both quick undo (same step) and full rollback (multiple steps back).
+    """
+    # What was rolled back
+    part = models.ForeignKey(
+        'Tracker.Parts',
+        on_delete=models.CASCADE,
+        related_name='rollbacks',
+        help_text='Part that was rolled back'
+    )
+    from_step = models.ForeignKey(
+        'Tracker.Steps',
+        on_delete=models.PROTECT,
+        related_name='rollbacks_from',
+        help_text='Step the part was at before rollback'
+    )
+    to_step = models.ForeignKey(
+        'Tracker.Steps',
+        on_delete=models.PROTECT,
+        related_name='rollbacks_to',
+        help_text='Step the part was rolled back to'
+    )
+
+    # Why
+    reason = models.CharField(
+        max_length=30,
+        choices=RollbackReason.choices,
+        help_text='Reason category for the rollback'
+    )
+    reason_detail = models.TextField(
+        help_text='Detailed explanation for the rollback'
+    )
+
+    # Related records
+    ncr_reference = models.ForeignKey(
+        'Tracker.CAPA',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='related_rollbacks',
+        help_text='Related NCR/CAPA if applicable'
+    )
+
+    # What was voided (for traceability)
+    voided_executions = models.JSONField(
+        default=list,
+        help_text='StepExecution IDs that were voided'
+    )
+    voided_quality_reports = models.JSONField(
+        default=list,
+        help_text='QualityReport IDs that were voided'
+    )
+    voided_measurements = models.JSONField(
+        default=list,
+        help_text='StepExecutionMeasurement IDs that were voided'
+    )
+
+    # Options
+    preserve_measurements = models.BooleanField(
+        default=False,
+        help_text='If True, measurements at target step are preserved'
+    )
+    require_re_inspection = models.BooleanField(
+        default=True,
+        help_text='If True, part is re-flagged for sampling at target step'
+    )
+    require_re_fpi = models.BooleanField(
+        default=False,
+        help_text='If True, FPI must be redone'
+    )
+
+    # Request workflow
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='rollback_requests',
+        help_text='User who requested the rollback'
+    )
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When rollback was requested'
+    )
+
+    # Approval workflow
+    approved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='rollback_approvals',
+        help_text='User who approved/rejected the rollback'
+    )
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When rollback was approved'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=RollbackStatus.choices,
+        default=RollbackStatus.PENDING,
+        help_text='Current status of the rollback'
+    )
+
+    # Execution tracking
+    executed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When rollback was executed'
+    )
+    executed_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='rollback_executions',
+        help_text='User who executed the rollback'
+    )
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = 'Step Rollback'
+        verbose_name_plural = 'Step Rollbacks'
+        indexes = [
+            models.Index(fields=['part', 'status']),
+            models.Index(fields=['status', 'requested_at']),
+        ]
+
+    def __str__(self):
+        return f"Rollback {self.part} from {self.from_step} to {self.to_step}"
+
+    def approve(self, user):
+        """Approve this rollback request."""
+        from django.utils import timezone
+        self.status = RollbackStatus.APPROVED
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save(update_fields=['status', 'approved_by', 'approved_at'])
+
+    def reject(self, user):
+        """Reject this rollback request."""
+        from django.utils import timezone
+        self.status = RollbackStatus.REJECTED
+        self.approved_by = user
+        self.approved_at = timezone.now()
+        self.save(update_fields=['status', 'approved_by', 'approved_at'])
+
+
+# =============================================================================
+# BATCH ROLLBACK
+# =============================================================================
+
+class BatchRollback(SecureModel):
+    """
+    Rollback multiple parts at once.
+
+    Used for systemic issues affecting many parts (e.g., equipment out of cal,
+    bad material lot, process deviation affecting multiple units).
+    """
+    work_order = models.ForeignKey(
+        'Tracker.WorkOrder',
+        on_delete=models.CASCADE,
+        related_name='batch_rollbacks',
+        help_text='Work order containing affected parts'
+    )
+    to_step = models.ForeignKey(
+        'Tracker.Steps',
+        on_delete=models.PROTECT,
+        related_name='batch_rollbacks_to',
+        help_text='Target step for rollback'
+    )
+
+    # Which parts
+    affected_parts = models.ManyToManyField(
+        'Tracker.Parts',
+        related_name='batch_rollbacks',
+        help_text='Parts included in this batch rollback'
+    )
+    selection_criteria = models.JSONField(
+        default=dict,
+        help_text='How parts were selected (for audit)'
+    )
+    """
+    Example selection_criteria:
+    {
+        "type": "equipment",
+        "equipment_id": "uuid",
+        "date_range": ["2024-01-15", "2024-01-16"],
+        "steps": ["uuid1", "uuid2"]
+    }
+    """
+
+    # Why
+    reason = models.CharField(
+        max_length=30,
+        choices=RollbackReason.choices,
+        help_text='Reason category for the rollback'
+    )
+    reason_detail = models.TextField(
+        help_text='Detailed explanation for the rollback'
+    )
+
+    # Related records
+    ncr_reference = models.ForeignKey(
+        'Tracker.CAPA',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='related_batch_rollbacks',
+        help_text='Related NCR/CAPA if applicable'
+    )
+
+    # Individual rollbacks created for each part
+    individual_rollbacks = models.ManyToManyField(
+        StepRollback,
+        related_name='batch_rollback',
+        blank=True,
+        help_text='Individual StepRollback records created for each part'
+    )
+
+    # Request workflow
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='batch_rollback_requests',
+        help_text='User who requested the batch rollback'
+    )
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When batch rollback was requested'
+    )
+
+    # Approval workflow
+    approved_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='batch_rollback_approvals',
+        help_text='User who approved/rejected the batch rollback'
+    )
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When batch rollback was approved'
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=RollbackStatus.choices,
+        default=RollbackStatus.PENDING,
+        help_text='Current status of the batch rollback'
+    )
+
+    # Execution tracking
+    executed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When batch rollback was executed'
+    )
+    executed_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='batch_rollback_executions',
+        help_text='User who executed the batch rollback'
+    )
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = 'Batch Rollback'
+        verbose_name_plural = 'Batch Rollbacks'
+
+    def __str__(self):
+        return f"Batch rollback to {self.to_step} ({self.affected_parts.count()} parts)"
+
+    @property
+    def parts_count(self):
+        """Number of parts affected by this batch rollback."""
+        return self.affected_parts.count()

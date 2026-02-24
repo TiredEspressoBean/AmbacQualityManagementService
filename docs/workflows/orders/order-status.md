@@ -50,21 +50,29 @@ For example:
 
 | Status | Color | Meaning |
 |--------|-------|---------|
-| **Draft** | Gray | Not started |
+| **RFI** | Gray | Request for Information |
+| **Pending** | Gray | Order created, not started |
 | **In Progress** | Blue | Work underway |
 | **On Hold** | Yellow | Temporarily paused |
-| **Complete** | Green | All parts finished |
-| **Shipped** | Green | Delivered |
+| **Completed** | Green | All parts finished |
 | **Cancelled** | Red | Order cancelled |
 
 ### Part Status
 
 | Status | Color | Meaning |
 |--------|-------|---------|
-| **In Process** | Blue | Moving through steps |
-| **Quarantine** | Yellow | Held for quality |
-| **Complete** | Green | Finished |
-| **Scrapped** | Red | Disposed |
+| **Pending** | Gray | Created, not yet started |
+| **In Progress** | Blue | Actively being worked on |
+| **Awaiting QA** | Yellow | Step done, waiting inspection |
+| **Ready for Next Step** | Blue | Can move to next step |
+| **Quarantined** | Yellow | Held for quality review |
+| **Rework Needed** | Orange | Needs rework from QA |
+| **Rework In Progress** | Orange | Rework underway |
+| **Completed** | Green | Passed all steps |
+| **Shipped** | Green | Shipped to customer |
+| **In Stock** | Green | In inventory |
+| **Scrapped** | Red | Rejected permanently |
+| **Cancelled** | Red | Removed from production |
 
 ### Due Date Indicators
 

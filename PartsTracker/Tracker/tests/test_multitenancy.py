@@ -199,11 +199,13 @@ class TenantMiddlewareTestCase(TestCase):
 
     def test_header_allowed_for_authorized_tenant(self):
         """Test that users CAN access tenants they have membership in via header."""
-        # Give user_acme membership in tenant_globex
-        operator_group, _ = Group.objects.get_or_create(name='Production_Operator')
-        TenantGroupMembership.objects.create(
-            user=self.user_acme,
+        # Give user_acme membership in tenant_globex via UserRole + TenantGroup
+        operator_group = TenantGroup.objects.create(
             tenant=self.tenant_globex,
+            name='Production_Operator'
+        )
+        UserRole.objects.create(
+            user=self.user_acme,
             group=operator_group
         )
 

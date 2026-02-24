@@ -75,7 +75,7 @@ export function AppSidebarHeader() {
                     {logoContent}
                     <div className="flex flex-col min-w-0">
                         <span className="font-semibold text-sm truncate">
-                            {tenant?.name || "Loading..."}
+                            {tenant?.name || "My Company"}
                         </span>
                         {tenant?.status === "trial" && (
                             <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">
@@ -100,7 +100,7 @@ export function AppSidebarHeader() {
                         {logoContent}
                         <div className="flex flex-col min-w-0 flex-1">
                             <span className="font-semibold text-sm truncate">
-                                {tenant?.name || "Loading..."}
+                                {tenant?.name || "My Company"}
                             </span>
                             {tenant?.status === "trial" && (
                                 <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">

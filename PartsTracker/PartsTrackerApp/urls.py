@@ -223,6 +223,15 @@ router.register("CapaVerifications", CapaVerificationViewSet, basename="CapaVeri
 router.register("FiveWhys", FiveWhysViewSet, basename="FiveWhys")
 router.register("Fishbone", FishboneViewSet, basename="Fishbone")
 
+# Step Override endpoints (rollback approvals)
+router.register("StepOverrides", StepOverrideViewSet, basename="StepOverrides")
+
+# FPI (First Piece Inspection) endpoints
+router.register("FPIRecords", FPIRecordViewSet, basename="FPIRecords")
+
+# Step Execution Measurement endpoints
+router.register("StepExecutionMeasurements", StepExecutionMeasurementViewSet, basename="StepExecutionMeasurements")
+
 # AI/RAG endpoints for LangGraph integration
 router.register("ai/search", AISearchViewSet, basename="ai-search")
 router.register("ai/query", QueryViewSet, basename="ai-query")

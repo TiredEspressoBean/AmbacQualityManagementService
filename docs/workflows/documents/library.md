@@ -43,7 +43,7 @@ See all documents in a table:
 | **Title** | Document name |
 | **Type** | Category (Drawing, Spec, etc.) |
 | **Revision** | Current version |
-| **Status** | Draft, Approved, Obsolete |
+| **Status** | Draft, Under Review, Approved, Released, Obsolete |
 | **Updated** | Last modified date |
 
 ### Filtering
@@ -51,7 +51,7 @@ See all documents in a table:
 Narrow results by:
 
 - **Document Type**: Work Instruction, Drawing, etc.
-- **Status**: Draft, Pending Approval, Approved
+- **Status**: Draft, Under Review, Approved, Released, Obsolete
 - **Date Range**: Created or modified within period
 - **Created By**: Author
 - **Linked To**: Associated order, part type
@@ -95,10 +95,20 @@ Your administrator configures available document types.
 | Status | Meaning |
 |--------|---------|
 | **Draft** | Work in progress, not released |
-| **Pending Approval** | Submitted for review |
-| **Approved** | Released for use |
+| **Under Review** | Submitted for approval workflow |
+| **Approved** | Approved but not yet released |
+| **Released** | Released for use (effective date set) |
 | **Obsolete** | Superseded, no longer valid |
-| **Archived** | Retained for records |
+
+## Classification Levels
+
+| Level | Access | Description |
+|-------|--------|-------------|
+| **Public** | All users | General information |
+| **Internal** | Employees | Internal use only |
+| **Confidential** | Managers+ | Sensitive information |
+| **Restricted** | Limited access | Serious impact if disclosed |
+| **Secret** | Critical access | Critical impact if disclosed |
 
 ## Opening Documents
 

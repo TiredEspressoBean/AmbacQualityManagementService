@@ -39,9 +39,9 @@ Common verification tasks:
 
 | Outcome | Next Step |
 |---------|-----------|
-| **Effective** | Proceed to closure |
-| **Partially Effective** | Additional actions needed |
-| **Not Effective** | Revisit root cause |
+| **Confirmed** | CAPA auto-closes, corrective actions verified effective |
+| **Not Confirmed** | Additional RCA review required, new corrective action task created |
+| **Inconclusive** | More data needed, continue monitoring |
 
 ## Effectiveness Review
 
@@ -201,9 +201,10 @@ Ensure documentation meets requirements.
 
 | Permission | Allows |
 |------------|--------|
+| `verify_capa` | Verify CAPA effectiveness |
 | `close_capa` | Submit for closure |
 | `approve_capa` | Approve closure |
-| `reopen_capa` | Reopen closed CAPAs |
+| `change_capa` | Reopen closed CAPAs |
 
 ## Best Practices
 

@@ -32,11 +32,11 @@ This guide covers how to initiate and set up a CAPA investigation.
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Title** | Clear, descriptive name | Yes |
-| **Priority** | Critical, High, Medium, Low | Yes |
-| **Type** | Corrective, Preventive, or Both | Yes |
-| **Due Date** | Target closure date | Yes |
-| **Owner** | Responsible person | Yes |
+| **Type** | Corrective, Preventive, Customer Complaint, Internal Audit, Supplier | Yes |
+| **Severity** | Critical, Major, Minor | Yes |
+| **Problem Statement** | Clear description of the issue | Yes |
+| **Due Date** | Target closure date | No |
+| **Assigned To** | Responsible person | No |
 
 ### Problem Definition (D2)
 

@@ -52,22 +52,31 @@ export default function App() {
 
                     // Handle 403 Forbidden - permission denied
                     if (status === 403) {
-                        // Check if it's a tenant access error
+                        // Skip 403 handling if not logged in (on public pages)
+                        const publicPaths403 = ['/login', '/signup', '/password-reset-request', '/reset-password', '/'];
+                        const isPublicPath403 = publicPaths403.some(p =>
+                            p === '/' ? window.location.pathname === '/' : window.location.pathname.startsWith(p)
+                        );
+                        const isLoggedIn = queryClient.getQueryData(['authUser']) != null;
+
+                        // Check if it's a tenant access error - this is critical, redirect
                         if (error.response?.data?.code === 'tenant_access_denied') {
                             toast.error("Tenant Access Denied", {
                                 description: errorDetail || "You don't have access to this tenant.",
                             });
-                        } else {
-                            // Generic permission error
+                            // Only redirect for critical tenant access issues
+                            if (window.location.pathname !== '/forbidden') {
+                                router.navigate({ to: '/forbidden' });
+                            }
+                        } else if (errorDetail && isLoggedIn && !isPublicPath403) {
+                            // For other 403s with a message, show toast but don't redirect
+                            // Only show if logged in and not on public pages
                             toast.error("Permission Denied", {
-                                description: errorDetail || "You don't have permission to perform this action.",
+                                description: errorDetail,
                             });
                         }
-
-                        // Redirect to forbidden page (unless already there)
-                        if (window.location.pathname !== '/forbidden') {
-                            router.navigate({ to: '/forbidden' });
-                        }
+                        // For 403s without detail (background fetches), fail silently
+                        // Let components handle missing data gracefully
                     }
 
                     // Re-throw the error so individual handlers can still catch it

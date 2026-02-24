@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(pushd:*)",
+      "Bash(python manage.py test:*)",
+      "WebFetch(domain:docs.railway.com)"
     ],
     "deny": []
   }

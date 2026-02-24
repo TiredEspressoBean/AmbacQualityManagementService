@@ -4,12 +4,12 @@ Quarantine holds suspect or non-conforming parts for investigation and dispositi
 
 ## What is Quarantine?
 
-**Quarantine** is a status that:
+**Quarantine** is a part status (QUARANTINED) that:
 
 - **Holds** parts from production flow
 - **Segregates** them for investigation
-- **Prevents** use until disposition
-- **Tracks** time and handling
+- **Prevents** advancement at steps with `block_on_quarantine` enabled
+- **Requires** disposition workflow to release
 
 ## Quarantine Triggers
 
@@ -174,12 +174,14 @@ For efficiency:
 
 ## Permissions
 
+Quarantine is implemented as a part status (QUARANTINED), so standard part permissions apply:
+
 | Permission | Allows |
 |------------|--------|
-| `view_quarantine` | View quarantine queue |
-| `add_quarantine` | Put parts in quarantine |
-| `change_quarantine` | Release from quarantine |
-| `disposition` | Make disposition decisions |
+| `view_parts` | View quarantined parts |
+| `change_parts` | Change part status to/from quarantine |
+| `approve_disposition` | Approve disposition decisions |
+| `close_disposition` | Close dispositions and release parts |
 
 ## Best Practices
 

@@ -7,17 +7,17 @@ import { useQualityReports, useMeasurementDefinitions } from "@/hooks/useQuality
 
 type Props = {
     workOrder: any;
-    parts: any[];
 };
 
-export function MeasurementProgressChart({ workOrder, parts }: Props) {
-    // Since part__work_order filtering isn't available in the API,
-    // we fetch all quality reports and filter client-side for now
-    // TODO: Add proper filtering to QualityReportViewSet in backend
+export function MeasurementProgressChart({ workOrder }: Props) {
+    // Filter quality reports by work order using the backend filter
     const { data: qualityReports, isLoading: loadingReports } = useQualityReports({
         queries: {
-            limit: 1000 // Get more reports to ensure we capture work order data
+            part__work_order: workOrder.id,
+            limit: 500
         }
+    }, {
+        enabled: !!workOrder.id
     });
 
     // Get measurement definitions for the work order's process steps
@@ -55,13 +55,8 @@ export function MeasurementProgressChart({ workOrder, parts }: Props) {
         );
     }
 
-    // Filter quality reports to only include parts from this work order
-    const allReports = qualityReports?.results || [];
-    const partIds = parts.map(part => part.id);
-    const reports = allReports.filter(report => 
-        report.part && partIds.includes(report.part)
-    );
-    
+    // Quality reports are already filtered by work order from the API
+    const reports = qualityReports?.results || [];
     const definitions = measurementDefs?.results || [];
 
     // Process measurement data for visualization

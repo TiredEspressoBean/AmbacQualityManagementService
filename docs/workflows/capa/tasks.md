@@ -7,10 +7,10 @@ CAPA tasks are action items assigned to team members to complete the investigati
 | Task Type | Purpose | Phase |
 |-----------|---------|-------|
 | **Containment** | Immediate actions to limit impact | D3 |
-| **Investigation** | Root cause analysis activities | D4 |
-| **Corrective Action** | Actions to fix the problem | D5, D6 |
-| **Verification** | Confirm actions were effective | D7, D8 |
-| **Documentation** | Update procedures, records | D7 |
+| **Corrective Action** | Actions to fix the problem and address root cause | D5, D6 |
+| **Preventive Action** | Systemic changes to prevent recurrence | D7 |
+
+Note: Root cause analysis is tracked separately via RCA records linked to the CAPA.
 
 ## Creating Tasks
 
@@ -45,12 +45,20 @@ For standard CAPA types, create multiple tasks:
 
 | Status | Meaning |
 |--------|---------|
-| **Pending** | Not yet started |
-| **In Progress** | Being worked |
-| **Complete** | Finished |
-| **Verified** | Completion verified |
-| **Blocked** | Cannot proceed |
+| **Not Started** | Task created but not yet begun |
+| **In Progress** | Actively being worked |
+| **Completed** | Task finished |
 | **Cancelled** | No longer needed |
+
+### Completion Mode
+
+Tasks can have different completion requirements:
+
+| Mode | Description |
+|------|-------------|
+| **Single Owner** | One person completes the task |
+| **Any Assignee** | Any one assignee can complete for the group |
+| **All Assignees** | All assigned users must complete their portion |
 
 ## Working on Tasks
 

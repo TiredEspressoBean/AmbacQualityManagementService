@@ -284,6 +284,80 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
+        description="Check if part can be rolled back to previous step",
+        responses={200: dict}
+    )
+    @action(detail=True, methods=["get"], url_path="can-rollback")
+    def can_rollback(self, request, pk=None):
+        """
+        Check if this part can be rolled back to its previous step.
+
+        Returns whether rollback is allowed, any blocking reason,
+        and whether supervisor approval is required.
+        """
+        part = self.get_object()
+        can_rollback, message, requires_approval = part.can_rollback_step(request.user)
+
+        return Response({
+            "can_rollback": can_rollback,
+            "message": message,
+            "requires_approval": requires_approval,
+            "current_step": part.step.name if part.step else None,
+            "undo_window_minutes": getattr(part.step, 'undo_window_minutes', 15) if part.step else None,
+        })
+
+    @extend_schema(
+        description="Roll back part to previous step (configurable per step)",
+        request={"application/json": {"type": "object", "properties": {
+            "reason": {"type": "string", "description": "Justification for rollback (required if approval needed)"},
+            "override_id": {"type": "string", "format": "uuid", "description": "Pre-approved override ID"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=["post"])
+    def rollback(self, request, pk=None):
+        """
+        Roll back part to previous step.
+
+        Respects per-step configuration:
+        - undo_window_minutes: Time window during which rollback is allowed
+        - rollback_requires_approval: Whether supervisor approval is required
+
+        If approval is required and no override_id is provided, a rollback request
+        is created and must be approved before the actual rollback can occur.
+        """
+        part = self.get_object()
+        reason = request.data.get('reason', '')
+        override_id = request.data.get('override_id')
+
+        try:
+            result = part.rollback_step(
+                operator=request.user,
+                reason=reason,
+                override_id=override_id
+            )
+
+            if result['success']:
+                return Response({
+                    "detail": result['message'],
+                    "success": True,
+                    "new_step_id": result['previous_step'].id if result.get('previous_step') else None,
+                    "new_step_name": result['previous_step'].name if result.get('previous_step') else None,
+                    "part_status": part.part_status,
+                })
+            else:
+                # Rollback request submitted, awaiting approval
+                return Response({
+                    "detail": result['message'],
+                    "success": False,
+                    "requires_approval": True,
+                    "previous_step_name": result['previous_step'].name if result.get('previous_step') else None,
+                }, status=status.HTTP_202_ACCEPTED)
+
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
         description="Lightweight endpoint for dropdown/combobox selections",
         responses={200: PartSelectSerializer(many=True)}
     )

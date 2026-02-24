@@ -4,6 +4,9 @@
 **Prerequisites:** None
 **Goal:** Learn to create orders, manage work orders, monitor production, and coordinate with quality
 
+!!! note "Training Data Setup"
+    Exercises reference sample data (e.g., "TRAIN-PM-001", "TRAIN-BOTTLE"). Your administrator should set up training data, or you can create your own test records following the exercise patterns.
+
 ---
 
 ## Module 1: Production Manager Role Overview
@@ -216,8 +219,10 @@ An order can have multiple work orders if needed.
 | Setting | Purpose |
 |---------|---------|
 | **Priority** | Affects queue position |
-| **Equipment** | Assigns to specific machine |
 | **Notes** | Special instructions for floor |
+
+!!! note "Equipment Assignment"
+    Equipment assignment to work orders is planned for a future release. Currently, equipment is tracked at the process step level through step execution records.
 
 ---
 
@@ -353,8 +358,12 @@ By the end of this module, you will:
 - Parts are quarantined
 - Orders have quality holds
 - Dispositions affect schedule
+- First Piece Inspection (FPI) results are recorded
 
 Check **Inbox** for notifications.
+
+!!! tip "First Piece Inspection"
+    FPI status is visible on the QA Work Orders page. When FPI fails, production should stop until the issue is resolved. Coordinate with QA to expedite FPI reviews for critical orders.
 
 ---
 

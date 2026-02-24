@@ -105,6 +105,15 @@ from .qms import (
     # 3D Model & Heatmap ViewSets (quality visualization)
     ThreeDModelViewSet,
     HeatMapAnnotationsViewSet,
+
+    # Step Override ViewSets (rollback approvals)
+    StepOverrideViewSet,
+
+    # FPI ViewSets (First Piece Inspection)
+    FPIRecordViewSet,
+
+    # Step Execution Measurement ViewSets
+    StepExecutionMeasurementViewSet,
 )
 
 # Training ViewSets
@@ -271,6 +280,15 @@ __all__ = [
     'ThreeDModelViewSet',
     'HeatMapAnnotationsViewSet',
 
+    # QMS - Step Overrides (rollback approvals)
+    'StepOverrideViewSet',
+
+    # QMS - FPI (First Piece Inspection)
+    'FPIRecordViewSet',
+
+    # QMS - Step Execution Measurements
+    'StepExecutionMeasurementViewSet',
+
     # DMS - AI/LLM Module
     'ChatSessionViewSet',
 
@@ -388,6 +406,15 @@ def register_viewsets(router):
     router.register(r'CapaVerifications', CapaVerificationViewSet, basename='CapaVerifications')
     router.register(r'FiveWhys', FiveWhysViewSet, basename='FiveWhys')
     router.register(r'Fishbone', FishboneViewSet, basename='Fishbone')
+
+    # Step Overrides (rollback approvals)
+    router.register(r'StepOverrides', StepOverrideViewSet, basename='StepOverrides')
+
+    # FPI (First Piece Inspection)
+    router.register(r'FPIRecords', FPIRecordViewSet, basename='FPIRecords')
+
+    # Step Execution Measurements
+    router.register(r'StepExecutionMeasurements', StepExecutionMeasurementViewSet, basename='StepExecutionMeasurements')
 
     # ===== DMS VIEWSETS =====
     router.register(r'Documents', DocumentViewSet, basename='documents')

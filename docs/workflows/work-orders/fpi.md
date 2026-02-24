@@ -21,9 +21,24 @@ FPI is configured per process step:
 1. Navigate to **Admin** > **Processes**
 2. Edit the process
 3. On the relevant step, enable **Requires First Piece Inspection**
-4. Save
+4. Select the **FPI Scope** (when FPI resets)
+5. Save
 
 When enabled, the first part at that step triggers FPI workflow.
+
+### FPI Scope Options
+
+| Scope | FPI Required | Use Case |
+|-------|--------------|----------|
+| **Per Work Order** | Once per work order | Default - validates setup for each job |
+| **Per Shift** | Each shift change | High-volume continuous production |
+| **Per Equipment** | Each machine change | Multi-machine environments |
+| **Per Operator** | Each operator change | Operator-specific quality verification |
+
+Choose scope based on what changes could affect quality. For example:
+- **Per Shift**: If setup drifts overnight, verify at shift start
+- **Per Equipment**: If different machines have different characteristics
+- **Per Operator**: If operator technique significantly affects quality
 
 ## FPI Workflow
 
@@ -82,6 +97,24 @@ If rejected:
 | **Pending** | First piece not yet inspected | Yellow |
 | **Passed** | FPI approved, batch released | Green |
 | **Failed** | FPI rejected, setup adjustment needed | Red |
+| **Waived** | FPI requirement bypassed (with approval) | Gray |
+
+### Waiving FPI
+
+In some cases, FPI can be waived:
+
+1. Click the **Waive** button on the FPI banner
+2. Enter a reason (minimum 10 characters)
+3. Confirm the waiver
+
+Parts are released without first piece verification.
+
+Waivers are logged with:
+- Who waived
+- When waived
+- Reason for waiver
+
+Use sparingly - FPI catches setup errors early.
 
 ## Viewing FPI Status
 

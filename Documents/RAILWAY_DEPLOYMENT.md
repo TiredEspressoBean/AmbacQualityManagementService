@@ -16,6 +16,7 @@ Internal reference for deployment configuration and troubleshooting.
 | celery-worker | `railway.celery.toml` | `worker` | None |
 | celery-beat | `railway.celery.toml` | `beat` | None |
 | Frontend | `ambac-tracker-ui/` | N/A | `/` |
+| Docs | `docs-service/railway.toml` | N/A | `/` |
 | pgvector | Railway template | N/A | N/A |
 | Redis | Railway service | N/A | N/A |
 
@@ -146,6 +147,43 @@ railway connect Postgres
 **Cause**: pgvector template is Docker-based, not Railway managed DB
 **Fix**: Connect directly via psql using DATABASE_PUBLIC_URL
 
+## Documentation Service
+
+Standalone service that builds and serves MkDocs documentation.
+
+### Files
+- `docs-service/Dockerfile` - Multi-stage: Python builds MkDocs, Caddy serves
+- `docs-service/railway.toml` - Railway config with healthcheck on `/`
+
+### Deploying
+1. Create new service in Railway
+2. Root Directory: `/` (repo root, not `docs-service/`)
+3. Config File Path: `docs-service/railway.toml`
+
+The Dockerfile references `mkdocs.yml` and `docs/` from repo root.
+
+## Cloudflare Worker (Path-Based Routing)
+
+For unified domain with path-based routing (`/docs/*`, `/api/*`, etc.).
+
+### File
+- `cloudflare/worker.js` - Routes requests to appropriate Railway service
+
+### Environment Variables (set in Cloudflare)
+```
+DOCS_ORIGIN=https://docs-xxx.railway.app
+API_ORIGIN=https://backend-xxx.railway.app
+FRONTEND_ORIGIN=https://frontend-xxx.railway.app
+```
+
+### Route Pattern
+Add route in Cloudflare: `yourdomain.com/*` → worker
+
+### Routing Logic
+- `/docs/*` → Docs service
+- `/api/*`, `/auth/*`, `/admin/*` → Backend
+- Everything else → Frontend
+
 ## Files Modified for Railway
 
 - `PartsTracker/Dockerfile` - Added SERVICE_TYPE logic
@@ -159,6 +197,9 @@ railway connect Postgres
   - CELERY_BROKER_URL falls back to REDIS_URL
 - `PartsTracker/Tracker/middleware.py` - Added `/health/` to exempt paths
 - `PartsTracker/Tracker/migrations/0001_initial.py` - Added pgvector extension
+- `docs-service/Dockerfile` - MkDocs build + Caddy serve
+- `docs-service/railway.toml` - Docs service Railway config
+- `cloudflare/worker.js` - Path-based routing worker
 
 ## Costs
 
@@ -174,3 +215,4 @@ Estimated for this setup: $10-30/month depending on usage.
 2. **Redis Persistence**: Consider Redis with persistence for production
 3. **Scaling**: Celery workers can be scaled horizontally
 4. **Monitoring**: Add proper monitoring/alerting beyond Railway's basic metrics
+5. **Docs Migration**: When traffic/cost justifies, move docs to Cloudflare Pages (free, CDN-cached)

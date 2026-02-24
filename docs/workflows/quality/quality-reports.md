@@ -42,11 +42,12 @@ A Quality Report is a formal record of:
 
 | Field | Description |
 |-------|-------------|
-| **Title** | Brief summary of the issue |
-| **Error Type** | Category (Dimensional, Visual, etc.) |
-| **Severity** | Minor, Major, or Critical |
-| **Description** | Detailed explanation |
-| **Parts** | Affected parts (auto-populated if started from part) |
+| **Part** | The affected part |
+| **Error Type(s)** | Category/categories (Dimensional, Visual, etc.) via defect list |
+| **Detected By** | Inspector/operator who found the defect |
+| **Description** | Detailed explanation of the issue |
+
+Note: Severity is specified per defect type, not on the report itself. Each defect entry can have its own severity (Minor, Major, Critical).
 
 ### Optional Fields
 
@@ -102,11 +103,11 @@ Severity affects:
 
 | Status | Meaning | Next Action |
 |--------|---------|-------------|
-| **Draft** | Not yet submitted | Complete and submit |
-| **Open** | Submitted, awaiting disposition | Assign disposition |
-| **Under Review** | Being investigated | Continue investigation |
-| **Pending Disposition** | Awaiting disposition decision | Make disposition |
-| **Closed** | Disposition complete | No action |
+| **Pending** | Inspection not yet complete | Complete inspection |
+| **Pass** | Part passed inspection | Continue production |
+| **Fail** | Part failed inspection | Create disposition |
+
+Note: Quality reports with FAIL status trigger the disposition workflow for handling non-conforming parts.
 
 ## Disposition
 
@@ -172,11 +173,13 @@ Quality reports trigger notifications:
 
 | Permission | Allows |
 |------------|--------|
-| `view_qualityreport` | View reports |
-| `add_qualityreport` | Create reports |
-| `change_qualityreport` | Edit reports |
-| `close_qualityreport` | Close reports |
-| `disposition_qualityreport` | Make disposition decisions |
+| `view_qualityreports` | View reports |
+| `add_qualityreports` | Create reports |
+| `change_qualityreports` | Edit reports |
+| `approve_qualityreports` | Approve quality reports |
+| `approve_own_qualityreports` | Approve your own quality reports |
+
+Note: Disposition decisions use separate permissions (`approve_disposition`, `close_disposition`).
 
 ## Best Practices
 

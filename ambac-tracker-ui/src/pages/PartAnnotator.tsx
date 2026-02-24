@@ -74,9 +74,6 @@ export function PartAnnotator({
     // Fetch the 3D model data
     const { data: modelData, isLoading: isLoadingModel, error: modelError } = useRetrieveThreeDModel(modelId);
 
-    console.log('[PartAnnotator] State:', { modelId, isLoadingModel, hasData: !!modelData, error: modelError });
-    console.log('[PartAnnotator] Model data:', modelData);
-
     const [annotations, setAnnotations] = useState<LocalAnnotation[]>([]);
     const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
     const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
@@ -337,7 +334,6 @@ export function PartAnnotator({
     }
 
     const modelUrl = normalizeMediaUrl(modelData.file);
-    console.log('[PartAnnotator] Model URL:', modelUrl);
 
     return (<div
             className={`relative flex flex-col ${showHeader ? 'h-[calc(100vh-8rem)]' : 'h-full'} w-full bg-background overflow-hidden ${className}`}>

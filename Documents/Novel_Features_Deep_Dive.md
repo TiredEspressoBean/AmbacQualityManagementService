@@ -839,7 +839,7 @@ class CAPATasks(SecureModel):
 **Why It Matters:**
 
 - **No Refactoring:** Avoids costly security retrofits that plague most projects
-- **Compliance-Ready:** 80% NIST 800-171 compliant from architecture, not bolt-ons
+- **Compliance-Ready:** 100% NIST 800-171/CMMC Level 2 compliant from architecture, not bolt-ons
 - **Reduced Risk:** Security bugs prevented by design, not caught in review
 - **Faster Development:** Security abstraction (SecureManager) makes secure code easier to write
 

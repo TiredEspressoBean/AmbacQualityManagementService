@@ -4,6 +4,9 @@
 **Prerequisites:** None
 **Goal:** Learn to manage controlled documents, revisions, approvals, and document compliance
 
+!!! note "Training Data Setup"
+    Exercises reference sample documents (e.g., "WI-TRAIN-001", "DOC-REJECT-TRAIN"). Your administrator should set up training data, or you can create test documents following the exercise patterns.
+
 ---
 
 ## Module 1: Document Controller Role Overview
@@ -85,16 +88,19 @@ By the end of this module, you will:
 | Field | Description |
 |-------|-------------|
 | **Title** | Clear, searchable name |
-| **Document Number** | Per your numbering scheme |
 | **Document Type** | Category (WI, Spec, Drawing) |
 | **Revision** | Version identifier |
 
 **Optional fields:**
 
+- Document Number (auto-generated if not provided)
 - Description
 - Keywords
 - Related documents
 - Expiration date
+
+!!! note "Document Numbering"
+    Document numbers may be auto-generated based on your organization's settings. Check with your administrator for your specific numbering scheme.
 
 ---
 
@@ -456,19 +462,22 @@ All available in the system.
 
 ### 6.3 Compliance Reports
 
-**Generate reports for:**
+**Available compliance information:**
 
-1. Documents by type and status
-2. Pending reviews
-3. Approval audit trail
-4. Recent changes
+1. Documents filtered by type and status
+2. Pending reviews (via filtering)
+3. Approval audit trail (on document detail pages)
+4. Recent changes (via activity history)
 
-**Exercise 6.1:** Generate Audit Report
+!!! note "Reports Feature"
+    Dedicated compliance report generation is planned for a future release. Currently, use the document library filters and export functionality to gather audit information.
+
+**Exercise 6.1:** Gather Audit Information
 
 1. Go to Documents
-2. Navigate to Reports
-3. Generate "Document Status Report"
-4. Export for audit file
+2. Filter to document type of interest
+3. Review status and approval history
+4. Export the filtered list if needed
 
 ---
 

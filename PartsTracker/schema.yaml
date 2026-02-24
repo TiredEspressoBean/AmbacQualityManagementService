@@ -7392,6 +7392,417 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/FPIRecords/:
+    get:
+      operationId: api_FPIRecords_list
+      description: List FPI records with filtering
+      parameters:
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: shift_date
+        schema:
+          type: string
+        description: Filter by shift date (YYYY-MM-DD)
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Filter by status (pending, passed, failed, waived)
+      - in: query
+        name: step
+        schema:
+          type: string
+        description: Filter by step UUID
+      - in: query
+        name: work_order
+        schema:
+          type: string
+        description: Filter by work order UUID
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFPIRecordList'
+          description: ''
+    post:
+      operationId: api_FPIRecords_create
+      description: Create a new FPI record
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FPIRecord'
+          description: ''
+  /api/FPIRecords/{id}/:
+    get:
+      operationId: api_FPIRecords_retrieve
+      description: Retrieve a specific FPI record
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FPIRecord'
+          description: ''
+    put:
+      operationId: api_FPIRecords_update
+      description: |-
+        ViewSet for managing First Piece Inspection (FPI) records.
+
+        FPI ensures the first piece of a production run meets quality standards
+        before batch production proceeds. Configurable per step via fpi_scope:
+        - per_workorder: One FPI per work order per step
+        - per_shift: One FPI per shift per step
+        - per_equipment: One FPI per equipment per step
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FPIRecordRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FPIRecord'
+          description: ''
+    patch:
+      operationId: api_FPIRecords_partial_update
+      description: |-
+        ViewSet for managing First Piece Inspection (FPI) records.
+
+        FPI ensures the first piece of a production run meets quality standards
+        before batch production proceeds. Configurable per step via fpi_scope:
+        - per_workorder: One FPI per work order per step
+        - per_shift: One FPI per shift per step
+        - per_equipment: One FPI per equipment per step
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFPIRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFPIRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFPIRecordRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FPIRecord'
+          description: ''
+    delete:
+      operationId: api_FPIRecords_destroy
+      description: |-
+        ViewSet for managing First Piece Inspection (FPI) records.
+
+        FPI ensures the first piece of a production run meets quality standards
+        before batch production proceeds. Configurable per step via fpi_scope:
+        - per_workorder: One FPI per work order per step
+        - per_shift: One FPI per shift per step
+        - per_equipment: One FPI per equipment per step
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/FPIRecords/{id}/fail/:
+    post:
+      operationId: api_FPIRecords_fail_create
+      description: Mark FPI as failed
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  description: Required failure notes
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/FPIRecords/{id}/pass/:
+    post:
+      operationId: api_FPIRecords_pass_create
+      description: Mark FPI as passed
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  description: Optional inspection notes
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/FPIRecords/{id}/waive/:
+    post:
+      operationId: api_FPIRecords_waive_create
+      description: Waive FPI requirement
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Required waive reason (min 10 chars)
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/FPIRecords/check-status/:
+    get:
+      operationId: api_FPIRecords_check_status_retrieve
+      description: Check FPI status for a work order at a step
+      parameters:
+      - in: query
+        name: step
+        schema:
+          type: string
+        description: Step UUID
+        required: true
+      - in: query
+        name: work_order
+        schema:
+          type: string
+        description: Work order UUID
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/FPIRecords/get-or-create/:
+    post:
+      operationId: api_FPIRecords_get_or_create_create
+      description: Get or create FPI record for work order/step combination
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                work_order:
+                  type: string
+                  format: uuid
+                step:
+                  type: string
+                  format: uuid
+                equipment:
+                  type: string
+                  format: uuid
+                  description: Required for per_equipment scope
+                shift_date:
+                  type: string
+                  format: date
+                  description: Required for per_shift scope
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/FPIRecords/metadata/:
+    get:
+      operationId: api_FPIRecords_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/Fishbone/:
     get:
       operationId: api_Fishbone_list
@@ -11577,6 +11988,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Parts/{id}/can-rollback/:
+    get:
+      operationId: api_Parts_can_rollback_retrieve
+      description: Check if part can be rolled back to previous step
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/Parts/{id}/increment/:
     post:
       operationId: api_Parts_increment_create
@@ -11619,6 +12064,53 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PartIncrementInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Parts/{id}/rollback/:
+    post:
+      operationId: api_Parts_rollback_create
+      description: Roll back part to previous step (configurable per step)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Justification for rollback (required if approval needed)
+                override_id:
+                  type: string
+                  format: uuid
+                  description: Pre-approved override ID
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -14950,6 +15442,318 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/StepExecutionMeasurements/:
+    get:
+      operationId: api_StepExecutionMeasurements_list
+      description: List step execution measurements with filtering
+      parameters:
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_within_spec
+        schema:
+          type: boolean
+        description: Filter by spec compliance
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: measurement_definition
+        schema:
+          type: string
+        description: Filter by measurement definition UUID
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+        description: Filter by step execution UUID
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStepExecutionMeasurementList'
+          description: ''
+    post:
+      operationId: api_StepExecutionMeasurements_create
+      description: Record a new measurement
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepExecutionMeasurement'
+          description: ''
+  /api/StepExecutionMeasurements/{id}/:
+    get:
+      operationId: api_StepExecutionMeasurements_retrieve
+      description: Retrieve a specific measurement
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution Measurement.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepExecutionMeasurement'
+          description: ''
+    put:
+      operationId: api_StepExecutionMeasurements_update
+      description: |-
+        ViewSet for managing measurements recorded during step execution.
+
+        Measurements are validated against MeasurementDefinition specs
+        and can block step advancement if out of spec.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution Measurement.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepExecutionMeasurementRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepExecutionMeasurement'
+          description: ''
+    patch:
+      operationId: api_StepExecutionMeasurements_partial_update
+      description: |-
+        ViewSet for managing measurements recorded during step execution.
+
+        Measurements are validated against MeasurementDefinition specs
+        and can block step advancement if out of spec.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution Measurement.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStepExecutionMeasurementRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStepExecutionMeasurementRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStepExecutionMeasurementRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepExecutionMeasurement'
+          description: ''
+    delete:
+      operationId: api_StepExecutionMeasurements_destroy
+      description: |-
+        ViewSet for managing measurements recorded during step execution.
+
+        Measurements are validated against MeasurementDefinition specs
+        and can block step advancement if out of spec.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution Measurement.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/StepExecutionMeasurements/bulk-record/:
+    post:
+      operationId: api_StepExecutionMeasurements_bulk_record_create
+      description: Record multiple measurements at once for a step execution
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                step_execution:
+                  type: string
+                  format: uuid
+                measurements:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      measurement_definition:
+                        type: string
+                        format: uuid
+                      value:
+                        type: number
+                      string_value:
+                        type: string
+                      equipment:
+                        type: string
+                        format: uuid
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/StepExecutionMeasurements/check-compliance/:
+    get:
+      operationId: api_StepExecutionMeasurements_check_compliance_retrieve
+      description: Check measurement compliance for a step execution
+      parameters:
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+        description: Step execution UUID
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/StepExecutionMeasurements/metadata/:
+    get:
+      operationId: api_StepExecutionMeasurements_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/StepExecutionMeasurements/required/:
+    get:
+      operationId: api_StepExecutionMeasurements_required_retrieve
+      description: Get required measurements for a step execution
+      parameters:
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+        description: Step execution UUID
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/StepExecutions/:
     get:
       operationId: api_StepExecutions_list
@@ -15006,15 +15810,21 @@ paths:
         schema:
           type: string
           enum:
+          - cancelled
+          - claimed
           - completed
           - in_progress
           - pending
+          - rolled_back
           - skipped
         description: |-
           * `pending` - Pending
+          * `claimed` - Claimed
           * `in_progress` - In Progress
           * `completed` - Completed
           * `skipped` - Skipped
+          * `cancelled` - Cancelled
+          * `rolled_back` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -15350,15 +16160,21 @@ paths:
         schema:
           type: string
           enum:
+          - cancelled
+          - claimed
           - completed
           - in_progress
           - pending
+          - rolled_back
           - skipped
         description: |-
           * `pending` - Pending
+          * `claimed` - Claimed
           * `in_progress` - In Progress
           * `completed` - Completed
           * `skipped` - Skipped
+          * `cancelled` - Cancelled
+          * `rolled_back` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -15449,15 +16265,21 @@ paths:
         schema:
           type: string
           enum:
+          - cancelled
+          - claimed
           - completed
           - in_progress
           - pending
+          - rolled_back
           - skipped
         description: |-
           * `pending` - Pending
+          * `claimed` - Claimed
           * `in_progress` - In Progress
           * `completed` - Completed
           * `skipped` - Skipped
+          * `cancelled` - Cancelled
+          * `rolled_back` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -15548,15 +16370,21 @@ paths:
         schema:
           type: string
           enum:
+          - cancelled
+          - claimed
           - completed
           - in_progress
           - pending
+          - rolled_back
           - skipped
         description: |-
           * `pending` - Pending
+          * `claimed` - Claimed
           * `in_progress` - In Progress
           * `completed` - Completed
           * `skipped` - Skipped
+          * `cancelled` - Cancelled
+          * `rolled_back` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -15647,15 +16475,21 @@ paths:
         schema:
           type: string
           enum:
+          - cancelled
+          - claimed
           - completed
           - in_progress
           - pending
+          - rolled_back
           - skipped
         description: |-
           * `pending` - Pending
+          * `claimed` - Claimed
           * `in_progress` - In Progress
           * `completed` - Completed
           * `skipped` - Skipped
+          * `cancelled` - Cancelled
+          * `rolled_back` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -15698,6 +16532,313 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedWIPSummaryList'
+          description: ''
+  /api/StepOverrides/:
+    get:
+      operationId: api_StepOverrides_list
+      description: List step override requests with filtering
+      parameters:
+      - in: query
+        name: block_type
+        schema:
+          type: string
+        description: Filter by block type
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Filter by status (pending, approved, rejected, expired)
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+        description: Filter by step execution UUID
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStepOverrideList'
+          description: ''
+    post:
+      operationId: api_StepOverrides_create
+      description: |-
+        ViewSet for managing step override requests.
+
+        Overrides allow bypassing step advancement blocks with approval workflow.
+        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepOverride'
+          description: ''
+  /api/StepOverrides/{id}/:
+    get:
+      operationId: api_StepOverrides_retrieve
+      description: Retrieve a specific step override request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepOverride'
+          description: ''
+    put:
+      operationId: api_StepOverrides_update
+      description: |-
+        ViewSet for managing step override requests.
+
+        Overrides allow bypassing step advancement blocks with approval workflow.
+        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StepOverrideRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepOverride'
+          description: ''
+    patch:
+      operationId: api_StepOverrides_partial_update
+      description: |-
+        ViewSet for managing step override requests.
+
+        Overrides allow bypassing step advancement blocks with approval workflow.
+        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStepOverrideRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStepOverrideRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStepOverrideRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepOverride'
+          description: ''
+    delete:
+      operationId: api_StepOverrides_destroy
+      description: |-
+        ViewSet for managing step override requests.
+
+        Overrides allow bypassing step advancement blocks with approval workflow.
+        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/StepOverrides/{id}/approve/:
+    post:
+      operationId: api_StepOverrides_approve_create
+      description: Approve an override request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expiry_hours:
+                  type: integer
+                  description: Hours until override expires (optional, uses step default)
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/StepOverrides/{id}/reject/:
+    post:
+      operationId: api_StepOverrides_reject_create
+      description: Reject an override request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Override.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Reason for rejection
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/StepOverrides/metadata/:
+    get:
+      operationId: api_StepOverrides_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/StepOverrides/pending/:
+    get:
+      operationId: api_StepOverrides_pending_retrieve
+      description: List pending override requests that need approval
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Steps/:
     get:
@@ -22529,6 +23670,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/SignupResponse'
           description: ''
+  /api/user/tenants/:
+    get:
+      operationId: api_user_tenants_list
+      description: |-
+        List all tenants the current user has access to.
+        Used for the tenant switcher in the sidebar.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserTenantsResponse'
+          description: ''
+  /api/user/tenants/switch/:
+    post:
+      operationId: api_user_tenants_switch_create
+      description: |-
+        Switch the current user's active tenant context.
+        Stores the selected tenant in the session.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwitchTenantRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SwitchTenantRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SwitchTenantRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwitchTenantResponse'
+          description: ''
   /api/user/token/:
     post:
       operationId: get_user_api_token
@@ -24056,6 +25247,32 @@ components:
     BlankEnum:
       enum:
       - ''
+    BlockTypeEnum:
+      enum:
+      - qa_signoff
+      - fpi_required
+      - measurement_failed
+      - quarantine
+      - sampling_required
+      - batch_incomplete
+      - training_expired
+      - calibration_expired
+      - regulatory_hold
+      - rollback
+      - other
+      type: string
+      description: |-
+        * `qa_signoff` - QA Signoff Required
+        * `fpi_required` - FPI Required
+        * `measurement_failed` - Measurement Failed
+        * `quarantine` - Part Quarantined
+        * `sampling_required` - Sampling Required
+        * `batch_incomplete` - Batch Incomplete
+        * `training_expired` - Training Expired
+        * `calibration_expired` - Calibration Expired
+        * `regulatory_hold` - Regulatory Hold
+        * `rollback` - Step Rollback
+        * `other` - Other
     BulkAddPartsInputRequest:
       type: object
       properties:
@@ -24427,7 +25644,7 @@ components:
           type: string
           format: date
         result:
-          $ref: '#/components/schemas/ResultEnum'
+          $ref: '#/components/schemas/CalibrationRecordResultEnum'
         result_display:
           type: string
           readOnly: true
@@ -24516,7 +25733,7 @@ components:
           type: string
           format: date
         result:
-          $ref: '#/components/schemas/ResultEnum'
+          $ref: '#/components/schemas/CalibrationRecordResultEnum'
         calibration_type:
           $ref: '#/components/schemas/CalibrationTypeEnum'
         performed_by:
@@ -24550,6 +25767,16 @@ components:
       - calibration_date
       - due_date
       - equipment
+    CalibrationRecordResultEnum:
+      enum:
+      - pass
+      - fail
+      - limited
+      type: string
+      description: |-
+        * `pass` - Pass
+        * `fail` - Fail
+        * `limited` - Limited/Restricted Use
     CalibrationStats:
       type: object
       description: Serializer for calibration statistics response.
@@ -26908,6 +28135,216 @@ components:
       required:
       - API_id
       - stage_name
+    FPIRecord:
+      type: object
+      description: Serializer for First Piece Inspection records.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        work_order:
+          type: string
+          format: uuid
+        work_order_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+        step_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        part_type:
+          type: string
+          format: uuid
+        part_type_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        designated_part:
+          type: string
+          format: uuid
+          nullable: true
+          description: The part designated for FPI
+        designated_part_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment being used (for per-equipment FPI)
+        equipment_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        shift_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of the shift for per-shift FPI
+        status:
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordStatusEnum'
+          readOnly: true
+          description: |-
+            Current status of the FPI
+
+            * `not_required` - Not Required
+            * `pending` - Pending
+            * `passed` - Passed
+            * `failed` - Failed
+            * `waived` - Waived
+        status_display:
+          type: string
+          readOnly: true
+        result:
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordResultEnum'
+          readOnly: true
+          description: |-
+            Final result of the FPI
+
+            * `pass` - Pass
+            * `fail` - Fail
+            * `conditional` - Conditional Pass
+        result_display:
+          type: string
+          readOnly: true
+        inspected_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who performed the inspection
+        inspected_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        inspected_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When inspection was completed
+        waived:
+          type: boolean
+          readOnly: true
+          description: Whether FPI requirement was waived
+        waived_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who waived the FPI
+        waived_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        waive_reason:
+          type: string
+          readOnly: true
+          description: Reason for waiving FPI requirement
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - designated_part_info
+      - equipment_info
+      - id
+      - inspected_at
+      - inspected_by
+      - inspected_by_info
+      - part_type
+      - part_type_info
+      - result
+      - result_display
+      - status
+      - status_display
+      - step
+      - step_info
+      - updated_at
+      - waive_reason
+      - waived
+      - waived_by
+      - waived_by_info
+      - work_order
+      - work_order_info
+    FPIRecordRequest:
+      type: object
+      description: Serializer for First Piece Inspection records.
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        part_type:
+          type: string
+          format: uuid
+        designated_part:
+          type: string
+          format: uuid
+          nullable: true
+          description: The part designated for FPI
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment being used (for per-equipment FPI)
+        shift_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of the shift for per-shift FPI
+        archived:
+          type: boolean
+      required:
+      - part_type
+      - step
+      - work_order
+    FPIRecordResultEnum:
+      enum:
+      - pass
+      - fail
+      - conditional
+      type: string
+      description: |-
+        * `pass` - Pass
+        * `fail` - Fail
+        * `conditional` - Conditional Pass
+    FPIRecordStatusEnum:
+      enum:
+      - not_required
+      - pending
+      - passed
+      - failed
+      - waived
+      type: string
+      description: |-
+        * `not_required` - Not Required
+        * `pending` - Pending
+        * `passed` - Passed
+        * `failed` - Failed
+        * `waived` - Waived
     FPYTrendResponse:
       type: object
       properties:
@@ -29485,6 +30922,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Equipments'
+    PaginatedFPIRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FPIRecord'
     PaginatedFishboneList:
       type: object
       required:
@@ -30152,6 +31612,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StepExecutionList'
+    PaginatedStepExecutionMeasurementList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepExecutionMeasurement'
+    PaginatedStepOverrideList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepOverride'
     PaginatedStepsList:
       type: object
       required:
@@ -30853,6 +32359,11 @@ components:
       - REWORK_IN_PROGRESS
       - SCRAPPED
       - CANCELLED
+      - SHIPPED
+      - IN_STOCK
+      - AWAITING_PICKUP
+      - CORE_BANKED
+      - RMA_CLOSED
       type: string
       description: |-
         * `PENDING` - Pending
@@ -30865,6 +32376,11 @@ components:
         * `REWORK_IN_PROGRESS` - Rework In Progress
         * `SCRAPPED` - Scrapped
         * `CANCELLED` - Cancelled
+        * `SHIPPED` - Shipped
+        * `IN_STOCK` - In Stock
+        * `AWAITING_PICKUP` - Awaiting Pickup
+        * `CORE_BANKED` - Core Banked
+        * `RMA_CLOSED` - RMA Closed
     PasswordChangeRequest:
       type: object
       properties:
@@ -31218,7 +32734,7 @@ components:
           type: string
           format: date
         result:
-          $ref: '#/components/schemas/ResultEnum'
+          $ref: '#/components/schemas/CalibrationRecordResultEnum'
         calibration_type:
           $ref: '#/components/schemas/CalibrationTypeEnum'
         performed_by:
@@ -31721,6 +33237,36 @@ components:
           type: string
           format: uuid
           nullable: true
+    PatchedFPIRecordRequest:
+      type: object
+      description: Serializer for First Piece Inspection records.
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        part_type:
+          type: string
+          format: uuid
+        designated_part:
+          type: string
+          format: uuid
+          nullable: true
+          description: The part designated for FPI
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment being used (for per-equipment FPI)
+        shift_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of the shift for per-shift FPI
+        archived:
+          type: boolean
     PatchedFishboneRequest:
       type: object
       description: Fishbone diagram RCA serializer
@@ -32189,6 +33735,17 @@ components:
             * `pending_approval` - Pending Approval
             * `approved` - Approved
             * `deprecated` - Deprecated
+        category:
+          allOf:
+          - $ref: '#/components/schemas/ProcessesCategoryEnum'
+          description: |-
+            Process category for workflow engine routing
+
+            * `manufacturing` - Manufacturing
+            * `quality` - Quality
+            * `maintenance` - Maintenance
+            * `npi` - New Product Introduction
+            * `document` - Document Control
         change_description:
           type: string
           nullable: true
@@ -32687,6 +34244,35 @@ components:
           type: boolean
         archived:
           type: boolean
+    PatchedStepExecutionMeasurementRequest:
+      type: object
+      description: Serializer for step execution measurements.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+        measurement_definition:
+          type: string
+          format: uuid
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Numeric measurement value
+        string_value:
+          type: string
+          description: String value for pass/fail or text measurements
+          maxLength: 100
+        recorded_by:
+          type: integer
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment used for measurement
+        archived:
+          type: boolean
     PatchedStepExecutionRequest:
       type: object
       description: |-
@@ -32731,6 +34317,60 @@ components:
           maxLength: 50
         status:
           $ref: '#/components/schemas/StepExecutionStatusEnum'
+        archived:
+          type: boolean
+    PatchedStepOverrideRequest:
+      type: object
+      description: Serializer for step override requests.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+        block_type:
+          allOf:
+          - $ref: '#/components/schemas/BlockTypeEnum'
+          description: |-
+            Type of block being overridden
+
+            * `qa_signoff` - QA Signoff Required
+            * `fpi_required` - FPI Required
+            * `measurement_failed` - Measurement Failed
+            * `quarantine` - Part Quarantined
+            * `sampling_required` - Sampling Required
+            * `batch_incomplete` - Batch Incomplete
+            * `training_expired` - Training Expired
+            * `calibration_expired` - Calibration Expired
+            * `regulatory_hold` - Regulatory Hold
+            * `rollback` - Step Rollback
+            * `other` - Other
+        requested_by:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+          description: Justification for the override
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved/rejected the override
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StepOverrideStatusEnum'
+          description: |-
+            Current status of the override request
+
+            * `pending` - Pending
+            * `approved` - Approved
+            * `rejected` - Rejected
+            * `expired` - Expired
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this override expires
+        used:
+          type: boolean
+          description: Whether this override has been used
         archived:
           type: boolean
     PatchedStepsRequest:
@@ -33603,6 +35243,17 @@ components:
             * `pending_approval` - Pending Approval
             * `approved` - Approved
             * `deprecated` - Deprecated
+        category:
+          allOf:
+          - $ref: '#/components/schemas/ProcessesCategoryEnum'
+          description: |-
+            Process category for workflow engine routing
+
+            * `manufacturing` - Manufacturing
+            * `quality` - Quality
+            * `maintenance` - Maintenance
+            * `npi` - New Product Introduction
+            * `document` - Document Control
         change_description:
           type: string
           nullable: true
@@ -33636,6 +35287,20 @@ components:
       - process_steps
       - step_edges
       - updated_at
+    ProcessesCategoryEnum:
+      enum:
+      - manufacturing
+      - quality
+      - maintenance
+      - npi
+      - document
+      type: string
+      description: |-
+        * `manufacturing` - Manufacturing
+        * `quality` - Quality
+        * `maintenance` - Maintenance
+        * `npi` - New Product Introduction
+        * `document` - Document Control
     ProcessesRequest:
       type: object
       description: Processes serializer with graph structure
@@ -33676,6 +35341,17 @@ components:
             * `pending_approval` - Pending Approval
             * `approved` - Approved
             * `deprecated` - Deprecated
+        category:
+          allOf:
+          - $ref: '#/components/schemas/ProcessesCategoryEnum'
+          description: |-
+            Process category for workflow engine routing
+
+            * `manufacturing` - Manufacturing
+            * `quality` - Quality
+            * `maintenance` - Maintenance
+            * `npi` - New Product Introduction
+            * `document` - Document Control
         change_description:
           type: string
           nullable: true
@@ -34565,16 +36241,6 @@ components:
           readOnly: true
       required:
       - detail
-    ResultEnum:
-      enum:
-      - pass
-      - fail
-      - limited
-      type: string
-      description: |-
-        * `pass` - Pass
-        * `fail` - Fail
-        * `limited` - Limited/Restricted Use
     RevisitAssignmentEnum:
       enum:
       - any
@@ -36168,6 +37834,127 @@ components:
       - step
       - step_name
       - step_order
+    StepExecutionMeasurement:
+      type: object
+      description: Serializer for step execution measurements.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+        step_execution_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        measurement_definition:
+          type: string
+          format: uuid
+        measurement_definition_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Numeric measurement value
+        string_value:
+          type: string
+          description: String value for pass/fail or text measurements
+          maxLength: 100
+        is_within_spec:
+          type: boolean
+          readOnly: true
+          nullable: true
+          description: Whether measurement is within specification (auto-calculated)
+        spec_status:
+          type: string
+          readOnly: true
+        recorded_by:
+          type: integer
+        recorded_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        recorded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When measurement was recorded
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment used for measurement
+        equipment_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - equipment_info
+      - id
+      - is_within_spec
+      - measurement_definition
+      - measurement_definition_info
+      - recorded_at
+      - recorded_by
+      - recorded_by_info
+      - spec_status
+      - step_execution
+      - step_execution_info
+      - updated_at
+    StepExecutionMeasurementRequest:
+      type: object
+      description: Serializer for step execution measurements.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+        measurement_definition:
+          type: string
+          format: uuid
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Numeric measurement value
+        string_value:
+          type: string
+          description: String value for pass/fail or text measurements
+          maxLength: 100
+        recorded_by:
+          type: integer
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Equipment used for measurement
+        archived:
+          type: boolean
+      required:
+      - measurement_definition
+      - recorded_by
+      - step_execution
     StepExecutionRequest:
       type: object
       description: |-
@@ -36220,15 +38007,21 @@ components:
     StepExecutionStatusEnum:
       enum:
       - pending
+      - claimed
       - in_progress
       - completed
       - skipped
+      - cancelled
+      - rolled_back
       type: string
       description: |-
         * `pending` - Pending
+        * `claimed` - Claimed
         * `in_progress` - In Progress
         * `completed` - Completed
         * `skipped` - Skipped
+        * `cancelled` - Cancelled
+        * `rolled_back` - Rolled Back
     StepIncrementInputRequest:
       type: object
       properties:
@@ -36247,6 +38040,200 @@ components:
       required:
       - advanced
       - total
+    StepOverride:
+      type: object
+      description: Serializer for step override requests.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+        step_execution_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        block_type:
+          allOf:
+          - $ref: '#/components/schemas/BlockTypeEnum'
+          description: |-
+            Type of block being overridden
+
+            * `qa_signoff` - QA Signoff Required
+            * `fpi_required` - FPI Required
+            * `measurement_failed` - Measurement Failed
+            * `quarantine` - Part Quarantined
+            * `sampling_required` - Sampling Required
+            * `batch_incomplete` - Batch Incomplete
+            * `training_expired` - Training Expired
+            * `calibration_expired` - Calibration Expired
+            * `regulatory_hold` - Regulatory Hold
+            * `rollback` - Step Rollback
+            * `other` - Other
+        block_type_display:
+          type: string
+          readOnly: true
+        requested_by:
+          type: integer
+        requested_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When override was requested
+        reason:
+          type: string
+          description: Justification for the override
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved/rejected the override
+        approved_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When override was approved
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StepOverrideStatusEnum'
+          description: |-
+            Current status of the override request
+
+            * `pending` - Pending
+            * `approved` - Approved
+            * `rejected` - Rejected
+            * `expired` - Expired
+        status_display:
+          type: string
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this override expires
+        is_expired:
+          type: boolean
+          readOnly: true
+        used:
+          type: boolean
+          description: Whether this override has been used
+        used_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When this override was used
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - approved_at
+      - approved_by_info
+      - block_type
+      - block_type_display
+      - created_at
+      - id
+      - is_expired
+      - reason
+      - requested_at
+      - requested_by
+      - requested_by_info
+      - status_display
+      - step_execution
+      - step_execution_info
+      - updated_at
+      - used_at
+    StepOverrideRequest:
+      type: object
+      description: Serializer for step override requests.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+        block_type:
+          allOf:
+          - $ref: '#/components/schemas/BlockTypeEnum'
+          description: |-
+            Type of block being overridden
+
+            * `qa_signoff` - QA Signoff Required
+            * `fpi_required` - FPI Required
+            * `measurement_failed` - Measurement Failed
+            * `quarantine` - Part Quarantined
+            * `sampling_required` - Sampling Required
+            * `batch_incomplete` - Batch Incomplete
+            * `training_expired` - Training Expired
+            * `calibration_expired` - Calibration Expired
+            * `regulatory_hold` - Regulatory Hold
+            * `rollback` - Step Rollback
+            * `other` - Other
+        requested_by:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+          description: Justification for the override
+        approved_by:
+          type: integer
+          nullable: true
+          description: User who approved/rejected the override
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StepOverrideStatusEnum'
+          description: |-
+            Current status of the override request
+
+            * `pending` - Pending
+            * `approved` - Approved
+            * `rejected` - Rejected
+            * `expired` - Expired
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this override expires
+        used:
+          type: boolean
+          description: Whether this override has been used
+        archived:
+          type: boolean
+      required:
+      - block_type
+      - reason
+      - requested_by
+      - step_execution
+    StepOverrideStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      - expired
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `expired` - Expired
     StepRequest:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -36612,6 +38599,28 @@ components:
       properties:
         reason:
           type: string
+    SwitchTenantRequestRequest:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+      required:
+      - tenant_id
+    SwitchTenantResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        tenant_id:
+          type: string
+          format: uuid
+        tenant_name:
+          type: string
+      required:
+      - success
+      - tenant_id
+      - tenant_name
     TaskTypeEnum:
       enum:
       - CONTAINMENT
@@ -38390,6 +40399,30 @@ components:
       - id
       - is_active
       - username
+    UserTenantsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        logo_url:
+          type: string
+          nullable: true
+        tier:
+          type: string
+        is_current:
+          type: boolean
+      required:
+      - id
+      - is_current
+      - logo_url
+      - name
+      - slug
+      - tier
     ValidateTokenInputRequest:
       type: object
       properties:

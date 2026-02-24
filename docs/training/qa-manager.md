@@ -4,6 +4,9 @@
 **Prerequisites:** QA Inspector training recommended
 **Goal:** Learn to oversee quality operations, approve dispositions, manage CAPAs, and analyze quality data
 
+!!! note "Training Data Setup"
+    Exercises in this guide reference sample data (e.g., "DISP-TRAIN-001", "CAPA-TRAIN-COMPLETE"). Your administrator should set up this training data before you begin. If specific records aren't available, create your own test records following the exercise patterns.
+
 ---
 
 ## Module 1: QA Manager Role Overview
@@ -449,19 +452,22 @@ By the end of this module, you will:
 
 ### 5.3 SPC Review
 
+!!! note "SPC Feature Status"
+    The SPC page provides measurement visualization and basic control charts. Advanced features like automated Cpk calculations, rule-based alerts, and control limit management are planned for future releases.
+
 **Your responsibilities:**
 
 - Review control charts periodically
-- Monitor Cpk values
+- Monitor measurement trends visually
 - Respond to out-of-control signals
-- Approve control limit changes
+- Work with engineering on process adjustments
 
 **Exercise 5.2:** SPC Review
 
 1. Go to Analytics > SPC
-2. Select a critical characteristic
-3. Review the control chart
-4. Check current Cpk
+2. Select a measurement characteristic
+3. Review the control chart visualization
+4. Note any concerning trends
 
 ---
 

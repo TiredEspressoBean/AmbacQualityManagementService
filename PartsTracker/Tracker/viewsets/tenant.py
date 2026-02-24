@@ -1308,11 +1308,11 @@ class UserTenantsView(APIView):
         from Tracker.models import TenantGroupMembership
         memberships = TenantGroupMembership.objects.filter(
             user=user
-        ).select_related('group__tenant')
+        ).select_related('tenant')
 
         for membership in memberships:
-            if membership.group.tenant:
-                tenants.add(membership.group.tenant)
+            if membership.tenant:
+                tenants.add(membership.tenant)
 
         # Build response
         result = []

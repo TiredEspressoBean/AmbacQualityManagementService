@@ -568,8 +568,13 @@ export type PartsStatusEnum =
    * `REWORK_IN_PROGRESS` - Rework In Progress
    * `SCRAPPED` - Scrapped
    * `CANCELLED` - Cancelled
+   * `SHIPPED` - Shipped
+   * `IN_STOCK` - In Stock
+   * `AWAITING_PICKUP` - Awaiting Pickup
+   * `CORE_BANKED` - Core Banked
+   * `RMA_CLOSED` - RMA Closed
    *
-   * @enum PENDING, IN_PROGRESS, AWAITING_QA, READY FOR NEXT STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED
+   * @enum PENDING, IN_PROGRESS, AWAITING_QA, READY FOR NEXT STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
    */
   | "PENDING"
   | "IN_PROGRESS"
@@ -580,7 +585,12 @@ export type PartsStatusEnum =
   | "REWORK_NEEDED"
   | "REWORK_IN_PROGRESS"
   | "SCRAPPED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "SHIPPED"
+  | "IN_STOCK"
+  | "AWAITING_PICKUP"
+  | "CORE_BANKED"
+  | "RMA_CLOSED";
 export type CAPA = {
   id: string;
   capa_number: string;
@@ -998,7 +1008,7 @@ export type CalibrationRecord = {
   equipment_info: {};
   calibration_date: string;
   due_date: string;
-  result?: ResultEnum | undefined;
+  result?: CalibrationRecordResultEnum | undefined;
   result_display: string;
   calibration_type?: CalibrationTypeEnum | undefined;
   calibration_type_display: string;
@@ -1043,7 +1053,7 @@ export type CalibrationRecord = {
   updated_at: string;
   archived?: boolean | undefined;
 };
-export type ResultEnum =
+export type CalibrationRecordResultEnum =
   /**
    * * `pass` - Pass
    * `fail` - Fail
@@ -1071,7 +1081,7 @@ export type CalibrationRecordRequest = {
   equipment: string;
   calibration_date: string;
   due_date: string;
-  result?: ResultEnum | undefined;
+  result?: CalibrationRecordResultEnum | undefined;
   calibration_type?: CalibrationTypeEnum | undefined;
   performed_by?: /**
    * Person or lab that performed calibration
@@ -1752,6 +1762,100 @@ export type EquipmentsRequest = {
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
+export type FPIRecord = {
+  id: string;
+  work_order: string;
+  work_order_info: {};
+  step: string;
+  step_info: {};
+  part_type: string;
+  part_type_info: {};
+  designated_part?:
+    | /**
+     * The part designated for FPI
+     */
+    (string | null)
+    | undefined;
+  designated_part_info: {};
+  equipment?:
+    | /**
+     * Equipment being used (for per-equipment FPI)
+     */
+    (string | null)
+    | undefined;
+  equipment_info: {};
+  shift_date?:
+    | /**
+     * Date of the shift for per-shift FPI
+     */
+    (string | null)
+    | undefined;
+  /**
+     * Current status of the FPI
+    
+    * `not_required` - Not Required
+    * `pending` - Pending
+    * `passed` - Passed
+    * `failed` - Failed
+    * `waived` - Waived
+     */
+  status: FPIRecordStatusEnum;
+  status_display: string;
+  /**
+     * Final result of the FPI
+    
+    * `pass` - Pass
+    * `fail` - Fail
+    * `conditional` - Conditional Pass
+     */
+  result: FPIRecordResultEnum;
+  result_display: string;
+  /**
+   * User who performed the inspection
+   */
+  inspected_by: number | null;
+  inspected_by_info: {};
+  /**
+   * When inspection was completed
+   */
+  inspected_at: string | null;
+  /**
+   * Whether FPI requirement was waived
+   */
+  waived: boolean;
+  /**
+   * User who waived the FPI
+   */
+  waived_by: number | null;
+  waived_by_info: {};
+  /**
+   * Reason for waiving FPI requirement
+   */
+  waive_reason: string;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type FPIRecordStatusEnum =
+  /**
+   * * `not_required` - Not Required
+   * `pending` - Pending
+   * `passed` - Passed
+   * `failed` - Failed
+   * `waived` - Waived
+   *
+   * @enum not_required, pending, passed, failed, waived
+   */
+  "not_required" | "pending" | "passed" | "failed" | "waived";
+export type FPIRecordResultEnum =
+  /**
+   * * `pass` - Pass
+   * `fail` - Fail
+   * `conditional` - Conditional Pass
+   *
+   * @enum pass, fail, conditional
+   */
+  "pass" | "fail" | "conditional";
 export type GenerateReportRequest = {
   /**
      * Type of report to generate (spc, capa, quality_report, etc.)
@@ -3034,6 +3138,25 @@ export type PaginatedEquipmentsList = {
     | undefined;
   results: Array<Equipments>;
 };
+export type PaginatedFPIRecordList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<FPIRecord>;
+};
 export type PaginatedFishboneList = {
   /**
    * @example 123
@@ -3737,6 +3860,16 @@ export type Processes = {
     * `deprecated` - Deprecated
      */
   ProcessStatusEnum | undefined;
+  category?: /**
+     * Process category for workflow engine routing
+    
+    * `manufacturing` - Manufacturing
+    * `quality` - Quality
+    * `maintenance` - Maintenance
+    * `npi` - New Product Introduction
+    * `document` - Document Control
+     */
+  ProcessesCategoryEnum | undefined;
   change_description?:
     | /**
      * Description of changes from previous version (for approval review)
@@ -3754,6 +3887,17 @@ export type Processes = {
   part_type: string;
   approved_by?: (number | null) | undefined;
 };
+export type ProcessesCategoryEnum =
+  /**
+   * * `manufacturing` - Manufacturing
+   * `quality` - Quality
+   * `maintenance` - Maintenance
+   * `npi` - New Product Introduction
+   * `document` - Document Control
+   *
+   * @enum manufacturing, quality, maintenance, npi, document
+   */
+  "manufacturing" | "quality" | "maintenance" | "npi" | "document";
 export type PaginatedQualityErrorsListList = {
   /**
    * @example 123
@@ -4405,13 +4549,22 @@ export type StepExecution = {
 export type StepExecutionStatusEnum =
   /**
    * * `pending` - Pending
+   * `claimed` - Claimed
    * `in_progress` - In Progress
    * `completed` - Completed
    * `skipped` - Skipped
+   * `cancelled` - Cancelled
+   * `rolled_back` - Rolled Back
    *
-   * @enum pending, in_progress, completed, skipped
+   * @enum pending, claimed, in_progress, completed, skipped, cancelled, rolled_back
    */
-  "pending" | "in_progress" | "completed" | "skipped";
+  | "pending"
+  | "claimed"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+  | "cancelled"
+  | "rolled_back";
 export type PaginatedStepExecutionListList = {
   /**
    * @example 123
@@ -4469,6 +4622,194 @@ export type StepExecutionList = {
    */
   string | undefined;
 };
+export type PaginatedStepExecutionMeasurementList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<StepExecutionMeasurement>;
+};
+export type StepExecutionMeasurement = {
+  id: string;
+  step_execution: string;
+  step_execution_info: {};
+  measurement_definition: string;
+  measurement_definition_info: {};
+  value?:
+    | /**
+     * Numeric measurement value
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  string_value?: /**
+   * String value for pass/fail or text measurements
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  /**
+   * Whether measurement is within specification (auto-calculated)
+   */
+  is_within_spec: boolean | null;
+  spec_status: string;
+  recorded_by: number;
+  recorded_by_info: {};
+  /**
+   * When measurement was recorded
+   */
+  recorded_at: string;
+  equipment?:
+    | /**
+     * Equipment used for measurement
+     */
+    (string | null)
+    | undefined;
+  equipment_info: {};
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type PaginatedStepOverrideList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<StepOverride>;
+};
+export type StepOverride = {
+  id: string;
+  step_execution: string;
+  step_execution_info: {};
+  /**
+     * Type of block being overridden
+    
+    * `qa_signoff` - QA Signoff Required
+    * `fpi_required` - FPI Required
+    * `measurement_failed` - Measurement Failed
+    * `quarantine` - Part Quarantined
+    * `sampling_required` - Sampling Required
+    * `batch_incomplete` - Batch Incomplete
+    * `training_expired` - Training Expired
+    * `calibration_expired` - Calibration Expired
+    * `regulatory_hold` - Regulatory Hold
+    * `rollback` - Step Rollback
+    * `other` - Other
+     */
+  block_type: BlockTypeEnum;
+  block_type_display: string;
+  requested_by: number;
+  requested_by_info: {};
+  /**
+   * When override was requested
+   */
+  requested_at: string;
+  /**
+   * Justification for the override
+   */
+  reason: string;
+  approved_by?:
+    | /**
+     * User who approved/rejected the override
+     */
+    (number | null)
+    | undefined;
+  approved_by_info: {};
+  /**
+   * When override was approved
+   */
+  approved_at: string | null;
+  status?: /**
+     * Current status of the override request
+    
+    * `pending` - Pending
+    * `approved` - Approved
+    * `rejected` - Rejected
+    * `expired` - Expired
+     */
+  StepOverrideStatusEnum | undefined;
+  status_display: string;
+  expires_at?:
+    | /**
+     * When this override expires
+     */
+    (string | null)
+    | undefined;
+  is_expired: boolean;
+  used?: /**
+   * Whether this override has been used
+   */
+  boolean | undefined;
+  /**
+   * When this override was used
+   */
+  used_at: string | null;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type BlockTypeEnum =
+  /**
+   * * `qa_signoff` - QA Signoff Required
+   * `fpi_required` - FPI Required
+   * `measurement_failed` - Measurement Failed
+   * `quarantine` - Part Quarantined
+   * `sampling_required` - Sampling Required
+   * `batch_incomplete` - Batch Incomplete
+   * `training_expired` - Training Expired
+   * `calibration_expired` - Calibration Expired
+   * `regulatory_hold` - Regulatory Hold
+   * `rollback` - Step Rollback
+   * `other` - Other
+   *
+   * @enum qa_signoff, fpi_required, measurement_failed, quarantine, sampling_required, batch_incomplete, training_expired, calibration_expired, regulatory_hold, rollback, other
+   */
+  | "qa_signoff"
+  | "fpi_required"
+  | "measurement_failed"
+  | "quarantine"
+  | "sampling_required"
+  | "batch_incomplete"
+  | "training_expired"
+  | "calibration_expired"
+  | "regulatory_hold"
+  | "rollback"
+  | "other";
+export type StepOverrideStatusEnum =
+  /**
+   * * `pending` - Pending
+   * `approved` - Approved
+   * `rejected` - Rejected
+   * `expired` - Expired
+   *
+   * @enum pending, approved, rejected, expired
+   */
+  "pending" | "approved" | "rejected" | "expired";
 export type PaginatedStepsList = {
   /**
    * @example 123
@@ -5519,7 +5860,7 @@ export type PatchedCalibrationRecordRequest = Partial<{
   equipment: string;
   calibration_date: string;
   due_date: string;
-  result: ResultEnum;
+  result: CalibrationRecordResultEnum;
   calibration_type: CalibrationTypeEnum;
   /**
    * Person or lab that performed calibration
@@ -5972,6 +6313,16 @@ export type PatchedProcessesRequest = Partial<{
      */
   status: ProcessStatusEnum;
   /**
+     * Process category for workflow engine routing
+    
+    * `manufacturing` - Manufacturing
+    * `quality` - Quality
+    * `maintenance` - Maintenance
+    * `npi` - New Product Introduction
+    * `document` - Document Control
+     */
+  category: ProcessesCategoryEnum;
+  /**
    * Description of changes from previous version (for approval review)
    */
   change_description: string | null;
@@ -6300,6 +6651,54 @@ export type PatchedStepExecutionRequest = Partial<{
   status: StepExecutionStatusEnum;
   archived: boolean;
 }>;
+export type PatchedStepOverrideRequest = Partial<{
+  step_execution: string;
+  /**
+     * Type of block being overridden
+    
+    * `qa_signoff` - QA Signoff Required
+    * `fpi_required` - FPI Required
+    * `measurement_failed` - Measurement Failed
+    * `quarantine` - Part Quarantined
+    * `sampling_required` - Sampling Required
+    * `batch_incomplete` - Batch Incomplete
+    * `training_expired` - Training Expired
+    * `calibration_expired` - Calibration Expired
+    * `regulatory_hold` - Regulatory Hold
+    * `rollback` - Step Rollback
+    * `other` - Other
+     */
+  block_type: BlockTypeEnum;
+  requested_by: number;
+  /**
+   * Justification for the override
+   *
+   * @minLength 1
+   */
+  reason: string;
+  /**
+   * User who approved/rejected the override
+   */
+  approved_by: number | null;
+  /**
+     * Current status of the override request
+    
+    * `pending` - Pending
+    * `approved` - Approved
+    * `rejected` - Rejected
+    * `expired` - Expired
+     */
+  status: StepOverrideStatusEnum;
+  /**
+   * When this override expires
+   */
+  expires_at: string | null;
+  /**
+   * Whether this override has been used
+   */
+  used: boolean;
+  archived: boolean;
+}>;
 export type PatchedStepsRequest = Partial<{
   /**
    * @minLength 1
@@ -6549,6 +6948,16 @@ export type ProcessesRequest = {
     * `deprecated` - Deprecated
      */
   ProcessStatusEnum | undefined;
+  category?: /**
+     * Process category for workflow engine routing
+    
+    * `manufacturing` - Manufacturing
+    * `quality` - Quality
+    * `maintenance` - Maintenance
+    * `npi` - New Product Introduction
+    * `document` - Document Control
+     */
+  ProcessesCategoryEnum | undefined;
   change_description?:
     | /**
      * Description of changes from previous version (for approval review)
@@ -7217,6 +7626,58 @@ export type StepExecutionRequest = {
    */
   string | undefined;
   status?: StepExecutionStatusEnum | undefined;
+  archived?: boolean | undefined;
+};
+export type StepOverrideRequest = {
+  step_execution: string;
+  /**
+     * Type of block being overridden
+    
+    * `qa_signoff` - QA Signoff Required
+    * `fpi_required` - FPI Required
+    * `measurement_failed` - Measurement Failed
+    * `quarantine` - Part Quarantined
+    * `sampling_required` - Sampling Required
+    * `batch_incomplete` - Batch Incomplete
+    * `training_expired` - Training Expired
+    * `calibration_expired` - Calibration Expired
+    * `regulatory_hold` - Regulatory Hold
+    * `rollback` - Step Rollback
+    * `other` - Other
+     */
+  block_type: BlockTypeEnum;
+  requested_by: number;
+  /**
+   * Justification for the override
+   *
+   * @minLength 1
+   */
+  reason: string;
+  approved_by?:
+    | /**
+     * User who approved/rejected the override
+     */
+    (number | null)
+    | undefined;
+  status?: /**
+     * Current status of the override request
+    
+    * `pending` - Pending
+    * `approved` - Approved
+    * `rejected` - Rejected
+    * `expired` - Expired
+     */
+  StepOverrideStatusEnum | undefined;
+  expires_at?:
+    | /**
+     * When this override expires
+     */
+    (string | null)
+    | undefined;
+  used?: /**
+   * Whether this override has been used
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type StepRequest = {
@@ -8370,7 +8831,7 @@ const PatchedCAPARequest = z
   })
   .partial()
   .passthrough();
-const ResultEnum = z.enum(["pass", "fail", "limited"]);
+const CalibrationRecordResultEnum = z.enum(["pass", "fail", "limited"]);
 const CalibrationTypeEnum = z.enum([
   "scheduled",
   "initial",
@@ -8385,7 +8846,7 @@ const CalibrationRecord = z
     equipment_info: z.object({}).partial().passthrough().nullable(),
     calibration_date: z.string(),
     due_date: z.string(),
-    result: ResultEnum.optional(),
+    result: CalibrationRecordResultEnum.optional(),
     result_display: z.string(),
     calibration_type: CalibrationTypeEnum.optional(),
     calibration_type_display: z.string(),
@@ -8418,7 +8879,7 @@ const CalibrationRecordRequest = z
     equipment: z.string().uuid(),
     calibration_date: z.string(),
     due_date: z.string(),
-    result: ResultEnum.optional(),
+    result: CalibrationRecordResultEnum.optional(),
     calibration_type: CalibrationTypeEnum.optional(),
     performed_by: z.string().max(200).optional(),
     external_lab: z.string().max(200).optional(),
@@ -8435,7 +8896,7 @@ const PatchedCalibrationRecordRequest = z
     equipment: z.string().uuid(),
     calibration_date: z.string(),
     due_date: z.string(),
-    result: ResultEnum,
+    result: CalibrationRecordResultEnum,
     calibration_type: CalibrationTypeEnum,
     performed_by: z.string().max(200),
     external_lab: z.string().max(200),
@@ -9368,6 +9829,84 @@ const PatchedQualityReportsRequest = z
   })
   .partial()
   .passthrough();
+const FPIRecordStatusEnum = z.enum([
+  "not_required",
+  "pending",
+  "passed",
+  "failed",
+  "waived",
+]);
+const FPIRecordResultEnum = z.enum(["pass", "fail", "conditional"]);
+const FPIRecord = z
+  .object({
+    id: z.string().uuid(),
+    work_order: z.string().uuid(),
+    work_order_info: z.object({}).partial().passthrough().nullable(),
+    step: z.string().uuid(),
+    step_info: z.object({}).partial().passthrough().nullable(),
+    part_type: z.string().uuid(),
+    part_type_info: z.object({}).partial().passthrough().nullable(),
+    designated_part: z.string().uuid().nullish(),
+    designated_part_info: z.object({}).partial().passthrough().nullable(),
+    equipment: z.string().uuid().nullish(),
+    equipment_info: z.object({}).partial().passthrough().nullable(),
+    shift_date: z.string().nullish(),
+    status: FPIRecordStatusEnum,
+    status_display: z.string(),
+    result: FPIRecordResultEnum,
+    result_display: z.string(),
+    inspected_by: z.number().int().nullable(),
+    inspected_by_info: z.object({}).partial().passthrough().nullable(),
+    inspected_at: z.string().datetime({ offset: true }).nullable(),
+    waived: z.boolean(),
+    waived_by: z.number().int().nullable(),
+    waived_by_info: z.object({}).partial().passthrough().nullable(),
+    waive_reason: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PaginatedFPIRecordList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(FPIRecord),
+  })
+  .passthrough();
+const FPIRecordRequest = z
+  .object({
+    work_order: z.string().uuid(),
+    step: z.string().uuid(),
+    part_type: z.string().uuid(),
+    designated_part: z.string().uuid().nullish(),
+    equipment: z.string().uuid().nullish(),
+    shift_date: z.string().nullish(),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedFPIRecordRequest = z
+  .object({
+    work_order: z.string().uuid(),
+    step: z.string().uuid(),
+    part_type: z.string().uuid(),
+    designated_part: z.string().uuid().nullable(),
+    equipment: z.string().uuid().nullable(),
+    shift_date: z.string().nullable(),
+    archived: z.boolean(),
+  })
+  .partial()
+  .passthrough();
+const api_FPIRecords_get_or_create_create_Body = z
+  .object({
+    work_order: z.string().uuid(),
+    step: z.string().uuid(),
+    equipment: z.string().uuid(),
+    shift_date: z.string(),
+  })
+  .partial()
+  .passthrough();
 const PaginatedFishboneList = z
   .object({
     count: z.number().int(),
@@ -10078,6 +10617,11 @@ const PartsStatusEnum = z.enum([
   "REWORK_IN_PROGRESS",
   "SCRAPPED",
   "CANCELLED",
+  "SHIPPED",
+  "IN_STOCK",
+  "AWAITING_PICKUP",
+  "CORE_BANKED",
+  "RMA_CLOSED",
 ]);
 const BulkAddPartsInputRequest = z
   .object({
@@ -10296,6 +10840,10 @@ const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
   .partial()
   .passthrough();
+const api_Parts_rollback_create_Body = z
+  .object({ reason: z.string(), override_id: z.string().uuid() })
+  .partial()
+  .passthrough();
 const TravelerStepStatusEnum = z.enum([
   "COMPLETED",
   "IN_PROGRESS",
@@ -10485,6 +11033,13 @@ const ProcessStatusEnum = z.enum([
   "approved",
   "deprecated",
 ]);
+const ProcessesCategoryEnum = z.enum([
+  "manufacturing",
+  "quality",
+  "maintenance",
+  "npi",
+  "document",
+]);
 const Processes = z
   .object({
     id: z.string().uuid(),
@@ -10502,6 +11057,7 @@ const Processes = z
     is_remanufactured: z.boolean().optional(),
     is_batch_process: z.boolean().optional(),
     status: ProcessStatusEnum.optional(),
+    category: ProcessesCategoryEnum.optional(),
     change_description: z.string().nullish(),
     approved_at: z.string().datetime({ offset: true }).nullish(),
     tenant: z.string().uuid().nullish(),
@@ -10529,6 +11085,7 @@ const ProcessesRequest = z
     is_remanufactured: z.boolean().optional(),
     is_batch_process: z.boolean().optional(),
     status: ProcessStatusEnum.optional(),
+    category: ProcessesCategoryEnum.optional(),
     change_description: z.string().nullish(),
     approved_at: z.string().datetime({ offset: true }).nullish(),
     tenant: z.string().uuid().nullish(),
@@ -10548,6 +11105,7 @@ const PatchedProcessesRequest = z
     is_remanufactured: z.boolean(),
     is_batch_process: z.boolean(),
     status: ProcessStatusEnum,
+    category: ProcessesCategoryEnum,
     change_description: z.string().nullable(),
     approved_at: z.string().datetime({ offset: true }).nullable(),
     tenant: z.string().uuid().nullable(),
@@ -11067,11 +11625,96 @@ const PatchedShiftRequest = z
   })
   .partial()
   .passthrough();
+const StepExecutionMeasurement = z
+  .object({
+    id: z.string().uuid(),
+    step_execution: z.string().uuid(),
+    step_execution_info: z.object({}).partial().passthrough().nullable(),
+    measurement_definition: z.string().uuid(),
+    measurement_definition_info: z
+      .object({})
+      .partial()
+      .passthrough()
+      .nullable(),
+    value: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullish(),
+    string_value: z.string().max(100).optional(),
+    is_within_spec: z.boolean().nullable(),
+    spec_status: z.string(),
+    recorded_by: z.number().int(),
+    recorded_by_info: z.object({}).partial().passthrough().nullable(),
+    recorded_at: z.string().datetime({ offset: true }),
+    equipment: z.string().uuid().nullish(),
+    equipment_info: z.object({}).partial().passthrough().nullable(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PaginatedStepExecutionMeasurementList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(StepExecutionMeasurement),
+  })
+  .passthrough();
+const StepExecutionMeasurementRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    measurement_definition: z.string().uuid(),
+    value: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullish(),
+    string_value: z.string().max(100).optional(),
+    recorded_by: z.number().int(),
+    equipment: z.string().uuid().nullish(),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedStepExecutionMeasurementRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    measurement_definition: z.string().uuid(),
+    value: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    string_value: z.string().max(100),
+    recorded_by: z.number().int(),
+    equipment: z.string().uuid().nullable(),
+    archived: z.boolean(),
+  })
+  .partial()
+  .passthrough();
+const api_StepExecutionMeasurements_bulk_record_create_Body = z
+  .object({
+    step_execution: z.string().uuid(),
+    measurements: z.array(
+      z
+        .object({
+          measurement_definition: z.string().uuid(),
+          value: z.number(),
+          string_value: z.string(),
+          equipment: z.string().uuid(),
+        })
+        .partial()
+        .passthrough()
+    ),
+  })
+  .partial()
+  .passthrough();
 const StepExecutionStatusEnum = z.enum([
   "pending",
+  "claimed",
   "in_progress",
   "completed",
   "skipped",
+  "cancelled",
+  "rolled_back",
 ]);
 const StepExecutionList = z
   .object({
@@ -11188,6 +11831,85 @@ const PaginatedWIPSummaryList = z
     previous: z.string().url().nullish(),
     results: z.array(WIPSummary),
   })
+  .passthrough();
+const BlockTypeEnum = z.enum([
+  "qa_signoff",
+  "fpi_required",
+  "measurement_failed",
+  "quarantine",
+  "sampling_required",
+  "batch_incomplete",
+  "training_expired",
+  "calibration_expired",
+  "regulatory_hold",
+  "rollback",
+  "other",
+]);
+const StepOverrideStatusEnum = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "expired",
+]);
+const StepOverride = z
+  .object({
+    id: z.string().uuid(),
+    step_execution: z.string().uuid(),
+    step_execution_info: z.object({}).partial().passthrough().nullable(),
+    block_type: BlockTypeEnum,
+    block_type_display: z.string(),
+    requested_by: z.number().int(),
+    requested_by_info: z.object({}).partial().passthrough().nullable(),
+    requested_at: z.string().datetime({ offset: true }),
+    reason: z.string(),
+    approved_by: z.number().int().nullish(),
+    approved_by_info: z.object({}).partial().passthrough().nullable(),
+    approved_at: z.string().datetime({ offset: true }).nullable(),
+    status: StepOverrideStatusEnum.optional(),
+    status_display: z.string(),
+    expires_at: z.string().datetime({ offset: true }).nullish(),
+    is_expired: z.boolean(),
+    used: z.boolean().optional(),
+    used_at: z.string().datetime({ offset: true }).nullable(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PaginatedStepOverrideList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(StepOverride),
+  })
+  .passthrough();
+const StepOverrideRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    block_type: BlockTypeEnum,
+    requested_by: z.number().int(),
+    reason: z.string().min(1),
+    approved_by: z.number().int().nullish(),
+    status: StepOverrideStatusEnum.optional(),
+    expires_at: z.string().datetime({ offset: true }).nullish(),
+    used: z.boolean().optional(),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedStepOverrideRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    block_type: BlockTypeEnum,
+    requested_by: z.number().int(),
+    reason: z.string().min(1),
+    approved_by: z.number().int().nullable(),
+    status: StepOverrideStatusEnum,
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+    used: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial()
   .passthrough();
 const Steps = z
   .object({
@@ -12828,6 +13550,26 @@ const SignupResponse = z
     user: z.object({}).partial().passthrough(),
   })
   .passthrough();
+const UserTenantsResponse = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string(),
+    logo_url: z.string().nullable(),
+    tier: z.string(),
+    is_current: z.boolean(),
+  })
+  .passthrough();
+const SwitchTenantRequestRequest = z
+  .object({ tenant_id: z.string().uuid() })
+  .passthrough();
+const SwitchTenantResponse = z
+  .object({
+    success: z.boolean(),
+    tenant_id: z.string().uuid(),
+    tenant_name: z.string(),
+  })
+  .passthrough();
 const EffectivePermissionsResponse = z
   .object({
     user_id: z.string(),
@@ -13071,7 +13813,7 @@ export const schemas = {
   PaginatedCAPAList,
   CAPARequest,
   PatchedCAPARequest,
-  ResultEnum,
+  CalibrationRecordResultEnum,
   CalibrationTypeEnum,
   CalibrationRecord,
   PaginatedCalibrationRecordList,
@@ -13149,6 +13891,13 @@ export const schemas = {
   MeasurementResultRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
+  FPIRecordStatusEnum,
+  FPIRecordResultEnum,
+  FPIRecord,
+  PaginatedFPIRecordList,
+  FPIRecordRequest,
+  PatchedFPIRecordRequest,
+  api_FPIRecords_get_or_create_create_Body,
   PaginatedFishboneList,
   FishboneRequest,
   PatchedFishboneRequest,
@@ -13244,6 +13993,7 @@ export const schemas = {
   PartsRequest,
   PatchedPartsRequest,
   PartIncrementInputRequest,
+  api_Parts_rollback_create_Body,
   TravelerStepStatusEnum,
   TravelerOperator,
   TravelerApproval,
@@ -13267,6 +14017,7 @@ export const schemas = {
   ConditionOperatorEnum,
   StepEdge,
   ProcessStatusEnum,
+  ProcessesCategoryEnum,
   Processes,
   PaginatedProcessesList,
   ProcessesRequest,
@@ -13307,6 +14058,11 @@ export const schemas = {
   PaginatedShiftList,
   ShiftRequest,
   PatchedShiftRequest,
+  StepExecutionMeasurement,
+  PaginatedStepExecutionMeasurementList,
+  StepExecutionMeasurementRequest,
+  PatchedStepExecutionMeasurementRequest,
+  api_StepExecutionMeasurements_bulk_record_create_Body,
   StepExecutionStatusEnum,
   StepExecutionList,
   PaginatedStepExecutionListList,
@@ -13317,6 +14073,12 @@ export const schemas = {
   PaginatedStepExecutionList,
   WIPSummary,
   PaginatedWIPSummaryList,
+  BlockTypeEnum,
+  StepOverrideStatusEnum,
+  StepOverride,
+  PaginatedStepOverrideList,
+  StepOverrideRequest,
+  PatchedStepOverrideRequest,
   Steps,
   PaginatedStepsList,
   StepsRequest,
@@ -13467,6 +14229,9 @@ export const schemas = {
   TenantSettingsUpdateResponse,
   SignupRequest,
   SignupResponse,
+  UserTenantsResponse,
+  SwitchTenantRequestRequest,
+  SwitchTenantResponse,
   EffectivePermissionsResponse,
   LoginRequest,
   Token,
@@ -19558,6 +20323,267 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/FPIRecords/",
+    alias: "api_FPIRecords_list",
+    description: `List FPI records with filtering`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "shift_date",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedFPIRecordList,
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/",
+    alias: "api_FPIRecords_create",
+    description: `Create a new FPI record`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: FPIRecordRequest,
+      },
+    ],
+    response: FPIRecord,
+  },
+  {
+    method: "get",
+    path: "/api/FPIRecords/:id/",
+    alias: "api_FPIRecords_retrieve",
+    description: `Retrieve a specific FPI record`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: FPIRecord,
+  },
+  {
+    method: "put",
+    path: "/api/FPIRecords/:id/",
+    alias: "api_FPIRecords_update",
+    description: `ViewSet for managing First Piece Inspection (FPI) records.
+
+FPI ensures the first piece of a production run meets quality standards
+before batch production proceeds. Configurable per step via fpi_scope:
+- per_workorder: One FPI per work order per step
+- per_shift: One FPI per shift per step
+- per_equipment: One FPI per equipment per step`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: FPIRecordRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: FPIRecord,
+  },
+  {
+    method: "patch",
+    path: "/api/FPIRecords/:id/",
+    alias: "api_FPIRecords_partial_update",
+    description: `ViewSet for managing First Piece Inspection (FPI) records.
+
+FPI ensures the first piece of a production run meets quality standards
+before batch production proceeds. Configurable per step via fpi_scope:
+- per_workorder: One FPI per work order per step
+- per_shift: One FPI per shift per step
+- per_equipment: One FPI per equipment per step`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedFPIRecordRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: FPIRecord,
+  },
+  {
+    method: "delete",
+    path: "/api/FPIRecords/:id/",
+    alias: "api_FPIRecords_destroy",
+    description: `ViewSet for managing First Piece Inspection (FPI) records.
+
+FPI ensures the first piece of a production run meets quality standards
+before batch production proceeds. Configurable per step via fpi_scope:
+- per_workorder: One FPI per work order per step
+- per_shift: One FPI per shift per step
+- per_equipment: One FPI per equipment per step`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/:id/fail/",
+    alias: "api_FPIRecords_fail_create",
+    description: `Mark FPI as failed`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ notes: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/:id/pass/",
+    alias: "api_FPIRecords_pass_create",
+    description: `Mark FPI as passed`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ notes: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/:id/waive/",
+    alias: "api_FPIRecords_waive_create",
+    description: `Waive FPI requirement`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/FPIRecords/check-status/",
+    alias: "api_FPIRecords_check_status_retrieve",
+    description: `Check FPI status for a work order at a step`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/get-or-create/",
+    alias: "api_FPIRecords_get_or_create_create",
+    description: `Get or create FPI record for work order/step combination`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_FPIRecords_get_or_create_create_Body,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/FPIRecords/metadata/",
+    alias: "api_FPIRecords_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/Groups/",
     alias: "api_Groups_list",
     description: `ViewSet for Django Groups with user and permission management`,
@@ -21770,6 +22796,26 @@ Import/Export endpoints (auto-configured from model):
     response: z.void(),
   },
   {
+    method: "get",
+    path: "/api/Parts/:id/can-rollback/",
+    alias: "api_Parts_can_rollback_retrieve",
+    description: `Check if part can be rolled back to previous step`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "post",
     path: "/api/Parts/:id/increment/",
     alias: "api_Parts_increment_create",
@@ -21790,6 +22836,31 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
           .object({ decision: z.string().min(1) })
           .partial()
           .passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/Parts/:id/rollback/",
+    alias: "api_Parts_rollback_create",
+    description: `Roll back part to previous step (configurable per step)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_Parts_rollback_create_Body,
       },
       {
         name: "id",
@@ -25287,6 +26358,198 @@ Response:
   },
   {
     method: "get",
+    path: "/api/StepExecutionMeasurements/",
+    alias: "api_StepExecutionMeasurements_list",
+    description: `List step execution measurements with filtering`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_within_spec",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "measurement_definition",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedStepExecutionMeasurementList,
+  },
+  {
+    method: "post",
+    path: "/api/StepExecutionMeasurements/",
+    alias: "api_StepExecutionMeasurements_create",
+    description: `Record a new measurement`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepExecutionMeasurementRequest,
+      },
+    ],
+    response: StepExecutionMeasurement,
+  },
+  {
+    method: "get",
+    path: "/api/StepExecutionMeasurements/:id/",
+    alias: "api_StepExecutionMeasurements_retrieve",
+    description: `Retrieve a specific measurement`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepExecutionMeasurement,
+  },
+  {
+    method: "put",
+    path: "/api/StepExecutionMeasurements/:id/",
+    alias: "api_StepExecutionMeasurements_update",
+    description: `ViewSet for managing measurements recorded during step execution.
+
+Measurements are validated against MeasurementDefinition specs
+and can block step advancement if out of spec.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepExecutionMeasurementRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepExecutionMeasurement,
+  },
+  {
+    method: "patch",
+    path: "/api/StepExecutionMeasurements/:id/",
+    alias: "api_StepExecutionMeasurements_partial_update",
+    description: `ViewSet for managing measurements recorded during step execution.
+
+Measurements are validated against MeasurementDefinition specs
+and can block step advancement if out of spec.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedStepExecutionMeasurementRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepExecutionMeasurement,
+  },
+  {
+    method: "delete",
+    path: "/api/StepExecutionMeasurements/:id/",
+    alias: "api_StepExecutionMeasurements_destroy",
+    description: `ViewSet for managing measurements recorded during step execution.
+
+Measurements are validated against MeasurementDefinition specs
+and can block step advancement if out of spec.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/StepExecutionMeasurements/bulk-record/",
+    alias: "api_StepExecutionMeasurements_bulk_record_create",
+    description: `Record multiple measurements at once for a step execution`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_StepExecutionMeasurements_bulk_record_create_Body,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/StepExecutionMeasurements/check-compliance/",
+    alias: "api_StepExecutionMeasurements_check_compliance_retrieve",
+    description: `Check measurement compliance for a step execution`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/StepExecutionMeasurements/metadata/",
+    alias: "api_StepExecutionMeasurements_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StepExecutionMeasurements/required/",
+    alias: "api_StepExecutionMeasurements_required_retrieve",
+    description: `Get required measurements for a step execution`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
     path: "/api/StepExecutions/",
     alias: "api_StepExecutions_list",
     description: `ViewSet for step execution tracking (workflow engine).
@@ -25339,7 +26602,15 @@ Used by the workflow engine for tracking part progression through steps.`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["completed", "in_progress", "pending", "skipped"])
+          .enum([
+            "cancelled",
+            "claimed",
+            "completed",
+            "in_progress",
+            "pending",
+            "rolled_back",
+            "skipped",
+          ])
           .optional(),
       },
       {
@@ -25580,7 +26851,15 @@ Sets assigned_to to current user and status to in_progress.`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["completed", "in_progress", "pending", "skipped"])
+          .enum([
+            "cancelled",
+            "claimed",
+            "completed",
+            "in_progress",
+            "pending",
+            "rolled_back",
+            "skipped",
+          ])
           .optional(),
       },
       {
@@ -25662,7 +26941,15 @@ Sets assigned_to to current user and status to in_progress.`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["completed", "in_progress", "pending", "skipped"])
+          .enum([
+            "cancelled",
+            "claimed",
+            "completed",
+            "in_progress",
+            "pending",
+            "rolled_back",
+            "skipped",
+          ])
           .optional(),
       },
       {
@@ -25744,7 +27031,15 @@ Sets assigned_to to current user and status to in_progress.`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["completed", "in_progress", "pending", "skipped"])
+          .enum([
+            "cancelled",
+            "claimed",
+            "completed",
+            "in_progress",
+            "pending",
+            "rolled_back",
+            "skipped",
+          ])
           .optional(),
       },
       {
@@ -25826,7 +27121,15 @@ Sets assigned_to to current user and status to in_progress.`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["completed", "in_progress", "pending", "skipped"])
+          .enum([
+            "cancelled",
+            "claimed",
+            "completed",
+            "in_progress",
+            "pending",
+            "rolled_back",
+            "skipped",
+          ])
           .optional(),
       },
       {
@@ -25861,6 +27164,202 @@ Sets assigned_to to current user and status to in_progress.`,
       },
     ],
     response: PaginatedWIPSummaryList,
+  },
+  {
+    method: "get",
+    path: "/api/StepOverrides/",
+    alias: "api_StepOverrides_list",
+    description: `List step override requests with filtering`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "block_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedStepOverrideList,
+  },
+  {
+    method: "post",
+    path: "/api/StepOverrides/",
+    alias: "api_StepOverrides_create",
+    description: `ViewSet for managing step override requests.
+
+Overrides allow bypassing step advancement blocks with approval workflow.
+Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepOverrideRequest,
+      },
+    ],
+    response: StepOverride,
+  },
+  {
+    method: "get",
+    path: "/api/StepOverrides/:id/",
+    alias: "api_StepOverrides_retrieve",
+    description: `Retrieve a specific step override request`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepOverride,
+  },
+  {
+    method: "put",
+    path: "/api/StepOverrides/:id/",
+    alias: "api_StepOverrides_update",
+    description: `ViewSet for managing step override requests.
+
+Overrides allow bypassing step advancement blocks with approval workflow.
+Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StepOverrideRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepOverride,
+  },
+  {
+    method: "patch",
+    path: "/api/StepOverrides/:id/",
+    alias: "api_StepOverrides_partial_update",
+    description: `ViewSet for managing step override requests.
+
+Overrides allow bypassing step advancement blocks with approval workflow.
+Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedStepOverrideRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepOverride,
+  },
+  {
+    method: "delete",
+    path: "/api/StepOverrides/:id/",
+    alias: "api_StepOverrides_destroy",
+    description: `ViewSet for managing step override requests.
+
+Overrides allow bypassing step advancement blocks with approval workflow.
+Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/StepOverrides/:id/approve/",
+    alias: "api_StepOverrides_approve_create",
+    description: `Approve an override request`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ expiry_hours: z.number().int() })
+          .partial()
+          .passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/StepOverrides/:id/reject/",
+    alias: "api_StepOverrides_reject_create",
+    description: `Reject an override request`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/StepOverrides/metadata/",
+    alias: "api_StepOverrides_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StepOverrides/pending/",
+    alias: "api_StepOverrides_pending_retrieve",
+    description: `List pending override requests that need approval`,
+    requestFormat: "json",
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "get",
@@ -28360,6 +29859,31 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/user/tenants/",
+    alias: "api_user_tenants_list",
+    description: `List all tenants the current user has access to.
+Used for the tenant switcher in the sidebar.`,
+    requestFormat: "json",
+    response: z.array(UserTenantsResponse),
+  },
+  {
+    method: "post",
+    path: "/api/user/tenants/switch/",
+    alias: "api_user_tenants_switch_create",
+    description: `Switch the current user&#x27;s active tenant context.
+Stores the selected tenant in the session.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ tenant_id: z.string().uuid() }).passthrough(),
+      },
+    ],
+    response: SwitchTenantResponse,
   },
   {
     method: "post",

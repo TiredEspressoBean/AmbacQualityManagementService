@@ -17,26 +17,27 @@ Navigate to **Analytics** > **SPC** or `/spc`
 
 ## Control Charts
 
-### X-bar Chart (Mean)
-Tracks the average of subgroups:
+The system supports three chart types, selected via the **Chart Type** toggle:
 
-- Shows process centering
-- Detects shifts in average
-- UCL/LCL based on process data
+### X̄-R (X-bar and Range)
+For subgroups of 2-8 samples. Uses Range to estimate variation.
 
-### R Chart (Range)
-Tracks variation within subgroups:
+- **X̄ Chart**: Tracks subgroup averages, detects shifts in process centering
+- **R Chart**: Tracks range within subgroups, detects changes in variation
 
-- Shows process consistency
-- Detects changes in variation
-- Paired with X-bar chart
+### X̄-S (X-bar and Std Dev)
+For subgroups of 9+ samples. Uses Std Dev for better accuracy.
 
-### Individual X Chart
-For single measurements (no subgroups):
+- **X̄ Chart**: Same as above
+- **S Chart**: Uses standard deviation instead of range
+- Auto-selected when subgroup size > 8
 
-- Each point is one measurement
-- Moving range for variation
-- Common in low-volume or destructive testing
+### I-MR (Individual and Moving Range)
+For individual measurements (n=1).
+
+- **Individual X**: Each point is one measurement
+- **Moving Range**: Variation between consecutive points
+- Use for: low-volume, destructive testing, or continuous processes
 
 ## Reading Control Charts
 
@@ -69,17 +70,21 @@ A process can be in control but not capable (or vice versa).
 
 ### Measurement Selection
 
-1. Choose **Part Type**
-2. Choose **Process/Step**
-3. Choose **Measurement Definition**
-4. Set date range
+Use the dropdowns at the top to select:
 
-### Filters
+1. **Process** - The manufacturing process
+2. **Step** - The specific step within the process
+3. **Measurement** - The measurement definition to analyze
 
-- By lot number
-- By equipment
-- By operator
-- Date range
+### Chart Settings
+
+| Setting | Options | Description |
+|---------|---------|-------------|
+| **Chart Type** | X̄-R, X̄-S, I-MR | Auto-selects X̄-S for subgroups > 8 |
+| **Date Range** | 30, 60, 90, 180 days | How far back to pull data |
+| **Subgroup Size (n)** | 2-25 | Number of consecutive measurements per point |
+
+Standard practice is subgroup size of 5. Larger subgroups detect smaller shifts but require more data.
 
 ## Chart Display
 
@@ -150,23 +155,23 @@ The SPC page shows:
 
 ## Baseline Management
 
-### Setting Baseline
+### Freezing Limits
 
-Establish baseline from stable period:
+Once your process is stable, lock the control limits:
 
-1. Identify stable data period
-2. Click **Set Baseline**
-3. Control limits calculated from baseline
-4. Used for ongoing monitoring
+1. Verify process is stable (no red flags, random scatter)
+2. Click **Freeze Limits**
+3. Control limits are locked for ongoing monitoring
+4. Future data is compared against frozen baseline
 
 ### Updating Baseline
 
-When process improves:
+When process improves significantly:
 
-1. Review new stable data
+1. Review new stable data period
 2. Click **Update Baseline**
 3. New limits replace old
-4. Document reason for change
+4. Document reason for change (required)
 
 ## Histogram
 

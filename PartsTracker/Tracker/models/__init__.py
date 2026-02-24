@@ -112,6 +112,11 @@ from .mes_lite import (
 
     # Step execution (workflow tracking)
     StepExecution,
+
+    # Step requirements (workflow engine)
+    RequirementType,
+    StepRequirement,
+    DecisionDataMissing,
 )
 
 # MES Standard - Full traceability and compliance
@@ -216,6 +221,23 @@ from .qms import (
     CalibrationRecordQuerySet,
     CalibrationRecordManager,
     CalibrationRecord,
+
+    # Step Completion & Workflow (FPI, Overrides, Measurements)
+    FPIStatus,
+    FPIResult,
+    FPIRecord,
+    BlockType,
+    OverrideStatus,
+    StepOverride,
+    StepExecutionMeasurement,
+
+    # Rollback & Audit
+    VoidableModel,
+    RecordEdit,
+    RollbackReason,
+    RollbackStatus,
+    StepRollback,
+    BatchRollback,
 )
 
 # SPC models - Statistical Process Control
@@ -285,6 +307,9 @@ __all__ = [
     'APQPStage',
     'ProcessStatus',
     'StepExecution',
+    'RequirementType',
+    'StepRequirement',
+    'DecisionDataMissing',
 
     # MES Standard (Full Traceability & Compliance)
     'EquipmentType',
@@ -363,6 +388,23 @@ __all__ = [
     'CalibrationRecordQuerySet',
     'CalibrationRecordManager',
     'CalibrationRecord',
+
+    # Step Completion & Workflow (FPI, Overrides, Measurements)
+    'FPIStatus',
+    'FPIResult',
+    'FPIRecord',
+    'BlockType',
+    'OverrideStatus',
+    'StepOverride',
+    'StepExecutionMeasurement',
+
+    # Rollback & Audit
+    'VoidableModel',
+    'RecordEdit',
+    'RollbackReason',
+    'RollbackStatus',
+    'StepRollback',
+    'BatchRollback',
 
     # SPC (Statistical Process Control)
     'SPCBaseline',

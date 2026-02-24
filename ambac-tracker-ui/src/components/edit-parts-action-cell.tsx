@@ -41,11 +41,7 @@ export function EditPartActionsCell({ partId }: Props) {
             {
                 onSuccess: () => {
                     setOpen(false);
-                    console.log(`Part ${partId} archived`);
                     toast.success(`Part #${partId} deleted successfully.`);
-                },
-                onError: (error) => {
-                    console.error("Failed to archive part:", error);
                 },
             }
         );

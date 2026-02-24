@@ -54,44 +54,44 @@ sampling_required = BooleanField()
 min_sampling_rate = IntegerField()  # REMOVE - orphaned, see Sampling Integration section
 ```
 
-### Current Gaps
+### Gap Status (Updated Feb 2026)
 
-| Gap | Impact |
-|-----|--------|
-| `claim()` always sets `in_progress` | Can't track "assigned but not started" |
-| No `started_at` timestamp | Can't distinguish entered vs work started |
-| No `complete()` action | Completion is implicit in `increment_step()` |
-| No completion settings on Steps | Can't configure batch vs individual flow |
-| No batch completion logic | Parts can't wait for batch synchronization |
-| No `release()` action | Operators can't release work back to pool |
-| Missing status choices | No 'claimed' or 'cancelled' status |
-| ScheduleSlot missing operator assignment | Can't track who's assigned to slots |
-| No sampling/QA check in `increment_step()` | Parts advance without QualityReport verification |
-| Batch logic ignores `requires_batch_completion` | Uses `is_decision_point` instead of settings |
-| `qa_result` defaults to FAIL | Missing QualityReport routes to fail path, not blocked |
-| Incomplete terminal status mapping | Only 3 of 8 statuses mapped to PartsStatus |
-| `can_advance_step` placeholder | Referenced but not implemented |
-| `min_sampling_rate` orphaned | Field exists, validation never enforced |
-| FPI auto-flag missing | First part not auto-designated for FPI |
-| FPI check not wired | `get_fpi_status()` exists but not enforced in `increment_step()` |
-| No `FPIRecord` model | FPI scope tracking not implemented |
-| No FPI override/waive endpoints | Can't change FPI part or skip FPI |
-| `is_mandatory` not enforced | Mandatory measurements don't block completion |
-| No `StepExecutionMeasurement` model | Measurements tied to QualityReports (sampled only) |
-| No measurement progress tracking | Can't see 3 of 5 measurements complete |
-| No `StepOverride` model | No escape hatch when blocks occur |
-| No override workflow | Can't request, approve, or track overrides |
-| No hard block detection | Quarantine/regulatory holds not enforced |
-| No `StepRollback` model | Can't move parts backward through process |
-| No `VoidableModel` mixin | Records can't be voided, only deleted |
-| No edit audit trail | Record edits not tracked |
-| No quick undo | Can't reverse just-completed step |
-| **Cascade Gaps** | |
-| No WorkOrder auto-complete | All parts finish terminal step, WO stays IN_PROGRESS |
-| No Order auto-complete | All WOs complete, Order stays IN_PROGRESS |
-| No step completion notifications | No alerts on completion, escalation, batch ready |
-| No outbound HubSpot sync | CRM unaware of production progress |
-| No ScheduleSlot completion link | Scheduling system out of sync with production |
+| Gap | Impact | Status |
+|-----|--------|--------|
+| `claim()` always sets `in_progress` | Can't track "assigned but not started" | ⏳ Future |
+| No `started_at` timestamp | Can't distinguish entered vs work started | ⏳ Future |
+| No `complete()` action | Completion is implicit in `increment_step()` | ⏳ Future |
+| No completion settings on Steps | Can't configure batch vs individual flow | ✅ `requires_batch_completion` added |
+| No batch completion logic | Parts can't wait for batch synchronization | ✅ Field added, logic pending |
+| No `release()` action | Operators can't release work back to pool | ⏳ Future |
+| Missing status choices | No 'claimed' or 'cancelled' status | ⏳ Future |
+| ScheduleSlot missing operator assignment | Can't track who's assigned to slots | ⏳ Future |
+| No sampling/QA check in `increment_step()` | Parts advance without QualityReport verification | ✅ Sampling evaluation in increment_step |
+| Batch logic ignores `requires_batch_completion` | Uses `is_decision_point` instead of settings | ✅ Fixed |
+| `qa_result` defaults to FAIL | Missing QualityReport routes to fail path, not blocked | ✅ Fixed - raises DecisionDataMissing |
+| Incomplete terminal status mapping | Only 3 of 8 statuses mapped to PartsStatus | ✅ All 8 statuses mapped |
+| `can_advance_step` placeholder | Referenced but not implemented | ⏳ Future |
+| `min_sampling_rate` orphaned | Field exists, validation never enforced | ⚠️ Deprecated - use SamplingRuleSet |
+| FPI auto-flag missing | First part not auto-designated for FPI | ✅ FPIRecord model handles this |
+| FPI check not wired | `get_fpi_status()` exists but not enforced in `increment_step()` | ✅ FPIRecord + UI integration |
+| No `FPIRecord` model | FPI scope tracking not implemented | ✅ `qms.py:2396` |
+| No FPI override/waive endpoints | Can't change FPI part or skip FPI | ✅ FPIRecordViewSet with actions |
+| `is_mandatory` not enforced | Mandatory measurements don't block completion | ⏳ UI shows required, backend validation pending |
+| No `StepExecutionMeasurement` model | Measurements tied to QualityReports (sampled only) | ✅ `qms.py:2683` |
+| No measurement progress tracking | Can't see 3 of 5 measurements complete | ✅ UI shows progress |
+| No `StepOverride` model | No escape hatch when blocks occur | ✅ `qms.py:2553` |
+| No override workflow | Can't request, approve, or track overrides | ✅ StepOverrideViewSet |
+| No hard block detection | Quarantine/regulatory holds not enforced | ✅ `block_on_quarantine` on Steps |
+| No `StepRollback` model | Can't move parts backward through process | ✅ Added to qms.py |
+| No `VoidableModel` mixin | Records can't be voided, only deleted | ✅ Added to qms.py |
+| No edit audit trail | Record edits not tracked | ✅ RecordEdit model |
+| No quick undo | Can't reverse just-completed step | ✅ `undo_window_minutes` on Steps |
+| **Cascade Gaps** | | |
+| No WorkOrder auto-complete | All parts finish terminal step, WO stays IN_PROGRESS | ⏳ Signal needed |
+| No Order auto-complete | All WOs complete, Order stays IN_PROGRESS | ⏳ Signal needed |
+| No step completion notifications | No alerts on completion, escalation, batch ready | ⏳ Future |
+| No outbound HubSpot sync | CRM unaware of production progress | ⏳ Future |
+| No ScheduleSlot completion link | Scheduling system out of sync with production | ⏳ Future |
 
 ---
 

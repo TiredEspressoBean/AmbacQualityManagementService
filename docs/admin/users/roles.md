@@ -31,59 +31,63 @@ Role type is set per user and determines baseline behavior.
 
 ## Built-in Groups
 
-### Administrator
+### Admin
 Full system access:
 - All permissions (400+)
 - Can configure system
 - Can manage users
 
-### QA Manager
+### QA_Manager
 Quality management:
 - Manage quality reports
 - Approve dispositions
 - Close CAPAs
 - View production data
+- Respond to approvals
 
-### Production Manager
-Production operations:
-- Manage orders and work orders
-- View quality data
-- Update parts
-- Document access
-
-### QA Inspector
+### QA_Inspector
 Quality inspection:
 - Create quality reports
 - Record measurements
 - View orders
-- Limited edit rights
+- Initiate CAPAs
+- Conduct RCA
 
-### Operator
+### Production_Manager
+Production operations:
+- Manage orders and work orders
+- View quality data
+- Update parts
+- Respond to approvals
+
+### Production_Operator
 Production floor:
-- View orders
-- Move parts through steps
+- View orders and parts
+- Create and update parts
 - Record data
-- Basic access
+- Basic MES access
+
+### Document_Controller
+Document management:
+- Full document CRUD
+- Classification control
+- Confidential/restricted/secret access
+- Approval template management
 
 ### Engineering
 Technical access:
-- Process configuration
-- Document management
-- Equipment setup
-- ECO management
+- Create and edit documents (drawings, specs)
+- View confidential/restricted documents
+- Initiate CAPAs for design issues
+- Respond to approvals
 
-### Document Controller
-Document management:
-- Full document access
-- Revision management
-- Approval submission
-- Confidential access
-
-### Auditor
-Read-only:
-- View all records
-- Cannot edit
-- Compliance focused
+### Supplier_Quality
+Supplier management:
+- Incoming inspection (create quality reports)
+- Reject dispositions for incoming material
+- Initiate CAPAs for supplier issues
+- Conduct RCA
+- Manage supplier documents (certs, SCARs)
 
 ### Customer
 Portal access:

@@ -1,8 +1,11 @@
-# Operator Training Guide
+# Production Operator Training Guide
 
 **Duration:** 2-4 hours
 **Prerequisites:** None
 **Goal:** Learn to track parts through production steps and record measurements
+
+!!! note "Role Name"
+    This training is for the **Production_Operator** role in the system.
 
 ---
 
@@ -270,61 +273,69 @@ Types of measurements:
 
 ---
 
-## Module 4: Flagging Issues
+## Module 4: Reporting Quality Issues
 
 ### Learning Objectives
 
 By the end of this module, you will:
 
-- [ ] Recognize when to flag an issue
-- [ ] Create a quality flag on a part
-- [ ] Understand what happens after flagging
+- [ ] Recognize when to report a quality issue
+- [ ] Create a quality report for a defective part
+- [ ] Understand what happens after reporting
 
-### 4.1 When to Flag
+### 4.1 When to Report Issues
 
-**Flag an issue when:**
+**Report a quality issue when:**
 
 - Part has visible defect
 - Measurement is out of spec
 - Something doesn't look right
 - You're unsure if part is good
 
-**Don't ignore problems.** It's better to flag and have QA verify than to let a bad part continue.
+**Don't ignore problems.** It's better to report and have QA verify than to let a bad part continue.
 
 ---
 
-### 4.2 Creating a Quality Flag
+### 4.2 Creating a Quality Report for Issues
+
+Issues are reported through the same **Quality Report** form used for measurements, but with a FAIL status.
 
 **Steps:**
 
-1. Select the part
-2. Click **Flag Issue** (or flag icon)
-3. Select the error type that best matches
-4. Add description of what you observed
-5. Submit
+1. Find the part in the QA Parts table
+2. Click **Quality Report**
+3. Fill in the form:
+   - Select your name as Operator
+   - Select the equipment/machine used
+   - Set Status to **FAIL**
+   - Select the Error Type that best matches the defect
+   - Add a description of what you observed
+4. Submit
 
 **What happens:**
 
-- Part is quarantined
+- Quality report is created with FAIL status
+- Part may be quarantined depending on severity
 - QA is notified
 - Part cannot advance until resolved
 
-**Exercise 4.1:** Flagging a Part
+**Exercise 4.1:** Reporting a Quality Issue
 
-1. Find part "TRAIN-003-001"
-2. Click **Flag Issue**
-3. Select error type "Visual Defect"
-4. Add description: "Training exercise - surface scratch observed"
-5. Submit the flag
+1. Find a part in the QA Parts table
+2. Click **Quality Report**
+3. Set Status to FAIL
+4. Select error type "Visual Defect"
+5. Add description: "Training exercise - surface scratch observed"
+6. Submit the report
 
 ---
 
-### 4.3 After Flagging
+### 4.3 After Reporting
 
-Once you flag a part:
+Once you report an issue:
 
 - **Your job is done** - QA takes over
-- Part shows "Quarantine" status
+- Part shows updated status (may be quarantined)
 - QA will inspect and decide disposition
 - You may be asked for more information
 
@@ -332,9 +343,9 @@ Once you flag a part:
 
 ### Knowledge Check: Module 4
 
-1. Give three examples of when you should flag a part.
-2. What happens to a part after you flag it?
-3. Who decides what to do with a flagged part?
+1. Give three examples of when you should report a quality issue.
+2. How do you indicate a part has failed inspection?
+3. Who decides what to do with a failed part?
 
 ---
 
@@ -412,11 +423,12 @@ Complete these tasks to demonstrate competency:
 3. Fill in measurements and status
 4. Submit the form
 
-### Task 3: Issue Flagging
+### Task 3: Issue Reporting
 
 1. Find part "ASSESS-003-002"
-2. Flag it with error type "Dimensional"
-3. Add appropriate description
+2. Click **Quality Report**
+3. Set status to FAIL, select error type "Dimensional"
+4. Add appropriate description and submit
 
 ### Task 4: Navigation
 
@@ -456,8 +468,8 @@ Print this for your workstation:
 ### Quality Report (Individual)
 1. QA Parts → Find part → **Quality Report** → Fill form → **Submit**
 
-### Flagging Issues
-1. Select part → **Flag Issue** → Select type → Describe → **Submit**
+### Reporting Issues
+1. QA Parts → Find part → **Quality Report** → Set FAIL status → Select error type → Describe → **Submit**
 
 ### Need Help?
 - Check the part's current step and requirements

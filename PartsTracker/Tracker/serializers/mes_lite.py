@@ -321,7 +321,8 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-            'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process', 'total_rework_count')
+            'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process', 'total_rework_count',
+            'step')  # Step changes must go through increment action for validation
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_quality_info(self, obj):

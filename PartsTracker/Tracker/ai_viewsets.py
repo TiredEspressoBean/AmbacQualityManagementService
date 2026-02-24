@@ -889,7 +889,7 @@ class QueryViewSet(viewsets.GenericViewSet):
                             safe_fields.append(f"{field_name}_id")
                         else:
                             safe_fields.append(field_name)
-                    except:
+                    except Exception:
                         # If field lookup fails, include as-is
                         safe_fields.append(field_name)
                 queryset = queryset.values(*safe_fields)

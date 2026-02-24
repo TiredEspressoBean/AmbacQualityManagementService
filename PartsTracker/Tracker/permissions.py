@@ -65,6 +65,14 @@ MODULE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
             'respond_to_approval',
             'create_approval_template',
             'manage_approval_workflow',
+            # Audit trail access
+            'view_auditlog',
+            'export_auditlog',
+            # Export control management
+            'verify_export_control',
+            'change_export_classification',
+            # Data export
+            'export_data',
         ],
         'wildcards': {
             'view_all': 'view_*',
@@ -179,6 +187,9 @@ GROUP_DEFINITIONS: dict[str, dict] = {
                 # Approvals
                 'respond_to_approval', 'create_approval_template', 'manage_approval_workflow',
                 'add_approvaltemplate', 'change_approvaltemplate',
+                # Audit and export
+                'view_auditlog',
+                'export_data',
             ],
         },
     },
@@ -213,6 +224,7 @@ GROUP_DEFINITIONS: dict[str, dict] = {
             'core': [
                 'view_confidential_documents',
                 'respond_to_approval',
+                'export_data',
             ],
         },
     },
@@ -240,6 +252,10 @@ GROUP_DEFINITIONS: dict[str, dict] = {
                 # Approval templates
                 'create_approval_template', 'manage_approval_workflow',
                 'add_approvaltemplate', 'change_approvaltemplate',
+                # Audit, export control, and data export
+                'view_auditlog',
+                'export_data',
+                'change_export_classification',
             ],
         },
     },

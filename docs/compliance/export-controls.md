@@ -134,9 +134,10 @@ Configure country-based restrictions:
 
 | Permission | Allows |
 |------------|--------|
-| `view_itar` | Access ITAR-controlled items |
-| `verify_export_control` | Verify user export status |
-| `change_export_classification` | Modify ITAR classification |
+| `verify_export_control` | Verify user export status (mark as US Person) |
+| `change_export_classification` | Modify ITAR/ECCN classification on documents |
+
+Note: Access to ITAR-controlled items is determined by the user's `us_person` attribute, not a permission. The `ExportControlService` automatically filters querysets based on user export control status.
 
 ## Best Practices
 

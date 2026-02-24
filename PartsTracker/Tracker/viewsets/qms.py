@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_view, OpenApiParameter
 from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework import parsers
 from rest_framework.response import Response
@@ -490,7 +491,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             'overdue': overdue_count,
         })
 
-    @action(detail=False, methods=['get'], url_path='my-assigned')
+    @action(detail=False, methods=['get'], url_path='my-assigned', permission_classes=[IsAuthenticated])
     def my_assigned(self, request):
         """Get all CAPAs assigned to current user"""
         user = request.user
@@ -623,7 +624,7 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         description="Get all tasks assigned to current user",
         responses={200: CapaTasksSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'], url_path='my-tasks')
+    @action(detail=False, methods=['get'], url_path='my-tasks', permission_classes=[IsAuthenticated])
     def my_tasks(self, request):
         """Get all tasks assigned to current user"""
         user = request.user
@@ -1007,4 +1008,695 @@ class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpor
             'defect_types': [{'value': d['defect_type'], 'count': d['count']} for d in defect_types],
             'severities': [{'value': s['severity'], 'count': s['count']} for s in severities],
             'total_count': queryset.count(),
+        })
+
+
+# ===== STEP OVERRIDE VIEWSETS =====
+
+@extend_schema_view(
+    list=extend_schema(
+        description="List step override requests with filtering",
+        parameters=[
+            OpenApiParameter(name='status', description='Filter by status (pending, approved, rejected, expired)', required=False, type=str),
+            OpenApiParameter(name='block_type', description='Filter by block type', required=False, type=str),
+            OpenApiParameter(name='step_execution', description='Filter by step execution UUID', required=False, type=str),
+        ]
+    ),
+    retrieve=extend_schema(description="Retrieve a specific step override request"),
+)
+class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing step override requests.
+
+    Overrides allow bypassing step advancement blocks with approval workflow.
+    Supports rollback requests, measurement failures, QA signoff bypasses, etc.
+    """
+    from Tracker.models import StepOverride
+    queryset = StepOverride.objects.all()
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status', 'block_type', 'step_execution']
+    ordering_fields = ['requested_at', 'approved_at', 'expires_at']
+    ordering = ['-requested_at']
+
+    def get_serializer_class(self):
+        # Import here to avoid circular import
+        from Tracker.serializers.qms import StepOverrideSerializer
+        return StepOverrideSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            from Tracker.models import StepOverride
+            return StepOverride.objects.none()
+
+        from Tracker.models import StepOverride
+        qs = StepOverride.objects.all()
+        return qs.select_related(
+            'step_execution', 'step_execution__part', 'step_execution__step',
+            'requested_by', 'approved_by'
+        )
+
+    @extend_schema(
+        description="Approve an override request",
+        request={"application/json": {"type": "object", "properties": {
+            "expiry_hours": {"type": "integer", "description": "Hours until override expires (optional, uses step default)"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve a pending override request."""
+        from Tracker.models import OverrideStatus
+        override = self.get_object()
+
+        if override.status != OverrideStatus.PENDING:
+            return Response(
+                {"detail": f"Cannot approve override with status '{override.status}'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set expiry
+        expiry_hours = request.data.get('expiry_hours')
+        if expiry_hours is None:
+            # Use step's default
+            step = override.step_execution.step if override.step_execution else None
+            expiry_hours = getattr(step, 'override_expiry_hours', 24)
+
+        override.status = OverrideStatus.APPROVED
+        override.approved_by = request.user
+        override.approved_at = timezone.now()
+        override.expires_at = timezone.now() + timezone.timedelta(hours=expiry_hours)
+        override.save(update_fields=['status', 'approved_by', 'approved_at', 'expires_at'])
+
+        return Response({
+            "detail": "Override approved",
+            "id": str(override.id),
+            "expires_at": override.expires_at.isoformat(),
+        })
+
+    @extend_schema(
+        description="Reject an override request",
+        request={"application/json": {"type": "object", "properties": {
+            "reason": {"type": "string", "description": "Reason for rejection"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a pending override request."""
+        from Tracker.models import OverrideStatus
+        override = self.get_object()
+
+        if override.status != OverrideStatus.PENDING:
+            return Response(
+                {"detail": f"Cannot reject override with status '{override.status}'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        override.status = OverrideStatus.REJECTED
+        override.approved_by = request.user  # Who made the decision
+        override.approved_at = timezone.now()
+        override.save(update_fields=['status', 'approved_by', 'approved_at'])
+
+        return Response({
+            "detail": "Override rejected",
+            "id": str(override.id),
+        })
+
+    @extend_schema(
+        description="List pending override requests that need approval",
+        responses={200: dict}
+    )
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """Get all pending override requests."""
+        from Tracker.models import OverrideStatus
+        queryset = self.get_queryset().filter(status=OverrideStatus.PENDING)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+# ===== FPI (FIRST PIECE INSPECTION) VIEWSETS =====
+
+@extend_schema_view(
+    list=extend_schema(
+        description="List FPI records with filtering",
+        parameters=[
+            OpenApiParameter(name='work_order', description='Filter by work order UUID', required=False, type=str),
+            OpenApiParameter(name='step', description='Filter by step UUID', required=False, type=str),
+            OpenApiParameter(name='status', description='Filter by status (pending, passed, failed, waived)', required=False, type=str),
+            OpenApiParameter(name='shift_date', description='Filter by shift date (YYYY-MM-DD)', required=False, type=str),
+        ]
+    ),
+    create=extend_schema(description="Create a new FPI record"),
+    retrieve=extend_schema(description="Retrieve a specific FPI record"),
+)
+class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing First Piece Inspection (FPI) records.
+
+    FPI ensures the first piece of a production run meets quality standards
+    before batch production proceeds. Configurable per step via fpi_scope:
+    - per_workorder: One FPI per work order per step
+    - per_shift: One FPI per shift per step
+    - per_equipment: One FPI per equipment per step
+    """
+    from Tracker.models import FPIRecord
+    queryset = FPIRecord.objects.all()
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
+    ordering_fields = ['created_at', 'shift_date', 'inspected_at']
+    ordering = ['-created_at']
+
+    def get_serializer_class(self):
+        from Tracker.serializers.qms import FPIRecordSerializer
+        return FPIRecordSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            from Tracker.models import FPIRecord
+            return FPIRecord.objects.none()
+
+        from Tracker.models import FPIRecord
+        return FPIRecord.objects.select_related(
+            'work_order', 'step', 'part_type', 'designated_part',
+            'equipment', 'inspected_by', 'waived_by'
+        )
+
+    @extend_schema(
+        description="Mark FPI as passed",
+        request={"application/json": {"type": "object", "properties": {
+            "notes": {"type": "string", "description": "Optional inspection notes"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'], url_path='pass')
+    def pass_inspection(self, request, pk=None):
+        """Mark FPI as passed."""
+        fpi = self.get_object()
+        from Tracker.models import FPIStatus
+
+        if fpi.status != FPIStatus.PENDING:
+            return Response(
+                {"detail": f"Cannot pass FPI with status '{fpi.status}'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        notes = request.data.get('notes', '')
+        fpi.pass_inspection(request.user, notes)
+
+        return Response({
+            "detail": "FPI passed",
+            "id": str(fpi.id),
+            "status": fpi.status,
+        })
+
+    @extend_schema(
+        description="Mark FPI as failed",
+        request={"application/json": {"type": "object", "properties": {
+            "notes": {"type": "string", "description": "Required failure notes"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'], url_path='fail')
+    def fail_inspection(self, request, pk=None):
+        """Mark FPI as failed."""
+        fpi = self.get_object()
+        from Tracker.models import FPIStatus
+
+        if fpi.status != FPIStatus.PENDING:
+            return Response(
+                {"detail": f"Cannot fail FPI with status '{fpi.status}'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        notes = request.data.get('notes', '')
+        fpi.fail_inspection(request.user, notes)
+
+        return Response({
+            "detail": "FPI failed",
+            "id": str(fpi.id),
+            "status": fpi.status,
+        })
+
+    @extend_schema(
+        description="Waive FPI requirement",
+        request={"application/json": {"type": "object", "properties": {
+            "reason": {"type": "string", "description": "Required waive reason (min 10 chars)"}
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'])
+    def waive(self, request, pk=None):
+        """Waive the FPI requirement."""
+        fpi = self.get_object()
+        from Tracker.models import FPIStatus
+
+        if fpi.status != FPIStatus.PENDING:
+            return Response(
+                {"detail": f"Cannot waive FPI with status '{fpi.status}'"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reason = request.data.get('reason', '')
+        try:
+            fpi.waive(request.user, reason)
+            return Response({
+                "detail": "FPI waived",
+                "id": str(fpi.id),
+                "status": fpi.status,
+            })
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        description="Get or create FPI record for work order/step combination",
+        request={"application/json": {"type": "object", "properties": {
+            "work_order": {"type": "string", "format": "uuid"},
+            "step": {"type": "string", "format": "uuid"},
+            "equipment": {"type": "string", "format": "uuid", "description": "Required for per_equipment scope"},
+            "shift_date": {"type": "string", "format": "date", "description": "Required for per_shift scope"},
+        }}},
+        responses={200: dict}
+    )
+    @action(detail=False, methods=['post'], url_path='get-or-create')
+    def get_or_create(self, request):
+        """
+        Get or create an FPI record based on step's fpi_scope configuration.
+
+        Returns existing pending FPI if one exists for the scope, otherwise
+        creates a new one.
+        """
+        from Tracker.models import FPIRecord, FPIStatus, WorkOrder, Steps
+
+        work_order_id = request.data.get('work_order')
+        step_id = request.data.get('step')
+
+        if not work_order_id or not step_id:
+            return Response(
+                {"detail": "work_order and step are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            work_order = WorkOrder.objects.get(id=work_order_id)
+            step = Steps.objects.get(id=step_id)
+        except (WorkOrder.DoesNotExist, Steps.DoesNotExist) as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Build filter based on fpi_scope
+        fpi_scope = getattr(step, 'fpi_scope', 'per_workorder')
+        lookup = {
+            'work_order': work_order,
+            'step': step,
+            'status': FPIStatus.PENDING,
+        }
+
+        if fpi_scope == 'per_shift':
+            shift_date = request.data.get('shift_date')
+            if not shift_date:
+                shift_date = timezone.now().date()
+            lookup['shift_date'] = shift_date
+
+        if fpi_scope == 'per_equipment':
+            equipment_id = request.data.get('equipment')
+            if not equipment_id:
+                return Response(
+                    {"detail": "equipment required for per_equipment FPI scope"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            from Tracker.models import Equipments
+            try:
+                equipment = Equipments.objects.get(id=equipment_id)
+                lookup['equipment'] = equipment
+            except Equipments.DoesNotExist:
+                return Response(
+                    {"detail": "Equipment not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # Try to find existing pending FPI
+        fpi = FPIRecord.objects.filter(**lookup).first()
+
+        if fpi:
+            serializer = self.get_serializer(fpi)
+            return Response({
+                "created": False,
+                "fpi": serializer.data
+            })
+
+        # Create new FPI record
+        create_data = {
+            'work_order': work_order,
+            'step': step,
+            'part_type': work_order.part_type,
+            'status': FPIStatus.PENDING,
+        }
+
+        if fpi_scope == 'per_shift':
+            create_data['shift_date'] = lookup.get('shift_date', timezone.now().date())
+
+        if fpi_scope == 'per_equipment' and 'equipment' in lookup:
+            create_data['equipment'] = lookup['equipment']
+
+        fpi = FPIRecord.objects.create(**create_data)
+        serializer = self.get_serializer(fpi)
+
+        return Response({
+            "created": True,
+            "fpi": serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        description="Check FPI status for a work order at a step",
+        parameters=[
+            OpenApiParameter(name='work_order', description='Work order UUID', required=True, type=str),
+            OpenApiParameter(name='step', description='Step UUID', required=True, type=str),
+        ],
+        responses={200: dict}
+    )
+    @action(detail=False, methods=['get'], url_path='check-status')
+    def check_status(self, request):
+        """Check if FPI requirement is satisfied for a work order/step."""
+        from Tracker.models import FPIRecord, FPIStatus, Steps
+
+        work_order_id = request.query_params.get('work_order')
+        step_id = request.query_params.get('step')
+
+        if not work_order_id or not step_id:
+            return Response(
+                {"detail": "work_order and step query params required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            step = Steps.objects.get(id=step_id)
+        except Steps.DoesNotExist:
+            return Response(
+                {"detail": "Step not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if step requires FPI
+        requires_fpi = getattr(step, 'requires_fpi', False)
+        if not requires_fpi:
+            return Response({
+                "requires_fpi": False,
+                "satisfied": True,
+                "message": "Step does not require FPI"
+            })
+
+        # Check for passed/waived FPI
+        passed_fpi = FPIRecord.objects.filter(
+            work_order_id=work_order_id,
+            step_id=step_id,
+            status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]
+        ).exists()
+
+        pending_fpi = FPIRecord.objects.filter(
+            work_order_id=work_order_id,
+            step_id=step_id,
+            status=FPIStatus.PENDING
+        ).first()
+
+        return Response({
+            "requires_fpi": True,
+            "satisfied": passed_fpi,
+            "has_pending": pending_fpi is not None,
+            "pending_fpi_id": str(pending_fpi.id) if pending_fpi else None,
+            "message": "FPI passed" if passed_fpi else "FPI required"
+        })
+
+
+# ===== STEP EXECUTION MEASUREMENT VIEWSETS =====
+
+@extend_schema_view(
+    list=extend_schema(
+        description="List step execution measurements with filtering",
+        parameters=[
+            OpenApiParameter(name='step_execution', description='Filter by step execution UUID', required=False, type=str),
+            OpenApiParameter(name='measurement_definition', description='Filter by measurement definition UUID', required=False, type=str),
+            OpenApiParameter(name='is_within_spec', description='Filter by spec compliance', required=False, type=bool),
+        ]
+    ),
+    create=extend_schema(description="Record a new measurement"),
+    retrieve=extend_schema(description="Retrieve a specific measurement"),
+)
+class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for managing measurements recorded during step execution.
+
+    Measurements are validated against MeasurementDefinition specs
+    and can block step advancement if out of spec.
+    """
+    from Tracker.models import StepExecutionMeasurement
+    queryset = StepExecutionMeasurement.objects.all()
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['step_execution', 'measurement_definition', 'is_within_spec', 'equipment']
+    ordering_fields = ['recorded_at', 'created_at']
+    ordering = ['-recorded_at']
+
+    def get_serializer_class(self):
+        from Tracker.serializers.qms import StepExecutionMeasurementSerializer
+        return StepExecutionMeasurementSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            from Tracker.models import StepExecutionMeasurement
+            return StepExecutionMeasurement.objects.none()
+
+        from Tracker.models import StepExecutionMeasurement
+        return StepExecutionMeasurement.objects.select_related(
+            'step_execution', 'step_execution__part', 'step_execution__step',
+            'measurement_definition', 'recorded_by', 'equipment'
+        )
+
+    def perform_create(self, serializer):
+        """Set recorded_by from request."""
+        serializer.save(recorded_by=self.request.user)
+
+    @extend_schema(
+        description="Record multiple measurements at once for a step execution",
+        request={"application/json": {"type": "object", "properties": {
+            "step_execution": {"type": "string", "format": "uuid"},
+            "measurements": {"type": "array", "items": {
+                "type": "object",
+                "properties": {
+                    "measurement_definition": {"type": "string", "format": "uuid"},
+                    "value": {"type": "number"},
+                    "string_value": {"type": "string"},
+                    "equipment": {"type": "string", "format": "uuid"}
+                }
+            }}
+        }}},
+        responses={201: dict}
+    )
+    @action(detail=False, methods=['post'], url_path='bulk-record')
+    def bulk_record(self, request):
+        """Record multiple measurements at once for a step execution."""
+        from Tracker.models import StepExecutionMeasurement, StepExecution, MeasurementDefinition, Equipments
+
+        step_execution_id = request.data.get('step_execution')
+        measurements_data = request.data.get('measurements', [])
+
+        if not step_execution_id:
+            return Response(
+                {"detail": "step_execution is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not measurements_data:
+            return Response(
+                {"detail": "measurements array is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            step_execution = StepExecution.objects.get(id=step_execution_id)
+        except StepExecution.DoesNotExist:
+            return Response(
+                {"detail": "Step execution not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        created_measurements = []
+        errors = []
+
+        for i, meas_data in enumerate(measurements_data):
+            defn_id = meas_data.get('measurement_definition')
+            if not defn_id:
+                errors.append({"index": i, "error": "measurement_definition required"})
+                continue
+
+            try:
+                defn = MeasurementDefinition.objects.get(id=defn_id)
+            except MeasurementDefinition.DoesNotExist:
+                errors.append({"index": i, "error": f"MeasurementDefinition {defn_id} not found"})
+                continue
+
+            equipment = None
+            if meas_data.get('equipment'):
+                try:
+                    equipment = Equipments.objects.get(id=meas_data['equipment'])
+                except Equipments.DoesNotExist:
+                    errors.append({"index": i, "error": f"Equipment {meas_data['equipment']} not found"})
+                    continue
+
+            measurement = StepExecutionMeasurement.objects.create(
+                step_execution=step_execution,
+                measurement_definition=defn,
+                value=meas_data.get('value'),
+                string_value=meas_data.get('string_value', ''),
+                recorded_by=request.user,
+                equipment=equipment
+            )
+            created_measurements.append(measurement)
+
+        serializer = self.get_serializer(created_measurements, many=True)
+
+        return Response({
+            "created_count": len(created_measurements),
+            "error_count": len(errors),
+            "measurements": serializer.data,
+            "errors": errors if errors else None
+        }, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        description="Get required measurements for a step execution",
+        parameters=[
+            OpenApiParameter(name='step_execution', description='Step execution UUID', required=True, type=str),
+        ],
+        responses={200: dict}
+    )
+    @action(detail=False, methods=['get'], url_path='required')
+    def required_measurements(self, request):
+        """
+        Get required measurements for a step execution.
+
+        Returns list of MeasurementDefinitions required for the step,
+        with status indicating whether each has been recorded.
+        """
+        from Tracker.models import StepExecution, MeasurementDefinition, StepExecutionMeasurement
+
+        step_execution_id = request.query_params.get('step_execution')
+        if not step_execution_id:
+            return Response(
+                {"detail": "step_execution query param required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            step_execution = StepExecution.objects.select_related('step').get(id=step_execution_id)
+        except StepExecution.DoesNotExist:
+            return Response(
+                {"detail": "Step execution not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        step = step_execution.step
+
+        # Get measurement definitions for this step
+        definitions = MeasurementDefinition.objects.filter(step=step)
+
+        # Get already recorded measurements
+        recorded = StepExecutionMeasurement.objects.filter(
+            step_execution=step_execution
+        ).values_list('measurement_definition_id', flat=True)
+        recorded_set = set(recorded)
+
+        results = []
+        missing_required = []
+
+        for defn in definitions:
+            is_recorded = defn.id in recorded_set
+            results.append({
+                'id': str(defn.id),
+                'label': defn.label,
+                'type': defn.type,
+                'unit': defn.unit,
+                'nominal': float(defn.nominal) if defn.nominal else None,
+                'upper_tol': float(defn.upper_tol) if defn.upper_tol else None,
+                'lower_tol': float(defn.lower_tol) if defn.lower_tol else None,
+                'required': defn.required,
+                'is_recorded': is_recorded,
+            })
+
+            if defn.required and not is_recorded:
+                missing_required.append(defn.label)
+
+        return Response({
+            "step_execution_id": str(step_execution_id),
+            "step_name": step.name,
+            "definitions": results,
+            "total_required": sum(1 for d in definitions if d.required),
+            "total_recorded": len(recorded_set),
+            "missing_required": missing_required,
+            "all_required_recorded": len(missing_required) == 0,
+        })
+
+    @extend_schema(
+        description="Check measurement compliance for a step execution",
+        parameters=[
+            OpenApiParameter(name='step_execution', description='Step execution UUID', required=True, type=str),
+        ],
+        responses={200: dict}
+    )
+    @action(detail=False, methods=['get'], url_path='check-compliance')
+    def check_compliance(self, request):
+        """
+        Check if all measurements for a step execution are within spec.
+
+        Returns summary of measurement compliance status.
+        """
+        from Tracker.models import StepExecution, StepExecutionMeasurement
+
+        step_execution_id = request.query_params.get('step_execution')
+        if not step_execution_id:
+            return Response(
+                {"detail": "step_execution query param required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            step_execution = StepExecution.objects.get(id=step_execution_id)
+        except StepExecution.DoesNotExist:
+            return Response(
+                {"detail": "Step execution not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        measurements = StepExecutionMeasurement.objects.filter(
+            step_execution=step_execution
+        ).select_related('measurement_definition')
+
+        total = measurements.count()
+        within_spec = measurements.filter(is_within_spec=True).count()
+        out_of_spec = measurements.filter(is_within_spec=False).count()
+        not_applicable = measurements.filter(is_within_spec__isnull=True).count()
+
+        out_of_spec_details = []
+        for m in measurements.filter(is_within_spec=False):
+            out_of_spec_details.append({
+                'id': str(m.id),
+                'label': m.measurement_definition.label,
+                'value': float(m.value) if m.value else m.string_value,
+                'nominal': float(m.measurement_definition.nominal) if m.measurement_definition.nominal else None,
+            })
+
+        return Response({
+            "step_execution_id": str(step_execution_id),
+            "total_measurements": total,
+            "within_spec": within_spec,
+            "out_of_spec": out_of_spec,
+            "not_applicable": not_applicable,
+            "all_pass": out_of_spec == 0 and total > 0,
+            "out_of_spec_details": out_of_spec_details,
         })

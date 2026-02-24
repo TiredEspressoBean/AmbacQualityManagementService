@@ -59,7 +59,6 @@ export default function TrackerPage() {
 
     if (isLoading) return <Skeleton className="h-32 w-full" />
     if (error) {
-        console.log(error)
         return <p className="text-red-500">Error loading orders</p>
     }
 

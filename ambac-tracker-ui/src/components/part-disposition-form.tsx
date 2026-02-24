@@ -150,12 +150,6 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
         }
     }, [watchSeverity]);
 
-    React.useEffect(() => {
-        if (Object.keys(errors).length > 0) {
-            console.log("Form validation errors:", errors);
-        }
-    }, [errors]);
-
     if (employeesLoading) {
         return (<div className="flex h-full items-center justify-center p-6">
                 <Loader2 className="h-4 w-4 animate-spin mr-2"/>
@@ -164,8 +158,6 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
     }
 
     const onSubmit = async (values: FormValues) => {
-        console.log("Form submitted with values:", values);
-
         // Client-side warning if trying to close with pending annotations
         if (values.current_state === "CLOSED" && disposition?.annotation_status?.has_pending) {
             toast.error("Cannot close disposition: 3D annotations are required. Please complete annotations first.");

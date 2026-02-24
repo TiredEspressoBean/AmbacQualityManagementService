@@ -1329,7 +1329,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
         return Response(stats)
 
-    @action(detail=False, methods=['get'], url_path='my-uploads')
+    @action(detail=False, methods=['get'], url_path='my-uploads', permission_classes=[IsAuthenticated])
     def my_uploads(self, request):
         """Get documents uploaded by the current user"""
         queryset = self.get_queryset().filter(uploaded_by=request.user)
@@ -1604,7 +1604,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         description="Get all approval requests pending for current user",
         responses={200: ApprovalRequestSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'], url_path='my-pending')
+    @action(detail=False, methods=['get'], url_path='my-pending', permission_classes=[IsAuthenticated])
     def my_pending(self, request):
         """Get all approval requests pending for current user"""
         user = request.user

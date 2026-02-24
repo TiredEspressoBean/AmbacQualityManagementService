@@ -49,10 +49,6 @@ export function EditOrderActionsCell({ orderId }: Props) {
             {
                 onSuccess: () => {
                     setOpen(false);
-                    console.log(`Order ${orderId} archived`);
-                },
-                onError: (error) => {
-                    console.error("Failed to archive order:", error);
                 },
             }
         );

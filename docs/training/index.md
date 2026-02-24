@@ -15,12 +15,21 @@ Our training is:
 
 | Role | Duration | Prerequisites |
 |------|----------|---------------|
-| [Operator](operator.md) | 2-4 hours | None |
+| [Production Operator](operator.md) | 2-4 hours | None |
 | [QA Inspector](qa-inspector.md) | 4-6 hours | None |
 | [QA Manager](qa-manager.md) | 4-6 hours | Inspector training recommended |
 | [Production Manager](production-manager.md) | 3-5 hours | None |
 | [Document Controller](document-controller.md) | 3-4 hours | None |
 | [Administrator](administrator.md) | 6-8 hours | Understanding of all roles |
+
+!!! info "Additional Roles"
+    The following system roles do not yet have dedicated training guides:
+
+    - **Supplier Quality** - External supplier quality management
+    - **Engineering** - Engineering document and CAPA access
+    - **Customer** - Customer portal (view-only access to their orders)
+
+    Contact your administrator for guidance on these roles.
 
 ## Training Environment
 

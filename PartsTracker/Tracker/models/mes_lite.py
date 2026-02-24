@@ -58,9 +58,14 @@ class PartsStatus(models.TextChoices):
     REWORK_NEEDED = "REWORK_NEEDED", "Rework Needed"  # Needs rework from QA or operator
     REWORK_IN_PROGRESS = "REWORK_IN_PROGRESS", "Rework In Progress"
 
-    # Terminal failures
+    # Terminal statuses
     SCRAPPED = "SCRAPPED", "Scrapped"  # Rejected permanently
     CANCELLED = "CANCELLED", "Cancelled"  # Removed before production finished
+    SHIPPED = "SHIPPED", "Shipped"  # Shipped to customer
+    IN_STOCK = "IN_STOCK", "In Stock"  # Completed, in inventory
+    AWAITING_PICKUP = "AWAITING_PICKUP", "Awaiting Pickup"  # Ready for customer pickup
+    CORE_BANKED = "CORE_BANKED", "Core Banked"  # Reman: stored as core
+    RMA_CLOSED = "RMA_CLOSED", "RMA Closed"  # Return completed
 
 
 # ===== MODELS =====
@@ -169,6 +174,21 @@ class Processes(SecureModel):
         help_text="Controls editability and availability for work orders"
     )
     """Approval status - DRAFT processes are editable, APPROVED are locked."""
+
+    CATEGORY_CHOICES = [
+        ('manufacturing', 'Manufacturing'),
+        ('quality', 'Quality'),
+        ('maintenance', 'Maintenance'),
+        ('npi', 'New Product Introduction'),
+        ('document', 'Document Control'),
+    ]
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='manufacturing',
+        help_text="Process category for workflow engine routing"
+    )
+    """Category classification for routing and reporting."""
 
     # Note: Lineage tracking uses SecureModel's `previous_version` field instead of a separate field.
     # This provides: version number, previous_version FK, is_current_version flag.
@@ -566,6 +586,46 @@ class Steps(SecureModel):
     - FPI pass unlocks production for remaining parts
     """
 
+    FPI_SCOPE_CHOICES = [
+        ('per_workorder', 'Per Work Order'),
+        ('per_shift', 'Per Shift'),
+        ('per_equipment', 'Per Equipment'),
+        ('per_operator', 'Per Operator'),
+    ]
+    fpi_scope = models.CharField(
+        max_length=20,
+        choices=FPI_SCOPE_CHOICES,
+        default='per_workorder',
+        help_text="Scope at which FPI applies"
+    )
+
+    # ===== WORKFLOW CONTROL =====
+
+    block_on_measurement_failure = models.BooleanField(
+        default=False,
+        help_text="If True, parts cannot advance if any measurement is out of spec"
+    )
+
+    override_expiry_hours = models.PositiveIntegerField(
+        default=24,
+        help_text="Hours until an override expires and must be re-approved"
+    )
+
+    undo_window_minutes = models.PositiveIntegerField(
+        default=15,
+        help_text="Minutes during which a step completion can be undone"
+    )
+
+    rollback_requires_approval = models.BooleanField(
+        default=True,
+        help_text="Whether rolling back this step requires supervisor approval"
+    )
+
+    requires_batch_completion = models.BooleanField(
+        default=False,
+        help_text="If True, all parts in batch must be ready before any can advance"
+    )
+
     # ===== STEP TYPE (Visual representation in flow editor) =====
 
     STEP_TYPE_CHOICES = [
@@ -804,63 +864,62 @@ class Steps(SecureModel):
         Get First Piece Inspection status for this step and work order.
 
         Returns dict with:
-        - status: 'NOT_REQUIRED' | 'PENDING' | 'PASSED' | 'FAILED'
-        - first_piece_part_id: UUID of the first piece part (if any)
-        - quality_report_id: UUID of the FPI QualityReport (if any)
+        - status: 'NOT_REQUIRED' | 'PENDING' | 'PASSED' | 'FAILED' | 'WAIVED'
+        - fpi_record_id: UUID of the FPIRecord (if any)
+        - designated_part_id: UUID of the designated part (if any)
         - blocked_parts_count: Number of parts waiting for FPI to pass
         """
-        from .qms import QualityReports
+        from .qms import FPIRecord, FPIStatus
 
         if not self.requires_first_piece_inspection:
             return {
                 'status': 'NOT_REQUIRED',
-                'first_piece_part_id': None,
-                'quality_report_id': None,
+                'fpi_record_id': None,
+                'designated_part_id': None,
                 'blocked_parts_count': 0
             }
 
-        # Find FPI QualityReports for this (work_order, step)
-        fpi_reports = QualityReports.objects.filter(
-            part__work_order=work_order,
+        # Find FPI records for this (work_order, step) using the dedicated FPIRecord model
+        fpi_records = FPIRecord.objects.filter(
+            work_order=work_order,
             step=self,
-            is_first_piece=True,
             archived=False
         ).order_by('-created_at')
 
-        # Check for passing FPI
-        passing_fpi = fpi_reports.filter(status='PASS').first()
-        if passing_fpi:
+        # Check for passed or waived FPI
+        passed_fpi = fpi_records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).first()
+        if passed_fpi:
             return {
-                'status': 'PASSED',
-                'first_piece_part_id': str(passing_fpi.part_id) if passing_fpi.part_id else None,
-                'quality_report_id': str(passing_fpi.id),
+                'status': 'PASSED' if passed_fpi.status == FPIStatus.PASSED else 'WAIVED',
+                'fpi_record_id': str(passed_fpi.id),
+                'designated_part_id': str(passed_fpi.designated_part_id) if passed_fpi.designated_part_id else None,
                 'blocked_parts_count': 0
             }
 
-        # Check for failing FPI (most recent)
-        failing_fpi = fpi_reports.filter(status='FAIL').first()
-        if failing_fpi:
+        # Check for failed FPI (most recent)
+        failed_fpi = fpi_records.filter(status=FPIStatus.FAILED).first()
+        if failed_fpi:
             # Count parts waiting at this step
             blocked_count = Parts.objects.filter(
                 work_order=work_order,
                 step=self
-            ).exclude(id=failing_fpi.part_id).count()
+            ).count()
 
             return {
                 'status': 'FAILED',
-                'first_piece_part_id': str(failing_fpi.part_id) if failing_fpi.part_id else None,
-                'quality_report_id': str(failing_fpi.id),
+                'fpi_record_id': str(failed_fpi.id),
+                'designated_part_id': str(failed_fpi.designated_part_id) if failed_fpi.designated_part_id else None,
                 'blocked_parts_count': blocked_count
             }
 
-        # No FPI yet - status is PENDING
-        # All parts at this step are blocked until operator submits a passing FPI
+        # Check for pending FPI
+        pending_fpi = fpi_records.filter(status=FPIStatus.PENDING).first()
         blocked_count = Parts.objects.filter(work_order=work_order, step=self).count()
 
         return {
             'status': 'PENDING',
-            'first_piece_part_id': None,
-            'quality_report_id': None,
+            'fpi_record_id': str(pending_fpi.id) if pending_fpi else None,
+            'designated_part_id': str(pending_fpi.designated_part_id) if pending_fpi and pending_fpi.designated_part_id else None,
             'blocked_parts_count': blocked_count
         }
 
@@ -871,21 +930,17 @@ class Steps(SecureModel):
         Returns True if:
         - Step requires FPI
         - No passing FPI exists yet for this (work_order, step)
-
-        Operator designates which part to use for FPI by marking is_first_piece=True
-        on the QualityReport.
         """
         if not self.requires_first_piece_inspection:
             return False
 
-        from .qms import QualityReports
+        from .qms import FPIRecord, FPIStatus
 
-        # Check if FPI already passed
-        return not QualityReports.objects.filter(
-            part__work_order=work_order,
+        # Check if FPI already passed or waived
+        return not FPIRecord.objects.filter(
+            work_order=work_order,
             step=self,
-            is_first_piece=True,
-            status='PASS',
+            status__in=[FPIStatus.PASSED, FPIStatus.WAIVED],
             archived=False
         ).exists()
 
@@ -916,6 +971,259 @@ class Steps(SecureModel):
                 'sampling_rate': (sampled_parts / total_parts * 100) if total_parts > 0 else 0,
                 'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
                 'meets_minimum': self.validate_sampling_coverage(work_order)}
+
+    def can_advance_from_step(self, step_execution, work_order):
+        """
+        Comprehensive gating function for step advancement.
+
+        Checks all requirements that must be satisfied before a part can advance
+        from this step. Returns a tuple of (can_advance: bool, blockers: list).
+
+        Blockers list contains human-readable descriptions of what's blocking advancement.
+
+        Checks performed:
+        1. Sampling requirement (QualityReport exists if required)
+        2. QA signoff (QaApproval exists if required)
+        3. FPI status (passed if required)
+        4. Mandatory measurements (all recorded and within spec)
+        5. Hard blocks (quarantine, regulatory holds)
+        6. Override status (valid override if blocked)
+
+        Args:
+            step_execution: StepExecution instance for the part at this step
+            work_order: WorkOrder instance
+
+        Returns:
+            tuple: (can_advance: bool, blockers: list of str)
+        """
+        from .qms import QaApproval, QualityReports, FPIRecord, StepOverride
+
+        blockers = []
+        part = step_execution.part
+
+        # 1. Check quarantine status
+        if part.part_status == PartsStatus.QUARANTINED:
+            if self.block_on_quarantine:
+                blockers.append("Part is quarantined and step blocks on quarantine")
+
+        # 2. Check QA signoff requirement
+        if self.requires_qa_signoff:
+            qa_approval = QaApproval.objects.filter(
+                step=self,
+                work_order=work_order
+            ).first()
+            if not qa_approval:
+                blockers.append("QA signoff required but not received")
+
+        # 3. Check FPI requirement
+        if self.requires_first_piece_inspection:
+            fpi_status = self.get_fpi_status(work_order)
+            if fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
+                blockers.append(f"First Piece Inspection required: {fpi_status['status']}")
+
+        # 4. Check sampling requirement
+        if self.sampling_required and part.requires_sampling:
+            quality_report = QualityReports.objects.filter(
+                part=part,
+                step=self,
+                archived=False
+            ).first()
+            if not quality_report:
+                blockers.append("Sampling inspection required but not completed")
+            elif quality_report.status == 'FAIL':
+                blockers.append("Sampling inspection failed - disposition required")
+
+        # 5. Check mandatory measurements
+        if hasattr(self, 'block_on_measurement_failure') and self.block_on_measurement_failure:
+            from .qms import StepExecutionMeasurement
+            failed_measurements = StepExecutionMeasurement.objects.filter(
+                step_execution=step_execution,
+                is_within_spec=False
+            ).exists()
+            if failed_measurements:
+                blockers.append("One or more measurements are out of specification")
+
+            # Also check if all required measurements are recorded
+            required_measurement_ids = list(
+                self.required_measurements.values_list('id', flat=True)
+            )
+            if required_measurement_ids:
+                recorded_ids = set(
+                    StepExecutionMeasurement.objects.filter(
+                        step_execution=step_execution
+                    ).values_list('measurement_definition_id', flat=True)
+                )
+                missing = set(required_measurement_ids) - recorded_ids
+                if missing:
+                    blockers.append(f"Missing {len(missing)} required measurement(s)")
+
+        # 6. Check StepRequirement model entries
+        for req in self.requirements.filter(is_mandatory=True, archived=False):
+            if not req.is_satisfied(step_execution):
+                blockers.append(f"Requirement not met: {req.name}")
+
+        # 7. Check for valid overrides that could clear blocks
+        if blockers:
+            valid_overrides = StepOverride.objects.filter(
+                step_execution=step_execution,
+                status='approved',
+                used=False
+            )
+            # Check each blocker against overrides
+            override_types = set(valid_overrides.values_list('block_type', flat=True))
+            remaining_blockers = []
+
+            for blocker in blockers:
+                # Map blocker message to block type
+                can_override = False
+                if 'quarantine' in blocker.lower() and 'quarantine' in override_types:
+                    can_override = True
+                elif 'qa signoff' in blocker.lower() and 'qa_signoff' in override_types:
+                    can_override = True
+                elif 'first piece' in blocker.lower() and 'fpi_required' in override_types:
+                    can_override = True
+                elif 'sampling' in blocker.lower() and 'sampling_required' in override_types:
+                    can_override = True
+                elif 'measurement' in blocker.lower() and 'measurement_failed' in override_types:
+                    can_override = True
+
+                if not can_override:
+                    remaining_blockers.append(blocker)
+
+            blockers = remaining_blockers
+
+        return (len(blockers) == 0, blockers)
+
+
+class DecisionDataMissing(ValueError):
+    """Raised when required data for a decision point is missing."""
+    pass
+
+
+# ===== STEP REQUIREMENTS =====
+
+class RequirementType(models.TextChoices):
+    """Types of requirements for step advancement."""
+    MEASUREMENT = 'measurement', 'Measurement'
+    DOCUMENT = 'document', 'Document'
+    SIGNOFF = 'signoff', 'Signoff'
+    EQUIPMENT_CHECK = 'equipment_check', 'Equipment Check'
+    MATERIAL_SCAN = 'material_scan', 'Material Scan'
+    TRAINING_VALID = 'training_valid', 'Training Valid'
+    CALIBRATION_VALID = 'calibration_valid', 'Calibration Valid'
+    FPI_PASSED = 'fpi_passed', 'FPI Passed'
+    QA_APPROVAL = 'qa_approval', 'QA Approval'
+    CUSTOM = 'custom', 'Custom'
+
+
+class StepRequirement(SecureModel):
+    """
+    Defines a requirement that must be satisfied before advancing from a step.
+
+    This model provides a flexible, extensible way to define step gating rules.
+    Each requirement has a type, configuration, and mandatory flag.
+
+    Types include:
+    - measurement: Specific measurement must be recorded
+    - document: Specific document type must be attached
+    - signoff: Requires user signoff (supervisor, QA, etc.)
+    - equipment_check: Equipment must be operational/calibrated
+    - material_scan: Material lot must be scanned/verified
+    - training_valid: Operator must have valid training
+    - calibration_valid: Equipment calibration must be current
+    - fpi_passed: First Piece Inspection must pass
+    - qa_approval: QA approval must be recorded
+    - custom: Custom logic (defined in config)
+    """
+
+    step = models.ForeignKey(
+        Steps,
+        on_delete=models.CASCADE,
+        related_name='requirements'
+    )
+    requirement_type = models.CharField(
+        max_length=30,
+        choices=RequirementType.choices,
+        help_text='Type of requirement'
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text='Short name for the requirement'
+    )
+    description = models.TextField(
+        blank=True,
+        help_text='Detailed description of the requirement'
+    )
+    is_mandatory = models.BooleanField(
+        default=True,
+        help_text='Whether this requirement must be satisfied to advance'
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text='Display order within step'
+    )
+    config = models.JSONField(
+        default=dict,
+        help_text='Type-specific configuration (e.g., measurement IDs, document types)'
+    )
+
+    class Meta:
+        verbose_name = 'Step Requirement'
+        verbose_name_plural = 'Step Requirements'
+        ordering = ['step', 'order']
+        indexes = [
+            models.Index(fields=['step', 'requirement_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.step.name}: {self.name}"
+
+    def is_satisfied(self, step_execution):
+        """
+        Check if this requirement is satisfied for the given step execution.
+
+        Args:
+            step_execution: StepExecution instance to check
+
+        Returns:
+            bool: True if requirement is satisfied, False otherwise
+        """
+        from .qms import QaApproval, FPIRecord, StepExecutionMeasurement
+
+        if self.requirement_type == RequirementType.MEASUREMENT:
+            # Check if all configured measurements are recorded
+            measurement_ids = self.config.get('measurement_ids', [])
+            if not measurement_ids:
+                return True
+            recorded = StepExecutionMeasurement.objects.filter(
+                step_execution=step_execution,
+                measurement_definition_id__in=measurement_ids,
+                is_within_spec=True
+            ).values_list('measurement_definition_id', flat=True)
+            return set(measurement_ids) == set(recorded)
+
+        elif self.requirement_type == RequirementType.QA_APPROVAL:
+            # Check if QA approval exists
+            return QaApproval.objects.filter(
+                step=step_execution.step,
+                work_order=step_execution.part.work_order
+            ).exists()
+
+        elif self.requirement_type == RequirementType.FPI_PASSED:
+            # Check if FPI passed for this work order/step
+            fpi = FPIRecord.objects.filter(
+                work_order=step_execution.part.work_order,
+                step=step_execution.step,
+                status='passed'
+            ).first()
+            return fpi is not None
+
+        elif self.requirement_type == RequirementType.SIGNOFF:
+            # Check if signoff recorded (via step execution completed_by)
+            return step_execution.completed_by is not None
+
+        # Default: assume satisfied for unhandled types
+        return True
 
 
 # ===== GRAPH STRUCTURE (Process-Step relationships) =====
@@ -951,6 +1259,18 @@ class ProcessStep(models.Model):
     is_entry_point = models.BooleanField(
         default=False,
         help_text="If True, this is the starting step for new parts"
+    )
+
+    # Exit point marker (early completion path)
+    is_exit_point = models.BooleanField(
+        default=False,
+        help_text="If True, this step can exit the process early (e.g., early ship)"
+    )
+
+    # Auto-advance control
+    auto_advance = models.BooleanField(
+        default=True,
+        help_text="If True, parts auto-advance when step requirements are met"
     )
 
     class Meta:
@@ -1103,12 +1423,56 @@ class StepExecution(SecureModel):
         help_text="Result of decision: 'pass', 'fail', measurement value, etc."
     )
 
-    # Status
+    # Workflow tracking fields
+    started_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When work actually started on this step"
+    )
+    needs_reassignment = models.BooleanField(
+        default=False,
+        help_text="Flag indicating operator reassignment is needed"
+    )
+
+    # FPI tracking
+    is_fpi = models.BooleanField(
+        default=False,
+        help_text="Whether this execution is a First Piece Inspection"
+    )
+    FPI_STATUS_CHOICES = [
+        ('not_required', 'Not Required'),
+        ('pending', 'Pending'),
+        ('passed', 'Passed'),
+        ('failed', 'Failed'),
+        ('waived', 'Waived'),
+    ]
+    fpi_status = models.CharField(
+        max_length=20,
+        choices=FPI_STATUS_CHOICES,
+        default='not_required',
+        help_text="First Piece Inspection status for this execution"
+    )
+
+    # Polymorphic subject support (future workflow engine)
+    subject_content_type = models.ForeignKey(
+        'contenttypes.ContentType',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        help_text="Content type for polymorphic subject (future workflow engine)"
+    )
+    subject_id = models.UUIDField(
+        null=True, blank=True,
+        help_text="ID of the polymorphic subject"
+    )
+
+    # Status (updated choices)
     EXECUTION_STATUS_CHOICES = [
         ('pending', 'Pending'),
+        ('claimed', 'Claimed'),
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('skipped', 'Skipped'),
+        ('cancelled', 'Cancelled'),
+        ('rolled_back', 'Rolled Back'),
     ]
     status = models.CharField(
         max_length=20, choices=EXECUTION_STATUS_CHOICES, default='pending'
@@ -1138,6 +1502,28 @@ class StepExecution(SecureModel):
     def get_visit_count(cls, part, step):
         """Get how many times a part has visited a specific step."""
         return cls.objects.filter(part=part, step=step).count()
+
+    @classmethod
+    def get_visit_count_for_update(cls, part, step):
+        """
+        Get visit count with row-level locking to prevent race conditions.
+
+        Use this when creating new StepExecution records to ensure
+        accurate visit_number assignment under concurrent load.
+
+        Must be called within a transaction (atomic block).
+        """
+        from django.db import transaction
+
+        # Lock existing executions for this part/step to prevent concurrent inserts
+        # from reading stale counts
+        with transaction.atomic():
+            locked_executions = list(
+                cls.objects.select_for_update().filter(
+                    part=part, step=step
+                ).values_list('id', flat=True)
+            )
+            return len(locked_executions)
 
     @classmethod
     def get_current_execution(cls, part):
@@ -1441,12 +1827,19 @@ class Orders(SecureModel):
         parts_to_advance = self.parts.filter(step=target_step)
         advanced = 0
 
+        import logging
+        logger = logging.getLogger(__name__)
+
         for part in parts_to_advance:
             try:
                 result = part.increment_step()
                 if result in ["completed_workorder", "full_work_order_advanced"]:
                     advanced += 1
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    f"Failed to increment part {part.id} in bulk operation: {e}",
+                    exc_info=True
+                )
                 continue  # Skip failed parts, continue with others
 
         return {"advanced": advanced, "total": parts_to_advance.count()}
@@ -1856,30 +2249,43 @@ class WorkOrder(SecureModel):
         SamplingTriggerState.objects.filter(work_order=self, active=True).update(active=False)
 
     def create_parts_batch(self, part_type, step, quantity=None):
-        """Create parts in batch with sampling evaluation"""
+        """Create parts in batch with sampling evaluation.
+
+        This method is idempotent - it won't create duplicate parts if called
+        multiple times. Parts are identified by their ERP_id which follows the
+        pattern: {work_order.ERP_id}-{part_type.ID_prefix}{sequence_number}
+        """
         quantity = quantity or self.quantity
 
-        # Create parts without sampling evaluation first
-        parts = []
+        # Check for existing parts to make this idempotent
+        existing_erp_ids = set(
+            Parts.objects.filter(work_order=self)
+            .values_list('ERP_id', flat=True)
+        )
+
+        # Create only parts that don't already exist
+        parts_to_create = []
         for i in range(quantity):
-            part = Parts(
-                tenant=self.tenant,  # Inherit tenant from work order
-                work_order=self,
-                part_type=part_type,
-                step=step,
-                ERP_id=f"{self.ERP_id}-{part_type.ID_prefix or 'P'}{i + 1:04d}",
-                part_status=PartsStatus.PENDING
-            )
-            parts.append(part)
+            erp_id = f"{self.ERP_id}-{part_type.ID_prefix or 'P'}{i + 1:04d}"
+            if erp_id not in existing_erp_ids:
+                part = Parts(
+                    tenant=self.tenant,  # Inherit tenant from work order
+                    work_order=self,
+                    part_type=part_type,
+                    step=step,
+                    ERP_id=erp_id,
+                    part_status=PartsStatus.PENDING
+                )
+                parts_to_create.append(part)
 
-        # Bulk create for efficiency
-        Parts.objects.bulk_create(parts)
+        # Bulk create only new parts
+        if parts_to_create:
+            Parts.objects.bulk_create(parts_to_create)
 
-        # CRITICAL FIX: Get fresh parts from DB with IDs for proper sampling evaluation
-        # Only get the parts that were just created (latest by ID)
+        # Get all parts for this work order and part type (existing + new)
         fresh_parts = list(Parts.objects.filter(work_order=self, part_type=part_type, step=step).order_by('id'))
 
-        # Now evaluate sampling for all parts using fresh objects with IDs
+        # Evaluate sampling for all parts
         self._bulk_evaluate_sampling(fresh_parts)
 
         return fresh_parts
@@ -2067,6 +2473,22 @@ class Parts(SecureModel):
     )
     """Country where part was manufactured - relevant for FMS and re-export."""
 
+    # =========================================================================
+    # FPI (First Piece Inspection) Tracking
+    # =========================================================================
+    is_fpi_candidate = models.BooleanField(
+        default=False,
+        help_text="Whether this part is designated as a First Piece Inspection candidate"
+    )
+    """Marks this part as the FPI candidate for setup verification."""
+
+    fpi_override_reason = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Reason if FPI was overridden or waived"
+    )
+    """Reason for waiving or overriding FPI requirement on this part."""
+
     # ===== WORKFLOW ENGINE METHODS (Phase 1) =====
 
     def _check_cycle_limit(self, target_step):
@@ -2141,7 +2563,11 @@ class Parts(SecureModel):
                     latest_qr = QualityReports.objects.filter(
                         part=self, step=current
                     ).order_by('-created_at').first()
-                    decision_result = latest_qr.status if latest_qr else 'FAIL'
+                    if not latest_qr:
+                        raise DecisionDataMissing(
+                            f"QualityReport required for qa_result decision at step '{current.name}'"
+                        )
+                    decision_result = latest_qr.status
 
                 if str(decision_result).upper() == 'PASS':
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
@@ -2256,6 +2682,9 @@ class Parts(SecureModel):
                  "marked_ready" if waiting for others,
                  "advanced" if step advanced,
                  "escalated" if routed to escalation due to cycle limit.
+
+        Raises:
+            ValueError: If step advancement is blocked by validation requirements.
         """
         from django.utils import timezone
         from .qms import StepTransitionLog
@@ -2263,8 +2692,17 @@ class Parts(SecureModel):
         if not self.step or not self.part_type:
             raise ValueError("Current step or part type is missing.")
 
-        # Complete current StepExecution if one exists
+        # Get current execution for validation
         current_execution = StepExecution.get_current_execution(self)
+
+        # Validate advancement is allowed before proceeding
+        if current_execution and self.work_order:
+            can_advance, blockers = self.step.can_advance_from_step(
+                current_execution,
+                self.work_order
+            )
+            if not can_advance:
+                raise ValueError(f"Cannot advance: {', '.join(blockers)}")
         if current_execution:
             current_execution.exited_at = timezone.now()
             current_execution.completed_by = operator
@@ -2278,10 +2716,16 @@ class Parts(SecureModel):
         if next_step is None:
             if self.step.is_terminal:
                 # Use terminal_status to set part status
+                # Maps Step.terminal_status values to PartsStatus enum
                 status_map = {
                     'completed': PartsStatus.COMPLETED,
+                    'shipped': PartsStatus.SHIPPED,
+                    'stock': PartsStatus.IN_STOCK,
                     'scrapped': PartsStatus.SCRAPPED,
                     'returned': PartsStatus.CANCELLED,
+                    'awaiting_pickup': PartsStatus.AWAITING_PICKUP,
+                    'core_banked': PartsStatus.CORE_BANKED,
+                    'rma_closed': PartsStatus.RMA_CLOSED,
                 }
                 self.part_status = status_map.get(
                     self.step.terminal_status,
@@ -2327,7 +2771,8 @@ class Parts(SecureModel):
             current_execution.save()
 
         # For batch processes, check if we should wait for other parts
-        if self.work_order and not self.step.is_decision_point:
+        # Use requires_batch_completion flag instead of is_decision_point
+        if self.work_order and getattr(self.step, 'requires_batch_completion', False):
             # Mark this part ready
             self.part_status = PartsStatus.READY_FOR_NEXT_STEP
             self.save()
@@ -2405,16 +2850,17 @@ class Parts(SecureModel):
             status='pending'
         )
 
-        # Update sampling
+        # Move to next step first so sampling evaluation sees the new step
+        self.step = next_step
+        self.part_status = PartsStatus.IN_PROGRESS
+
+        # Update sampling for the new step
         evaluator = SamplingFallbackApplier(part=self)
         result = evaluator.evaluate()
         self.requires_sampling = result.get("requires_sampling", False)
         self.sampling_rule = result.get("rule")
         self.sampling_ruleset = result.get("ruleset")
         self.sampling_context = result.get("context", {})
-
-        self.step = next_step
-        self.part_status = PartsStatus.IN_PROGRESS
         self.save()
 
         # Legacy log
@@ -2506,6 +2952,228 @@ class Parts(SecureModel):
             self.error_reports.all().values('status', 'created_at', 'sampling_method', 'description')),
                 'audit_logs': list(SamplingAuditLog.objects.filter(part=self).values('sampling_decision', 'timestamp',
                                                                                      'ruleset_type')) if 'SamplingAuditLog' in globals() else []}
+
+    def can_rollback_step(self, operator=None):
+        """
+        Check if this part can be rolled back to the previous step.
+
+        Returns:
+            tuple: (can_rollback: bool, reason: str, requires_approval: bool)
+        """
+        from django.utils import timezone
+        from .qms import StepOverride, OverrideStatus, BlockType
+
+        if not self.step:
+            return (False, "Part has no current step", False)
+
+        # Get the most recent completed execution for current step
+        current_execution = StepExecution.objects.filter(
+            part=self,
+            step=self.step,
+            status='completed'
+        ).order_by('-exited_at').first()
+
+        if not current_execution:
+            return (False, "No completed execution found for current step", False)
+
+        # Get the previous step execution (the one that led to current)
+        previous_execution = StepExecution.objects.filter(
+            part=self,
+            next_step=self.step,
+            status='completed'
+        ).order_by('-exited_at').first()
+
+        if not previous_execution:
+            # Check if we're at the first step
+            first_step = None
+            if self.part_type and self.work_order and self.work_order.process:
+                # Get first step via ProcessStep ordering
+                first_process_step = ProcessStep.objects.filter(
+                    process=self.work_order.process
+                ).order_by('order').first()
+                if first_process_step:
+                    first_step = first_process_step.step
+
+            if self.step == first_step:
+                return (False, "Cannot rollback from the first step", False)
+            return (False, "No previous step execution found", False)
+
+        # Check undo window
+        undo_window_minutes = getattr(self.step, 'undo_window_minutes', 15)
+        if current_execution.exited_at:
+            elapsed = timezone.now() - current_execution.exited_at
+            elapsed_minutes = elapsed.total_seconds() / 60
+
+            if elapsed_minutes > undo_window_minutes:
+                return (
+                    False,
+                    f"Undo window expired ({undo_window_minutes} minutes)",
+                    False
+                )
+
+        # Check if rollback requires approval
+        requires_approval = getattr(self.step, 'rollback_requires_approval', True)
+
+        if requires_approval:
+            # Check for existing approved override for this execution
+            approved_override = StepOverride.objects.filter(
+                step_execution=current_execution,
+                block_type=BlockType.ROLLBACK,
+                status=OverrideStatus.APPROVED,
+                used=False
+            ).first()
+
+            if approved_override:
+                # Mark the time-sensitive check
+                if approved_override.expires_at and approved_override.expires_at < timezone.now():
+                    return (False, "Rollback approval has expired", True)
+                return (True, "Rollback approved", False)  # Has approval, doesn't need more
+
+            return (True, "Rollback requires approval", True)
+
+        return (True, "Rollback allowed", False)
+
+    def rollback_step(self, operator, reason=None, override_id=None):
+        """
+        Roll back this part to the previous step in the workflow.
+
+        This is configurable per step via:
+        - undo_window_minutes: Time window during which rollback is allowed
+        - rollback_requires_approval: Whether supervisor approval is required
+
+        Args:
+            operator: User performing the rollback
+            reason: Justification for the rollback (required if no override)
+            override_id: ID of pre-approved StepOverride (optional)
+
+        Returns:
+            dict: {
+                'success': bool,
+                'message': str,
+                'previous_step': Steps instance if successful,
+                'requires_approval': bool (if rollback needs approval)
+            }
+
+        Raises:
+            ValueError: If rollback is not allowed or required data is missing.
+        """
+        from django.utils import timezone
+        from .qms import StepTransitionLog, StepOverride, OverrideStatus, BlockType
+
+        # Check if rollback is allowed
+        can_rollback, message, requires_approval = self.can_rollback_step(operator)
+
+        if not can_rollback:
+            raise ValueError(f"Cannot rollback: {message}")
+
+        # Get current and previous executions
+        current_execution = StepExecution.objects.filter(
+            part=self,
+            step=self.step,
+            status='completed'
+        ).order_by('-exited_at').first()
+
+        previous_execution = StepExecution.objects.filter(
+            part=self,
+            next_step=self.step,
+            status='completed'
+        ).order_by('-exited_at').first()
+
+        if not current_execution or not previous_execution:
+            raise ValueError("Cannot determine step execution history for rollback")
+
+        previous_step = previous_execution.step
+
+        # Handle approval workflow
+        if requires_approval:
+            if override_id:
+                # Use provided override
+                try:
+                    override = StepOverride.objects.get(
+                        id=override_id,
+                        step_execution=current_execution,
+                        block_type=BlockType.ROLLBACK,
+                        status=OverrideStatus.APPROVED,
+                        used=False
+                    )
+                    if override.expires_at and override.expires_at < timezone.now():
+                        raise ValueError("Rollback approval has expired")
+
+                    # Mark override as used
+                    override.used = True
+                    override.used_at = timezone.now()
+                    override.save(update_fields=['used', 'used_at'])
+
+                except StepOverride.DoesNotExist:
+                    raise ValueError("Invalid or expired rollback override")
+            else:
+                # Create a pending override request
+                if not reason or len(reason.strip()) < 10:
+                    raise ValueError("Reason required for rollback approval request (minimum 10 characters)")
+
+                override_expiry_hours = getattr(self.step, 'override_expiry_hours', 24)
+                expires_at = timezone.now() + timezone.timedelta(hours=override_expiry_hours)
+
+                StepOverride.objects.create(
+                    step_execution=current_execution,
+                    block_type=BlockType.ROLLBACK,
+                    requested_by=operator,
+                    reason=reason,
+                    status=OverrideStatus.PENDING,
+                    expires_at=expires_at
+                )
+
+                return {
+                    'success': False,
+                    'message': 'Rollback request submitted for approval',
+                    'requires_approval': True,
+                    'previous_step': previous_step
+                }
+
+        # Perform the rollback
+        # 1. Mark current execution as rolled back
+        current_execution.status = 'rolled_back'
+        current_execution.save(update_fields=['status'])
+
+        # 2. Create new execution for previous step (reopening it)
+        visit_number = StepExecution.get_visit_count(self, previous_step) + 1
+        new_execution = StepExecution.objects.create(
+            part=self,
+            step=previous_step,
+            visit_number=visit_number,
+            assigned_to=operator,  # Assign to person doing rollback
+            status='in_progress',
+            started_at=timezone.now()
+        )
+
+        # 3. Update part's current step
+        old_step = self.step
+        self.step = previous_step
+        self.part_status = PartsStatus.IN_PROGRESS
+
+        # 4. Re-evaluate sampling for the restored step
+        evaluator = SamplingFallbackApplier(part=self)
+        result = evaluator.evaluate()
+        self.requires_sampling = result.get("requires_sampling", False)
+        self.sampling_rule = result.get("rule")
+        self.sampling_ruleset = result.get("ruleset")
+        self.sampling_context = result.get("context", {})
+
+        self.save()
+
+        # 5. Log the rollback transition (with negative indication)
+        StepTransitionLog.objects.create(
+            part=self,
+            step=previous_step,
+            operator=operator
+        )
+
+        return {
+            'success': True,
+            'message': f'Rolled back from "{old_step.name}" to "{previous_step.name}"',
+            'previous_step': previous_step,
+            'requires_approval': False
+        }
 
     @classmethod
     def get_filtered_queryset(cls, user=None, filters=None):

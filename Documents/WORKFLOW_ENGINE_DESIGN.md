@@ -35,6 +35,11 @@ This document defines the architecture for a **generic workflow engine** that ca
 | `Parts.increment_step()` | mes_lite.py | **Logic embedded in model** |
 | `MeasurementDefinition` | mes_lite.py | Manufacturing-specific |
 | `SamplingRule` | mes_standard.py | Manufacturing-specific |
+| `StepRequirement` | mes_lite.py:1119 | Generic ✓ (NEW) |
+| `FPIRecord` | qms.py:2396 | Manufacturing-specific (NEW) |
+| `StepOverride` | qms.py:2553 | Generic ✓ (NEW) |
+| `StepExecutionMeasurement` | qms.py:2683 | Manufacturing-specific (NEW) |
+| `StepRollback` | qms.py:2907 | Generic ✓ (NEW) |
 
 ### Current StepExecution Model
 
@@ -209,7 +214,9 @@ class Steps(SecureModel):
     escalate_on_overdue = BooleanField(default=False)
 ```
 
-### Step Requirements (New)
+### Step Requirements (Implemented)
+
+**Status:** ✅ Implemented in `mes_lite.py:1119` - `StepRequirement` model with 10 requirement types.
 
 ```python
 class RequirementType(models.TextChoices):

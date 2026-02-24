@@ -15,11 +15,13 @@ A **disposition** is the formal decision about how to handle a part that doesn't
 
 | Disposition | Code | When to Use |
 |-------------|------|-------------|
-| **Use As Is** | UAI | Non-conformance doesn't affect function or safety |
-| **Rework** | RWK | Part can be corrected and re-inspected |
-| **Scrap** | SCR | Part cannot be used or repaired |
-| **Return to Vendor** | RTV | Supplier responsible, return for credit/replacement |
-| **Deviate** | DEV | Customer approves deviation from spec |
+| **Use As Is** | USE_AS_IS | Non-conformance doesn't affect function or safety |
+| **Rework** | REWORK | Part can be corrected and re-inspected to full conformance |
+| **Repair** | REPAIR | Part corrected but may deviate from spec (AS9100: requires approval) |
+| **Scrap** | SCRAP | Part cannot be used or repaired |
+| **Return to Supplier** | RETURN_TO_SUPPLIER | Supplier responsible, return for credit/replacement |
+
+> **Rework vs Repair (AS9100)**: Rework restores full conformance. Repair may result in a part that deviates from original specs but is still acceptable for use (requires engineering approval).
 
 ## Disposition Workflow
 
@@ -90,10 +92,10 @@ After approval:
 
 | Field | Description |
 |-------|-------------|
-| **Disposition** | UAI, Rework, Scrap, RTV, Deviate |
+| **Disposition** | Use As Is, Rework, Repair, Scrap, Return to Supplier |
 | **Justification** | Why this decision |
 | **Parts** | Which parts (all or select) |
-| **Rework Instructions** | For rework: what to do |
+| **Rework/Repair Instructions** | For rework/repair: what needs to be done |
 | **Approval Required** | Auto-set based on rules |
 
 6. Submit

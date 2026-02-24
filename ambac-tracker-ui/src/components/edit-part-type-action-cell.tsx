@@ -36,10 +36,7 @@ export function EditPartTypeActionsCell({partTypeId}: Props) {
         deletePartType.mutate(partTypeId, {
             onSuccess: () => {
                 setOpen(false);
-                console.log(`Part ${partTypeId} deleted`);
                 toast.success(`Part Type #${partTypeId} deleted successfully.`);
-            }, onError: (error) => {
-                console.error("Failed to archive part:", error);
             },
         });
     };
