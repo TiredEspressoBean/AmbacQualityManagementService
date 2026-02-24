@@ -42,7 +42,7 @@ services:
       python manage.py create_temp_admin &&
       python manage.py runserver 0.0.0.0:8000"
     env_file:
-      - .env
+      - .env.docker
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=postgres
@@ -75,7 +75,7 @@ services:
     restart: unless-stopped
     command: celery -A PartsTrackerApp worker --loglevel=info --concurrency=2
     env_file:
-      - .env
+      - .env.docker
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=postgres
@@ -104,7 +104,7 @@ services:
     restart: unless-stopped
     command: celery -A PartsTrackerApp beat --loglevel=info
     env_file:
-      - .env
+      - .env.docker
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=postgres
@@ -133,7 +133,22 @@ services:
     depends_on:
       - postgres
 
-  # Build frontend for local development (uses relative URLs)
+  # Build MkDocs documentation
+  docs-builder:
+    image: python:3.12-slim
+    profiles:
+      - local
+      - production
+    volumes:
+      - ./mkdocs.yml:/docs/mkdocs.yml:ro
+      - ./docs:/docs/docs:ro
+      - docs-dist:/output
+    working_dir: /docs
+    command: >
+      sh -c "pip install --no-cache-dir mkdocs pymdown-extensions &&
+             mkdocs build --site-dir /output"
+
+  # Build frontend for local development
   frontend-builder-local:
     build:
       context: ./ambac-tracker-ui
@@ -148,7 +163,7 @@ services:
       - frontend-dist:/app/dist
     command: ["npm", "run", "build"]
 
-  # Build frontend for production (uses configured domain)
+  # Build frontend for production
   frontend-builder:
     build:
       context: ./ambac-tracker-ui
@@ -158,7 +173,7 @@ services:
     profiles:
       - production
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - frontend-dist:/app/dist
     command: ["npm", "run", "build"]
@@ -177,11 +192,16 @@ services:
      volumes:
        - ./conf/Caddyfile.local:/etc/caddy/Caddyfile
        - frontend-dist:/usr/share/caddy
+       - docs-dist:/usr/share/caddy/docs
        - caddy_data:/data
        - caddy_config:/config
      depends_on:
-       - backend
-       - frontend-builder-local
+       backend:
+         condition: service_healthy
+       frontend-builder-local:
+         condition: service_completed_successfully
+       docs-builder:
+         condition: service_completed_successfully
 
   # Caddy for production (custom certs)
   caddy:
@@ -198,11 +218,16 @@ services:
        - ./conf/Caddyfile:/etc/caddy/Caddyfile
        - ./certs:/etc/caddy/certs:ro
        - frontend-dist:/usr/share/caddy
+       - docs-dist:/usr/share/caddy/docs
        - caddy_data:/data
        - caddy_config:/config
      depends_on:
-       - backend
-       - frontend-builder
+       backend:
+         condition: service_healthy
+       frontend-builder:
+         condition: service_completed_successfully
+       docs-builder:
+         condition: service_completed_successfully
 
   # Simple nginx for local dev (no SSL/certs needed)
 #  nginx-local:
@@ -226,5 +251,6 @@ volumes:
   postgres_data:
   redis_data:
   frontend-dist:
+  docs-dist:
   caddy_data:
   caddy_config:

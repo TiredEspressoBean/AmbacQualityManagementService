@@ -42,7 +42,13 @@ govtracker.ambac.local {
         }
         uri strip_prefix /lg
     }
-    
+
+    # Documentation (MkDocs static files)
+    handle /docs/* {
+        root * /usr/share/caddy
+        file_server
+    }
+
     # Handle SPA routes (fallback)
     handle {
         root * /usr/share/caddy

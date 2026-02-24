@@ -38,6 +38,11 @@ localhost {
         uri strip_prefix /lg
     }
 
+    handle /docs/* {
+        root * /usr/share/caddy
+        file_server
+    }
+
     handle {
         root * /usr/share/caddy
         try_files {path} /index.html
