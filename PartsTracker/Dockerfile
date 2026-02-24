@@ -30,5 +30,13 @@ COPY . .
 
 EXPOSE 8000
 
-# Run migrations, collect static files, and start gunicorn (Railway sets PORT env var)
-CMD python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4
+# SERVICE_TYPE: web (default), worker, or beat
+CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
+      celery -A PartsTrackerApp worker -l info; \
+    elif [ "$SERVICE_TYPE" = "beat" ]; then \
+      celery -A PartsTrackerApp beat -l info; \
+    else \
+      python manage.py migrate --noinput && \
+      python manage.py collectstatic --noinput && \
+      gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4; \
+    fi
