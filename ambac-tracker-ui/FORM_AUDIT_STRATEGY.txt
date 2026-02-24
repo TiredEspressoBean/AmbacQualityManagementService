@@ -1,0 +1,59 @@
+FORM AUDIT STRATEGY
+===================
+
+Goal: Find any forms that should use generated schemas + isFieldRequired() but don't.
+
+================================================================================
+SEARCH STRATEGY
+================================================================================
+
+1. FIND ALL FORMS (not just *Form*.tsx naming)
+   - Files using useForm hook
+   - Files using zodResolver
+   - Files with FormLabel components
+
+2. CHECK EACH FOR:
+   a) Does it use schemas.XxxRequest from generated.ts?
+   b) Does it use isFieldRequired() for FormLabel required prop?
+   c) Are there hardcoded asterisks (*) in labels?
+
+3. CATEGORIZE RESULTS:
+   - NEEDS FIX: Should use generated schema but doesn't
+   - VALID EXCEPTION: Has documented reason for manual schema
+   - ALREADY DONE: Using generated schema correctly
+
+================================================================================
+SEARCH COMMANDS TO RUN
+================================================================================
+
+STEP 1: Find all files with useForm or zodResolver
+--------
+grep -rl "useForm\|zodResolver" --include="*.tsx" src/ | sort
+
+STEP 2: Of those, find which DON'T import from generated.ts
+--------
+for f in $(grep -rl "useForm\|zodResolver" --include="*.tsx" src/); do
+  if ! grep -q "from.*generated" "$f"; then
+    echo "$f"
+  fi
+done
+
+STEP 3: Find files with FormLabel but missing isFieldRequired
+--------
+for f in $(grep -rl "FormLabel" --include="*.tsx" src/); do
+  if ! grep -q "isFieldRequired" "$f"; then
+    echo "$f"
+  fi
+done
+
+STEP 4: Find any remaining hardcoded asterisks
+--------
+grep -rn "FormLabel>.*\*" --include="*.tsx" src/
+
+STEP 5: Find manual z.object in non-exception files
+--------
+grep -rn "z\.object({" --include="*.tsx" src/ | grep -v generated.ts
+
+================================================================================
+EXECUTE AND DOCUMENT RESULTS BELOW
+================================================================================

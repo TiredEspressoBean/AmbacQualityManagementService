@@ -1,0 +1,191 @@
+FORM SCHEMA MIGRATION
+=====================
+
+GOALS:
+1. Use schemas from generated.ts instead of manual z.object() definitions
+   - Pattern: schemas.XxxRequest.pick({ field: true, ... })
+
+2. Remove hardcoded asterisks (*) in FormLabel components
+   - Use isFieldRequired() helper to detect required fields from schema
+   - Pattern: <FormLabel required={required.fieldName}>
+
+================================================================================
+COMPLETED FORMS
+================================================================================
+
+src/pages/editors/forms/
+  [x] EditPartFormPage.tsx
+  [x] EditSamplingRuleFormPage.tsx
+  [x] EditSamplingRuleSetsFormPage.tsx
+  [x] EditThreeDModelFormPage.tsx
+  [x] EditCompanyFormPage.tsx
+  [x] EditDocumentTypeFormPage.tsx
+  [x] EditApprovalTemplateFormPage.tsx
+  [x] EditUserFormPage.tsx
+  [x] EditEquipmentFormPage.tsx
+  [x] EditWorkOrderFormPage.tsx
+  [x] EditPartTypeFormPage.tsx
+  [x] EditErrorTypeFormPage.tsx
+  [x] EditEquipmentTypeFormPage.tsx
+  [x] EditStepFormPage.tsx
+  [x] EditProcessFormPage.tsx
+
+src/pages/
+  [x] OrderFormPage.tsx
+
+src/components/
+  [x] measurement-definition-form.tsx
+  [x] part-disposition-form.tsx
+  [x] part-quality-form.tsx
+  [x] sampling-rule-form.tsx
+
+src/components/auth/
+  [x] Login.tsx
+
+================================================================================
+VALID EXCEPTIONS (manual schema required)
+================================================================================
+
+React-Hook-Form with custom validation:
+  EditDocumentFormPage.tsx - File field validation differs between create/edit modes
+  PasswordResetConfirmForm.tsx - Password regex and confirmation matching
+  SignupPage.tsx - Password confirmation validation
+  UserProfilePage.tsx - All optional fields, profile-specific
+  DocumentUploader.tsx - Simple file upload, uses schemas.ClassificationEnum
+  flow/step-sampling-editor.tsx - Complex nested local state
+  CreateCapaPage.tsx - Multiple API operations, partial schema use
+
+Sub-components (no own schema):
+  step-fields.tsx - Receives control from parent form (EditProcessFormPage)
+  SamplingRulesEditor.tsx - Container using useFormContext, delegates to child forms
+
+@tanstack/react-form (different library, uses basic Label):
+  archive-part-form.tsx - Simple confirmation dialog, no form fields
+  pass-by-step-form.tsx - Step selection with radio group
+  AddPartsForm.tsx - Already uses generated schemas (BulkAddPartsRequest)
+
+Manual useState forms (no react-hook-form):
+  CapaVerificationTab.tsx - Dialog forms with conditional validation
+  ApprovalResponseModal.tsx - Approval workflow with conditional required fields
+  document-revision-modal.tsx - Simple revision dialog
+  invite-to-order-modal.tsx - Simple email input modal
+  notification-preferences-card.tsx - Preferences dialog with defaults
+
+Correctly implemented conditional asterisks:
+  SignatureVerification.tsx - Uses required prop {required && *}
+  data-import-dialog.tsx - Uses field.required from data
+
+Non-form files using zod for types only:
+  qa-right-panel.tsx - Uses z.infer<typeof schemas.X> for type inference
+  qa-form-section.tsx - Wrapper component, delegates to PartQualityForm
+
+================================================================================
+INFRASTRUCTURE
+================================================================================
+
+src/lib/zod-config.ts
+  - isFieldRequired(schema) - detects if field is required
+  - customErrorMap - user-friendly validation messages
+
+================================================================================
+VERIFICATION COMMANDS
+================================================================================
+
+# Forms with manual z.object (should only be exceptions):
+grep -r "z\.object({" --include="*.tsx" src/
+
+# Files with FormLabel but missing isFieldRequired:
+# Compare: grep -rl "FormLabel" src/*.tsx vs grep -rl "isFieldRequired" src/*.tsx
+
+# Hardcoded asterisks in FormLabel:
+grep -rE "FormLabel>.*\*" --include="*.tsx" src/
+
+# Asterisks before closing tags (catches Label, span patterns):
+grep -rE "\*<\/" --include="*.tsx" src/
+
+# Files using useForm hook:
+grep -rl "useForm" --include="*.tsx" src/
+
+# Files using zodResolver (react-hook-form + zod):
+grep -rl "zodResolver" --include="*.tsx" src/
+
+# Manual z.enum() that might use generated schemas:
+grep -rn "z\.enum(" --include="*.tsx" src/
+
+# Hardcoded required props:
+grep -rE "required=\{true\}|required=\{false\}" --include="*.tsx" src/
+
+# Hardcoded enum values in SelectItem (should use schemas.XxxEnum.options):
+grep -rE 'SelectItem value="[A-Z_]{2,}"' --include="*.tsx" src/
+
+# Files already using generated enum options (good pattern):
+grep -rE "schemas\.[A-Za-z]+Enum\.options" --include="*.tsx" src/
+
+================================================================================
+HARDCODED ENUM VALUES - COMPLETED
+================================================================================
+
+Pattern to replace:
+  <SelectItem value="PASS">Pass</SelectItem>
+  <SelectItem value="FAIL">Fail</SelectItem>
+
+With:
+  {schemas.XxxEnum.options.map(val => (
+    <SelectItem key={val} value={val}>{formatLabel(val)}</SelectItem>
+  ))}
+
+--------------------------------------------------------------------------------
+FILE: src/components/part-quality-form.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] status → schemas.QualityReportStatusEnum.options
+  [x] pass/fail measurement → schemas.ValuePassFailEnum.options
+
+--------------------------------------------------------------------------------
+FILE: src/components/part-disposition-form.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] current_state → schemas.CurrentStateEnum.options + label map
+  [x] disposition_type → schemas.DispositionTypeEnum.options + label map
+  [x] severity → schemas.SeverityEnum.options + label map
+
+--------------------------------------------------------------------------------
+FILE: src/pages/editors/forms/EditDispositionFormPage.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] current_state → schemas.CurrentStateEnum.options + label map
+  [x] disposition_type → schemas.DispositionTypeEnum.options + label map
+  [x] severity → schemas.SeverityEnum.options + label map
+
+--------------------------------------------------------------------------------
+FILE: src/components/measurement-definition-form.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] type → schemas.TypeEnum.options
+
+--------------------------------------------------------------------------------
+FILE: src/pages/quality/tabs/CapaVerificationTab.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] effectiveness_result → schemas.EffectivenessResultEnum.options + label map
+
+--------------------------------------------------------------------------------
+FILE: src/pages/quality/tabs/CapaRcaTab.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] rca_method → schemas.RcaMethodEnum.enum.FIVE_WHYS / FISHBONE
+
+--------------------------------------------------------------------------------
+FILE: src/pages/quality/tabs/CapaTasksTab.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] task_type → schemas.TaskTypeEnum.options + label map
+  [x] status → schemas.CapaTaskStatusEnum.options + label map
+
+--------------------------------------------------------------------------------
+FILE: src/components/approval/ApprovalResponseModal.tsx [DONE]
+--------------------------------------------------------------------------------
+  [x] decision → schemas.DecisionEnum.enum.APPROVED / REJECTED / DELEGATED
+
+--------------------------------------------------------------------------------
+ALREADY USING GENERATED ENUMS (GOOD EXAMPLES)
+--------------------------------------------------------------------------------
+  src/components/part-quality-form.tsx:795-800 - ClassificationEnum.options
+  src/pages/editors/forms/DocumentUploader.tsx - ClassificationEnum.options
+
+================================================================================
+STATUS: COMPLETE
+================================================================================
