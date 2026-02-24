@@ -17,14 +17,7 @@ RUN npm run build
 FROM caddy:2-alpine
 
 COPY --from=builder /app/dist /usr/share/caddy
-
-# Caddyfile for SPA routing (fallback to index.html)
-RUN echo ':80 { \
-    root * /usr/share/caddy \
-    try_files {path} /index.html \
-    file_server \
-    encode gzip \
-}' > /etc/caddy/Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
 
 EXPOSE 80
 
