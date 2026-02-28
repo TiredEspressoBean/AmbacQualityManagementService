@@ -487,6 +487,13 @@ class MeasurementDefinition(SecureModel):
     lower_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
     required = models.BooleanField(default=True)
 
+    # SPC opt-in (tenant configurable per measurement)
+    spc_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable SPC monitoring for this measurement. "
+                  "When enabled, values are checked against active SPCBaseline control limits."
+    )
+
 
 class StepMeasurementRequirement(models.Model):
     """
@@ -604,6 +611,11 @@ class Steps(SecureModel):
     block_on_measurement_failure = models.BooleanField(
         default=False,
         help_text="If True, parts cannot advance if any measurement is out of spec"
+    )
+
+    block_on_spc_violation = models.BooleanField(
+        default=False,
+        help_text="If True, parts cannot advance if any SPC-enabled measurement is out of control"
     )
 
     override_expiry_hours = models.PositiveIntegerField(

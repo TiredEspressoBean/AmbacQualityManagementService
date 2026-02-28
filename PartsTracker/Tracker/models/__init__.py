@@ -163,6 +163,13 @@ from .reman import (
     DisassemblyBOMLine,
 )
 
+# Life tracking (unified life-limited parts/materials)
+from .life_tracking import (
+    LifeLimitDefinition,
+    PartTypeLifeLimit,
+    LifeTracking,
+)
+
 # Integration models - HubSpot
 from .integrations.hubspot import (
     HubSpotSyncLog,

@@ -322,9 +322,14 @@ class HarvestedComponent(SecureModel):
         self.condition_grade = 'SCRAP'
         self.save()
 
-    def accept_to_inventory(self, user, erp_id=None):
+    def accept_to_inventory(self, user, erp_id=None, transfer_life=True):
         """
         Accept this component into inventory by creating a Parts record.
+
+        Args:
+            user: User performing the action
+            erp_id: Optional custom ERP ID for the part
+            transfer_life: If True, transfer life tracking from Core to new Part
 
         Returns the created Parts instance.
         """
@@ -352,7 +357,41 @@ class HarvestedComponent(SecureModel):
         self.component_part = part
         self.save()
 
+        # Transfer life tracking from Core to new Part
+        if transfer_life:
+            self._transfer_life_tracking(part)
+
         return part
+
+    def _transfer_life_tracking(self, part):
+        """
+        Transfer applicable life tracking from Core to the new Part.
+
+        Only transfers tracking where the definition applies to the component_type
+        (via PartTypeLifeLimit).
+        """
+        from .life_tracking import LifeTracking, PartTypeLifeLimit
+
+        # Get life tracking records from the Core
+        core_tracking = LifeTracking.objects.for_object(self.core)
+
+        # Get definitions that apply to this component type
+        applicable_definitions = set(
+            PartTypeLifeLimit.objects.filter(
+                part_type=self.component_type
+            ).values_list('definition_id', flat=True)
+        )
+
+        for ct in core_tracking:
+            # Only transfer if this definition applies to the component type
+            if ct.definition_id in applicable_definitions:
+                LifeTracking.for_object(
+                    part,
+                    ct.definition,
+                    accumulated=ct.accumulated,
+                    reference_date=ct.reference_date,
+                    source=LifeTracking.Source.TRANSFERRED,
+                )
 
 
 class DisassemblyBOMLine(SecureModel):
