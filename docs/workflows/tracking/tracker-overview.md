@@ -50,37 +50,12 @@ Click an order card to expand and see:
 - **Part List** - Individual parts with status
 - **Quick Actions** - Move parts, create reports
 
-## Filtering Orders
-
-### Quick Filters
-
-Use the filter bar for common queries:
-
-- **My Orders** - Orders you're assigned to
-- **Due Today** - Orders due today
-- **Overdue** - Past due date
-- **Rush** - High priority orders
-
-### Advanced Filters
-
-Click **Filters** for more options:
-
-| Filter | Options |
-|--------|---------|
-| **Status** | Draft, In Progress, On Hold, Complete |
-| **Customer** | Select specific customer |
-| **Due Date** | Date range picker |
-| **Part Type** | Filter by part type |
-| **Process** | Filter by manufacturing process |
-
-### Saving Filter Presets
-
-1. Configure your filters
-2. Click **Save Filter**
-3. Name your preset
-4. Access it from the filter dropdown
-
 ## Searching
+
+!!! note "Filtering"
+    Advanced filtering and filter presets are planned for the Tracker page. Currently, use the search functionality or access filtered views through the QA Work Orders page which has more filtering options.
+
+## Search Bar
 
 The search bar finds orders by:
 
@@ -91,28 +66,16 @@ The search bar finds orders by:
 
 Type and press Enter to search.
 
-## View Options
+## Card View
 
-### Card View (Default)
-Orders as visual cards with progress indicators. Best for:
+The Tracker displays orders as visual cards with progress indicators. This view is optimized for:
 
 - Quick status overview
 - Touch/mobile interaction
 - Visual scanning
 
-### Table View
-Orders in a sortable table. Best for:
-
-- Large order volumes
-- Sorting by columns
-- Data export
-
-### Kanban View (if enabled)
-Orders as cards in status columns. Best for:
-
-- Workflow visualization
-- Drag-and-drop status changes
-- Team boards
+!!! note "Additional Views"
+    Table View and Kanban View are planned for future releases. Currently, the Tracker uses the card view with infinite scroll.
 
 ## Real-Time Updates
 
@@ -148,15 +111,6 @@ Configure display options:
 - Cycle interval
 - Orders to show
 - Display elements
-
-## Keyboard Navigation
-
-| Key | Action |
-|-----|--------|
-| `/` | Focus search |
-| `↑` `↓` | Navigate orders |
-| `Enter` | Open selected order |
-| `Esc` | Close expanded order |
 
 ## Mobile Usage
 

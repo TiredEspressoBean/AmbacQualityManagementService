@@ -13,24 +13,25 @@ Flag an issue when:
 - Process deviation occurs
 - Customer reports a problem
 
-## Quick Flag (Quarantine)
+## Reporting Issues via Quality Report
 
-The fastest way to flag a part:
+The primary way to flag a quality issue is through a Quality Report with FAIL status:
 
-1. Select the part
-2. Click **Flag** or **Quarantine**
-3. Select the error type
-4. Add a brief description
-5. Submit
+1. Find the part in **QA Parts** table
+2. Click the **Quality Report** button
+3. Fill in the form with status set to **FAIL**
+4. Select the error type
+5. Add a description of the issue
+6. Submit
 
-The part is immediately moved to quarantine and cannot proceed until disposition is determined.
+The part enters quarantine status and cannot proceed until disposition is determined.
 
-## Creating a Quality Report
+## Quality Report Details
 
-For documented non-conformances:
+When creating a quality report:
 
-1. Select the affected part(s)
-2. Click **Create Quality Report** or **Create NCR**
+1. Navigate to the part in **QA Parts** or from the order detail
+2. Click **Quality Report**
 3. Fill in the report form:
 
 | Field | Description |
@@ -42,8 +43,9 @@ For documented non-conformances:
 | **Immediate Action** | What was done immediately |
 | **Parts Affected** | Auto-populated with selection |
 
-4. Add attachments (photos, measurements)
-5. Submit the report
+4. Set **Status** to FAIL for non-conforming parts
+5. Add attachments (photos, measurements)
+6. Submit the report
 
 See [Quality Reports](../quality/quality-reports.md) for full details.
 
@@ -162,8 +164,8 @@ See [Dispositions](../quality/dispositions.md) for disposition workflow.
 | Permission | Allows |
 |------------|--------|
 | `add_qualityreport` | Create quality reports |
-| `can_quarantine_parts` | Move parts to quarantine |
 | `view_qualityreport` | View existing reports |
+| `change_qualityreport` | Edit quality reports |
 
 ## Next Steps
 

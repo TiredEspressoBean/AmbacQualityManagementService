@@ -91,8 +91,8 @@ Status updates automatically based on progress:
 
 | Condition | Status Change |
 |-----------|---------------|
-| First part moved | Draft → In Progress |
-| All parts complete | In Progress → Complete |
+| First part moved | Pending → In Progress |
+| All parts complete | In Progress → Completed |
 | Part quarantined | No change (tracked separately) |
 
 ### Manual Updates

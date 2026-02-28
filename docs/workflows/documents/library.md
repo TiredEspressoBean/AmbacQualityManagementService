@@ -4,7 +4,7 @@ The Document Library is the central repository for all controlled documents in A
 
 ## Accessing the Library
 
-Navigate to **Documents** in the Tools section of the sidebar.
+Navigate to **Documents** in the main sidebar navigation.
 
 ## Library Overview
 
@@ -120,10 +120,10 @@ Click a document to view:
 - Approval status
 - Linked records
 
-### File Preview
-- PDF documents display inline
-- Images display inline
-- Other files show download link
+### Viewing Files
+- Click **Download** to view documents
+- Files open in a new browser tab
+- Supported formats display in browser (PDF, images)
 
 ### Actions Available
 - Download
@@ -167,14 +167,6 @@ From record:
 2. Go to Documents section
 3. Click **Add Document**
 4. Search and select document
-
-## Folder Organization
-
-Documents can be organized in folders:
-
-- Create folder hierarchy
-- Move documents between folders
-- Folder-level permissions (optional)
 
 ## Permissions
 

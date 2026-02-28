@@ -190,16 +190,6 @@ If documents have expiration dates:
 3. May require new approval
 4. Expired documents flagged
 
-## Emergency Release
-
-For urgent situations (with proper permission):
-
-1. Click **Emergency Release**
-2. Provide justification
-3. Document released without full approval
-4. Follow-up approval still required
-5. Flagged in audit trail
-
 ## Approval Notifications
 
 | Event | Recipients |
@@ -217,7 +207,6 @@ For urgent situations (with proper permission):
 | `view_document` | View documents |
 | `change_document` | Submit for approval |
 | `approve_document` | Approve/reject documents |
-| `emergency_release` | Emergency release |
 
 ## Best Practices
 

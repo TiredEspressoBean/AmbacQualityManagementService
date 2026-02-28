@@ -92,15 +92,15 @@ Document lessons learned:
 
 ## Closure Approval
 
-CAPAs require approval to close:
+CAPAs require approval to close. The closure process uses the system's approval workflow.
 
 ### Submitting for Closure
 
 1. Ensure all tasks complete
 2. Verification documented
-3. Click **Request Closure**
-4. Add closure summary
-5. Submit
+3. Request approval via the **Approval** tab
+4. Add closure summary/justification
+5. Submit for approval
 
 ### Approval Workflow
 

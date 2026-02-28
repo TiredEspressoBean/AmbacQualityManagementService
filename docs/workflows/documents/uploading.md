@@ -19,8 +19,8 @@ PDF is recommended for controlled documents (non-editable, consistent display).
 
 ## File Size Limits
 
-- **Maximum file size**: 100 MB (configurable)
-- **Recommended**: Under 25 MB for best performance
+- **Maximum file size**: 10 MB
+- **Recommended**: Under 5 MB for best performance
 
 For large files, consider:
 - Compressing images
@@ -57,13 +57,14 @@ For large files, consider:
 
 | Field | Description |
 |-------|-------------|
-| **Document Number** | Your numbering scheme |
 | **Revision** | Version identifier |
 | **Description** | Summary of contents |
 | **Effective Date** | When document becomes active |
 | **Expiration Date** | When document expires |
-| **Author** | Document creator |
 | **Keywords** | Search terms |
+
+!!! note "Document Numbering"
+    Document numbers may be auto-generated based on document type settings. Check with your administrator for your organization's numbering scheme.
 
 ### Visibility Settings
 
@@ -73,23 +74,6 @@ For large files, consider:
 | **Internal** | Staff only |
 | **Confidential** | Users with confidential permission |
 | **Restricted** | Specific users/groups only |
-
-## Bulk Upload
-
-Upload multiple documents at once:
-
-1. Click **Bulk Upload**
-2. Drag and drop multiple files
-3. Files appear in upload queue
-4. Set metadata for each (or apply to all)
-5. Click **Upload All**
-
-### Applying Metadata to All
-
-1. Fill in the first document
-2. Click **Apply to All**
-3. Shared fields copy to other uploads
-4. Adjust individual documents as needed
 
 ## Uploading Revisions
 
@@ -103,24 +87,6 @@ To upload a new version of an existing document:
 
 See [Document Revisions](revisions.md) for details.
 
-## Document Numbering
-
-### Automatic Numbering
-
-System-generated numbers based on:
-- Document type prefix
-- Sequential number
-- Optional date code
-
-Example: `WI-2026-00001` (Work Instruction #1 of 2026)
-
-### Manual Numbering
-
-Enter your own document number:
-- Follow your organization's scheme
-- Must be unique
-- Can include revision in number
-
 ## Linking During Upload
 
 Link document to records during upload:
@@ -130,21 +96,6 @@ Link document to records during upload:
 3. Select record type (Order, Part Type, etc.)
 4. Search and select records
 5. Document uploads with links established
-
-## Upload from External Sources
-
-### URL Import (if enabled)
-
-1. Click **Import from URL**
-2. Enter document URL
-3. System fetches and imports
-
-### Integration Import
-
-If integrations are configured:
-- Import from cloud storage
-- Import from CAD systems
-- Import from ERP
 
 ## Post-Upload Actions
 

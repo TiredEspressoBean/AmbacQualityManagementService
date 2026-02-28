@@ -55,12 +55,11 @@ The order's Documents tab shows:
 - Upload date
 - Status (Draft, Approved, etc.)
 
-### Document Preview
+### Document Actions
 
 Click a document to:
 
-- View the file (PDFs display inline)
-- Download the file
+- Download the file (opens in new tab for viewing)
 - See version history
 - View approval status
 
@@ -118,16 +117,6 @@ Missing required documents may:
 - Block order completion
 - Trigger reminders
 - Show warnings on the order
-
-## Document Packages
-
-Create document packages for shipping:
-
-1. Open the order
-2. Click **Create Document Package** or **Export Documents**
-3. Select documents to include
-4. Generate a combined PDF or ZIP file
-5. Download or email to customer
 
 ## Searching Documents
 

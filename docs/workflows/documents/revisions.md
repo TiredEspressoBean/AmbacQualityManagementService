@@ -78,15 +78,6 @@ View all revisions of a document:
 2. Click **View** or **Download**
 3. Previous revision opens (read-only)
 
-## Comparing Revisions
-
-Compare two revisions:
-
-1. Open revision history
-2. Select two revisions
-3. Click **Compare**
-4. Differences highlighted (for supported file types)
-
 ## Current vs Previous Revisions
 
 | Status | Meaning |

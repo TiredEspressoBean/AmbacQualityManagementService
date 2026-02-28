@@ -40,10 +40,6 @@ Parts get incrementing numbers: `001`, `002`, `003`
 ### With Prefix
 Add a prefix for clarity: `WA-001`, `WA-002`
 
-### Custom Pattern
-Your admin may configure patterns like:
-- `{YEAR}-{SEQ}` → `2026-00001`
-- `{PARTTYPE}-{LOT}-{SEQ}` → `WGT-LOT5-001`
 
 ## Lot Numbers
 
@@ -58,34 +54,6 @@ Benefits of lot tracking:
 - Faster recalls if issues found
 - Traceability to material sources
 - Quality trend analysis by lot
-
-## Bulk Import
-
-For large quantities or complex data:
-
-1. Click **Import Parts** in the order
-2. Download the CSV template
-3. Fill in your data:
-
-```csv
-part_type,serial_number,lot_number,notes
-Widget Assembly,WA-001,LOT-2026-A,
-Widget Assembly,WA-002,LOT-2026-A,
-Widget Assembly,WA-003,LOT-2026-A,Custom spec
-```
-
-4. Upload the file
-5. Review the preview
-6. Click **Import**
-
-!!! warning "Validation"
-    The import validates:
-
-    - Part types exist
-    - Serial numbers are unique
-    - Required fields are present
-
-    Fix any errors and re-upload if needed.
 
 ## Part Attributes
 
@@ -106,11 +74,18 @@ New parts start at the first step of their process. Status changes as they progr
 
 | Status | Meaning |
 |--------|---------|
-| **In Process** | Part is moving through steps |
-| **Complete** | Part finished all steps |
-| **Quarantine** | Part held for quality review |
+| **Pending** | Part not yet started |
+| **In Progress** | Part is moving through steps |
+| **Awaiting QA** | Part waiting for quality inspection |
+| **Ready for Next Step** | Step complete, ready to advance |
+| **Quarantined** | Part held for quality review |
+| **Rework Needed** | Part requires rework |
+| **Rework In Progress** | Rework underway |
+| **Completed** | Part finished all steps |
+| **Shipped** | Part has been shipped |
+| **In Stock** | Part in inventory |
 | **Scrapped** | Part disposed as scrap |
-| **RTV** | Returned to vendor |
+| **Cancelled** | Part cancelled |
 
 ## Viewing Part Details
 

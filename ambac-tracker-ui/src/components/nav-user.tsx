@@ -1,6 +1,7 @@
 "use client"
 
 import {
+    BookOpen,
     ChevronsUpDown,
     User,
 } from "lucide-react"
@@ -62,6 +63,17 @@ export function NavUser({
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Profile</span>
                             </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <a
+                                href="/docs/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="cursor-pointer"
+                            >
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                <span>Help & Docs</span>
+                            </a>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <LogoutMenuItem/>

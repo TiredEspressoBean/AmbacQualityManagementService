@@ -111,15 +111,17 @@ Note: Quality reports with FAIL status trigger the disposition workflow for hand
 
 ## Disposition
 
-Each quality report requires a disposition decision:
+Quality reports with FAIL status trigger a separate disposition workflow. Disposition decisions are made through the Dispositions feature, not directly on the quality report.
+
+Available dispositions:
 
 | Disposition | Meaning |
 |-------------|---------|
-| **Use As Is** | Accept despite non-conformance |
-| **Rework** | Repair/correct and re-inspect |
+| **Use As Is** | Accept despite non-conformance (requires customer approval) |
+| **Rework** | Correct and re-inspect to full conformance |
+| **Repair** | Correct but may deviate from spec (requires approval) |
 | **Scrap** | Dispose of parts |
-| **Return to Vendor (RTV)** | Send back to supplier |
-| **Deviate** | Customer-approved deviation |
+| **Return to Supplier** | Send back to supplier |
 
 See [Dispositions](dispositions.md) for detailed workflow.
 

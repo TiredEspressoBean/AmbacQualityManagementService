@@ -37,8 +37,10 @@ An order may have multiple work orders if:
 | **Process** | Manufacturing workflow to follow | Yes |
 | **Priority** | Normal, High, or Rush | Yes |
 | **Due Date** | Target completion | No |
-| **Equipment** | Assigned machine/work center | No |
 | **Notes** | Instructions or comments | No |
+
+!!! note "Equipment Assignment"
+    Equipment is assigned at the step execution level, not on the work order itself. This allows different equipment to be used for different steps. See [Assigning Work Orders](assigning.md) for details.
 
 4. Click **Save**
 

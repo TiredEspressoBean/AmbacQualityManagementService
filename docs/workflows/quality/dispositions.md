@@ -21,7 +21,8 @@ A **disposition** is the formal decision about how to handle a part that doesn't
 | **Scrap** | SCRAP | Part cannot be used or repaired |
 | **Return to Supplier** | RETURN_TO_SUPPLIER | Supplier responsible, return for credit/replacement |
 
-> **Rework vs Repair (AS9100)**: Rework restores full conformance. Repair may result in a part that deviates from original specs but is still acceptable for use (requires engineering approval).
+!!! info "Rework vs Repair (AS9100)"
+    Rework restores full conformance. Repair may result in a part that deviates from original specs but is still acceptable for use (requires engineering approval).
 
 ## Disposition Workflow
 
@@ -68,10 +69,11 @@ Some dispositions require approval:
 
 | Disposition | Approval Required |
 |-------------|-------------------|
-| Scrap (high value) | Yes |
-| Use As Is | Yes (engineering/quality) |
-| Deviate | Yes (customer + internal) |
-| RTV | Sometimes |
+| **Use As Is** | Yes (customer approval auto-required) |
+| **Repair** | Yes (customer approval auto-required) |
+| **Scrap** | Configurable by value threshold |
+| **Return to Supplier** | Configurable |
+| **Rework** | No (unless configured) |
 
 ### Step 5: Execution
 
@@ -92,7 +94,7 @@ After approval:
 
 | Field | Description |
 |-------|-------------|
-| **Disposition** | Use As Is, Rework, Repair, Scrap, Return to Supplier |
+| **Disposition** | Use As Is, Rework, Repair, Scrap, or Return to Supplier |
 | **Justification** | Why this decision |
 | **Parts** | Which parts (all or select) |
 | **Rework/Repair Instructions** | For rework/repair: what needs to be done |
@@ -126,11 +128,11 @@ When approval is required:
 
 | Disposition | Typical Approver |
 |-------------|------------------|
-| Use As Is | Quality Engineer |
+| Use As Is | Quality Manager + Customer |
+| Repair | Quality Manager + Customer |
 | Rework | Production Supervisor |
-| Scrap (low value) | Quality Inspector |
-| Scrap (high value) | Quality Manager |
-| Deviate | Customer + Quality Manager |
+| Scrap | Quality Manager (based on value) |
+| Return to Supplier | Quality Manager |
 
 ### Approval Records
 
@@ -172,17 +174,15 @@ All approvals are recorded:
 3. Awaiting supplier pickup
 4. Closed when returned
 
-## Customer Deviations
+## Customer Approval
 
-For deviations requiring customer approval:
+For dispositions requiring customer approval (Use As Is, Repair):
 
-1. Select **Deviate** disposition
-2. Enter deviation request details
-3. System generates deviation request
-4. Send to customer for approval
-5. Customer approves/rejects
-6. Record customer response
-7. Execute if approved
+1. The system automatically flags these for customer approval
+2. Enter justification and deviation details
+3. Contact customer through your normal channels
+4. Record customer response in the system
+5. Execute if approved
 
 ## Disposition Metrics
 

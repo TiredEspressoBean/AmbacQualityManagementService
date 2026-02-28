@@ -163,24 +163,6 @@ If the part can be reworked:
 3. Perform corrective action
 4. Re-measure
 
-## Bulk Measurement Import
-
-For CMM or automated inspection systems:
-
-1. Navigate to **Import Measurements**
-2. Upload CSV or equipment export file
-3. Map columns to measurement definitions
-4. Review and confirm import
-5. Measurements are recorded with import timestamp
-
-### CSV Format
-```csv
-part_serial,measurement_name,value,equipment_id,timestamp
-WA-001,Outer Diameter,25.003,CMM-001,2026-03-15T10:30:00
-WA-001,Length,100.002,CMM-001,2026-03-15T10:30:05
-WA-002,Outer Diameter,24.998,CMM-001,2026-03-15T10:31:00
-```
-
 ## SPC Integration
 
 Measurements feed into Statistical Process Control:
