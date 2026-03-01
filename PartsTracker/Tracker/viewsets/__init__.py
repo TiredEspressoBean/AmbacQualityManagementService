@@ -185,6 +185,13 @@ from .reman import (
     DisassemblyBOMLineViewSet,
 )
 
+# Life Tracking ViewSets
+from .life_tracking import (
+    LifeLimitDefinitionViewSet,
+    PartTypeLifeLimitViewSet,
+    LifeTrackingViewSet,
+)
+
 
 __all__ = [
     # Base - Tenant Scoping
@@ -340,6 +347,11 @@ __all__ = [
 
     # Calibration
     'CalibrationRecordViewSet',
+
+    # Life Tracking
+    'LifeLimitDefinitionViewSet',
+    'PartTypeLifeLimitViewSet',
+    'LifeTrackingViewSet',
 ]
 
 
@@ -471,3 +483,8 @@ def register_viewsets(router):
 
     # ===== CALIBRATION VIEWSETS =====
     router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')
+
+    # ===== LIFE TRACKING VIEWSETS =====
+    router.register(r'LifeLimitDefinitions', LifeLimitDefinitionViewSet, basename='LifeLimitDefinitions')
+    router.register(r'PartTypeLifeLimits', PartTypeLifeLimitViewSet, basename='PartTypeLifeLimits')
+    router.register(r'LifeTracking', LifeTrackingViewSet, basename='LifeTracking')
