@@ -17,14 +17,22 @@ from Tracker.models import (
     Companies,
     PartTypes,
     Processes,
+    ProcessStep,
+    Steps,
     Parts,
     PartsStatus,
+    Orders,
+    WorkOrder,
+    WorkOrderStatus,
     Core,
     HarvestedComponent,
     DisassemblyBOMLine,
     LifeLimitDefinition,
     PartTypeLifeLimit,
     LifeTracking,
+    QualityReports,
+    MeasurementDefinition,
+    MeasurementResult,
 )
 
 
@@ -772,3 +780,399 @@ class RemanWorkflowIntegrationTests(RemanBaseTestCase):
         # 7. Verify parts are in inventory
         self.assertEqual(nozzle_part.part_status, PartsStatus.PENDING)
         self.assertEqual(solenoid_part.part_status, PartsStatus.PENDING)
+
+
+class RemanWorkOrderIntegrationTests(RemanBaseTestCase):
+    """Tests for reman integration with WorkOrder model."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+
+        # Create a process for the nozzle type (so parts can enter workflow)
+        cls.nozzle_process = Processes.objects.create(
+            name="Nozzle Rebuild Process",
+            part_type=cls.nozzle_type,
+            tenant=cls.tenant
+        )
+
+    def test_core_linked_to_work_order(self):
+        """Test that a core can be linked to a work order for tracking."""
+        # Create an order for the disassembly work
+        order = Orders.objects.create(
+            tenant=self.tenant,
+            company=self.customer,  # company FK is Companies
+            name="Disassembly Order"
+        )
+
+        # Create work order for disassembly
+        work_order = WorkOrder.objects.create(
+            tenant=self.tenant,
+            related_order=order,
+            process=self.nozzle_process,
+            ERP_id="WO-DISASM-001",
+            workorder_status=WorkOrderStatus.IN_PROGRESS
+        )
+
+        # Create core linked to work order
+        core = Core.objects.create(
+            tenant=self.tenant,
+            core_number="CORE-WO-001",
+            core_type=self.injector_core_type,
+            received_date=date.today(),
+            received_by=self.receiving_clerk,
+            condition_grade='A',
+            work_order=work_order  # Link to WO
+        )
+
+        self.assertEqual(core.work_order, work_order)
+        self.assertIn(core, work_order.cores.all())
+
+    def test_reman_part_enters_production_workflow(self):
+        """Test that a part from reman can enter and progress through workflow."""
+        # Setup: Create steps for nozzle process
+        step1 = Steps.objects.create(
+            tenant=self.tenant,
+            name="Clean",
+            part_type=self.nozzle_type
+        )
+        step2 = Steps.objects.create(
+            tenant=self.tenant,
+            name="Inspect",
+            part_type=self.nozzle_type
+        )
+        step3 = Steps.objects.create(
+            tenant=self.tenant,
+            name="Test",
+            part_type=self.nozzle_type,
+            is_terminal=True
+        )
+
+        # Link steps to process
+        ProcessStep.objects.create(process=self.nozzle_process, step=step1, order=1, is_entry_point=True)
+        ProcessStep.objects.create(process=self.nozzle_process, step=step2, order=2)
+        ProcessStep.objects.create(process=self.nozzle_process, step=step3, order=3)
+
+        # Create core and harvest component
+        core = Core.objects.create(
+            tenant=self.tenant,
+            core_number="CORE-PROD-001",
+            core_type=self.injector_core_type,
+            received_date=date.today(),
+            received_by=self.receiving_clerk,
+            condition_grade='A'
+        )
+        core.start_disassembly(user=self.disassembly_tech)
+
+        component = HarvestedComponent.objects.create(
+            tenant=self.tenant,
+            core=core,
+            component_type=self.nozzle_type,
+            disassembled_by=self.disassembly_tech,
+            condition_grade='A'
+        )
+
+        # Accept to inventory
+        part = component.accept_to_inventory(user=self.qa_inspector)
+        self.assertEqual(part.part_status, PartsStatus.PENDING)
+
+        # Create production order and work order
+        prod_order = Orders.objects.create(
+            tenant=self.tenant,
+            company=self.customer,  # company FK is Companies
+            name="Production Order"
+        )
+
+        prod_wo = WorkOrder.objects.create(
+            tenant=self.tenant,
+            related_order=prod_order,
+            process=self.nozzle_process,
+            ERP_id="WO-PROD-001",
+            workorder_status=WorkOrderStatus.IN_PROGRESS
+        )
+
+        # Assign part to work order
+        part.work_order = prod_wo
+        part.step = step1
+        part.part_status = PartsStatus.IN_PROGRESS
+        part.save()
+
+        # Verify part is in workflow
+        self.assertEqual(part.work_order, prod_wo)
+        self.assertEqual(part.step, step1)
+        self.assertEqual(part.part_status, PartsStatus.IN_PROGRESS)
+
+        # Part can progress through steps
+        part.step = step2
+        part.save()
+        self.assertEqual(part.step.name, "Inspect")
+
+        # Verify traceability back to core
+        self.assertEqual(part.harvested_from.core, core)
+        self.assertEqual(part.harvested_from.core.core_number, "CORE-PROD-001")
+
+
+class RemanQualityIntegrationTests(RemanBaseTestCase):
+    """Tests for reman integration with Quality models."""
+
+    def test_component_quality_report(self):
+        """Test that harvested components can have quality reports."""
+        # Create core and harvest component
+        core = Core.objects.create(
+            tenant=self.tenant,
+            core_number="CORE-QA-001",
+            core_type=self.injector_core_type,
+            received_date=date.today(),
+            received_by=self.receiving_clerk,
+            condition_grade='B'
+        )
+        core.start_disassembly(user=self.disassembly_tech)
+
+        component = HarvestedComponent.objects.create(
+            tenant=self.tenant,
+            core=core,
+            component_type=self.nozzle_type,
+            disassembled_by=self.disassembly_tech,
+            condition_grade='B',
+            condition_notes="Needs inspection"
+        )
+
+        # Accept to inventory first (QR typically on Parts)
+        part = component.accept_to_inventory(user=self.qa_inspector)
+
+        # Create quality report for the part
+        qr = QualityReports.objects.create(
+            tenant=self.tenant,
+            part=part,
+            status='PASS',
+            detected_by=self.qa_inspector
+        )
+
+        self.assertEqual(qr.part, part)
+        self.assertEqual(qr.status, 'PASS')
+
+        # Can trace QR back to harvested component and core
+        self.assertEqual(qr.part.harvested_from.core.core_number, "CORE-QA-001")
+
+    def test_part_with_measurements_from_reman(self):
+        """Test measurements on parts sourced from reman."""
+        # Create step with measurement requirement
+        inspect_step = Steps.objects.create(
+            tenant=self.tenant,
+            name="Dimensional Check",
+            part_type=self.nozzle_type
+        )
+
+        measurement_def = MeasurementDefinition.objects.create(
+            tenant=self.tenant,
+            step=inspect_step,
+            label="Nozzle Tip Diameter",
+            type="NUMERIC",
+            unit="mm",
+            nominal=Decimal('2.500'),
+            upper_tol=Decimal('0.010'),
+            lower_tol=Decimal('0.010')  # Lower tol is positive magnitude
+        )
+
+        # Create core and harvest
+        core = Core.objects.create(
+            tenant=self.tenant,
+            core_number="CORE-MEAS-001",
+            core_type=self.injector_core_type,
+            received_date=date.today(),
+            received_by=self.receiving_clerk,
+            condition_grade='A'
+        )
+        core.start_disassembly(user=self.disassembly_tech)
+
+        component = HarvestedComponent.objects.create(
+            tenant=self.tenant,
+            core=core,
+            component_type=self.nozzle_type,
+            disassembled_by=self.disassembly_tech,
+            condition_grade='A'
+        )
+
+        part = component.accept_to_inventory(user=self.qa_inspector)
+
+        # Create quality report first (measurements are linked to reports)
+        qr = QualityReports.objects.create(
+            tenant=self.tenant,
+            part=part,
+            step=inspect_step,
+            status='PASS',
+            detected_by=self.qa_inspector
+        )
+
+        # Record measurement on the quality report
+        measurement = MeasurementResult.objects.create(
+            tenant=self.tenant,
+            report=qr,
+            definition=measurement_def,
+            value_numeric=2.503,  # Within tolerance
+            is_within_spec=True,
+            created_by=self.qa_inspector
+        )
+
+        self.assertEqual(measurement.report.part, part)
+        self.assertEqual(measurement.value_numeric, 2.503)
+
+        # Check if within tolerance (already verified by is_within_spec)
+        self.assertTrue(measurement.is_within_spec)
+
+
+class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
+    """Tests for scenarios involving multiple cores."""
+
+    def test_batch_core_receiving(self):
+        """Test receiving multiple cores from same source."""
+        cores = []
+        for i in range(5):
+            core = Core.objects.create(
+                tenant=self.tenant,
+                core_number=f"BATCH-{i+1:03d}",
+                core_type=self.injector_core_type,
+                received_date=date.today(),
+                received_by=self.receiving_clerk,
+                customer=self.customer,
+                source_type='customer_return',
+                source_reference="RMA-BATCH-001",
+                condition_grade='B'
+            )
+            cores.append(core)
+
+        # Query cores by source reference
+        batch_cores = Core.objects.filter(source_reference="RMA-BATCH-001")
+        self.assertEqual(batch_cores.count(), 5)
+
+        # All from same customer
+        self.assertTrue(all(c.customer == self.customer for c in batch_cores))
+
+    def test_component_inventory_aggregation(self):
+        """Test aggregating components across multiple cores."""
+        # Create and disassemble multiple cores
+        for i in range(3):
+            core = Core.objects.create(
+                tenant=self.tenant,
+                core_number=f"AGG-{i+1:03d}",
+                core_type=self.injector_core_type,
+                received_date=date.today(),
+                received_by=self.receiving_clerk,
+                condition_grade='A'
+            )
+            core.start_disassembly(user=self.disassembly_tech)
+
+            # Each core yields 2 nozzles
+            for j in range(2):
+                component = HarvestedComponent.objects.create(
+                    tenant=self.tenant,
+                    core=core,
+                    component_type=self.nozzle_type,
+                    disassembled_by=self.disassembly_tech,
+                    condition_grade='A',
+                    position=f"Position {j+1}"
+                )
+                component.accept_to_inventory(user=self.qa_inspector)
+
+            core.complete_disassembly(user=self.disassembly_tech)
+
+        # Query all nozzle parts from harvested components
+        harvested_nozzles = Parts.objects.filter(
+            harvested_from__isnull=False,
+            part_type=self.nozzle_type
+        )
+
+        self.assertEqual(harvested_nozzles.count(), 6)  # 3 cores x 2 nozzles
+
+    def test_yield_tracking_against_bom(self):
+        """Test tracking actual yield against DisassemblyBOM expectations."""
+        # Create BOM expectations
+        nozzle_bom = DisassemblyBOMLine.objects.create(
+            tenant=self.tenant,
+            core_type=self.injector_core_type,
+            component_type=self.nozzle_type,
+            expected_qty=1,
+            expected_fallout_rate=Decimal('0.10')  # 10% expected fallout
+        )
+        solenoid_bom = DisassemblyBOMLine.objects.create(
+            tenant=self.tenant,
+            core_type=self.injector_core_type,
+            component_type=self.solenoid_type,
+            expected_qty=1,
+            expected_fallout_rate=Decimal('0.05')
+        )
+
+        # Disassemble 10 cores
+        actual_nozzles_good = 0
+        actual_nozzles_scrapped = 0
+        actual_solenoids_good = 0
+        actual_solenoids_scrapped = 0
+
+        for i in range(10):
+            core = Core.objects.create(
+                tenant=self.tenant,
+                core_number=f"YIELD-{i+1:03d}",
+                core_type=self.injector_core_type,
+                received_date=date.today(),
+                received_by=self.receiving_clerk,
+                condition_grade='B'
+            )
+            core.start_disassembly(user=self.disassembly_tech)
+
+            # Harvest nozzle - simulate 20% actual fallout (2 of 10 scrapped)
+            nozzle = HarvestedComponent.objects.create(
+                tenant=self.tenant,
+                core=core,
+                component_type=self.nozzle_type,
+                disassembled_by=self.disassembly_tech,
+                condition_grade='B' if i < 8 else 'SCRAP'
+            )
+            if i < 8:
+                nozzle.accept_to_inventory(user=self.qa_inspector)
+                actual_nozzles_good += 1
+            else:
+                nozzle.scrap(user=self.qa_inspector, reason="Damaged")
+                actual_nozzles_scrapped += 1
+
+            # Harvest solenoid - simulate 10% actual fallout (1 of 10 scrapped)
+            solenoid = HarvestedComponent.objects.create(
+                tenant=self.tenant,
+                core=core,
+                component_type=self.solenoid_type,
+                disassembled_by=self.disassembly_tech,
+                condition_grade='A' if i < 9 else 'SCRAP'
+            )
+            if i < 9:
+                solenoid.accept_to_inventory(user=self.qa_inspector)
+                actual_solenoids_good += 1
+            else:
+                solenoid.scrap(user=self.qa_inspector, reason="Coil failure")
+                actual_solenoids_scrapped += 1
+
+            core.complete_disassembly(user=self.disassembly_tech)
+
+        # Calculate actual vs expected
+        total_cores = 10
+
+        # Nozzles: expected 90% yield, actual 80%
+        expected_nozzle_yield = total_cores * nozzle_bom.expected_usable_qty  # 9
+        actual_nozzle_yield = actual_nozzles_good  # 8
+        self.assertEqual(actual_nozzle_yield, 8)
+        self.assertLess(actual_nozzle_yield, expected_nozzle_yield)  # Worse than expected
+
+        # Solenoids: expected 95% yield, actual 90%
+        expected_solenoid_yield = total_cores * solenoid_bom.expected_usable_qty  # 9.5
+        actual_solenoid_yield = actual_solenoids_good  # 9
+        self.assertEqual(actual_solenoid_yield, 9)
+
+        # Query for analytics
+        total_harvested = HarvestedComponent.objects.filter(
+            core__core_number__startswith="YIELD-"
+        ).count()
+        total_scrapped = HarvestedComponent.objects.filter(
+            core__core_number__startswith="YIELD-",
+            is_scrapped=True
+        ).count()
+
+        self.assertEqual(total_harvested, 20)  # 10 cores x 2 components
+        self.assertEqual(total_scrapped, 3)  # 2 nozzles + 1 solenoid
