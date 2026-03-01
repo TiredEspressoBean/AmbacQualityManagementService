@@ -343,7 +343,9 @@ class HarvestedComponent(SecureModel):
 
         # Generate ERP ID if not provided
         if not erp_id:
-            erp_id = f"HC-{self.core.core_number}-{self.component_type.ID_prefix or 'P'}{self.pk:04d}"
+            # Use first 8 chars of UUID for uniqueness
+            short_id = str(self.pk).replace('-', '')[:8].upper()
+            erp_id = f"HC-{self.core.core_number}-{self.component_type.ID_prefix or 'P'}{short_id}"
 
         # Create the part
         part = Parts.objects.create(
