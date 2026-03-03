@@ -4,7 +4,7 @@ Build manufacturing workflows for your products.
 
 ## Planning Your Process
 
-Before creating in Ambac Tracker:
+Before creating in uqmes:
 
 1. **Map current workflow** - Document actual steps
 2. **Identify quality gates** - Where inspection occurs

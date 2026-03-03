@@ -1,0 +1,83 @@
+{% extends "emails/base_email.html" %}
+{% load table_helpers %}
+
+{% block title %}CAPA Reminder{% endblock %}
+
+{% block badge_bg %}{% if is_overdue %}#fee2e2{% elif days_until_due <= 3 %}#fef3c7{% else %}#f4f4f5{% endif %}{% endblock %}
+{% block badge_color %}{% if is_overdue %}#991b1b{% elif days_until_due <= 3 %}#92400e{% else %}#3f3f46{% endif %}{% endblock %}
+{% block badge_text %}{% if is_overdue %}Overdue{% elif days_until_due == 0 %}Due Today{% else %}Reminder{% endif %}{% endblock %}
+
+{% block header_title %}{% if is_overdue %}CAPA Overdue{% else %}CAPA Reminder{% endif %}{% endblock %}
+
+{% block intro_text %}
+<p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #3f3f46;">
+    {% if is_overdue %}
+    The following CAPA requires immediate attention and is <strong>{{ days_until_due|abs }} day{{ days_until_due|abs|pluralize }} overdue</strong>:
+    {% elif days_until_due == 0 %}
+    The following CAPA is <strong>due today</strong>:
+    {% else %}
+    This is a reminder that the following CAPA is due in <strong>{{ days_until_due }} day{{ days_until_due|pluralize }}</strong>:
+    {% endif %}
+</p>
+{% endblock %}
+
+{% block content %}
+{% if is_overdue %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+    <tr>
+        <td style="padding: 12px 16px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #991b1b;">
+                <strong>Action Required</strong> — This CAPA has exceeded its due date.
+            </p>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+    <tr>
+        <td style="padding: 16px; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td>
+                        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #18181b;">
+                            {{ disposition_number }}
+                        </p>
+                        <p style="margin: 0; font-size: 13px; color: #71717a;">
+                            CAPA
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0">
+                            <tr>
+                                {% if is_overdue %}
+                                {% include "emails/includes/detail_row.html" with label="Due Date" value=due_date|date:"M d, Y" value_color="#991b1b" value_bold=True %}
+                                {% else %}
+                                {% include "emails/includes/detail_row.html" with label="Due Date" value=due_date|date:"M d, Y" %}
+                                {% endif %}
+                                {% include "emails/includes/detail_row.html" with label="Status" value=current_state %}
+                                {% if attempt_count > 1 %}
+                                <td>
+                                    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Reminder</p>
+                                    <p style="margin: 0; font-size: 14px; color: #3f3f46;">#{{ attempt_count }}</p>
+                                </td>
+                                {% endif %}
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+{% endblock %}
+
+{% block action_button %}
+{% if is_overdue %}
+{% include "emails/includes/button.html" with url=frontend_url|add:"/qa/quarantine/"|add:capa_id|add:"/" text="View CAPA" variant="danger" %}
+{% else %}
+{% include "emails/includes/button.html" with url=frontend_url|add:"/qa/quarantine/"|add:capa_id|add:"/" text="View CAPA" %}
+{% endif %}
+{% endblock %}

@@ -23,11 +23,12 @@ export function QaWorkOrderDetailPage() {
         workOrderId
     );
 
-    // Fetch parts for this work order that require QA
+    // Fetch parts for this work order that need QA (require sampling but haven't passed yet)
+    // Include READY_FOR_NEXT_STEP since parts may need QA before actually advancing
     const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
         work_order: workOrderId,
-        requires_sampling: true,
-        part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
+        needs_qa: true,
+        status__in: ["PENDING", "IN_PROGRESS", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY FOR NEXT STEP"],
         limit: 100,
     });
 

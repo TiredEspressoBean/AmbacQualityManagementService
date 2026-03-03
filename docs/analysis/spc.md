@@ -13,7 +13,13 @@ SPC applies statistical methods to:
 
 ## Accessing SPC
 
-Navigate to **Analytics** > **SPC** or `/spc`
+| Page | Route | Purpose |
+|------|-------|---------|
+| SPC Charts | `/spc` | Main control chart view with measurement selection |
+| SPC Print | `/spc/print` | Print-optimized view for reports |
+| Analysis Dashboard | `/analysis` | Overview with links to SPC |
+
+Navigate to **Analytics** > **SPC** in the sidebar, or go directly to `/spc`
 
 ## Control Charts
 
@@ -72,9 +78,12 @@ A process can be in control but not capable (or vice versa).
 
 Use the dropdowns at the top to select:
 
-1. **Process** - The manufacturing process
-2. **Step** - The specific step within the process
-3. **Measurement** - The measurement definition to analyze
+1. **Process** - The manufacturing process (e.g., "Common Rail Injector Remanufacturing")
+2. **Step** - The specific step within the process (e.g., "Flow Testing")
+3. **Measurement** - The measurement definition to analyze (e.g., "Flow Rate @ 1000 bar")
+
+!!! example "Flow Rate Monitoring"
+    For diesel injector flow rate monitoring: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar. Spec: 105-135 mL/min, Nominal: 120 mL/min.
 
 ### Chart Settings
 
@@ -227,6 +236,8 @@ Navigate to `/spc/print` for print-optimized view:
 
 ## Next Steps
 
+- [SPC Practitioner Guide](spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
+- [SPC Fundamentals Training](../training/spc-fundamentals.md) - Role-based training module
 - [Dashboard Overview](dashboard.md) - Overall metrics
 - [Defect Analysis](defects.md) - Quality analysis
 - [Recording Measurements](../workflows/tracking/measurements.md) - Data collection

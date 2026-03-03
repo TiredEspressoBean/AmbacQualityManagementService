@@ -649,13 +649,13 @@ class Command(BaseCommand):
             'DELETE': LogEntry.Action.DELETE,
         }
 
+        # Note: object_id omitted because UUIDs don't fit in bigint; object_pk (string) is sufficient
         LogEntry.objects.create(
             content_type=content_type,
             object_pk=str(obj_id),
-            object_id=obj_id,
             object_repr=object_repr,
             action=action_map.get(action, LogEntry.Action.UPDATE),
-            changes=json.dumps(changes or {}),
+            changes=changes or {},
             actor=actor,
             timestamp=timestamp
         )

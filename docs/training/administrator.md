@@ -159,7 +159,7 @@ Choose carefully - this limits available permissions.
 2. Or: Open user record → **Reset Password**
 3. User receives reset email
 
-**With SSO:** Password is managed by identity provider, not in Ambac Tracker.
+**With SSO:** Password is managed by identity provider, not in uqmes.
 
 ---
 

@@ -97,15 +97,22 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
     )
     @action(detail=False, methods=['get'], url_path='due-soon')
     def due_soon(self, request):
-        """Return calibration records due within N days."""
+        """Return calibration records due within N days (latest per equipment)."""
         days = int(request.query_params.get('days', 30))
-        qs = CalibrationRecord.objects.due_soon(within_days=days)
+        today = timezone.now().date()
+        cutoff = today + timedelta(days=days)
 
-        # Apply tenant scoping
-        if hasattr(self, 'apply_tenant_scope'):
-            qs = self.apply_tenant_scope(qs)
+        qs = self.get_queryset()
+        if hasattr(qs, 'latest_per_equipment'):
+            qs = qs.latest_per_equipment()
+        qs = qs.filter(due_date__lte=cutoff, due_date__gte=today).exclude(result='fail')
+        qs = qs.order_by('due_date')
 
-        qs = qs.select_related('equipment', 'equipment__equipment_type').order_by('due_date')
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
@@ -115,14 +122,20 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
     )
     @action(detail=False, methods=['get'], url_path='overdue')
     def overdue(self, request):
-        """Return all overdue calibration records."""
-        qs = CalibrationRecord.objects.overdue()
+        """Return all overdue calibration records (latest per equipment)."""
+        today = timezone.now().date()
 
-        # Apply tenant scoping
-        if hasattr(self, 'apply_tenant_scope'):
-            qs = self.apply_tenant_scope(qs)
+        qs = self.get_queryset()
+        if hasattr(qs, 'latest_per_equipment'):
+            qs = qs.latest_per_equipment()
+        qs = qs.filter(due_date__lt=today)
+        qs = qs.order_by('due_date')
 
-        qs = qs.select_related('equipment', 'equipment__equipment_type').order_by('due_date')
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 

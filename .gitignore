@@ -79,6 +79,10 @@ azure/deployment-output.json
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+nul
+
+# ---- Claude Code ----
+.claude/
 
 # ---- Test Coverage / Reporting ----
 .coverage
@@ -89,3 +93,4 @@ pytestdebug.log
 
 # Test virtualenv
 .venv_test/
+/.claude/

@@ -2,6 +2,17 @@
 
 Comprehensive audit logging for regulatory compliance.
 
+!!! example "Demo: Audit Trail in Action"
+    In demo mode, review the audit trail for CAPA-2024-003 to see compliance logging:
+
+    - **Creation**: QA Inspector Sarah Chen initiated CAPA on 2024-01-15
+    - **Status changes**: INITIATED → CONTAINMENT → RCA → CORRECTIVE → VERIFICATION
+    - **Task assignments**: Task "Update incoming inspection procedure" assigned to Sarah Chen
+    - **5-Whys RCA**: Root cause analysis completed by Maria Santos
+    - **Approvals**: APR-2024-0015 pending Jennifer Walsh's closure approval
+
+    Navigate to Admin > Audit Log and filter by "CAPA" to see the complete history with timestamps and user attribution.
+
 ## Compliance Requirements
 
 Audit trails are required by:

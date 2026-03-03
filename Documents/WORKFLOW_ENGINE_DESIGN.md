@@ -35,7 +35,7 @@ This document defines the architecture for a **generic workflow engine** that ca
 | `Parts.increment_step()` | mes_lite.py | **Logic embedded in model** |
 | `MeasurementDefinition` | mes_lite.py | Manufacturing-specific |
 | `SamplingRule` | mes_standard.py | Manufacturing-specific |
-| `StepRequirement` | mes_lite.py:1119 | Generic ✓ (NEW) |
+| `StepRequirement` | mes_lite.py:1131 | Generic ✓ (NEW) |
 | `FPIRecord` | qms.py:2396 | Manufacturing-specific (NEW) |
 | `StepOverride` | qms.py:2553 | Generic ✓ (NEW) |
 | `StepExecutionMeasurement` | qms.py:2683 | Manufacturing-specific (NEW) |

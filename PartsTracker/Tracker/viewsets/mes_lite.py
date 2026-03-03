@@ -917,8 +917,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         work_order = self.get_object()
 
         parts = work_order.parts.all()
-        parts_needing_qa = parts.filter(requires_sampling=True,
-                                        part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA'])
+        # Parts needing QA = requires_sampling but no PASS report yet (mirrors Parts.needs_qa property)
+        parts_needing_qa = parts.filter(
+            requires_sampling=True,
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
+        ).exclude(error_reports__status='PASS')
 
         return Response({'work_order': self.get_serializer(work_order).data,
                          'is_batch_work_order': work_order.parts.filter(
@@ -950,11 +953,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         work_order = self.get_object()
 
         # Get parts needing QA to determine current steps
-        parts_needing_qa = work_order.parts.filter(requires_sampling=True,
-                                                   part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA',
-                                                                    'REWORK_NEEDED',
-                                                                    'REWORK_IN_PROGRESS']).select_related('step',
-                                                                                                          'part_type')
+        # Mirrors Parts.needs_qa property: requires_sampling but no PASS report yet
+        parts_needing_qa = work_order.parts.filter(
+            requires_sampling=True,
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
+        ).exclude(error_reports__status='PASS').select_related('step', 'part_type')
 
         if not parts_needing_qa.exists():
             return Response({'work_order_documents': [], 'current_step_documents': [], 'part_type_documents': [],

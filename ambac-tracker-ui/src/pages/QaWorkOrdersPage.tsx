@@ -66,12 +66,14 @@ export default function QaWorkOrdersPage() {
         // status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
     });
 
-    // Fetch parts for the selected work order
+    // Fetch parts for the selected work order that need QA
+    // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
+    // Include READY_FOR_NEXT_STEP since parts may need QA before actually advancing
     const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
         work_order: selectedWorkOrder?.id,
-        requires_sampling: true,
-        part_status__in: "PENDING,IN_PROGRESS,REWORK_NEEDED,REWORK_IN_PROGRESS",
-        limit: 100, // Get all parts for the work order
+        needs_qa: true,
+        status__in: ["PENDING", "IN_PROGRESS", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY FOR NEXT STEP"],
+        limit: 100,
     }, {
         enabled: !!selectedWorkOrder?.id,
     });

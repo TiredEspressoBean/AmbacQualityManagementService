@@ -19,7 +19,7 @@ Revision control:
 | **Revision** | Major change, typically requires approval |
 | **Version** | Minor update, internal draft iterations |
 
-In Ambac Tracker, "Revision" is the primary version identifier shown to users.
+In uqmes, "Revision" is the primary version identifier shown to users.
 
 ## Revision Identifiers
 

@@ -1,6 +1,15 @@
 # QA Inspector Guide
 
-This guide is for Quality Assurance Inspectors who perform inspections, record measurements, create quality reports, and manage sampling.
+This guide is for Quality Assurance Inspectors who perform inspections, record measurements, create quality reports, and manage sampling in uqmes.
+
+!!! tip "Demo Account"
+    In demo mode, log in as **Sarah Chen** (sarah.qa@demo.ambac.com) to experience the QA Inspector workflow. You'll see:
+
+    - Parts ready for inspection: INJ-0042-018 at Final Test, INJ-0042-021 at Flow Testing
+    - Quarantined parts awaiting disposition: INJ-0042-017, INJ-0042-019
+    - SPC violation alert: Flow rate Rule 2 violation
+    - CAPA task: "Update incoming inspection procedure" for CAPA-2024-003
+    - Pending approval: APR-2024-0015 (CAPA closure)
 
 ## Your Role
 
@@ -78,6 +87,9 @@ When problems are found:
    - System calculates pass/fail
    - Note any observations
 4. Save all measurements
+
+!!! example "Flow Testing Measurement"
+    At Flow Testing step, record Flow Rate @ 1000 bar. Spec: 105-135 mL/min. If you measure 142 mL/min (like INJ-0042-017), system shows FAIL and part routes to quarantine.
 
 ### Measurement Best Practices
 

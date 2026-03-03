@@ -1,6 +1,6 @@
 # Assigning Work Orders
 
-Work order assignment in Ambac Tracker operates at the **step execution level** rather than the work order level. This provides more granular control over who performs each operation.
+Work order assignment in uqmes operates at the **step execution level** rather than the work order level. This provides more granular control over who performs each operation.
 
 !!! info "Step-Level Assignment"
     Equipment and operator assignments are made when executing individual steps, not on the work order as a whole. This allows different operators and equipment to be used for different steps in the process.

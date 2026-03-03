@@ -122,6 +122,9 @@ class Command(BaseCommand):
             TrainingType, TrainingRecord, TrainingRequirement,
             MeasurementDefinition, MeasurementResult,
             ChatSession,
+            # Life tracking / Reman models
+            Core, HarvestedComponent, DisassemblyBOM, DisassemblyBOMLine,
+            SPCBaseline,
         )
 
         User = get_user_model()
@@ -137,6 +140,7 @@ class Command(BaseCommand):
             ('Calibration Records', CalibrationRecord),
             ('Equipment Usage', EquipmentUsage),
             ('Measurement Results', MeasurementResult),
+            ('SPC Baselines', SPCBaseline),
             ('Approval Responses', ApprovalResponse),
             ('Approval Requests', ApprovalRequest),
             ('CAPA Verifications', CapaVerification),
@@ -150,7 +154,12 @@ class Command(BaseCommand):
             ('Quality Reports', QualityReports),
             ('Quality Errors List', QualityErrorsList),
             ('Step Executions', StepExecution),
+            # Reman - HarvestedComponents before Parts (FK), Parts before Cores
+            ('Harvested Components', HarvestedComponent),
             ('Parts', Parts),
+            ('Cores', Core),
+            ('Disassembly BOM Lines', DisassemblyBOMLine),
+            ('Disassembly BOMs', DisassemblyBOM),
             ('Work Orders', WorkOrder),
             ('Orders', Orders),
             ('Steps', Steps),

@@ -38,7 +38,7 @@ from Tracker.health_views import health_check, ready_check
 from Tracker.viewsets.tenant import (
     CurrentTenantView, TenantSettingsView, TenantLogoView, TenantViewSet, SignupView,
     TenantGroupViewSet, PermissionListView, PresetListView, EffectivePermissionsView,
-    UserTenantsView, SwitchTenantView
+    UserTenantsView, SwitchTenantView, DemoResetView
 )
 
 urlpatterns = [
@@ -153,6 +153,7 @@ urlpatterns += [
     path("api/tenant/current/", CurrentTenantView.as_view(), name="tenant-current"),
     path("api/tenant/settings/", TenantSettingsView.as_view(), name="tenant-settings"),
     path("api/tenant/logo/", TenantLogoView.as_view(), name="tenant-logo"),
+    path("api/tenant/demo-reset/", DemoResetView.as_view(), name="tenant-demo-reset"),
     path("api/tenants/signup/", SignupView.as_view(), name="tenant-signup"),
 
     # User tenant management (multi-tenant switching)

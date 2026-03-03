@@ -2,6 +2,16 @@
 
 Manage production equipment, machines, and measurement instruments.
 
+!!! example "Demo Equipment"
+    In demo mode, these equipment items are configured:
+
+    - **Flow Test Stand #1** (FTS-001): Primary injector flow testing, calibration current
+    - **Flow Test Stand #2** (FTS-002): Secondary flow testing station
+    - **Ultrasonic Cleaner UC-100**: Parts cleaning, 40 kHz frequency
+    - **Torque Wrench TW-25**: Assembly torquing, **calibration overdue** (demonstrates alert)
+    - **Coordinate Measuring Machine CMM-001**: Dimensional inspection, Zeiss model
+    - **Spray Pattern Analyzer SPA-01**: Visual spray pattern verification
+
 ## What is Equipment?
 
 Equipment records represent:
@@ -33,13 +43,14 @@ Define equipment categories:
 
 | Type | Examples |
 |------|----------|
-| **CNC Machine** | Lathes, mills, routers |
-| **Press** | Punch press, hydraulic press |
+| **Flow Test Stand** | Injector flow testers (FTS-001, FTS-002) |
+| **Ultrasonic Cleaner** | Parts cleaning systems (UC-100) |
+| **CMM** | Coordinate measuring machines (CMM-001) |
+| **Torque Tools** | Torque wrenches, drivers (TW-25) |
+| **Spray Analyzer** | Spray pattern verification (SPA-01) |
 | **Assembly Station** | Manual assembly, automation |
-| **CMM** | Coordinate measuring machines |
 | **Gauge** | Go/no-go, thread gauges |
 | **Caliper** | Digital, dial, vernier |
-| **Test Equipment** | Functional testers |
 
 ### Creating Equipment Types
 
@@ -101,6 +112,9 @@ Configure per equipment:
 | **Due Soon** | Within 30 days | Yellow |
 | **Overdue** | Past due date | Red |
 | **Not Required** | No calibration needed | Gray |
+
+!!! warning "Demo: Overdue Calibration Alert"
+    In demo mode, **Torque Wrench TW-25** shows as overdue (last calibrated 200 days ago with 180-day interval). Production Manager Jennifer Walsh sees this in her dashboard alerts, demonstrating how the system flags equipment needing attention before use.
 
 ### Recording Calibration
 

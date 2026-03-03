@@ -26,3 +26,12 @@ def without_key(dict_obj, key):
 def safe_urlencode(value):
     """URL-encode a dict"""
     return urlencode(value)
+
+
+@register.filter(name='abs')
+def abs_filter(value):
+    """Return absolute value of a number."""
+    try:
+        return abs(value)
+    except (ValueError, TypeError):
+        return value

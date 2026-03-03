@@ -18,6 +18,18 @@ export const commonRenderers = {
     datetime: (value: any) => value ? new Date(value).toLocaleString() : '—',
     boolean: (value: any) => value ? 'Yes' : 'No',
     percentage: (value: any) => value ? `${Number(value).toFixed(1)}%` : '—',
+    // Handle UUID fields that might come as URLs, objects, or plain IDs
+    uuid: (value: any) => {
+        if (!value) return '—';
+        if (typeof value === 'string') {
+            // If it's a URL, extract the UUID from the end
+            const uuidMatch = value.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+            if (uuidMatch) return uuidMatch[1];
+            return value;
+        }
+        if (typeof value === 'object' && value.id) return value.id;
+        return String(value);
+    },
 };
 
 // Helper function to create standard system info section
@@ -115,6 +127,12 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     has_error: commonRenderers.boolean,
                     archived: commonRenderers.boolean,
                     requires_sampling: commonRenderers.boolean,
+                    order: commonRenderers.uuid,
+                    part_type: commonRenderers.uuid,
+                    step: commonRenderers.uuid,
+                    work_order: commonRenderers.uuid,
+                    sampling_rule: commonRenderers.uuid,
+                    sampling_ruleset: commonRenderers.uuid,
                 },
                 fetcher: (id) => api.api_Parts_retrieve({ params: { id } }),
                 sections: {

@@ -24,15 +24,15 @@ SSO allows users to:
 ### Prerequisites
 - Azure AD tenant
 - Admin access to register application
-- Ambac Tracker admin access
+- uqmes admin access
 
 ### Configuration Steps
 
 1. **Register Application in Azure AD**
    - Go to Azure Portal > Azure Active Directory
    - App registrations > New registration
-   - Name: "Ambac Tracker"
-   - Redirect URI: `https://yourapp.ambactracker.com/accounts/microsoft/login/callback/`
+   - Name: "uqmes"
+   - Redirect URI: `https://yourapp.uqmes.com/accounts/microsoft/login/callback/`
 
 2. **Configure Application**
    - Note Application (client) ID
@@ -42,14 +42,14 @@ SSO allows users to:
      - Microsoft Graph: email
      - Microsoft Graph: profile
 
-3. **Configure Ambac Tracker**
-   - Contact Ambac support with:
+3. **Configure uqmes**
+   - Contact uqmes support with:
      - Client ID
      - Client Secret
      - Tenant ID
 
 4. **Test SSO**
-   - Log out of Ambac Tracker
+   - Log out of uqmes
    - Click "Sign in with Microsoft"
    - Authenticate via Azure AD
    - Verify successful login
@@ -73,9 +73,9 @@ SSO allows users to:
 
 ## Group Mapping
 
-Map Azure AD groups to Ambac Tracker groups:
+Map Azure AD groups to uqmes groups:
 
-| Azure AD Group | Ambac Tracker Group |
+| Azure AD Group | uqmes Group |
 |----------------|---------------------|
 | QA_Inspectors | QA Inspector |
 | Production_Team | Operator |
@@ -87,18 +87,18 @@ Configure in Admin settings.
 
 MFA is handled by the identity provider:
 - Configure MFA policy in Azure AD
-- Ambac Tracker inherits MFA
+- uqmes inherits MFA
 - No separate MFA configuration needed
 
 ## Session Management
 
 ### Session Duration
 - Controlled by Azure AD policy
-- Ambac Tracker session matches
+- uqmes session matches
 - Configurable timeout
 
 ### Single Logout
-- Logout from Ambac Tracker
+- Logout from uqmes
 - Optionally logout from Azure AD
 - Clear all sessions
 
@@ -110,7 +110,7 @@ MFA is handled by the identity provider:
 - Confirm protocol (https)
 
 ### "User not found"
-- User may not exist in Ambac Tracker
+- User may not exist in uqmes
 - Check auto-provisioning settings
 - Verify email matches
 

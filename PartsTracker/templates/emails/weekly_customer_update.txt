@@ -16,7 +16,7 @@ Est. Completion: {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
 {% endfor %}
 =====================================
 
-Questions about your orders? Email us at sales@ambacinternational.com or call us at (800) 628-6894.
+Questions about your orders? Email us at {{ support_email|default:"support@uqmes.com" }}
 
 Thanks for choosing us!
 The Team

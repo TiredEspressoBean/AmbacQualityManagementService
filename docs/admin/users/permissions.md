@@ -1,6 +1,6 @@
 # Assigning Permissions
 
-Detailed guide to configuring user permissions in Ambac Tracker.
+Detailed guide to configuring user permissions in uqmes.
 
 ## Permission Structure
 

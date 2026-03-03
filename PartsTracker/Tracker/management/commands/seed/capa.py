@@ -3,12 +3,13 @@ CAPA seed data: Corrective/Preventive Actions, RCA, tasks, verification.
 """
 
 import random
+from collections import Counter
 from datetime import timedelta
 from django.utils import timezone
 
 from Tracker.models import (
     CAPA, CapaTasks, RcaRecord, FiveWhys, Fishbone, CapaVerification,
-    QualityReports,
+    QualityReports, Equipments,
 )
 from .base import BaseSeeder
 
@@ -20,9 +21,13 @@ class CapaSeeder(BaseSeeder):
     Creates:
     - CAPAs from quality failures
     - CAPA tasks (containment, corrective, preventive)
-    - Root Cause Analysis (5-Whys, Fishbone)
+    - Root Cause Analysis (5-Whys, Fishbone) linked to actual failure patterns
     - Verification records
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.manufacturing_seeder = None  # Set by orchestrator for equipment access
 
     def seed(self, users):
         """Create CAPAs from quality failures."""
@@ -117,53 +122,202 @@ class CapaSeeder(BaseSeeder):
             )
 
     def _create_rca(self, capa, users):
-        """Create Root Cause Analysis record with 5-Whys or Fishbone."""
+        """Create Root Cause Analysis record with 5-Whys or Fishbone linked to actual failures."""
         qa_user = self.get_weighted_qa_staff(users)
         is_verified = capa.status in ['PENDING_VERIFICATION', 'CLOSED']
+
+        # Analyze actual failure patterns from quality reports
+        failure_analysis = self._analyze_failure_patterns(capa)
+
+        rca_method = random.choice(['FIVE_WHYS', 'FISHBONE'])
+
+        # Generate root cause summary based on analysis
+        root_cause_summary = self._generate_root_cause_summary(failure_analysis, rca_method)
 
         rca = RcaRecord.objects.create(
             tenant=self.tenant,
             capa=capa,
-            rca_method=random.choice(['FIVE_WHYS', 'FISHBONE']),
-            problem_description=f"Quality failure investigation for {capa.capa_number}",
+            rca_method=rca_method,
+            problem_description=f"Quality failure investigation for {capa.capa_number}: {failure_analysis['problem_description']}",
             conducted_by=qa_user,
             conducted_date=timezone.now().date(),
-            root_cause_summary=f"Root cause identified for {capa.capa_number}",
+            root_cause_summary=root_cause_summary,
             root_cause_verification_status='VERIFIED' if is_verified else 'UNVERIFIED',
             root_cause_verified_at=timezone.now() if is_verified else None,
             root_cause_verified_by=qa_user if is_verified else None,
         )
         rca.quality_reports.set(capa.quality_reports.all())
 
-        if rca.rca_method == 'FIVE_WHYS':
+        if rca_method == 'FIVE_WHYS':
+            self._create_realistic_five_whys(rca, failure_analysis)
+        elif rca_method == 'FISHBONE':
+            self._create_realistic_fishbone(rca, failure_analysis)
+
+    def _analyze_failure_patterns(self, capa):
+        """Analyze actual failure patterns from quality reports linked to this CAPA."""
+        analysis = {
+            'problem_description': '',
+            'most_problematic_equipment': None,
+            'equipment_name': 'Unknown equipment',
+            'most_common_operator': None,
+            'operator_name': 'Unknown operator',
+            'step_name': 'inspection',
+            'failure_count': 0,
+            'error_types': [],
+            'is_equipment_related': False,
+            'is_operator_related': False,
+            'is_process_related': False,
+        }
+
+        quality_reports = capa.quality_reports.all()
+        if not quality_reports.exists():
+            analysis['problem_description'] = f"Quality failure at {capa.step.name if capa.step else 'unknown step'}"
+            return analysis
+
+        # Count equipment involved in failures
+        equipment_failures = Counter()
+        operator_failures = Counter()
+        error_descriptions = []
+
+        for qr in quality_reports:
+            if qr.machine:
+                equipment_failures[qr.machine] += 1
+            if qr.detected_by:
+                operator_failures[qr.detected_by] += 1
+            for error in qr.errors.all():
+                error_descriptions.append(error.error_name)
+
+        # Find most problematic equipment
+        if equipment_failures:
+            most_problematic = equipment_failures.most_common(1)[0]
+            analysis['most_problematic_equipment'] = most_problematic[0]
+            analysis['equipment_name'] = most_problematic[0].name
+            analysis['failure_count'] = most_problematic[1]
+
+            # Check if this equipment is in the problematic set
+            if self.manufacturing_seeder and hasattr(self.manufacturing_seeder, 'problematic_equipment'):
+                if most_problematic[0] in self.manufacturing_seeder.problematic_equipment:
+                    analysis['is_equipment_related'] = True
+
+        # Find most common operator on failures
+        if operator_failures:
+            most_common_op = operator_failures.most_common(1)[0]
+            analysis['most_common_operator'] = most_common_op[0]
+            analysis['operator_name'] = f"{most_common_op[0].first_name} {most_common_op[0].last_name}"
+
+        # Determine root cause category
+        if analysis['is_equipment_related']:
+            analysis['problem_description'] = f"Multiple failures detected on {analysis['equipment_name']}"
+        elif len(error_descriptions) > 3:
+            analysis['problem_description'] = f"Recurring quality issues: {', '.join(set(error_descriptions)[:3])}"
+            analysis['is_process_related'] = True
+        else:
+            analysis['problem_description'] = f"Quality failure at {capa.step.name if capa.step else 'inspection'}"
+
+        analysis['step_name'] = capa.step.name if capa.step else 'inspection'
+        analysis['error_types'] = list(set(error_descriptions))
+
+        return analysis
+
+    def _generate_root_cause_summary(self, analysis, rca_method):
+        """Generate root cause summary based on failure analysis."""
+        if analysis['is_equipment_related']:
+            return f"Equipment {analysis['equipment_name']} requires maintenance/calibration - {analysis['failure_count']} failures traced to this unit"
+        elif analysis['is_process_related']:
+            return f"Process instability at {analysis['step_name']} step - standardization needed"
+        else:
+            return f"Root cause identified: variation in {analysis['step_name']} process requiring corrective action"
+
+    def _create_realistic_five_whys(self, rca, analysis):
+        """Create 5-Whys RCA based on actual failure analysis."""
+        if analysis['is_equipment_related']:
+            # Equipment-related root cause
             FiveWhys.objects.create(
                 tenant=self.tenant,
                 rca_record=rca,
-                why_1_question="Why did the part fail inspection?",
-                why_1_answer="Measurement exceeded tolerance limits",
-                why_2_question="Why did the measurement exceed limits?",
-                why_2_answer="Equipment calibration had drifted",
-                why_3_question="Why had calibration drifted?",
-                why_3_answer="Preventive maintenance was overdue",
-                why_4_question="Why was maintenance overdue?",
-                why_4_answer="Maintenance schedule not followed",
-                why_5_question="Why wasn't the schedule followed?",
-                why_5_answer="No automated reminder system in place",
-                identified_root_cause="Lack of automated calibration tracking and reminders",
+                why_1_question=f"Why did parts fail at {analysis['step_name']}?",
+                why_1_answer=f"Measurements exceeded tolerance limits when tested on {analysis['equipment_name']}",
+                why_2_question=f"Why did {analysis['equipment_name']} produce out-of-tolerance results?",
+                why_2_answer=f"{analysis['equipment_name']} calibration had drifted outside acceptable range",
+                why_3_question=f"Why had calibration drifted on {analysis['equipment_name']}?",
+                why_3_answer="Preventive maintenance interval was exceeded due to high production demand",
+                why_4_question="Why was the maintenance interval exceeded?",
+                why_4_answer="No automated alerts for calibration due dates; relies on manual tracking",
+                why_5_question="Why is calibration tracking manual?",
+                why_5_answer="Calibration management system not integrated with production scheduling",
+                identified_root_cause=f"Equipment {analysis['equipment_name']} requires shorter calibration interval and automated scheduling",
             )
-        elif rca.rca_method == 'FISHBONE':
-            Fishbone.objects.create(
+        elif analysis['is_process_related']:
+            # Process-related root cause
+            error_list = ', '.join(analysis['error_types'][:2]) if analysis['error_types'] else 'quality defects'
+            FiveWhys.objects.create(
                 tenant=self.tenant,
                 rca_record=rca,
-                problem_statement=f"Quality failure on {capa.capa_number}",
-                man_causes=["Operator training gap", "Fatigue during shift"],
-                machine_causes=["Calibration drift", "Worn tooling"],
-                material_causes=["Incoming material variance", "Supplier batch issue"],
-                method_causes=["Outdated work instruction", "Process parameter drift"],
-                measurement_causes=["Gauge repeatability", "Environmental factors"],
-                environment_causes=["Temperature fluctuation", "Humidity out of spec"],
-                identified_root_cause="Multiple contributing factors identified - see 6M analysis",
+                why_1_question=f"Why are we seeing {error_list}?",
+                why_1_answer=f"Process parameters at {analysis['step_name']} step are inconsistent",
+                why_2_question="Why are process parameters inconsistent?",
+                why_2_answer="Work instructions lack specific parameter ranges for different part variations",
+                why_3_question="Why don't work instructions include these parameters?",
+                why_3_answer="Original process validation didn't capture all sources of variation",
+                why_4_question="Why wasn't variation captured during validation?",
+                why_4_answer="Limited sample size during initial process development",
+                why_5_question="Why was sample size limited?",
+                why_5_answer="Time constraints during product launch phase",
+                identified_root_cause="Work instructions require update with specific parameters; revalidation needed with larger sample",
             )
+        else:
+            # Generic root cause
+            FiveWhys.objects.create(
+                tenant=self.tenant,
+                rca_record=rca,
+                why_1_question=f"Why did the part fail {analysis['step_name']}?",
+                why_1_answer="Measurement exceeded tolerance limits",
+                why_2_question="Why did the measurement exceed limits?",
+                why_2_answer="Incoming component variation was higher than expected",
+                why_3_question="Why was incoming variation high?",
+                why_3_answer="Supplier process capability not verified recently",
+                why_4_question="Why wasn't supplier capability verified?",
+                why_4_answer="No scheduled supplier audits in quality plan",
+                why_5_question="Why aren't supplier audits scheduled?",
+                why_5_answer="Quality plan focused on internal processes only",
+                identified_root_cause="Implement supplier quality management with periodic capability studies",
+            )
+
+    def _create_realistic_fishbone(self, rca, analysis):
+        """Create Fishbone (6M) diagram based on actual failure analysis."""
+        # Customize causes based on analysis
+        if analysis['is_equipment_related']:
+            machine_causes = [
+                f"{analysis['equipment_name']} calibration drift",
+                f"Worn components in {analysis['equipment_name']}",
+                "Sensor degradation"
+            ]
+            primary_cause = f"Equipment issue: {analysis['equipment_name']} requires maintenance"
+        else:
+            machine_causes = ["Calibration drift", "Worn tooling", "Fixture wear"]
+            primary_cause = "Multiple contributing factors identified - see 6M analysis"
+
+        if analysis['most_common_operator']:
+            man_causes = [
+                f"Training gap for {analysis['operator_name']}",
+                "Shift handover communication",
+                "Procedure interpretation"
+            ]
+        else:
+            man_causes = ["Operator training gap", "Fatigue during shift", "Procedure compliance"]
+
+        Fishbone.objects.create(
+            tenant=self.tenant,
+            rca_record=rca,
+            problem_statement=f"Quality failure: {analysis['problem_description']}",
+            man_causes=man_causes,
+            machine_causes=machine_causes,
+            material_causes=["Incoming material variance", "Supplier batch variation", "Material storage conditions"],
+            method_causes=[f"Work instruction for {analysis['step_name']}", "Process parameter drift", "Inspection sampling"],
+            measurement_causes=["Gauge R&R", "Measurement technique", "Environmental factors"],
+            environment_causes=["Temperature fluctuation", "Humidity", "Contamination"],
+            identified_root_cause=primary_cause,
+        )
 
     def _create_verification(self, capa, users):
         """Create CAPA verification record."""

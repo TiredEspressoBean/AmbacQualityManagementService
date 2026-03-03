@@ -80,7 +80,7 @@ export default function StepFormPage() {
     const stepId = params.id
 
     const [partTypeSearch, setPartTypeSearch] = useState("")
-    const [selectedPartTypeId, setSelectedPartTypeId] = useState<string | null>(null)
+    const [, setSelectedPartTypeId] = useState<string | null>(null)
 
     const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
     const { data: step } = useRetrieveStepWithSamplingRules(

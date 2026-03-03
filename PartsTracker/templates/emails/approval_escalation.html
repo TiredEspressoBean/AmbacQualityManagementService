@@ -1,0 +1,60 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Approval Escalation{% endblock %}
+
+{% block badge_bg %}#fee2e2{% endblock %}
+{% block badge_color %}#991b1b{% endblock %}
+{% block badge_text %}Escalation{% endblock %}
+
+{% block header_title %}Overdue Approval{% endblock %}
+
+{% block intro_text %}
+<p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #3f3f46;">
+    An approval request requires your attention:
+</p>
+{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+    <tr>
+        <td style="padding: 12px 16px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #991b1b;">
+                <strong>{{ days_overdue }} day{{ days_overdue|pluralize }} overdue</strong> — This request has exceeded its due date.
+            </p>
+        </td>
+    </tr>
+</table>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+    <tr>
+        <td style="padding: 16px; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td>
+                        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #18181b;">
+                            {{ content_title }}
+                        </p>
+                        <p style="margin: 0; font-size: 13px; color: #71717a;">
+                            {{ content_type }}
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0">
+                            <tr>
+                                {% include "emails/includes/detail_row.html" with label="Requested by" value=requested_by %}
+                                {% include "emails/includes/detail_row.html" with label="Due Date" value=due_date|date:"M d, Y"|default:"Not specified" value_color="#991b1b" value_bold=True padding_right="0" %}
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+{% endblock %}
+
+{% block action_button %}
+{% include "emails/includes/button.html" with url=frontend_url|add:"/inbox" text="Review Now" variant="danger" %}
+{% endblock %}

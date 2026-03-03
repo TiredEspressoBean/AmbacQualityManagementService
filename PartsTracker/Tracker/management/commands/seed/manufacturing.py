@@ -211,7 +211,7 @@ class ManufacturingSeeder(BaseSeeder):
             ('Inspect', 'decision', True, 'qa_result', False, '', None, True, True, 100, None),
             ('Reassemble', 'task', False, '', False, '', None, False, False, 0, None),
             ('Final Test', 'decision', True, 'measurement', False, '', None, True, True, 25, None),
-            ('Rework', 'rework', False, '', False, '', 3, False, False, 0, None),
+            ('Rework', 'rework', True, 'qa_result', False, '', 3, True, True, 100, None),
             ('Scrap Decision', 'decision', True, 'manual', False, '', None, False, False, 0, None),
             ('Scrap', 'terminal', False, '', True, 'scrapped', None, False, False, 0, None),
             ('Ship', 'terminal', False, '', True, 'shipped', None, False, False, 0, None),
@@ -303,9 +303,11 @@ class ManufacturingSeeder(BaseSeeder):
         StepEdge.objects.create(process=process, from_step=steps['Final Test'],
                                 to_step=steps['Rework'], edge_type=EdgeType.ALTERNATE)
 
-        # Rework → back to Inspect, escalates to Scrap Decision
+        # Rework: PASS → back to Inspect, FAIL → retry (self-loop), escalates to Scrap Decision
         StepEdge.objects.create(process=process, from_step=steps['Rework'],
                                 to_step=steps['Inspect'], edge_type=EdgeType.DEFAULT)
+        StepEdge.objects.create(process=process, from_step=steps['Rework'],
+                                to_step=steps['Rework'], edge_type=EdgeType.ALTERNATE)  # Self-loop for retry
         StepEdge.objects.create(process=process, from_step=steps['Rework'],
                                 to_step=steps['Scrap Decision'], edge_type=EdgeType.ESCALATION)
 
@@ -396,49 +398,62 @@ class ManufacturingSeeder(BaseSeeder):
     def _create_measurement_definitions(self, step):
         """Create realistic measurement definitions for a step."""
         measurements = []
+        # Tuple format: (label, type, unit, nominal, upper_tol, lower_tol, spc_enabled)
 
         if 'Flow' in step.name:
             measurements.extend([
-                ('Flow Rate', 'NUMERIC', 'mL/min', 850.0, 25.0, 25.0),
-                ('Injection Pattern', 'PASS_FAIL', '', None, None, None),
+                ('Flow Rate', 'NUMERIC', 'mL/min', 850.0, 25.0, 25.0, True),
+                ('Return Flow Rate', 'NUMERIC', 'mL/min', 120.0, 15.0, 15.0, True),
+                ('Spray Angle', 'NUMERIC', 'degrees', 152.0, 3.0, 3.0, True),
+                ('Injection Pattern', 'PASS_FAIL', '', None, None, None, False),
             ])
         elif 'Pressure' in step.name:
             measurements.extend([
-                ('Opening Pressure', 'NUMERIC', 'bar', 280.0, 10.0, 10.0),
-                ('Closing Pressure', 'NUMERIC', 'bar', 250.0, 15.0, 15.0),
+                ('Opening Pressure', 'NUMERIC', 'bar', 280.0, 10.0, 10.0, True),
+                ('Closing Pressure', 'NUMERIC', 'bar', 250.0, 15.0, 15.0, True),
             ])
-        elif any(word in step.name for word in ['Inspection', 'QC', 'Testing', 'Validation']):
+        elif 'Performance' in step.name or 'Final Test' in step.name:
             measurements.extend([
-                ('Overall Length', 'NUMERIC', 'mm', 156.5, 0.1, 0.1),
-                ('Surface Finish', 'NUMERIC', 'Ra µm', 0.8, 0.2, 0.2),
+                ('Response Time', 'NUMERIC', 'ms', 0.35, 0.05, 0.05, True),
+                ('Delivery Volume', 'NUMERIC', 'mm³', 85.0, 5.0, 5.0, True),
+                ('Atomization Quality', 'NUMERIC', 'score', 8.5, 1.0, 1.0, True),
+            ])
+        elif any(word in step.name for word in ['Nozzle', 'Inspection', 'QC', 'Testing', 'Validation']):
+            measurements.extend([
+                ('Overall Length', 'NUMERIC', 'mm', 156.5, 0.1, 0.1, True),
+                ('Surface Finish', 'NUMERIC', 'Ra µm', 0.8, 0.2, 0.2, True),
+                ('Hole Diameter', 'NUMERIC', 'µm', 145.0, 5.0, 5.0, True),
             ])
         elif any(word in step.name for word in ['Assembly', 'Disassembly', 'Reassembly']):
             measurements.extend([
-                ('Assembly Complete', 'PASS_FAIL', '', None, None, None),
-                ('Torque Spec', 'NUMERIC', 'Nm', 45.0, 5.0, 5.0),
+                ('Assembly Complete', 'PASS_FAIL', '', None, None, None, False),
+                ('Torque Spec', 'NUMERIC', 'Nm', 45.0, 5.0, 5.0, True),
             ])
         elif any(word in step.name for word in ['Cleaning', 'Clean']):
             measurements.extend([
-                ('Cleanliness Check', 'PASS_FAIL', '', None, None, None),
-                ('Contamination Level', 'NUMERIC', 'mg/L', 5.0, 2.0, 2.0),
+                ('Cleanliness Check', 'PASS_FAIL', '', None, None, None, False),
+                ('Contamination Level', 'NUMERIC', 'mg/L', 5.0, 2.0, 2.0, True),
             ])
         elif any(word in step.name for word in ['Machining', 'Fabrication']):
             measurements.extend([
-                ('Dimensional Check', 'NUMERIC', 'mm', 12.5, 0.05, 0.05),
-                ('Surface Quality', 'PASS_FAIL', '', None, None, None),
+                ('Dimensional Check', 'NUMERIC', 'mm', 12.5, 0.05, 0.05, True),
+                ('Surface Quality', 'PASS_FAIL', '', None, None, None, False),
             ])
         elif any(word in step.name for word in ['Calibration', 'Adjustment']):
             measurements.extend([
-                ('Calibration Status', 'PASS_FAIL', '', None, None, None),
-                ('Tolerance Check', 'NUMERIC', '%', 0.0, 1.0, 1.0),
+                ('Calibration Status', 'PASS_FAIL', '', None, None, None, False),
+                ('Tolerance Check', 'NUMERIC', '%', 0.0, 1.0, 1.0, True),
             ])
         else:
             measurements.extend([
-                ('Process Complete', 'PASS_FAIL', '', None, None, None),
-                ('Cycle Time', 'NUMERIC', 'sec', 120.0, 15.0, 15.0),
+                ('Process Complete', 'PASS_FAIL', '', None, None, None, False),
+                ('Cycle Time', 'NUMERIC', 'sec', 120.0, 15.0, 15.0, False),
             ])
 
-        for label, type_val, unit, nominal, upper_tol, lower_tol in measurements:
+        for measurement_data in measurements:
+            label, type_val, unit, nominal, upper_tol, lower_tol = measurement_data[:6]
+            spc_enabled = measurement_data[6] if len(measurement_data) > 6 else False
+
             MeasurementDefinition.objects.create(
                 tenant=self.tenant,
                 step=step,
@@ -447,5 +462,6 @@ class ManufacturingSeeder(BaseSeeder):
                 unit=unit,
                 nominal=nominal,
                 upper_tol=upper_tol,
-                lower_tol=lower_tol
+                lower_tol=lower_tol,
+                spc_enabled=spc_enabled if type_val == 'NUMERIC' else False
             )

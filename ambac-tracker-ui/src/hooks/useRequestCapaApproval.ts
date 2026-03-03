@@ -6,7 +6,7 @@ export function useRequestCapaApproval(capaId: string) {
 
     return useMutation({
         mutationFn: () =>
-            api.api_CAPAs_request_approval_create({ id: capaId }),
+            api.api_CAPAs_request_approval_create({ params: { id: capaId } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["capas"] });
             queryClient.invalidateQueries({ queryKey: ["capa", capaId] });

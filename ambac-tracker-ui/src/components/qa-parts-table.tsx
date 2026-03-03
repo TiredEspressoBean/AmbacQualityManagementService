@@ -54,12 +54,14 @@ export default function QaPartsTable() {
     // Debounce the search term
     const debouncedSearch = useDebounce(filters, 300);
 
+    // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
+    // This mirrors the Parts.needs_qa model property
     const { data, isLoading, error } = useRetrieveParts({
         offset,
         limit,
         ordering,
         archived: false,
-        requires_sampling: true,
+        needs_qa: true,
         ...debouncedSearch,
     });
 

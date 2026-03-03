@@ -1,0 +1,18 @@
+APPROVAL REQUEST
+
+Hi {{ recipient.first_name|default:"there" }},
+
+You have been assigned as an approver for the following item:
+
+=====================================
+Type: {{ content_type }}
+Item: {{ content_title }}
+Requested by: {{ requested_by }}
+Due Date: {{ due_date|date:"F d, Y"|default:"Not specified" }}
+=====================================
+
+Please review and submit your approval decision:
+{{ frontend_url }}/inbox
+
+This is an automated message from {{ brand_name|default:"uqmes" }}.
+Please do not reply to this email.

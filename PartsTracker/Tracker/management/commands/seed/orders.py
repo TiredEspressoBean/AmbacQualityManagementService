@@ -9,7 +9,7 @@ from django.utils import timezone
 from Tracker.models import (
     Orders, OrdersStatus, WorkOrder, WorkOrderStatus, Parts, PartsStatus,
     ProcessStep, StepTransitionLog, SamplingRuleSet, SamplingRule,
-    QualityReports, ProcessStatus,
+    QualityReports, ProcessStatus, StepExecution, StepEdge, EdgeType,
 )
 from .base import BaseSeeder
 
@@ -184,7 +184,7 @@ class OrderSeeder(BaseSeeder):
                     # Distribute parts across wave-front range (realistic progression)
                     self._distribute_parts_as_wave(
                         work_order, order_steps, wave_min, wave_max,
-                        order.order_status, parts_timestamp
+                        order.order_status, parts_timestamp, users['employees']
                     )
 
                     # Note: Step transition logs are audit records protected by compliance triggers
@@ -290,17 +290,19 @@ class OrderSeeder(BaseSeeder):
         else:
             return (0, min(2, num_steps))
 
-    def _distribute_parts_as_wave(self, work_order, steps, wave_min, wave_max, order_status, base_timestamp):
+    def _distribute_parts_as_wave(self, work_order, steps, wave_min, wave_max, order_status, base_timestamp, employees=None):
         """
-        Distribute parts across steps as a realistic wave front.
+        Distribute parts across steps using proper workflow progression.
 
-        Instead of advancing all parts to the same step, this creates a distribution where:
-        - Steps before wave_min have 0 parts (completed/passed through)
-        - Steps within [wave_min, wave_max) have parts (the active wave)
-        - Steps after wave_max have 0 parts (not yet reached)
-
-        This creates a realistic manufacturing progression visualization.
+        Uses increment_step() for ALL parts to create realistic:
+        - StepExecution records (entry/exit tracking with operators)
+        - StepTransitionLog entries
+        - QualityReports at decision points
+        - Decision branching (PASS → next step, FAIL → rework)
+        - Rework loops with escalation after max_visits
+        - Proper part status based on actual workflow state
         """
+        employees = employees or []
         parts = list(work_order.parts.all())
         if not parts or not steps:
             return
@@ -312,40 +314,309 @@ class OrderSeeder(BaseSeeder):
         if wave_max <= wave_min:
             wave_max = wave_min + 1
 
-        # Distribute parts across the wave range
+        parts_using_workflow = 0
+        parts_with_rework = 0
+        step_executions_created = 0
+
         for part in parts:
-            # Pick a step within the wave range
+            # Pick a target step within the wave range
             target_idx = random.randint(wave_min, wave_max - 1)
             target_idx = max(0, min(num_steps - 1, target_idx))
-
             target_step = steps[target_idx]
 
-            # Determine part status - include realistic QA exception statuses
-            if target_idx == num_steps - 1 and order_status == OrdersStatus.COMPLETED:
-                part_status = PartsStatus.COMPLETED
-            elif target_idx == 0:
-                part_status = PartsStatus.PENDING
+            # Use full workflow engine for ALL parts - creates realistic:
+            # - StepExecution records with proper entry/exit times
+            # - QualityReports at decision points
+            # - Proper routing via increment_step()
+            # - Rework loops and escalation
+            if target_idx > 0:
+                try:
+                    result = self._advance_part_through_workflow(
+                        part, steps, target_idx, base_timestamp, work_order, employees
+                    )
+                    parts_using_workflow += 1
+                    step_executions_created += result.get('executions', 0)
+                    if result.get('had_rework'):
+                        parts_with_rework += 1
+                except Exception as e:
+                    # Log but don't silently fail
+                    self.log(f"  Warning: Workflow failed for part {part.ERP_id}: {e}", warning=True)
             else:
-                # ~85% normal flow, ~15% QA exceptions for in-progress parts
-                status_roll = random.random()
-                if status_roll < 0.85:
-                    part_status = PartsStatus.IN_PROGRESS
-                elif status_roll < 0.90:
-                    part_status = PartsStatus.AWAITING_QA
-                elif status_roll < 0.94:
-                    part_status = PartsStatus.QUARANTINED
-                elif status_roll < 0.97:
-                    part_status = PartsStatus.REWORK_NEEDED
-                else:
-                    part_status = PartsStatus.REWORK_IN_PROGRESS
-
-            # Update part directly (skip the slow increment_step loop)
-            part.step = target_step
-            part.part_status = part_status
-            part.save(update_fields=['step', 'part_status'])
+                # Part at first step - just create initial execution
+                self._create_step_execution(part, steps[0], 1, base_timestamp, employees)
+                parts_using_workflow += 1
 
         # Ensure sampling is evaluated
         work_order._bulk_evaluate_sampling(work_order.parts.all())
+
+    def _advance_part_through_workflow(self, part, steps, target_depth, base_timestamp, work_order, employees=None):
+        """
+        Advance a part through workflow using increment_step().
+
+        Creates realistic:
+        - StepExecution records for each step visited (with proper entry/exit times)
+        - QualityReports at decision points
+        - Rework loops (85% pass first time, 12% rework once, 3% escalate)
+        - Operator assignments for each step execution
+
+        Returns dict with execution stats.
+        """
+        employees = employees or []
+        result = {'executions': 0, 'had_rework': False, 'quality_reports': 0}
+
+        visits_at_step = {}
+        advancement_count = 0
+        max_advancements = target_depth + 10  # Allow some extra for rework loops
+        current_timestamp = base_timestamp
+        previous_execution = None
+
+        while advancement_count < max_advancements:
+            part.refresh_from_db()
+            current_step = part.step
+
+            if not current_step:
+                break
+
+            if part.part_status in [PartsStatus.COMPLETED, PartsStatus.SCRAPPED, PartsStatus.CANCELLED]:
+                break
+
+            step_id = current_step.id
+            visits_at_step[step_id] = visits_at_step.get(step_id, 0) + 1
+
+            # Close previous execution if exists
+            if previous_execution:
+                exit_time = current_timestamp - timedelta(minutes=random.randint(1, 10))
+                StepExecution.objects.filter(pk=previous_execution.pk).update(
+                    exited_at=exit_time,
+                    completed_by=previous_execution.assigned_to,
+                    status='completed'
+                )
+
+            # Create StepExecution record for current step
+            execution = self._create_step_execution(
+                part, current_step, visits_at_step[step_id], current_timestamp, employees
+            )
+            if execution:
+                result['executions'] += 1
+                previous_execution = execution
+
+            # Determine decision result if at decision point
+            decision_result = None
+            if current_step.is_decision_point:
+                decision_result, qr = self._simulate_qa_decision_with_report(
+                    part, current_step, visits_at_step[step_id], current_timestamp
+                )
+
+                if qr:
+                    result['quality_reports'] += 1
+
+                if decision_result == 'FAIL':
+                    result['had_rework'] = True
+
+            # Set part status based on decision outcome (not before!)
+            if decision_result == 'FAIL':
+                part.part_status = PartsStatus.REWORK_NEEDED
+            else:
+                part.part_status = PartsStatus.READY_FOR_NEXT_STEP
+            part.save(update_fields=['part_status'])
+
+            try:
+                increment_result = part.increment_step(decision_result=decision_result)
+            except ValueError:
+                # Try with default decision if required
+                try:
+                    increment_result = part.increment_step(decision_result='default')
+                except ValueError:
+                    break  # Can't advance
+
+            advancement_count += 1
+            # Advance timestamp for next step (1-4 hours per step)
+            current_timestamp += timedelta(hours=random.uniform(1, 4))
+
+            if increment_result == "completed":
+                # Close final execution
+                if previous_execution:
+                    StepExecution.objects.filter(pk=previous_execution.pk).update(
+                        exited_at=current_timestamp,
+                        completed_by=previous_execution.assigned_to,
+                        status='completed'
+                    )
+                break
+            elif increment_result == "marked_ready":
+                break
+
+            # Check if we've reached target depth
+            part.refresh_from_db()
+            if part.step and work_order.process:
+                ps = ProcessStep.objects.filter(
+                    process=work_order.process,
+                    step=part.step
+                ).first()
+                if ps and ps.order >= target_depth:
+                    # Don't stop if we're at a rework step - continue rework loop
+                    if part.step.step_type != 'rework':
+                        break
+
+        return result
+
+    def _create_step_execution(self, part, step, visit_number, base_timestamp, employees=None):
+        """Create a StepExecution record for tracking with operator assignment."""
+        employees = employees or []
+
+        # Calculate realistic entry time based on step position
+        entry_time = base_timestamp + timedelta(
+            hours=random.randint(1, 8) * visit_number,
+            minutes=random.randint(0, 59)
+        )
+        started_at = entry_time + timedelta(minutes=random.randint(1, 15))
+
+        # Assign an operator
+        operator = random.choice(employees) if employees else None
+
+        execution = StepExecution.objects.create(
+            tenant=part.tenant,
+            part=part,
+            step=step,
+            visit_number=visit_number,
+            entered_at=entry_time,
+            started_at=started_at,
+            assigned_to=operator,
+            status='in_progress',
+        )
+
+        # Backdate
+        StepExecution.objects.filter(pk=execution.pk).update(
+            created_at=entry_time
+        )
+
+        return execution
+
+    def _simulate_qa_decision_with_report(self, part, step, visit_count, timestamp):
+        """
+        Simulate QA decision and create QualityReport.
+
+        - 85% pass on first attempt
+        - 12% require one rework cycle
+        - 3% escalate to scrap decision
+
+        Returns (decision_result, quality_report) tuple.
+        """
+        # Base failure rate with rework penalty
+        base_fail_rate = 0.15
+        rework_penalty = 0.08 * (visit_count - 1)  # 8% worse per rework
+        fail_rate = min(0.50, base_fail_rate + rework_penalty)
+
+        # Apply time-based quality modifiers if available
+        if hasattr(self, 'get_shift_quality_modifier'):
+            modifier = self.get_shift_quality_modifier(timestamp)
+            fail_rate = fail_rate / modifier
+
+        passed = random.random() > fail_rate
+
+        if step.decision_type == 'qa_result':
+            decision = 'PASS' if passed else 'FAIL'
+        elif step.decision_type == 'manual':
+            decision = 'default' if random.random() > 0.3 else 'alternate'
+        else:
+            decision = 'PASS' if passed else 'FAIL'
+
+        # Create QualityReport for decision points
+        qr = None
+        if step.decision_type in ['qa_result', 'measurement']:
+            qr = QualityReports.objects.create(
+                tenant=self.tenant,
+                part=part,
+                step=step,
+                status=decision if decision in ['PASS', 'FAIL'] else ('PASS' if decision == 'default' else 'FAIL'),
+                description=f"QA decision at {step.name} - Visit #{visit_count}",
+                sampling_method='statistical',
+            )
+            # Backdate the report
+            QualityReports.objects.filter(pk=qr.pk).update(
+                created_at=timestamp,
+                updated_at=timestamp
+            )
+
+        return decision, qr
+
+    def _direct_assign_part_with_history(self, part, steps, target_idx, num_steps, order_status, base_timestamp, employees=None):
+        """
+        Direct assignment with StepExecution history for steps traversed.
+
+        Creates completed StepExecution records for all steps up to target,
+        providing realistic history without using the slower workflow engine.
+        Includes operator assignment for realistic workflow tracking.
+        """
+        employees = employees or []
+        target_step = steps[target_idx]
+
+        # Determine part status based on position
+        if target_idx == num_steps - 1 and order_status == OrdersStatus.COMPLETED:
+            part_status = PartsStatus.COMPLETED
+        elif target_idx == 0:
+            part_status = PartsStatus.PENDING
+        else:
+            # ~85% normal flow, ~15% QA exceptions for in-progress parts
+            status_roll = random.random()
+            if status_roll < 0.85:
+                part_status = PartsStatus.IN_PROGRESS
+            elif status_roll < 0.90:
+                part_status = PartsStatus.AWAITING_QA
+            elif status_roll < 0.94:
+                part_status = PartsStatus.QUARANTINED
+            elif status_roll < 0.97:
+                part_status = PartsStatus.REWORK_NEEDED
+            else:
+                part_status = PartsStatus.REWORK_IN_PROGRESS
+
+        # Update part to target step
+        part.step = target_step
+        part.part_status = part_status
+        part.save(update_fields=['step', 'part_status'])
+
+        # Create StepExecution history for completed steps (steps before target)
+        current_time = base_timestamp
+        for idx in range(target_idx):
+            step = steps[idx]
+            step_duration = timedelta(hours=random.uniform(0.5, 3))
+            entry_time = current_time
+            exit_time = current_time + step_duration
+            started_at = entry_time + timedelta(minutes=random.randint(1, 15))
+
+            # Assign an operator for this step
+            operator = random.choice(employees) if employees else None
+
+            StepExecution.objects.create(
+                tenant=part.tenant,
+                part=part,
+                step=step,
+                visit_number=1,
+                entered_at=entry_time,
+                exited_at=exit_time,
+                started_at=started_at,
+                assigned_to=operator,
+                completed_by=operator,
+                status='completed',
+            )
+
+            current_time = exit_time + timedelta(minutes=random.randint(5, 30))
+
+        # Create in-progress execution for current step (if not at first step)
+        if target_idx > 0 and part_status not in [PartsStatus.COMPLETED, PartsStatus.SCRAPPED]:
+            operator = random.choice(employees) if employees else None
+            started_at = current_time + timedelta(minutes=random.randint(1, 10))
+
+            StepExecution.objects.create(
+                tenant=part.tenant,
+                part=part,
+                step=target_step,
+                visit_number=1,
+                entered_at=current_time,
+                exited_at=None,  # Still in progress
+                started_at=started_at,
+                assigned_to=operator,
+                status='in_progress',
+            )
 
     def _advance_work_order_batch(self, work_order, target_step_index):
         """Advance work order parts through process with realistic branching."""

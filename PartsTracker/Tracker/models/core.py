@@ -112,6 +112,14 @@ class Tenant(models.Model):
         verbose_name_plural = 'Tenants'
         permissions = [
             ("full_tenant_access", "Has full visibility to all tenant data (without this, users only see data related to their orders)"),
+            # Audit trail access
+            ("view_auditlog", "Can view audit log entries"),
+            ("export_auditlog", "Can export audit log data"),
+            # Export control management
+            ("verify_export_control", "Can verify export control compliance"),
+            ("change_export_classification", "Can change export classification"),
+            # Data export
+            ("export_data", "Can export data from the system"),
         ]
 
     def __str__(self):
@@ -3316,13 +3324,13 @@ class Documents(SecureModel):
         }
 
         # Create auditlog entry
+        # Note: object_id is omitted because UUIDs don't fit in bigint; object_pk (string) is sufficient
         LogEntry.objects.create(
             content_type=ContentType.objects.get_for_model(self),
             object_pk=str(self.pk),
-            object_id=self.id,
             object_repr=str(self),
             action=LogEntry.Action.ACCESS,
-            changes=json.dumps(access_data),
+            changes=access_data,
             actor=user,
             timestamp=timezone.now(),
             remote_addr=remote_addr

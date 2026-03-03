@@ -20,7 +20,7 @@ import { AlertTriangle, CheckCircle, TrendingUp, Activity, FileWarning, Mail, Lo
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useReportEmail } from "@/hooks/useReportEmail";
-import { useSpcHierarchy, type ProcessSPC } from "@/hooks/useSpcHierarchy";
+import { useSpcHierarchy } from "@/hooks/useSpcHierarchy";
 import { useSpcData } from "@/hooks/useSpcData";
 import { useSpcCapability } from "@/hooks/useSpcCapability";
 import {
@@ -86,18 +86,6 @@ type MeasurementDef = {
     unit: string;
 };
 
-type Step = {
-    id: string;
-    name: string;
-    measurements: MeasurementDef[];
-};
-
-type Process = {
-    id: string;
-    name: string;
-    steps: Step[];
-};
-
 // Note: Process/Step/Measurement hierarchy is now loaded from API via useSpcHierarchy()
 
 // ---------- Control chart constants by subgroup size (n=2 to 25) ----------
@@ -149,89 +137,8 @@ function getRecommendedChartType(n: number): SubgroupChartType {
 }
 
 // ---------- I-MR chart constants (for moving range of 2 consecutive points) ----------
-const d2_mr = 1.128; // d2 for n=2 (moving range)
 const D4_mr = 3.267; // D4 for n=2 (moving range UCL)
 const E2 = 2.66;     // Individual chart constant (3/d2 for n=2)
-
-// ---------- Generate mock SPC data ----------
-function generateSpcData(measurementDef: MeasurementDef, numSubgroups: number = 25): SubgroupPoint[] {
-    const data: SubgroupPoint[] = [];
-    const subgroupSize = 5;
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - numSubgroups);
-
-    // Process parameters - slight drift and occasional special causes
-    let processMean = measurementDef.nominal;
-    const processStdDev = (measurementDef.tolerancePlus + Math.abs(measurementDef.toleranceMinus)) / 6; // Cp = 1.0
-
-    for (let i = 0; i < numSubgroups; i++) {
-        const values: number[] = [];
-
-        // Simulate slight process drift
-        if (i > 15) processMean = measurementDef.nominal + processStdDev * 0.3;
-
-        // Generate subgroup values
-        for (let j = 0; j < subgroupSize; j++) {
-            // Add occasional special cause (1 in 20 chance)
-            const specialCause = Math.random() < 0.05 ? processStdDev * 2.5 : 0;
-            const value = processMean + (Math.random() - 0.5) * 2 * processStdDev + specialCause;
-            values.push(Math.round(value * 1000) / 1000);
-        }
-
-        const xBar = values.reduce((a, b) => a + b, 0) / values.length;
-        const range = Math.max(...values) - Math.min(...values);
-
-        const timestamp = new Date(baseDate);
-        timestamp.setDate(baseDate.getDate() + i);
-
-        data.push({
-            subgroup: i + 1,
-            xBar: Math.round(xBar * 1000) / 1000,
-            range: Math.round(range * 1000) / 1000,
-            values,
-            timestamp,
-            label: timestamp.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        });
-    }
-
-    return data;
-}
-
-// ---------- Generate mock I-MR data ----------
-function generateIMRData(measurementDef: MeasurementDef, numPoints: number = 50): IndividualPoint[] {
-    const data: IndividualPoint[] = [];
-    const baseDate = new Date();
-    baseDate.setDate(baseDate.getDate() - numPoints);
-
-    let processMean = measurementDef.nominal;
-    const processStdDev = (measurementDef.tolerancePlus + Math.abs(measurementDef.toleranceMinus)) / 6;
-
-    for (let i = 0; i < numPoints; i++) {
-        // Simulate slight process drift after point 30
-        if (i > 30) processMean = measurementDef.nominal + processStdDev * 0.4;
-
-        // Add occasional special cause (1 in 25 chance)
-        const specialCause = Math.random() < 0.04 ? processStdDev * 2.5 : 0;
-        const value = processMean + (Math.random() - 0.5) * 2 * processStdDev + specialCause;
-
-        const timestamp = new Date(baseDate);
-        timestamp.setDate(baseDate.getDate() + i);
-
-        // Calculate moving range (difference from previous point)
-        const prevValue = i > 0 ? data[i - 1].value : value;
-        const movingRange = Math.abs(value - prevValue);
-
-        data.push({
-            index: i + 1,
-            value: Math.round(value * 1000) / 1000,
-            movingRange: i === 0 ? 0 : Math.round(movingRange * 1000) / 1000,
-            timestamp,
-            label: timestamp.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        });
-    }
-
-    return data;
-}
 
 // ---------- Calculate I-MR control limits ----------
 function calculateIMRControlLimits(data: IndividualPoint[]): IMRControlLimits {
@@ -646,7 +553,7 @@ export default function SpcPage() {
     const { data: processData, isLoading: isLoadingHierarchy } = useSpcHierarchy();
 
     // SPC Baseline hooks - persist frozen limits to backend
-    const { data: activeBaseline, isLoading: isLoadingBaseline } = useSpcActiveBaseline(selectedMeasurementId);
+    const { data: activeBaseline } = useSpcActiveBaseline(selectedMeasurementId);
     const freezeBaselineMutation = useFreezeSpcBaseline();
     const supersedeBaselineMutation = useSupersedeSpcBaseline();
 
@@ -680,13 +587,13 @@ export default function SpcPage() {
 
     // Baseline vs Monitoring mode - derived from whether an active baseline exists
     const spcMode: "baseline" | "monitoring" = activeBaseline ? "monitoring" : "baseline";
-    const { data: spcApiData, isLoading: isLoadingSpcData, error: spcDataError, status: spcDataStatus } = useSpcData({
+    const { data: spcApiData, isLoading: isLoadingSpcData } = useSpcData({
         measurementId: selectedMeasurementId,
         days: dateRange,
         limit: 1000,
         enabled: selectedMeasurementId !== null,
     });
-    const { data: capabilityData, error: capabilityError } = useSpcCapability({
+    const { data: capabilityData } = useSpcCapability({
         measurementId: selectedMeasurementId,
         days: dateRange,
         enabled: selectedMeasurementId !== null,

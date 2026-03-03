@@ -1,10 +1,10 @@
-# Ambac Tracker Documentation
+# uqmes Documentation
 
-Welcome to the official documentation for **Ambac Tracker**, a modern Quality Management System (QMS) and Manufacturing Execution System (MES) designed for regulated manufacturing environments.
+Welcome to the official documentation for **uqmes** (Unified Quality MES), a modern Quality Management System (QMS) and Manufacturing Execution System (MES) designed for regulated manufacturing environments.
 
-## What is Ambac Tracker?
+## What is uqmes?
 
-Ambac Tracker helps manufacturing teams:
+uqmes helps manufacturing teams:
 
 - **Track orders and parts** through production workflows
 - **Manage quality** with inspections, NCRs, and CAPA
@@ -16,7 +16,7 @@ Ambac Tracker helps manufacturing teams:
 
 | Section | Description |
 |---------|-------------|
-| [Getting Started](getting-started/welcome.md) | New to Ambac Tracker? Start here for a quick introduction |
+| [Getting Started](getting-started/welcome.md) | New to uqmes? Start here for a quick introduction |
 | [Role Guides](roles/index.md) | Find documentation specific to your role |
 | [Training](training/index.md) | Hands-on training guides with exercises |
 | [Core Workflows](workflows/index.md) | Day-to-day operations: orders, tracking, quality control |

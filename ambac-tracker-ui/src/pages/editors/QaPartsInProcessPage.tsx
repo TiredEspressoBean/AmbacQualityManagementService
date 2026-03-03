@@ -15,18 +15,22 @@ function usePartsList({
     ordering?: string;
     search?: string;
 }) {
+    // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
+    // This mirrors the Parts.needs_qa model property
+    // Include READY_FOR_NEXT_STEP since parts may need QA before actually advancing
     return useRetrieveParts({
         offset,
         limit,
         ordering,
         search,
         archived: false,
-        requires_sampling: true,
+        needs_qa: true,
         status__in: [
             "PENDING",
             "IN_PROGRESS",
             "REWORK_NEEDED",
             "REWORK_IN_PROGRESS",
+            "READY FOR NEXT STEP",
         ],
     });
 }

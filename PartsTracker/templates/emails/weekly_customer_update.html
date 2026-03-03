@@ -1,193 +1,96 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Order Updates</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            margin: 0;
-            color: #2c3e50;
-        }
-        .order-card {
-            border: 1px solid #e1e5e9;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            background-color: #ffffff;
-        }
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .order-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-        .status-pending { background-color: #fef3c7; color: #d97706; }
-        .status-in-progress { background-color: #dbeafe; color: #1d4ed8; }
-        .status-on-hold { background-color: #fee2e2; color: #dc2626; }
-        .status-rfi { background-color: #f3e8ff; color: #7c3aed; }
-        
-        .progress-bar {
-            background-color: #e5e7eb;
-            border-radius: 10px;
-            height: 8px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .progress-fill {
-            background-color: #10b981;
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-        .order-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            font-size: 14px;
-            color: #6b7280;
-        }
-        .gate-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #e5e7eb;
-        }
-        .gate-section h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2563eb;
-            margin: 0 0 10px 0;
-        }
-        .gate-progress-bar {
-            background-color: #dbeafe;
-            border-radius: 10px;
-            height: 8px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .gate-progress-fill {
-            background-color: #2563eb;
-            height: 100%;
-            transition: width 0.3s ease;
-        }
-        .gate-info {
-            font-size: 13px;
-            color: #6b7280;
-            margin-top: 8px;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-            color: #6b7280;
-            font-size: 14px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Order Updates</h1>
-    </div>
+{% extends "emails/base_email.html" %}
 
-    <p>Hi {{ customer.first_name|default:"there" }}!</p>
-    
-    <p>Here's your update on your {{ total_orders }} active order{{ total_orders|pluralize }}:</p>
+{% block title %}Weekly Order Update{% endblock %}
 
-    {% for order in orders %}
-    <div class="order-card">
-        <div class="order-header">
-            <div class="order-name">{{ order.name }}</div>
-            <span class="status-badge status-{{ order.status|lower|cut:' '|cut:'_' }}">
-                {{ order.status }}
-            </span>
-        </div>
-        
-        {% if order.total_parts > 0 %}
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {{ order.progress }}%"></div>
-        </div>
+{% block badge_bg %}#dbeafe{% endblock %}
+{% block badge_color %}#1d4ed8{% endblock %}
+{% block badge_text %}Weekly Update{% endblock %}
 
-        <div class="order-details">
-            <div>
-                <strong>Original Completion:</strong><br>
-                {{ order.original_completion|date:"M d, Y"|default:"TBD" }}
-            </div>
-            <div>
-                <strong>Est. Completion:</strong><br>
-                {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
-            </div>
-            <div>
-                <strong>Current Stage:</strong><br>
-                {{ order.current_stage }}
-            </div>
-            <div>
-                <strong>Parts Progress:</strong><br>
-                {{ order.completed_parts }} of {{ order.total_parts }} completed
-            </div>
-        </div>
-        {% else %}
-        <div class="order-details">
-            <div>
-                <strong>Original Completion:</strong><br>
-                {{ order.original_completion|date:"M d, Y"|default:"TBD" }}
-            </div>
-            <div>
-                <strong>Est. Completion:</strong><br>
-                {{ order.completion_date|date:"M d, Y"|default:"TBD" }}
-            </div>
-        </div>
-        {% endif %}
+{% block header_title %}Order Updates{% endblock %}
+{% block header_subtitle %}
+<p style="margin: 8px 0 0 0; font-size: 14px; color: #71717a;">
+    Week ending {{ week_ending|date:"F d, Y" }}
+</p>
+{% endblock %}
 
-        {% if order.gate_info %}
-        <div class="gate-section">
-            <h3>📋 Order Pipeline Status</h3>
-            {% if order.gate_info.is_in_progress %}
-                <div class="gate-progress-bar">
-                    <div class="gate-progress-fill" style="width: {{ order.gate_info.progress_percent }}%"></div>
-                </div>
-                <div class="gate-info">
-                    <strong>Current Stage:</strong> {{ order.gate_info.current_gate_name }}<br>
-                    Progress: Stage {{ order.gate_info.current_position }} of {{ order.gate_info.total_gates }} ({{ order.gate_info.progress_percent|floatformat:0 }}%)
-                </div>
-            {% else %}
-                <div class="gate-info">
-                    <strong>Status:</strong> {{ order.gate_info.current_gate_full_name }}
-                </div>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
+{% block intro_text %}
+<p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #3f3f46;">
+    Here's your update on your {{ total_orders }} active order{{ total_orders|pluralize }}:
+</p>
+{% endblock %}
 
-    <div class="footer">
-        <p>Questions about your orders? Email us at sales@ambacinternational.com or call us at (800) 628-6894.</p>
-        <p>Thanks for choosing us!</p>
-    </div>
-</body>
-</html>
+{% block content %}
+{% for order in orders %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
+    <tr>
+        <td style="padding: 16px; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <!-- Order Header -->
+                <tr>
+                    <td>
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td>
+                                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: #18181b;">
+                                        {{ order.name }}
+                                    </p>
+                                </td>
+                                <td align="right">
+                                    {% include "emails/includes/status_badge.html" with status=order.status %}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                {% if order.total_parts > 0 %}
+                <!-- Progress Bar -->
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td style="background-color: #e4e4e7; border-radius: 9999px; height: 6px;">
+                                    <div style="background-color: #18181b; border-radius: 9999px; height: 6px; width: {{ order.progress }}%;"></div>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin: 6px 0 0 0; font-size: 12px; color: #71717a;">
+                            {{ order.progress }}% complete &middot; {{ order.completed_parts }}/{{ order.total_parts }} parts
+                        </p>
+                    </td>
+                </tr>
+                {% endif %}
+
+                <!-- Details Grid -->
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td width="50%" valign="top">
+                                    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Current Stage</p>
+                                    <p style="margin: 0; font-size: 14px; color: #3f3f46;">{{ order.current_stage }}</p>
+                                </td>
+                                <td width="50%" valign="top">
+                                    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Est. Completion</p>
+                                    <p style="margin: 0; font-size: 14px; color: #3f3f46;">{{ order.completion_date|date:"M d, Y"|default:"TBD" }}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+{% endfor %}
+{% endblock %}
+
+{% block action_button %}
+{% include "emails/includes/button.html" with url=frontend_url|add:"/dashboard" text="View Dashboard" %}
+{% endblock %}
+
+{% block secondary_text %}
+<p style="margin: 12px 0 0 0; font-size: 13px; color: #71717a;">
+    Questions? Contact us at {{ support_email|default:"support@uqmes.com" }}
+</p>
+{% endblock %}

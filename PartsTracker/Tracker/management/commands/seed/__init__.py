@@ -12,6 +12,8 @@ Each module handles a specific domain:
 - training: Training types, requirements, records
 - calibration: Calibration records
 - models_3d: 3D models, heatmap annotations
+- reman: Cores, harvested components, disassembly BOMs
+- life_tracking: Life limit definitions and tracking records
 
 Usage:
     from Tracker.management.commands.seed import (
@@ -25,6 +27,8 @@ Usage:
         ThreeDModelSeeder,
         TrainingSeeder,
         CalibrationSeeder,
+        RemanSeeder,
+        LifeTrackingSeeder,
     )
 """
 
@@ -38,6 +42,8 @@ from .documents import DocumentSeeder
 from .models_3d import ThreeDModelSeeder
 from .training import TrainingSeeder
 from .calibration import CalibrationSeeder
+from .reman import RemanSeeder
+from .life_tracking import LifeTrackingSeeder
 
 __all__ = [
     'BaseSeeder',
@@ -50,4 +56,6 @@ __all__ = [
     'ThreeDModelSeeder',
     'TrainingSeeder',
     'CalibrationSeeder',
+    'RemanSeeder',
+    'LifeTrackingSeeder',
 ]

@@ -18,8 +18,7 @@ import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses.ts";
 type AddPartsData = z.infer<typeof schemas.BulkAddPartsInputRequest>;
 const AddPartsSchema = schemas.BulkAddPartsInputRequest;
 const PartStatusEnum = schemas.PartsStatusEnum.options;
-const PartStatusValues = schemas.PartsStatusEnum.options;
-type PartStatus = (typeof PartStatusValues)[number];
+type PartStatus = (typeof PartStatusEnum)[number];
 
 const defaults = {} as z.infer<typeof AddPartsSchema>;
 

@@ -46,7 +46,7 @@ You have authority to make disposition decisions that affect product, cost, and 
 
 **Exercise 1.1:** Dashboard Review
 
-1. Navigate to Quality Dashboard
+1. Navigate to Quality Dashboard in uqmes
 2. Review each KPI card
 3. Note current open CAPAs, NCRs
 4. Identify any critical items
@@ -452,22 +452,39 @@ By the end of this module, you will:
 
 ### 5.3 SPC Review
 
-!!! note "SPC Feature Status"
-    The SPC page provides measurement visualization and basic control charts. Advanced features like automated Cpk calculations, rule-based alerts, and control limit management are planned for future releases.
+!!! tip "SPC Training Resources"
+    - [SPC Fundamentals](spc-fundamentals.md) - Basic concepts (1-2 hours)
+    - [SPC Practitioner Guide](../analysis/spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
 
-**Your responsibilities:**
+**QA Manager SPC responsibilities:**
 
-- Review control charts periodically
-- Monitor measurement trends visually
-- Respond to out-of-control signals
-- Work with engineering on process adjustments
+| Task | Frequency | Action |
+|------|-----------|--------|
+| Review control charts | Weekly | Check for out-of-control signals |
+| Monitor Cpk values | Weekly | Flag any < 1.33 |
+| Approve baseline changes | As needed | Verify process is stable before freezing |
+| Trigger CAPA from SPC | As needed | When patterns indicate systemic issues |
+
+**Capability targets:**
+
+| Cpk | Status | Required Action |
+|-----|--------|-----------------|
+| ≥ 1.67 | Excellent | Maintain |
+| 1.33 - 1.67 | Capable | Monitor |
+| 1.0 - 1.33 | Marginal | Improvement plan |
+| < 1.0 | Not capable | Immediate action |
 
 **Exercise 5.2:** SPC Review
 
-1. Go to Analytics > SPC
-2. Select a measurement characteristic
-3. Review the control chart visualization
-4. Note any concerning trends
+1. Go to **Analytics > SPC**
+2. Select Process: Common Rail Injector Remanufacturing
+3. Select Step: Flow Testing
+4. Select Measurement: Flow Rate @ 1000 bar
+5. Review the Cpk value and control chart
+6. Identify the Rule 2 violation (demo data includes this signal)
+
+!!! example "Demo: SPC-Triggered CAPA"
+    CAPA-2024-003 was initiated partly due to SPC data showing drift in nozzle measurements. This demonstrates the connection between statistical signals and corrective action.
 
 ---
 

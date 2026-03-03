@@ -1863,14 +1863,14 @@ def download_file(request, model_name, pk, field):
         raise Http404("File not found")
 
     # ✅ Log the download
+    # Note: object_id omitted because UUIDs don't fit in bigint; object_pk (string) is sufficient
     try:
         LogEntry.objects.create(
             actor=request.user,
             actor_email=request.user.email if request.user.is_authenticated else None,
             action=LogEntry.Action.ACCESS,
-            content_type=ContentType.objects.get_for_model(type(obj), for_concrete_model=False),  # ✅ THIS LINE FIXES IT
+            content_type=ContentType.objects.get_for_model(type(obj), for_concrete_model=False),
             object_pk=str(obj.pk),
-            object_id=obj.pk,
             object_repr=str(obj),
             timestamp=now(),
             remote_addr=get_client_ip(request),

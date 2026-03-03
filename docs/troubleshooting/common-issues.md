@@ -2,6 +2,15 @@
 
 Solutions for frequently encountered problems.
 
+!!! tip "Demo Mode Examples"
+    In demo mode, you can see these common scenarios:
+
+    - **Parts stuck at step**: INJ-0042-025 blocked at Assembly pending FPI approval
+    - **Permission restrictions**: Customer Tom Bradley can only see Midwest Fleet orders
+    - **Training block**: Dave Wilson can't work at Flow Testing (expired certification)
+    - **Calibration alert**: Torque Wrench TW-25 shows overdue, equipment usage blocked
+    - **Pending approval**: APR-2024-0015 awaiting Jennifer Walsh's sign-off
+
 ## Login Issues
 
 ### "Invalid credentials"

@@ -94,9 +94,9 @@ const DocumentRenderer: React.FC<Props> = ({ modelData, loading = false }) => {
     };
 
     return (
-        <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-                <p>
+        <div className="flex flex-col h-full min-h-0">
+            <div className="text-sm text-muted-foreground flex-shrink-0 mb-4">
+                <p className="truncate">
                     <span className="font-medium">File:</span>{" "}
                     <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
                         {modelData.file_name || fileUrl}
@@ -105,13 +105,13 @@ const DocumentRenderer: React.FC<Props> = ({ modelData, loading = false }) => {
                 {modelData.upload_date && <p>Uploaded: {new Date(modelData.upload_date).toLocaleDateString()}</p>}
             </div>
 
-            <div className="border rounded bg-muted/10 p-3 min-h-[400px] overflow-auto">{renderFileContent()}</div>
+            <div className="border rounded bg-muted/10 p-3 flex-1 min-h-0 overflow-auto">{renderFileContent()}</div>
         </div>
     );
 };
 
 // Text viewer
-const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
+const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileName: _fileName }) => {
     const [content, setContent] = React.useState<string>("");
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
@@ -136,17 +136,17 @@ const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) =
         };
     }, [url]);
 
-    if (loading) return <div className="flex items-center justify-center h-[400px]">Loading content...</div>;
+    if (loading) return <div className="flex items-center justify-center min-h-[200px] h-full">Loading content...</div>;
     if (error)
         return (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-2">
+            <div className="flex flex-col items-center justify-center min-h-[200px] h-full text-center space-y-2">
                 <p className="text-sm text-red-600">Error loading file: {error}</p>
                 <p className="text-xs text-muted-foreground">Try opening the file directly using the link above</p>
             </div>
         );
 
     return (
-        <div className="w-full h-[600px] overflow-auto">
+        <div className="w-full h-full overflow-auto">
             <pre className="whitespace-pre-wrap font-mono text-sm p-4 bg-background rounded border">{content}</pre>
         </div>
     );
@@ -155,7 +155,6 @@ const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) =
 // Image viewer
 const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileName }) => {
     const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
-    const [_imageLoaded, _setImageLoaded] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [imageSrc, setImageSrc] = React.useState<string | null>(null);
     const [loading, setLoading] = React.useState(true);
@@ -218,12 +217,11 @@ const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileNa
         };
     }, [isLightboxOpen]);
 
-    const handleImageLoad = () => setImageLoaded(true);
     const handleImageError = () => setError('Failed to display image');
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[400px]">
+            <div className="flex items-center justify-center min-h-[200px] h-full">
                 <div className="text-center space-y-2">
                     <div className="text-4xl">🖼️</div>
                     <p className="text-sm">Loading image...</p>
@@ -234,7 +232,7 @@ const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileNa
 
     if (error || !imageSrc) {
         return (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center space-y-2">
+            <div className="flex flex-col items-center justify-center min-h-[200px] h-full text-center space-y-2">
                 <div className="text-4xl">🖼️</div>
                 <p className="text-sm text-red-600">{error || 'Failed to load image'}</p>
                 <p className="text-xs text-muted-foreground">Try opening the file directly using the link above</p>
@@ -251,7 +249,6 @@ const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileNa
                     className="max-w-full h-auto rounded border cursor-pointer hover:opacity-90 transition-opacity"
                     style={{ maxHeight: "600px" }}
                     onClick={openLightbox}
-                    onLoad={handleImageLoad}
                     onError={handleImageError}
                 />
 
@@ -416,7 +413,7 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-[600px]">
+            <div className="flex items-center justify-center min-h-[200px] h-full">
                 <div className="text-center space-y-2">
                     <div className="text-4xl">📄</div>
                     <p className="text-sm">Loading PDF...</p>
@@ -427,7 +424,7 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
 
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-[600px] text-center space-y-4">
+            <div className="flex flex-col items-center justify-center min-h-[200px] h-full text-center space-y-4">
                 <div className="text-4xl">📄</div>
                 <div className="space-y-2">
                     <p className="text-sm text-red-600">Failed to load PDF</p>
@@ -450,7 +447,7 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
 
     if (!pdfSrc) {
         return (
-            <div className="flex items-center justify-center h-[600px]">
+            <div className="flex items-center justify-center min-h-[200px] h-full">
                 <div className="text-center space-y-2">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="text-sm">Preparing PDF...</p>
@@ -460,9 +457,9 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col h-full min-h-0">
             {/* Controls */}
-            <div className="flex items-center justify-between bg-muted/50 p-3 rounded">
+            <div className="flex-shrink-0 flex items-center justify-between flex-wrap gap-2 bg-muted/50 p-3 rounded mb-4">
                 <div className="flex items-center space-x-4">
                     <button
                         onClick={goToPreviousPage}
@@ -533,14 +530,14 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
             </div>
 
             {/* PDF */}
-            <div className="flex justify-center bg-muted/10 p-4 rounded min-h-[600px] overflow-auto">
+            <div className="flex-1 min-h-0 flex justify-center bg-muted/10 p-4 rounded overflow-auto">
                 <Document
                     file={pdfSrc}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     options={pdfOptions}
                     loading={
-                        <div className="flex items-center justify-center h-[500px]">
+                        <div className="flex items-center justify-center min-h-[200px]">
                             <div className="text-center space-y-2">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                                 <p className="text-sm">Rendering PDF...</p>

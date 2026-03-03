@@ -107,6 +107,16 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     ApprovalTemplates: "ApprovalTemplates",
     ApprovalRequests: "ApprovalRequests",
     ApprovalResponses: "ApprovalResponses",
+
+    // Reman
+    Cores: "Cores",
+    HarvestedComponents: "HarvestedComponents",
+    DisassemblyBOMLines: "DisassemblyBOMLines",
+
+    // Life Tracking
+    LifeLimitDefinitions: "LifeLimitDefinitions",
+    PartTypeLifeLimits: "PartTypeLifeLimits",
+    LifeTracking: "LifeTracking",
 };
 
 /** Column definition with priority-based responsive visibility */
@@ -207,15 +217,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
     // Resolve API endpoint from modelName
     const apiEndpoint = modelName ? MODEL_API_ENDPOINTS[modelName] : undefined;
 
-    const { data, isLoading, error } = useList({
-        offset,
-        limit,
-        ordering,
-        search: debouncedSearch,
-        filters: activeFilters,
-    });
-
-    // Auto-fetch metadata for search field hints based on modelName
+    // Auto-fetch metadata for search field hints based on modelName (must be before typedFilters)
     const { data: metadata } = useQuery<ListMetadata>({
         queryKey: ["metadata", modelName, apiEndpoint],
         queryFn: async () => {
@@ -229,6 +231,29 @@ export function ModelEditorPage<T extends { id: string | number }>({
         },
         enabled: !!apiEndpoint && !disableMetadata,
         staleTime: Infinity, // Metadata rarely changes
+    });
+
+    // Convert filter values to proper types based on metadata
+    const typedFilters = useMemo(() => {
+        if (!metadata?.filters) return activeFilters;
+        const result: Record<string, string | boolean> = {};
+        for (const [key, value] of Object.entries(activeFilters)) {
+            const filterMeta = metadata.filters[key];
+            if (filterMeta?.type === 'boolean') {
+                result[key] = value === 'true';
+            } else {
+                result[key] = value;
+            }
+        }
+        return result;
+    }, [activeFilters, metadata]);
+
+    const { data, isLoading, error } = useList({
+        offset,
+        limit,
+        ordering,
+        search: debouncedSearch,
+        filters: typedFilters,
     });
 
     // Build search placeholder from metadata

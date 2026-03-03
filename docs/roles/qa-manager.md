@@ -1,6 +1,6 @@
 # QA Manager Guide
 
-This guide is for Quality Assurance Managers who oversee quality operations, manage CAPAs, approve dispositions, and analyze quality data.
+This guide is for Quality Assurance Managers who oversee quality operations, manage CAPAs, approve dispositions, and analyze quality data in uqmes.
 
 ## Your Role
 

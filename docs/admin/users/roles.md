@@ -1,10 +1,10 @@
 # Roles & Groups
 
-Understanding how permissions are organized and assigned in Ambac Tracker.
+Understanding how permissions are organized and assigned in uqmes.
 
 ## Permission Model
 
-Ambac Tracker uses a layered permission system:
+uqmes uses a layered permission system:
 
 ```
 User

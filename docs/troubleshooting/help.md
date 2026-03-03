@@ -1,6 +1,6 @@
 # Getting Help
 
-How to get assistance with Ambac Tracker.
+How to get assistance with uqmes.
 
 ## Self-Service Resources
 

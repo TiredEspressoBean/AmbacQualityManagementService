@@ -34,7 +34,7 @@ Technical documentation of features that differentiate this QMS from commercial 
 - `ambac-tracker-ui/src/pages/HeatMapViewer.tsx` - Heatmap visualization page
 - `ambac-tracker-ui/src/components/three-d-model-viewer.tsx` - Three.js 3D viewer component
 - `ambac-tracker-ui/src/pages/PartAnnotator.tsx` - Annotation interface
-- `PartsTracker/Tracker/models/mes.py` - ThreeDModel, HeatmapAnnotation models
+- `PartsTracker/Tracker/models/qms.py` - ThreeDModel, HeatMapAnnotations models
 
 ### What It Does
 
@@ -163,7 +163,8 @@ response = requests.get(f"{DJANGO_API_URL}/api/parts/", headers=headers)
 ## Feature 3: Advanced Statistical Sampling Engine with Fallback Mechanisms
 
 **Key Files:**
-- `PartsTracker/Tracker/models/qms.py` - SamplingRule, SamplingRuleSet, SamplingAuditLog models
+- `PartsTracker/Tracker/models/mes_standard.py` - SamplingRule, SamplingRuleSet, SamplingTriggerState models
+- `PartsTracker/Tracker/models/qms.py` - SamplingAuditLog model
 - `PartsTracker/Tracker/serializers/qms.py` - Sampling serializers
 
 ### What It Does
@@ -300,9 +301,7 @@ def should_send_notification(user, event_type):
 ## Feature 5: Row-Level Security via SecureManager Pattern
 
 **Key Files:**
-- `PartsTracker/Tracker/managers.py` - SecureManager, SecureQuerySet classes
-- `PartsTracker/Tracker/models/core.py` - SecureModel base class
-- `PartsTracker/Tracker/models/base.py` - Model inheritance structure
+- `PartsTracker/Tracker/models/core.py` - SecureManager, SecureQuerySet, SecureModel classes
 
 ### What It Does
 
@@ -350,28 +349,41 @@ level across 30+ models.
 **Code/Logic Highlights:**
 
 ```python
+# Simplified conceptual view - actual implementation has more features
 class SecureQuerySet(models.QuerySet):
-    def for_user(self, user):
-        if user.groups.filter(name__in=['Admin', 'Manager']).exists():
-            return self  # See everything
-        elif user.groups.filter(name='Customer').exists():
-            return self.filter(parent_company=user.parent_company)
-        else:  # Operator, Employee
-            return self.exclude(archived=True)
+    def for_user(self, user, include_archived=False):
+        """Apply user-based filtering for data scoping."""
+        model_name = self.model._meta.model_name
+        queryset = self if include_archived else self.active()
+
+        # Superuser bypasses checks (but still apply tenant filter)
+        if user.is_superuser:
+            tenant = getattr(user, '_current_tenant', None)
+            if tenant and hasattr(self.model, 'tenant'):
+                return queryset.filter(tenant=tenant)
+            return queryset
+
+        # Check view permission + full_tenant_access
+        view_perm = f'Tracker.view_{model_name}'
+        has_view_perm = user.has_perm(view_perm)
+        has_full_access = user.has_perm('Tracker.full_tenant_access')
+
+        if has_view_perm and has_full_access:
+            return queryset  # See all tenant data
+        elif has_view_perm:
+            # Filter by Order relationships (customer/viewers)
+            return queryset.filter(
+                Q(order__customer__users=user) | Q(order__viewers__user=user)
+            )
+        return queryset.none()  # No view permission = no access
 
 
 class SecureManager(models.Manager):
     def get_queryset(self):
         return SecureQuerySet(self.model, using=self._db)
 
-
-class SecureModel(models.Model):
-    objects = SecureManager()
-    archived = models.BooleanField(default=False)
-    parent_company = models.ForeignKey(Companies, ...)
-
-    class Meta:
-        abstract = True
+    def for_user(self, user, include_archived=False):
+        return self.get_queryset().for_user(user, include_archived)
 ```
 
 **Performance Characteristics:** TBD

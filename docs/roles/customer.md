@@ -1,6 +1,14 @@
 # Customer Portal Guide
 
-This guide is for external customers who access Ambac Tracker to view their order status and documents.
+This guide is for external customers who access uqmes to view their order status and documents.
+
+!!! tip "Demo Account"
+    In demo mode, log in as **Tom Bradley** (tom.bradley@midwestfleet.com) to experience the Customer Portal. You'll see:
+
+    - Order ORD-2024-0042 with real-time progress (16 of 24 injectors complete, 2 in QA hold)
+    - Certificates of Conformance for completed orders
+    - Notification preferences for order status changes
+    - RBAC in action: Only Midwest Fleet orders visible, not other customers' data
 
 ## Your Access
 

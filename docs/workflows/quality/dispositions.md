@@ -2,6 +2,15 @@
 
 Dispositions are decisions about what to do with non-conforming parts. This guide covers the disposition workflow.
 
+!!! example "Demo Dispositions"
+    In demo mode, three dispositions demonstrate the workflow:
+
+    - **QD-2024-0001** (Rework): INJ-0042-017 failed flow test (142 mL/min vs 135 max), sent to nozzle rework step
+    - **QD-2024-0002** (Use As Is): INJ-0042-019 minor cosmetic scratch, approved by QA Manager with customer concurrence
+    - **QD-2024-0003** (Scrap): INJ-0042-023 cracked body detected at inspection, cannot be repaired
+
+    QA Manager Maria Santos handles all disposition approvals. Production Manager Jennifer Walsh tracks rework progress.
+
 ## What is a Disposition?
 
 A **disposition** is the formal decision about how to handle a part that doesn't meet specifications:
@@ -113,6 +122,9 @@ Different parts may get different dispositions:
 
 Example:
 - 5 parts: 3 rework, 2 scrap
+
+!!! tip "Demo: Partial Disposition"
+    Quality Report QR-2024-0187 for ORD-2024-0038 shows partial disposition in action: 3 parts sent to rework (nozzle adjustment), 2 parts scrapped (cracked bodies). This contributed to CAPA-2024-003 when the pattern indicated a systemic supplier issue.
 
 ## Disposition Approval
 

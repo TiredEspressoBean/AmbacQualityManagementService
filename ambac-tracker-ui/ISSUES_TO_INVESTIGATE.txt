@@ -1,0 +1,32 @@
+ISSUES TO INVESTIGATE
+=====================
+
+================================================================================
+1. ai-chat-example.tsx - Thread not initialized error
+================================================================================
+
+ERROR:
+  ai-chat-example.tsx:215 Uncaught (in promise) Error: Thread not initialized
+      at stream (ai-chat-example.tsx:215:36)
+
+FILE: src/components/ai-chat-example.tsx
+
+POSSIBLE CAUSES:
+  - Thread component not properly initialized before stream() is called
+  - Race condition between component mount and stream initialization
+  - Missing useEffect dependency or async initialization
+  - ThreadProvider context not available
+
+INVESTIGATION STEPS:
+  1. Check line 215 in ai-chat-example.tsx for the stream() function call
+  2. Look for thread initialization logic and when it runs
+  3. Check if there's a useThread() hook or similar that needs to be awaited
+  4. Verify ThreadProvider wrapping in parent components
+  5. Check for any async operations that should complete before stream()
+
+PRIORITY: Medium - affects AI chat functionality
+
+DATE REPORTED: 2026-02-12
+STATUS: TODO
+
+================================================================================

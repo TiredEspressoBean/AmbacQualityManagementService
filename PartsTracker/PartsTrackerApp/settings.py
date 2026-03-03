@@ -52,6 +52,9 @@ if os.getenv("WEBSITE_HOSTNAME"):
 
 
 
+# SSO Configuration - set SSO_ENABLED=true to enable Microsoft/Azure AD SSO
+SSO_ENABLED = os.environ.get("SSO_ENABLED", "true").lower() in ("true", "1", "yes")
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.admindocs',
@@ -64,7 +67,8 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
-    "allauth.socialaccount.providers.microsoft",
+    # Microsoft SSO provider - only loaded if SSO_ENABLED=true
+    *(['allauth.socialaccount.providers.microsoft'] if SSO_ENABLED else []),
     'Tracker.apps.TrackerConfig',
     "tailwind",
     "theme",
@@ -212,23 +216,26 @@ STATICFILES_DIRS = tuple(d for d in _static_dirs if d.exists())
 SITE_ID = 1
 
 # Azure AD / Microsoft SSO Configuration
-# Set these in .env:
+# Set SSO_ENABLED=true and configure these in .env:
 #   AZURE_CLIENT_ID=your-app-registration-client-id
 #   AZURE_CLIENT_SECRET=your-client-secret
 #   AZURE_TENANT_ID=common (or specific tenant ID for single-tenant)
-SOCIALACCOUNT_PROVIDERS = {
-    "microsoft": {
-        "APP": {
-            "client_id": os.environ.get("AZURE_CLIENT_ID", ""),
-            "secret": os.environ.get("AZURE_CLIENT_SECRET", ""),
-            "key": "",
-        },
-        # Use 'common' for multi-tenant (any Azure AD), or specific tenant ID
-        "TENANT": os.environ.get("AZURE_TENANT_ID", "common"),
-        "SCOPE": ["openid", "email", "profile", "User.Read"],
-        "AUTH_PARAMS": {"response_type": "code"},
+if SSO_ENABLED:
+    SOCIALACCOUNT_PROVIDERS = {
+        "microsoft": {
+            "APP": {
+                "client_id": os.environ.get("AZURE_CLIENT_ID", ""),
+                "secret": os.environ.get("AZURE_CLIENT_SECRET", ""),
+                "key": "",
+            },
+            # Use 'common' for multi-tenant (any Azure AD), or specific tenant ID
+            "TENANT": os.environ.get("AZURE_TENANT_ID", "common"),
+            "SCOPE": ["openid", "email", "profile", "User.Read"],
+            "AUTH_PARAMS": {"response_type": "code"},
+        }
     }
-}
+else:
+    SOCIALACCOUNT_PROVIDERS = {}
 
 # Allauth social account adapter for tenant-aware SSO
 SOCIALACCOUNT_ADAPTER = 'Tracker.adapters.TenantSocialAccountAdapter'
@@ -327,9 +334,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-LOGIN_REDIRECT_URL = '/tracker'
+LOGIN_REDIRECT_URL = '/'
 
-LOGOUT_REDIRECT_URL = '/tracker'
+LOGOUT_REDIRECT_URL = '/'
 
 HUBSPOT_API_KEY = os.environ.get("HUBSPOT_API_KEY")
 
@@ -492,23 +499,42 @@ from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
-    # Your existing jobs
-    "send-weekly-customer-emails": {
-        "task": "Tracker.tasks.send_weekly_emails_to_all_customers",
-        "schedule": crontab(day_of_week="tuesday", hour=15, minute=0),
-        "options": {"expires": 3600},
-    },
+    # Notification dispatch (runs every 5 minutes, processes pending NotificationTask records)
     "dispatch-pending-notifications": {
         "task": "Tracker.tasks.dispatch_pending_notifications",
         "schedule": crontab(minute="*/5"),
         "options": {"expires": 240},
     },
+    # Weekly report task creation (creates NotificationTask records for customers)
+    "create-weekly-customer-notifications": {
+        "task": "Tracker.tasks.create_weekly_report_notifications",
+        "schedule": crontab(day_of_week="tuesday", hour=15, minute=0),
+        "options": {"expires": 3600},
+    },
+    # Daily check for overdue approvals - sends reminders to pending approvers
+    "check-overdue-approvals": {
+        "task": "Tracker.tasks.check_overdue_approvals",
+        "schedule": crontab(hour=9, minute=0),
+        "options": {"expires": 3600},
+    },
+    # Daily check for approvals past escalation date - notifies escalate_to user
+    "escalate-approvals": {
+        "task": "Tracker.tasks.escalate_approvals",
+        "schedule": crontab(hour=9, minute=30),
+        "options": {"expires": 3600},
+    },
+    # Daily check for CAPA due date reminders
+    "check-capa-reminders": {
+        "task": "Tracker.tasks.check_capa_reminders",
+        "schedule": crontab(hour=8, minute=0),
+        "options": {"expires": 3600},
+    },
+    # HubSpot sync
     "sync-hubspot-deals-hourly": {
         "task": "Tracker.tasks.sync_hubspot_deals_task",
         "schedule": crontab(minute=0),
         "options": {"expires": 1800},
     },
-
     # Keep django-db Celery results small before backups
     "cleanup-celery-results": {
         "task": "django_celery_results.tasks.cleanup_expired_results",

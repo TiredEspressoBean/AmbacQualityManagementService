@@ -1,0 +1,17 @@
+{% load table_helpers %}{% if is_overdue %}CAPA OVERDUE{% else %}CAPA REMINDER{% endif %}
+
+Hi {{ recipient.first_name|default:"there" }},
+
+{% if is_overdue %}The following CAPA requires your immediate attention and is {{ days_until_due|abs }} day{{ days_until_due|abs|pluralize }} overdue:{% elif days_until_due == 0 %}The following CAPA is due today:{% else %}This is a reminder that the following CAPA is due in {{ days_until_due }} day{{ days_until_due|pluralize }}:{% endif %}
+
+=====================================
+CAPA: {{ disposition_number }}
+Due Date: {{ due_date|date:"F d, Y" }}
+Current State: {{ current_state }}
+{% if attempt_count > 1 %}Reminder #: {{ attempt_count }}{% endif %}
+=====================================
+
+View CAPA: {{ frontend_url }}/qa/quarantine/{{ capa_id }}/
+
+This is an automated reminder from {{ brand_name|default:"uqmes" }}.
+Please do not reply to this email.

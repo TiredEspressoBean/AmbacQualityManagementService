@@ -9,11 +9,13 @@ function usePartsList({
                           limit,
                           ordering,
                           search,
+                          filters,
                       }: {
     offset: number;
     limit: number;
     ordering?: string;
     search?: string;
+    filters?: Record<string, string>;
 }) {
     return useRetrieveParts({
         offset,
@@ -27,6 +29,7 @@ function usePartsList({
             "REWORK_NEEDED",
             "REWORK_IN_PROGRESS",
         ],
+        ...filters,
     });
 }
 

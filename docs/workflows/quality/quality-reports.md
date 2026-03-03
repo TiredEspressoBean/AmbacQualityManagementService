@@ -76,13 +76,16 @@ Standard error type categories:
 | Type | Examples |
 |------|----------|
 | **Dimensional** | Out of tolerance, wrong size, wrong location |
-| **Visual/Cosmetic** | Scratches, dents, discoloration, finish defects |
+| **Visual/Cosmetic** | Scratches, dents, discoloration, nozzle tip erosion |
 | **Material** | Wrong material, contamination, defective raw material |
-| **Functional** | Doesn't work, fails test, wrong operation |
+| **Functional** | Doesn't work, fails test, spray pattern asymmetry, flow rate out of spec |
 | **Documentation** | Missing paperwork, wrong revision, labeling error |
 | **Process** | Wrong operation, missed step, wrong sequence |
 
 Your administrator configures available error types.
+
+!!! example "Diesel Injector Example"
+    For a fuel injector failing Flow Testing: Error Type = **Functional**, Description = "Flow rate 142 mL/min (spec: 105-135 mL/min)", Severity = **Major**.
 
 ## Severity Levels
 

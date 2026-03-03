@@ -1,6 +1,6 @@
 # Exporting Data
 
-Export data from Ambac Tracker for external analysis, reporting, or archival.
+Export data from uqmes for external analysis, reporting, or archival.
 
 ## Export Options
 

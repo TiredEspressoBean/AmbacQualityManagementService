@@ -1,6 +1,6 @@
 # Uploading Documents
 
-Add new documents to the Ambac Tracker document library.
+Add new documents to the uqmes document library.
 
 ## Supported File Types
 

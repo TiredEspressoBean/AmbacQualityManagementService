@@ -1,6 +1,6 @@
 # Administrator Guide
 
-This guide is for System Administrators who configure Ambac Tracker, manage users, and maintain system settings.
+This guide is for System Administrators who configure uqmes, manage users, and maintain system settings.
 
 ## Your Role
 
@@ -17,7 +17,7 @@ As an Administrator, you:
 
 ### First-Time Setup
 
-For a new Ambac Tracker instance:
+For a new uqmes instance:
 
 1. [ ] Configure organization settings
 2. [ ] Create user groups with permissions
@@ -260,7 +260,7 @@ Check:
 ### Escalation
 
 When you can't resolve:
-- Platform issues: Contact Ambac support
+- Platform issues: Contact uqmes support
 - Integration issues: Coordinate with IT
 - Compliance questions: Involve QA Manager
 

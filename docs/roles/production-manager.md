@@ -1,6 +1,15 @@
 # Production Manager Guide
 
-This guide is for Production Managers and Planners who manage orders, schedule work, and oversee production operations.
+This guide is for Production Managers and Planners who manage orders, schedule work, and oversee production operations in uqmes.
+
+!!! tip "Demo Account"
+    In demo mode, log in as **Jennifer Walsh** (jennifer.mgr@demo.ambac.com) to experience the Production Manager workflow. You'll see:
+
+    - 3 orders in different states: ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending)
+    - Work order WO-0042-A in progress with 67% completion
+    - CAPA-2024-003 that you own (nozzle defect investigation)
+    - Pending approval APR-2024-0015 (CAPA closure requiring your sign-off)
+    - Equipment alert: Torque Wrench TW-25 calibration overdue
 
 ## Your Role
 

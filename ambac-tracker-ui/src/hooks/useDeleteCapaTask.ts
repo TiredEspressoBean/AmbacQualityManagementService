@@ -7,7 +7,7 @@ export const useDeleteCapaTask = () => {
 
     return useMutation<void, unknown, number>({
         mutationFn: (id) =>
-            api.api_CapaTasks_destroy({ id }, {
+            api.api_CapaTasks_destroy({ params: { id } }, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

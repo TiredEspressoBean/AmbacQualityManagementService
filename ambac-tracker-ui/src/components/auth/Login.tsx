@@ -29,6 +29,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { api, schemas } from '@/lib/api/generated'
 import { getCookie } from '@/lib/utils'
 import { isFieldRequired } from '@/lib/zod-config'
+import { DEFAULT_BRANDING } from '@/lib/branding'
 
 // Make sure you've done this somewhere globally:
 api.axios.defaults.withCredentials = true
@@ -94,10 +95,10 @@ export default function LoginPreview() {
     return (
         <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
             <Card className="mx-auto max-w-sm">
-                <CardHeader>
-                    <CardTitle className="text-2xl">Login</CardTitle>
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">{DEFAULT_BRANDING.appName}</CardTitle>
                     <CardDescription>
-                        Enter your email and password to login to your account.
+                        {DEFAULT_BRANDING.tagline}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -151,7 +152,14 @@ export default function LoginPreview() {
                                 <Button type="submit" className="w-full">
                                     Login
                                 </Button>
-                                <Button variant="outline" className="w-full">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => {
+                                        window.location.href = '/accounts/microsoft/login/'
+                                    }}
+                                >
                                     Login with Microsoft
                                 </Button>
                             </div>

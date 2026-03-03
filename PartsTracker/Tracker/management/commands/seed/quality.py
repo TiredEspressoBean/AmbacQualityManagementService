@@ -3,12 +3,15 @@ Quality seed data: Quality reports, measurements, sampling, dispositions.
 """
 
 import random
+import statistics
 from datetime import timedelta
+from decimal import Decimal
 from django.utils import timezone
 
 from Tracker.models import (
     QualityReports, QualityErrorsList, QuarantineDisposition,
-    MeasurementResult, EquipmentUsage,
+    MeasurementResult, EquipmentUsage, MeasurementDefinition,
+    SPCBaseline, ChartType, BaselineStatus,
 )
 from .base import BaseSeeder
 
@@ -48,6 +51,10 @@ class QualitySeeder(BaseSeeder):
     def seed_historical_fpy(self, part_types, users, equipment):
         """Create realistic historical FPY data."""
         self._create_historical_fpy_trend(part_types, users, equipment)
+
+    def seed_spc_baselines(self, users):
+        """Create SPC baselines from existing measurement data."""
+        self._create_spc_baselines(users)
 
     # =========================================================================
     # Quality Reports
@@ -342,14 +349,24 @@ class QualitySeeder(BaseSeeder):
                 base_variance = float(min(measurement_def.upper_tol or 1, measurement_def.lower_tol or 1)) * improvement_factor
 
                 if status == "PASS":
-                    value = float(measurement_def.nominal) + random.gauss(0, base_variance * 0.3)
+                    base_value = float(measurement_def.nominal) + random.gauss(0, base_variance * 0.3)
                     is_within_spec = True
                 else:
                     # Out of spec
                     direction = random.choice([-1, 1])
                     offset = base_variance * random.uniform(1.1, 1.5) * direction
-                    value = float(measurement_def.nominal) + offset
+                    base_value = float(measurement_def.nominal) + offset
                     is_within_spec = False
+
+                # Apply Western Electric rule violations for SPC-enabled measurements
+                if measurement_def.spc_enabled and random.random() < 0.1:
+                    # 10% chance to apply WE rule patterns (simulated across multiple measurements)
+                    values = self._generate_western_electric_violations(
+                        measurement_def, [base_value], progress
+                    )
+                    value = values[0] if values else base_value
+                else:
+                    value = base_value
 
                 MeasurementResult.objects.create(
                     tenant=self.tenant,
@@ -358,3 +375,178 @@ class QualitySeeder(BaseSeeder):
                     value_numeric=round(value, 4),
                     is_within_spec=is_within_spec,
                 )
+
+    # =========================================================================
+    # SPC Baselines and Western Electric Rules
+    # =========================================================================
+
+    def _create_spc_baselines(self, users):
+        """Create SPC baselines from historical measurement data."""
+        baselines_created = 0
+
+        # Get all SPC-enabled numeric measurement definitions
+        spc_definitions = MeasurementDefinition.objects.filter(
+            tenant=self.tenant,
+            type='NUMERIC',
+            spc_enabled=True
+        )
+
+        for measurement_def in spc_definitions:
+            # Get last 30 days of measurements
+            thirty_days_ago = timezone.now() - timedelta(days=30)
+            results = MeasurementResult.objects.filter(
+                definition=measurement_def,
+                created_at__gte=thirty_days_ago,
+                value_numeric__isnull=False
+            ).order_by('created_at')
+
+            if results.count() < 25:  # Minimum for baseline
+                continue
+
+            values = [float(r.value_numeric) for r in results if r.value_numeric is not None]
+            if len(values) < 25:
+                continue
+
+            # Calculate statistics
+            mean = statistics.mean(values)
+            std_dev = statistics.stdev(values) if len(values) > 1 else 0
+
+            # Check if baseline already exists
+            existing = SPCBaseline.objects.filter(
+                tenant=self.tenant,
+                measurement_definition=measurement_def,
+                status=BaselineStatus.ACTIVE
+            ).first()
+
+            if existing:
+                continue
+
+            # Get a QA user for the frozen_by field
+            qa_user = self.get_weighted_qa_staff(users) if users else None
+
+            # Create I-MR baseline (individual measurements)
+            baseline = SPCBaseline.objects.create(
+                tenant=self.tenant,
+                measurement_definition=measurement_def,
+                chart_type=ChartType.I_MR,
+                subgroup_size=1,
+                # Individual chart limits
+                individual_ucl=Decimal(str(round(mean + 3 * std_dev, 6))),
+                individual_cl=Decimal(str(round(mean, 6))),
+                individual_lcl=Decimal(str(round(mean - 3 * std_dev, 6))),
+                # Moving range limits (using average MR)
+                mr_cl=Decimal(str(round(std_dev * 1.128, 6))),  # d2 factor for n=2
+                mr_ucl=Decimal(str(round(std_dev * 1.128 * 3.267, 6))),  # D4 factor
+                status=BaselineStatus.ACTIVE,
+                frozen_by=qa_user,
+                sample_count=len(values),
+                notes=f"Auto-generated baseline from {len(values)} measurements over 30 days"
+            )
+            baselines_created += 1
+
+        self.log(f"Created {baselines_created} SPC baselines from historical data")
+
+    def _generate_western_electric_violations(self, measurement_def, base_values, progress):
+        """
+        Generate measurement patterns that include Western Electric rule violations.
+
+        Western Electric Rules:
+        - Rule 1: Single point beyond 3σ (out-of-control)
+        - Rule 2: 2 of 3 consecutive points beyond 2σ (same side)
+        - Rule 3: 4 of 5 consecutive points beyond 1σ (same side)
+        - Rule 4: 8 consecutive points on same side of center (run)
+        - Rule 5: 6 consecutive points increasing or decreasing (trend)
+        - Rule 6: 14 consecutive points alternating up/down (cycling)
+        - Rule 7: 15 consecutive points within 1σ (stratification)
+
+        Args:
+            measurement_def: The MeasurementDefinition
+            base_values: List of values to potentially modify
+            progress: Progress through historical data (0-1) for drift simulation
+
+        Returns:
+            Modified list of values with violations injected
+        """
+        if not base_values or len(base_values) < 20:
+            return base_values
+
+        values = list(base_values)
+        nominal = float(measurement_def.nominal) if measurement_def.nominal else 0
+        tolerance = float(measurement_def.upper_tol or 1)
+        sigma = tolerance / 3  # Approximate sigma from tolerance
+
+        # Randomly inject violations based on progress
+        # More violations early in history, process stabilizes over time
+
+        violation_probability = 0.15 * (1 - progress * 0.7)  # 15% down to 4.5%
+
+        if random.random() < violation_probability:
+            violation_type = random.choice([1, 2, 3, 4, 5, 6, 7])
+            start_idx = random.randint(0, max(0, len(values) - 20))
+
+            if violation_type == 1:
+                # Rule 1: Single point beyond 3σ
+                idx = start_idx
+                direction = random.choice([-1, 1])
+                values[idx] = nominal + direction * sigma * 3.5
+
+            elif violation_type == 2:
+                # Rule 2: 2 of 3 consecutive points beyond 2σ
+                direction = random.choice([-1, 1])
+                indices = [start_idx, start_idx + 2] if start_idx + 2 < len(values) else [start_idx]
+                for idx in indices:
+                    if idx < len(values):
+                        values[idx] = nominal + direction * sigma * random.uniform(2.1, 2.8)
+
+            elif violation_type == 3:
+                # Rule 3: 4 of 5 consecutive points beyond 1σ
+                direction = random.choice([-1, 1])
+                indices = [start_idx + i for i in [0, 1, 2, 4] if start_idx + i < len(values)]
+                for idx in indices:
+                    values[idx] = nominal + direction * sigma * random.uniform(1.2, 1.8)
+
+            elif violation_type == 4:
+                # Rule 4: 8 consecutive points on same side of center
+                direction = random.choice([-1, 1])
+                for i in range(8):
+                    idx = start_idx + i
+                    if idx < len(values):
+                        values[idx] = nominal + direction * sigma * random.uniform(0.1, 0.8)
+
+            elif violation_type == 5:
+                # Rule 5: 6 consecutive points increasing or decreasing
+                direction = random.choice([-1, 1])
+                for i in range(6):
+                    idx = start_idx + i
+                    if idx < len(values):
+                        values[idx] = nominal + direction * sigma * (0.2 + 0.2 * i)
+
+            elif violation_type == 6:
+                # Rule 6: 14 consecutive points alternating up/down
+                for i in range(min(14, len(values) - start_idx)):
+                    idx = start_idx + i
+                    direction = 1 if i % 2 == 0 else -1
+                    values[idx] = nominal + direction * sigma * random.uniform(0.5, 1.0)
+
+            elif violation_type == 7:
+                # Rule 7: 15 consecutive points within 1σ (stratification)
+                for i in range(min(15, len(values) - start_idx)):
+                    idx = start_idx + i
+                    values[idx] = nominal + sigma * random.uniform(-0.3, 0.3)
+
+        # Add process drift simulation
+        # Mean shifts 0.5σ gradually around day 40-60, then corrects
+        drift_start = 0.33  # 33% through history
+        drift_end = 0.50  # 50% through history
+        correction_end = 0.60  # 60% through history
+
+        if drift_start <= progress < drift_end:
+            drift_progress = (progress - drift_start) / (drift_end - drift_start)
+            drift_amount = 0.5 * sigma * drift_progress
+            values = [v + drift_amount for v in values]
+        elif drift_end <= progress < correction_end:
+            correction_progress = (progress - drift_end) / (correction_end - drift_end)
+            drift_amount = 0.5 * sigma * (1 - correction_progress)
+            values = [v + drift_amount for v in values]
+
+        return values

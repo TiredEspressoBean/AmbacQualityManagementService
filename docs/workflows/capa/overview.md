@@ -22,9 +22,12 @@ Create a CAPA for:
 | **Near misses** | Potential safety issues |
 | **Trend analysis** | Data shows concerning patterns |
 
+!!! example "Real Example: CAPA-2024-003"
+    When 5 of 12 injectors (42%) from order ORD-2024-0038 required rework due to nozzle defects, this triggered a CAPA investigation. The 5-Whys analysis traced the root cause to a supplier batch issue with nozzle tips. Corrective actions included updating incoming inspection procedures and tightening sampling rules.
+
 ## CAPA Process (8D Methodology)
 
-Ambac Tracker follows the 8D problem-solving methodology:
+uqmes follows the 8D problem-solving methodology:
 
 ```
 D1: Team         D2: Problem      D3: Containment

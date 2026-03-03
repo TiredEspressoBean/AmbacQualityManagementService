@@ -43,7 +43,7 @@ Your work directly impacts product quality and customer satisfaction.
 
 **Exercise 1.1:** Navigate QA Pages
 
-1. Log into the training environment
+1. Log into the training environment (uqmes)
 2. Visit each page listed above
 3. Note what information is displayed on each
 
@@ -442,8 +442,8 @@ By the end of this module, you will:
 - [ ] Read control charts
 - [ ] Identify trends requiring action
 
-!!! note "SPC Feature Status"
-    The SPC page provides visualization of measurement data and basic control charts. Advanced features like automated Cpk calculations and rule-based alerts are planned for future releases.
+!!! tip "Complete SPC Fundamentals Training"
+    This module provides an overview. For comprehensive SPC training including hands-on exercises, complete the [SPC Fundamentals](spc-fundamentals.md) module (1-2 hours).
 
 ### 6.1 What is SPC?
 
@@ -451,9 +451,12 @@ By the end of this module, you will:
 
 **Key concepts:**
 
-- **Control limits:** Expected process variation
-- **Specification limits:** What's acceptable
-- **Cp/Cpk:** Process capability indices
+- **Control limits:** Calculated from process data (what the process IS doing)
+- **Specification limits:** From engineering (what the process SHOULD do)
+- **Cpk:** Process capability index (target ≥ 1.33)
+
+!!! example "Demo: Flow Rate SPC"
+    In demo mode, navigate to **Analytics > SPC** and select Flow Testing > Flow Rate. Notice the control chart shows a Rule 2 violation (red points) that triggered an alert for your inbox.
 
 ---
 
@@ -461,33 +464,38 @@ By the end of this module, you will:
 
 **Chart elements:**
 
-- **UCL:** Upper control limit
-- **LCL:** Lower control limit
+- **UCL:** Upper control limit (3σ above center)
+- **LCL:** Lower control limit (3σ below center)
 - **Center line:** Process average
-- **Data points:** Individual measurements
+- **Data points:** Individual measurements or subgroup averages
 
-**What to look for:**
+**Out-of-control signals:**
 
-| Signal | Meaning |
-|--------|---------|
-| Point outside limits | Out of control |
-| 7 points trending | Process shift |
-| 7 points one side | Process shift |
-| Erratic pattern | Unstable process |
+| Signal | Pattern | Action |
+|--------|---------|--------|
+| Point outside limits | Single red point beyond UCL/LCL | Investigate immediately |
+| Run | 8+ points same side of center | Process has shifted |
+| Trend | 6+ points going up or down | Process is drifting |
+| 2 of 3 beyond 2σ | Two points near limits | Warning of instability |
 
 ---
 
-### 6.3 When to Escalate
+### 6.3 Inspector's Role in SPC
 
-**Alert QA Manager when:**
+**Your responsibilities:**
 
-- Control chart shows out-of-control signals
-- Measurements show concerning trends
-- Trend indicates deterioration
-- Process needs adjustment
+1. **Review SPC charts** when recording measurements
+2. **Document out-of-control signals** on quality reports
+3. **Alert QA Manager** of concerning patterns
+4. **Note potential causes** (material lot, equipment, operator changes)
 
-!!! tip "Manual Review"
-    Currently, SPC escalation requires manual review of charts. Monitor trends visually and communicate concerns to QA Manager directly.
+**You are NOT expected to:**
+- Diagnose root cause alone
+- Adjust process parameters
+- Update SPC baselines
+
+!!! warning "Red Points = Action Required"
+    When you see red-highlighted points on an SPC chart, this is a statistical signal requiring investigation. Include this in your inspection findings.
 
 ---
 
@@ -511,7 +519,7 @@ By the end of this module, you will:
 
 ### 7.1 Start of Shift
 
-1. **Log in** to Ambac Tracker
+1. **Log in** to uqmes
 2. **Check Inbox** for notifications
 3. **Review QA Work Orders** queue
 4. **Verify equipment** calibration status

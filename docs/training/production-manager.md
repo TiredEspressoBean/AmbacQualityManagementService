@@ -333,6 +333,25 @@ Navigate to **Analytics** for detailed views.
 
 ---
 
+### 4.5 SPC Overview
+
+!!! tip "Complete SPC Fundamentals Training"
+    For detailed SPC training, complete the [SPC Fundamentals](spc-fundamentals.md) module (1-2 hours).
+
+**As Production Manager, know:**
+
+| Metric | Target | Action if Below |
+|--------|--------|-----------------|
+| Cpk | ≥ 1.33 | Process improvement needed |
+| Out-of-control signals | 0 | Investigate with QA |
+
+Navigate to **Analytics > SPC** to see process capability across measurements.
+
+!!! example "Demo: SPC Impact"
+    In demo mode, CAPA-2024-003 was triggered partly by SPC data showing nozzle measurement drift. This demonstrates how SPC data drives corrective action decisions.
+
+---
+
 ### Knowledge Check: Module 4
 
 1. What does a red progress bar indicate?

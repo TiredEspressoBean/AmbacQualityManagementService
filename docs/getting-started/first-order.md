@@ -1,12 +1,12 @@
 # Your First Order
 
-This tutorial walks you through creating an order, adding parts, and tracking progress through production. By the end, you'll understand the core workflow of Ambac Tracker.
+This tutorial walks you through creating an order, adding parts, and tracking progress through production. By the end, you'll understand the core workflow of uqmes.
 
 ## Prerequisites
 
 Before starting, ensure you have:
 
-- [x] Logged into Ambac Tracker
+- [x] Logged into uqmes
 - [x] Permission to create orders (ask your admin if unsure)
 - [x] At least one Part Type configured in the system
 - [x] At least one Process configured for that Part Type
@@ -19,10 +19,10 @@ Before starting, ensure you have:
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| **Order Number** | Unique identifier (PO number, SO number) | `PO-2026-001` |
-| **Customer** | The company this order is for | `Acme Manufacturing` |
+| **Order Number** | Unique identifier (PO number, SO number) | `ORD-2024-0048` |
+| **Customer** | The company this order is for | `Northern Trucking Co` |
 | **Due Date** | When the order should be complete | `2026-03-15` |
-| **Notes** | Optional comments | `Rush order - expedite` |
+| **Notes** | Optional comments | `Common Rail Injector rebuild - 8 units` |
 
 4. Click **Save**
 
@@ -40,14 +40,14 @@ Parts are the individual items being tracked. You can add them manually or in bu
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| **Part Type** | What kind of part | `Widget Assembly` |
-| **Quantity** | How many to create | `10` |
-| **Lot Number** | Optional grouping | `LOT-2026-A` |
-| **Serial Prefix** | Auto-generates serial numbers | `WA-` |
+| **Part Type** | What kind of part | `Common Rail Injector` |
+| **Quantity** | How many to create | `8` |
+| **Lot Number** | Optional grouping | `LOT-2024-NTC` |
+| **Serial Prefix** | Auto-generates serial numbers | `INJ-0048-` |
 
 4. Click **Add**
 
-The system creates individual part records (e.g., `WA-001`, `WA-002`, etc.).
+The system creates individual part records (e.g., `INJ-0048-001`, `INJ-0048-002`, etc.).
 
 ### Bulk Import
 
@@ -65,8 +65,8 @@ A Work Order connects your order to a manufacturing process:
 1. Navigate to **Production** > **Work Orders**
 2. Click **+ New Work Order**
 3. Select:
-   - **Order**: Your order (`PO-2026-001`)
-   - **Process**: The manufacturing workflow (`Widget Production Process`)
+   - **Order**: Your order (`ORD-2024-0048`)
+   - **Process**: The manufacturing workflow (`Common Rail Injector Remanufacturing`)
    - **Priority**: Normal, High, or Rush
 4. Click **Save**
 

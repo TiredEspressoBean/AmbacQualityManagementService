@@ -223,7 +223,7 @@ export default function AnalysisPage() {
     const days = rangeToDays(dateRange);
 
     // API Hooks
-    const { data: kpisData, isLoading: _isLoadingKpis } = useDashboardKpis();
+    const { data: kpisData } = useDashboardKpis();
     const { data: fpyTrendData, isLoading: isLoadingFpy } = useFpyTrend({ days });
     const { data: attentionData } = useNeedsAttention();
     const { data: qualityRates } = useQualityRates({ days });

@@ -10,7 +10,7 @@ export const useUpdateCapaVerification = () => {
 
     return useMutation<UpdateCapaVerificationResponse, unknown, { id: string; data: UpdateCapaVerificationInput }>({
         mutationFn: ({ id, data }) =>
-            api.api_CapaVerifications_partial_update({ id }, data, {
+            api.api_CapaVerifications_partial_update({ params: { id } }, data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

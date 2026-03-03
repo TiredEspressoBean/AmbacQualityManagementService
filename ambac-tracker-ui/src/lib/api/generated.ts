@@ -3561,7 +3561,9 @@ export type Parts = {
   ERP_id: string;
   part_status?: PartsStatusEnum | undefined;
   requires_sampling: boolean;
-  order?: string | undefined;
+  needs_qa: boolean;
+  qa_completed: boolean;
+  order?: (string | null) | undefined;
   part_type: string;
   part_type_info: {};
   step: string;
@@ -5697,7 +5699,7 @@ export type PartsRequest = {
    */
   ERP_id: string;
   part_status?: PartsStatusEnum | undefined;
-  order?: string | undefined;
+  order?: (string | null) | undefined;
   part_type: string;
   step: string;
   work_order?: (string | null) | undefined;
@@ -6241,7 +6243,7 @@ export type PatchedPartsRequest = Partial<{
    */
   ERP_id: string;
   part_status: PartsStatusEnum;
-  order: string;
+  order: string | null;
   part_type: string;
   step: string;
   work_order: string | null;
@@ -10775,7 +10777,9 @@ const Parts = z
     ERP_id: z.string().max(50),
     part_status: PartsStatusEnum.optional(),
     requires_sampling: z.boolean(),
-    order: z.string().uuid().optional(),
+    needs_qa: z.boolean(),
+    qa_completed: z.boolean(),
+    order: z.string().uuid().nullish(),
     part_type: z.string().uuid(),
     part_type_info: z.object({}).partial().passthrough().nullable(),
     step: z.string().uuid(),
@@ -10811,7 +10815,7 @@ const PartsRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
     part_status: PartsStatusEnum.optional(),
-    order: z.string().uuid().optional(),
+    order: z.string().uuid().nullish(),
     part_type: z.string().uuid(),
     step: z.string().uuid(),
     work_order: z.string().uuid().nullish(),
@@ -10825,7 +10829,7 @@ const PatchedPartsRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
     part_status: PartsStatusEnum,
-    order: z.string().uuid(),
+    order: z.string().uuid().nullable(),
     part_type: z.string().uuid(),
     step: z.string().uuid(),
     work_order: z.string().uuid().nullable(),
@@ -22613,6 +22617,11 @@ Import/Export endpoints (auto-configured from model):
         schema: z.number().int().optional(),
       },
       {
+        name: "needs_qa",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "offset",
         type: "Query",
         schema: z.number().int().optional(),
@@ -23063,6 +23072,11 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "needs_qa",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "offset",

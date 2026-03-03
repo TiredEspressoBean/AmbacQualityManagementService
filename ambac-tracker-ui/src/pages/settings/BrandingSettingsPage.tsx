@@ -10,10 +10,10 @@ import { useTenantSettings } from "@/hooks/useTenantSettings";
 import { generateBrandPalette } from "@/lib/color-utils";
 import { useUpdateTenantSettings } from "@/hooks/useUpdateTenantSettings";
 import { useUploadTenantLogo, useDeleteTenantLogo } from "@/hooks/useUploadTenantLogo";
+import { DEFAULT_BRANDING } from "@/lib/branding";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -451,7 +451,7 @@ export function BrandingSettingsPage() {
                                         {settings?.name?.charAt(0)?.toUpperCase() || "A"}
                                     </div>
                                 )}
-                                <span className="font-semibold">{settings?.name || "Your Organization"}</span>
+                                <span className="font-semibold">{settings?.name || DEFAULT_BRANDING.appName}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <button
@@ -519,7 +519,7 @@ export function BrandingSettingsPage() {
                                         {settings?.name?.charAt(0)?.toUpperCase() || "A"}
                                     </div>
                                 )}
-                                <span className="font-semibold">{settings?.name || "Your Organization"}</span>
+                                <span className="font-semibold">{settings?.name || DEFAULT_BRANDING.appName}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 <button

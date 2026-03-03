@@ -1,0 +1,64 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Approval {{ status|title }}{% endblock %}
+
+{% block badge_bg %}{% if status == 'APPROVED' %}#dcfce7{% elif status == 'REJECTED' %}#fee2e2{% else %}#fef3c7{% endif %}{% endblock %}
+{% block badge_color %}{% if status == 'APPROVED' %}#166534{% elif status == 'REJECTED' %}#991b1b{% else %}#92400e{% endif %}{% endblock %}
+{% block badge_text %}{{ status }}{% endblock %}
+
+{% block header_title %}Approval {{ status|title }}{% endblock %}
+
+{% block intro_text %}
+<p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #3f3f46;">
+    Your approval request has been processed:
+</p>
+{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+    <tr>
+        <td style="padding: 16px; background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td>
+                        <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #18181b;">
+                            {{ content_title }}
+                        </p>
+                        <p style="margin: 0; font-size: 13px; color: #71717a;">
+                            {{ content_type }}
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td style="padding-right: 24px;">
+                                    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Status</p>
+                                    <p style="margin: 0; font-size: 14px; font-weight: 500; color: {% if status == 'APPROVED' %}#166534{% elif status == 'REJECTED' %}#991b1b{% else %}#92400e{% endif %};">{{ status }}</p>
+                                </td>
+                                <td>
+                                    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Completed</p>
+                                    <p style="margin: 0; font-size: 14px; color: #3f3f46;">{{ completed_at|date:"M d, Y"|default:"N/A" }}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                {% if comments %}
+                <tr>
+                    <td style="padding-top: 12px;">
+                        <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Comments</p>
+                        <p style="margin: 0; font-size: 14px; color: #3f3f46;">{{ comments }}</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </table>
+        </td>
+    </tr>
+</table>
+{% endblock %}
+
+{% block action_button %}
+{% include "emails/includes/button.html" with url=frontend_url|add:"/inbox" text="View Details" %}
+{% endblock %}

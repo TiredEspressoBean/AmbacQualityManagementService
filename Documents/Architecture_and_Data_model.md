@@ -14,7 +14,7 @@
   QMS with audit trails and compliance.
 * **Primary users / actors:** QA Inspectors, Operators, Managers, Customers, AI Assistant (LangGraph).
 * **Non-goals:** External LLMs, mobile app — deferred until compliance and security maturity achieved.
-* **Multi-tenancy:** In progress — see [MULTI_TENANCY_ROADMAP.md](./MULTI_TENANCY_ROADMAP.md) and [PERMISSION_SYSTEM_REFACTOR.md](./PERMISSION_SYSTEM_REFACTOR.md).
+* **Multi-tenancy:** Complete — Tenant model with tier-based feature gating, TenantGroup RBAC. See [MULTI_TENANCY_ROADMAP.md](./MULTI_TENANCY_ROADMAP.md) and [PERMISSION_SYSTEM_REFACTOR.md](./PERMISSION_SYSTEM_REFACTOR.md).
 
 ---
 
@@ -369,6 +369,10 @@ erDiagram
     Parts ||--o{ SamplingAuditLog: "part"
     SamplingRuleSet ||--o{ SamplingAnalytics: "tracks_effectiveness"
     WorkOrders ||--o{ SamplingAnalytics: "work_order"
+    SamplingRuleSet ||--o{ SamplingTriggerState: "fallback_tracking"
+    WorkOrders ||--o{ SamplingTriggerState: "work_order"
+    Steps ||--o{ SamplingTriggerState: "step"
+    QualityReports ||--o{ SamplingTriggerState: "triggered_by"
     Users ||--o{ SamplingRuleSet: "created_by"
     Users ||--o{ SamplingRuleSet: "modified_by"
     Users ||--o{ SamplingRule: "created_by"
@@ -411,6 +415,17 @@ erDiagram
         float actual_sampling_rate
         int ruleset_id FK
         int work_order_id FK
+    }
+
+    SamplingTriggerState {
+        boolean active
+        datetime triggered_at
+        int success_count
+        int fail_count
+        int ruleset_id FK
+        int work_order_id FK
+        int step_id FK
+        int triggered_by_id FK
     }
 
     SPCBaseline {
@@ -614,13 +629,16 @@ erDiagram
         text problem_statement
         text immediate_action
         date due_date
+        date initiated_date
+        date completed_date
         boolean approval_required
         string approval_status
         int part_id FK
         int step_id FK
         int work_order_id FK
         int assigned_to_id FK
-        int created_by_id FK
+        int initiated_by_id FK
+        int verified_by_id FK
     }
 
     CapaTasks {
@@ -657,9 +675,17 @@ erDiagram
     }
 
     FiveWhys {
-        int sequence
-        text why_question
-        text answer
+        text why_1_question
+        text why_1_answer
+        text why_2_question
+        text why_2_answer
+        text why_3_question
+        text why_3_answer
+        text why_4_question
+        text why_4_answer
+        text why_5_question
+        text why_5_answer
+        text identified_root_cause
         int rca_record_id FK
     }
 
@@ -756,6 +782,72 @@ erDiagram
 > - **Delegation**: Approvers can delegate to another user
 > - **Auto-triggering**: Critical/Major CAPAs auto-create approval requests via signals
 
+### 4.12 Remanufacturing (Reman)
+
+Core-to-component traceability for remanufacturing operations. Tracks incoming used units (cores), their disassembly into components, and the allocation of those components into finished products.
+
+```mermaid
+erDiagram
+    Orders ||--o{ Core: "received_with"
+    PartTypes ||--o{ Core: "core_type"
+    Users ||--o{ Core: "received_by"
+    Core ||--o{ HarvestedComponent: "harvested_from"
+    PartTypes ||--o{ HarvestedComponent: "component_type"
+    Users ||--o{ HarvestedComponent: "graded_by"
+    HarvestedComponent ||--o| Parts: "component_part"
+    PartTypes ||--o{ DisassemblyBOM: "core_type"
+    DisassemblyBOM ||--o{ DisassemblyBOMLine: "lines"
+    PartTypes ||--o{ DisassemblyBOMLine: "component_type"
+
+    Core {
+        string core_number "CORE-0042-001"
+        string status "RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, SCRAPPED"
+        string condition_grade "A, B, C, SCRAP"
+        string source_type "customer_return, purchased, warranty, trade_in"
+        string original_serial_number
+        text receiving_notes
+        datetime received_at
+        int order_id FK
+        int core_type_id FK
+        int received_by_id FK
+    }
+
+    HarvestedComponent {
+        string erp_id "HC-0042-001-NOZ"
+        string condition_grade "A, B, C, SCRAP"
+        string disposition "pending, accepted, scrapped"
+        text grading_notes
+        datetime harvested_at
+        datetime graded_at
+        int core_id FK
+        int component_type_id FK
+        int graded_by_id FK
+        int component_part_id FK "OneToOne link to Parts when accepted"
+    }
+
+    DisassemblyBOM {
+        string name
+        boolean is_active
+        int core_type_id FK
+    }
+
+    DisassemblyBOMLine {
+        int expected_quantity
+        decimal fallout_rate "Expected scrap percentage"
+        int bom_id FK
+        int component_type_id FK
+    }
+```
+
+> **Reman Workflow:**
+> 1. **Core Receiving**: Incoming used unit logged with condition grade and source
+> 2. **Disassembly**: Core broken down into harvested components
+> 3. **Component Grading**: Each component graded (A/B/C/Scrap)
+> 4. **Inventory Acceptance**: Usable components linked to Parts model via `accept_to_inventory()`
+> 5. **Assembly Usage**: Parts from harvested components allocated to finished products via `AssemblyUsage`
+>
+> **Traceability Chain**: Finished Product → AssemblyUsage → Parts → HarvestedComponent → Core → Original Order
+
 ### Entity Summary
 
 #### Core Manufacturing Entities
@@ -829,11 +921,12 @@ erDiagram
 
 | Entity                | Description                   | Key Relationships                                | Notes                                                              |
 |-----------------------|-------------------------------|--------------------------------------------------|--------------------------------------------------------------------|
-| **SamplingRuleSet**   | Sampling strategy definitions | PartTypes, Processes, Steps, SamplingRule, Users | Defines when to inspect, tracks creator/modifier                   |
-| **SamplingRule**      | Individual sampling rules     | SamplingRuleSet, Parts, SamplingAuditLog, Users  | First article, periodic, statistical rules                         |
-| **SamplingAuditLog**  | Per-part sampling decisions   | Parts, SamplingRule                              | Records whether each part triggered sampling (PRIMARY or FALLBACK) |
-| **SamplingAnalytics** | Aggregate sampling metrics    | SamplingRuleSet, WorkOrders                      | Tracks sampling rates and defect rates per work order              |
-| **SPCBaseline**       | Frozen SPC control limits     | MeasurementDefinition, Users                     | Persists control limits with full audit trail (who, when, why)     |
+| **SamplingRuleSet**     | Sampling strategy definitions   | PartTypes, Processes, Steps, SamplingRule, Users | Defines when to inspect, tracks creator/modifier                   |
+| **SamplingRule**        | Individual sampling rules       | SamplingRuleSet, Parts, SamplingAuditLog, Users  | First article, periodic, statistical rules                         |
+| **SamplingAuditLog**    | Per-part sampling decisions     | Parts, SamplingRule                              | Records whether each part triggered sampling (PRIMARY or FALLBACK) |
+| **SamplingTriggerState**| Active fallback sampling state  | SamplingRuleSet, WorkOrders, Steps, QualityReports | Tracks when tightened sampling is active and progress to de-escalation |
+| **SamplingAnalytics**   | Aggregate sampling metrics      | SamplingRuleSet, WorkOrders                      | Tracks sampling rates and defect rates per work order              |
+| **SPCBaseline**         | Frozen SPC control limits       | MeasurementDefinition, Users                     | Persists control limits with full audit trail (who, when, why)     |
 
 #### Document & Knowledge Management
 
@@ -856,6 +949,15 @@ erDiagram
 |-----------------------|--------------------------|---------------------|----------------------------------|
 | **StepTransitionLog** | Part movement history    | Steps, Parts, Users | Audit trail for part progression |
 | **NotificationTask**  | Async notification queue | Users               | Email/alert delivery tracking    |
+
+#### Remanufacturing
+
+| Entity                  | Description                        | Key Relationships                           | Notes                                            |
+|-------------------------|------------------------------------|---------------------------------------------|--------------------------------------------------|
+| **Core**                | Incoming used unit for disassembly | Orders, PartTypes, HarvestedComponent       | Tracks condition grade, source type              |
+| **HarvestedComponent**  | Component extracted from core      | Core, PartTypes, Parts (OneToOne)           | Links to Parts when accepted to inventory        |
+| **DisassemblyBOM**      | Expected yield from core type      | PartTypes, DisassemblyBOMLine               | Defines what components a core should yield      |
+| **DisassemblyBOMLine**  | Individual component expectation   | DisassemblyBOM, PartTypes                   | Includes fallout_rate for expected scrap         |
 
 #### Integration
 
@@ -1132,3 +1234,4 @@ The system runs as four separate Azure App Services sharing infrastructure:
 | 2026-01-05 | Claude Code  | Added Section 4.10 (CAPA) and Section 4.11 (Approval Workflow): Full ERDs for CAPA system (CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification) and Approval workflow (ApprovalTemplate, ApprovalRequest, ApprovalResponse). Added entity summary tables for both. Removed CAPA from Planned Features (now complete).                                                                         |
 | 2026-02-06 | Claude Code  | Updated Section 1 TL;DR: Multi-tenancy no longer a non-goal (in progress). Updated Section 8 RBAC: Expanded from 7 to 10 role-based groups with permission counts, documented two-layer permission system (role_type for data filtering + permissions M2M for action control). Added links to MULTI_TENANCY_ROADMAP.md and PERMISSION_SYSTEM_REFACTOR.md.                                                                                |
 | 2026-02-20 | Claude Code  | Added Section 4.3.1 (Step Workflow Control): ERD and documentation for FPIRecord, StepOverride, StepExecutionMeasurement, StepRollback, StepRequirement models. Added Step Workflow Control section to Entity Summary table. These models support FPI tracking, override workflows, 100% measurement capture, and controlled rollback.                                                                                                   |
+| 2026-03-02 | Claude Code  | **Multi-tenancy complete**: Updated TL;DR to reflect Tenant model is fully implemented. **Added Section 4.12 (Remanufacturing)**: ERD for Core, HarvestedComponent, DisassemblyBOM, DisassemblyBOMLine models with traceability workflow documentation. **Added SamplingTriggerState** to Section 4.5 (Sampling): Tracks active fallback sampling state per work order/step. **Fixed FiveWhys ERD**: Changed from sequence-based model to actual flat field structure (why_1_question, why_1_answer, etc.). **Fixed CAPA ERD**: Changed `created_by` to correct `initiated_by`, added missing fields (initiated_date, completed_date, verified_by). Updated Entity Summary tables with Reman and SamplingTriggerState entries. |

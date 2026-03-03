@@ -20,6 +20,9 @@ Create annotations when:
 - Flagging an issue on a part
 - Building quality history
 
+!!! example "Diesel Injector Annotation"
+    When inspecting a Common Rail Injector, an inspector clicks on the nozzle tip area of the 3D model to mark erosion damage. This annotation links to quality report QR-2024-0187, contributing to the heat map that later revealed a systemic nozzle tip issue.
+
 ## Creating an Annotation
 
 ### Method 1: From Part Annotator

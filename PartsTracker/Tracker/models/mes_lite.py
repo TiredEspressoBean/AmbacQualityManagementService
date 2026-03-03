@@ -2922,6 +2922,32 @@ class Parts(SecureModel):
         wo.true_completion = timezone.now().date()
         wo.save(update_fields=['workorder_status', 'true_completion'])
 
+    @property
+    def needs_qa(self):
+        """
+        Returns True if this part requires QA inspection but hasn't passed yet.
+
+        A part needs QA if:
+        1. It requires sampling (was selected for QA)
+        2. It has NOT received a PASS quality report
+
+        This is the single source of truth for QA status - used by filters,
+        serializers, and templates.
+        """
+        if not self.requires_sampling:
+            return False
+        return not self.error_reports.filter(status='PASS').exists()
+
+    @property
+    def qa_completed(self):
+        """
+        Returns True if this part has completed QA (has a PASS report).
+        Inverse of needs_qa for parts that require sampling.
+        """
+        if not self.requires_sampling:
+            return False  # Doesn't require QA, so not "completed"
+        return self.error_reports.filter(status='PASS').exists()
+
     def has_quality_errors(self):
         """Check if part has any quality errors"""
         return self.error_reports.filter(status='FAIL').exists()

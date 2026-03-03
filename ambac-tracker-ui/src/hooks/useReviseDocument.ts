@@ -23,10 +23,10 @@ export function useReviseDocument() {
             }
 
             // Use the generated API client's revise endpoint
-            return api.api_Documents_revise_create({
-                id,
-                data: formData as any,
-            });
+            return api.api_Documents_revise_create(
+                { params: { id } },
+                formData as any,
+            );
         },
         onSuccess: (_data, variables) => {
             // Invalidate document queries

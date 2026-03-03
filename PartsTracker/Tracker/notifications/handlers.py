@@ -13,9 +13,16 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
-from django.db.models import Avg, Max
+from django.db.models import Avg
 
 logger = logging.getLogger(__name__)
+
+
+def get_frontend_url() -> str:
+    """Get the frontend URL for links in notifications."""
+    if settings.DEBUG:
+        return "http://localhost:5173"
+    return getattr(settings, 'FRONTEND_URL', 'https://govtracker.ambac.local')
 
 
 # ============================================================================
@@ -24,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 def build_weekly_report_context(task) -> Optional[Dict[str, Any]]:
     """Build context for weekly order report notifications."""
-    from Tracker.models import Orders, OrdersStatus, Steps
+    from Tracker.models import Orders, OrdersStatus
 
     customer = task.recipient
 
@@ -94,11 +101,13 @@ def build_weekly_report_context(task) -> Optional[Dict[str, Any]]:
         })
 
     return {
+        'recipient': task.recipient,
         'customer': customer,
         'customer_name': customer.get_full_name() or customer.email,
         'orders': order_summaries,
         'week_ending': timezone.now().date(),
         'total_orders': len(order_summaries),
+        'frontend_url': get_frontend_url(),
     }
 
 
@@ -108,16 +117,107 @@ def build_capa_context(task) -> Optional[Dict[str, Any]]:
     if not capa:
         return None
 
-    days_until = (capa.due_date - timezone.now()).days
+    # Handle None due_date
+    if not capa.due_date:
+        days_until = 0
+        is_overdue = False
+    else:
+        # Handle both date and datetime
+        due = capa.due_date
+        if hasattr(due, 'date'):
+            due = due.date()
+        days_until = (due - timezone.now().date()).days
+        is_overdue = days_until < 0
+
+    # Get CAPA number - could be capa_number or disposition_number depending on model
+    capa_number = getattr(capa, 'capa_number', None) or getattr(capa, 'disposition_number', str(capa))
+
+    # Get status - CAPA uses status field
+    status = getattr(capa, 'status', None) or getattr(capa, 'current_state', 'Unknown')
+    # Convert to display name if it's a choice field
+    if hasattr(capa, 'get_status_display'):
+        status = capa.get_status_display()
 
     return {
-        'disposition_number': capa.disposition_number,
+        'recipient': task.recipient,
+        'disposition_number': capa_number,  # Template uses this name
         'due_date': capa.due_date,
         'days_until_due': days_until,
-        'is_overdue': days_until < 0,
-        'current_state': capa.current_state,
+        'is_overdue': is_overdue,
+        'current_state': status,
         'attempt_count': task.attempt_count,
         'capa_id': capa.id,
+        'frontend_url': get_frontend_url(),
+    }
+
+
+def build_approval_request_context(task) -> Optional[Dict[str, Any]]:
+    """Build context for approval request notifications."""
+    approval_request = task.related_object
+    if not approval_request:
+        return None
+
+    content_type = approval_request.content_type.model if approval_request.content_type else 'Item'
+    content_obj = approval_request.content_object
+    content_title = str(content_obj) if content_obj else f"#{approval_request.object_id}"
+
+    return {
+        'recipient': task.recipient,
+        'content_type': content_type.title(),
+        'content_title': content_title,
+        'requested_by': approval_request.requested_by.get_full_name() or approval_request.requested_by.username,
+        'due_date': approval_request.due_date,
+        'approval_id': approval_request.id,
+        'frontend_url': get_frontend_url(),
+    }
+
+
+def build_approval_decision_context(task) -> Optional[Dict[str, Any]]:
+    """Build context for approval decision notifications."""
+    approval_request = task.related_object
+    if not approval_request:
+        return None
+
+    content_type = approval_request.content_type.model if approval_request.content_type else 'Item'
+    content_obj = approval_request.content_object
+    content_title = str(content_obj) if content_obj else f"#{approval_request.object_id}"
+
+    return {
+        'recipient': task.recipient,
+        'content_type': content_type.title(),
+        'content_title': content_title,
+        'status': approval_request.status,
+        'completed_at': approval_request.completed_at,
+        'comments': getattr(approval_request, 'comments', None),
+        'approval_id': approval_request.id,
+        'frontend_url': get_frontend_url(),
+    }
+
+
+def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
+    """Build context for approval escalation notifications."""
+    approval_request = task.related_object
+    if not approval_request:
+        return None
+
+    content_type = approval_request.content_type.model if approval_request.content_type else 'Item'
+    content_obj = approval_request.content_object
+    content_title = str(content_obj) if content_obj else f"#{approval_request.object_id}"
+
+    days_overdue = 0
+    if approval_request.due_date:
+        delta = timezone.now().date() - approval_request.due_date
+        days_overdue = max(0, delta.days)
+
+    return {
+        'recipient': task.recipient,
+        'content_type': content_type.title(),
+        'content_title': content_title,
+        'requested_by': approval_request.requested_by.get_full_name() or approval_request.requested_by.username,
+        'due_date': approval_request.due_date,
+        'days_overdue': days_overdue,
+        'approval_id': approval_request.id,
+        'frontend_url': get_frontend_url(),
     }
 
 
@@ -127,12 +227,10 @@ def build_capa_context(task) -> Optional[Dict[str, Any]]:
 
 def validate_weekly_report_send(task) -> bool:
     """Check if weekly report should send."""
-    # Check if user is active
     if not task.recipient.is_active:
         task.status = 'cancelled'
         task.save()
         return False
-
     return True
 
 
@@ -141,13 +239,56 @@ def validate_capa_send(task) -> bool:
     capa = task.related_object
 
     if not capa:
-        # Related object deleted
         task.status = 'cancelled'
         task.save()
         return False
 
-    if capa.current_state == 'CLOSED':
-        # CAPA was closed
+    # Check status field (CAPA model uses 'status', others might use 'current_state')
+    status = getattr(capa, 'status', None) or getattr(capa, 'current_state', None)
+    if status in ('CLOSED', 'CANCELLED'):
+        task.status = 'cancelled'
+        task.save()
+        return False
+
+    return True
+
+
+def validate_approval_request_send(task) -> bool:
+    """Check if approval request notification should send."""
+    if not task.related_object:
+        task.status = 'cancelled'
+        task.save()
+        return False
+
+    approval_request = task.related_object
+    # Don't send if already decided
+    if hasattr(approval_request, 'status') and approval_request.status != 'PENDING':
+        task.status = 'cancelled'
+        task.save()
+        return False
+
+    return True
+
+
+def validate_approval_decision_send(task) -> bool:
+    """Check if approval decision notification should send."""
+    if not task.related_object:
+        task.status = 'cancelled'
+        task.save()
+        return False
+    return True
+
+
+def validate_approval_escalation_send(task) -> bool:
+    """Check if approval escalation notification should send."""
+    if not task.related_object:
+        task.status = 'cancelled'
+        task.save()
+        return False
+
+    approval_request = task.related_object
+    # Don't escalate if already decided
+    if hasattr(approval_request, 'status') and approval_request.status != 'PENDING':
         task.status = 'cancelled'
         task.save()
         return False
@@ -166,7 +307,7 @@ def send_via_email(task, context: Dict[str, Any], template_base: str) -> bool:
     Args:
         task: NotificationTask instance
         context: Template context dict
-        template_base: Base template path (e.g., 'emails/weekly_report')
+        template_base: Base template path (e.g., 'emails/weekly_customer_update')
 
     Returns:
         True if sent successfully, False otherwise
@@ -197,18 +338,10 @@ def send_via_email(task, context: Dict[str, Any], template_base: str) -> bool:
 
 def send_via_in_app(task, context: Dict[str, Any], notification_data: Dict[str, Any]) -> bool:
     """
-    Send in-app push notification.
+    Send in-app notification.
 
     For now, this is a placeholder. In the future, this would create
     an InAppNotification record that the frontend polls/subscribes to.
-
-    Args:
-        task: NotificationTask instance
-        context: Template context dict
-        notification_data: In-app notification specific data (title, message, link, etc.)
-
-    Returns:
-        True if sent successfully, False otherwise
     """
     logger.info(f"In-app notification placeholder for {task.recipient.email}: {notification_data.get('title')}")
     # TODO: Implement in-app notification storage when ready
@@ -266,7 +399,7 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_weekly_report_context,
         send_validator=validate_weekly_report_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/weekly_report'),
+            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/weekly_customer_update'),
             'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'info',
                 'title': 'Weekly Order Report Available',
@@ -286,6 +419,48 @@ NOTIFICATION_HANDLERS = {
                 'title': f"CAPA Action Required: {ctx['disposition_number']}",
                 'message': f"Due in {ctx['days_until_due']} days" if not ctx['is_overdue'] else f"OVERDUE by {abs(ctx['days_until_due'])} days",
                 'link': f"/qa/quarantine/{ctx['capa_id']}/",
+            }),
+        }
+    ),
+
+    'APPROVAL_REQUEST': NotificationHandler(
+        context_builder=build_approval_request_context,
+        send_validator=validate_approval_request_send,
+        senders={
+            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_request'),
+            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+                'type': 'info',
+                'title': f"Approval Required: {ctx['content_title']}",
+                'message': f"Requested by {ctx['requested_by']}",
+                'link': '/inbox',
+            }),
+        }
+    ),
+
+    'APPROVAL_DECISION': NotificationHandler(
+        context_builder=build_approval_decision_context,
+        send_validator=validate_approval_decision_send,
+        senders={
+            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_decision'),
+            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+                'type': 'success' if ctx['status'] == 'APPROVED' else 'warning',
+                'title': f"Approval {ctx['status']}: {ctx['content_title']}",
+                'message': f"Your request has been {ctx['status'].lower()}",
+                'link': '/inbox',
+            }),
+        }
+    ),
+
+    'APPROVAL_ESCALATION': NotificationHandler(
+        context_builder=build_approval_escalation_context,
+        send_validator=validate_approval_escalation_send,
+        senders={
+            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_escalation'),
+            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+                'type': 'danger',
+                'title': f"ESCALATION: {ctx['content_title']}",
+                'message': f"{ctx['days_overdue']} days overdue",
+                'link': '/inbox',
             }),
         }
     ),

@@ -1333,6 +1333,98 @@ class UserTenantsView(APIView):
         return Response(result)
 
 
+class DemoResetView(APIView):
+    """
+    Reset demo tenant data to a fresh state.
+
+    Only available for demo tenants and requires admin permissions.
+    Calls the reset_demo management command which clears and repopulates data.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name='DemoResetRequest',
+            fields={
+                'scale': serializers.ChoiceField(
+                    choices=['small', 'medium', 'large'],
+                    default='small',
+                    required=False
+                ),
+            }
+        ),
+        responses={
+            200: inline_serializer(
+                name='DemoResetResponse',
+                fields={
+                    'success': serializers.BooleanField(),
+                    'message': serializers.CharField(),
+                    'reset_at': serializers.DateTimeField(),
+                }
+            ),
+            403: inline_serializer(
+                name='DemoResetForbidden',
+                fields={'detail': serializers.CharField()}
+            ),
+        }
+    )
+    def post(self, request):
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return Response(
+                {'detail': 'No tenant context'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Only allow on demo tenants
+        if not tenant.is_demo:
+            return Response(
+                {'detail': 'Demo reset is only available for demo tenants'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Require admin permission
+        user = request.user
+        if not (user.is_superuser or user.is_staff or user.has_tenant_perm('change_tenantgroup')):
+            return Response(
+                {'detail': 'Permission denied - admin access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        scale = request.data.get('scale', 'small')
+        if scale not in ('small', 'medium', 'large'):
+            scale = 'small'
+
+        # Run the reset command
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        try:
+            call_command(
+                'reset_demo',
+                slug=tenant.slug,
+                scale=scale,
+                yes=True,  # Skip confirmation
+                stdout=out,
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'Reset failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Refresh tenant to get updated timestamp
+        tenant.refresh_from_db()
+        reset_at = tenant.settings.get('last_reset_at', timezone.now().isoformat())
+
+        return Response({
+            'success': True,
+            'message': 'Demo data has been reset successfully',
+            'reset_at': reset_at,
+        })
+
+
 class SwitchTenantView(APIView):
     """
     Switch the current user's active tenant context.

@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import DocumentRenderer from "./DocumentRenderer";
-// import HeatmapRenderer from "./HeatmapRenderer";
 
 type Props = {
     modelType: string;
@@ -69,9 +68,9 @@ export const CompositeRenderer: React.FC<Props> = ({
     };
 
     return (
-        <Card className="w-full">
-            <CardHeader>
-                <CardTitle className="text-lg">
+        <Card className="w-full h-full flex flex-col">
+            <CardHeader className="flex-shrink-0">
+                <CardTitle className="text-lg truncate">
                     {isDocument || isSelectedDocument ? "Document Viewer" : "Content Viewer"}
                     {isSelectedDocument && (
                         <span className="text-sm font-normal text-muted-foreground ml-2">
@@ -80,22 +79,22 @@ export const CompositeRenderer: React.FC<Props> = ({
                     )}
                 </CardTitle>
             </CardHeader>
-            <CardContent>
-                <Tabs defaultValue={getDefaultTab()} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+            <CardContent className="flex-1 min-h-0 flex flex-col">
+                <Tabs defaultValue={getDefaultTab()} className="w-full h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
                         {hasFile && <TabsTrigger value="document">Document</TabsTrigger>}
                         {hasHeatmap && <TabsTrigger value="heatmap">Heatmap</TabsTrigger>}
                     </TabsList>
 
                     {hasFile && (
-                        <TabsContent value="document" className="pt-4">
+                        <TabsContent value="document" className="pt-4 flex-1 min-h-0">
                             <DocumentRenderer modelData={documentToRender} loading={loading} />
                         </TabsContent>
                     )}
 
                     {hasHeatmap && (
-                        <TabsContent value="heatmap" className="pt-4">
-                            <div className="border rounded-lg p-4 min-h-[400px] bg-muted/20">
+                        <TabsContent value="heatmap" className="pt-4 flex-1 min-h-0">
+                            <div className="border rounded-lg p-4 h-full bg-muted/20 overflow-auto">
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium">
                                         Annotations: {modelData?.annotations?.length || 0}
@@ -104,7 +103,6 @@ export const CompositeRenderer: React.FC<Props> = ({
                                         HeatmapRenderer component not yet implemented.
                                     </div>
                                 </div>
-                                {/* <HeatmapRenderer modelData={modelData} /> */}
                             </div>
                         </TabsContent>
                     )}

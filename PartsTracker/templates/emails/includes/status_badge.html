@@ -1,0 +1,9 @@
+{% comment %}
+Reusable inline status badge component.
+Usage: {% include "emails/includes/status_badge.html" with status="In Progress" %}
+
+Automatically colors based on common status values.
+{% endcomment %}
+<span style="display: inline-block; padding: 2px 8px; background-color: {% if status == 'In Progress' or status == 'APPROVED' or status == 'Active' %}#dbeafe{% elif status == 'On Hold' or status == 'REJECTED' or status == 'Overdue' or status == 'Failed' %}#fee2e2{% elif status == 'Pending' or status == 'PENDING' or status == 'Draft' %}#fef3c7{% elif status == 'Complete' or status == 'Completed' or status == 'Success' %}#dcfce7{% else %}#f4f4f5{% endif %}; color: {% if status == 'In Progress' or status == 'Active' %}#1d4ed8{% elif status == 'On Hold' or status == 'REJECTED' or status == 'Overdue' or status == 'Failed' %}#991b1b{% elif status == 'Pending' or status == 'PENDING' or status == 'Draft' %}#92400e{% elif status == 'APPROVED' or status == 'Complete' or status == 'Completed' or status == 'Success' %}#166534{% else %}#3f3f46{% endif %}; font-size: 12px; font-weight: 500; border-radius: 9999px;">
+    {{ status }}
+</span>

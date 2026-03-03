@@ -2,6 +2,16 @@
 
 Configure inspection sampling for quality control.
 
+!!! example "Demo Sampling Configuration"
+    In demo mode, these sampling rules are configured:
+
+    - **Normal Inspection**: Every 5th part (20% sampling) for Flow Testing step
+    - **Tightened Inspection**: Every 3rd part (33% sampling) - activates after 2 consecutive failures
+    - **First Piece**: First 3 parts always inspected at setup (First N rule)
+    - **Incoming Inspection**: 10% random sampling for supplier materials
+
+    Delphi Fuel Systems supplier is currently in **tightened** state after 2 consecutive lot rejections. Next 5 consecutive passing lots will return to normal.
+
 ## What are Sampling Rules?
 
 Sampling rules determine:
@@ -18,6 +28,14 @@ When quality issues occur, tighter sampling is automatically triggered:
 - After N consecutive failures, fallback ruleset activates
 - Fallback remains active until N consecutive passes
 - Automatic deactivation rewards improved performance
+
+!!! tip "State Transitions in Demo"
+    The demo shows Delphi Fuel Systems in **tightened** state:
+
+    1. **Normal → Tightened**: After 2 consecutive lot failures (triggered)
+    2. **Tightened → Normal**: After 5 consecutive lot passes (pending)
+
+    This mirrors ANSI/ASQ Z1.4 switching rules where tightened inspection provides higher defect detection until quality improves.
 
 ### 100% Inspection
 Inspect every part:

@@ -1,6 +1,6 @@
 # HubSpot Integration
 
-Connect Ambac Tracker with HubSpot CRM for deal and order synchronization.
+Connect uqmes with HubSpot CRM for deal and order synchronization.
 
 ## Overview
 
@@ -14,7 +14,7 @@ The HubSpot integration enables:
 
 ### Deal to Order
 When deals close in HubSpot:
-- Order created in Ambac Tracker
+- Order created in uqmes
 - Company linked/created
 - Contact information synced
 - Deal properties mapped
@@ -35,7 +35,7 @@ Order status reflects in HubSpot:
 
 ### Prerequisites
 - HubSpot account with API access
-- Ambac Tracker admin access
+- uqmes admin access
 - API key or OAuth credentials
 
 ### Setup Steps
@@ -44,7 +44,7 @@ Order status reflects in HubSpot:
    - HubSpot Settings > Integrations > API Key
    - Or configure OAuth app
 
-2. **Configure in Ambac Tracker**
+2. **Configure in uqmes**
    - Navigate to Settings > Integrations
    - Enter HubSpot credentials
    - Configure mapping
@@ -63,7 +63,7 @@ Order status reflects in HubSpot:
 
 ### Deal to Order
 
-| HubSpot Field | Ambac Tracker Field |
+| HubSpot Field | uqmes Field |
 |---------------|---------------------|
 | Deal name | Order number/name |
 | Associated company | Customer |
@@ -73,7 +73,7 @@ Order status reflects in HubSpot:
 
 ### Company Mapping
 
-| HubSpot Field | Ambac Tracker Field |
+| HubSpot Field | uqmes Field |
 |---------------|---------------------|
 | Company name | Company name |
 | Domain | Website |
@@ -85,7 +85,7 @@ Order status reflects in HubSpot:
 ### Automatic Order Creation
 
 1. Deal moves to "Closed Won" in HubSpot
-2. Webhook triggers Ambac Tracker
+2. Webhook triggers uqmes
 3. Order created with mapped data
 4. Company linked or created
 5. Confirmation in both systems
@@ -93,7 +93,7 @@ Order status reflects in HubSpot:
 ### Manual Order Creation
 
 1. View deal in HubSpot
-2. Click "Create Order in Ambac Tracker"
+2. Click "Create Order in uqmes"
 3. Review/modify order details
 4. Create order
 5. Link established
@@ -101,8 +101,8 @@ Order status reflects in HubSpot:
 ## Sync Settings
 
 ### Direction
-- **HubSpot → Ambac Tracker**: Deal creates order
-- **Ambac Tracker → HubSpot**: Status updates back
+- **HubSpot → uqmes**: Deal creates order
+- **uqmes → HubSpot**: Status updates back
 
 ### Triggers
 - On deal stage change

@@ -1,6 +1,9 @@
 # Operator Guide
 
-This guide is for production floor operators who move parts through manufacturing steps and record production data.
+This guide is for production floor operators who move parts through manufacturing steps and record production data in uqmes.
+
+!!! tip "Demo Account"
+    In demo mode, log in as **Mike Rodriguez** (mike.ops@demo.ambac.com) to experience the operator workflow with real work queue items like parts INJ-0042-020 (at Assembly) and INJ-0042-022 (at Cleaning).
 
 ## Your Role
 

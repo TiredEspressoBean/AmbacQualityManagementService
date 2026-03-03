@@ -24,7 +24,7 @@ import { useRetrievePartTypes } from '@/hooks/useRetrievePartTypes';
 import { useApproveProcess } from '@/hooks/useApproveProcess';
 import { useDeprecateProcess } from '@/hooks/useDeprecateProcess';
 import { useDuplicateProcess } from '@/hooks/useDuplicateProcess';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useSearch } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import {
   DEMO_REMANUFACTURING_PROCESS,
@@ -143,7 +143,6 @@ export default function ProcessFlowPage() {
   const approveProcess = useApproveProcess();
   const deprecateProcess = useDeprecateProcess();
   const duplicateProcess = useDuplicateProcess();
-  const navigate = useNavigate();
 
   // Initialize local steps when entering edit mode or changing process
   const baseStepsFromSource = useMemo(() => {

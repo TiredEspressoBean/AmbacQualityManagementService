@@ -475,7 +475,7 @@ def seed_groups_for_tenant(tenant):
 - [x] Update `seed_groups_for_tenant()` to use presets
 - [x] Add `has_tenant_perm()` methods to User model
 - [x] Add cache invalidation signals
-- [ ] Create API viewsets for group management
+- [x] Create API viewsets for group management
 - [ ] Update DRF permission classes to use `has_tenant_perm()`
 - [x] Backfill permissions for existing tenant groups (45 groups across 5 tenants)
 

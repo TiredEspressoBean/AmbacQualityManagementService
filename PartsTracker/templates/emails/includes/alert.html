@@ -1,0 +1,15 @@
+{% comment %}
+Reusable alert box component for email templates.
+Usage: {% include "emails/includes/alert.html" with alert_type="error" alert_content="Message here" %}
+
+alert_type: "error" (red), "warning" (yellow), "info" (blue), "success" (green)
+{% endcomment %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+    <tr>
+        <td style="padding: 12px 16px; background-color: {% if alert_type == 'error' %}#fef2f2{% elif alert_type == 'warning' %}#fefce8{% elif alert_type == 'success' %}#f0fdf4{% else %}#eff6ff{% endif %}; border: 1px solid {% if alert_type == 'error' %}#fecaca{% elif alert_type == 'warning' %}#fef08a{% elif alert_type == 'success' %}#bbf7d0{% else %}#bfdbfe{% endif %}; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: {% if alert_type == 'error' %}#991b1b{% elif alert_type == 'warning' %}#854d0e{% elif alert_type == 'success' %}#166534{% else %}#1e40af{% endif %};">
+                {{ alert_content }}
+            </p>
+        </td>
+    </tr>
+</table>

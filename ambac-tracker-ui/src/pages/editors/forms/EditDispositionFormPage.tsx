@@ -233,7 +233,7 @@ export default function EditDispositionFormPage() {
         }
     }, [mode, disposition, form])
 
-    const { control, handleSubmit, formState: { isSubmitting, _errors }, watch } = form
+    const { control, handleSubmit, formState: { isSubmitting }, watch } = form
     const watchDispositionType = watch("disposition_type")
     const watchSeverity = watch("severity")
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR"

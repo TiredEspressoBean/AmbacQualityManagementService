@@ -28,17 +28,6 @@ export default function Layout() {
                 <TrialBanner />
 
                 <div className="flex flex-1 min-h-0">
-                    {isHome && (
-                        <div
-                            className="pointer-events-none absolute inset-0 -z-10 opacity-5 grayscale"
-                            style={{
-                                backgroundImage: `url('https://transform.octanecdn.com/fit/1200x600/https://octanecdn.com/ambacinternationalcom/ambacinternationalcom_153271557.jpg')`,
-                                backgroundSize: "cover",
-                                backgroundPosition: "center",
-                            }}
-                        />
-                    )}
-
                     <AppSidebar />
 
                     {/* Main Content */}

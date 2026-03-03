@@ -1,8 +1,21 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTenantContext } from "@/components/tenant-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
     Building2,
     Palette,
@@ -13,8 +26,11 @@ import {
     CreditCard,
     Settings2,
     ChevronRight,
+    RefreshCw,
+    Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type SettingsCard = {
     title: string;
@@ -89,6 +105,104 @@ function SettingsCardSkeleton() {
                         <Skeleton className="h-5 w-32" />
                         <Skeleton className="h-4 w-48" />
                     </div>
+                </div>
+            </CardHeader>
+        </Card>
+    );
+}
+
+function DemoResetCard() {
+    const [isResetting, setIsResetting] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const handleReset = async () => {
+        setIsResetting(true);
+        try {
+            const response = await fetch("/api/tenant/demo-reset/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ scale: "small" }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || "Reset failed");
+            }
+
+            const data = await response.json();
+            toast.success(data.message || "Data has been reset successfully.");
+            setDialogOpen(false);
+            // Reload the page to reflect new data
+            window.location.reload();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "An error occurred");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    return (
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+            <CardHeader className="pb-3">
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                        <RefreshCw className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-base">Reset Demo Data</CardTitle>
+                            <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400">
+                                Demo Only
+                            </Badge>
+                        </div>
+                        <CardDescription className="text-sm mt-1">
+                            Reset all data to a fresh demo state for training
+                        </CardDescription>
+                    </div>
+                    <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
+                                disabled={isResetting}
+                            >
+                                {isResetting ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    "Reset"
+                                )}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Reset Demo Data?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will delete all current data and replace it with fresh demo data.
+                                    This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleReset}
+                                    disabled={isResetting}
+                                    className="bg-amber-600 hover:bg-amber-700"
+                                >
+                                    {isResetting ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            Resetting...
+                                        </>
+                                    ) : (
+                                        "Reset Data"
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </CardHeader>
         </Card>
@@ -227,6 +341,14 @@ export function SettingsPage() {
                     ))
                 )}
             </div>
+
+            {/* Demo Reset - only visible in demo mode */}
+            {!isLoading && isDemo && (
+                <div className="mt-8">
+                    <h2 className="text-lg font-semibold mb-4">Demo Tools</h2>
+                    <DemoResetCard />
+                </div>
+            )}
         </div>
     );
 }

@@ -48,10 +48,37 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
     work_order = django_filters.ModelChoiceFilter(queryset=WorkOrder.objects.none())
     requires_sampling = django_filters.BooleanFilter()
 
+    # Filter for parts that need QA (require sampling but don't have a PASS report)
+    needs_qa = django_filters.BooleanFilter(method='filter_needs_qa')
+
     created_at__gte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="gte")
     created_at__lte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="lte")
 
     ERP_id = django_filters.CharFilter(lookup_expr="icontains")
+
+    def filter_needs_qa(self, queryset, name, value):
+        """
+        Filter parts that need QA inspection.
+
+        This queryset filter mirrors the Parts.needs_qa property logic:
+        - True = requires_sampling but no PASS QA report (needs inspection)
+        - False = has at least one PASS QA report (QA completed)
+
+        See Parts.needs_qa and Parts.qa_completed properties for the single
+        source of truth on QA status semantics.
+        """
+        if value is True:
+            # Parts that require sampling but don't have any PASS QA report
+            return queryset.filter(requires_sampling=True).exclude(
+                error_reports__status='PASS'
+            )
+        elif value is False:
+            # Parts that have at least one PASS QA report (QA completed)
+            return queryset.filter(
+                requires_sampling=True,
+                error_reports__status='PASS'
+            ).distinct()
+        return queryset
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -67,7 +94,7 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
             "archived", "requires_sampling",
             "order", "step", "part_type", "work_order",
             "created_at__gte", "created_at__lte",
-            "ERP_id", "status__in"
+            "ERP_id", "status__in", "needs_qa"
         ]
 
 class OrderFilter(TenantFilterMixin, django_filters.FilterSet):

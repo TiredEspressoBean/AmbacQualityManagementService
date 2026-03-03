@@ -1,18 +1,18 @@
-# Welcome to Ambac Tracker
+# Welcome to uqmes
 
-Ambac Tracker is a **Quality Management System (QMS)** and **Manufacturing Execution System (MES)** built for modern manufacturing teams. Whether you're tracking parts through production, managing quality inspections, or maintaining compliance documentation, Ambac Tracker provides the tools you need.
+uqmes is a **Quality Management System (QMS)** and **Manufacturing Execution System (MES)** built for modern manufacturing teams. Whether you're tracking parts through production, managing quality inspections, or maintaining compliance documentation, uqmes provides the tools you need.
 
-## Who Uses Ambac Tracker?
+## Who Uses uqmes?
 
-Ambac Tracker serves different roles in your organization:
+uqmes serves different roles in your organization:
 
-| Role | What They Do |
-|------|--------------|
-| **Operators** | Move parts through production steps, record measurements, flag issues |
-| **QA Inspectors** | Perform inspections, create quality reports, manage dispositions |
-| **QA Managers** | Oversee CAPA, approve documents, review analytics |
-| **Administrators** | Configure processes, manage users, set up system |
-| **Customers** | View order status, access documents (portal access) |
+| Role | What They Do | Example User |
+|------|--------------|--------------|
+| **Operators** | Move parts through production steps, record measurements, flag issues | Mike Rodriguez |
+| **QA Inspectors** | Perform inspections, create quality reports, manage dispositions | Sarah Chen |
+| **Production Managers** | Oversee CAPA, approve documents, review analytics | Jennifer Walsh |
+| **Administrators** | Configure processes, manage users, set up system | Alex Demo |
+| **Customers** | View order status, access documents (portal access) | Tom Bradley (Midwest Fleet) |
 
 ## Core Concepts
 
@@ -80,7 +80,7 @@ Ready to get started?
 
 ## System Requirements
 
-Ambac Tracker runs in your web browser. For the best experience:
+uqmes runs in your web browser. For the best experience:
 
 - **Browsers**: Chrome, Firefox, Edge, or Safari (latest versions)
 - **Screen**: 1280x720 minimum resolution (1920x1080 recommended)

@@ -8,7 +8,7 @@ export const useRetrieveDispositionsBatch = (ids: string[]) => {
         queryKey: ["dispositions-batch", ids],
         queryFn: async () => {
             if (ids.length === 0) return [];
-            return Promise.all(ids.map((id) => api.api_QuarantineDispositions_retrieve({ id })));
+            return Promise.all(ids.map((id) => api.api_QuarantineDispositions_retrieve({ params: { id } })));
         },
         enabled: ids.length > 0,
     });

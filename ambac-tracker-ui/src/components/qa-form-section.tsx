@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PartQualityForm } from "./part-quality-form";
 import { FpiStatusBanner } from "./fpi-status-banner";
 import { useState } from "react";
-import { CheckCircle, AlertTriangle, Clock, ShieldCheck, Lock } from "lucide-react";
+import { CheckCircle, AlertTriangle, Clock, Lock } from "lucide-react";
 import {
     Select,
     SelectContent,
@@ -35,7 +35,7 @@ export function QaFormSection({
     isBatchProcess,
     selectedPart,
     onPartSelect,
-    qualityReports = [],
+    qualityReports: _qualityReports = [],
     stepInfo
 }: QaFormSectionProps) {
     const [showQaForm, setShowQaForm] = useState(false);
@@ -51,27 +51,8 @@ export function QaFormSection({
         { enabled: !!workOrderId && !!stepId && stepInfo?.requires_first_piece_inspection }
     );
 
-    // Check if a part is blocked by FPI using API response
-    const isBlockedByFpi = (_part: any) => {
-        // If FPI not required or satisfied, not blocked
-        if (!fpiApiStatus?.requires_fpi || fpiApiStatus?.satisfied) {
-            return false;
-        }
-        // If FPI is required but not satisfied, parts are blocked
-        // In the new model, we don't designate specific parts as "first piece" upfront
-        // The FPI record tracks this separately
-        return true;
-    };
-
     // Check if FPI is pending (for UI display)
     const isFpiPending = fpiApiStatus?.requires_fpi && !fpiApiStatus?.satisfied;
-
-    // Check if a part is the first piece candidate (legacy compatibility)
-    const isFirstPieceCandidate = (_part: any) => {
-        // With the new API model, the first piece is tracked in FPIRecord
-        // For now, return false as the banner handles this
-        return false;
-    };
 
     if (isLoadingParts) {
         return (
@@ -131,11 +112,12 @@ export function QaFormSection({
 
     const canDoQA = (part: any) => {
         // Only allow QA for parts in specific statuses
+        // Note: "READY FOR NEXT STEP" has spaces (not underscores) - this is the actual enum value
         const allowedStatuses = [
             "PENDING",
             "AWAITING_QA",
             "IN_PROGRESS",
-            "READY_FOR_NEXT_STEP",
+            "READY FOR NEXT STEP",
             "REWORK_IN_PROGRESS",
             "REWORK_NEEDED"
         ];

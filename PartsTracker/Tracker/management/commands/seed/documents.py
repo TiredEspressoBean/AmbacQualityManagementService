@@ -182,9 +182,11 @@ class DocumentSeeder(BaseSeeder):
             return
 
         # Get approval template for documents
-        try:
-            doc_template = ApprovalTemplate.objects.get(approval_type='DOCUMENT_RELEASE')
-        except ApprovalTemplate.DoesNotExist:
+        doc_template = ApprovalTemplate.objects.filter(
+            tenant=self.tenant,
+            approval_type='DOCUMENT_RELEASE'
+        ).first()
+        if not doc_template:
             self.log("  No DOCUMENT_RELEASE approval template found")
             return
 

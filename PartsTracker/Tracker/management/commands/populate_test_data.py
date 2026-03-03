@@ -25,6 +25,8 @@ from Tracker.models import (
     QuarantineDisposition, QaApproval, StepTransitionLog, EquipmentUsage,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
+    # Workflow execution models
+    StepExecution,
     # CAPA models
     CAPA, CapaTasks, RcaRecord, FiveWhys, Fishbone, CapaVerification,
     # Document models
@@ -33,6 +35,12 @@ from Tracker.models import (
     ThreeDModel, HeatMapAnnotations,
     # Training and Calibration
     TrainingType, TrainingRecord, TrainingRequirement, CalibrationRecord,
+    # Reman models
+    Core, HarvestedComponent, DisassemblyBOMLine,
+    # SPC models
+    SPCBaseline,
+    # Life tracking models
+    LifeLimitDefinition, PartTypeLifeLimit, LifeTracking,
     # Enums
     OrdersStatus,
 )
@@ -48,6 +56,8 @@ from .seed import (
     ThreeDModelSeeder,
     TrainingSeeder,
     CalibrationSeeder,
+    RemanSeeder,
+    LifeTrackingSeeder,
 )
 
 
@@ -76,7 +86,7 @@ class Command(BaseCommand):
             '--modules',
             type=str,
             nargs='+',
-            choices=['users', 'manufacturing', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration', 'all'],
+            choices=['users', 'manufacturing', 'reman', 'life_tracking', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration', 'all'],
             default=['all'],
             help='Specific modules to run (default: all)',
         )
@@ -88,7 +98,7 @@ class Command(BaseCommand):
         self.modules = set(options['modules'])
 
         if 'all' in self.modules:
-            self.modules = {'users', 'manufacturing', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration'}
+            self.modules = {'users', 'manufacturing', 'reman', 'life_tracking', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration'}
 
         self.stdout.write(f"Generating {self.scale} scale realistic production data...")
         self.stdout.write(f"  Modules: {', '.join(sorted(self.modules))}")
@@ -105,6 +115,7 @@ class Command(BaseCommand):
         # Initialize all seeders with shared tenant and scale
         user_seeder = UserSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         manufacturing_seeder = ManufacturingSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
+        reman_seeder = RemanSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         order_seeder = OrderSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         quality_seeder = QualitySeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         capa_seeder = CapaSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
@@ -112,10 +123,13 @@ class Command(BaseCommand):
         model_seeder = ThreeDModelSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         training_seeder = TrainingSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
         calibration_seeder = CalibrationSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
+        life_tracking_seeder = LifeTrackingSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
 
         # Cross-link seeders that need each other's data
         order_seeder.manufacturing_seeder = manufacturing_seeder
         quality_seeder.manufacturing_seeder = manufacturing_seeder
+        reman_seeder.manufacturing_seeder = manufacturing_seeder
+        capa_seeder.manufacturing_seeder = manufacturing_seeder
 
         # Track created data for inter-module dependencies
         data = {
@@ -127,6 +141,8 @@ class Command(BaseCommand):
             'equipment_types': [],
             'orders': [],
             'steps': [],
+            'cores': [],
+            'harvested_components': [],
         }
 
         # =====================================================================
@@ -187,6 +203,46 @@ class Command(BaseCommand):
             data['orders'] = list(Orders.objects.filter(tenant=tenant))
 
         # =====================================================================
+        # Phase 3.5: Remanufacturing Workflow (Cores, Components)
+        # NOTE: Reman runs AFTER orders so work orders exist for production entry
+        # =====================================================================
+        if 'reman' in self.modules:
+            self.stdout.write("\n--- Phase 3.5: Remanufacturing Workflow ---")
+
+            # Share user activity weights with reman seeder
+            reman_seeder.employee_weights = user_seeder.employee_weights
+            reman_seeder.weighted_employees = user_seeder.weighted_employees
+            reman_seeder.employee_weight_list = user_seeder.employee_weight_list
+
+            result = reman_seeder.seed(
+                data['companies'],
+                data['users'],
+                data['part_types']
+            )
+            data['cores'] = result.get('cores', [])
+            data['harvested_components'] = result.get('harvested_components', [])
+
+            # Add component types to part_types if new ones were created
+            component_types = result.get('component_types', {})
+            for comp_type in component_types.values():
+                if comp_type not in data['part_types']:
+                    data['part_types'].append(comp_type)
+        else:
+            data['cores'] = list(Core.objects.filter(tenant=tenant))
+            data['harvested_components'] = list(HarvestedComponent.objects.filter(tenant=tenant))
+
+        # =====================================================================
+        # Phase 3.6: Life Tracking (depends on cores and part types)
+        # =====================================================================
+        if 'life_tracking' in self.modules:
+            self.stdout.write("\n--- Phase 3.6: Life Tracking ---")
+            life_tracking_seeder.seed(
+                data['part_types'],
+                cores=data['cores'],
+                harvested_components=data['harvested_components']
+            )
+
+        # =====================================================================
         # Phase 4: Quality Data
         # =====================================================================
         if 'quality' in self.modules:
@@ -196,6 +252,9 @@ class Command(BaseCommand):
             if not self.skip_historical:
                 self.stdout.write("  Creating historical FPY trend data...")
                 quality_seeder.seed_historical_fpy(data['part_types'], data['users'], data['equipment'])
+
+                self.stdout.write("  Creating SPC baselines from historical data...")
+                quality_seeder.seed_spc_baselines(data['users'])
 
         # =====================================================================
         # Phase 5: CAPA (depends on quality failures)
@@ -335,8 +394,17 @@ class Command(BaseCommand):
             (HeatMapAnnotations, "Heatmap annotations"),
             (ThreeDModel, "3D models"),
             # Work tracking
+            (StepExecution, "Step executions"),
             (StepTransitionLog, "Step transition logs"),
             (EquipmentUsage, "Equipment usage"),
+            # Life tracking models (before parts/cores they reference)
+            (LifeTracking, "Life tracking records"),
+            (PartTypeLifeLimit, "Part type life limits"),
+            (LifeLimitDefinition, "Life limit definitions"),
+            # Reman models (before WorkOrder and Parts)
+            (HarvestedComponent, "Harvested components"),
+            (Core, "Cores"),
+            (DisassemblyBOMLine, "Disassembly BOM lines"),
             (WorkOrder, "Work orders"),
             # Parts and orders
             (Parts, "Parts"),
@@ -373,7 +441,9 @@ class Command(BaseCommand):
                 if count > 0:
                     self.stdout.write(f"  Cleared {count} {name}")
             except Exception as e:
-                self.stdout.write(self.style.WARNING(f"  Could not clear {name}: {e}"))
+                # Use ASCII-safe error message to avoid Windows console encoding issues
+                error_msg = str(e).encode('ascii', 'replace').decode('ascii')
+                self.stdout.write(self.style.WARNING(f"  Could not clear {name}: {error_msg[:500]}"))
 
         self.stdout.write(self.style.SUCCESS("Data clearing complete"))
 
@@ -392,8 +462,15 @@ class Command(BaseCommand):
             ("Orders", Orders),
             ("Work Orders", WorkOrder),
             ("Parts", Parts),
+            ("Cores", Core),
+            ("Harvested Components", HarvestedComponent),
+            ("Disassembly BOM Lines", DisassemblyBOMLine),
+            ("Life Limit Definitions", LifeLimitDefinition),
+            ("Part Type Life Limits", PartTypeLifeLimit),
+            ("Life Tracking Records", LifeTracking),
             ("Quality Reports", QualityReports),
             ("Quarantine Dispositions", QuarantineDisposition),
+            ("SPC Baselines", SPCBaseline),
             ("CAPAs", CAPA),
             ("CAPA Tasks", CapaTasks),
             ("RCA Records", RcaRecord),
@@ -404,6 +481,7 @@ class Command(BaseCommand):
             ("Calibration Records", CalibrationRecord),
             ("3D Models", ThreeDModel),
             ("Heatmap Annotations", HeatMapAnnotations),
+            ("Step Executions", StepExecution),
             ("Step Transition Logs", StepTransitionLog),
             ("Equipment Usage", EquipmentUsage),
             ("Audit Log Entries", LogEntry),
@@ -425,6 +503,15 @@ class Command(BaseCommand):
             count = CAPA.objects.filter(status=status).count()
             if count > 0:
                 self.stdout.write(f"  {status}: {count}")
+
+        # Core status distribution
+        cores = Core.objects.all()
+        if cores.exists():
+            self.stdout.write("\nCore Status Distribution:")
+            for status, label in Core.CORE_STATUS_CHOICES:
+                count = cores.filter(status=status).count()
+                if count > 0:
+                    self.stdout.write(f"  {label}: {count}")
 
         # Training status summary
         current = TrainingRecord.objects.all()

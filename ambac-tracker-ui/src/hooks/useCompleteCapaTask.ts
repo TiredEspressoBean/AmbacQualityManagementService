@@ -10,7 +10,7 @@ export const useCompleteCapaTask = () => {
 
     return useMutation<CompleteCapaTaskResponse, unknown, { id: string; data: CompleteCapaTaskInput }>({
         mutationFn: ({ id, data }) =>
-            api.api_CapaTasks_complete_create({ id }, data, {
+            api.api_CapaTasks_complete_create({ params: { id } }, data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

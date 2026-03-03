@@ -286,6 +286,10 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperationsMixin):
     """Enhanced parts serializer using model methods"""
 
+    # QA status from model properties (single source of truth)
+    needs_qa = serializers.BooleanField(read_only=True)
+    qa_completed = serializers.BooleanField(read_only=True)
+
     # Display fields using model methods
     quality_info = serializers.SerializerMethodField()
 
@@ -308,18 +312,18 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     # Write fields
     step = serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all())
     part_type = serializers.PrimaryKeyRelatedField(queryset=PartTypes.objects.all())
-    order = serializers.PrimaryKeyRelatedField(queryset=Orders.objects.all(), required=False)
+    order = serializers.PrimaryKeyRelatedField(queryset=Orders.objects.all(), required=False, allow_null=True)
     work_order = serializers.PrimaryKeyRelatedField(queryset=WorkOrder.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Parts
-        fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'order', 'part_type',
-                  'part_type_info', 'step', 'step_info', 'work_order', 'quality_info', 'created_at', 'updated_at',
-                  'has_error', 'part_type_name', 'process_name', 'order_name', 'step_description', 'work_order_erp_id',
-                  'is_from_batch_process', 'sampling_rule', 'sampling_ruleset', 'sampling_context',
-                  'process', 'total_rework_count', 'archived')
+        fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'needs_qa', 'qa_completed',
+                  'order', 'part_type', 'part_type_info', 'step', 'step_info', 'work_order', 'quality_info',
+                  'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
+                  'step_description', 'work_order_erp_id', 'is_from_batch_process', 'sampling_rule',
+                  'sampling_ruleset', 'sampling_context', 'process', 'total_rework_count', 'archived')
         read_only_fields = (
-            'created_at', 'updated_at', 'requires_sampling', 'quality_info',
+            'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
             'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process', 'total_rework_count',
             'step')  # Step changes must go through increment action for validation
@@ -510,8 +514,15 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
                 'completed': obj._qa_completed,
             }
 
-        # Fallback to queries
-        parts = obj.parts.all()
+        # Fallback to queries - only count active parts (exclude SCRAPPED/CANCELLED)
+        # This matches the QA detail page filter for consistency
+        from Tracker.models import PartsStatus
+        active_statuses = [
+            PartsStatus.PENDING, PartsStatus.IN_PROGRESS,
+            PartsStatus.REWORK_NEEDED, PartsStatus.REWORK_IN_PROGRESS,
+            PartsStatus.READY_FOR_NEXT_STEP, PartsStatus.COMPLETED
+        ]
+        parts = obj.parts.filter(part_status__in=active_statuses)
         required = parts.filter(requires_sampling=True).count()
         # Completed = has at least one error_report (QualityReport) with PASS status
         completed = parts.filter(
@@ -570,10 +581,13 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         parts = obj.parts.all()
         has_batch_parts = parts.filter(part_type__processes__is_batch_process=True).exists()
 
-        return {'total': parts.count(), 'requiring_qa': parts.filter(requires_sampling=True,
-                                                                     part_status__in=['PENDING', 'IN_PROGRESS',
-                                                                                      'AWAITING_QA',
-                                                                                      'READY FOR NEXT STEP']).count(),
+        # Parts needing QA = requires_sampling but no PASS report yet (mirrors Parts.needs_qa property)
+        needs_qa_parts = parts.filter(
+            requires_sampling=True,
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'READY FOR NEXT STEP',
+                            'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
+        ).exclude(error_reports__status='PASS')
+        return {'total': parts.count(), 'requiring_qa': needs_qa_parts.count(),
                 'completed': parts.filter(part_status=PartsStatus.COMPLETED).count(),
                 'in_progress': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
                 'pending': parts.filter(part_status=PartsStatus.PENDING).count(), 'has_batch_parts': has_batch_parts}

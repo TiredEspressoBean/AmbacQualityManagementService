@@ -100,7 +100,7 @@ On signed records:
 
 | Type | Description | Use |
 |------|-------------|-----|
-| **Electronic** | Password verification + identity | Ambac Tracker standard |
+| **Electronic** | Password verification + identity | uqmes standard |
 | **Digital** | Cryptographic certificate (PKI) | Not currently implemented |
 
 Electronic signatures with password verification meet most regulatory requirements.

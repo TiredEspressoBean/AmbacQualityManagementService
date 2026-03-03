@@ -1,6 +1,15 @@
 # First Piece Inspection (FPI)
 
-First Piece Inspection ensures production setup is correct before running full batches. This guide covers FPI workflow in Ambac Tracker.
+First Piece Inspection ensures production setup is correct before running full batches. This guide covers FPI workflow in uqmes.
+
+!!! example "Demo: FPI Failure Scenario"
+    In demo mode, work order WO-0042-A demonstrates FPI workflow:
+
+    - **INJ-0042-025** failed FPI at Assembly step (torque spec exceeded)
+    - Operator Mike Rodriguez sees batch is held pending FPI resolution
+    - Inspector Sarah Chen can approve or reject the FPI submission
+    - Remaining 23 parts are blocked until FPI passes
+    - After adjustment, a new first piece must pass before batch releases
 
 ## What is First Piece Inspection?
 
@@ -193,6 +202,9 @@ Multiple failures may trigger:
 - Supervisor notification
 - Quality hold
 - Root cause investigation
+
+!!! tip "Demo: Multiple FPI Failures"
+    If INJ-0042-025's FPI fails twice, Production Manager Jennifer Walsh receives an escalation notification. After 3 failures, a quality hold is automatically placed and investigation is required before production continues.
 
 ## FPI Metrics
 

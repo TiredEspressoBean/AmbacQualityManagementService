@@ -274,3 +274,116 @@ class BaseSeeder:
         delta = end - start
         random_days = random.random() * delta.days
         return start + timedelta(days=random_days)
+
+    # =========================================================================
+    # Time-Based Quality Patterns
+    # =========================================================================
+
+    def get_shift_quality_modifier(self, timestamp):
+        """
+        Return quality modifier based on shift.
+
+        First shift (6am-2pm): Baseline (1.0)
+        Second shift (2pm-10pm): 3% worse (0.97)
+        Third shift (10pm-6am): 6% worse (0.94)
+
+        Returns a multiplier for pass rates (lower = more defects).
+        """
+        hour = timestamp.hour
+        if 6 <= hour < 14:    # First shift
+            return 1.0  # Baseline
+        elif 14 <= hour < 22:  # Second shift
+            return 0.97  # 3% worse
+        else:                  # Third shift
+            return 0.94  # 6% worse
+
+    def get_equipment_degradation(self, equipment, calibration_records=None):
+        """
+        Equipment performance degrades as calibration ages.
+
+        Args:
+            equipment: The Equipments instance
+            calibration_records: Optional queryset/list of calibration records
+
+        Returns:
+            Quality modifier (1.0 = normal, lower = worse quality)
+        """
+        from Tracker.models import CalibrationRecord
+
+        if calibration_records is None:
+            # Get most recent calibration for this equipment
+            latest = CalibrationRecord.objects.filter(
+                equipment=equipment
+            ).order_by('-calibration_date').first()
+        else:
+            # Find record for this equipment
+            latest = None
+            for record in calibration_records:
+                if record.equipment_id == equipment.id:
+                    if latest is None or record.calibration_date > latest.calibration_date:
+                        latest = record
+
+        if not latest:
+            return 1.0  # No calibration data, assume normal
+
+        days_since = (timezone.now().date() - latest.calibration_date).days
+
+        if days_since > 180:
+            return 0.90  # 10% worse if calibration overdue
+        elif days_since > 150:
+            return 0.95  # 5% worse if calibration due soon
+        return 1.0
+
+    def get_operator_performance(self, user, training_records=None):
+        """
+        Operator performance varies based on experience.
+
+        Args:
+            user: The User instance
+            training_records: Optional queryset/list of training records
+
+        Returns:
+            Quality modifier (1.0 = baseline, >1 = better, <1 = worse)
+        """
+        from Tracker.models import TrainingRecord
+
+        # Calculate experience based on account creation
+        if hasattr(user, 'date_joined') and user.date_joined:
+            days_since_joined = (timezone.now() - user.date_joined).days
+        else:
+            days_since_joined = 180  # Assume moderate experience
+
+        # New operators (< 30 days): 15% higher defect rate
+        if days_since_joined < 30:
+            return 0.85
+
+        # Experienced operators (> 1 year): 10% lower defect rate
+        if days_since_joined > 365:
+            return 1.10
+
+        # Default: linear interpolation between 30 days and 1 year
+        # At 30 days: 0.85, at 365 days: 1.10
+        progress = (days_since_joined - 30) / (365 - 30)
+        return 0.85 + (0.25 * progress)
+
+    def get_combined_quality_modifier(self, timestamp, equipment=None, operator=None,
+                                       calibration_records=None, training_records=None):
+        """
+        Combine all quality modifiers into a single factor.
+
+        Returns a multiplier for pass rates. Values < 1.0 increase defect likelihood.
+        """
+        modifier = 1.0
+
+        # Apply shift modifier
+        modifier *= self.get_shift_quality_modifier(timestamp)
+
+        # Apply equipment degradation
+        if equipment:
+            modifier *= self.get_equipment_degradation(equipment, calibration_records)
+
+        # Apply operator performance
+        if operator:
+            modifier *= self.get_operator_performance(operator, training_records)
+
+        return modifier

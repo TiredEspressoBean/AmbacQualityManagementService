@@ -118,7 +118,6 @@ export function DefectAnalysisPage() {
 
     const days = rangeToDays(range);
     const hasActiveFilters = filters.defect_type || filters.process || filters.part_type;
-    const activeFilterCount = [filters.defect_type, filters.process, filters.part_type].filter(Boolean).length;
 
     // API Hooks
     const { data: paretoResponse, isLoading: isLoadingPareto } = useDefectPareto({ days, limit: 8 });

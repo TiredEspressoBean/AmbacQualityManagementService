@@ -1,6 +1,16 @@
 # Compliance Overview
 
-Technical compliance analysis of Ambac Tracker against major regulatory frameworks for defense, aerospace, automotive, and general manufacturing.
+Technical compliance analysis of uqmes against major regulatory frameworks for defense, aerospace, automotive, and general manufacturing.
+
+!!! tip "Demo: Compliance Evidence"
+    In demo mode, you can see compliance features in action:
+
+    - **Audit trail**: View CAPA-2024-003's complete history with user attribution and timestamps
+    - **Approval workflows**: APR-2024-0015 shows multi-step approval with electronic signatures
+    - **RBAC enforcement**: Customer Tom Bradley can only view Midwest Fleet orders (tenant isolation)
+    - **Training compliance**: Dave Wilson blocked from Flow Testing due to expired certification
+    - **Calibration alerts**: Torque Wrench TW-25 flagged as overdue, preventing use at Assembly step
+    - **Document control**: WI-001-A shows version history and approval workflow
 
 ## Audience
 

@@ -85,7 +85,7 @@ export function FpiStatusBanner({
             });
             toast.success("FPI record created");
             handleStatusChange();
-        } catch (error) {
+        } catch {
             toast.error("Failed to create FPI record");
         }
     };
@@ -96,7 +96,7 @@ export function FpiStatusBanner({
             await passMutation.mutateAsync({ id: fpiStatus.pending_fpi_id });
             toast.success("FPI passed - parts can now proceed");
             handleStatusChange();
-        } catch (error) {
+        } catch {
             toast.error("Failed to pass FPI");
         }
     };
@@ -107,7 +107,7 @@ export function FpiStatusBanner({
             await failMutation.mutateAsync({ id: fpiStatus.pending_fpi_id });
             toast.error("FPI failed - setup correction required");
             handleStatusChange();
-        } catch (error) {
+        } catch {
             toast.error("Failed to record FPI failure");
         }
     };
@@ -123,7 +123,7 @@ export function FpiStatusBanner({
             setShowWaiveDialog(false);
             setWaiveReason("");
             handleStatusChange();
-        } catch (error) {
+        } catch {
             toast.error("Failed to waive FPI");
         }
     };

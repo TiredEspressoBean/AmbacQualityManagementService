@@ -7,6 +7,7 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { useUserTenants } from "@/hooks/useUserTenants";
 import { useSwitchTenant } from "@/hooks/useSwitchTenant";
 import { Badge } from "@/components/ui/badge";
+import { DEFAULT_BRANDING } from "@/lib/branding";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -75,7 +76,7 @@ export function AppSidebarHeader() {
                     {logoContent}
                     <div className="flex flex-col min-w-0">
                         <span className="font-semibold text-sm truncate">
-                            {tenant?.name || "My Company"}
+                            {tenant?.name || DEFAULT_BRANDING.appName}
                         </span>
                         {tenant?.status === "trial" && (
                             <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">
@@ -100,7 +101,7 @@ export function AppSidebarHeader() {
                         {logoContent}
                         <div className="flex flex-col min-w-0 flex-1">
                             <span className="font-semibold text-sm truncate">
-                                {tenant?.name || "My Company"}
+                                {tenant?.name || DEFAULT_BRANDING.appName}
                             </span>
                             {tenant?.status === "trial" && (
                                 <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">

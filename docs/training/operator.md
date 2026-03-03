@@ -15,18 +15,18 @@
 
 By the end of this module, you will:
 
-1. Log into Ambac Tracker
+1. Log into uqmes
 2. Navigate the main interface
 3. Understand your role and permissions
 
 ### 1.1 Logging In
 
-**Concept:** Ambac Tracker uses secure login to track who does what.
+**Concept:** uqmes uses secure login to track who does what.
 
 **Steps:**
 
 1. Open your browser (Chrome recommended)
-2. Go to your company's Ambac Tracker URL
+2. Go to your company's uqmes URL
 3. Enter your email and password
 4. Click **Sign In**
 
@@ -361,7 +361,7 @@ By the end of this module, you will:
 
 ### 5.1 Starting Your Shift
 
-1. **Log in** to Ambac Tracker
+1. **Log in** to uqmes
 2. **Check your work area** for parts to process
 3. **Find your orders** on Tracker
 4. **Review any notes** or special instructions
@@ -402,6 +402,33 @@ Before leaving:
 - [ ] Any issues flagged and communicated
 - [ ] Work area organized
 - [ ] Supervisor informed of any problems
+
+---
+
+## SPC Awareness
+
+!!! tip "Additional Training: SPC Fundamentals"
+    Complete the [SPC Fundamentals](spc-fundamentals.md) module (1-2 hours) to understand control charts and process variation.
+
+### Why Operators Should Know SPC
+
+Your measurements feed into SPC charts that help detect process problems early. Understanding SPC helps you:
+
+- **Recognize when to alert QA** - Red-highlighted points mean something is wrong
+- **Understand why consistent measurements matter** - They reveal true process behavior
+- **Contribute to quality improvement** - Your data drives decisions
+
+### What to Know
+
+| If You See | What It Means | What To Do |
+|------------|---------------|------------|
+| Green chart | Process is stable | Continue working |
+| Yellow warning | Process may be drifting | Pay closer attention |
+| Red signals | Process is out of control | Stop and notify supervisor/QA |
+
+### Demo Example
+
+In demo mode, the Flow Rate measurement at Flow Testing shows an SPC violation. This type of alert would appear on your workstation dashboard, prompting you to notify QA Inspector Sarah Chen.
 
 ---
 
@@ -451,7 +478,7 @@ Complete these tasks to demonstrate competency:
 
 By completing this training, I confirm that I:
 
-- Understand how to use Ambac Tracker for my role
+- Understand how to use uqmes for my role
 - Will enter accurate data
 - Will flag quality issues promptly
 - Will ask for help when needed

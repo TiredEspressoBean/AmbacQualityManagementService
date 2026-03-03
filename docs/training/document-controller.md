@@ -442,7 +442,7 @@ By the end of this module, you will:
 - Availability of current versions
 - Prevention of unintended use of obsolete
 
-Ambac Tracker handles these automatically.
+uqmes handles these automatically.
 
 ---
 

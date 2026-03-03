@@ -2,6 +2,15 @@
 
 Sampling allows inspecting a subset of parts rather than 100%, based on statistical rules. This guide covers sampling configuration and use.
 
+!!! example "Demo: Flow Testing Sampling"
+    In demo mode, Flow Testing uses **Every 5th Part** sampling (20%):
+
+    - Order ORD-2024-0042 with 24 parts: 5 parts sampled for inspection
+    - QA Inspector Sarah Chen sees which parts require inspection
+    - Parts INJ-0042-018 and INJ-0042-021 are currently awaiting sample inspection
+
+    **Delphi Fuel Systems** is in **tightened** state (Every 3rd Part = 33% sampling) after 2 consecutive lot failures. This demonstrates automatic switching rules.
+
 ## What is Sampling?
 
 **Sampling** inspects representative parts from a batch:

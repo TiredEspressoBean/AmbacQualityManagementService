@@ -1,6 +1,6 @@
 # Core Workflows
 
-This section covers the day-to-day operations in Ambac Tracker. Each workflow represents a key business process.
+This section covers the day-to-day operations in uqmes. Each workflow represents a key business process.
 
 ## Workflow Overview
 

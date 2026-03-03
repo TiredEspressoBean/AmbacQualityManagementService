@@ -1,6 +1,6 @@
 # Glossary
 
-Reference guide for terms and concepts used in Ambac Tracker.
+Reference guide for terms and concepts used in uqmes.
 
 ## A
 
@@ -16,13 +16,19 @@ A chronological record of all changes made in the system. Every create, update, 
 ## C
 
 ### Calibration
-The process of verifying and adjusting equipment to ensure accurate measurements. Ambac Tracker tracks calibration due dates and records.
+The process of verifying and adjusting equipment to ensure accurate measurements. uqmes tracks calibration due dates and records.
 
 ### CAPA (Corrective and Preventive Action)
 A formal quality process for investigating problems, identifying root causes, implementing fixes, and preventing recurrence. Follows the 8D methodology.
 
+### Component Grading
+The process of evaluating harvested components from disassembled cores. Grades determine routing: A (use as-is), B (rework needed), C (marginal), Scrap (dispose).
+
 ### Control Plan
 A document describing the quality controls for a manufacturing process, including measurements, frequencies, and reaction plans.
+
+### Core
+In remanufacturing, a used unit received for rebuild (e.g., a used fuel injector). Cores are disassembled into components, graded, and tracked for core credit/exchange programs.
 
 ### Customer
 An external company or organization that places orders. Customers can have portal access to view their order status.
@@ -66,6 +72,9 @@ A quality metric: the percentage of parts that pass all steps without rework or 
 A collection of users with shared permissions. Users are assigned to groups, and groups have permissions.
 
 ## H
+
+### Harvested Component
+A part recovered during disassembly of a core in remanufacturing. Components are graded (A/B/C/Scrap) and either accepted into inventory or scrapped. Example: a nozzle harvested from a used injector.
 
 ### Heat Map
 A visual representation showing defect frequency overlaid on a 3D model or part diagram.
@@ -124,7 +133,7 @@ A defined manufacturing workflow consisting of sequential steps. Processes can h
 The department or function responsible for ensuring products meet quality standards.
 
 ### QMS (Quality Management System)
-The organizational structure, procedures, and resources for managing quality. Ambac Tracker is a QMS software.
+The organizational structure, procedures, and resources for managing quality. uqmes is a QMS software.
 
 ### Quality Report
 A record documenting a non-conformance or quality issue with a part. Requires disposition and may trigger CAPA.
@@ -133,6 +142,9 @@ A record documenting a non-conformance or quality issue with a part. Requires di
 A status indicating a part is held for quality review and cannot proceed through production.
 
 ## R
+
+### Remanufacturing (Reman)
+The process of rebuilding used products to original specifications. Involves receiving cores, disassembly, component grading, rebuilding, and testing. Common in automotive/diesel industries (fuel injectors, turbochargers, etc.).
 
 ### Retention
 The period for which records must be kept for regulatory compliance before they can be deleted.
@@ -172,7 +184,7 @@ The event of a part moving from one step to the next. Transitions are logged wit
 ## T
 
 ### Tenant
-An organization using Ambac Tracker. Each tenant has isolated data and independent configuration.
+An organization using uqmes. Each tenant has isolated data and independent configuration.
 
 ### Training Record
 A record that a user has completed training on a topic, including date, trainer, and verification.
@@ -213,6 +225,7 @@ A production order linking a customer order to a process. Tracks which step each
 | QA | Quality Assurance |
 | QMS | Quality Management System |
 | RCA | Root Cause Analysis |
+| Reman | Remanufacturing |
 | RTV | Return to Vendor |
 | SPC | Statistical Process Control |
 | SSO | Single Sign-On |

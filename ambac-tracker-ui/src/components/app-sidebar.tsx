@@ -15,9 +15,12 @@ import {
     History,
     LineChart,
     MapPin,
+    Package,
     PackageSearch,
+    Recycle,
     Settings,
     ShieldCheck,
+    Wrench,
     Workflow,
 } from "lucide-react"
 
@@ -48,6 +51,13 @@ const productionPages = [
     { name: "Work Orders", url: "/production/work-orders", icon: Factory },
     { name: "Processes", url: "/editor/processes", icon: Workflow },
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
+]
+
+// Reman - Remanufacturing operations (staff only, collapsible)
+const remanPages = [
+    { name: "Dashboard", url: "/reman", icon: Recycle },
+    { name: "Cores", url: "/reman/cores", icon: Package },
+    { name: "Components", url: "/reman/components", icon: Wrench },
 ]
 
 // Quality - QMS (staff only, collapsible)
@@ -91,6 +101,7 @@ export function AppSidebar({
     // Show sections based on effective permissions
     const showPersonal = isPlatformStaff || hasAny('respond_to_approval', 'view_approvalrequest')
     const showProduction = isPlatformStaff || hasAny('view_workorder', 'view_orders', 'view_processes')
+    const showReman = isPlatformStaff || hasAny('view_core', 'view_harvestedcomponent')
     const showQuality = isPlatformStaff || hasAny('view_qualityreports', 'view_capa', 'view_trainingrecord')
     const showApprovals = isPlatformStaff || hasAny('view_approvalrequest', 'respond_to_approval')
     const showTools = isPlatformStaff || hasAny('view_documents', 'view_chatsession')
@@ -141,6 +152,15 @@ export function AppSidebar({
                                     title="Production"
                                     pages={productionPages}
                                     defaultOpen={true}
+                                />
+                            )}
+
+                            {/* Reman - users with reman view permissions */}
+                            {showReman && (
+                                <NavPagesCollapsible
+                                    title="Remanufacturing"
+                                    pages={remanPages}
+                                    defaultOpen={false}
                                 />
                             )}
 

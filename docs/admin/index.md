@@ -1,6 +1,6 @@
 # Administration Guide
 
-This guide covers system administration for Ambac Tracker, including user management, process configuration, and system setup.
+This guide covers system administration for uqmes, including user management, process configuration, and system setup.
 
 ## Who is This For?
 
@@ -15,7 +15,7 @@ This guide is for:
 
 ### User Management
 
-Manage who can access Ambac Tracker and what they can do.
+Manage who can access uqmes and what they can do.
 
 - [Adding Users](users/adding.md) - Create and invite users
 - [Roles & Groups](users/roles.md) - Understand permission structure

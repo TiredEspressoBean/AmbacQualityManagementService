@@ -1,0 +1,9 @@
+{% comment %}
+Reusable button component for email templates.
+Usage: {% include "emails/includes/button.html" with url="/inbox" text="View Details" %}
+
+Optional: variant="primary" (default), "danger", "success"
+{% endcomment %}
+<a href="{{ url }}" style="display: inline-block; padding: 10px 16px; background-color: {% if variant == 'danger' %}#dc2626{% elif variant == 'success' %}#16a34a{% else %}#18181b{% endif %}; color: #fafafa; font-size: 14px; font-weight: 500; text-decoration: none; border-radius: 6px;">
+    {{ text }}
+</a>

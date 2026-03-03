@@ -1,6 +1,6 @@
 # Audit Trail
 
-The audit trail provides a complete record of all actions taken in Ambac Tracker, essential for compliance and investigation.
+The audit trail provides a complete record of all actions taken in uqmes, essential for compliance and investigation.
 
 ## What is Logged?
 

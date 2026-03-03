@@ -46,10 +46,10 @@ If using Single Sign-On:
 ### Deactivate in IdP First
 1. Disable user in Azure AD / Okta
 2. User can't authenticate via SSO
-3. Deactivate in Ambac Tracker
+3. Deactivate in uqmes
 
-### Just Ambac Tracker
-1. Deactivate in Ambac Tracker
+### Just uqmes
+1. Deactivate in uqmes
 2. User authenticates via SSO but access denied
 3. Sees "account deactivated" message
 
@@ -166,7 +166,7 @@ View in Admin > Audit Log.
 
 1. **Process, not ad-hoc** - Document offboarding steps
 2. **Timely** - Remove access promptly
-3. **Complete** - All systems, not just Ambac Tracker
+3. **Complete** - All systems, not just uqmes
 4. **Documented** - Record in change log
 5. **Reviewed** - Periodic access audits
 
@@ -176,7 +176,7 @@ View in Admin > Audit Log.
 - [ ] Reassign active work
 - [ ] Reassign pending approvals
 - [ ] Update scheduled reports
-- [ ] Deactivate in Ambac Tracker
+- [ ] Deactivate in uqmes
 - [ ] Deactivate in SSO (if applicable)
 - [ ] Document the change
 - [ ] Notify relevant parties

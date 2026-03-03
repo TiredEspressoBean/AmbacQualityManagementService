@@ -101,7 +101,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const [newErrorDialogOpen, setNewErrorDialogOpen] = React.useState(false);
     const [newErrorName, setNewErrorName] = React.useState("");
     const [newErrorExample, setNewErrorExample] = React.useState("");
-    const [fileInputKey, setFileInputKey] = React.useState(Date.now());
+    const [fileInputKey] = React.useState(Date.now());
     const [isUploadingDocument, setIsUploadingDocument] = React.useState(false);
 
     const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
@@ -119,7 +119,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     });
 
 
-    const { data: errorTypes, isLoading: _errorTypesLoading, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
+    const { data: errorTypes, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
         part_type: partTypeId
     });
 

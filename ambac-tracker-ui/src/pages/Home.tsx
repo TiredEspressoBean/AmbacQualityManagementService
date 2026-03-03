@@ -1,18 +1,33 @@
+import { useAuthUser } from "@/hooks/useAuthUser";
+import Login from "@/components/auth/Login";
+
 export default function Home() {
+    const { data: user, isLoading } = useAuthUser();
+
+    if (isLoading) {
+        return (
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="text-muted-foreground">Loading...</div>
+            </div>
+        );
+    }
+
+    // Logged-out: show login
+    if (!user) {
+        return <Login />;
+    }
+
+    // Logged-in: simple welcome
     return (
-        <div className="min-h-full">
-            {/* Hero Section */}
-            <section className="px-6 py-16">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                        AMBAC Quality Tracker
-                    </h1>
-                    <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                        Track your orders, view quality reports, and monitor production progress
-                        with our comprehensive manufacturing management system.
-                    </p>
-                </div>
-            </section>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
+            <div className="text-center space-y-4">
+                <h1 className="text-3xl font-semibold">
+                    Welcome back{user.first_name ? `, ${user.first_name}` : ""}
+                </h1>
+                <p className="text-muted-foreground">
+                    Use the sidebar to navigate to your workflow.
+                </p>
+            </div>
         </div>
     );
 }

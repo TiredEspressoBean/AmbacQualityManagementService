@@ -165,7 +165,6 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                 .map((step) => {
                                     const isCompleted = step.status === 'COMPLETED';
                                     const isInProgress = step.status === 'IN_PROGRESS';
-                                    const _isPending = step.status === 'PENDING';
                                     const isSkipped = step.status === 'SKIPPED';
 
                                     const hasDefects = step.defect_count > 0;

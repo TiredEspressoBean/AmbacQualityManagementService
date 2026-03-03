@@ -106,12 +106,17 @@ If custom fields are configured:
 
 Organize part types:
 
-- By product line
-- By customer
+- By product line (Common Rail, HEUI, Unit Injector)
+- By customer (OEM vs Aftermarket)
 - By facility
-- By material type
+- By application (Automotive, Heavy Duty, Marine)
 
 Use categories for filtering and reporting.
+
+!!! example "Injector Product Lines"
+    - **Common Rail Injector** - Bosch, Denso, Delphi common rail systems
+    - **HEUI Injector** - Caterpillar/Navistar hydraulic electronic injectors
+    - **Unit Injector** - Detroit Diesel, Cummins mechanical unit injectors
 
 ## Part Type Versioning
 
@@ -140,8 +145,9 @@ Parts inherit from type configuration.
 
 ```csv
 part_number,name,description,default_process
-PN-001,Widget Assembly,Standard widget,Widget Production
-PN-002,Bracket,Steel bracket,Bracket Process
+CRI-100,Common Rail Injector,Diesel common rail fuel injector,Common Rail Injector Remanufacturing
+HEUI-200,HEUI Injector,Hydraulic electronic unit injector,HEUI Remanufacturing
+UI-300,Unit Injector,Mechanical unit fuel injector,Unit Injector Remanufacturing
 ```
 
 ### Export Part Types

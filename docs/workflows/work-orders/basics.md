@@ -1,6 +1,6 @@
 # Work Order Basics
 
-Work orders connect customer orders to manufacturing processes. This guide explains how work orders function in Ambac Tracker.
+Work orders connect customer orders to manufacturing processes. This guide explains how work orders function in uqmes.
 
 ## What is a Work Order?
 
@@ -11,6 +11,9 @@ A **Work Order** defines:
 - **Who** is assigned (equipment, operators)
 - **When** it should be completed
 - **Priority** level
+
+!!! example "Work Order Example"
+    Work Order `WO-0042-A` processes 24 fuel injectors for order `ORD-2024-0042` (Midwest Fleet Services) using the "Common Rail Injector Remanufacturing" process. Parts are tracked from Core Receiving through Final Test and Packaging.
 
 ## Work Order vs Order
 

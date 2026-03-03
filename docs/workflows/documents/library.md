@@ -1,6 +1,6 @@
 # Document Library
 
-The Document Library is the central repository for all controlled documents in Ambac Tracker.
+The Document Library is the central repository for all controlled documents in uqmes.
 
 ## Accessing the Library
 

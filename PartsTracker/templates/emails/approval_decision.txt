@@ -1,0 +1,18 @@
+APPROVAL {{ status|upper }}
+
+Hi {{ recipient.first_name|default:"there" }},
+
+Your approval request has been processed:
+
+=====================================
+Type: {{ content_type }}
+Item: {{ content_title }}
+Status: {{ status }}
+Completed: {{ completed_at|date:"F d, Y \a\t H:i"|default:"N/A" }}
+{% if comments %}Comments: {{ comments }}{% endif %}
+=====================================
+
+View details: {{ frontend_url }}/inbox
+
+This is an automated message from {{ brand_name|default:"uqmes" }}.
+Please do not reply to this email.

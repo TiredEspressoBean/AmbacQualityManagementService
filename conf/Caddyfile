@@ -1,6 +1,10 @@
 # Main site (production)
-govtracker.ambac.local {
-    tls /etc/caddy/certs/Govtracker.crt /etc/caddy/certs/Govtracker.key
+# Configure via environment variables:
+#   SITE_DOMAIN - your domain (e.g., qmes.acmecorp.com)
+#   TLS_CERT    - path to TLS certificate
+#   TLS_KEY     - path to TLS private key
+{$SITE_DOMAIN:localhost} {
+    tls {$TLS_CERT:/etc/caddy/certs/cert.crt} {$TLS_KEY:/etc/caddy/certs/cert.key}
 
 
     encode gzip

@@ -1,11 +1,30 @@
 # Dashboard Overview
 
-Ambac Tracker provides several dashboards for monitoring operations, quality, and production metrics.
+uqmes provides several dashboards for monitoring operations, quality, and production metrics.
 
 ## Available Dashboards
 
-### Quality Dashboard
-Navigate to **Quality** > **Dashboard**
+| Dashboard | Route | Focus |
+|-----------|-------|-------|
+| **Analysis Dashboard** | `/analysis` | KPI trends, FPY, defect pareto, needs attention |
+| **Quality Dashboard** | `/quality` | Open CAPAs, NCRs, disposition status |
+| **SPC Charts** | `/spc` | Control charts, capability indices |
+| **Defect Analysis** | `/quality/defects` | Defect trends by type, supplier, part |
+| **Tracker** | `/tracker` | Order progress, production status |
+
+### Analysis Dashboard (`/analysis`)
+
+Navigate to **Analytics** in the sidebar or go directly to `/analysis`
+
+Focus: Comprehensive KPI analysis
+- First Pass Yield trend with date range toggle
+- Needs attention items (overdue CAPAs, pending approvals)
+- Defect Pareto charts
+- Links to SPC, Defects, and CAPAs
+
+### Quality Dashboard (`/quality`)
+
+Navigate to **Quality** > **Dashboard** or `/quality`
 
 Focus: Quality metrics and performance
 - Open CAPAs and NCRs
@@ -13,23 +32,13 @@ Focus: Quality metrics and performance
 - First Pass Yield
 - Disposition breakdown
 
-### Analytics Dashboard
-Navigate to **Analytics** (in Tools section)
+### Production Views
 
-Focus: Comprehensive analysis
-- KPI trends over time
-- Defect Pareto charts
-- FPY analysis
-- Custom date ranges
-
-### Production Dashboard
-Via Work Orders or Tracker views
-
-Focus: Production status
-- Order progress
-- Work order status
-- Throughput metrics
-- On-time delivery
+| Page | Route | Focus |
+|------|-------|-------|
+| Tracker | `/tracker` | Order cards with progress bars |
+| Work Orders | `/workOrders` | Production assignments |
+| QA Work Orders | `/qaWorkOrders` | Quality inspection queue |
 
 ## Quality Dashboard
 

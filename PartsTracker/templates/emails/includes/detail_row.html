@@ -1,0 +1,10 @@
+{% comment %}
+Reusable detail label/value component for email templates.
+Usage: {% include "emails/includes/detail_row.html" with label="Due Date" value="Mar 15, 2024" %}
+
+Optional: value_color="#991b1b" value_bold=True
+{% endcomment %}
+<td style="padding-right: {{ padding_right|default:'24px' }};">
+    <p style="margin: 0 0 2px 0; font-size: 11px; font-weight: 500; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">{{ label }}</p>
+    <p style="margin: 0; font-size: 14px; color: {{ value_color|default:'#3f3f46' }};{% if value_bold %} font-weight: 500;{% endif %}">{{ value }}</p>
+</td>

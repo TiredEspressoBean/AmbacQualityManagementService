@@ -125,7 +125,7 @@ export default function EditOrdersPartsPage() {
             {
                 id: "actions",
                 header: "Actions",
-                cell: ({ row }) => (
+                cell: () => (
                     // TODO: Edit part functionality - perhaps as a sheet or dialog
                     <Button variant="outline" size="sm" disabled title="Edit functionality coming soon">
                         <Pencil className="w-4 h-4 mr-1" />

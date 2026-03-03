@@ -142,7 +142,7 @@ export function MeasurementRecordingForm({
 
             setValues({});
             onSave?.();
-        } catch (error) {
+        } catch {
             toast.error("Failed to save measurements");
         }
     };

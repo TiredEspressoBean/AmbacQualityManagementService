@@ -1,40 +1,80 @@
 services:
   postgres:
-    image: ankane/pgvector:v0.5.1
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pgaudit"
+      - "-c"
+      - "pgaudit.log=all"
+      - "-c"
+      - "pgaudit.log_catalog=on"
+      - "-c"
+      - "pgaudit.log_relation=on"
+      - "-c"
+      - "pgaudit.log_statement_once=off"
+      - "-c"
+      - "log_connections=on"
+      - "-c"
+      - "log_disconnections=on"
+      - "-c"
+      - "log_line_prefix=%t [%p]: user=%u,db=%d,app=%a,client=%h "
+      # Log persistence for audit compliance (AU.L2-3.3.1)
+      - "-c"
+      - "logging_collector=on"
+      - "-c"
+      - "log_directory=/var/log/postgresql"
+      - "-c"
+      - "log_filename=postgresql-%Y-%m-%d.log"
+      - "-c"
+      - "log_rotation_age=1d"
+      - "-c"
+      - "log_rotation_size=100MB"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tracker_AMBAC}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - postgres_logs:/var/log/postgresql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    ports:
-      - "5432:5432"
+    # No ports exposed - only accessible within docker network (reduces attack surface)
+    # Access via: docker compose exec postgres psql -U postgres -d tracker_AMBAC
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tracker_AMBAC}"]
       interval: 30s
       timeout: 10s
       retries: 5
+    networks:
+      - db-net
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # No ports exposed - only accessible within docker network
+    # Authentication required (AC.L2-3.1.1)
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispass} --appendonly yes
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - db-net
 
+  # Backend for local development (runserver with hot reload)
   backend:
     build:
       context: ./PartsTracker
       dockerfile: Dockerfile
     restart: unless-stopped
+    profiles:
+      - local
     command: >
       sh -c "
       python manage.py migrate &&
@@ -48,12 +88,13 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=tracker_AMBAC
       - NPM_BIN_PATH=/usr/bin/npm
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - REDIS_CACHE_URL=redis://redis:6379/1
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - REDIS_CACHE_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
       - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
       - CORS_ALLOW_CREDENTIALS=true
-      - CORS_ALLOWED_ORIGINS=https://localhost,https://govtracker.ambac.local,http://localhost,http://govtracker.ambac.local
-      - CSRF_TRUSTED_ORIGINS=https://localhost,https://govtracker.ambac.local,http://localhost,http://govtracker.ambac.local
+      - CORS_ALLOWED_ORIGINS=https://localhost,https://${SITE_DOMAIN:-localhost},http://localhost,http://${SITE_DOMAIN:-localhost}
+      - CSRF_TRUSTED_ORIGINS=https://localhost,https://${SITE_DOMAIN:-localhost},http://localhost,http://${SITE_DOMAIN:-localhost}
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -67,12 +108,62 @@ services:
       timeout: 5s
       retries: 15
       start_period: 90s
+    networks:
+      - db-net
+      - web-net
 
+  # Backend for production (gunicorn)
+  backend-prod:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles:
+      - production
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py setup_defaults &&
+      python manage.py collectstatic --noinput &&
+      gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --access-logfile - --error-logfile -"
+    env_file:
+      - .env.docker
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
+      - NPM_BIN_PATH=/usr/bin/npm
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - REDIS_CACHE_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/1
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+      - CORS_ALLOW_CREDENTIALS=true
+      - CORS_ALLOWED_ORIGINS=https://${SITE_DOMAIN:-localhost}
+      - CSRF_TRUSTED_ORIGINS=https://${SITE_DOMAIN:-localhost}
+      - DJANGO_DEBUG=False
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 90s
+    networks:
+      - db-net
+      - web-net
+
+  # Celery worker for local development
   celery-worker:
     build:
       context: ./PartsTracker
       dockerfile: Dockerfile
     restart: unless-stopped
+    profiles:
+      - local
     command: celery -A PartsTrackerApp worker --loglevel=info --concurrency=2
     env_file:
       - .env.docker
@@ -80,11 +171,11 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=tracker_AMBAC
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
     volumes:
       - ./PartsTracker:/app
-    # Memory limit for 3D model processing (STEP conversion can use 500MB+ per file)
     deploy:
       resources:
         limits:
@@ -96,12 +187,50 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - db-net
 
+  # Celery worker for production
+  celery-worker-prod:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles:
+      - production
+    command: celery -A PartsTrackerApp worker --loglevel=info --concurrency=4
+    env_file:
+      - .env.docker
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+    # Memory limit for 3D model processing (STEP conversion can use 500MB+ per file)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - db-net
+
+  # Celery beat for local development
   celery-beat:
     build:
       context: ./PartsTracker
       dockerfile: Dockerfile
     restart: unless-stopped
+    profiles:
+      - local
     command: celery -A PartsTrackerApp beat --loglevel=info
     env_file:
       - .env.docker
@@ -109,8 +238,9 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=tracker_AMBAC
-      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
       - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
     volumes:
       - ./PartsTracker:/app
     depends_on:
@@ -118,8 +248,38 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - db-net
+
+  # Celery beat for production
+  celery-beat-prod:
+    build:
+      context: ./PartsTracker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles:
+      - production
+    command: celery -A PartsTrackerApp beat --loglevel=info
+    env_file:
+      - .env.docker
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tracker_AMBAC
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redispass}@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redispass}
+    depends_on:
+      backend-prod:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - db-net
 
   # Backup service - run with: docker compose --profile backup run --rm backup
+  # Backups are encrypted with AES-256 (SC.L2-3.13.16)
+  # Decrypt with: openssl enc -d -aes-256-cbc -pbkdf2 -in backup.sql.gz.enc -out backup.sql.gz
   backup:
     image: postgres:15-alpine
     profiles:
@@ -127,11 +287,14 @@ services:
     volumes:
       - ./backups:/backups
     environment:
-      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
     command: >
-      sh -c "pg_dump -h postgres -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-tracker_AMBAC} | gzip > /backups/db_$$(date +%Y%m%d_%H%M%S).sql.gz && echo 'Backup complete'"
+      sh -c "pg_dump -h postgres -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-tracker_AMBAC} | gzip | openssl enc -aes-256-cbc -pbkdf2 -pass env:BACKUP_ENCRYPTION_KEY > /backups/db_$$(date +%Y%m%d_%H%M%S).sql.gz.enc && echo 'Encrypted backup complete'"
     depends_on:
       - postgres
+    networks:
+      - db-net
 
   # Build MkDocs documentation
   docs-builder:
@@ -169,7 +332,7 @@ services:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
       args:
-        - VITE_API_TARGET=${VITE_API_TARGET:-https://govtracker.ambac.local}
+        - VITE_API_TARGET=${VITE_API_TARGET:-https://${SITE_DOMAIN:-localhost}}
     profiles:
       - production
     env_file:
@@ -202,6 +365,8 @@ services:
          condition: service_completed_successfully
        docs-builder:
          condition: service_completed_successfully
+     networks:
+       - web-net
 
   # Caddy for production (custom certs)
   caddy:
@@ -214,6 +379,10 @@ services:
        - "443:443"
      extra_hosts:
        - "host.docker.internal:host-gateway"
+     environment:
+       - SITE_DOMAIN=${SITE_DOMAIN:-localhost}
+       - TLS_CERT=${TLS_CERT:-/etc/caddy/certs/cert.crt}
+       - TLS_KEY=${TLS_KEY:-/etc/caddy/certs/cert.key}
      volumes:
        - ./conf/Caddyfile:/etc/caddy/Caddyfile
        - ./certs:/etc/caddy/certs:ro
@@ -222,12 +391,14 @@ services:
        - caddy_data:/data
        - caddy_config:/config
      depends_on:
-       backend:
+       backend-prod:
          condition: service_healthy
        frontend-builder:
          condition: service_completed_successfully
        docs-builder:
          condition: service_completed_successfully
+     networks:
+       - web-net
 
   # Simple nginx for local dev (no SSL/certs needed)
 #  nginx-local:
@@ -243,12 +414,17 @@ services:
 #      - frontend-builder
 
 networks:
-  default:
-    name: ambactracker-network
-    external: true
+  # Network segmentation (SC.L2-3.13.1)
+  # db-net: internal data layer - postgres, redis, backend, celery
+  # web-net: public-facing - caddy, backend (backend bridges both)
+  db-net:
+    internal: true  # No external access
+  web-net:
+    # External access for caddy
 
 volumes:
   postgres_data:
+  postgres_logs:  # Persistent audit logs (AU.L2-3.3.1)
   redis_data:
   frontend-dist:
   docs-dist:

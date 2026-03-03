@@ -1,0 +1,10 @@
+FROM ankane/pgvector:v0.5.1
+
+# Install pgaudit extension for CMMC L2 compliance auditing
+# ankane/pgvector:v0.5.1 is based on PostgreSQL 15
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends postgresql-15-pgaudit && \
+    rm -rf /var/lib/apt/lists/*
+
+# Note: SSL not configured since postgres is internal to docker network only.
+# Network isolation + SSH access provides the encrypted path (SC.L2-3.13.8).

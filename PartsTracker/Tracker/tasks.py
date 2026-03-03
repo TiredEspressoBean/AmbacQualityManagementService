@@ -363,64 +363,20 @@ def send_weekly_order_update_task(self, customer_id: int, order_data: List[Dict[
 @shared_task
 def send_weekly_emails_to_all_customers():
     """
-    Celery Beat scheduled task to send weekly emails to all customers.
+    DEPRECATED: Use create_weekly_report_notifications instead.
 
-    This replaces the cron job. Runs once per week and queues individual
-    email tasks for each customer with active orders.
+    This task is kept for backwards compatibility but now redirects to the
+    new notification system which uses NotificationTask records.
 
     Returns:
-        dict with summary of queued emails
+        dict with redirect info
     """
-    from django.db.models import Q
-    from Tracker.models import User, Orders, OrdersStatus
-    from Tracker.email_notifications import send_weekly_order_update
-
-    logger.info("Starting weekly email batch job")
-
-    # Get customers with active orders
-    active_statuses = [
-        OrdersStatus.RFI,
-        OrdersStatus.PENDING,
-        OrdersStatus.IN_PROGRESS,
-        OrdersStatus.ON_HOLD
-    ]
-
-    customers_with_orders = User.objects.filter(
-        customer_orders__archived=False,
-        customer_orders__order_status__in=active_statuses
-    ).distinct()
-
-    queued_count = 0
-    skipped_count = 0
-
-    for customer in customers_with_orders:
-        # Get customer's active orders
-        active_orders = Orders.objects.filter(
-            customer=customer,
-            archived=False,
-            order_status__in=active_statuses
-        ).select_related('company').prefetch_related('parts__step')
-
-        if not active_orders.exists():
-            skipped_count += 1
-            continue
-
-        # Prepare order data (same logic as management command)
-        order_data = _prepare_order_data(active_orders)
-
-        # Queue email task (async)
-        send_weekly_order_update(customer.id, order_data, immediate=False)
-        queued_count += 1
-        logger.info(f"Queued weekly email for customer {customer.email}")
-
-    logger.info(f"Weekly email batch complete: {queued_count} queued, {skipped_count} skipped")
-
-    return {
-        'status': 'success',
-        'queued': queued_count,
-        'skipped': skipped_count,
-        'total_customers': customers_with_orders.count()
-    }
+    logger.warning(
+        "send_weekly_emails_to_all_customers is deprecated. "
+        "Use create_weekly_report_notifications instead."
+    )
+    # Delegate to new system
+    return create_weekly_report_notifications()
 
 
 def _prepare_order_data(orders):
@@ -685,6 +641,202 @@ def dispatch_pending_notifications():
 
 
 # ============================================================================
+# NOTIFICATION CREATION TASKS (Create NotificationTask records for dispatch)
+# ============================================================================
+
+@shared_task
+def create_weekly_report_notifications():
+    """
+    Celery Beat scheduled task to create WEEKLY_REPORT NotificationTask records.
+
+    Runs weekly (Tuesday 3 PM) and creates notification records for each customer
+    with active orders. The dispatch_pending_notifications task will then send them.
+
+    Returns:
+        dict with summary of created notifications
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import User, Orders, OrdersStatus, NotificationTask as NotificationTaskModel, Tenant
+
+    logger.info("Creating weekly report notifications")
+
+    active_statuses = [
+        OrdersStatus.RFI,
+        OrdersStatus.PENDING,
+        OrdersStatus.IN_PROGRESS,
+        OrdersStatus.ON_HOLD
+    ]
+
+    created_count = 0
+    skipped_count = 0
+
+    # Process each active tenant
+    for tenant in Tenant.objects.filter(is_active=True):
+        with tenant_context(tenant.id):
+            # Get customers with active orders in this tenant
+            customers_with_orders = User.objects.filter(
+                customer_orders__archived=False,
+                customer_orders__order_status__in=active_statuses,
+                customer_orders__tenant=tenant
+            ).distinct()
+
+            for customer in customers_with_orders:
+                if not customer.email:
+                    skipped_count += 1
+                    continue
+
+                # Check if we already have a pending weekly report for this customer
+                existing = NotificationTaskModel.objects.filter(
+                    notification_type='WEEKLY_REPORT',
+                    recipient=customer,
+                    status='pending'
+                ).exists()
+
+                if existing:
+                    skipped_count += 1
+                    continue
+
+                # Create notification task (dispatch will call handler to build context)
+                NotificationTaskModel.objects.create(
+                    notification_type='WEEKLY_REPORT',
+                    recipient=customer,
+                    channel_type='email',
+                    interval_type='fixed',
+                    status='pending',
+                    next_send_at=timezone.now(),
+                )
+                created_count += 1
+                logger.info(f"Created weekly report notification for {customer.email}")
+
+    logger.info(f"Weekly report notifications: {created_count} created, {skipped_count} skipped")
+
+    return {
+        'status': 'success',
+        'created': created_count,
+        'skipped': skipped_count,
+    }
+
+
+@shared_task
+def check_capa_reminders():
+    """
+    Celery Beat scheduled task to create CAPA_REMINDER NotificationTask records.
+
+    Runs daily and creates reminder notifications for CAPAs based on due date proximity.
+    Uses escalation tiers:
+    - 28+ days out: remind every 28 days
+    - 14-28 days out: remind every 7 days
+    - 0-14 days out: remind every 3 days
+    - Overdue: remind daily
+
+    Returns:
+        dict with summary of created notifications
+    """
+    from django.utils import timezone
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import CAPA, NotificationTask as NotificationTaskModel, Tenant
+
+    logger.info("Checking CAPA reminders")
+
+    today = timezone.now().date()
+    created_count = 0
+    skipped_count = 0
+
+    # Escalation tiers: [threshold_days, interval_days]
+    # threshold_days: if days_until_due <= threshold, use this interval
+    ESCALATION_TIERS = [
+        (28, 28),   # 28+ days out: every 28 days
+        (14, 7),    # 14-28 days out: every 7 days
+        (0, 3),     # 0-14 days out: every 3 days
+        (-9999, 1), # Overdue: daily
+    ]
+
+    capa_ct = ContentType.objects.get_for_model(CAPA)
+
+    # Process each active tenant
+    for tenant in Tenant.objects.filter(is_active=True):
+        with tenant_context(tenant.id):
+            # Get open CAPAs with due dates and assigned users
+            open_capas = CAPA.objects.filter(
+                tenant=tenant,
+                assigned_to__isnull=False,
+                due_date__isnull=False,
+            ).exclude(
+                status__in=['CLOSED', 'CANCELLED']
+            ).select_related('assigned_to')
+
+            for capa in open_capas:
+                if not capa.assigned_to.email:
+                    skipped_count += 1
+                    continue
+
+                days_until_due = (capa.due_date - today).days
+
+                # Determine interval based on escalation tiers
+                interval_days = None
+                for threshold, interval in ESCALATION_TIERS:
+                    if days_until_due <= threshold:
+                        interval_days = interval
+                    else:
+                        break
+
+                if interval_days is None:
+                    interval_days = ESCALATION_TIERS[0][1]  # Default to longest interval
+
+                # Check if we recently sent a reminder for this CAPA
+                recent_notification = NotificationTaskModel.objects.filter(
+                    notification_type='CAPA_REMINDER',
+                    related_content_type=capa_ct,
+                    related_object_id=str(capa.id),
+                    status='sent',
+                    last_sent_at__gte=timezone.now() - timezone.timedelta(days=interval_days)
+                ).exists()
+
+                if recent_notification:
+                    skipped_count += 1
+                    continue
+
+                # Check for pending notification already queued
+                pending_exists = NotificationTaskModel.objects.filter(
+                    notification_type='CAPA_REMINDER',
+                    related_content_type=capa_ct,
+                    related_object_id=str(capa.id),
+                    status='pending'
+                ).exists()
+
+                if pending_exists:
+                    skipped_count += 1
+                    continue
+
+                # Create CAPA reminder notification
+                NotificationTaskModel.objects.create(
+                    notification_type='CAPA_REMINDER',
+                    recipient=capa.assigned_to,
+                    channel_type='email',
+                    interval_type='deadline_based',
+                    deadline=timezone.make_aware(
+                        timezone.datetime.combine(capa.due_date, timezone.datetime.min.time())
+                    ) if capa.due_date else None,
+                    status='pending',
+                    next_send_at=timezone.now(),
+                    related_content_type=capa_ct,
+                    related_object_id=str(capa.id),
+                )
+                created_count += 1
+                logger.info(f"Created CAPA reminder for {capa.capa_number} (due in {days_until_due} days)")
+
+    logger.info(f"CAPA reminders: {created_count} created, {skipped_count} skipped")
+
+    return {
+        'status': 'success',
+        'created': created_count,
+        'skipped': skipped_count,
+    }
+
+
+# ============================================================================
 # HUBSPOT SYNC TASKS
 # ============================================================================
 
@@ -909,51 +1061,85 @@ Please respond as soon as possible.
     }
 
 
-@shared_task(bind=True, base=RetryableEmailTask)
-def escalate_approvals(self):
-    """Check for approvals past escalation_day and notify escalate_to user.
-    Uses RetryableEmailTask for automatic retry with exponential backoff."""
-    from .models import ApprovalRequest, Approval_Status_Type
-    from django.core.mail import send_mail
-    from django.conf import settings
+@shared_task
+def escalate_approvals():
+    """
+    Check for approvals past escalation_day and create APPROVAL_ESCALATION notifications.
+
+    Creates NotificationTask records which are then dispatched by dispatch_pending_notifications.
+    This ensures escalations go through the unified notification system with templates.
+    """
+    from .models import ApprovalRequest, Approval_Status_Type, NotificationTask as NotificationTaskModel, Tenant
+    from django.contrib.contenttypes.models import ContentType
     from django.utils import timezone
 
     today = timezone.now().date()
+    created_count = 0
+    skipped_count = 0
 
-    escalation_approvals = ApprovalRequest.objects.filter(
-        status=Approval_Status_Type.PENDING,
-        escalation_day__lte=today,
-        escalate_to__isnull=False
-    )
+    approval_ct = ContentType.objects.get_for_model(ApprovalRequest)
 
-    escalation_count = 0
-    for approval in escalation_approvals:
-        if approval.escalate_to.email:
-            subject = f"ESCALATION: Approval Request {approval.approval_number}"
-            message = f"""
-This approval request has been escalated to you.
+    # Process each active tenant
+    for tenant in Tenant.objects.filter(is_active=True):
+        with tenant_context(tenant.id):
+            escalation_approvals = ApprovalRequest.objects.filter(
+                status=Approval_Status_Type.PENDING,
+                escalation_day__lte=today,
+                escalate_to__isnull=False,
+                tenant=tenant
+            ).select_related('escalate_to')
 
-Approval Number: {approval.approval_number}
-Type: {approval.get_approval_type_display()}
-Requested By: {approval.requested_by.get_full_name() if approval.requested_by else 'System'}
-Due Date: {approval.due_date.strftime('%Y-%m-%d %H:%M') if approval.due_date else 'Not set'}
-Escalation Date: {approval.escalation_day.strftime('%Y-%m-%d')}
+            for approval in escalation_approvals:
+                if not approval.escalate_to.email:
+                    skipped_count += 1
+                    continue
 
-Pending Approvers: {', '.join([a.get_full_name() for a in approval.get_pending_approvers()])}
+                # Check if we already sent an escalation today
+                already_sent = NotificationTaskModel.objects.filter(
+                    notification_type='APPROVAL_ESCALATION',
+                    related_content_type=approval_ct,
+                    related_object_id=str(approval.id),
+                    status='sent',
+                    last_sent_at__date=today
+                ).exists()
 
-Please follow up on this approval request.
-            """
+                if already_sent:
+                    skipped_count += 1
+                    continue
 
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [approval.escalate_to.email],
-                fail_silently=False,
-            )
-            escalation_count += 1
+                # Check for pending escalation already queued
+                pending_exists = NotificationTaskModel.objects.filter(
+                    notification_type='APPROVAL_ESCALATION',
+                    related_content_type=approval_ct,
+                    related_object_id=str(approval.id),
+                    status='pending'
+                ).exists()
 
-    return {'status': 'success', 'escalations_sent': escalation_count}
+                if pending_exists:
+                    skipped_count += 1
+                    continue
+
+                # Create escalation notification
+                NotificationTaskModel.objects.create(
+                    notification_type='APPROVAL_ESCALATION',
+                    recipient=approval.escalate_to,
+                    channel_type='email',
+                    interval_type='fixed',
+                    status='pending',
+                    next_send_at=timezone.now(),
+                    related_content_type=approval_ct,
+                    related_object_id=str(approval.id),
+                )
+                created_count += 1
+                logger.info(f"Created escalation notification for approval {approval.approval_number}")
+
+    logger.info(f"Approval escalations: {created_count} created, {skipped_count} skipped")
+
+    return {
+        'status': 'success',
+        'created': created_count,
+        'skipped': skipped_count,
+    }
 
 
 @shared_task(bind=True, base=RetryableEmailTask)

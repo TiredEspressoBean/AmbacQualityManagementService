@@ -1,13 +1,23 @@
 # Frequently Asked Questions
 
-Common questions about using Ambac Tracker.
+Common questions about using uqmes.
+
+!!! tip "Try It in Demo Mode"
+    These FAQs reference real demo data you can explore:
+
+    - **Find an order**: Search for `ORD-2024-0042` (Midwest Fleet, 24 injectors)
+    - **View part history**: Open INJ-0042-017 to see Flow Testing failure and disposition
+    - **Create a CAPA**: See CAPA-2024-003 for a complete nozzle defect investigation
+    - **Explore permissions**: Log in as different demo users to see RBAC in action
+
+    Demo accounts: mike.ops@demo.ambac.com (Operator), sarah.qa@demo.ambac.com (QA Inspector), jennifer.mgr@demo.ambac.com (Production Manager)
 
 ## General
 
 ### What browsers are supported?
 Chrome, Firefox, Edge, and Safari (latest versions). Chrome is recommended for best performance.
 
-### Can I use Ambac Tracker on mobile?
+### Can I use uqmes on mobile?
 Yes, the interface is responsive and works on tablets and phones. For complex tasks, desktop is recommended.
 
 ### How do I change my password?

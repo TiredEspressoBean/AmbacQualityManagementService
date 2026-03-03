@@ -29,7 +29,6 @@ type Props = {
 export const QaDocumentsSection = memo(function QaDocumentsSection({ workOrder }: Props) {
     const [allDocuments, setAllDocuments] = useState<DocumentWithSource[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<DocumentWithSource | null>(null);
-    const [activeDocumentTab, setActiveDocumentTab] = useState<string>("");
 
     // Use the new QA-specific documents endpoint
     const { data: qaDocumentsData, isLoading, error: queryError } = useQaDocuments(workOrder.id);
@@ -74,12 +73,6 @@ export const QaDocumentsSection = memo(function QaDocumentsSection({ workOrder }
                     });
 
                 setAllDocuments(uniqueDocs);
-
-                // Set first available tab as active (only on initial load)
-                const sources = Array.from(new Set(uniqueDocs.map(doc => doc.source || 'Other')));
-                if (sources.length > 0) {
-                    setActiveDocumentTab(prev => prev || sources[0]);
-                }
 
                 // Auto-select first document (only on initial load)
                 if (uniqueDocs.length > 0) {

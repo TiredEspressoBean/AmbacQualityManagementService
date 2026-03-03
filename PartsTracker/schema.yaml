@@ -11711,6 +11711,10 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: needs_qa
+        schema:
+          type: boolean
       - name: offset
         required: false
         in: query
@@ -12432,6 +12436,10 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: needs_qa
+        schema:
+          type: boolean
       - name: offset
         required: false
         in: query
@@ -23542,6 +23550,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/CurrentTenantResponse'
           description: ''
+  /api/tenant/demo-reset/:
+    post:
+      operationId: api_tenant_demo_reset_create
+      description: |-
+        Reset demo tenant data to a fresh state.
+
+        Only available for demo tenants and requires admin permissions.
+        Calls the reset_demo management command which clears and repopulates data.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoResetResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoResetForbidden'
+          description: ''
   /api/tenant/logo/:
     post:
       operationId: api_tenant_logo_create
@@ -26947,6 +26992,34 @@ components:
       description: |-
         * `OPTIONAL` - Optional
         * `DISABLED` - Disabled
+    DemoResetForbidden:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    DemoResetRequestRequest:
+      type: object
+      properties:
+        scale:
+          allOf:
+          - $ref: '#/components/schemas/ScaleEnum'
+          default: small
+    DemoResetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        reset_at:
+          type: string
+          format: date-time
+      required:
+      - message
+      - reset_at
+      - success
     DeploymentInfo:
       type: object
       description: Serializer for deployment mode information.
@@ -32209,9 +32282,16 @@ components:
         requires_sampling:
           type: boolean
           readOnly: true
+        needs_qa:
+          type: boolean
+          readOnly: true
+        qa_completed:
+          type: boolean
+          readOnly: true
         order:
           type: string
           format: uuid
+          nullable: true
         part_type:
           type: string
           format: uuid
@@ -32295,12 +32375,14 @@ components:
       - has_error
       - id
       - is_from_batch_process
+      - needs_qa
       - order_name
       - part_type
       - part_type_info
       - part_type_name
       - process
       - process_name
+      - qa_completed
       - quality_info
       - requires_sampling
       - step
@@ -32322,6 +32404,7 @@ components:
         order:
           type: string
           format: uuid
+          nullable: true
         part_type:
           type: string
           format: uuid
@@ -33613,6 +33696,7 @@ components:
         order:
           type: string
           format: uuid
+          nullable: true
         part_type:
           type: string
           format: uuid
@@ -37189,6 +37273,16 @@ components:
       required:
       - order
       - rule_type
+    ScaleEnum:
+      enum:
+      - small
+      - medium
+      - large
+      type: string
+      description: |-
+        * `small` - small
+        * `medium` - medium
+        * `large` - large
     ScheduleSlot:
       type: object
       description: Production schedule slot serializer

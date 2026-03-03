@@ -1,10 +1,10 @@
 # Navigation Tour
 
-This guide introduces the Ambac Tracker interface and helps you find your way around.
+This guide introduces the uqmes interface and helps you find your way around.
 
 ## Interface Overview
 
-The Ambac Tracker interface consists of three main areas:
+The uqmes interface consists of three main areas:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -94,7 +94,7 @@ Use the search bar to quickly find:
 Click your avatar to access:
 
 - **Profile** - Your account settings
-- **Log Out** - Sign out of Ambac Tracker
+- **Log Out** - Sign out of uqmes
 
 ## Page Types
 
@@ -163,7 +163,7 @@ Many pages support CSV export:
 
 ## Mobile Access
 
-Ambac Tracker works on tablets and mobile devices:
+uqmes works on tablets and mobile devices:
 
 - Sidebar collapses to a menu icon
 - Tables scroll horizontally

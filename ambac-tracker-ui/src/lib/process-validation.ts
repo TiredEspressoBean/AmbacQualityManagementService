@@ -180,8 +180,6 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
     };
   }
 
-  const _nodeMap = new Map(nodes.map(n => [n.id, n]));
-
   // Find start nodes
   const startNodes = nodes.filter(isStartNode);
   if (startNodes.length === 0) {

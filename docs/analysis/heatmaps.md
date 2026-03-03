@@ -136,6 +136,9 @@ Look for:
 | Consistent location | Fixture or tooling issue |
 | Random distribution | Multiple causes |
 
+!!! example "Nozzle Tip Defect Pattern"
+    In order ORD-2024-0038, the heat map revealed a cluster of defects on the nozzle tip area across multiple injectors. This visual pattern - invisible in tabular data - triggered CAPA-2024-003 and traced back to a supplier batch issue with nozzle tip geometry.
+
 ### Correlation
 
 Correlate heat map with:

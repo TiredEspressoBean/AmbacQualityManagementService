@@ -1,6 +1,6 @@
 # Process Overview
 
-Processes define manufacturing workflows in Ambac Tracker. This guide explains process concepts and structure.
+Processes define manufacturing workflows in uqmes. This guide explains process concepts and structure.
 
 ## What is a Process?
 

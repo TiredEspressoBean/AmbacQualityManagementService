@@ -1,29 +1,29 @@
 # First Login
 
-This guide walks you through logging into Ambac Tracker for the first time and setting up your account.
+This guide walks you through logging into uqmes for the first time and setting up your account.
 
-## Accessing Ambac Tracker
+## Accessing uqmes
 
-Your organization's Ambac Tracker instance is available at a URL like:
+Your organization's uqmes instance is available at a URL like:
 
 ```
-https://yourcompany.ambactracker.com
+https://yourcompany.uqmes.com
 ```
 
 Your administrator will provide the exact URL for your organization.
 
 ## Login Methods
 
-Ambac Tracker supports two authentication methods:
+uqmes supports two authentication methods:
 
 ### Single Sign-On (SSO)
 
 If your organization uses Microsoft Azure AD or another identity provider:
 
-1. Navigate to your Ambac Tracker URL
+1. Navigate to your uqmes URL
 2. Click **Sign in with Microsoft** (or your organization's SSO provider)
 3. Enter your corporate credentials
-4. You'll be redirected back to Ambac Tracker, logged in
+4. You'll be redirected back to uqmes, logged in
 
 !!! tip "SSO Benefits"
     SSO uses your existing corporate credentials, so you don't need a separate password. Your IT team manages authentication policies like multi-factor authentication (MFA).
@@ -32,7 +32,7 @@ If your organization uses Microsoft Azure AD or another identity provider:
 
 If your organization uses direct login:
 
-1. Navigate to your Ambac Tracker URL
+1. Navigate to your uqmes URL
 2. Enter your **email address**
 3. Enter your **password**
 4. Click **Log In**

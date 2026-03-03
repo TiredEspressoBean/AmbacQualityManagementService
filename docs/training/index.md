@@ -1,6 +1,6 @@
 # Training Program
 
-Welcome to the Ambac Tracker training program. These guides provide structured onboarding for each role, with hands-on exercises and knowledge checks.
+Welcome to the uqmes training program. These guides provide structured onboarding for each role, with hands-on exercises and knowledge checks.
 
 ## Training Philosophy
 
@@ -21,6 +21,18 @@ Our training is:
 | [Production Manager](production-manager.md) | 3-5 hours | None |
 | [Document Controller](document-controller.md) | 3-4 hours | None |
 | [Administrator](administrator.md) | 6-8 hours | Understanding of all roles |
+
+## Cross-Cutting Modules
+
+These supplemental modules cover topics that apply across multiple roles:
+
+| Module | Duration | Recommended For |
+|--------|----------|-----------------|
+| [SPC Fundamentals](spc-fundamentals.md) | 1-2 hours | Operators, QA Inspectors, QA Managers, Production Managers |
+| [Training Data Setup](training-data-setup.md) | 30 min | Administrators setting up training environments |
+
+!!! tip "SPC Training"
+    All production floor staff should complete **SPC Fundamentals** to understand control charts and process capability. This is referenced throughout the role-specific training guides.
 
 !!! info "Additional Roles"
     The following system roles do not yet have dedicated training guides:
@@ -82,6 +94,16 @@ Your training completion is tracked in the system:
 - Supervisor sign-off
 - Retraining dates (if applicable)
 
+!!! example "Demo: Expired Training Alert"
+    In demo mode, operator **Dave Wilson** has an expired training record:
+
+    - Flow Testing Certification expired 45 days ago
+    - System blocks him from working at Flow Testing step
+    - Production Manager Jennifer Walsh sees the alert in her dashboard
+    - Dave must complete retraining before resuming Flow Testing work
+
+    This demonstrates how the system enforces training requirements at production steps.
+
 ## Getting Help During Training
 
 - Ask your trainer or supervisor
@@ -98,14 +120,16 @@ Retraining may be required when:
 - After extended absence
 - Following quality issues
 - Per regulatory requirements
+- **Training certification expires** (see Dave Wilson example above)
 
 ## For Trainers
 
 If you're conducting training:
 
-1. Ensure training environment is set up
+1. Ensure training environment is set up (see [Training Data Setup](training-data-setup.md))
 2. Review training guide beforehand
-3. Allow time for questions and practice
-4. Document completion
-5. Verify competency before production access
+3. Assign [SPC Fundamentals](spc-fundamentals.md) for production floor roles
+4. Allow time for questions and practice
+5. Document completion
+6. Verify competency before production access
 

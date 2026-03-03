@@ -1,0 +1,18 @@
+APPROVAL ESCALATION - ACTION REQUIRED
+
+Hi {{ recipient.first_name|default:"there" }},
+
+An approval request requires your attention and is {{ days_overdue }} day{{ days_overdue|pluralize }} overdue.
+
+=====================================
+Type: {{ content_type }}
+Item: {{ content_title }}
+Requested by: {{ requested_by }}
+Due Date: {{ due_date|date:"F d, Y"|default:"Not specified" }}
+Days Overdue: {{ days_overdue }}
+=====================================
+
+Please take action to resolve this overdue approval:
+{{ frontend_url }}/inbox
+
+This is an automated escalation message from {{ brand_name|default:"uqmes" }}.

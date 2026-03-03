@@ -73,10 +73,10 @@ Where are defects detected?
 
 | Step | Defects | % |
 |------|---------|---|
-| Incoming Inspection | 12 | 30% |
-| Machining | 8 | 20% |
-| Assembly | 15 | 38% |
-| Final QA | 5 | 12% |
+| Component Grading | 12 | 25% |
+| Nozzle Inspection | 18 | 38% |
+| Flow Testing | 10 | 21% |
+| Final Test | 8 | 16% |
 
 ### Detection vs Origin
 
@@ -95,9 +95,9 @@ Which products have quality issues?
 
 | Part Type | Defects | Rate |
 |-----------|---------|------|
-| Widget A | 45 | 2.3% |
-| Widget B | 12 | 0.8% |
-| Assembly X | 28 | 3.1% |
+| Common Rail Injector | 45 | 2.3% |
+| HEUI Injector | 12 | 0.8% |
+| Unit Injector | 28 | 3.1% |
 
 Compare:
 - Absolute counts
@@ -110,9 +110,12 @@ Track quality by material source:
 
 | Supplier | Lots | Defect Rate |
 |----------|------|-------------|
-| Supplier A | 24 | 1.2% |
-| Supplier B | 18 | 4.5% |
-| Supplier C | 12 | 0.5% |
+| Delphi Fuel Systems | 24 | 1.2% |
+| Bosch Rexroth | 18 | 4.5% |
+| Denso America | 12 | 0.5% |
+
+!!! example "Supplier Quality Issue"
+    Analysis of nozzle defects in order ORD-2024-0038 traced the issue to a specific Delphi batch. This data supported CAPA-2024-003's root cause finding.
 
 Use for:
 - Supplier quality ratings

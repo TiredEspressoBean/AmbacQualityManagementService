@@ -6,15 +6,10 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-# Load .env file if it exists
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -v '^\s*$' | xargs)
-fi
-
-# Defaults
-POSTGRES_DB="${POSTGRES_DB:-tracker_AMBAC}"
-POSTGRES_USER="${POSTGRES_USER:-postgres}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
+# Hardcoded defaults for local dev (avoids .env parsing issues)
+POSTGRES_DB="tracker_AMBAC"
+POSTGRES_USER="postgres"
+POSTGRES_PASSWORD="postgres"
 
 echo -e "\nStarting dev databases..."
 
