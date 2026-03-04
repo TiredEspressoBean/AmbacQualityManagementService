@@ -163,7 +163,7 @@ urlpatterns += [
     # Tenant Group Management - self-service endpoints
     path("api/permissions/", PermissionListView.as_view(), name="permission-list"),
     path("api/presets/", PresetListView.as_view(), name="preset-list"),
-    path("api/users/<uuid:user_id>/effective-permissions/", EffectivePermissionsView.as_view(), name="effective-permissions"),
+    path("api/users/<int:user_id>/effective-permissions/", EffectivePermissionsView.as_view(), name="effective-permissions"),
     path("api/users/me/effective-permissions/", EffectivePermissionsView.as_view(), name="my-effective-permissions"),
     path("__reload__/", include(("django_browser_reload.urls", "django_browser_reload"),
                                 namespace="django_browser_reload")),

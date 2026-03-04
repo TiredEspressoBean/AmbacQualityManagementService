@@ -13,6 +13,7 @@ from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from Tracker.permissions import AllowAnyWithTenantAccess
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings as django_settings
@@ -20,6 +21,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 User = get_user_model()
 
@@ -70,8 +72,9 @@ class CurrentTenantView(APIView):
     - Display tenant name in header
 
     Authentication is optional - unauthenticated requests get deployment info only.
+    Authenticated users trying to access other tenants will be blocked.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAnyWithTenantAccess]
 
     @extend_schema(responses={200: CurrentTenantResponseSerializer})
     def get(self, request):
@@ -475,7 +478,7 @@ class TenantCreateSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             email=admin_email,
             username=admin_email,
-            password=admin_password or User.objects.make_random_password(),
+            password=admin_password or get_random_string(length=16),
             first_name=admin_first_name,
             last_name=admin_last_name,
             tenant=tenant,
@@ -1474,7 +1477,7 @@ class SwitchTenantView(APIView):
             has_access = True
         elif TenantGroupMembership.objects.filter(
             user=user,
-            group__tenant=tenant
+            tenant=tenant
         ).exists():
             has_access = True
 

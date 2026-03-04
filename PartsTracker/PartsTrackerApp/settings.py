@@ -255,6 +255,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # default gate
+        "Tracker.permissions.TenantAccessPermission",  # enforce tenant access for API auth
         'rest_framework.permissions.DjangoModelPermissions',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

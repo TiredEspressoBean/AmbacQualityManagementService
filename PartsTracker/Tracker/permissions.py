@@ -421,6 +421,98 @@ def validate_structure() -> list[str]:
 from rest_framework.permissions import BasePermission
 
 
+class TenantAccessPermission(BasePermission):
+    """
+    Enforces tenant access control for API-authenticated requests.
+
+    This permission class closes a security gap where middleware-level tenant
+    access checks don't work for DRF token/JWT authentication (because DRF
+    authentication happens after middleware runs).
+
+    The middleware already handles session-authenticated users, but for API
+    clients using tokens, this permission ensures they can only access tenants
+    they belong to.
+
+    Access is granted if:
+    1. Running in dedicated mode (all users share one tenant)
+    2. No tenant context on request (let other permissions handle)
+    3. User is not authenticated (let IsAuthenticated handle)
+    4. User is superuser
+    5. Tenant is user's home tenant (user.tenant)
+    6. User has TenantGroupMembership (via UserRole) for that tenant
+
+    Add to DEFAULT_PERMISSION_CLASSES or specific viewsets.
+    """
+
+    message = "You don't have permission to access this tenant."
+
+    def has_permission(self, request, view):
+        from django.conf import settings as django_settings
+
+        # In dedicated mode, tenant isolation isn't enforced - all users share one tenant
+        if getattr(django_settings, 'DEDICATED_MODE', False):
+            return True
+
+        # If no tenant context, skip this check (other permissions will handle)
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return True
+
+        # Unauthenticated requests should be handled by IsAuthenticated
+        if not request.user or not request.user.is_authenticated:
+            return True  # Let IsAuthenticated handle this
+
+        return self._user_can_access_tenant(request.user, tenant)
+
+    def _user_can_access_tenant(self, user, tenant):
+        """Check if user has access to the specified tenant."""
+        # Superusers can access any tenant
+        if user.is_superuser:
+            return True
+
+        # Check if it's the user's home tenant
+        if hasattr(user, 'tenant') and user.tenant == tenant:
+            return True
+
+        # Check if user has any group membership in this tenant (via UserRole)
+        from Tracker.models import UserRole
+        return UserRole.objects.filter(
+            user=user,
+            group__tenant=tenant
+        ).exists()
+
+
+class AllowAnyWithTenantAccess(TenantAccessPermission):
+    """
+    Allows unauthenticated access but enforces tenant access for authenticated users.
+
+    Use this for endpoints like /api/tenant/current/ that need to:
+    - Allow unauthenticated requests (for deployment info, login page, etc.)
+    - Block authenticated users from accessing other tenants (SaaS mode only)
+
+    This combines AllowAny behavior with TenantAccessPermission.
+    In dedicated mode, all users share one tenant so access is always allowed.
+    """
+
+    def has_permission(self, request, view):
+        from django.conf import settings as django_settings
+
+        # In dedicated mode, tenant isolation isn't enforced
+        if getattr(django_settings, 'DEDICATED_MODE', False):
+            return True
+
+        # Unauthenticated requests are allowed
+        if not request.user or not request.user.is_authenticated:
+            return True
+
+        # For authenticated users, enforce tenant access
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            return True  # No tenant context, allow
+
+        return self._user_can_access_tenant(request.user, tenant)
+
+
 class TenantPermission(BasePermission):
     """
     Base class for tenant-scoped permissions.
