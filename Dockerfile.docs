@@ -1,0 +1,58 @@
+# MkDocs Documentation Server
+# Deploys to Railway as a separate service
+
+FROM python:3.11-slim
+
+WORKDIR /docs
+
+# Install MkDocs and extensions
+COPY docs/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy MkDocs config and documentation
+COPY mkdocs.yml .
+COPY docs/ docs/
+
+# Build static site
+RUN mkdocs build
+
+# Install a lightweight server
+RUN pip install --no-cache-dir gunicorn
+
+# Create a simple WSGI app to serve static files
+RUN echo 'from wsgiref.simple_server import make_server\n\
+import os\n\
+import mimetypes\n\
+\n\
+def app(environ, start_response):\n\
+    path = environ.get("PATH_INFO", "/").lstrip("/")\n\
+    if not path or path.endswith("/"):\n\
+        path += "index.html"\n\
+    \n\
+    filepath = os.path.join("/docs/site", path)\n\
+    \n\
+    if os.path.isfile(filepath):\n\
+        content_type, _ = mimetypes.guess_type(filepath)\n\
+        content_type = content_type or "application/octet-stream"\n\
+        with open(filepath, "rb") as f:\n\
+            content = f.read()\n\
+        start_response("200 OK", [("Content-Type", content_type), ("Content-Length", str(len(content)))])\n\
+        return [content]\n\
+    else:\n\
+        # Try adding .html extension\n\
+        filepath_html = filepath + ".html"\n\
+        if os.path.isfile(filepath_html):\n\
+            with open(filepath_html, "rb") as f:\n\
+                content = f.read()\n\
+            start_response("200 OK", [("Content-Type", "text/html"), ("Content-Length", str(len(content)))])\n\
+            return [content]\n\
+        \n\
+        start_response("404 Not Found", [("Content-Type", "text/plain")])\n\
+        return [b"Not Found"]\n\
+' > /docs/serve.py
+
+# Expose port
+EXPOSE 8000
+
+# Use gunicorn to serve
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "serve:app"]

@@ -12,7 +12,8 @@ __pycache__/
 *.swp
 
 # Python / Django
-**/migrations/
+**/.venv/
+**/venv/
 **/staticfiles/
 **/media/
 **/__pycache__/

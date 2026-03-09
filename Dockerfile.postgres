@@ -1,10 +1,22 @@
 FROM ankane/pgvector:v0.5.1
 
 # Install pgaudit extension for CMMC L2 compliance auditing
+# Install pgBackRest for PITR backups
 # ankane/pgvector:v0.5.1 is based on PostgreSQL 15
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends postgresql-15-pgaudit && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        postgresql-15-pgaudit \
+        pgbackrest && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /var/lib/pgbackrest /var/log/pgbackrest /var/spool/pgbackrest && \
+    chown -R postgres:postgres /var/lib/pgbackrest /var/log/pgbackrest /var/spool/pgbackrest
+
+# Custom entrypoint to fix pgBackRest permissions on mounted volumes
+COPY scripts/pgbackrest-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/pgbackrest-entrypoint.sh
+
+ENTRYPOINT ["pgbackrest-entrypoint.sh"]
+CMD ["postgres"]
 
 # Note: SSL not configured since postgres is internal to docker network only.
 # Network isolation + SSH access provides the encrypted path (SC.L2-3.13.8).

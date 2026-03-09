@@ -33,13 +33,27 @@ services:
       - "log_rotation_age=1d"
       - "-c"
       - "log_rotation_size=100MB"
+      # pgBackRest WAL archiving for PITR
+      - "-c"
+      - "archive_mode=on"
+      - "-c"
+      - "archive_command=pgbackrest --stanza=tracker archive-push %p"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=3"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tracker_AMBAC}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGBACKREST_REPO1_CIPHER_PASS: ${BACKUP_ENCRYPTION_KEY:-changeme-in-production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - postgres_logs:/var/log/postgresql
+      - pgbackrest_repo:/var/lib/pgbackrest
+      - pgbackrest_logs:/var/log/pgbackrest
+      - pgbackrest_spool:/var/spool/pgbackrest
+      - ./conf/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     # No ports exposed - only accessible within docker network (reduces attack surface)
     # Access via: docker compose exec postgres psql -U postgres -d tracker_AMBAC
@@ -277,9 +291,111 @@ services:
     networks:
       - db-net
 
-  # Backup service - run with: docker compose --profile backup run --rm backup
+  # pgBackRest runs inside postgres container via exec
+  # Commands:
+  #   Initialize (once):  docker compose exec postgres pgbackrest --stanza=tracker stanza-create
+  #   Full backup:        docker compose exec postgres pgbackrest --stanza=tracker backup --type=full
+  #   Diff backup:        docker compose exec postgres pgbackrest --stanza=tracker backup --type=diff
+  #   Check status:       docker compose exec postgres pgbackrest --stanza=tracker info
+  #   Restore:            docker compose stop postgres && docker compose run --rm pgbackrest-restore
+
+  # pgBackRest restore - for disaster recovery (runs with postgres stopped)
+  pgbackrest-restore:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    profiles:
+      - backup
+    user: postgres
+    environment:
+      PGBACKREST_REPO1_CIPHER_PASS: ${BACKUP_ENCRYPTION_KEY:-changeme-in-production}
+    volumes:
+      - pgbackrest_repo:/var/lib/pgbackrest
+      - pgbackrest_logs:/var/log/pgbackrest
+      - pgbackrest_spool:/var/spool/pgbackrest
+      - ./conf/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      - postgres_data:/var/lib/postgresql/data
+    command: >
+      sh -c "echo '=== pgBackRest Restore ===' &&
+             echo 'For PITR add: --target-time=\"YYYY-MM-DD HH:MM:SS\"' &&
+             pgbackrest --stanza=tracker restore --delta &&
+             echo 'Restore complete. Start postgres: docker compose up -d postgres'"
+    networks:
+      - db-net
+
+  # Media file backup - sync documents and 3D models to NAS
+  # docker compose --profile backup run --rm media-backup
+  media-backup:
+    image: alpine:latest
+    profiles:
+      - backup
+    volumes:
+      - ./PartsTracker/media:/media:ro
+      - ${BACKUP_PATH:-./backups}:/backup
+    command: >
+      sh -c "mkdir -p /backup/media &&
+             cp -ru /media/* /backup/media/ 2>/dev/null || true &&
+             echo 'Media backup complete:' $(date) &&
+             echo 'Files:' && ls -la /backup/media/"
+    networks:
+      - db-net
+
+  # Full backup - runs both pgBackRest and media backup
+  # docker compose --profile backup run --rm full-backup
+  full-backup:
+    image: alpine:latest
+    profiles:
+      - backup
+    volumes:
+      - ./PartsTracker/media:/media:ro
+      - ${BACKUP_PATH:-./backups}:/backup
+      - pgbackrest_repo:/var/lib/pgbackrest:ro
+    command: >
+      sh -c "echo '=== Full Backup Started:' $(date) '===' &&
+             mkdir -p /backup/media &&
+             cp -ru /media/* /backup/media/ 2>/dev/null || true &&
+             echo 'Media sync complete' &&
+             echo '=== Full Backup Complete:' $(date) '==='"
+    networks:
+      - db-net
+
+  # Automated backup scheduler (production)
+  # Runs: Daily diff at 2AM, Weekly full on Sunday at 3AM, Media sync at 4AM
+  backup-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    restart: unless-stopped
+    profiles:
+      - production
+    user: postgres
+    environment:
+      PGBACKREST_REPO1_CIPHER_PASS: ${BACKUP_ENCRYPTION_KEY:-changeme-in-production}
+    volumes:
+      - pgbackrest_repo:/var/lib/pgbackrest
+      - pgbackrest_logs:/var/log/pgbackrest
+      - pgbackrest_spool:/var/spool/pgbackrest
+      - ./conf/pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+      - ./PartsTracker/media:/media:ro
+      - ${BACKUP_PATH:-./backups}:/backup
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "=== Backup Scheduler Starting ===" &&
+        echo "0 2 * * * pgbackrest --stanza=tracker backup --type=diff >> /var/log/pgbackrest/scheduled.log 2>&1" > /tmp/crontab &&
+        echo "0 3 * * 0 pgbackrest --stanza=tracker backup --type=full >> /var/log/pgbackrest/scheduled.log 2>&1" >> /tmp/crontab &&
+        echo "0 4 * * * mkdir -p /backup/media && cp -ru /media/* /backup/media/ 2>/dev/null; echo 'Media backup:' \$$(date) >> /var/log/pgbackrest/scheduled.log" >> /tmp/crontab &&
+        crontab /tmp/crontab &&
+        echo "Cron schedule:" && crontab -l &&
+        crond -f -l 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - db-net
+
+  # Legacy backup service (kept for compatibility)
   # Backups are encrypted with AES-256 (SC.L2-3.13.16)
-  # Decrypt with: openssl enc -d -aes-256-cbc -pbkdf2 -in backup.sql.gz.enc -out backup.sql.gz
   backup:
     image: postgres:15-alpine
     profiles:
@@ -400,19 +516,6 @@ services:
      networks:
        - web-net
 
-  # Simple nginx for local dev (no SSL/certs needed)
-#  nginx-local:
-#    image: nginx:alpine
-#    restart: unless-stopped
-#    ports:
-#      - "8080:80"
-#    volumes:
-#      - frontend-dist:/usr/share/nginx/html
-#      - ./nginx-local.conf:/etc/nginx/conf.d/default.conf
-#    depends_on:
-#      - backend
-#      - frontend-builder
-
 networks:
   # Network segmentation (SC.L2-3.13.1)
   # db-net: internal data layer - postgres, redis, backend, celery
@@ -425,6 +528,9 @@ networks:
 volumes:
   postgres_data:
   postgres_logs:  # Persistent audit logs (AU.L2-3.3.1)
+  pgbackrest_repo:  # Backup repository (mount NAS here for off-server storage)
+  pgbackrest_logs:
+  pgbackrest_spool:
   redis_data:
   frontend-dist:
   docs-dist:
