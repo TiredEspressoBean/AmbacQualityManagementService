@@ -87,13 +87,13 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
 def sync_all_deals():
     """Sync deals from HubSpot. Only touches orders with hubspot_deal_id."""
     # Create sync log
-    sync_log = HubSpotSyncLog.objects.create(sync_type='full', status='running')
+    sync_log = HubSpotSyncLog.objects.create(sync_type='FULL', status='RUNNING')
 
     try:
         # Fetch deals
         deals_data = get_all_deals()
         if not deals_data:
-            sync_log.status = 'failed'
+            sync_log.status = 'FAILED'
             sync_log.error_message = 'Failed to retrieve deals'
             sync_log.completed_at = timezone.now()
             sync_log.save()
@@ -150,7 +150,7 @@ def sync_all_deals():
                 updated_count += 1
 
         # Update sync log
-        sync_log.status = 'success'
+        sync_log.status = 'SUCCESS'
         sync_log.deals_processed = len(deals_data) if not is_debug else (created_count + updated_count)
         sync_log.deals_created = created_count
         sync_log.deals_updated = updated_count
@@ -167,7 +167,7 @@ def sync_all_deals():
         }
 
     except Exception as e:
-        sync_log.status = 'failed'
+        sync_log.status = 'FAILED'
         sync_log.error_message = str(e)
         sync_log.completed_at = timezone.now()
         sync_log.save()

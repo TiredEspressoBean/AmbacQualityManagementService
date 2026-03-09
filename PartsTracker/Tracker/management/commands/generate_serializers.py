@@ -1,18 +1,5 @@
 # scripts/generate_serializers.py
 
-import os
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import Group
-from Tracker.models import (
-    Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents,
-    Equipments, EquipmentType, QualityErrorsList, ErrorReports,
-    EquipmentUsage, ArchiveReason, StepTransitionLog
-)
-import random
-from faker import Faker
-from datetime import timedelta
-from django.utils import timezone
-from django.core.files.base import ContentFile
 from django.apps import apps
 
 HEADER = """# This file is auto-generated. Do not edit manually.

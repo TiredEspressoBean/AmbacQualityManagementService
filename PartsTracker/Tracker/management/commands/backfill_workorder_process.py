@@ -61,7 +61,7 @@ class Command(BaseCommand):
             # Find approved process for this part_type
             process = Processes.objects.filter(
                 part_type=part_type,
-                status__in=['approved', 'deprecated'],
+                status__in=['APPROVED', 'DEPRECATED'],
                 archived=False
             ).first()
 

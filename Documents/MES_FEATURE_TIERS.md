@@ -1,6 +1,6 @@
 # MES Feature Tiers
 
-**Last Updated:** February 20, 2026
+**Last Updated:** March 7, 2026
 
 This document categorizes Manufacturing Execution System (MES) features by capability level. Each tier is **cumulative** - it includes all features from previous tiers plus new additions.
 
@@ -23,7 +23,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ## 1. Work Order Management
 
-### 🟢 Lite MES (8 features)
+### 🟢 Lite MES (11 features)
 - [x] Work order creation from customer orders
 - [x] Work order status (PENDING → IN_PROGRESS → COMPLETED, plus ON_HOLD, CANCELLED, WAITING_FOR_OPERATOR)
 - [x] Link work orders to parts
@@ -32,8 +32,11 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Work order listing and filtering
 - [x] Work order notes/comments - *customer_note field with structured timeline*
 - [x] Work order priority levels (Urgent, High, Normal, Low)
+- [x] Status action buttons (Release, Hold, Resume, Cancel) - *WorkOrderStatusActions component*
+- [x] Hold with reason tracking - *HoldReasonModal with 6 categories, stored in notes field*
+- [x] Supervisor work order detail page - *WorkOrderDetailPage with parts table, status actions, documents*
 
-### 🟡 Standard MES (14 total)
+### 🟡 Standard MES (17 total)
 *Includes all Lite, plus:*
 - [ ] Work order scheduling (assign to date/shift)
 - [ ] Capacity loading view (hours assigned per work center/day)
@@ -42,7 +45,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] Estimated vs actual hours tracking
 - [ ] Work order templates
 
-### 🔴 Enterprise MES (19 total)
+### 🔴 Enterprise MES (22 total)
 *Includes all Standard, plus:*
 - [ ] Finite capacity scheduling (constraint-based)
 - [ ] Capacity planning with constraint modeling
@@ -106,7 +109,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Barcode scanning for part identification - *Works via keyboard wedge (HID) - any text input accepts scanner*
 - [x] Simple start/stop buttons per operation - *DowntimeEvent start/end, TimeEntry clock in/out, StepExecution entry/exit*
 
-### 🟡 Standard MES (13 total)
+### 🟡 Standard MES (14 total)
 *Includes all Lite, plus:*
 - [x] Inspection data entry
 - [x] Quality report creation
@@ -116,8 +119,9 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] Rework quantity tracking
 - [ ] Setup time tracking
 - [~] Downtime logging at workstation - *DowntimeEvent model*
+- [ ] Operator inbox/workload page - *View assigned work, claim parts, start/complete steps*
 
-### 🔴 Enterprise MES (17 total)
+### 🔴 Enterprise MES (18 total)
 *Includes all Standard, plus:*
 - [ ] Machine integration (OPC-UA, MTConnect)
 - [ ] Automatic cycle time capture
@@ -227,7 +231,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] First Article Inspection (FAI) status tracking - *Track FAI approval per part number*
 - [ ] Balloon numbering for characteristics - *Link measurements to drawing callouts*
 
-### 🔴 Enterprise MES (23 total)
+### 🔴 Enterprise MES (25 total)
 *Includes all Standard, plus:*
 - [ ] Real-time quality dashboards per line
 - [ ] Predictive quality (ML-based)
@@ -400,22 +404,22 @@ Integration and connectivity features are platform concerns, not MES functionali
 
 | Category | Lite | Standard | Enterprise |
 |----------|------|----------|------------|
-| Work Orders | 8 | 14 | 19 |
+| Work Orders | 11 | 17 | 22 |
 | Process/Routing | 6 | 17 | 20 |
-| Data Collection | 5 | 13 | 17 |
+| Data Collection | 5 | 14 | 18 |
 | Production Tracking | 6 | 14 | 18 |
 | Equipment | 3 | 12 | 16 |
 | Quality | 5 | 17 | 25 |
 | Material | 3 | 13 | 16 |
 | Scheduling | 3 | 12 | 17 |
 | Reporting | 5 | 18 | 23 |
-| **TOTAL** | **44** | **130** | **171** |
+| **TOTAL** | **47** | **134** | **175** |
 
-### Lite MES Progress (44 features)
+### Lite MES Progress (47 features)
 
 | Category | Done | API Ready | Remaining | Progress |
 |----------|------|-----------|-----------|----------|
-| Work Orders | 8 | 0 | 0 | 100% |
+| Work Orders | 11 | 0 | 0 | 100% |
 | Process/Routing | 6 | 0 | 0 | 100% |
 | Data Collection | 5 | 0 | 0 | 100% |
 | Production Tracking | 6 | 0 | 0 | 100% |
@@ -424,11 +428,11 @@ Integration and connectivity features are platform concerns, not MES functionali
 | Material | 3 | 0 | 0 | 100% |
 | Scheduling | 2 | 1 | 0 | 100% |
 | Reporting | 2 | 3 | 0 | 100% |
-| **TOTAL** | **40** | **4** | **0** | **100%** |
+| **TOTAL** | **43** | **4** | **0** | **100%** |
 
 ### Lite MES Complete! 🎉
 
-All 44 Lite MES features are now implemented.
+All 47 Lite MES features are now implemented.
 
 **API Ready (need UI polish):**
 1. Due date warnings (overdue, at risk)
@@ -436,24 +440,24 @@ All 44 Lite MES features are now implemented.
 3. Work order status report
 4. Overdue work order report
 
-### Standard MES Progress (86 features beyond Lite)
+### Standard MES Progress (87 features beyond Lite)
 
 | Category            | Done   | API Ready | Remaining | Progress |
 |---------------------|--------|-----------|-----------|----------|
 | Work Orders         | 0      | 0         | 6         | 0%       |
 | Process/Routing     | 6      | 0         | 5         | 55%      |
-| Data Collection     | 4      | 2         | 2         | 75%      |
+| Data Collection     | 4      | 2         | 3         | 67%      |
 | Production Tracking | 1      | 2         | 5         | 38%      |
 | Equipment           | 3      | 6         | 0         | 100%     |
 | Quality             | 7      | 1         | 4         | 67%      |
 | Material            | 0      | 7         | 3         | 70%      |
 | Scheduling          | 0      | 3         | 6         | 33%      |
 | Reporting           | 5      | 5         | 3         | 77%      |
-| **TOTAL**           | **26** | **26**    | **34**    | **60%**  |
+| **TOTAL**           | **26** | **26**    | **35**    | **60%**  |
 
 > **Note:** "API Ready" means models + serializers + viewsets complete, pending UI implementation.
 
-### To Reach Standard MES (+82 features on top of Lite)
+### To Reach Standard MES (+87 features on top of Lite)
 
 Major structural models (API complete ✅, UI needed):
 1. **MaterialLot + MaterialUsage** - Lot traceability ✅
@@ -494,11 +498,12 @@ These belong in specialized systems:
 ## Positioning
 
 **Today:**
-- Lite MES: 100% complete (40 done + 4 API-ready of 44 features) ✅
-- Standard MES: 60% complete (24 done + 26 API-ready of 84 features beyond Lite)
+- Lite MES: 100% complete (43 done + 4 API-ready of 47 features) ✅
+- Standard MES: 60% complete (26 done + 26 API-ready of 87 features beyond Lite)
 - MES Standard Backend: All major models complete (WorkCenter, Shift, ScheduleSlot, DowntimeEvent, MaterialLot, TimeEntry, BOM) - needs 7 editor pages
 - Reman Add-on: API complete, needs UI
 - Platform: 5 integrations complete (REST API, Email, Azure Blob, CSV, HubSpot)
+- **New (March 7):** WorkOrderDetailPage with status actions, hold tracking, parts table
 
 **Reality check:** Lite tier is for shops without compliance requirements. Regulated manufacturers (aerospace, automotive, medical) need **Standard** for:
 - AS9100/IATF 16949 lot traceability

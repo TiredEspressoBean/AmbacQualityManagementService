@@ -98,6 +98,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'auditlog.middleware.AuditlogMiddleware',  # Must come AFTER AuthenticationMiddleware to capture user
     'Tracker.middleware.TenantMiddleware',  # Tenant resolution (after auth)
+    'Tracker.middleware.TenantStatusMiddleware',  # Block suspended tenants (after TenantMiddleware)
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",
@@ -258,6 +259,7 @@ REST_FRAMEWORK = {
         "Tracker.permissions.TenantAccessPermission",  # enforce tenant access for API auth
         'rest_framework.permissions.DjangoModelPermissions',
     ],
+    "EXCEPTION_HANDLER": "Tracker.exceptions.custom_exception_handler",
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 25,
@@ -562,7 +564,7 @@ CELERY_BEAT_SCHEDULE = {
 # - saas: Multi-tenant with subdomain routing, self-service signup
 #         Demo tenants are just tenants with is_demo=True
 # - dedicated: Single tenant, simplified UX, no tenant selection
-DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "dedicated")
+DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "saas")  # Temporarily changed from "dedicated" for multi-tenant testing
 
 # Derived convenience flags
 SAAS_MODE = DEPLOYMENT_MODE == "saas"

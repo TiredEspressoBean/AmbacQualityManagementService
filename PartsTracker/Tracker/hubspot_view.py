@@ -52,4 +52,4 @@ def hubspot_webhook(request):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"HubSpot webhook error: {e}")
-        return JsonResponse({"status": "error", "message": "Failed to process webhook"}, status=400)
+        return JsonResponse({"detail": "Failed to process webhook"}, status=400)

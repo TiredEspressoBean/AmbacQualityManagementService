@@ -16,7 +16,6 @@ class Command(BaseCommand):
         username = os.environ.get('DJANGO_SUPERUSER_USERNAME')
         email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
         password = os.environ.get('DJANGO_SUPERUSER_PASSWORD')
-        print(username, email, password)
 
         if not all([username, email, password]):
             self.stdout.write(

@@ -38,8 +38,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--tier',
             type=str,
-            choices=['starter', 'pro', 'enterprise'],
-            default='pro',
+            choices=['STARTER', 'PRO', 'ENTERPRISE'],
+            default='PRO',
             help='Tenant tier (default: pro)',
         )
         parser.add_argument(

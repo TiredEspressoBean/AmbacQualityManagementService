@@ -469,7 +469,7 @@ class HubSpotService(IntegrationService):
         status = super().get_status()
 
         # Add last sync info
-        last_sync = HubSpotSyncLog.objects.filter(status='success').first()
+        last_sync = HubSpotSyncLog.objects.filter(status='SUCCESS').first()
         if last_sync:
             status['last_sync'] = {
                 'completed_at': last_sync.completed_at.isoformat() if last_sync.completed_at else None,
