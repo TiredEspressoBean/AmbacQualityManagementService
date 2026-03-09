@@ -298,6 +298,10 @@ services:
   #   Diff backup:        docker compose exec postgres pgbackrest --stanza=tracker backup --type=diff
   #   Check status:       docker compose exec postgres pgbackrest --stanza=tracker info
   #   Restore:            docker compose stop postgres && docker compose run --rm pgbackrest-restore
+  #
+  # Full system backup (database + media):
+  #   docker compose exec postgres pgbackrest --stanza=tracker backup --type=full
+  #   docker compose --profile backup run --rm media-backup
 
   # pgBackRest restore - for disaster recovery (runs with postgres stopped)
   pgbackrest-restore:
@@ -323,7 +327,7 @@ services:
     networks:
       - db-net
 
-  # Media file backup - sync documents and 3D models to NAS
+  # Media file backup - sync documents and 3D models to backup location
   # docker compose --profile backup run --rm media-backup
   media-backup:
     image: alpine:latest
@@ -337,25 +341,6 @@ services:
              cp -ru /media/* /backup/media/ 2>/dev/null || true &&
              echo 'Media backup complete:' $(date) &&
              echo 'Files:' && ls -la /backup/media/"
-    networks:
-      - db-net
-
-  # Full backup - runs both pgBackRest and media backup
-  # docker compose --profile backup run --rm full-backup
-  full-backup:
-    image: alpine:latest
-    profiles:
-      - backup
-    volumes:
-      - ./PartsTracker/media:/media:ro
-      - ${BACKUP_PATH:-./backups}:/backup
-      - pgbackrest_repo:/var/lib/pgbackrest:ro
-    command: >
-      sh -c "echo '=== Full Backup Started:' $(date) '===' &&
-             mkdir -p /backup/media &&
-             cp -ru /media/* /backup/media/ 2>/dev/null || true &&
-             echo 'Media sync complete' &&
-             echo '=== Full Backup Complete:' $(date) '==='"
     networks:
       - db-net
 
@@ -391,24 +376,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - db-net
-
-  # Legacy backup service (kept for compatibility)
-  # Backups are encrypted with AES-256 (SC.L2-3.13.16)
-  backup:
-    image: postgres:15-alpine
-    profiles:
-      - backup
-    volumes:
-      - ./backups:/backups
-    environment:
-      - PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
-    command: >
-      sh -c "pg_dump -h postgres -U ${POSTGRES_USER:-postgres} ${POSTGRES_DB:-tracker_AMBAC} | gzip | openssl enc -aes-256-cbc -pbkdf2 -pass env:BACKUP_ENCRYPTION_KEY > /backups/db_$$(date +%Y%m%d_%H%M%S).sql.gz.enc && echo 'Encrypted backup complete'"
-    depends_on:
-      - postgres
     networks:
       - db-net
 
