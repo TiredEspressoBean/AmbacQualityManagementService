@@ -335,6 +335,16 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.railway.app",
     "https://*.up.railway.app",
 ]
+
+# Custom domain support (comma-separated list, e.g., "uqmes.com,app.example.com")
+CUSTOM_DOMAINS = os.environ.get('CUSTOM_DOMAINS', '').split(',')
+for domain in CUSTOM_DOMAINS:
+    domain = domain.strip()
+    if domain:
+        if domain not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(domain)
+        CORS_ALLOWED_ORIGINS.append(f"https://{domain}")
+        CSRF_TRUSTED_ORIGINS.append(f"https://{domain}")
 CORS_ALLOW_CREDENTIALS = True
 
 LOGIN_REDIRECT_URL = '/'
