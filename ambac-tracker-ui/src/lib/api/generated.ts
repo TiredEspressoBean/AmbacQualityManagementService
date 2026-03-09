@@ -22395,11 +22395,16 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/Orders/export/",
+    path: "/api/Orders/export/:export_format/",
     alias: "api_Orders_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -22409,11 +22414,6 @@ Import/Export endpoints (auto-configured from model):
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
-      },
-      {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
       },
     ],
     response: z.instanceof(File),
@@ -22456,15 +22456,15 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/Orders/import-template/",
+    path: "/api/Orders/import-template/:template_format/",
     alias: "api_Orders_import_template_retrieve",
     description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
     requestFormat: "json",
     parameters: [
       {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
       },
     ],
     response: z.instanceof(File),
@@ -22825,11 +22825,16 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
   },
   {
     method: "get",
-    path: "/api/Parts/export/",
+    path: "/api/Parts/export/:export_format/",
     alias: "api_Parts_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -22839,11 +22844,6 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
-      },
-      {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
       },
       {
         name: "status__in",
@@ -22901,20 +22901,20 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
   },
   {
     method: "get",
-    path: "/api/Parts/import-template/",
+    path: "/api/Parts/import-template/:template_format/",
     alias: "api_Parts_import_template_retrieve",
     description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
     requestFormat: "json",
     parameters: [
       {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
-      },
-      {
         name: "status__in",
         type: "Query",
         schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
       },
     ],
     response: z.instanceof(File),
@@ -23227,11 +23227,16 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/PartTypes/export/",
+    path: "/api/PartTypes/export/:export_format/",
     alias: "api_PartTypes_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -23241,11 +23246,6 @@ Import/Export endpoints (auto-configured from model):
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
-      },
-      {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
       },
       {
         name: "part_type",
@@ -23303,20 +23303,20 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/PartTypes/import-template/",
+    path: "/api/PartTypes/import-template/:template_format/",
     alias: "api_PartTypes_import_template_retrieve",
     description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
     requestFormat: "json",
     parameters: [
       {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
-      },
-      {
         name: "part_type",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
       },
     ],
     response: z.instanceof(File),
@@ -30491,11 +30491,16 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/WorkOrders/export/",
+    path: "/api/WorkOrders/export/:export_format/",
     alias: "api_WorkOrders_export_retrieve",
     description: `Export filtered data to CSV or Excel format.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
       {
         name: "fields",
         type: "Query",
@@ -30505,11 +30510,6 @@ Import/Export endpoints (auto-configured from model):
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
-      },
-      {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
       },
     ],
     response: z.instanceof(File),
@@ -30552,15 +30552,15 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
-    path: "/api/WorkOrders/import-template/",
+    path: "/api/WorkOrders/import-template/:template_format/",
     alias: "api_WorkOrders_import_template_retrieve",
     description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
     requestFormat: "json",
     parameters: [
       {
-        name: "format",
-        type: "Query",
-        schema: z.enum(["csv", "xlsx"]).optional().default("xlsx"),
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
       },
     ],
     response: z.instanceof(File),

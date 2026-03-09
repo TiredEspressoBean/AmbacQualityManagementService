@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
 import { Download, FileSpreadsheet, FileText, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,14 +11,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useExport } from "@/hooks/useExport";
+import { useImportTemplate } from "@/hooks/useImportTemplate";
 
 type ExportFormat = "xlsx" | "csv";
 
 interface DataExportMenuProps {
-    /** Model/endpoint name for export (e.g., "parts", "orders") */
+    /** Model/endpoint name for export (e.g., "Parts", "Orders") */
     modelName: string;
-    /** API base URL */
-    apiBaseUrl?: string;
     /** Current filter/search query params to include in export */
     queryParams?: Record<string, string | number | boolean | undefined>;
     /** Specific fields to export (comma-separated) */
@@ -40,7 +39,6 @@ interface DataExportMenuProps {
 
 export function DataExportMenu({
     modelName,
-    apiBaseUrl = "/api",
     queryParams,
     fields,
     filename,
@@ -50,85 +48,16 @@ export function DataExportMenu({
     size = "sm",
     className,
 }: DataExportMenuProps) {
-    const [isExporting, setIsExporting] = React.useState(false);
+    const { mutate: exportData, isPending: isExporting } = useExport(modelName);
+    const { mutate: downloadTemplate } = useImportTemplate(modelName);
 
-    const buildUrl = (
-        endpoint: "export" | "import-template",
-        format: ExportFormat
-    ): string => {
-        const url = new URL(`${apiBaseUrl}/${modelName}/${endpoint}/`, window.location.origin);
-        url.searchParams.set("format", format);
-
-        if (fields && fields.length > 0) {
-            url.searchParams.set("fields", fields.join(","));
-        }
-
-        if (filename) {
-            url.searchParams.set("filename", filename);
-        }
-
-        // Add any active filters/search to export
-        if (queryParams) {
-            Object.entries(queryParams).forEach(([key, value]) => {
-                if (value !== undefined && value !== null && value !== "") {
-                    url.searchParams.set(key, String(value));
-                }
-            });
-        }
-
-        return url.toString();
-    };
-
-    const handleExport = async (format: ExportFormat) => {
-        setIsExporting(true);
-
-        try {
-            const url = buildUrl("export", format);
-            const response = await fetch(url, { credentials: "include" });
-
-            if (!response.ok) {
-                throw new Error(`Export failed: ${response.statusText}`);
-            }
-
-            // Get filename from Content-Disposition header if available
-            const contentDisposition = response.headers.get("Content-Disposition");
-            let downloadFilename = `${modelName}_export.${format}`;
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) {
-                    downloadFilename = filenameMatch[1];
-                }
-            }
-
-            const blob = await response.blob();
-            downloadBlob(blob, downloadFilename);
-
-            toast.success(`Exported to ${format.toUpperCase()}`);
-        } catch (error) {
-            console.error("Export error:", error);
-            toast.error("Export failed. Please try again.");
-        } finally {
-            setIsExporting(false);
-        }
-    };
-
-    const handleDownloadTemplate = async (format: ExportFormat) => {
-        try {
-            const url = buildUrl("import-template", format);
-            const response = await fetch(url, { credentials: "include" });
-
-            if (!response.ok) {
-                throw new Error(`Template download failed: ${response.statusText}`);
-            }
-
-            const blob = await response.blob();
-            downloadBlob(blob, `${modelName}_import_template.${format}`);
-
-            toast.success("Template downloaded");
-        } catch (error) {
-            console.error("Template download error:", error);
-            toast.error("Failed to download template");
-        }
+    const handleExport = (format: ExportFormat) => {
+        exportData({
+            format,
+            fields: fields?.join(","),
+            filename,
+            queries: queryParams,
+        });
     };
 
     return (
@@ -161,11 +90,11 @@ export function DataExportMenu({
                     <>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel>Import Template</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleDownloadTemplate("xlsx")}>
+                        <DropdownMenuItem onClick={() => downloadTemplate("xlsx")}>
                             <FileDown className="mr-2 h-4 w-4 text-green-600" />
                             Excel Template
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownloadTemplate("csv")}>
+                        <DropdownMenuItem onClick={() => downloadTemplate("csv")}>
                             <FileDown className="mr-2 h-4 w-4 text-blue-600" />
                             CSV Template
                         </DropdownMenuItem>
@@ -184,8 +113,6 @@ interface QuickExportButtonProps {
     modelName: string;
     /** Export format */
     format?: ExportFormat;
-    /** API base URL */
-    apiBaseUrl?: string;
     /** Current filter/search query params */
     queryParams?: Record<string, string | number | boolean | undefined>;
     /** Custom filename */
@@ -203,7 +130,6 @@ interface QuickExportButtonProps {
 export function QuickExportButton({
     modelName,
     format = "xlsx",
-    apiBaseUrl = "/api",
     queryParams,
     filename,
     variant = "outline",
@@ -211,43 +137,14 @@ export function QuickExportButton({
     className,
     children,
 }: QuickExportButtonProps) {
-    const [isExporting, setIsExporting] = React.useState(false);
+    const { mutate: exportData, isPending: isExporting } = useExport(modelName);
 
-    const handleExport = async () => {
-        setIsExporting(true);
-
-        try {
-            const url = new URL(`${apiBaseUrl}/${modelName}/export/`, window.location.origin);
-            url.searchParams.set("format", format);
-
-            if (filename) {
-                url.searchParams.set("filename", filename);
-            }
-
-            if (queryParams) {
-                Object.entries(queryParams).forEach(([key, value]) => {
-                    if (value !== undefined && value !== null && value !== "") {
-                        url.searchParams.set(key, String(value));
-                    }
-                });
-            }
-
-            const response = await fetch(url.toString(), { credentials: "include" });
-
-            if (!response.ok) {
-                throw new Error(`Export failed: ${response.statusText}`);
-            }
-
-            const blob = await response.blob();
-            downloadBlob(blob, `${filename || modelName}_export.${format}`);
-
-            toast.success("Export complete");
-        } catch (error) {
-            console.error("Export error:", error);
-            toast.error("Export failed");
-        } finally {
-            setIsExporting(false);
-        }
+    const handleExport = () => {
+        exportData({
+            format,
+            filename,
+            queries: queryParams,
+        });
     };
 
     return (
@@ -270,16 +167,4 @@ export function QuickExportButton({
             )}
         </Button>
     );
-}
-
-// Utility function to trigger file download
-function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }

@@ -31,6 +31,12 @@ Define manufacturing workflows and quality processes.
 - [Step Configuration](processes/steps.md) - Configure process steps
 - [Measurement Definitions](processes/measurements.md) - Define inspection requirements
 
+### Data Management
+
+Bulk data operations for import and export.
+
+- [Import & Export](data/import-export.md) - Bulk data import/export with CSV and Excel
+
 ### System Setup
 
 Configure master data and system settings.
@@ -75,6 +81,18 @@ The **Data Management** page (`/Edit`) provides access to all data editors:
 | Groups | Permission groups |
 | Approval Templates | Approval workflows |
 | Companies | Customer and supplier records |
+
+### Import & Export
+
+Each data editor supports bulk import and export:
+
+- **Export**: Download filtered data as CSV or Excel
+- **Import**: Upload CSV or Excel files to create/update records
+- **Templates**: Download pre-formatted templates with validation
+
+Excel exports include reference sheets for lookups, dropdown validation, and auto-calculated ID fields.
+
+See [Import & Export Guide](data/import-export.md) for detailed instructions.
 
 ## Settings
 

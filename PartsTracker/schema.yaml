@@ -10962,11 +10962,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedStepDistributionResponseList'
           description: ''
-  /api/Orders/export/:
+  /api/Orders/export/{export_format}/:
     get:
       operationId: api_Orders_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -10977,15 +10983,6 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
       tags:
       - Import/Export
       security:
@@ -11106,21 +11103,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/Orders/import-template/:
+  /api/Orders/import-template/{template_format}/:
     get:
       operationId: api_Orders_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
+      - in: path
+        name: template_format
         schema:
           type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -11403,11 +11397,17 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/PartTypes/export/:
+  /api/PartTypes/export/{export_format}/:
     get:
       operationId: api_PartTypes_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -11418,15 +11418,6 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
       - in: query
         name: part_type
         schema:
@@ -11569,26 +11560,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/PartTypes/import-template/:
+  /api/PartTypes/import-template/{template_format}/:
     get:
       operationId: api_PartTypes_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
       - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
-      - in: query
         name: part_type
         schema:
           type: string
         description: Filter processes by associated part type UUID
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -12160,11 +12148,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartTravelerResponse'
           description: ''
-  /api/Parts/export/:
+  /api/Parts/export/{export_format}/:
     get:
       operationId: api_Parts_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -12175,15 +12169,6 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
       - in: query
         name: status__in
         schema:
@@ -12342,21 +12327,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/Parts/import-template/:
+  /api/Parts/import-template/{template_format}/:
     get:
       operationId: api_Parts_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
       - in: query
         name: status__in
         schema:
@@ -12366,6 +12342,12 @@ paths:
         description: Filter by multiple status values.
         explode: true
         style: form
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -21220,11 +21202,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrderStepHistoryResponse'
           description: ''
-  /api/WorkOrders/export/:
+  /api/WorkOrders/export/{export_format}/:
     get:
       operationId: api_WorkOrders_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -21235,15 +21223,6 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
       tags:
       - Import/Export
       security:
@@ -21364,21 +21343,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/WorkOrders/import-template/:
+  /api/WorkOrders/import-template/{template_format}/:
     get:
       operationId: api_WorkOrders_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
+      - in: path
+        name: template_format
         schema:
           type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:

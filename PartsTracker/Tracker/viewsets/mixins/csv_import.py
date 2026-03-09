@@ -14,6 +14,7 @@ from typing import Dict, Optional, Type
 
 from celery.result import AsyncResult
 from django.db import transaction
+from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
 from rest_framework import serializers, status, parsers
 from rest_framework.decorators import action
@@ -34,8 +35,9 @@ class CSVImportMixin:
     """
     Mixin to add CSV/Excel import functionality to ViewSets.
 
-    Adds two endpoints:
-    - GET /import-template/ - Download import template (CSV or Excel)
+    Adds endpoints:
+    - GET /import-template/csv/ - Download CSV import template
+    - GET /import-template/xlsx/ - Download Excel import template
     - POST /import/ - Import data from uploaded file
 
     Works automatically with any model through introspection.
@@ -228,16 +230,6 @@ class CSVImportMixin:
         })
 
     @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name='format',
-                description='Template format (csv or xlsx)',
-                required=False,
-                type=str,
-                enum=['csv', 'xlsx'],
-                default='xlsx',
-            ),
-        ],
         responses={
             200: {
                 'type': 'string',
@@ -248,15 +240,15 @@ class CSVImportMixin:
         description='Download an import template with headers, hints, and FK lookups (Excel only).',
         tags=['Import/Export'],
     )
-    @action(detail=False, methods=['get'], url_path='import-template')
-    def import_template(self, request):
+    @action(detail=False, methods=['get'], url_path=r'import-template/(?P<template_format>csv|xlsx)')
+    def import_template(self, request, template_format: str):
         """
         Download an import template.
 
-        Query params:
-        - format: 'csv' or 'xlsx' (default: xlsx)
+        URL path determines format:
+        - /import-template/csv/ - CSV format
+        - /import-template/xlsx/ - Excel format
         """
-        template_format = request.query_params.get('format', 'xlsx').lower()
         generator = self.get_csv_template_generator()
 
         if not generator:
@@ -280,7 +272,6 @@ class CSVImportMixin:
             content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             filename = f'{model_name.lower()}_import_template.xlsx'
 
-        from django.http import HttpResponse
         response = HttpResponse(content, content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
@@ -508,7 +499,7 @@ class CSVImportMixin:
         description='Check status of a background import task.',
         tags=['Import/Export'],
     )
-    @action(detail=False, methods=['get'], url_path='import-status/(?P<task_id>[^/.]+)')
+    @action(detail=False, methods=['get'], url_path=r'import-status/(?P<task_id>[^/.]+)')
     def import_status(self, request, task_id=None):
         """
         Check status of a background import task.

@@ -35,9 +35,19 @@ Most data tables support export:
 1. Navigate to the data page (Orders, Parts, etc.)
 2. Apply desired filters
 3. Click **Export** button
-4. Select format (CSV, PDF)
-5. Choose columns to include
-6. Download file
+4. Select format (CSV, Excel)
+5. Download file
+
+### Excel Export Features
+
+Excel exports include advanced features:
+
+- **Reference sheets** for foreign key lookups
+- **Dropdown validation** for constrained fields
+- **Auto-calculated ID columns** via formulas
+- **Instructions sheet** with field documentation
+
+For detailed information on import/export functionality, including bulk imports and templates, see the [Import & Export Guide](../admin/data/import-export.md).
 
 ### Column Selection
 

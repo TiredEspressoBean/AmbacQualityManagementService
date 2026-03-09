@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/file-upload";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api/generated";
+import { useImportTemplate } from "@/hooks/useImportTemplate";
 
 type ImportMode = "create" | "update" | "upsert";
 
@@ -91,12 +93,10 @@ interface PreviewResponse {
 }
 
 interface DataImportDialogProps {
-    /** Model/endpoint name for import (e.g., "parts", "orders") */
+    /** Model/endpoint name for import (e.g., "Parts", "Orders") */
     modelName: string;
     /** Display name for the dialog title */
     displayName?: string;
-    /** API base URL */
-    apiBaseUrl?: string;
     /** Callback after successful import */
     onImportComplete?: (results: ImportResponse) => void;
     /** Custom trigger button */
@@ -108,7 +108,6 @@ interface DataImportDialogProps {
 export function DataImportDialog({
     modelName,
     displayName,
-    apiBaseUrl = "/api",
     onImportComplete,
     trigger,
     className,
@@ -128,6 +127,9 @@ export function DataImportDialog({
     const [previewData, setPreviewData] = React.useState<PreviewResponse | null>(null);
     const [columnMappings, setColumnMappings] = React.useState<Record<string, string>>({});
 
+    // Use the template download hook
+    const { mutate: downloadTemplate } = useImportTemplate(modelName);
+
     const title = displayName || modelName.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
     const handleFilesChange = async (newFiles: File[] | null) => {
@@ -143,17 +145,13 @@ export function DataImportDialog({
                 const formData = new FormData();
                 formData.append("file", newFiles[0]);
 
-                const response = await fetch(`${apiBaseUrl}/${modelName}/import-preview/`, {
-                    method: "POST",
-                    body: formData,
-                    credentials: "include",
-                });
+                const response = await api.axios.post<PreviewResponse>(
+                    `/api/${modelName}/import-preview/`,
+                    formData,
+                    { headers: { "Content-Type": "multipart/form-data" } }
+                );
 
-                if (!response.ok) {
-                    throw new Error("Failed to preview file");
-                }
-
-                const data: PreviewResponse = await response.json();
+                const data = response.data;
                 setPreviewData(data);
 
                 // Initialize column mappings from auto-detected values
@@ -180,15 +178,14 @@ export function DataImportDialog({
 
     const pollTaskStatus = React.useCallback(async (id: string) => {
         try {
-            const response = await fetch(
-                `${apiBaseUrl}/${modelName}/import-status/${id}/`,
-                { credentials: "include" }
+            const response = await api.axios.get<TaskStatusResponse>(
+                `/api/${modelName}/import-status/${id}/`
             );
-            const data: TaskStatusResponse = await response.json();
+            const data = response.data;
 
-            if (data.status === "progress" && data.progress) {
+            if (data.status === "PROGRESS" && data.progress) {
                 setProgress({ current: data.progress.current, total: data.progress.total });
-            } else if (data.status === "success" && data.result) {
+            } else if (data.status === "SUCCESS" && data.result) {
                 // Task completed
                 if (pollIntervalRef.current) {
                     clearInterval(pollIntervalRef.current);
@@ -210,7 +207,7 @@ export function DataImportDialog({
                 }
 
                 onImportComplete?.(data.result);
-            } else if (data.status === "failure") {
+            } else if (data.status === "FAILURE") {
                 // Task failed
                 if (pollIntervalRef.current) {
                     clearInterval(pollIntervalRef.current);
@@ -223,7 +220,7 @@ export function DataImportDialog({
         } catch (error) {
             console.error("Error polling task status:", error);
         }
-    }, [apiBaseUrl, modelName, onImportComplete]);
+    }, [modelName, onImportComplete]);
 
     // Cleanup polling on unmount
     React.useEffect(() => {
@@ -254,16 +251,19 @@ export function DataImportDialog({
                 formData.append("column_mapping", JSON.stringify(columnMappings));
             }
 
-            const response = await fetch(`${apiBaseUrl}/${modelName}/import/`, {
-                method: "POST",
-                body: formData,
-                credentials: "include",
-            });
+            const response = await api.axios.post(
+                `/api/${modelName}/import/`,
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                    validateStatus: (status) => (status >= 200 && status < 300) || status === 207,
+                }
+            );
 
             // Check if it's a queued response (202) or immediate (207)
             if (response.status === 202) {
                 // Large import - queued for background processing
-                const data: QueuedResponse = await response.json();
+                const data = response.data as QueuedResponse;
                 setTaskId(data.task_id);
                 setProgress({ current: 0, total: data.total_rows });
                 setStep("processing");
@@ -275,7 +275,7 @@ export function DataImportDialog({
                 }, 2000); // Poll every 2 seconds
             } else {
                 // Small import - immediate results
-                const data: ImportResponse = await response.json();
+                const data = response.data as ImportResponse;
                 setResults(data);
                 setStep("results");
                 setIsImporting(false);
@@ -296,32 +296,6 @@ export function DataImportDialog({
             toast.error("Import failed. Please check the file format and try again.");
             console.error("Import error:", error);
             setIsImporting(false);
-        }
-    };
-
-    const handleDownloadTemplate = async (format: "csv" | "xlsx") => {
-        try {
-            const response = await fetch(
-                `${apiBaseUrl}/${modelName}/import-template/?format=${format}`,
-                { credentials: "include" }
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to download template");
-            }
-
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${modelName}_import_template.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            toast.error("Failed to download template");
-            console.error("Template download error:", error);
         }
     };
 
@@ -393,7 +367,7 @@ export function DataImportDialog({
                                 variant="link"
                                 size="sm"
                                 className="h-auto p-0"
-                                onClick={() => handleDownloadTemplate("xlsx")}
+                                onClick={() => downloadTemplate("xlsx")}
                             >
                                 Excel (.xlsx)
                             </Button>
@@ -402,7 +376,7 @@ export function DataImportDialog({
                                 variant="link"
                                 size="sm"
                                 className="h-auto p-0"
-                                onClick={() => handleDownloadTemplate("csv")}
+                                onClick={() => downloadTemplate("csv")}
                             >
                                 CSV
                             </Button>
