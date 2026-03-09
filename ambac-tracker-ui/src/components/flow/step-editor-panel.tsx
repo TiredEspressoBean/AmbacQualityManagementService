@@ -23,21 +23,21 @@ import { parseDurationToMinutes, formatMinutesToDuration, formatDurationDisplay 
 
 /** Terminal status options */
 export const TERMINAL_STATUS_OPTIONS = [
-  { value: 'completed', label: 'Completed Successfully' },
-  { value: 'shipped', label: 'Shipped to Customer' },
-  { value: 'stock', label: 'Put into Inventory' },
-  { value: 'scrapped', label: 'Scrapped' },
-  { value: 'returned', label: 'Returned to Supplier' },
-  { value: 'awaiting_pickup', label: 'Awaiting Customer Pickup' },
-  { value: 'core_banked', label: 'Core Banked' },
-  { value: 'rma_closed', label: 'RMA Closed' },
+  { value: 'COMPLETED', label: 'Completed Successfully' },
+  { value: 'SHIPPED', label: 'Shipped to Customer' },
+  { value: 'STOCK', label: 'Put into Inventory' },
+  { value: 'SCRAPPED', label: 'Scrapped' },
+  { value: 'RETURNED', label: 'Returned to Supplier' },
+  { value: 'AWAITING_PICKUP', label: 'Awaiting Customer Pickup' },
+  { value: 'CORE_BANKED', label: 'Core Banked' },
+  { value: 'RMA_CLOSED', label: 'RMA Closed' },
 ] as const;
 
 /** Decision type options */
 export const DECISION_TYPE_OPTIONS = [
-  { value: 'qa_result', label: 'Based on QA Pass/Fail' },
-  { value: 'measurement', label: 'Based on Measurement Threshold' },
-  { value: 'manual', label: 'Manual Operator Selection' },
+  { value: 'QA_RESULT', label: 'Based on QA Pass/Fail' },
+  { value: 'MEASUREMENT', label: 'Based on Measurement Threshold' },
+  { value: 'MANUAL', label: 'Manual Operator Selection' },
 ] as const;
 
 export interface StepEditorPanelProps {
@@ -223,9 +223,9 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
                 </Select>
               ) : (
                 <Badge variant={
-                  data.terminalStatus === 'completed' || data.terminalStatus === 'shipped'
+                  data.terminalStatus === 'COMPLETED' || data.terminalStatus === 'SHIPPED'
                     ? 'default'
-                    : data.terminalStatus === 'scrapped'
+                    : data.terminalStatus === 'SCRAPPED'
                       ? 'destructive'
                       : 'secondary'
                 }>

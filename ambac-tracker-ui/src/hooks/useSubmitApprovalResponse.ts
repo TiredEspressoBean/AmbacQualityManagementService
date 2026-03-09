@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api/generated";
+import { api, type DecisionEnum } from "@/lib/api/generated";
 
 export interface ApprovalResponsePayload {
-    decision: 'APPROVED' | 'REJECTED' | 'DELEGATED';
+    decision: DecisionEnum;
     comments?: string;
     signature_data?: string;
     signature_meaning?: string;

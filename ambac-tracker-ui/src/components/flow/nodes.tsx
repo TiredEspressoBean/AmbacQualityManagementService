@@ -220,9 +220,9 @@ export const DecisionNode = memo(({ data }: StepNodeProps) => {
       </BaseNodeHeader>
       <BaseNodeContent>
         <p className="text-xs text-muted-foreground">
-          {data.decisionType === 'qa_result' && 'QA Pass/Fail'}
-          {data.decisionType === 'measurement' && 'Measurement Check'}
-          {data.decisionType === 'manual' && 'Manual Decision'}
+          {data.decisionType === 'QA_RESULT' && 'QA Pass/Fail'}
+          {data.decisionType === 'MEASUREMENT' && 'Measurement Check'}
+          {data.decisionType === 'MANUAL' && 'Manual Decision'}
         </p>
       </BaseNodeContent>
       <div className="flex flex-col gap-1 pr-1">
@@ -337,19 +337,19 @@ TimerNode.displayName = 'TimerNode';
 
 /** Terminal config by status */
 const terminalConfig: Record<string, { icon: typeof CheckCircle; color: string; bgClass: string; textClass: string }> = {
-  completed: { icon: CheckCircle, color: 'green', bgClass: 'bg-green-50 dark:bg-green-950/30', textClass: 'text-green-600' },
-  shipped: { icon: Truck, color: 'green', bgClass: 'bg-green-50 dark:bg-green-950/30', textClass: 'text-green-600' },
-  stock: { icon: Package, color: 'blue', bgClass: 'bg-blue-50 dark:bg-blue-950/30', textClass: 'text-blue-600' },
-  scrapped: { icon: Trash2, color: 'red', bgClass: 'bg-red-50 dark:bg-red-950/30', textClass: 'text-red-600' },
-  returned: { icon: Undo2, color: 'orange', bgClass: 'bg-orange-50 dark:bg-orange-950/30', textClass: 'text-orange-600' },
-  awaiting_pickup: { icon: Clock, color: 'yellow', bgClass: 'bg-yellow-50 dark:bg-yellow-950/30', textClass: 'text-yellow-600' },
-  core_banked: { icon: PackageOpen, color: 'blue', bgClass: 'bg-blue-50 dark:bg-blue-950/30', textClass: 'text-blue-600' },
-  rma_closed: { icon: CheckCircle, color: 'gray', bgClass: 'bg-gray-50 dark:bg-gray-800/30', textClass: 'text-gray-600' },
+  COMPLETED: { icon: CheckCircle, color: 'green', bgClass: 'bg-green-50 dark:bg-green-950/30', textClass: 'text-green-600' },
+  SHIPPED: { icon: Truck, color: 'green', bgClass: 'bg-green-50 dark:bg-green-950/30', textClass: 'text-green-600' },
+  STOCK: { icon: Package, color: 'blue', bgClass: 'bg-blue-50 dark:bg-blue-950/30', textClass: 'text-blue-600' },
+  SCRAPPED: { icon: Trash2, color: 'red', bgClass: 'bg-red-50 dark:bg-red-950/30', textClass: 'text-red-600' },
+  RETURNED: { icon: Undo2, color: 'orange', bgClass: 'bg-orange-50 dark:bg-orange-950/30', textClass: 'text-orange-600' },
+  AWAITING_PICKUP: { icon: Clock, color: 'yellow', bgClass: 'bg-yellow-50 dark:bg-yellow-950/30', textClass: 'text-yellow-600' },
+  CORE_BANKED: { icon: PackageOpen, color: 'blue', bgClass: 'bg-blue-50 dark:bg-blue-950/30', textClass: 'text-blue-600' },
+  RMA_CLOSED: { icon: CheckCircle, color: 'gray', bgClass: 'bg-gray-50 dark:bg-gray-800/30', textClass: 'text-gray-600' },
 };
 
 /** Terminal/end state node - adapts styling based on terminal_status */
 export const TerminalNode = memo(({ data }: StepNodeProps) => {
-  const config = terminalConfig[data.terminalStatus || 'completed'] || terminalConfig.completed;
+  const config = terminalConfig[data.terminalStatus || 'COMPLETED'] || terminalConfig.COMPLETED;
   const Icon = config.icon;
   const borderClass = `border-${config.color}-500`;
 
@@ -376,12 +376,12 @@ export const TerminalNode = memo(({ data }: StepNodeProps) => {
 });
 TerminalNode.displayName = 'TerminalNode';
 
-/** Node types map for ReactFlow */
+/** Node types map for ReactFlow - keys must match UPPERCASE step_type values from backend */
 export const flowNodeTypes = {
-  task: TaskNode,
-  start: StartNode,
-  decision: DecisionNode,
-  rework: ReworkNode,
-  timer: TimerNode,
-  terminal: TerminalNode,
+  TASK: TaskNode,
+  START: StartNode,
+  DECISION: DecisionNode,
+  REWORK: ReworkNode,
+  TIMER: TimerNode,
+  TERMINAL: TerminalNode,
 };

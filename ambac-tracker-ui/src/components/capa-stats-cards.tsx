@@ -18,8 +18,8 @@ export function CapaStatsCards() {
         return null;
     }
 
-    const activeCount = stats.by_status.open + stats.by_status.in_progress;
-    const pendingVerification = stats.by_status.pending_verification;
+    const activeCount = stats.by_status.OPEN + stats.by_status.IN_PROGRESS;
+    const pendingVerification = stats.by_status.PENDING_VERIFICATION;
 
     const cards = [
         {
@@ -45,7 +45,7 @@ export function CapaStatsCards() {
         },
         {
             label: "Closed",
-            value: stats.by_status.closed,
+            value: stats.by_status.CLOSED,
             icon: CheckCircle2,
             color: "text-green-600",
             bgColor: "bg-green-50",

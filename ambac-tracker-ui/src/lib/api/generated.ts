@@ -60,18 +60,18 @@ export type AddNoteInputRequest = {
    */
   message: string;
   visibility?: /**
-   * @default "visible"
+   * @default "VISIBLE"
    */
   VisibilityEnum | undefined;
 };
 export type VisibilityEnum =
   /**
-   * * `visible` - visible
-   * `internal` - internal
+   * * `VISIBLE` - VISIBLE
+   * `INTERNAL` - INTERNAL
    *
-   * @enum visible, internal
+   * @enum VISIBLE, INTERNAL
    */
-  "visible" | "internal";
+  "VISIBLE" | "INTERNAL";
 export type ApprovalRequest = {
   id: string;
   approval_number: string;
@@ -463,21 +463,21 @@ export type BOM = {
 };
 export type BOMTypeEnum =
   /**
-   * * `assembly` - Assembly
-   * `disassembly` - Disassembly
+   * * `ASSEMBLY` - Assembly
+   * `DISASSEMBLY` - Disassembly
    *
-   * @enum assembly, disassembly
+   * @enum ASSEMBLY, DISASSEMBLY
    */
-  "assembly" | "disassembly";
+  "ASSEMBLY" | "DISASSEMBLY";
 export type BOMStatusEnum =
   /**
-   * * `draft` - Draft
-   * `released` - Released
-   * `obsolete` - Obsolete
+   * * `DRAFT` - Draft
+   * `RELEASED` - Released
+   * `OBSOLETE` - Obsolete
    *
-   * @enum draft, released, obsolete
+   * @enum DRAFT, RELEASED, OBSOLETE
    */
-  "draft" | "released" | "obsolete";
+  "DRAFT" | "RELEASED" | "OBSOLETE";
 export type BOMLine = {
   id: string;
   bom: string;
@@ -561,7 +561,7 @@ export type PartsStatusEnum =
    * * `PENDING` - Pending
    * `IN_PROGRESS` - In Progress
    * `AWAITING_QA` - Awaiting QA
-   * `READY FOR NEXT STEP` - Ready for next step
+   * `READY_FOR_NEXT_STEP` - Ready for next step
    * `COMPLETED` - Completed
    * `QUARANTINED` - Quarantined
    * `REWORK_NEEDED` - Rework Needed
@@ -574,12 +574,12 @@ export type PartsStatusEnum =
    * `CORE_BANKED` - Core Banked
    * `RMA_CLOSED` - RMA Closed
    *
-   * @enum PENDING, IN_PROGRESS, AWAITING_QA, READY FOR NEXT STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
+   * @enum PENDING, IN_PROGRESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
    */
   | "PENDING"
   | "IN_PROGRESS"
   | "AWAITING_QA"
-  | "READY FOR NEXT STEP"
+  | "READY_FOR_NEXT_STEP"
   | "COMPLETED"
   | "QUARANTINED"
   | "REWORK_NEEDED"
@@ -1055,28 +1055,28 @@ export type CalibrationRecord = {
 };
 export type CalibrationRecordResultEnum =
   /**
-   * * `pass` - Pass
-   * `fail` - Fail
-   * `limited` - Limited/Restricted Use
+   * * `PASS` - Pass
+   * `FAIL` - Fail
+   * `LIMITED` - Limited/Restricted Use
    *
-   * @enum pass, fail, limited
+   * @enum PASS, FAIL, LIMITED
    */
-  "pass" | "fail" | "limited";
+  "PASS" | "FAIL" | "LIMITED";
 export type CalibrationTypeEnum =
   /**
-   * * `scheduled` - Scheduled
-   * `initial` - Initial
-   * `after_repair` - After Repair
-   * `after_adjustment` - After Adjustment
-   * `verification` - Verification Check
+   * * `SCHEDULED` - Scheduled
+   * `INITIAL` - Initial
+   * `AFTER_REPAIR` - After Repair
+   * `AFTER_ADJUSTMENT` - After Adjustment
+   * `VERIFICATION` - Verification Check
    *
-   * @enum scheduled, initial, after_repair, after_adjustment, verification
+   * @enum SCHEDULED, INITIAL, AFTER_REPAIR, AFTER_ADJUSTMENT, VERIFICATION
    */
-  | "scheduled"
-  | "initial"
-  | "after_repair"
-  | "after_adjustment"
-  | "verification";
+  | "SCHEDULED"
+  | "INITIAL"
+  | "AFTER_REPAIR"
+  | "AFTER_ADJUSTMENT"
+  | "VERIFICATION";
 export type CalibrationRecordRequest = {
   equipment: string;
   calibration_date: string;
@@ -1177,15 +1177,15 @@ export type ClockInRequest = {
 };
 export type TimeEntryTypeEnum =
   /**
-   * * `production` - Production
-   * `setup` - Setup/Changeover
-   * `rework` - Rework
-   * `downtime` - Downtime
-   * `indirect` - Indirect Labor
+   * * `PRODUCTION` - Production
+   * `SETUP` - Setup/Changeover
+   * `REWORK` - Rework
+   * `DOWNTIME` - Downtime
+   * `INDIRECT` - Indirect Labor
    *
-   * @enum production, setup, rework, downtime, indirect
+   * @enum PRODUCTION, SETUP, REWORK, DOWNTIME, INDIRECT
    */
-  "production" | "setup" | "rework" | "downtime" | "indirect";
+  "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT";
 export type Core = {
   id: string;
   /**
@@ -1262,24 +1262,24 @@ export type Core = {
 };
 export type SourceTypeEnum =
   /**
-   * * `customer_return` - Customer Return
-   * `purchased` - Purchased Core
-   * `warranty` - Warranty Return
-   * `trade_in` - Trade-In
+   * * `CUSTOMER_RETURN` - Customer Return
+   * `PURCHASED` - Purchased Core
+   * `WARRANTY` - Warranty Return
+   * `TRADE_IN` - Trade-In
    *
-   * @enum customer_return, purchased, warranty, trade_in
+   * @enum CUSTOMER_RETURN, PURCHASED, WARRANTY, TRADE_IN
    */
-  "customer_return" | "purchased" | "warranty" | "trade_in";
+  "CUSTOMER_RETURN" | "PURCHASED" | "WARRANTY" | "TRADE_IN";
 export type CoreStatusEnum =
   /**
-   * * `received` - Received
-   * `in_disassembly` - In Disassembly
-   * `disassembled` - Disassembled
-   * `scrapped` - Scrapped
+   * * `RECEIVED` - Received
+   * `IN_DISASSEMBLY` - In Disassembly
+   * `DISASSEMBLED` - Disassembled
+   * `SCRAPPED` - Scrapped
    *
-   * @enum received, in_disassembly, disassembled, scrapped
+   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, SCRAPPED
    */
-  "received" | "in_disassembly" | "disassembled" | "scrapped";
+  "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "SCRAPPED";
 export type CoreList = {
   id: string;
   /**
@@ -1407,17 +1407,32 @@ export type ModeEnum =
    * @enum saas, dedicated
    */
   "saas" | "dedicated";
+export type DemoResetRequestRequest = Partial<{
+  /**
+   * @default "small"
+   */
+  scale: ScaleEnum;
+}>;
+export type ScaleEnum =
+  /**
+   * * `small` - small
+   * `medium` - medium
+   * `large` - large
+   *
+   * @enum small, medium, large
+   */
+  "small" | "medium" | "large";
 export type Documents = {
   id: string;
   classification?:
     | /**
      * Security classification level for document access control
     
-    * `public` - Public
-    * `internal` - Internal Use
-    * `confidential` - Confidential
-    * `restricted` - Restricted
-    * `secret` - Secret
+    * `PUBLIC` - Public
+    * `INTERNAL` - Internal Use
+    * `CONFIDENTIAL` - Confidential
+    * `RESTRICTED` - Restricted
+    * `SECRET` - Secret
      */
     (ClassificationEnum | NullEnum | null)
     | undefined;
@@ -1521,15 +1536,15 @@ export type Documents = {
 };
 export type ClassificationEnum =
   /**
-   * * `public` - Public
-   * `internal` - Internal Use
-   * `confidential` - Confidential
-   * `restricted` - Restricted
-   * `secret` - Secret
+   * * `PUBLIC` - Public
+   * `INTERNAL` - Internal Use
+   * `CONFIDENTIAL` - Confidential
+   * `RESTRICTED` - Restricted
+   * `SECRET` - Secret
    *
-   * @enum public, internal, confidential, restricted, secret
+   * @enum PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED, SECRET
    */
-  "public" | "internal" | "confidential" | "restricted" | "secret";
+  "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED" | "SECRET";
 export type NullEnum =
   /**
    * @enum
@@ -1551,11 +1566,11 @@ export type DocumentsRequest = {
     | /**
      * Security classification level for document access control
     
-    * `public` - Public
-    * `internal` - Internal Use
-    * `confidential` - Confidential
-    * `restricted` - Restricted
-    * `secret` - Secret
+    * `PUBLIC` - Public
+    * `INTERNAL` - Internal Use
+    * `CONFIDENTIAL` - Confidential
+    * `RESTRICTED` - Restricted
+    * `SECRET` - Secret
      */
     (ClassificationEnum | NullEnum | null)
     | undefined;
@@ -1654,27 +1669,27 @@ export type DowntimeEvent = {
 };
 export type DowntimeCategoryEnum =
   /**
-   * * `planned` - Planned Maintenance
-   * `unplanned` - Unplanned/Breakdown
-   * `changeover` - Changeover/Setup
-   * `calibration` - Calibration
-   * `no_work` - No Work Available
-   * `no_operator` - No Operator Available
-   * `material` - Waiting for Material
-   * `quality` - Quality Issue
-   * `other` - Other
+   * * `PLANNED` - Planned Maintenance
+   * `UNPLANNED` - Unplanned/Breakdown
+   * `CHANGEOVER` - Changeover/Setup
+   * `CALIBRATION` - Calibration
+   * `NO_WORK` - No Work Available
+   * `NO_OPERATOR` - No Operator Available
+   * `MATERIAL` - Waiting for Material
+   * `QUALITY` - Quality Issue
+   * `OTHER` - Other
    *
-   * @enum planned, unplanned, changeover, calibration, no_work, no_operator, material, quality, other
+   * @enum PLANNED, UNPLANNED, CHANGEOVER, CALIBRATION, NO_WORK, NO_OPERATOR, MATERIAL, QUALITY, OTHER
    */
-  | "planned"
-  | "unplanned"
-  | "changeover"
-  | "calibration"
-  | "no_work"
-  | "no_operator"
-  | "material"
-  | "quality"
-  | "other";
+  | "PLANNED"
+  | "UNPLANNED"
+  | "CHANGEOVER"
+  | "CALIBRATION"
+  | "NO_WORK"
+  | "NO_OPERATOR"
+  | "MATERIAL"
+  | "QUALITY"
+  | "OTHER";
 export type DowntimeEventRequest = {
   equipment?: (string | null) | undefined;
   work_center?: (string | null) | undefined;
@@ -1722,19 +1737,19 @@ export type Equipments = {
 };
 export type EquipmentsStatusEnum =
   /**
-   * * `in_service` - In Service
-   * `out_of_service` - Out of Service
-   * `in_calibration` - In Calibration
-   * `in_maintenance` - In Maintenance
-   * `retired` - Retired
+   * * `IN_SERVICE` - In Service
+   * `OUT_OF_SERVICE` - Out of Service
+   * `IN_CALIBRATION` - In Calibration
+   * `IN_MAINTENANCE` - In Maintenance
+   * `RETIRED` - Retired
    *
-   * @enum in_service, out_of_service, in_calibration, in_maintenance, retired
+   * @enum IN_SERVICE, OUT_OF_SERVICE, IN_CALIBRATION, IN_MAINTENANCE, RETIRED
    */
-  | "in_service"
-  | "out_of_service"
-  | "in_calibration"
-  | "in_maintenance"
-  | "retired";
+  | "IN_SERVICE"
+  | "OUT_OF_SERVICE"
+  | "IN_CALIBRATION"
+  | "IN_MAINTENANCE"
+  | "RETIRED";
 export type EquipmentsRequest = {
   /**
    * @minLength 1
@@ -1793,20 +1808,20 @@ export type FPIRecord = {
   /**
      * Current status of the FPI
     
-    * `not_required` - Not Required
-    * `pending` - Pending
-    * `passed` - Passed
-    * `failed` - Failed
-    * `waived` - Waived
+    * `NOT_REQUIRED` - Not Required
+    * `PENDING` - Pending
+    * `PASSED` - Passed
+    * `FAILED` - Failed
+    * `WAIVED` - Waived
      */
   status: FPIRecordStatusEnum;
   status_display: string;
   /**
      * Final result of the FPI
     
-    * `pass` - Pass
-    * `fail` - Fail
-    * `conditional` - Conditional Pass
+    * `PASS` - Pass
+    * `FAIL` - Fail
+    * `CONDITIONAL` - Conditional Pass
      */
   result: FPIRecordResultEnum;
   result_display: string;
@@ -1838,24 +1853,24 @@ export type FPIRecord = {
 };
 export type FPIRecordStatusEnum =
   /**
-   * * `not_required` - Not Required
-   * `pending` - Pending
-   * `passed` - Passed
-   * `failed` - Failed
-   * `waived` - Waived
+   * * `NOT_REQUIRED` - Not Required
+   * `PENDING` - Pending
+   * `PASSED` - Passed
+   * `FAILED` - Failed
+   * `WAIVED` - Waived
    *
-   * @enum not_required, pending, passed, failed, waived
+   * @enum NOT_REQUIRED, PENDING, PASSED, FAILED, WAIVED
    */
-  "not_required" | "pending" | "passed" | "failed" | "waived";
+  "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED";
 export type FPIRecordResultEnum =
   /**
-   * * `pass` - Pass
-   * `fail` - Fail
-   * `conditional` - Conditional Pass
+   * * `PASS` - Pass
+   * `FAIL` - Fail
+   * `CONDITIONAL` - Conditional Pass
    *
-   * @enum pass, fail, conditional
+   * @enum PASS, FAIL, CONDITIONAL
    */
-  "pass" | "fail" | "conditional";
+  "PASS" | "FAIL" | "CONDITIONAL";
 export type GenerateReportRequest = {
   /**
      * Type of report to generate (spc, capa, quality_report, etc.)
@@ -1999,14 +2014,14 @@ export type HeatMapAnnotations = {
 };
 export type HeatMapAnnotationsSeverityEnum =
   /**
-   * * `low` - Low
-   * `medium` - Medium
-   * `high` - High
-   * `critical` - Critical
+   * * `LOW` - Low
+   * `MEDIUM` - Medium
+   * `HIGH` - High
+   * `CRITICAL` - Critical
    *
-   * @enum low, medium, high, critical
+   * @enum LOW, MEDIUM, HIGH, CRITICAL
    */
-  "low" | "medium" | "high" | "critical";
+  "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type BlankEnum =
   /**
    * @enum
@@ -2108,15 +2123,15 @@ export type MaterialLot = {
 };
 export type MaterialLotStatusEnum =
   /**
-   * * `received` - Received
-   * `in_use` - In Use
-   * `consumed` - Consumed
-   * `scrapped` - Scrapped
-   * `quarantine` - Quarantine
+   * * `RECEIVED` - Received
+   * `IN_USE` - In Use
+   * `CONSUMED` - Consumed
+   * `SCRAPPED` - Scrapped
+   * `QUARANTINE` - Quarantine
    *
-   * @enum received, in_use, consumed, scrapped, quarantine
+   * @enum RECEIVED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
    */
-  "received" | "in_use" | "consumed" | "scrapped" | "quarantine";
+  "RECEIVED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
 export type MaterialLotRequest = {
   /**
    * @minLength 1
@@ -2335,23 +2350,23 @@ export type NotificationTypeEnum =
   | "APPROVAL_ESCALATION";
 export type ChannelTypeEnum =
   /**
-   * * `email` - Email
-   * `in_app` - In-App Notification
-   * `sms` - SMS
+   * * `EMAIL` - Email
+   * `IN_APP` - In-App Notification
+   * `SMS` - SMS
    *
-   * @enum email, in_app, sms
+   * @enum EMAIL, IN_APP, SMS
    */
-  "email" | "in_app" | "sms";
+  "EMAIL" | "IN_APP" | "SMS";
 export type NotificationTaskStatusEnum =
   /**
-   * * `pending` - Pending
-   * `sent` - Sent
-   * `failed` - Failed
-   * `cancelled` - Cancelled
+   * * `PENDING` - Pending
+   * `SENT` - Sent
+   * `FAILED` - Failed
+   * `CANCELLED` - Cancelled
    *
-   * @enum pending, sent, failed, cancelled
+   * @enum PENDING, SENT, FAILED, CANCELLED
    */
-  "pending" | "sent" | "failed" | "cancelled";
+  "PENDING" | "SENT" | "FAILED" | "CANCELLED";
 export type NotificationSchedule = {
   interval_type: IntervalTypeEnum;
   day_of_week?:
@@ -2386,12 +2401,12 @@ export type NotificationSchedule = {
 };
 export type IntervalTypeEnum =
   /**
-   * * `fixed` - fixed
-   * `deadline_based` - deadline_based
+   * * `FIXED` - FIXED
+   * `DEADLINE_BASED` - DEADLINE_BASED
    *
-   * @enum fixed, deadline_based
+   * @enum FIXED, DEADLINE_BASED
    */
-  "fixed" | "deadline_based";
+  "FIXED" | "DEADLINE_BASED";
 export type NotificationPreferenceRequest = {
   notification_type: NotificationTypeEnum;
   channel_type?: ChannelTypeEnum | undefined;
@@ -3076,6 +3091,12 @@ export type PaginatedEquipmentTypeList = {
 };
 export type EquipmentType = {
   id: string;
+  tenant?:
+    | /**
+     * Tenant this record belongs to
+     */
+    (string | null)
+    | undefined;
   external_id?:
     | /**
      * External system identifier for integration sync
@@ -3084,16 +3105,8 @@ export type EquipmentType = {
      */
     (string | null)
     | undefined;
-  archived?: boolean | undefined;
-  deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
-  version?: /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
@@ -3111,13 +3124,6 @@ export type EquipmentType = {
     | undefined;
   is_portable?: boolean | undefined;
   track_downtime?: boolean | undefined;
-  tenant?:
-    | /**
-     * Tenant this record belongs to
-     */
-    (string | null)
-    | undefined;
-  previous_version?: (string | null) | undefined;
 };
 export type PaginatedEquipmentsList = {
   /**
@@ -3476,6 +3482,12 @@ export type PaginatedPartTypesList = {
 };
 export type PartTypes = {
   id: string;
+  tenant?:
+    | /**
+     * Tenant this record belongs to
+     */
+    (string | null)
+    | undefined;
   external_id?:
     | /**
      * External system identifier for integration sync
@@ -3484,16 +3496,8 @@ export type PartTypes = {
      */
     (string | null)
     | undefined;
-  archived?: boolean | undefined;
-  deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
-  version?: /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
@@ -3526,13 +3530,6 @@ export type PartTypes = {
    * @maxLength 10
    */
   string | undefined;
-  tenant?:
-    | /**
-     * Tenant this record belongs to
-     */
-    (string | null)
-    | undefined;
-  previous_version?: (string | null) | undefined;
 };
 export type PaginatedPartsList = {
   /**
@@ -3622,10 +3619,10 @@ export type ProcessWithSteps = {
   status?: /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   ProcessStatusEnum | undefined;
   change_description?:
@@ -3676,12 +3673,12 @@ export type Step = {
   step_type?: /**
      * Visual type for flow editor.
     
-    * `task` - Task
-    * `start` - Start
-    * `decision` - Decision
-    * `rework` - Rework
-    * `timer` - Timer/Wait
-    * `terminal` - Terminal
+    * `TASK` - Task
+    * `START` - Start
+    * `DECISION` - Decision
+    * `REWORK` - Rework
+    * `TIMER` - Timer/Wait
+    * `TERMINAL` - Terminal
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -3701,56 +3698,56 @@ export type Step = {
 };
 export type StepTypeEnum =
   /**
-   * * `task` - Task
-   * `start` - Start
-   * `decision` - Decision
-   * `rework` - Rework
-   * `timer` - Timer/Wait
-   * `terminal` - Terminal
+   * * `TASK` - Task
+   * `START` - Start
+   * `DECISION` - Decision
+   * `REWORK` - Rework
+   * `TIMER` - Timer/Wait
+   * `TERMINAL` - Terminal
    *
-   * @enum task, start, decision, rework, timer, terminal
+   * @enum TASK, START, DECISION, REWORK, TIMER, TERMINAL
    */
-  "task" | "start" | "decision" | "rework" | "timer" | "terminal";
+  "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL";
 export type DecisionTypeEnum =
   /**
-   * * `qa_result` - Based on QA Pass/Fail
-   * `measurement` - Based on Measurement Threshold
-   * `manual` - Manual Operator Selection
+   * * `QA_RESULT` - Based on QA Pass/Fail
+   * `MEASUREMENT` - Based on Measurement Threshold
+   * `MANUAL` - Manual Operator Selection
    *
-   * @enum qa_result, measurement, manual
+   * @enum QA_RESULT, MEASUREMENT, MANUAL
    */
-  "qa_result" | "measurement" | "manual";
+  "QA_RESULT" | "MEASUREMENT" | "MANUAL";
 export type TerminalStatusEnum =
   /**
-   * * `completed` - Completed Successfully
-   * `shipped` - Shipped to Customer
-   * `stock` - Put into Inventory
-   * `scrapped` - Scrapped
-   * `returned` - Returned to Supplier
-   * `awaiting_pickup` - Awaiting Customer Pickup
-   * `core_banked` - Core Banked
-   * `rma_closed` - RMA Closed
+   * * `COMPLETED` - Completed Successfully
+   * `SHIPPED` - Shipped to Customer
+   * `STOCK` - Put into Inventory
+   * `SCRAPPED` - Scrapped
+   * `RETURNED` - Returned to Supplier
+   * `AWAITING_PICKUP` - Awaiting Customer Pickup
+   * `CORE_BANKED` - Core Banked
+   * `RMA_CLOSED` - RMA Closed
    *
-   * @enum completed, shipped, stock, scrapped, returned, awaiting_pickup, core_banked, rma_closed
+   * @enum COMPLETED, SHIPPED, STOCK, SCRAPPED, RETURNED, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
    */
-  | "completed"
-  | "shipped"
-  | "stock"
-  | "scrapped"
-  | "returned"
-  | "awaiting_pickup"
-  | "core_banked"
-  | "rma_closed";
+  | "COMPLETED"
+  | "SHIPPED"
+  | "STOCK"
+  | "SCRAPPED"
+  | "RETURNED"
+  | "AWAITING_PICKUP"
+  | "CORE_BANKED"
+  | "RMA_CLOSED";
 export type RevisitAssignmentEnum =
   /**
-   * * `any` - Any Qualified Operator
-   * `same` - Same as Previous
-   * `different` - Different Operator
-   * `role` - Specific Role
+   * * `ANY` - Any Qualified Operator
+   * `SAME` - Same as Previous
+   * `DIFFERENT` - Different Operator
+   * `ROLE` - Specific Role
    *
-   * @enum any, same, different, role
+   * @enum ANY, SAME, DIFFERENT, ROLE
    */
-  "any" | "same" | "different" | "role";
+  "ANY" | "SAME" | "DIFFERENT" | "ROLE";
 export type StepEdge = {
   id: number;
   from_step: string;
@@ -3776,13 +3773,13 @@ export type StepEdge = {
 };
 export type EdgeTypeEnum =
   /**
-   * * `default` - Default/Pass
-   * `alternate` - Alternate/Fail
-   * `escalation` - Escalation
+   * * `DEFAULT` - Default/Pass
+   * `ALTERNATE` - Alternate/Fail
+   * `ESCALATION` - Escalation
    *
-   * @enum default, alternate, escalation
+   * @enum DEFAULT, ALTERNATE, ESCALATION
    */
-  "default" | "alternate" | "escalation";
+  "DEFAULT" | "ALTERNATE" | "ESCALATION";
 export type ConditionOperatorEnum =
   /**
    * * `gte` - >= (greater or equal)
@@ -3794,14 +3791,14 @@ export type ConditionOperatorEnum =
   "gte" | "lte" | "eq";
 export type ProcessStatusEnum =
   /**
-   * * `draft` - Draft
-   * `pending_approval` - Pending Approval
-   * `approved` - Approved
-   * `deprecated` - Deprecated
+   * * `DRAFT` - Draft
+   * `PENDING_APPROVAL` - Pending Approval
+   * `APPROVED` - Approved
+   * `DEPRECATED` - Deprecated
    *
-   * @enum draft, pending_approval, approved, deprecated
+   * @enum DRAFT, PENDING_APPROVAL, APPROVED, DEPRECATED
    */
-  "draft" | "pending_approval" | "approved" | "deprecated";
+  "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "DEPRECATED";
 export type PaginatedProcessesList = {
   /**
    * @example 123
@@ -3823,9 +3820,12 @@ export type PaginatedProcessesList = {
 };
 export type Processes = {
   id: string;
-  part_type_name: string;
-  process_steps: Array<ProcessStep>;
-  step_edges: Array<StepEdge>;
+  tenant?:
+    | /**
+     * Tenant this record belongs to
+     */
+    (string | null)
+    | undefined;
   external_id?:
     | /**
      * External system identifier for integration sync
@@ -3834,21 +3834,14 @@ export type Processes = {
      */
     (string | null)
     | undefined;
-  archived?: boolean | undefined;
-  deleted_at?: (string | null) | undefined;
   created_at: string;
   updated_at: string;
-  version?: /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_current_version?: boolean | undefined;
   /**
    * @maxLength 50
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
    */
@@ -3856,20 +3849,20 @@ export type Processes = {
   status?: /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   ProcessStatusEnum | undefined;
   category?: /**
      * Process category for workflow engine routing
     
-    * `manufacturing` - Manufacturing
-    * `quality` - Quality
-    * `maintenance` - Maintenance
-    * `npi` - New Product Introduction
-    * `document` - Document Control
+    * `MANUFACTURING` - Manufacturing
+    * `QUALITY` - Quality
+    * `MAINTENANCE` - Maintenance
+    * `NPI` - New Product Introduction
+    * `DOCUMENT` - Document Control
      */
   ProcessesCategoryEnum | undefined;
   change_description?:
@@ -3878,28 +3871,24 @@ export type Processes = {
      */
     (string | null)
     | undefined;
-  approved_at?: (string | null) | undefined;
-  tenant?:
-    | /**
-     * Tenant this record belongs to
-     */
-    (string | null)
-    | undefined;
-  previous_version?: (string | null) | undefined;
-  part_type: string;
-  approved_by?: (number | null) | undefined;
+  approved_at: string | null;
+  approved_by: number | null;
+  part_type_name: string;
+  process_steps: Array<ProcessStep>;
+  step_edges: Array<StepEdge>;
+  num_steps: number;
 };
 export type ProcessesCategoryEnum =
   /**
-   * * `manufacturing` - Manufacturing
-   * `quality` - Quality
-   * `maintenance` - Maintenance
-   * `npi` - New Product Introduction
-   * `document` - Document Control
+   * * `MANUFACTURING` - Manufacturing
+   * `QUALITY` - Quality
+   * `MAINTENANCE` - Maintenance
+   * `NPI` - New Product Introduction
+   * `DOCUMENT` - Document Control
    *
-   * @enum manufacturing, quality, maintenance, npi, document
+   * @enum MANUFACTURING, QUALITY, MAINTENANCE, NPI, DOCUMENT
    */
-  "manufacturing" | "quality" | "maintenance" | "npi" | "document";
+  "MANUFACTURING" | "QUALITY" | "MAINTENANCE" | "NPI" | "DOCUMENT";
 export type PaginatedQualityErrorsListList = {
   /**
    * @example 123
@@ -4272,21 +4261,21 @@ export type SamplingRule = {
 };
 export type RuleTypeEnum =
   /**
-   * * `every_nth_part` - Every Nth Part
-   * `percentage` - Percentage of Parts
-   * `random` - Pure Random
-   * `first_n_parts` - First N Parts
-   * `last_n_parts` - Last N Parts
-   * `exact_count` - Exact Count (No Variance)
+   * * `EVERY_NTH_PART` - Every Nth Part
+   * `PERCENTAGE` - Percentage of Parts
+   * `RANDOM` - Pure Random
+   * `FIRST_N_PARTS` - First N Parts
+   * `LAST_N_PARTS` - Last N Parts
+   * `EXACT_COUNT` - Exact Count (No Variance)
    *
-   * @enum every_nth_part, percentage, random, first_n_parts, last_n_parts, exact_count
+   * @enum EVERY_NTH_PART, PERCENTAGE, RANDOM, FIRST_N_PARTS, LAST_N_PARTS, EXACT_COUNT
    */
-  | "every_nth_part"
-  | "percentage"
-  | "random"
-  | "first_n_parts"
-  | "last_n_parts"
-  | "exact_count";
+  | "EVERY_NTH_PART"
+  | "PERCENTAGE"
+  | "RANDOM"
+  | "FIRST_N_PARTS"
+  | "LAST_N_PARTS"
+  | "EXACT_COUNT";
 export type PaginatedSamplingRuleSetList = {
   /**
    * @example 123
@@ -4401,14 +4390,14 @@ export type ScheduleSlot = {
 };
 export type ScheduleSlotStatusEnum =
   /**
-   * * `scheduled` - Scheduled
-   * `in_progress` - In Progress
-   * `completed` - Completed
-   * `cancelled` - Cancelled
+   * * `SCHEDULED` - Scheduled
+   * `IN_PROGRESS` - In Progress
+   * `COMPLETED` - Completed
+   * `CANCELLED` - Cancelled
    *
-   * @enum scheduled, in_progress, completed, cancelled
+   * @enum SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
    */
-  "scheduled" | "in_progress" | "completed" | "cancelled";
+  "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type PaginatedShiftList = {
   /**
    * @example 123
@@ -4537,7 +4526,7 @@ export type StepExecution = {
     (string | null)
     | undefined;
   decision_result?: /**
-   * Result of decision: 'pass', 'fail', measurement value, etc.
+   * Result of decision: 'PASS', 'FAIL', measurement value, etc.
    *
    * @maxLength 50
    */
@@ -4550,23 +4539,23 @@ export type StepExecution = {
 };
 export type StepExecutionStatusEnum =
   /**
-   * * `pending` - Pending
-   * `claimed` - Claimed
-   * `in_progress` - In Progress
-   * `completed` - Completed
-   * `skipped` - Skipped
-   * `cancelled` - Cancelled
-   * `rolled_back` - Rolled Back
+   * * `PENDING` - Pending
+   * `CLAIMED` - Claimed
+   * `IN_PROGRESS` - In Progress
+   * `COMPLETED` - Completed
+   * `SKIPPED` - Skipped
+   * `CANCELLED` - Cancelled
+   * `ROLLED_BACK` - Rolled Back
    *
-   * @enum pending, claimed, in_progress, completed, skipped, cancelled, rolled_back
+   * @enum PENDING, CLAIMED, IN_PROGRESS, COMPLETED, SKIPPED, CANCELLED, ROLLED_BACK
    */
-  | "pending"
-  | "claimed"
-  | "in_progress"
-  | "completed"
-  | "skipped"
-  | "cancelled"
-  | "rolled_back";
+  | "PENDING"
+  | "CLAIMED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "SKIPPED"
+  | "CANCELLED"
+  | "ROLLED_BACK";
 export type PaginatedStepExecutionListList = {
   /**
    * @example 123
@@ -4618,7 +4607,7 @@ export type StepExecutionList = {
     | undefined;
   assigned_to_name: string | null;
   decision_result?: /**
-   * Result of decision: 'pass', 'fail', measurement value, etc.
+   * Result of decision: 'PASS', 'FAIL', measurement value, etc.
    *
    * @maxLength 50
    */
@@ -4711,17 +4700,17 @@ export type StepOverride = {
   /**
      * Type of block being overridden
     
-    * `qa_signoff` - QA Signoff Required
-    * `fpi_required` - FPI Required
-    * `measurement_failed` - Measurement Failed
-    * `quarantine` - Part Quarantined
-    * `sampling_required` - Sampling Required
-    * `batch_incomplete` - Batch Incomplete
-    * `training_expired` - Training Expired
-    * `calibration_expired` - Calibration Expired
-    * `regulatory_hold` - Regulatory Hold
-    * `rollback` - Step Rollback
-    * `other` - Other
+    * `QA_SIGNOFF` - QA Signoff Required
+    * `FPI_REQUIRED` - FPI Required
+    * `MEASUREMENT_FAILED` - Measurement Failed
+    * `QUARANTINE` - Part Quarantined
+    * `SAMPLING_REQUIRED` - Sampling Required
+    * `BATCH_INCOMPLETE` - Batch Incomplete
+    * `TRAINING_EXPIRED` - Training Expired
+    * `CALIBRATION_EXPIRED` - Calibration Expired
+    * `REGULATORY_HOLD` - Regulatory Hold
+    * `ROLLBACK` - Step Rollback
+    * `OTHER` - Other
      */
   block_type: BlockTypeEnum;
   block_type_display: string;
@@ -4749,10 +4738,10 @@ export type StepOverride = {
   status?: /**
      * Current status of the override request
     
-    * `pending` - Pending
-    * `approved` - Approved
-    * `rejected` - Rejected
-    * `expired` - Expired
+    * `PENDING` - Pending
+    * `APPROVED` - Approved
+    * `REJECTED` - Rejected
+    * `EXPIRED` - Expired
      */
   StepOverrideStatusEnum | undefined;
   status_display: string;
@@ -4777,41 +4766,41 @@ export type StepOverride = {
 };
 export type BlockTypeEnum =
   /**
-   * * `qa_signoff` - QA Signoff Required
-   * `fpi_required` - FPI Required
-   * `measurement_failed` - Measurement Failed
-   * `quarantine` - Part Quarantined
-   * `sampling_required` - Sampling Required
-   * `batch_incomplete` - Batch Incomplete
-   * `training_expired` - Training Expired
-   * `calibration_expired` - Calibration Expired
-   * `regulatory_hold` - Regulatory Hold
-   * `rollback` - Step Rollback
-   * `other` - Other
+   * * `QA_SIGNOFF` - QA Signoff Required
+   * `FPI_REQUIRED` - FPI Required
+   * `MEASUREMENT_FAILED` - Measurement Failed
+   * `QUARANTINE` - Part Quarantined
+   * `SAMPLING_REQUIRED` - Sampling Required
+   * `BATCH_INCOMPLETE` - Batch Incomplete
+   * `TRAINING_EXPIRED` - Training Expired
+   * `CALIBRATION_EXPIRED` - Calibration Expired
+   * `REGULATORY_HOLD` - Regulatory Hold
+   * `ROLLBACK` - Step Rollback
+   * `OTHER` - Other
    *
-   * @enum qa_signoff, fpi_required, measurement_failed, quarantine, sampling_required, batch_incomplete, training_expired, calibration_expired, regulatory_hold, rollback, other
+   * @enum QA_SIGNOFF, FPI_REQUIRED, MEASUREMENT_FAILED, QUARANTINE, SAMPLING_REQUIRED, BATCH_INCOMPLETE, TRAINING_EXPIRED, CALIBRATION_EXPIRED, REGULATORY_HOLD, ROLLBACK, OTHER
    */
-  | "qa_signoff"
-  | "fpi_required"
-  | "measurement_failed"
-  | "quarantine"
-  | "sampling_required"
-  | "batch_incomplete"
-  | "training_expired"
-  | "calibration_expired"
-  | "regulatory_hold"
-  | "rollback"
-  | "other";
+  | "QA_SIGNOFF"
+  | "FPI_REQUIRED"
+  | "MEASUREMENT_FAILED"
+  | "QUARANTINE"
+  | "SAMPLING_REQUIRED"
+  | "BATCH_INCOMPLETE"
+  | "TRAINING_EXPIRED"
+  | "CALIBRATION_EXPIRED"
+  | "REGULATORY_HOLD"
+  | "ROLLBACK"
+  | "OTHER";
 export type StepOverrideStatusEnum =
   /**
-   * * `pending` - Pending
-   * `approved` - Approved
-   * `rejected` - Rejected
-   * `expired` - Expired
+   * * `PENDING` - Pending
+   * `APPROVED` - Approved
+   * `REJECTED` - Rejected
+   * `EXPIRED` - Expired
    *
-   * @enum pending, approved, rejected, expired
+   * @enum PENDING, APPROVED, REJECTED, EXPIRED
    */
-  "pending" | "approved" | "rejected" | "expired";
+  "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 export type PaginatedStepsList = {
   /**
    * @example 123
@@ -4857,12 +4846,12 @@ export type Steps = {
   step_type?: /**
      * Visual type for flow editor.
     
-    * `task` - Task
-    * `start` - Start
-    * `decision` - Decision
-    * `rework` - Rework
-    * `timer` - Timer/Wait
-    * `terminal` - Terminal
+    * `TASK` - Task
+    * `START` - Start
+    * `DECISION` - Decision
+    * `REWORK` - Rework
+    * `TIMER` - Timer/Wait
+    * `TERMINAL` - Terminal
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -5019,23 +5008,23 @@ export type Tenant = {
 };
 export type TierEnum =
   /**
-   * * `starter` - Starter
-   * `pro` - Pro
-   * `enterprise` - Enterprise
+   * * `STARTER` - Starter
+   * `PRO` - Pro
+   * `ENTERPRISE` - Enterprise
    *
-   * @enum starter, pro, enterprise
+   * @enum STARTER, PRO, ENTERPRISE
    */
-  "starter" | "pro" | "enterprise";
+  "STARTER" | "PRO" | "ENTERPRISE";
 export type TenantStatusEnum =
   /**
-   * * `active` - Active
-   * `trial` - Trial
-   * `suspended` - Suspended
-   * `pending_deletion` - Pending Deletion
+   * * `ACTIVE` - Active
+   * `TRIAL` - Trial
+   * `SUSPENDED` - Suspended
+   * `PENDING_DELETION` - Pending Deletion
    *
-   * @enum active, trial, suspended, pending_deletion
+   * @enum ACTIVE, TRIAL, SUSPENDED, PENDING_DELETION
    */
-  "active" | "trial" | "suspended" | "pending_deletion";
+  "ACTIVE" | "TRIAL" | "SUSPENDED" | "PENDING_DELETION";
 export type PaginatedThreeDModelList = {
   /**
    * @example 123
@@ -5075,10 +5064,10 @@ export type ThreeDModel = {
   /**
      * Current processing state
     
-    * `pending` - Pending
-    * `processing` - Processing
-    * `completed` - Completed
-    * `failed` - Failed
+    * `PENDING` - Pending
+    * `PROCESSING` - Processing
+    * `COMPLETED` - Completed
+    * `FAILED` - Failed
      */
   processing_status: ProcessingStatusEnum;
   /**
@@ -5110,14 +5099,14 @@ export type ThreeDModel = {
 };
 export type ProcessingStatusEnum =
   /**
-   * * `pending` - Pending
-   * `processing` - Processing
-   * `completed` - Completed
-   * `failed` - Failed
+   * * `PENDING` - Pending
+   * `PROCESSING` - Processing
+   * `COMPLETED` - Completed
+   * `FAILED` - Failed
    *
-   * @enum pending, processing, completed, failed
+   * @enum PENDING, PROCESSING, COMPLETED, FAILED
    */
-  "pending" | "processing" | "completed" | "failed";
+  "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 export type PaginatedTimeEntryList = {
   /**
    * @example 123
@@ -5996,11 +5985,11 @@ export type PatchedDocumentsRequest = Partial<{
   /**
      * Security classification level for document access control
     
-    * `public` - Public
-    * `internal` - Internal Use
-    * `confidential` - Confidential
-    * `restricted` - Restricted
-    * `secret` - Secret
+    * `PUBLIC` - Public
+    * `INTERNAL` - Internal Use
+    * `CONFIDENTIAL` - Confidential
+    * `RESTRICTED` - Restricted
+    * `SECRET` - Secret
      */
   classification: ClassificationEnum | NullEnum | null;
   ai_readable: boolean;
@@ -6269,10 +6258,10 @@ export type PatchedProcessWithStepsRequest = Partial<{
   /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   status: ProcessStatusEnum;
   /**
@@ -6282,25 +6271,22 @@ export type PatchedProcessWithStepsRequest = Partial<{
 }>;
 export type PatchedProcessesRequest = Partial<{
   /**
+   * Tenant this record belongs to
+   */
+  tenant: string | null;
+  /**
    * External system identifier for integration sync
    *
    * @maxLength 255
    */
   external_id: string | null;
-  archived: boolean;
-  deleted_at: string | null;
-  /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  version: number;
-  is_current_version: boolean;
   /**
    * @minLength 1
    * @maxLength 50
    */
   name: string;
   is_remanufactured: boolean;
+  part_type: string;
   /**
    * If True, UI treats work order parts as a batch unit
    */
@@ -6308,34 +6294,26 @@ export type PatchedProcessesRequest = Partial<{
   /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   status: ProcessStatusEnum;
   /**
      * Process category for workflow engine routing
     
-    * `manufacturing` - Manufacturing
-    * `quality` - Quality
-    * `maintenance` - Maintenance
-    * `npi` - New Product Introduction
-    * `document` - Document Control
+    * `MANUFACTURING` - Manufacturing
+    * `QUALITY` - Quality
+    * `MAINTENANCE` - Maintenance
+    * `NPI` - New Product Introduction
+    * `DOCUMENT` - Document Control
      */
   category: ProcessesCategoryEnum;
   /**
    * Description of changes from previous version (for approval review)
    */
   change_description: string | null;
-  approved_at: string | null;
-  /**
-   * Tenant this record belongs to
-   */
-  tenant: string | null;
-  previous_version: string | null;
-  part_type: string;
-  approved_by: number | null;
 }>;
 export type PatchedQualityReportsRequest = Partial<{
   step: string | null;
@@ -6645,7 +6623,7 @@ export type PatchedStepExecutionRequest = Partial<{
    */
   next_step: string | null;
   /**
-   * Result of decision: 'pass', 'fail', measurement value, etc.
+   * Result of decision: 'PASS', 'FAIL', measurement value, etc.
    *
    * @maxLength 50
    */
@@ -6658,17 +6636,17 @@ export type PatchedStepOverrideRequest = Partial<{
   /**
      * Type of block being overridden
     
-    * `qa_signoff` - QA Signoff Required
-    * `fpi_required` - FPI Required
-    * `measurement_failed` - Measurement Failed
-    * `quarantine` - Part Quarantined
-    * `sampling_required` - Sampling Required
-    * `batch_incomplete` - Batch Incomplete
-    * `training_expired` - Training Expired
-    * `calibration_expired` - Calibration Expired
-    * `regulatory_hold` - Regulatory Hold
-    * `rollback` - Step Rollback
-    * `other` - Other
+    * `QA_SIGNOFF` - QA Signoff Required
+    * `FPI_REQUIRED` - FPI Required
+    * `MEASUREMENT_FAILED` - Measurement Failed
+    * `QUARANTINE` - Part Quarantined
+    * `SAMPLING_REQUIRED` - Sampling Required
+    * `BATCH_INCOMPLETE` - Batch Incomplete
+    * `TRAINING_EXPIRED` - Training Expired
+    * `CALIBRATION_EXPIRED` - Calibration Expired
+    * `REGULATORY_HOLD` - Regulatory Hold
+    * `ROLLBACK` - Step Rollback
+    * `OTHER` - Other
      */
   block_type: BlockTypeEnum;
   requested_by: number;
@@ -6685,10 +6663,10 @@ export type PatchedStepOverrideRequest = Partial<{
   /**
      * Current status of the override request
     
-    * `pending` - Pending
-    * `approved` - Approved
-    * `rejected` - Rejected
-    * `expired` - Expired
+    * `PENDING` - Pending
+    * `APPROVED` - Approved
+    * `REJECTED` - Rejected
+    * `EXPIRED` - Expired
      */
   status: StepOverrideStatusEnum;
   /**
@@ -6725,12 +6703,12 @@ export type PatchedStepsRequest = Partial<{
   /**
      * Visual type for flow editor.
     
-    * `task` - Task
-    * `start` - Start
-    * `decision` - Decision
-    * `rework` - Rework
-    * `timer` - Timer/Wait
-    * `terminal` - Terminal
+    * `TASK` - Task
+    * `START` - Start
+    * `DECISION` - Decision
+    * `REWORK` - Rework
+    * `TIMER` - Timer/Wait
+    * `TERMINAL` - Terminal
      */
   step_type: StepTypeEnum;
   is_decision_point: boolean;
@@ -6901,10 +6879,10 @@ export type ProcessWithStepsRequest = {
   status?: /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   ProcessStatusEnum | undefined;
   change_description?:
@@ -6915,6 +6893,12 @@ export type ProcessWithStepsRequest = {
     | undefined;
 };
 export type ProcessesRequest = {
+  tenant?:
+    | /**
+     * Tenant this record belongs to
+     */
+    (string | null)
+    | undefined;
   external_id?:
     | /**
      * External system identifier for integration sync
@@ -6923,20 +6907,13 @@ export type ProcessesRequest = {
      */
     (string | null)
     | undefined;
-  archived?: boolean | undefined;
-  deleted_at?: (string | null) | undefined;
-  version?: /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_current_version?: boolean | undefined;
   /**
    * @minLength 1
    * @maxLength 50
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
    */
@@ -6944,20 +6921,20 @@ export type ProcessesRequest = {
   status?: /**
      * Controls editability and availability for work orders
     
-    * `draft` - Draft
-    * `pending_approval` - Pending Approval
-    * `approved` - Approved
-    * `deprecated` - Deprecated
+    * `DRAFT` - Draft
+    * `PENDING_APPROVAL` - Pending Approval
+    * `APPROVED` - Approved
+    * `DEPRECATED` - Deprecated
      */
   ProcessStatusEnum | undefined;
   category?: /**
      * Process category for workflow engine routing
     
-    * `manufacturing` - Manufacturing
-    * `quality` - Quality
-    * `maintenance` - Maintenance
-    * `npi` - New Product Introduction
-    * `document` - Document Control
+    * `MANUFACTURING` - Manufacturing
+    * `QUALITY` - Quality
+    * `MAINTENANCE` - Maintenance
+    * `NPI` - New Product Introduction
+    * `DOCUMENT` - Document Control
      */
   ProcessesCategoryEnum | undefined;
   change_description?:
@@ -6966,16 +6943,6 @@ export type ProcessesRequest = {
      */
     (string | null)
     | undefined;
-  approved_at?: (string | null) | undefined;
-  tenant?:
-    | /**
-     * Tenant this record belongs to
-     */
-    (string | null)
-    | undefined;
-  previous_version?: (string | null) | undefined;
-  part_type: string;
-  approved_by?: (number | null) | undefined;
 };
 export type QualityReportsRequest = {
   step?: (string | null) | undefined;
@@ -7622,7 +7589,7 @@ export type StepExecutionRequest = {
     (string | null)
     | undefined;
   decision_result?: /**
-   * Result of decision: 'pass', 'fail', measurement value, etc.
+   * Result of decision: 'PASS', 'FAIL', measurement value, etc.
    *
    * @maxLength 50
    */
@@ -7635,17 +7602,17 @@ export type StepOverrideRequest = {
   /**
      * Type of block being overridden
     
-    * `qa_signoff` - QA Signoff Required
-    * `fpi_required` - FPI Required
-    * `measurement_failed` - Measurement Failed
-    * `quarantine` - Part Quarantined
-    * `sampling_required` - Sampling Required
-    * `batch_incomplete` - Batch Incomplete
-    * `training_expired` - Training Expired
-    * `calibration_expired` - Calibration Expired
-    * `regulatory_hold` - Regulatory Hold
-    * `rollback` - Step Rollback
-    * `other` - Other
+    * `QA_SIGNOFF` - QA Signoff Required
+    * `FPI_REQUIRED` - FPI Required
+    * `MEASUREMENT_FAILED` - Measurement Failed
+    * `QUARANTINE` - Part Quarantined
+    * `SAMPLING_REQUIRED` - Sampling Required
+    * `BATCH_INCOMPLETE` - Batch Incomplete
+    * `TRAINING_EXPIRED` - Training Expired
+    * `CALIBRATION_EXPIRED` - Calibration Expired
+    * `REGULATORY_HOLD` - Regulatory Hold
+    * `ROLLBACK` - Step Rollback
+    * `OTHER` - Other
      */
   block_type: BlockTypeEnum;
   requested_by: number;
@@ -7664,10 +7631,10 @@ export type StepOverrideRequest = {
   status?: /**
      * Current status of the override request
     
-    * `pending` - Pending
-    * `approved` - Approved
-    * `rejected` - Rejected
-    * `expired` - Expired
+    * `PENDING` - Pending
+    * `APPROVED` - Approved
+    * `REJECTED` - Rejected
+    * `EXPIRED` - Expired
      */
   StepOverrideStatusEnum | undefined;
   expires_at?:
@@ -7702,12 +7669,12 @@ export type StepRequest = {
   step_type?: /**
      * Visual type for flow editor.
     
-    * `task` - Task
-    * `start` - Start
-    * `decision` - Decision
-    * `rework` - Rework
-    * `timer` - Timer/Wait
-    * `terminal` - Terminal
+    * `TASK` - Task
+    * `START` - Start
+    * `DECISION` - Decision
+    * `REWORK` - Rework
+    * `TIMER` - Timer/Wait
+    * `TERMINAL` - Terminal
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -7771,12 +7738,12 @@ export type StepsRequest = {
   step_type?: /**
      * Visual type for flow editor.
     
-    * `task` - Task
-    * `start` - Start
-    * `decision` - Decision
-    * `rework` - Rework
-    * `timer` - Timer/Wait
-    * `terminal` - Terminal
+    * `TASK` - Task
+    * `START` - Start
+    * `DECISION` - Decision
+    * `REWORK` - Rework
+    * `TIMER` - Timer/Wait
+    * `TERMINAL` - Terminal
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -8484,8 +8451,8 @@ const PatchedBOMLineRequest = z
   })
   .partial()
   .passthrough();
-const BOMTypeEnum = z.enum(["assembly", "disassembly"]);
-const BOMStatusEnum = z.enum(["draft", "released", "obsolete"]);
+const BOMTypeEnum = z.enum(["ASSEMBLY", "DISASSEMBLY"]);
+const BOMStatusEnum = z.enum(["DRAFT", "RELEASED", "OBSOLETE"]);
 const BOMList = z
   .object({
     id: z.string().uuid(),
@@ -8833,13 +8800,13 @@ const PatchedCAPARequest = z
   })
   .partial()
   .passthrough();
-const CalibrationRecordResultEnum = z.enum(["pass", "fail", "limited"]);
+const CalibrationRecordResultEnum = z.enum(["PASS", "FAIL", "LIMITED"]);
 const CalibrationTypeEnum = z.enum([
-  "scheduled",
-  "initial",
-  "after_repair",
-  "after_adjustment",
-  "verification",
+  "SCHEDULED",
+  "INITIAL",
+  "AFTER_REPAIR",
+  "AFTER_ADJUSTMENT",
+  "VERIFICATION",
 ]);
 const CalibrationRecord = z
   .object({
@@ -9061,10 +9028,10 @@ const PatchedCompanyRequest = z
   .partial()
   .passthrough();
 const CoreStatusEnum = z.enum([
-  "received",
-  "in_disassembly",
-  "disassembled",
-  "scrapped",
+  "RECEIVED",
+  "IN_DISASSEMBLY",
+  "DISASSEMBLED",
+  "SCRAPPED",
 ]);
 const ConditionGradeEnum = z.enum(["A", "B", "C", "SCRAP"]);
 const CoreList = z
@@ -9088,10 +9055,10 @@ const PaginatedCoreListList = z
   })
   .passthrough();
 const SourceTypeEnum = z.enum([
-  "customer_return",
-  "purchased",
-  "warranty",
-  "trade_in",
+  "CUSTOMER_RETURN",
+  "PURCHASED",
+  "WARRANTY",
+  "TRADE_IN",
 ]);
 const CoreRequest = z
   .object({
@@ -9375,11 +9342,11 @@ const PatchedDocumentTypeRequest = z
   .partial()
   .passthrough();
 const ClassificationEnum = z.enum([
-  "public",
-  "internal",
-  "confidential",
-  "restricted",
-  "secret",
+  "PUBLIC",
+  "INTERNAL",
+  "CONFIDENTIAL",
+  "RESTRICTED",
+  "SECRET",
 ]);
 const NullEnum = z.unknown();
 const DocumentsStatusEnum = z.enum([
@@ -9481,15 +9448,15 @@ const PatchedDocumentsRequest = z
   .partial()
   .passthrough();
 const DowntimeCategoryEnum = z.enum([
-  "planned",
-  "unplanned",
-  "changeover",
-  "calibration",
-  "no_work",
-  "no_operator",
-  "material",
-  "quality",
-  "other",
+  "PLANNED",
+  "UNPLANNED",
+  "CHANGEOVER",
+  "CALIBRATION",
+  "NO_WORK",
+  "NO_OPERATOR",
+  "MATERIAL",
+  "QUALITY",
+  "OTHER",
 ]);
 const DowntimeEvent = z
   .object({
@@ -9569,11 +9536,11 @@ const PaginatedUserSelectList = z
   })
   .passthrough();
 const EquipmentsStatusEnum = z.enum([
-  "in_service",
-  "out_of_service",
-  "in_calibration",
-  "in_maintenance",
-  "retired",
+  "IN_SERVICE",
+  "OUT_OF_SERVICE",
+  "IN_CALIBRATION",
+  "IN_MAINTENANCE",
+  "RETIRED",
 ]);
 const Equipments = z
   .object({
@@ -9616,13 +9583,10 @@ const EquipmentsRequest = z
 const EquipmentType = z
   .object({
     id: z.string().uuid(),
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
     description: z.string().optional(),
     requires_calibration: z.boolean().optional(),
@@ -9634,8 +9598,6 @@ const EquipmentType = z
       .nullish(),
     is_portable: z.boolean().optional(),
     track_downtime: z.boolean().optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
   })
   .passthrough();
 const PaginatedEquipmentTypeList = z
@@ -9648,11 +9610,8 @@ const PaginatedEquipmentTypeList = z
   .passthrough();
 const EquipmentTypeRequest = z
   .object({
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
     description: z.string().optional(),
     requires_calibration: z.boolean().optional(),
@@ -9664,17 +9623,12 @@ const EquipmentTypeRequest = z
       .nullish(),
     is_portable: z.boolean().optional(),
     track_downtime: z.boolean().optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
   })
   .passthrough();
 const PatchedEquipmentTypeRequest = z
   .object({
+    tenant: z.string().uuid().nullable(),
     external_id: z.string().max(255).nullable(),
-    archived: z.boolean(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-    version: z.number().int().gte(0).lte(2147483647),
-    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
     description: z.string(),
     requires_calibration: z.boolean(),
@@ -9686,8 +9640,6 @@ const PatchedEquipmentTypeRequest = z
       .nullable(),
     is_portable: z.boolean(),
     track_downtime: z.boolean(),
-    tenant: z.string().uuid().nullable(),
-    previous_version: z.string().uuid().nullable(),
   })
   .partial()
   .passthrough();
@@ -9832,13 +9784,13 @@ const PatchedQualityReportsRequest = z
   .partial()
   .passthrough();
 const FPIRecordStatusEnum = z.enum([
-  "not_required",
-  "pending",
-  "passed",
-  "failed",
-  "waived",
+  "NOT_REQUIRED",
+  "PENDING",
+  "PASSED",
+  "FAILED",
+  "WAIVED",
 ]);
-const FPIRecordResultEnum = z.enum(["pass", "fail", "conditional"]);
+const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
 const FPIRecord = z
   .object({
     id: z.string().uuid(),
@@ -10108,10 +10060,10 @@ const HarvestedComponentScrapRequest = z
   .partial()
   .passthrough();
 const HeatMapAnnotationsSeverityEnum = z.enum([
-  "low",
-  "medium",
-  "high",
-  "critical",
+  "LOW",
+  "MEDIUM",
+  "HIGH",
+  "CRITICAL",
 ]);
 const HeatMapAnnotations = z
   .object({
@@ -10197,65 +10149,48 @@ const HeatMapFacetsResponse = z
 const ExternalAPIOrderIdentifier = z
   .object({
     id: z.string().uuid(),
-    customer_display_name: z.string(),
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     stage_name: z.string().max(100),
     API_id: z.string().max(50),
     pipeline_id: z.string().max(50).nullish(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    last_synced_at: z.string().datetime({ offset: true }).nullish(),
+    last_synced_at: z.string().datetime({ offset: true }).nullable(),
     include_in_progress: z.boolean().optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
+    customer_display_name: z.string(),
   })
   .passthrough();
 const ExternalAPIOrderIdentifierRequest = z
   .object({
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
     pipeline_id: z.string().max(50).nullish(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    last_synced_at: z.string().datetime({ offset: true }).nullish(),
     include_in_progress: z.boolean().optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
   })
   .passthrough();
 const PatchedExternalAPIOrderIdentifierRequest = z
   .object({
+    tenant: z.string().uuid().nullable(),
     external_id: z.string().max(255).nullable(),
-    archived: z.boolean(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-    version: z.number().int().gte(0).lte(2147483647),
-    is_current_version: z.boolean(),
     stage_name: z.string().min(1).max(100),
     API_id: z.string().min(1).max(50),
     pipeline_id: z.string().max(50).nullable(),
     display_order: z.number().int().gte(-2147483648).lte(2147483647),
-    last_synced_at: z.string().datetime({ offset: true }).nullable(),
     include_in_progress: z.boolean(),
-    tenant: z.string().uuid().nullable(),
-    previous_version: z.string().uuid().nullable(),
   })
   .partial()
   .passthrough();
 const MaterialLotStatusEnum = z.enum([
-  "received",
-  "in_use",
-  "consumed",
-  "scrapped",
-  "quarantine",
+  "RECEIVED",
+  "IN_USE",
+  "CONSUMED",
+  "SCRAPPED",
+  "QUARANTINE",
 ]);
 const MaterialLot = z
   .object({
@@ -10450,14 +10385,14 @@ const NotificationTypeEnum = z.enum([
   "APPROVAL_DECISION",
   "APPROVAL_ESCALATION",
 ]);
-const ChannelTypeEnum = z.enum(["email", "in_app", "sms"]);
+const ChannelTypeEnum = z.enum(["EMAIL", "IN_APP", "SMS"]);
 const NotificationTaskStatusEnum = z.enum([
-  "pending",
-  "sent",
-  "failed",
-  "cancelled",
+  "PENDING",
+  "SENT",
+  "FAILED",
+  "CANCELLED",
 ]);
-const IntervalTypeEnum = z.enum(["fixed", "deadline_based"]);
+const IntervalTypeEnum = z.enum(["FIXED", "DEADLINE_BASED"]);
 const NotificationSchedule = z
   .object({
     interval_type: IntervalTypeEnum,
@@ -10595,11 +10530,11 @@ const PatchedOrdersRequest = z
   })
   .partial()
   .passthrough();
-const VisibilityEnum = z.enum(["visible", "internal"]);
+const VisibilityEnum = z.enum(["VISIBLE", "INTERNAL"]);
 const AddNoteInputRequest = z
   .object({
     message: z.string().min(1),
-    visibility: VisibilityEnum.optional().default("visible"),
+    visibility: VisibilityEnum.optional().default("VISIBLE"),
   })
   .passthrough();
 const StepIncrementInputRequest = z
@@ -10612,7 +10547,7 @@ const PartsStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
   "AWAITING_QA",
-  "READY FOR NEXT STEP",
+  "READY_FOR_NEXT_STEP",
   "COMPLETED",
   "QUARANTINED",
   "REWORK_NEEDED",
@@ -10696,21 +10631,16 @@ const ImportStatusResponse = z
 const PartTypes = z
   .object({
     id: z.string().uuid(),
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
     ID_prefix: z.string().max(50).nullish(),
     ERP_id: z.string().max(50).nullish(),
     itar_controlled: z.boolean().optional(),
     eccn: z.string().max(20).optional(),
     usml_category: z.string().max(10).optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
   })
   .passthrough();
 const PaginatedPartTypesList = z
@@ -10723,36 +10653,26 @@ const PaginatedPartTypesList = z
   .passthrough();
 const PartTypesRequest = z
   .object({
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullish(),
     ERP_id: z.string().max(50).nullish(),
     itar_controlled: z.boolean().optional(),
     eccn: z.string().max(20).optional(),
     usml_category: z.string().max(10).optional(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
   })
   .passthrough();
 const PatchedPartTypesRequest = z
   .object({
+    tenant: z.string().uuid().nullable(),
     external_id: z.string().max(255).nullable(),
-    archived: z.boolean(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-    version: z.number().int().gte(0).lte(2147483647),
-    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullable(),
     ERP_id: z.string().max(50).nullable(),
     itar_controlled: z.boolean(),
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
-    tenant: z.string().uuid().nullable(),
-    previous_version: z.string().uuid().nullable(),
   })
   .partial()
   .passthrough();
@@ -10963,26 +10883,39 @@ const PaginatedPartSelectList = z
     results: z.array(PartSelect),
   })
   .passthrough();
+const ProcessStatusEnum = z.enum([
+  "DRAFT",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "DEPRECATED",
+]);
+const ProcessesCategoryEnum = z.enum([
+  "MANUFACTURING",
+  "QUALITY",
+  "MAINTENANCE",
+  "NPI",
+  "DOCUMENT",
+]);
 const StepTypeEnum = z.enum([
-  "task",
-  "start",
-  "decision",
-  "rework",
-  "timer",
-  "terminal",
+  "TASK",
+  "START",
+  "DECISION",
+  "REWORK",
+  "TIMER",
+  "TERMINAL",
 ]);
-const DecisionTypeEnum = z.enum(["qa_result", "measurement", "manual"]);
+const DecisionTypeEnum = z.enum(["QA_RESULT", "MEASUREMENT", "MANUAL"]);
 const TerminalStatusEnum = z.enum([
-  "completed",
-  "shipped",
-  "stock",
-  "scrapped",
-  "returned",
-  "awaiting_pickup",
-  "core_banked",
-  "rma_closed",
+  "COMPLETED",
+  "SHIPPED",
+  "STOCK",
+  "SCRAPPED",
+  "RETURNED",
+  "AWAITING_PICKUP",
+  "CORE_BANKED",
+  "RMA_CLOSED",
 ]);
-const RevisitAssignmentEnum = z.enum(["any", "same", "different", "role"]);
+const RevisitAssignmentEnum = z.enum(["ANY", "SAME", "DIFFERENT", "ROLE"]);
 const Step = z
   .object({
     id: z.string().uuid(),
@@ -11013,7 +10946,7 @@ const ProcessStep = z
     is_entry_point: z.boolean().optional(),
   })
   .passthrough();
-const EdgeTypeEnum = z.enum(["default", "alternate", "escalation"]);
+const EdgeTypeEnum = z.enum(["DEFAULT", "ALTERNATE", "ESCALATION"]);
 const ConditionOperatorEnum = z.enum(["gte", "lte", "eq"]);
 const StepEdge = z
   .object({
@@ -11031,43 +10964,26 @@ const StepEdge = z
       .nullish(),
   })
   .passthrough();
-const ProcessStatusEnum = z.enum([
-  "draft",
-  "pending_approval",
-  "approved",
-  "deprecated",
-]);
-const ProcessesCategoryEnum = z.enum([
-  "manufacturing",
-  "quality",
-  "maintenance",
-  "npi",
-  "document",
-]);
 const Processes = z
   .object({
     id: z.string().uuid(),
-    part_type_name: z.string(),
-    process_steps: z.array(ProcessStep),
-    step_edges: z.array(StepEdge),
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().max(50),
     is_remanufactured: z.boolean().optional(),
+    part_type: z.string().uuid(),
     is_batch_process: z.boolean().optional(),
     status: ProcessStatusEnum.optional(),
     category: ProcessesCategoryEnum.optional(),
     change_description: z.string().nullish(),
-    approved_at: z.string().datetime({ offset: true }).nullish(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
-    part_type: z.string().uuid(),
-    approved_by: z.number().int().nullish(),
+    approved_at: z.string().datetime({ offset: true }).nullable(),
+    approved_by: z.number().int().nullable(),
+    part_type_name: z.string(),
+    process_steps: z.array(ProcessStep),
+    step_edges: z.array(StepEdge),
+    num_steps: z.number().int(),
   })
   .passthrough();
 const PaginatedProcessesList = z
@@ -11080,42 +10996,28 @@ const PaginatedProcessesList = z
   .passthrough();
 const ProcessesRequest = z
   .object({
+    tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullish(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    is_current_version: z.boolean().optional(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean().optional(),
+    part_type: z.string().uuid(),
     is_batch_process: z.boolean().optional(),
     status: ProcessStatusEnum.optional(),
     category: ProcessesCategoryEnum.optional(),
     change_description: z.string().nullish(),
-    approved_at: z.string().datetime({ offset: true }).nullish(),
-    tenant: z.string().uuid().nullish(),
-    previous_version: z.string().uuid().nullish(),
-    part_type: z.string().uuid(),
-    approved_by: z.number().int().nullish(),
   })
   .passthrough();
 const PatchedProcessesRequest = z
   .object({
+    tenant: z.string().uuid().nullable(),
     external_id: z.string().max(255).nullable(),
-    archived: z.boolean(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-    version: z.number().int().gte(0).lte(2147483647),
-    is_current_version: z.boolean(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
+    part_type: z.string().uuid(),
     is_batch_process: z.boolean(),
     status: ProcessStatusEnum,
     category: ProcessesCategoryEnum,
     change_description: z.string().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    tenant: z.string().uuid().nullable(),
-    previous_version: z.string().uuid().nullable(),
-    part_type: z.string().uuid(),
-    approved_by: z.number().int().nullable(),
   })
   .partial()
   .passthrough();
@@ -11456,12 +11358,12 @@ const PatchedSamplingRuleSetRequest = z
   .partial()
   .passthrough();
 const RuleTypeEnum = z.enum([
-  "every_nth_part",
-  "percentage",
-  "random",
-  "first_n_parts",
-  "last_n_parts",
-  "exact_count",
+  "EVERY_NTH_PART",
+  "PERCENTAGE",
+  "RANDOM",
+  "FIRST_N_PARTS",
+  "LAST_N_PARTS",
+  "EXACT_COUNT",
 ]);
 const SamplingRule = z
   .object({
@@ -11519,10 +11421,10 @@ const PatchedSamplingRuleRequest = z
   .partial()
   .passthrough();
 const ScheduleSlotStatusEnum = z.enum([
-  "scheduled",
-  "in_progress",
-  "completed",
-  "cancelled",
+  "SCHEDULED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
 ]);
 const ScheduleSlot = z
   .object({
@@ -11712,13 +11614,13 @@ const api_StepExecutionMeasurements_bulk_record_create_Body = z
   .partial()
   .passthrough();
 const StepExecutionStatusEnum = z.enum([
-  "pending",
-  "claimed",
-  "in_progress",
-  "completed",
-  "skipped",
-  "cancelled",
-  "rolled_back",
+  "PENDING",
+  "CLAIMED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "SKIPPED",
+  "CANCELLED",
+  "ROLLED_BACK",
 ]);
 const StepExecutionList = z
   .object({
@@ -11837,23 +11739,23 @@ const PaginatedWIPSummaryList = z
   })
   .passthrough();
 const BlockTypeEnum = z.enum([
-  "qa_signoff",
-  "fpi_required",
-  "measurement_failed",
-  "quarantine",
-  "sampling_required",
-  "batch_incomplete",
-  "training_expired",
-  "calibration_expired",
-  "regulatory_hold",
-  "rollback",
-  "other",
+  "QA_SIGNOFF",
+  "FPI_REQUIRED",
+  "MEASUREMENT_FAILED",
+  "QUARANTINE",
+  "SAMPLING_REQUIRED",
+  "BATCH_INCOMPLETE",
+  "TRAINING_EXPIRED",
+  "CALIBRATION_EXPIRED",
+  "REGULATORY_HOLD",
+  "ROLLBACK",
+  "OTHER",
 ]);
 const StepOverrideStatusEnum = z.enum([
-  "pending",
-  "approved",
-  "rejected",
-  "expired",
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "EXPIRED",
 ]);
 const StepOverride = z
   .object({
@@ -12059,12 +11961,12 @@ const PatchedTenantGroupRequest = z
   .partial()
   .passthrough();
 const RemoveMemberResponse = z.object({ status: z.string() }).passthrough();
-const TierEnum = z.enum(["starter", "pro", "enterprise"]);
+const TierEnum = z.enum(["STARTER", "PRO", "ENTERPRISE"]);
 const TenantStatusEnum = z.enum([
-  "active",
-  "trial",
-  "suspended",
-  "pending_deletion",
+  "ACTIVE",
+  "TRIAL",
+  "SUSPENDED",
+  "PENDING_DELETION",
 ]);
 const Tenant = z
   .object({
@@ -12173,10 +12075,10 @@ const PatchedTenantRequest = z
   .partial()
   .passthrough();
 const ProcessingStatusEnum = z.enum([
-  "pending",
-  "processing",
-  "completed",
-  "failed",
+  "PENDING",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
 ]);
 const ThreeDModel = z
   .object({
@@ -12232,11 +12134,11 @@ const PatchedThreeDModelRequest = z
   .partial()
   .passthrough();
 const TimeEntryTypeEnum = z.enum([
-  "production",
-  "setup",
-  "rework",
-  "downtime",
-  "indirect",
+  "PRODUCTION",
+  "SETUP",
+  "REWORK",
+  "DOWNTIME",
+  "INDIRECT",
 ]);
 const TimeEntry = z
   .object({
@@ -13487,6 +13389,19 @@ const CurrentTenantResponse = z
     user: z.object({}).partial().passthrough().nullable(),
   })
   .passthrough();
+const ScaleEnum = z.enum(["small", "medium", "large"]);
+const DemoResetRequestRequest = z
+  .object({ scale: ScaleEnum.default("small") })
+  .partial()
+  .passthrough();
+const DemoResetResponse = z
+  .object({
+    success: z.boolean(),
+    message: z.string(),
+    reset_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const DemoResetForbidden = z.object({ detail: z.string() }).passthrough();
 const TenantLogoResponse = z
   .object({ logo_url: z.string().nullable() })
   .passthrough();
@@ -14011,6 +13926,8 @@ export const schemas = {
   PartTravelerResponse,
   PartSelect,
   PaginatedPartSelectList,
+  ProcessStatusEnum,
+  ProcessesCategoryEnum,
   StepTypeEnum,
   DecisionTypeEnum,
   TerminalStatusEnum,
@@ -14020,8 +13937,6 @@ export const schemas = {
   EdgeTypeEnum,
   ConditionOperatorEnum,
   StepEdge,
-  ProcessStatusEnum,
-  ProcessesCategoryEnum,
   Processes,
   PaginatedProcessesList,
   ProcessesRequest,
@@ -14226,6 +14141,10 @@ export const schemas = {
   ModeEnum,
   DeploymentInfo,
   CurrentTenantResponse,
+  ScaleEnum,
+  DemoResetRequestRequest,
+  DemoResetResponse,
+  DemoResetForbidden,
   TenantLogoResponse,
   TenantLogoDeleteResponse,
   TenantSettingsResponse,
@@ -15399,7 +15318,7 @@ identity verification, and delegation support.`,
       {
         name: "bom_type",
         type: "Query",
-        schema: z.enum(["assembly", "disassembly"]).optional(),
+        schema: z.enum(["ASSEMBLY", "DISASSEMBLY"]).optional(),
       },
       {
         name: "limit",
@@ -15424,7 +15343,7 @@ identity verification, and delegation support.`,
       {
         name: "status",
         type: "Query",
-        schema: z.enum(["draft", "obsolete", "released"]).optional(),
+        schema: z.enum(["DRAFT", "OBSOLETE", "RELEASED"]).optional(),
       },
     ],
     response: PaginatedBOMListList,
@@ -15691,11 +15610,11 @@ identity verification, and delegation support.`,
         type: "Query",
         schema: z
           .enum([
-            "after_adjustment",
-            "after_repair",
-            "initial",
-            "scheduled",
-            "verification",
+            "AFTER_ADJUSTMENT",
+            "AFTER_REPAIR",
+            "INITIAL",
+            "SCHEDULED",
+            "VERIFICATION",
           ])
           .optional(),
       },
@@ -15727,7 +15646,7 @@ identity verification, and delegation support.`,
       {
         name: "result",
         type: "Query",
-        schema: z.enum(["fail", "limited", "pass"]).optional(),
+        schema: z.enum(["FAIL", "LIMITED", "PASS"]).optional(),
       },
       {
         name: "search",
@@ -15769,11 +15688,11 @@ identity verification, and delegation support.`,
         type: "Query",
         schema: z
           .enum([
-            "after_adjustment",
-            "after_repair",
-            "initial",
-            "scheduled",
-            "verification",
+            "AFTER_ADJUSTMENT",
+            "AFTER_REPAIR",
+            "INITIAL",
+            "SCHEDULED",
+            "VERIFICATION",
           ])
           .optional(),
       },
@@ -15805,7 +15724,7 @@ identity verification, and delegation support.`,
       {
         name: "result",
         type: "Query",
-        schema: z.enum(["fail", "limited", "pass"]).optional(),
+        schema: z.enum(["FAIL", "LIMITED", "PASS"]).optional(),
       },
       {
         name: "search",
@@ -15835,11 +15754,11 @@ identity verification, and delegation support.`,
         type: "Query",
         schema: z
           .enum([
-            "after_adjustment",
-            "after_repair",
-            "initial",
-            "scheduled",
-            "verification",
+            "AFTER_ADJUSTMENT",
+            "AFTER_REPAIR",
+            "INITIAL",
+            "SCHEDULED",
+            "VERIFICATION",
           ])
           .optional(),
       },
@@ -15866,7 +15785,7 @@ identity verification, and delegation support.`,
       {
         name: "result",
         type: "Query",
-        schema: z.enum(["fail", "limited", "pass"]).optional(),
+        schema: z.enum(["FAIL", "LIMITED", "PASS"]).optional(),
       },
       {
         name: "search",
@@ -16953,14 +16872,14 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "source_type",
         type: "Query",
         schema: z
-          .enum(["customer_return", "purchased", "trade_in", "warranty"])
+          .enum(["CUSTOMER_RETURN", "PURCHASED", "TRADE_IN", "WARRANTY"])
           .optional(),
       },
       {
         name: "status",
         type: "Query",
         schema: z
-          .enum(["disassembled", "in_disassembly", "received", "scrapped"])
+          .enum(["DISASSEMBLED", "IN_DISASSEMBLY", "RECEIVED", "SCRAPPED"])
           .optional(),
       },
     ],
@@ -17157,14 +17076,14 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
         name: "source_type",
         type: "Query",
         schema: z
-          .enum(["customer_return", "purchased", "trade_in", "warranty"])
+          .enum(["CUSTOMER_RETURN", "PURCHASED", "TRADE_IN", "WARRANTY"])
           .optional(),
       },
       {
         name: "status",
         type: "Query",
         schema: z
-          .enum(["disassembled", "in_disassembly", "received", "scrapped"])
+          .enum(["DISASSEMBLED", "IN_DISASSEMBLY", "RECEIVED", "SCRAPPED"])
           .optional(),
       },
     ],
@@ -18535,15 +18454,15 @@ Returns documents where review_date &lt;&#x3D; today.`,
         type: "Query",
         schema: z
           .enum([
-            "calibration",
-            "changeover",
-            "material",
-            "no_operator",
-            "no_work",
-            "other",
-            "planned",
-            "quality",
-            "unplanned",
+            "CALIBRATION",
+            "CHANGEOVER",
+            "MATERIAL",
+            "NO_OPERATOR",
+            "NO_WORK",
+            "OTHER",
+            "PLANNED",
+            "QUALITY",
+            "UNPLANNED",
           ])
           .optional(),
       },
@@ -19186,11 +19105,11 @@ Usage:
         type: "Query",
         schema: z
           .enum([
-            "in_calibration",
-            "in_maintenance",
-            "in_service",
-            "out_of_service",
-            "retired",
+            "IN_CALIBRATION",
+            "IN_MAINTENANCE",
+            "IN_SERVICE",
+            "OUT_OF_SERVICE",
+            "RETIRED",
           ])
           .optional(),
       },
@@ -21474,7 +21393,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
         name: "status",
         type: "Query",
         schema: z
-          .enum(["consumed", "in_use", "quarantine", "received", "scrapped"])
+          .enum(["CONSUMED", "IN_USE", "QUARANTINE", "RECEIVED", "SCRAPPED"])
           .optional(),
       },
       {
@@ -23568,7 +23487,7 @@ Usage:
         name: "status",
         type: "Query",
         schema: z
-          .enum(["approved", "deprecated", "draft", "pending_approval"])
+          .enum(["APPROVED", "DEPRECATED", "DRAFT", "PENDING_APPROVAL"])
           .optional(),
       },
     ],
@@ -23891,7 +23810,7 @@ Usage:
         name: "status",
         type: "Query",
         schema: z
-          .enum(["approved", "deprecated", "draft", "pending_approval"])
+          .enum(["APPROVED", "DEPRECATED", "DRAFT", "PENDING_APPROVAL"])
           .optional(),
       },
     ],
@@ -23977,7 +23896,7 @@ Usage:
         name: "status",
         type: "Query",
         schema: z
-          .enum(["approved", "deprecated", "draft", "pending_approval"])
+          .enum(["APPROVED", "DEPRECATED", "DRAFT", "PENDING_APPROVAL"])
           .optional(),
       },
     ],
@@ -25230,12 +25149,12 @@ Usage:
         type: "Query",
         schema: z
           .enum([
-            "every_nth_part",
-            "exact_count",
-            "first_n_parts",
-            "last_n_parts",
-            "percentage",
-            "random",
+            "EVERY_NTH_PART",
+            "EXACT_COUNT",
+            "FIRST_N_PARTS",
+            "LAST_N_PARTS",
+            "PERCENTAGE",
+            "RANDOM",
           ])
           .optional(),
       },
@@ -25521,7 +25440,7 @@ Usage:
         name: "status",
         type: "Query",
         schema: z
-          .enum(["cancelled", "completed", "in_progress", "scheduled"])
+          .enum(["CANCELLED", "COMPLETED", "IN_PROGRESS", "SCHEDULED"])
           .optional(),
       },
       {
@@ -26349,7 +26268,7 @@ Response:
                     {
                         &quot;id&quot;: &quot;019c4a5d-...&quot;,
                         &quot;label&quot;: &quot;Outer Diameter&quot;,
-                        &quot;type&quot;: &quot;NUMERIC&quot;,
+                        &quot;type&quot;: &quot;numeric&quot;,
                         &quot;unit&quot;: &quot;mm&quot;,
                         &quot;nominal&quot;: 25.0,
                         &quot;upper_tol&quot;: 0.1,
@@ -26617,13 +26536,13 @@ Used by the workflow engine for tracking part progression through steps.`,
         type: "Query",
         schema: z
           .enum([
-            "cancelled",
-            "claimed",
-            "completed",
-            "in_progress",
-            "pending",
-            "rolled_back",
-            "skipped",
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
           ])
           .optional(),
       },
@@ -26866,13 +26785,13 @@ Sets assigned_to to current user and status to in_progress.`,
         type: "Query",
         schema: z
           .enum([
-            "cancelled",
-            "claimed",
-            "completed",
-            "in_progress",
-            "pending",
-            "rolled_back",
-            "skipped",
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
           ])
           .optional(),
       },
@@ -26956,13 +26875,13 @@ Sets assigned_to to current user and status to in_progress.`,
         type: "Query",
         schema: z
           .enum([
-            "cancelled",
-            "claimed",
-            "completed",
-            "in_progress",
-            "pending",
-            "rolled_back",
-            "skipped",
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
           ])
           .optional(),
       },
@@ -27046,13 +26965,13 @@ Sets assigned_to to current user and status to in_progress.`,
         type: "Query",
         schema: z
           .enum([
-            "cancelled",
-            "claimed",
-            "completed",
-            "in_progress",
-            "pending",
-            "rolled_back",
-            "skipped",
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
           ])
           .optional(),
       },
@@ -27136,13 +27055,13 @@ Sets assigned_to to current user and status to in_progress.`,
         type: "Query",
         schema: z
           .enum([
-            "cancelled",
-            "claimed",
-            "completed",
-            "in_progress",
-            "pending",
-            "rolled_back",
-            "skipped",
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
           ])
           .optional(),
       },
@@ -27822,9 +27741,34 @@ This endpoint is used by the frontend to:
 - Check feature flags and limits
 - Display tenant name in header
 
-Authentication is optional - unauthenticated requests get deployment info only.`,
+Authentication is optional - unauthenticated requests get deployment info only.
+Authenticated users trying to access other tenants will be blocked.`,
     requestFormat: "json",
     response: CurrentTenantResponse,
+  },
+  {
+    method: "post",
+    path: "/api/tenant/demo-reset/",
+    alias: "api_tenant_demo_reset_create",
+    description: `Reset demo tenant data to a fresh state.
+
+Only available for demo tenants and requires admin permissions.
+Calls the reset_demo management command which clears and repopulates data.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: DemoResetRequestRequest,
+      },
+    ],
+    response: DemoResetResponse,
+    errors: [
+      {
+        status: 403,
+        schema: z.object({ detail: z.string() }).passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -28632,7 +28576,7 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
         name: "entry_type",
         type: "Query",
         schema: z
-          .enum(["downtime", "indirect", "production", "rework", "setup"])
+          .enum(["DOWNTIME", "INDIRECT", "PRODUCTION", "REWORK", "SETUP"])
           .optional(),
       },
       {
@@ -30138,7 +30082,7 @@ Admins can check any user; regular users can only check themselves.`,
       {
         name: "user_id",
         type: "Path",
-        schema: z.string().uuid(),
+        schema: z.number().int(),
       },
     ],
     response: EffectivePermissionsResponse,

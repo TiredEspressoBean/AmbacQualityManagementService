@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
 import { toast } from "sonner";
-import { schemas } from "@/lib/api/generated";
+import { schemas, type TypeEnum } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 
 // Use generated schema
@@ -45,7 +45,7 @@ interface MeasurementDefinitionFormProps {
   existingDefinition?: {
     id: string;
     label: string;
-    type: "NUMERIC" | "PASS_FAIL";
+    type: TypeEnum;
     unit?: string;
     nominal?: string | null;
     upper_tol?: string | null;
@@ -87,7 +87,7 @@ export default function MeasurementDefinitionForm({
     const submitData = {
       ...values,
       step: stepId,
-      // Clean up numeric fields for PASS_FAIL type
+      // Clean up numeric fields for pass_fail type
       ...(values.type === "PASS_FAIL" && {
         nominal: null,
         upper_tol: null,
@@ -163,7 +163,7 @@ export default function MeasurementDefinitionForm({
                 <SelectContent>
                   {schemas.TypeEnum.options.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {t === "PASS_FAIL" ? "Pass/Fail" : t.charAt(0) + t.slice(1).toLowerCase()}
+                      {t === "PASS_FAIL" ? "Pass/Fail" : t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()}
                     </SelectItem>
                   ))}
                 </SelectContent>

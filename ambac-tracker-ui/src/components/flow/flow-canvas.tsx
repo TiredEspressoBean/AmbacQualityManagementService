@@ -33,7 +33,7 @@ function getNodeColor(node: Node): string {
 }
 
 /** Node types that have pass/fail handles */
-const DECISION_NODE_TYPES = new Set(['decision']);
+const DECISION_NODE_TYPES = new Set(['DECISION']);
 
 /**
  * Validate edges against nodes to ensure all handle references are valid.
@@ -49,7 +49,7 @@ function validateEdges(edges: Edge[], nodes: Node[]): Edge[] {
     const sourceNode = nodeMap.get(edge.source);
     if (!sourceNode) return edge; // Source node doesn't exist, leave as-is
 
-    const isDecisionNode = DECISION_NODE_TYPES.has(sourceNode.type || 'task');
+    const isDecisionNode = DECISION_NODE_TYPES.has(sourceNode.type || 'TASK');
 
     if (isDecisionNode) {
       // Decision nodes only have "pass" and "fail" handles - no default
@@ -72,7 +72,7 @@ function validateEdges(edges: Edge[], nodes: Node[]): Edge[] {
 export interface FlowCanvasProps {
   steps: StepData[];
   /** Step edges from API - if provided, used for routing instead of auto-connect by order */
-  stepEdges?: Array<{ from_step: number; to_step: number; edge_type: string }>;
+  stepEdges?: Array<{ from_step: string; to_step: string; edge_type: string }>;
   selectedNode?: Node | null;
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   onPaneClick?: () => void;

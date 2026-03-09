@@ -1,4 +1,11 @@
 import type { Node, Edge } from '@xyflow/react';
+import type {
+  StepTypeEnum,
+  DecisionTypeEnum,
+  TerminalStatusEnum,
+  EdgeTypeEnum,
+  ApprovalStatusEnum,
+} from '@/lib/api/generated';
 
 // ============================================================================
 // Flow Modes
@@ -166,19 +173,11 @@ export type PanelType =
 /**
  * Base step type - matches backend Steps model.
  */
-export type StepType = 'task' | 'start' | 'decision' | 'rework' | 'timer' | 'terminal';
+export type StepType = StepTypeEnum;
 
-export type TerminalStatus =
-  | 'completed'
-  | 'shipped'
-  | 'stock'
-  | 'scrapped'
-  | 'returned'
-  | 'awaiting_pickup'
-  | 'core_banked'
-  | 'rma_closed';
+export type TerminalStatus = TerminalStatusEnum;
 
-export type DecisionType = 'qa_result' | 'measurement' | 'manual';
+export type DecisionType = DecisionTypeEnum;
 
 /**
  * Step data from backend API (node properties only - no routing).
@@ -218,7 +217,7 @@ export interface ProcessStepData {
 /**
  * StepEdge - routing between steps in a process.
  */
-export type EdgeType = 'default' | 'alternate' | 'escalation';
+export type EdgeType = EdgeTypeEnum;
 
 export interface StepEdgeData {
   id: string;
@@ -285,7 +284,7 @@ export interface FlowNodeData {
     qaRequired?: boolean;
     samplingRate?: number;
     status?: string;
-    approvalStatus?: 'pending' | 'approved' | 'rejected';
+    approvalStatus?: Exclude<ApprovalStatusEnum, 'NOT_REQUIRED' | 'CANCELLED'>;
   };
 }
 

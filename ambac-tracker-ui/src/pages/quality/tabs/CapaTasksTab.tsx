@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { schemas } from "@/lib/api/generated"
+import { schemas, type TaskTypeEnum, type CapaTaskStatusEnum } from "@/lib/api/generated"
 import { asUserInfo } from "@/lib/extended-types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -36,10 +36,10 @@ const taskStatusLabels: Record<string, string> = {
 }
 
 type TaskFormData = {
-    task_type: "CONTAINMENT" | "CORRECTIVE" | "PREVENTIVE"
+    task_type: TaskTypeEnum
     description: string
     due_date: string
-    status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
+    status: CapaTaskStatusEnum
     completion_notes: string
 }
 

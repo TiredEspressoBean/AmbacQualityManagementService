@@ -26,10 +26,10 @@ export function AnnotationsList({
 }: AnnotationsListProps) {
     const getSeverityBadgeVariant = (severity?: string | null) => {
         switch (severity) {
-            case "critical": return "destructive";
-            case "high": return "destructive";
-            case "medium": return "secondary";
-            case "low": return "outline";
+            case "CRITICAL": return "destructive";
+            case "HIGH": return "destructive";
+            case "MEDIUM": return "secondary";
+            case "LOW": return "outline";
             default: return "outline";
         }
     };

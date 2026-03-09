@@ -42,7 +42,7 @@ export function NotificationPreferencesCard() {
     const [time, setTime] = useState("15:00");
     const [intervalWeeks, setIntervalWeeks] = useState("1");
 
-    const weeklyReport = preferences?.results.find((p) => p.notification_type === "WEEKLY_REPORT");
+    const weeklyReport = preferences?.results.find((p) => p.notification_type === "weekly_report");
 
     const handleOpen = () => {
         if (weeklyReport) {

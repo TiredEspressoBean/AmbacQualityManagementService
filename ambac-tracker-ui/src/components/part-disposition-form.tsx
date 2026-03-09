@@ -89,7 +89,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
     const [containmentBySearch, setContainmentBySearch] = React.useState("");
     const [partSearch, setPartSearch] = React.useState("");
     const [qualityReportSearch, setQualityReportSearch] = React.useState("");
-    // Collapsible state for containment section - expanded by default for CRITICAL
+    // Collapsible state for containment section - expanded by default for critical
     const [containmentOpen, setContainmentOpen] = React.useState(disposition?.severity === "CRITICAL");
 
     const {data: employeePages, isLoading: employeesLoading} = useInfiniteQuery<PaginatedUserSelectList, Error>({
@@ -143,7 +143,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
     const watchSeverity = watch("severity");
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR";
 
-    // Auto-expand containment section when severity is CRITICAL
+    // Auto-expand containment section when severity is critical
     React.useEffect(() => {
         if (watchSeverity === "CRITICAL") {
             setContainmentOpen(true);

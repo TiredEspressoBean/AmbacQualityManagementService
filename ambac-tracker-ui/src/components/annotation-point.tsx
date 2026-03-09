@@ -13,10 +13,10 @@ export function AnnotationPoint({ position, selected, onClick, severity, mode: _
     const getColor = () => {
         if (selected) return "yellow";
         switch (severity) {
-            case "critical": return "#ef4444"; // red-500
-            case "high": return "#f97316"; // orange-500
-            case "medium": return "#eab308"; // yellow-500
-            case "low": return "#22c55e"; // green-500
+            case "CRITICAL": return "#ef4444"; // red-500
+            case "HIGH": return "#f97316"; // orange-500
+            case "MEDIUM": return "#eab308"; // yellow-500
+            case "LOW": return "#22c55e"; // green-500
             default: return "#ef4444";
         }
     };

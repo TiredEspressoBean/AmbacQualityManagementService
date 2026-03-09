@@ -9,8 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function RemanDashboardPage() {
     // Fetch summary data
     const { data: coresData, isLoading: coresLoading } = useRetrieveCores({ limit: 1 });
-    const { data: receivedCores } = useRetrieveCores({ status: "received", limit: 1 });
-    const { data: inDisassemblyCores } = useRetrieveCores({ status: "in_disassembly", limit: 1 });
+    const { data: receivedCores } = useRetrieveCores({ status: "RECEIVED", limit: 1 });
+    const { data: inDisassemblyCores } = useRetrieveCores({ status: "IN_DISASSEMBLY", limit: 1 });
     const { data: componentsData, isLoading: componentsLoading } = useRetrieveHarvestedComponents({ limit: 1 });
     const { data: usableComponents } = useRetrieveHarvestedComponents({ is_scrapped: "false", limit: 1 });
 
@@ -135,13 +135,13 @@ export function RemanDashboardPage() {
                             </Link>
                         </Button>
                         <Button variant="outline" className="w-full justify-between" asChild>
-                            <Link to="/reman/cores" search={{ status: "received" }}>
+                            <Link to="/reman/cores" search={{ status: "RECEIVED" }}>
                                 Cores Awaiting Disassembly ({awaitingDisassembly})
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
                         </Button>
                         <Button variant="outline" className="w-full justify-between" asChild>
-                            <Link to="/reman/cores" search={{ status: "in_disassembly" }}>
+                            <Link to="/reman/cores" search={{ status: "IN_DISASSEMBLY" }}>
                                 Cores In Progress ({inProgress})
                                 <ArrowRight className="h-4 w-4" />
                             </Link>

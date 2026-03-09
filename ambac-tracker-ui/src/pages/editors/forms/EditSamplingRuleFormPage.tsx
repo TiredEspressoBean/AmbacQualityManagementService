@@ -234,9 +234,9 @@ export default function SamplingRuleFormPage() {
                                 <Input type="number" {...field} />
                             </FormControl>
                             <FormDescription>
-                                {ruleTypeCode === "percentage"
+                                {ruleTypeCode === "PERCENTAGE"
                                     ? "Percentage of parts to sample"
-                                    : ruleTypeCode === "every_nth_part"
+                                    : ruleTypeCode === "EVERY_NTH_PART"
                                         ? "Fail threshold for escalation"
                                         : "Value of N for this rule"}
                             </FormDescription>

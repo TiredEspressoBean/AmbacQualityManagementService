@@ -180,9 +180,9 @@ export function CoreDisassemblyPage() {
         );
     }
 
-    const canStartDisassembly = core.status === 'received';
-    const isInDisassembly = core.status === 'in_disassembly';
-    const isDisassembled = core.status === 'disassembled';
+    const canStartDisassembly = core.status === 'RECEIVED';
+    const isInDisassembly = core.status === 'IN_DISASSEMBLY';
+    const isDisassembled = core.status === 'DISASSEMBLED';
 
     return (
         <div className="space-y-6">
@@ -342,7 +342,7 @@ export function CoreDisassemblyPage() {
                                                     <SelectItem value="A">Grade A - Excellent</SelectItem>
                                                     <SelectItem value="B">Grade B - Good</SelectItem>
                                                     <SelectItem value="C">Grade C - Fair</SelectItem>
-                                                    <SelectItem value="SCRAP">Scrap</SelectItem>
+                                                    <SelectItem value="scrap">Scrap</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

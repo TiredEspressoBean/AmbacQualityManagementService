@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { schemas } from "@/lib/api/generated"
+import { schemas, type RcaMethodEnum } from "@/lib/api/generated"
 import { asUserInfo } from "@/lib/extended-types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +20,7 @@ type CapaRcaTabProps = {
 }
 
 type RcaFormData = {
-    rca_method: "FIVE_WHYS" | "FISHBONE"
+    rca_method: RcaMethodEnum
     problem_description: string
     root_cause_summary: string
     // 5 Whys fields

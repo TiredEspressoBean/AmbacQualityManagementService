@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api/generated";
+import { api, type DecisionEnum } from "@/lib/api/generated";
 
 export interface ApprovalResponse {
     id: string;
@@ -9,7 +9,7 @@ export interface ApprovalResponse {
         username: string;
         full_name?: string;
     };
-    decision: 'APPROVED' | 'REJECTED' | 'DELEGATED';
+    decision: DecisionEnum;
     decision_display: string;
     comments?: string;
     signature_data?: string;

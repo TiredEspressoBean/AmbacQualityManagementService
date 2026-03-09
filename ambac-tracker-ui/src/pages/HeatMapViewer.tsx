@@ -1286,9 +1286,9 @@ function HeatMapViewerContent({
                                         <span className="text-xs text-muted-foreground mr-2">Severity:</span>
                                         {availableSeverities.map((severity) => {
                                             const variant =
-                                                severity.value === "critical" ? "destructive" :
-                                                severity.value === "high" ? "destructive" :
-                                                severity.value === "medium" ? "secondary" :
+                                                severity.value === "CRITICAL" ? "destructive" :
+                                                severity.value === "HIGH" ? "destructive" :
+                                                severity.value === "MEDIUM" ? "secondary" :
                                                 "outline";
                                             return (
                                                 <Badge key={severity.value} variant={variant} className="text-xs">
@@ -1383,9 +1383,9 @@ function HeatMapViewerContent({
                                                 </CardTitle>
                                                 <div className="flex items-center gap-2">
                                                     <Badge variant={
-                                                        filteredAnnotations[selectedIdx].severity === "critical" ? "destructive" :
-                                                        filteredAnnotations[selectedIdx].severity === "high" ? "destructive" :
-                                                        filteredAnnotations[selectedIdx].severity === "medium" ? "secondary" :
+                                                        filteredAnnotations[selectedIdx].severity === "CRITICAL" ? "destructive" :
+                                                        filteredAnnotations[selectedIdx].severity === "HIGH" ? "destructive" :
+                                                        filteredAnnotations[selectedIdx].severity === "MEDIUM" ? "secondary" :
                                                         "outline"
                                                     }>
                                                         {filteredAnnotations[selectedIdx].severity || "N/A"}

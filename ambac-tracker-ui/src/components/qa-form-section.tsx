@@ -112,12 +112,11 @@ export function QaFormSection({
 
     const canDoQA = (part: any) => {
         // Only allow QA for parts in specific statuses
-        // Note: "READY FOR NEXT STEP" has spaces (not underscores) - this is the actual enum value
         const allowedStatuses = [
             "PENDING",
             "AWAITING_QA",
             "IN_PROGRESS",
-            "READY FOR NEXT STEP",
+            "READY_FOR_NEXT_STEP",
             "REWORK_IN_PROGRESS",
             "REWORK_NEEDED"
         ];

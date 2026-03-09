@@ -202,7 +202,7 @@ export default function ProcessFormPage() {
         const edges = values.steps.slice(0, -1).map((_, index) => ({
             from_step: nodes[index].id,
             to_step: nodes[index + 1].id,
-            edge_type: 'default',
+            edge_type: 'DEFAULT',
         }));
 
         const processed = {

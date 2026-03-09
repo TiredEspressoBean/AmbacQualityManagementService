@@ -824,7 +824,7 @@ const MOCK_TASKS: CapaTask[] = [
             username: "jsmith",
             full_name: "John Smith",
         },
-        completion_mode: "SINGLE",
+        completion_mode: "single",
         completion_mode_display: "Single Approver",
         due_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days ago (overdue)
         status: "IN_PROGRESS",
@@ -859,7 +859,7 @@ const MOCK_TASKS: CapaTask[] = [
             username: "jsmith",
             full_name: "John Smith",
         },
-        completion_mode: "SINGLE",
+        completion_mode: "single",
         completion_mode_display: "Single Approver",
         due_date: new Date().toISOString().split('T')[0], // Today
         status: "PENDING",
@@ -891,7 +891,7 @@ const MOCK_TASKS: CapaTask[] = [
             username: "jsmith",
             full_name: "John Smith",
         },
-        completion_mode: "SINGLE",
+        completion_mode: "single",
         completion_mode_display: "Single Approver",
         due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days from now
         status: "PENDING",

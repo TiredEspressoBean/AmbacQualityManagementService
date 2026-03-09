@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
-import { api } from "@/lib/api/generated";
+import { api, type TypeEnum } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 // Types for required measurements response
@@ -9,7 +9,7 @@ export type RequiredMeasurementsResponse = {
     definitions: Array<{
         id: string;
         label: string;
-        type: "NUMERIC" | "PASS_FAIL";
+        type: TypeEnum;
         unit: string;
         nominal: number | null;
         upper_tol: number | null;

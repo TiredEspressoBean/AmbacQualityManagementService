@@ -19,10 +19,10 @@ import { ArrowLeft, Play, CheckCircle, Trash2, DollarSign, Package } from "lucid
 // Status badge variants
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
     switch (status) {
-        case 'received': return 'secondary';
-        case 'in_disassembly': return 'default';
-        case 'disassembled': return 'outline';
-        case 'scrapped': return 'destructive';
+        case 'RECEIVED': return 'secondary';
+        case 'IN_DISASSEMBLY': return 'default';
+        case 'DISASSEMBLED': return 'outline';
+        case 'SCRAPPED': return 'destructive';
         default: return 'outline';
     }
 }
@@ -38,17 +38,17 @@ function getConditionVariant(grade: string): "default" | "secondary" | "destruct
 }
 
 const statusLabels: Record<string, string> = {
-    'received': 'Received',
-    'in_disassembly': 'In Disassembly',
-    'disassembled': 'Disassembled',
-    'scrapped': 'Scrapped',
+    'RECEIVED': 'Received',
+    'IN_DISASSEMBLY': 'In Disassembly',
+    'DISASSEMBLED': 'Disassembled',
+    'SCRAPPED': 'Scrapped',
 };
 
 const conditionLabels: Record<string, string> = {
     'A': 'Grade A - Excellent',
     'B': 'Grade B - Good',
     'C': 'Grade C - Fair',
-    'SCRAP': 'Scrap - Not Usable',
+    'scrap': 'Scrap - Not Usable',
 };
 
 const sourceLabels: Record<string, string> = {
@@ -107,7 +107,7 @@ export function CoreDetailPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    {core.status === 'received' && (
+                    {core.status === 'RECEIVED' && (
                         <>
                             <Button
                                 variant="default"
@@ -125,7 +125,7 @@ export function CoreDetailPage() {
                             </Button>
                         </>
                     )}
-                    {core.status === 'in_disassembly' && (
+                    {core.status === 'IN_DISASSEMBLY' && (
                         <Button
                             variant="default"
                             onClick={() => navigate({ to: `/reman/cores/${id}/disassembly` })}

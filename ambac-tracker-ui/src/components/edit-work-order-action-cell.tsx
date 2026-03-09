@@ -10,7 +10,7 @@ import {
     AlertDialogAction
 } from "@/components/ui/alert-dialog";
 import {Button} from "@/components/ui/button";
-import {Pencil, Delete} from "lucide-react";
+import {Pencil, Delete, Eye} from "lucide-react";
 import {useNavigate} from "@tanstack/react-router";
 import {useState} from "react";
 import {useDeleteWorkOrder} from "@/hooks/useDeleteWorkOrder.ts";
@@ -25,9 +25,16 @@ export function EditWorkOrderActionsCell({workOrderId}: Props) {
     const [open, setOpen] = useState(false);
     const deleteWorkOrder = useDeleteWorkOrder();
 
+    const handleViewWorkOrder = () => {
+        navigate({
+            to: "/workorder/$workOrderId",
+            params: {workOrderId: String(workOrderId)},
+        });
+    };
+
     const handleEditWorkOrder = () => {
         navigate({
-            to: "/WorkOrderForm/edit/$id", // <- adjust if your edit route differs
+            to: "/WorkOrderForm/edit/$id",
             params: {id: String(workOrderId)},
         });
     };
@@ -42,6 +49,14 @@ export function EditWorkOrderActionsCell({workOrderId}: Props) {
     };
 
     return (<div className="flex items-center gap-1">
+        <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleViewWorkOrder}
+            title="View Work Order"
+        >
+            <Eye className="h-4 w-4"/>
+        </Button>
         <Button
             variant="ghost"
             size="icon"

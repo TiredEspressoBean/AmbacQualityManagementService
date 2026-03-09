@@ -36,7 +36,7 @@ const formSchema = z.object({
     core_type: z.string().min(1, "Core type is required"),
     received_date: z.string().min(1, "Received date is required"),
     customer: z.string().optional(),
-    source_type: z.enum(["customer_return", "purchased", "warranty", "trade_in"]),
+    source_type: z.enum(["CUSTOMER_RETURN", "PURCHASED", "WARRANTY", "TRADE_IN"]),
     source_reference: z.string().optional(),
     condition_grade: z.enum(["A", "B", "C", "SCRAP"]),
     condition_notes: z.string().optional(),
@@ -66,7 +66,7 @@ export function CoreReceiveFormPage() {
             core_type: "",
             received_date: new Date().toISOString().split("T")[0],
             customer: "__none__",
-            source_type: "customer_return",
+            source_type: "CUSTOMER_RETURN",
             source_reference: "",
             condition_grade: "B",
             condition_notes: "",
@@ -200,10 +200,10 @@ export function CoreReceiveFormPage() {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="customer_return">Customer Return</SelectItem>
-                                                    <SelectItem value="purchased">Purchased Core</SelectItem>
-                                                    <SelectItem value="warranty">Warranty Return</SelectItem>
-                                                    <SelectItem value="trade_in">Trade-In</SelectItem>
+                                                    <SelectItem value="CUSTOMER_RETURN">Customer Return</SelectItem>
+                                                    <SelectItem value="PURCHASED">Purchased Core</SelectItem>
+                                                    <SelectItem value="WARRANTY">Warranty Return</SelectItem>
+                                                    <SelectItem value="TRADE_IN">Trade-In</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -285,7 +285,7 @@ export function CoreReceiveFormPage() {
                                                     <SelectItem value="A">Grade A - Excellent</SelectItem>
                                                     <SelectItem value="B">Grade B - Good</SelectItem>
                                                     <SelectItem value="C">Grade C - Fair</SelectItem>
-                                                    <SelectItem value="SCRAP">Scrap - Not Usable</SelectItem>
+                                                    <SelectItem value="scrap">Scrap - Not Usable</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

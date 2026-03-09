@@ -24,7 +24,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 1,
     name: 'Receive Core',
     order: 1,
-    step_type: 'start',
+    step_type: 'START',
     is_entry_point: true,
     description: 'Receive and log incoming core from customer',
   },
@@ -32,14 +32,14 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 2,
     name: 'Disassemble',
     order: 2,
-    step_type: 'task',
+    step_type: 'TASK',
     description: 'Disassemble unit into components',
   },
   {
     id: 3,
     name: 'Clean',
     order: 3,
-    step_type: 'timer',
+    step_type: 'TIMER',
     description: 'Ultrasonic cleaning and degreasing',
     expected_duration: '2h',
   },
@@ -47,10 +47,10 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 4,
     name: 'Inspect',
     order: 4,
-    step_type: 'decision',
+    step_type: 'DECISION',
     description: 'Visual and dimensional inspection',
     is_decision_point: true,
-    decision_type: 'qa_result',
+    decision_type: 'QA_RESULT',
     requires_qa_signoff: true,
     sampling_required: true,
     min_sampling_rate: 100,
@@ -59,17 +59,17 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 5,
     name: 'Reassemble',
     order: 5,
-    step_type: 'task',
+    step_type: 'TASK',
     description: 'Reassemble with new seals and gaskets',
   },
   {
     id: 6,
     name: 'Final Test',
     order: 6,
-    step_type: 'decision',
+    step_type: 'DECISION',
     description: 'Pressure test and functional verification',
     is_decision_point: true,
-    decision_type: 'measurement',
+    decision_type: 'MEASUREMENT',
     requires_qa_signoff: true,
     sampling_required: true,
     min_sampling_rate: 25,
@@ -78,7 +78,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 7,
     name: 'Rework',
     order: 7,
-    step_type: 'rework',
+    step_type: 'REWORK',
     description: 'Address defects found during inspection',
     max_visits: 3,
   },
@@ -86,37 +86,37 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     id: 8,
     name: 'Scrap Decision',
     order: 8,
-    step_type: 'decision',
+    step_type: 'DECISION',
     description: 'MRB review for unrepairable units',
     is_decision_point: true,
-    decision_type: 'manual',
+    decision_type: 'MANUAL',
   },
   {
     id: 9,
     name: 'Scrap',
     order: 9,
-    step_type: 'terminal',
+    step_type: 'TERMINAL',
     description: 'Unit condemned and scrapped',
     is_terminal: true,
-    terminal_status: 'scrapped',
+    terminal_status: 'SCRAPPED',
   },
   {
     id: 10,
     name: 'Ship',
     order: 10,
-    step_type: 'terminal',
+    step_type: 'TERMINAL',
     description: 'Package and ship to customer',
     is_terminal: true,
-    terminal_status: 'shipped',
+    terminal_status: 'SHIPPED',
   },
   {
     id: 11,
     name: 'Return to Supplier',
     order: 11,
-    step_type: 'terminal',
+    step_type: 'TERMINAL',
     description: 'Return defective core to supplier',
     is_terminal: true,
-    terminal_status: 'returned',
+    terminal_status: 'RETURNED',
   },
 ];
 
@@ -126,20 +126,20 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
  */
 export const DEMO_STEP_EDGES: Array<{ from_step: number; to_step: number; edge_type: string }> = [
   // Main flow
-  { from_step: 1, to_step: 2, edge_type: 'default' },   // Receive Core → Disassemble
-  { from_step: 2, to_step: 3, edge_type: 'default' },   // Disassemble → Clean
-  { from_step: 3, to_step: 4, edge_type: 'default' },   // Clean → Inspect
-  { from_step: 4, to_step: 5, edge_type: 'default' },   // Inspect → Reassemble (Pass)
-  { from_step: 4, to_step: 7, edge_type: 'alternate' }, // Inspect → Rework (Fail)
-  { from_step: 5, to_step: 6, edge_type: 'default' },   // Reassemble → Final Test
-  { from_step: 6, to_step: 10, edge_type: 'default' },  // Final Test → Ship (Pass)
-  { from_step: 6, to_step: 7, edge_type: 'alternate' }, // Final Test → Rework (Fail)
+  { from_step: 1, to_step: 2, edge_type: 'DEFAULT' },   // Receive Core → Disassemble
+  { from_step: 2, to_step: 3, edge_type: 'DEFAULT' },   // Disassemble → Clean
+  { from_step: 3, to_step: 4, edge_type: 'DEFAULT' },   // Clean → Inspect
+  { from_step: 4, to_step: 5, edge_type: 'DEFAULT' },   // Inspect → Reassemble (Pass)
+  { from_step: 4, to_step: 7, edge_type: 'ALTERNATE' }, // Inspect → Rework (Fail)
+  { from_step: 5, to_step: 6, edge_type: 'DEFAULT' },   // Reassemble → Final Test
+  { from_step: 6, to_step: 10, edge_type: 'DEFAULT' },  // Final Test → Ship (Pass)
+  { from_step: 6, to_step: 7, edge_type: 'ALTERNATE' }, // Final Test → Rework (Fail)
   // Rework loop
-  { from_step: 7, to_step: 4, edge_type: 'default' },   // Rework → Inspect (retry)
-  { from_step: 7, to_step: 8, edge_type: 'escalation' },// Rework → Scrap Decision (max exceeded)
+  { from_step: 7, to_step: 4, edge_type: 'DEFAULT' },   // Rework → Inspect (retry)
+  { from_step: 7, to_step: 8, edge_type: 'ESCALATION' },// Rework → Scrap Decision (max exceeded)
   // Scrap decision branches
-  { from_step: 8, to_step: 9, edge_type: 'default' },   // Scrap Decision → Scrap
-  { from_step: 8, to_step: 11, edge_type: 'alternate' },// Scrap Decision → Return to Supplier
+  { from_step: 8, to_step: 9, edge_type: 'DEFAULT' },   // Scrap Decision → Scrap
+  { from_step: 8, to_step: 11, edge_type: 'ALTERNATE' },// Scrap Decision → Return to Supplier
 ];
 
 /** Demo process metadata */
@@ -192,7 +192,7 @@ export interface PartExecutionStep {
   visitNumber: number;
   entryTime: Date;
   exitTime: Date | null;
-  result?: 'pass' | 'fail';
+  result?: 'PASS' | 'FAIL';
   operator?: string;
 }
 
@@ -200,11 +200,11 @@ export const DEMO_PART_JOURNEY: PartExecutionStep[] = [
   { stepId: 1, visitNumber: 1, entryTime: new Date('2024-01-15T08:00:00'), exitTime: new Date('2024-01-15T08:15:00'), operator: 'John D.' },
   { stepId: 2, visitNumber: 1, entryTime: new Date('2024-01-15T08:15:00'), exitTime: new Date('2024-01-15T09:30:00'), operator: 'John D.' },
   { stepId: 3, visitNumber: 1, entryTime: new Date('2024-01-15T09:30:00'), exitTime: new Date('2024-01-15T11:30:00'), operator: 'Auto' },
-  { stepId: 4, visitNumber: 1, entryTime: new Date('2024-01-15T11:30:00'), exitTime: new Date('2024-01-15T11:45:00'), result: 'fail', operator: 'Sarah M.' },
+  { stepId: 4, visitNumber: 1, entryTime: new Date('2024-01-15T11:30:00'), exitTime: new Date('2024-01-15T11:45:00'), result: 'FAIL', operator: 'Sarah M.' },
   { stepId: 7, visitNumber: 1, entryTime: new Date('2024-01-15T11:45:00'), exitTime: new Date('2024-01-15T13:00:00'), operator: 'Mike R.' },
-  { stepId: 4, visitNumber: 2, entryTime: new Date('2024-01-15T13:00:00'), exitTime: new Date('2024-01-15T13:15:00'), result: 'pass', operator: 'Sarah M.' },
+  { stepId: 4, visitNumber: 2, entryTime: new Date('2024-01-15T13:00:00'), exitTime: new Date('2024-01-15T13:15:00'), result: 'PASS', operator: 'Sarah M.' },
   { stepId: 5, visitNumber: 1, entryTime: new Date('2024-01-15T13:15:00'), exitTime: new Date('2024-01-15T14:45:00'), operator: 'John D.' },
-  { stepId: 6, visitNumber: 1, entryTime: new Date('2024-01-15T14:45:00'), exitTime: new Date('2024-01-15T15:00:00'), result: 'pass', operator: 'Sarah M.' },
+  { stepId: 6, visitNumber: 1, entryTime: new Date('2024-01-15T14:45:00'), exitTime: new Date('2024-01-15T15:00:00'), result: 'PASS', operator: 'Sarah M.' },
   { stepId: 10, visitNumber: 1, entryTime: new Date('2024-01-15T15:00:00'), exitTime: new Date('2024-01-15T15:30:00'), operator: 'Shipping' },
 ];
 
@@ -213,7 +213,7 @@ export const DEMO_PART_INFO = {
   serialNumber: 'HP-2024-00142',
   partType: 'Hydraulic Pump',
   workOrder: 'WO-2024-0042',
-  currentStatus: 'shipped',
+  currentStatus: 'SHIPPED',
 } as const;
 
 // ============================================================================

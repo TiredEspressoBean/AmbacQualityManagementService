@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { schemas } from "@/lib/api/generated";
 import {
     Dialog,
     DialogContent,
@@ -26,9 +25,10 @@ import {
 } from "./SignatureVerification";
 import { useSubmitApprovalResponse } from "@/hooks/useSubmitApprovalResponse";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
+import { type DecisionEnum } from "@/lib/api/generated";
 
 interface ApprovalResponsePayload {
-    decision: 'APPROVED' | 'REJECTED' | 'DELEGATED';
+    decision: DecisionEnum;
     comments?: string;
     signature_data?: string;
     signature_meaning?: string;
@@ -162,21 +162,21 @@ export function ApprovalResponseModal({
                             className="flex gap-4"
                         >
                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value={schemas.DecisionEnum.enum.APPROVED} id="approved" />
+                                <RadioGroupItem value="APPROVED" id="approved" />
                                 <Label htmlFor="approved" className="flex items-center gap-1 cursor-pointer">
                                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     Approve
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value={schemas.DecisionEnum.enum.REJECTED} id="rejected" />
+                                <RadioGroupItem value="REJECTED" id="rejected" />
                                 <Label htmlFor="rejected" className="flex items-center gap-1 cursor-pointer">
                                     <XCircle className="h-4 w-4 text-red-600" />
                                     Reject
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value={schemas.DecisionEnum.enum.DELEGATED} id="delegated" />
+                                <RadioGroupItem value="DELEGATED" id="delegated" />
                                 <Label htmlFor="delegated" className="flex items-center gap-1 cursor-pointer">
                                     <UserPlus className="h-4 w-4 text-blue-600" />
                                     Delegate

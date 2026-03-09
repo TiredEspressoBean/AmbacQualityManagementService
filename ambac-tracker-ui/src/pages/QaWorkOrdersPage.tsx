@@ -68,11 +68,11 @@ export default function QaWorkOrdersPage() {
 
     // Fetch parts for the selected work order that need QA
     // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
-    // Include READY_FOR_NEXT_STEP since parts may need QA before actually advancing
+    // Include AWAITING_QA (parts flagged for QA) and READY_FOR_NEXT_STEP
     const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
         work_order: selectedWorkOrder?.id,
         needs_qa: true,
-        status__in: ["PENDING", "IN_PROGRESS", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY FOR NEXT STEP"],
+        status__in: ["PENDING", "IN_PROGRESS", "AWAITING_QA", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY_FOR_NEXT_STEP"],
         limit: 100,
     }, {
         enabled: !!selectedWorkOrder?.id,
@@ -160,8 +160,8 @@ export default function QaWorkOrdersPage() {
                                     </TableCell>
                                     <TableCell>
                                         <span className={`px-2 py-1 text-xs rounded-full ${
-                                            workOrder.workorder_status === 'IN_PROGRESS' 
-                                                ? 'bg-blue-100 text-blue-800' 
+                                            workOrder.workorder_status === 'IN_PROGRESS'
+                                                ? 'bg-blue-100 text-blue-800'
                                                 : workOrder.workorder_status === 'READY_FOR_QA'
                                                 ? 'bg-yellow-100 text-yellow-800'
                                                 : 'bg-gray-100 text-gray-800'
@@ -252,8 +252,8 @@ export default function QaWorkOrdersPage() {
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium">{part.ERP_id}</span>
                                     <span className={`px-2 py-1 text-xs rounded-full ${
-                                        part.part_status === 'PENDING' 
-                                            ? 'bg-yellow-100 text-yellow-800' 
+                                        part.part_status === 'PENDING'
+                                            ? 'bg-yellow-100 text-yellow-800'
                                             : part.part_status === 'IN_PROGRESS'
                                             ? 'bg-blue-100 text-blue-800'
                                             : part.part_status === 'REWORK_NEEDED'

@@ -18,7 +18,7 @@ const PLANS = [
             "Part tracking",
             "Email support",
         ],
-        tier: "starter",
+        tier: "STARTER",
     },
     {
         name: "Pro",
@@ -33,7 +33,7 @@ const PLANS = [
             "API access",
             "Priority support",
         ],
-        tier: "pro",
+        tier: "PRO",
         popular: true,
     },
     {
@@ -49,13 +49,13 @@ const PLANS = [
             "SLA guarantee",
             "On-premise option",
         ],
-        tier: "enterprise",
+        tier: "ENTERPRISE",
     },
 ];
 
 export function BillingPage() {
     const { tenant } = useTenantContext();
-    const currentTier = tenant?.tier || "starter";
+    const currentTier = tenant?.tier || "STARTER";
 
     return (
         <div className="container mx-auto p-6 max-w-5xl">
@@ -88,7 +88,7 @@ export function BillingPage() {
                     <CardDescription>
                         You are currently on the{" "}
                         <span className="font-medium text-foreground capitalize">{currentTier}</span> plan
-                        {tenant?.status === "trial" && (
+                        {tenant?.status === "TRIAL" && (
                             <Badge variant="secondary" className="ml-2">
                                 Trial
                             </Badge>
@@ -135,7 +135,7 @@ export function BillingPage() {
                                 >
                                     {isCurrent ? (
                                         "Current Plan"
-                                    ) : plan.tier === "enterprise" ? (
+                                    ) : plan.tier === "ENTERPRISE" ? (
                                         "Contact Sales"
                                     ) : (
                                         <>

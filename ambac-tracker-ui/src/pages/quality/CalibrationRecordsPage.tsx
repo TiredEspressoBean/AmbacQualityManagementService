@@ -82,7 +82,7 @@ export function CalibrationRecordsPage() {
                     header: "Due Date",
                     renderCell: (record: any) => {
                         if (!record.due_date) return <span className="text-muted-foreground">—</span>;
-                        const isOverdue = record.status === 'overdue';
+                        const isOverdue = record.status === 'OVERDUE';
                         return (
                             <span className={isOverdue ? "text-destructive font-medium" : ""}>
                                 {new Date(record.due_date).toLocaleDateString()}

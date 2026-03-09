@@ -139,7 +139,8 @@ export function StepDocumentsEditor({
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status.toUpperCase();
+    switch (normalizedStatus) {
       case 'APPROVED':
       case 'RELEASED':
         return <Badge variant="default" className="bg-green-600">{status}</Badge>;

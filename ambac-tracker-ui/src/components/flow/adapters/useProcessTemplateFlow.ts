@@ -25,19 +25,19 @@ interface UseProcessTemplateFlowParams {
  * Uses explicit step_type if set, otherwise derives from properties.
  */
 function getNodeType(step: StepData, isEntryPoint: boolean): StepType {
-  // Use explicit step_type if set (and not default 'task')
-  if (step.step_type && step.step_type !== 'task') {
+  // Use explicit step_type if set (and not default 'TASK')
+  if (step.step_type && step.step_type !== 'TASK') {
     return step.step_type;
   }
 
   // Derive from properties
-  if (step.is_terminal) return 'terminal';
-  if (step.is_decision_point) return 'decision';
-  if (isEntryPoint) return 'start';
-  if (step.max_visits) return 'rework';
-  if (step.expected_duration) return 'timer';
+  if (step.is_terminal) return 'TERMINAL';
+  if (step.is_decision_point) return 'DECISION';
+  if (isEntryPoint) return 'START';
+  if (step.max_visits) return 'REWORK';
+  if (step.expected_duration) return 'TIMER';
 
-  return 'task';
+  return 'TASK';
 }
 
 /**
@@ -108,7 +108,7 @@ function transformToFlow(
     stepEdges.forEach((edge) => {
       const sourceStep = sortedProcessSteps.find(ps => ps.step.id === edge.from_step)?.step;
 
-      if (edge.edge_type === 'default') {
+      if (edge.edge_type === 'DEFAULT') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}`,
           source: String(edge.from_step),
@@ -118,7 +118,7 @@ function transformToFlow(
           style: { stroke: sourceStep?.is_decision_point ? '#10b981' : undefined },
           animated: sourceStep?.is_decision_point,
         });
-      } else if (edge.edge_type === 'alternate') {
+      } else if (edge.edge_type === 'ALTERNATE') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-alt`,
           source: String(edge.from_step),
@@ -128,7 +128,7 @@ function transformToFlow(
           style: { stroke: '#ef4444' },
           animated: true,
         });
-      } else if (edge.edge_type === 'escalation') {
+      } else if (edge.edge_type === 'ESCALATION') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-esc`,
           source: String(edge.from_step),
@@ -212,7 +212,7 @@ export function useProcessTemplateFlow({ processId, enabled = true }: UseProcess
       id: String(e.id),
       from_step: String(e.from_step),
       to_step: String(e.to_step),
-      edge_type: (e.edge_type || 'default') as EdgeType,
+      edge_type: (e.edge_type || 'DEFAULT') as EdgeType,
       from_step_name: e.from_step_name,
       to_step_name: e.to_step_name,
       condition_measurement: e.condition_measurement,

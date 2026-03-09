@@ -770,7 +770,7 @@ export default function SpcPage() {
 
         const request = toFreezeRequest(
             selectedMeasurementId,
-            "I_MR",
+            "i_mr",
             1, // subgroup size is always 1 for I-MR
             {
                 individualUCL: calculatedIMRLimits.individualUCL,

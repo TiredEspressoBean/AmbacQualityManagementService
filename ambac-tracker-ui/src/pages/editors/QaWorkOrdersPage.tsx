@@ -29,15 +29,14 @@ export function QaWorkOrdersPage() {
     const navigate = useNavigate();
 
     const handleWorkOrderClick = (workOrder: any) => {
-        // Navigate to the QA work order detail page
-        navigate({ to: `/qa/workorder/${workOrder.id}` });
+        navigate({ to: `/workorder/${workOrder.id}` });
     };
 
     return (
         <ModelEditorPage
-            title="Quality Assurance - Work Orders"
+            title="Work Orders"
             useList={useQaWorkOrdersList}
-            generateDetailLink={(workOrder: any) => `/qa/workorder/${workOrder.id}`}
+            generateDetailLink={(workOrder: any) => `/workorder/${workOrder.id}`}
             showDetailsLink={true}
             sortOptions={[
                 { label: "Due Date (Earliest)", value: "expected_completion" },

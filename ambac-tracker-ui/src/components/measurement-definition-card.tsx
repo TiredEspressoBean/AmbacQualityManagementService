@@ -10,11 +10,12 @@ import { Edit, Trash2 } from "lucide-react";
 import { useDeleteMeasurementDefinition } from "@/hooks/useDeleteMeasurementDefinition";
 import { toast } from "sonner";
 import MeasurementDefinitionForm from "./measurement-definition-form";
+import { type TypeEnum } from "@/lib/api/generated";
 
 interface MeasurementDefinition {
   id: string;
   label: string;
-  type: "NUMERIC" | "PASS_FAIL";
+  type: TypeEnum;
   unit?: string;
   nominal?: string | null;
   upper_tol?: string | null;

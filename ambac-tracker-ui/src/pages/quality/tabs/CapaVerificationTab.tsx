@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { schemas } from "@/lib/api/generated"
+import { schemas, type EffectivenessResultEnum } from "@/lib/api/generated"
 import { asUserInfo } from "@/lib/extended-types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +31,7 @@ type VerificationFormData = {
     verification_method: string
     verification_criteria: string
     verification_date: string
-    effectiveness_result: "CONFIRMED" | "NOT_EFFECTIVE" | "INCONCLUSIVE" | ""
+    effectiveness_result: EffectivenessResultEnum | ""
     verification_notes: string
 }
 

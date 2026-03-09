@@ -27,11 +27,11 @@ export const prefetchProcessEditor = (queryClient: QueryClient) => {
 
 function ProcessStatusBadge({ status }: { status: string }) {
     switch (status) {
-        case 'approved':
+        case 'APPROVED':
             return <Badge className="bg-green-600 hover:bg-green-700">Approved</Badge>;
-        case 'draft':
+        case 'DRAFT':
             return <Badge variant="secondary">Draft</Badge>;
-        case 'deprecated':
+        case 'DEPRECATED':
             return <Badge variant="outline" className="text-muted-foreground">Deprecated</Badge>;
         default:
             return <Badge variant="outline">{status}</Badge>;
@@ -72,7 +72,7 @@ export function ProcessEditorPage() {
             useList={useProcessList}
             columns={[
                 { header: "Name", renderCell: (p: any) => p.name, priority: 1 },
-                { header: "Status", renderCell: (p: any) => <ProcessStatusBadge status={p.status || 'draft'} />, priority: 1 },
+                { header: "Status", renderCell: (p: any) => <ProcessStatusBadge status={p.status || 'DRAFT'} />, priority: 1 },
                 { header: "Updated At", renderCell: (p: any) => new Date(p.updated_at).toLocaleString(), priority: 4 },
                 { header: "Number of Steps", renderCell: (p: any) => p.num_steps, priority: 2 },
                 { header: "Reman Process", renderCell: (p: any) => p.is_remanufactured ? "Yes" : "No", priority: 3 },

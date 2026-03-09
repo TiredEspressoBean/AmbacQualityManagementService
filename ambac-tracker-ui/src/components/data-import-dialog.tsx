@@ -186,9 +186,9 @@ export function DataImportDialog({
             );
             const data: TaskStatusResponse = await response.json();
 
-            if (data.status === "PROGRESS" && data.progress) {
+            if (data.status === "progress" && data.progress) {
                 setProgress({ current: data.progress.current, total: data.progress.total });
-            } else if (data.status === "SUCCESS" && data.result) {
+            } else if (data.status === "success" && data.result) {
                 // Task completed
                 if (pollIntervalRef.current) {
                     clearInterval(pollIntervalRef.current);
@@ -210,7 +210,7 @@ export function DataImportDialog({
                 }
 
                 onImportComplete?.(data.result);
-            } else if (data.status === "FAILURE") {
+            } else if (data.status === "failure") {
                 // Task failed
                 if (pollIntervalRef.current) {
                     clearInterval(pollIntervalRef.current);

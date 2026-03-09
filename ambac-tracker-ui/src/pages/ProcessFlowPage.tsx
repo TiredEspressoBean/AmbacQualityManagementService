@@ -82,12 +82,12 @@ const MODE_ICONS: Record<DemoMode, typeof FileText> = {
 
 // Node type options for adding new steps
 const NODE_TYPE_OPTIONS = [
-  { type: 'task', label: 'Task Step', icon: Circle, description: 'Standard work step' },
-  { type: 'start', label: 'Start Step', icon: Play, description: 'Process entry point' },
-  { type: 'decision', label: 'Decision Point', icon: GitBranch, description: 'Branching based on condition' },
-  { type: 'rework', label: 'Rework Step', icon: RefreshCw, description: 'Step with visit limit' },
-  { type: 'timer', label: 'Timer/Wait Step', icon: Clock, description: 'Step with expected duration' },
-  { type: 'terminal', label: 'Terminal Step', icon: CheckCircle, description: 'Process end point' },
+  { type: 'TASK', label: 'Task Step', icon: Circle, description: 'Standard work step' },
+  { type: 'START', label: 'Start Step', icon: Play, description: 'Process entry point' },
+  { type: 'DECISION', label: 'Decision Point', icon: GitBranch, description: 'Branching based on condition' },
+  { type: 'REWORK', label: 'Rework Step', icon: RefreshCw, description: 'Step with visit limit' },
+  { type: 'TIMER', label: 'Timer/Wait Step', icon: Clock, description: 'Step with expected duration' },
+  { type: 'TERMINAL', label: 'Terminal Step', icon: CheckCircle, description: 'Process end point' },
 ] as const;
 
 /**
@@ -260,23 +260,23 @@ export default function ProcessFlowPage() {
 
     const newStep: StepData = {
       id: nextStepId,
-      name: `New ${stepType.charAt(0).toUpperCase() + stepType.slice(1)} Step`,
+      name: `New ${stepType.charAt(0).toUpperCase() + stepType.slice(1).toLowerCase()} Step`,
       order: maxOrder + 1,
       step_type: stepType as StepData['step_type'],
       description: '',
       // Set type-specific defaults
-      ...(stepType === 'decision' && {
+      ...(stepType === 'DECISION' && {
         is_decision_point: true,
-        decision_type: 'manual' as const,
+        decision_type: 'MANUAL' as const,
       }),
-      ...(stepType === 'terminal' && {
+      ...(stepType === 'TERMINAL' && {
         is_terminal: true,
-        terminal_status: 'completed' as const,
+        terminal_status: 'COMPLETED' as const,
       }),
-      ...(stepType === 'rework' && {
+      ...(stepType === 'REWORK' && {
         max_visits: 3,
       }),
-      ...(stepType === 'timer' && {
+      ...(stepType === 'TIMER' && {
         expected_duration: '1h',
       }),
     };
@@ -374,7 +374,7 @@ export default function ProcessFlowPage() {
         order: index + 1,
         is_entry_point: index === 0 || step.is_entry_point || false,
         description: step.description || '',
-        step_type: step.step_type || 'task',
+        step_type: step.step_type || 'TASK',
         is_decision_point: step.is_decision_point || false,
         decision_type: step.decision_type || '',
         is_terminal: step.is_terminal || false,
@@ -394,7 +394,7 @@ export default function ProcessFlowPage() {
         return {
           from_step: edge.source,
           to_step: edge.target,
-          edge_type: isEscalation ? 'escalation' : isAlternate ? 'alternate' : 'default',
+          edge_type: isEscalation ? 'ESCALATION' : isAlternate ? 'ALTERNATE' : 'DEFAULT',
         };
       });
 
@@ -508,7 +508,7 @@ export default function ProcessFlowPage() {
 
   // Get process status and check if editable
   const processStatus = processWithSteps?.status as string | undefined;
-  const isProcessEditable = isDemo || processStatus === 'draft';
+  const isProcessEditable = isDemo || processStatus === 'DRAFT';
 
   // Allow editing in template mode (both demo and real DRAFT processes)
   const canEdit = (demoMode === 'template' || !isDemo) && isProcessEditable;
@@ -524,7 +524,7 @@ export default function ProcessFlowPage() {
     // Convert steps to Node format for validation
     const nodes: Node[] = currentSteps.map(step => ({
       id: String(step.id),
-      type: step.step_type || 'task',
+      type: step.step_type || 'TASK',
       position: { x: 0, y: 0 },
       data: {
         label: step.name,
@@ -643,7 +643,7 @@ export default function ProcessFlowPage() {
                 <div className="flex justify-between">
                   <span>Visit #{visit.visitNumber}</span>
                   {visit.result && (
-                    <Badge variant={visit.result === 'pass' ? 'default' : 'destructive'} className="text-xs">
+                    <Badge variant={visit.result === 'PASS' ? 'default' : 'destructive'} className="text-xs">
                       {visit.result}
                     </Badge>
                   )}
@@ -731,13 +731,18 @@ export default function ProcessFlowPage() {
                 {!isDemo && processStatus && (
                   <Badge
                     variant={
-                      processStatus === 'approved' ? 'default' :
-                      processStatus === 'deprecated' ? 'secondary' :
+                      processStatus === 'APPROVED' ? 'default' :
+                      processStatus === 'DEPRECATED' ? 'secondary' :
                       'outline'
                     }
-                    className={processStatus === 'draft' ? 'border-amber-500 text-amber-600' : ''}
+                    className={processStatus === 'DRAFT' ? 'border-amber-500 text-amber-600' : ''}
                   >
                     {processStatus.charAt(0).toUpperCase() + processStatus.slice(1)}
+                  </Badge>
+                )}
+                {!stepsLoading && (
+                  <Badge variant="secondary">
+                    {steps.length} {steps.length === 1 ? 'step' : 'steps'}
                   </Badge>
                 )}
               </div>
@@ -913,7 +918,7 @@ export default function ProcessFlowPage() {
                     <DropdownMenuSeparator />
 
                     {/* Approve - only for draft */}
-                    {processStatus === 'draft' && (
+                    {processStatus === 'DRAFT' && (
                       <DropdownMenuItem
                         onClick={handleApprove}
                         disabled={approveProcess.isPending || hasChanges || hasValidationErrors}
@@ -933,7 +938,7 @@ export default function ProcessFlowPage() {
                     )}
 
                     {/* Deprecate - only for approved */}
-                    {processStatus === 'approved' && (
+                    {processStatus === 'APPROVED' && (
                       <DropdownMenuItem
                         onClick={handleDeprecate}
                         disabled={deprecateProcess.isPending}
@@ -1065,7 +1070,7 @@ export default function ProcessFlowPage() {
                     if (step) {
                       setSelectedNode({
                         id: nodeId,
-                        type: step.step_type || 'task',
+                        type: step.step_type || 'TASK',
                         position: { x: 0, y: 0 },
                         data: { ...step, label: step.name },
                       });

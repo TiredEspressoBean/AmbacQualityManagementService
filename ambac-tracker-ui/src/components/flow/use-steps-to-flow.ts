@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type Node, type Edge, useReactFlow, useNodesInitialized } from '@xyflow/react';
 import ELK, { type ElkNode, type ElkExtendedEdge } from 'elkjs/lib/elk.bundled.js';
+import type {
+  StepTypeEnum,
+  DecisionTypeEnum,
+  TerminalStatusEnum,
+  EdgeTypeEnum,
+} from '@/lib/api/generated';
 
-export type StepType = 'task' | 'start' | 'decision' | 'rework' | 'timer' | 'terminal';
+export type StepType = StepTypeEnum;
 
 /**
  * Step data with order (for use in flow builder).
@@ -14,9 +20,9 @@ export interface StepData {
   order: number; // From ProcessStep.order
   step_type?: StepType;
   is_decision_point?: boolean;
-  decision_type?: 'qa_result' | 'measurement' | 'manual';
+  decision_type?: DecisionTypeEnum;
   is_terminal?: boolean;
-  terminal_status?: 'completed' | 'shipped' | 'stock' | 'scrapped' | 'returned' | 'awaiting_pickup' | 'core_banked' | 'rma_closed';
+  terminal_status?: TerminalStatusEnum;
   is_entry_point?: boolean;
   description?: string;
   max_visits?: number | null;
@@ -33,12 +39,12 @@ export interface StepData {
 export interface StepEdgeInput {
   from_step: string;
   to_step: string;
-  edge_type: 'default' | 'alternate' | 'escalation';
+  edge_type: EdgeTypeEnum;
 }
 
 export interface UseStepsToFlowOptions {
   /** Direction: 'RIGHT', 'DOWN', 'LEFT', 'UP' */
-  direction?: 'RIGHT' | 'DOWN' | 'LEFT' | 'UP';
+  direction?: 'RIGHT' | 'DOWN' | 'LEFT' | 'UP'; // Not an API enum - layout option
   /** Spacing between nodes */
   nodeSpacing?: number;
   /** Spacing between layers/ranks */
@@ -53,29 +59,29 @@ const elk = new ELK();
  * Uses explicit step_type if set, otherwise derives from properties.
  */
 function getNodeType(step: StepData, isEntryPoint: boolean): StepType {
-  // Use explicit step_type if set (and not default 'task')
-  if (step.step_type && step.step_type !== 'task') {
+  // Use explicit step_type if set (and not default 'TASK')
+  if (step.step_type && step.step_type !== 'TASK') {
     return step.step_type;
   }
 
   // Derive from properties
   // Terminal nodes (end points)
-  if (step.is_terminal) return 'terminal';
+  if (step.is_terminal) return 'TERMINAL';
 
   // Decision nodes (branching points)
-  if (step.is_decision_point) return 'decision';
+  if (step.is_decision_point) return 'DECISION';
 
   // Start node (entry point or no incoming edges)
-  if (isEntryPoint) return 'start';
+  if (isEntryPoint) return 'START';
 
   // Rework nodes (have max_visits set)
-  if (step.max_visits) return 'rework';
+  if (step.max_visits) return 'REWORK';
 
   // Timer nodes (have expected_duration set)
-  if (step.expected_duration) return 'timer';
+  if (step.expected_duration) return 'TIMER';
 
   // Default to task
-  return 'task';
+  return 'TASK';
 }
 
 /**
@@ -139,9 +145,9 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       // Determine if the source node will render as a decision node with pass/fail handles
       // This must match the logic in getNodeType() to ensure consistency
       const sourceNodeType = sourceStep ? getNodeType(sourceStep, sourceStep.is_entry_point || false) : undefined;
-      const isDecisionNode = sourceNodeType === 'decision';
+      const isDecisionNode = sourceNodeType === 'DECISION';
 
-      if (edge.edge_type === 'default') {
+      if (edge.edge_type === 'DEFAULT') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}`,
           source: String(edge.from_step),
@@ -154,7 +160,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
           labelStyle: isDecisionNode ? { fill: '#10b981', fontWeight: 600 } : undefined,
           labelBgStyle: { fill: 'transparent' },
         });
-      } else if (edge.edge_type === 'alternate') {
+      } else if (edge.edge_type === 'ALTERNATE') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-alt`,
           source: String(edge.from_step),
@@ -167,7 +173,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
           labelStyle: { fill: '#ef4444', fontWeight: 600 },
           labelBgStyle: { fill: 'transparent' },
         });
-      } else if (edge.edge_type === 'escalation') {
+      } else if (edge.edge_type === 'ESCALATION') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-esc`,
           source: String(edge.from_step),
@@ -236,9 +242,9 @@ export async function runElkLayout(
       const layoutOptions: Record<string, string> = {};
 
       // Force start nodes to first layer, terminal nodes to last layer
-      if (node.type === 'start') {
+      if (node.type === 'START') {
         layoutOptions['elk.layered.layering.layerConstraint'] = 'FIRST';
-      } else if (node.type === 'terminal') {
+      } else if (node.type === 'TERMINAL') {
         layoutOptions['elk.layered.layering.layerConstraint'] = 'LAST';
       }
 

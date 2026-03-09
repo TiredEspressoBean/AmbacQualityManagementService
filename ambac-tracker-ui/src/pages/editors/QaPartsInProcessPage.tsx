@@ -30,7 +30,7 @@ function usePartsList({
             "IN_PROGRESS",
             "REWORK_NEEDED",
             "REWORK_IN_PROGRESS",
-            "READY FOR NEXT STEP",
+            "READY_FOR_NEXT_STEP",
         ],
     });
 }

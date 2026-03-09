@@ -70,7 +70,7 @@ export function TrainingRecordsPage() {
                     header: "Expires",
                     renderCell: (record: any) => {
                         if (!record.expires_date) return <span className="text-muted-foreground">Never</span>;
-                        const isExpired = record.status === 'expired';
+                        const isExpired = record.status === 'EXPIRED';
                         return (
                             <span className={isExpired ? "text-destructive font-medium" : ""}>
                                 {new Date(record.expires_date).toLocaleDateString()}

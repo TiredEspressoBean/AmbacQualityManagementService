@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 export type CapaStats = {
     total: number;
     by_status: {
-        open: number;
-        in_progress: number;
-        pending_verification: number;
-        closed: number;
+        OPEN: number;
+        IN_PROGRESS: number;
+        PENDING_VERIFICATION: number;
+        CLOSED: number;
     };
     by_severity: {
         CRITICAL: number;

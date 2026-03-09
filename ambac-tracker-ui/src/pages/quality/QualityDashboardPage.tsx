@@ -34,7 +34,7 @@ export function QualityDashboardPage() {
     const pendingApprovals = approvalsData?.results ?? []
 
     // Calculate open CAPAs (open + in_progress)
-    const openCapas = (stats?.by_status?.open ?? 0) + (stats?.by_status?.in_progress ?? 0)
+    const openCapas = (stats?.by_status?.OPEN ?? 0) + (stats?.by_status?.IN_PROGRESS ?? 0)
 
     return (
         <div className="container mx-auto p-6">
@@ -74,7 +74,7 @@ export function QualityDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.by_status?.pending_verification ?? 0)}
+                            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.by_status?.PENDING_VERIFICATION ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">Awaiting review</p>
                     </CardContent>
@@ -87,7 +87,7 @@ export function QualityDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.by_status?.closed ?? 0)}
+                            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.by_status?.CLOSED ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">Successfully resolved</p>
                     </CardContent>

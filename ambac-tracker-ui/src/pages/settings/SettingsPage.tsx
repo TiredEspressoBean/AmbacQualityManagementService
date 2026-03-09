@@ -316,7 +316,7 @@ export function SettingsPage() {
                             <div className="flex gap-2">
                                 <Badge variant="outline">{tenant.tier}</Badge>
                                 <Badge
-                                    variant={tenant.status === "active" ? "default" : "secondary"}
+                                    variant={tenant.status === "ACTIVE" ? "default" : "secondary"}
                                 >
                                     {tenant.status}
                                 </Badge>

@@ -78,7 +78,7 @@ export function AppSidebarHeader() {
                         <span className="font-semibold text-sm truncate">
                             {tenant?.name || DEFAULT_BRANDING.appName}
                         </span>
-                        {tenant?.status === "trial" && (
+                        {tenant?.status === "TRIAL" && (
                             <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">
                                 Trial
                             </Badge>
@@ -103,7 +103,7 @@ export function AppSidebarHeader() {
                             <span className="font-semibold text-sm truncate">
                                 {tenant?.name || DEFAULT_BRANDING.appName}
                             </span>
-                            {tenant?.status === "trial" && (
+                            {tenant?.status === "TRIAL" && (
                                 <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">
                                     Trial
                                 </Badge>

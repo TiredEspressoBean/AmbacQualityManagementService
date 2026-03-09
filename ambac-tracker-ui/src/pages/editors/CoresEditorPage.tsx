@@ -59,10 +59,10 @@ function getConditionBadgeVariant(grade: string): "default" | "secondary" | "des
 // Core status color mapping
 function getCoreStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
     switch (status) {
-        case 'received': return 'secondary';
-        case 'in_disassembly': return 'default';
-        case 'disassembled': return 'outline';
-        case 'scrapped': return 'destructive';
+        case 'RECEIVED': return 'secondary';
+        case 'IN_DISASSEMBLY': return 'default';
+        case 'DISASSEMBLED': return 'outline';
+        case 'SCRAPPED': return 'destructive';
         default: return 'outline';
     }
 }
@@ -85,19 +85,19 @@ function CoreActionsCell({ core }: { core: any }) {
                         View Details
                     </Link>
                 </DropdownMenuItem>
-                {core.status === 'received' && (
+                {core.status === 'RECEIVED' && (
                     <DropdownMenuItem onClick={() => navigate({ to: `/reman/cores/${core.id}/disassembly` })}>
                         <Play className="mr-2 h-4 w-4" />
                         Start Disassembly
                     </DropdownMenuItem>
                 )}
-                {core.status === 'in_disassembly' && (
+                {core.status === 'IN_DISASSEMBLY' && (
                     <DropdownMenuItem onClick={() => navigate({ to: `/reman/cores/${core.id}/disassembly` })}>
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Continue Disassembly
                     </DropdownMenuItem>
                 )}
-                {core.status === 'received' && (
+                {core.status === 'RECEIVED' && (
                     <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => navigate({ to: `/reman/cores/${core.id}/scrap` })}
@@ -141,10 +141,10 @@ export function CoresEditorPage() {
                         const status = core.status;
                         if (!status) return "—";
                         const labels: Record<string, string> = {
-                            'received': 'Received',
-                            'in_disassembly': 'In Disassembly',
-                            'disassembled': 'Disassembled',
-                            'scrapped': 'Scrapped',
+                            'RECEIVED': 'Received',
+                            'IN_DISASSEMBLY': 'In Disassembly',
+                            'DISASSEMBLED': 'Disassembled',
+                            'SCRAPPED': 'Scrapped',
                         };
                         return (
                             <Badge variant={getCoreStatusVariant(status)}>
@@ -177,10 +177,10 @@ export function CoresEditorPage() {
                     priority: 3,
                     renderCell: (core: any) => {
                         const sourceLabels: Record<string, string> = {
-                            'customer_return': 'Customer Return',
-                            'purchased': 'Purchased',
-                            'warranty': 'Warranty',
-                            'trade_in': 'Trade-In',
+                            'CUSTOMER_RETURN': 'Customer Return',
+                            'PURCHASED': 'Purchased',
+                            'WARRANTY': 'Warranty',
+                            'TRADE_IN': 'Trade-In',
                         };
                         return sourceLabels[core.source_type] || core.source_type || "—";
                     },

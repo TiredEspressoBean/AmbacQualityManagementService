@@ -9,13 +9,13 @@ import {
 } from 'lucide-react';
 
 type StatusType =
-  | 'pending'
-  | 'in_progress'
-  | 'completed'
-  | 'approved'
-  | 'rejected'
-  | 'on_hold'
-  | 'cancelled';
+  | 'PENDING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ON_HOLD'
+  | 'CANCELLED';
 
 interface StatusBadgeProps {
   status: StatusType | string;
@@ -27,37 +27,37 @@ const statusConfig: Record<
   StatusType,
   { icon: typeof Clock; colorClass: string; label: string }
 > = {
-  pending: {
+  PENDING: {
     icon: Clock,
     colorClass: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
     label: 'Pending',
   },
-  in_progress: {
+  IN_PROGRESS: {
     icon: PlayCircle,
     colorClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
     label: 'In Progress',
   },
-  completed: {
+  COMPLETED: {
     icon: CheckCircle,
     colorClass: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
     label: 'Completed',
   },
-  approved: {
+  APPROVED: {
     icon: CheckCircle,
     colorClass: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
     label: 'Approved',
   },
-  rejected: {
+  REJECTED: {
     icon: XCircle,
     colorClass: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
     label: 'Rejected',
   },
-  on_hold: {
+  ON_HOLD: {
     icon: PauseCircle,
     colorClass: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
     label: 'On Hold',
   },
-  cancelled: {
+  CANCELLED: {
     icon: AlertCircle,
     colorClass: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
     label: 'Cancelled',

@@ -13,6 +13,7 @@ import {
 import { CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useRequiredMeasurements, useBulkRecordMeasurements } from "@/hooks/useStepExecutionMeasurements";
 import { toast } from "sonner";
+import { type TypeEnum, type ValuePassFailEnum } from "@/lib/api/generated";
 
 type MeasurementRecordingFormProps = {
     stepExecutionId: string;
@@ -30,15 +31,15 @@ type MeasurementValue = {
 
 function evaluateSpec(
     value: string,
-    type: "NUMERIC" | "PASS_FAIL",
+    type: TypeEnum,
     nominal: number | null,
     upperTol: number | null,
     lowerTol: number | null
-): "pass" | "fail" | "na" {
+): ValuePassFailEnum | "na" {
     if (type === "PASS_FAIL") {
         const upper = value.toUpperCase();
-        if (upper === "PASS") return "pass";
-        if (upper === "FAIL") return "fail";
+        if (upper === "PASS") return "PASS";
+        if (upper === "FAIL") return "FAIL";
         return "na";
     }
 
@@ -50,8 +51,8 @@ function evaluateSpec(
         const lower = nominal - lowerTol;
         const upper = nominal + upperTol;
 
-        if (numValue >= lower && numValue <= upper) return "pass";
-        return "fail";
+        if (numValue >= lower && numValue <= upper) return "PASS";
+        return "FAIL";
     }
 
     return "na";
@@ -83,7 +84,7 @@ export function MeasurementRecordingForm({
 
     // Compute spec status for each measurement
     const specStatuses = useMemo(() => {
-        const statuses: Record<string, "pass" | "fail" | "na" | "empty"> = {};
+        const statuses: Record<string, "PASS" | "FAIL" | "na" | "empty"> = {};
 
         for (const def of definitions) {
             const val = values[def.id];
@@ -177,11 +178,11 @@ export function MeasurementRecordingForm({
         );
     }
 
-    const getStatusIcon = (status: "pass" | "fail" | "na" | "empty") => {
+    const getStatusIcon = (status: ValuePassFailEnum | "na" | "empty") => {
         switch (status) {
-            case "pass":
+            case "PASS":
                 return <CheckCircle className="h-4 w-4 text-green-600" />;
-            case "fail":
+            case "FAIL":
                 return <XCircle className="h-4 w-4 text-red-600" />;
             case "na":
                 return <AlertCircle className="h-4 w-4 text-gray-400" />;
@@ -313,7 +314,7 @@ export function MeasurementRecordingForm({
                             </div>
                         </div>
 
-                        {specStatuses[def.id] === "fail" && (
+                        {specStatuses[def.id] === "FAIL" && (
                             <div className="text-xs text-red-600 flex items-center gap-1">
                                 <XCircle className="h-3 w-3" />
                                 Out of specification
