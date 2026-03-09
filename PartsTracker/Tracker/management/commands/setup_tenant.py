@@ -9,6 +9,9 @@ Usage:
 
     # For dedicated deployment (uses settings defaults):
     python manage.py setup_tenant --use-defaults --admin-email admin@example.com
+
+    # With SSO allowed domains:
+    python manage.py setup_tenant --slug ambac-intl --name "Ambac International" --admin-email admin@ambac-intl.com --allowed-domains ambac-international.com,ambac-intl.com
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -80,6 +83,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Skip admin user creation',
         )
+        parser.add_argument(
+            '--allowed-domains',
+            type=str,
+            help='Comma-separated list of email domains for SSO auto-matching (e.g., "acme.com,acme.co.uk")',
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -100,6 +108,15 @@ class Command(BaseCommand):
             if not name:
                 name = slug.replace('-', ' ').replace('_', ' ').title()
 
+        # Parse allowed domains
+        allowed_domains = []
+        if options['allowed_domains']:
+            allowed_domains = [
+                d.strip().lower()
+                for d in options['allowed_domains'].split(',')
+                if d.strip()
+            ]
+
         # Check if tenant already exists
         existing = Tenant.objects.filter(slug=slug).first()
         if existing:
@@ -108,6 +125,11 @@ class Command(BaseCommand):
             )
             tenant = existing
             tenant_created = False
+            # Update allowed_domains if provided
+            if allowed_domains:
+                tenant.allowed_domains = allowed_domains
+                tenant.save(update_fields=['allowed_domains'])
+                self.stdout.write(f'  Updated allowed_domains: {allowed_domains}')
         else:
             # Create tenant (signals auto-seed groups and reference data)
             tenant = Tenant.objects.create(
@@ -117,6 +139,7 @@ class Command(BaseCommand):
                 status=Tenant.Status.ACTIVE,
                 is_active=True,
                 is_demo=is_demo,
+                allowed_domains=allowed_domains,
             )
             tenant_created = True
             self.stdout.write(
@@ -180,5 +203,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Name: {tenant.name}')
         self.stdout.write(f'  Tier: {tenant.tier}')
         self.stdout.write(f'  Demo: {tenant.is_demo}')
+        if tenant.allowed_domains:
+            self.stdout.write(f'  SSO Domains: {", ".join(tenant.allowed_domains)}')
         if not options['no_admin']:
             self.stdout.write(f'  Admin: {admin_email}')

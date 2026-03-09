@@ -95,3 +95,4 @@ pytestdebug.log
 # Test virtualenv
 .venv_test/
 /.claude/
+/site/

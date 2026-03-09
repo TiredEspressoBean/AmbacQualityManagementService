@@ -212,6 +212,7 @@ class TenantSettingsView(APIView):
                 'address': serializers.CharField(allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(),
                 'logo_url': serializers.CharField(allow_null=True),
+                'allowed_domains': serializers.ListField(child=serializers.CharField()),
             }
         )}
     )
@@ -239,6 +240,7 @@ class TenantSettingsView(APIView):
             'address': tenant.address or None,
             'default_timezone': tenant.default_timezone,
             'logo_url': logo_url,
+            'allowed_domains': tenant.allowed_domains or [],
         })
 
     @extend_schema(
@@ -252,6 +254,7 @@ class TenantSettingsView(APIView):
                 'website': serializers.URLField(required=False, allow_blank=True, allow_null=True),
                 'address': serializers.CharField(required=False, allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(required=False),
+                'allowed_domains': serializers.ListField(child=serializers.CharField(), required=False),
             }
         ),
         responses={200: inline_serializer(
@@ -267,6 +270,7 @@ class TenantSettingsView(APIView):
                 'address': serializers.CharField(allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(),
                 'logo_url': serializers.CharField(allow_null=True),
+                'allowed_domains': serializers.ListField(child=serializers.CharField()),
             }
         )}
     )
@@ -299,6 +303,15 @@ class TenantSettingsView(APIView):
         if 'default_timezone' in request.data:
             tenant.default_timezone = request.data['default_timezone']
 
+        # Update SSO allowed domains
+        if 'allowed_domains' in request.data:
+            domains = request.data['allowed_domains']
+            if isinstance(domains, list):
+                # Normalize domains: lowercase, strip whitespace
+                tenant.allowed_domains = [d.strip().lower() for d in domains if d.strip()]
+            else:
+                raise ValidationError({'allowed_domains': 'Must be a list of domain strings.'})
+
         tenant.save()
 
         logo_url = None
@@ -316,6 +329,7 @@ class TenantSettingsView(APIView):
             'address': tenant.address or None,
             'default_timezone': tenant.default_timezone,
             'logo_url': logo_url,
+            'allowed_domains': tenant.allowed_domains or [],
         })
 
     def _is_tenant_admin(self, user):
