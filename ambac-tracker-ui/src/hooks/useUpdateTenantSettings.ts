@@ -9,6 +9,7 @@ export type TenantSettingsUpdate = {
     address?: string;
     default_timezone?: string;
     settings?: Record<string, unknown>;
+    allowed_domains?: string[];
 };
 
 export type TenantSettingsResponse = {
@@ -22,6 +23,7 @@ export type TenantSettingsResponse = {
     address: string;
     default_timezone: string;
     logo_url: string | null;
+    allowed_domains: string[];
 };
 
 export function useUpdateTenantSettings() {

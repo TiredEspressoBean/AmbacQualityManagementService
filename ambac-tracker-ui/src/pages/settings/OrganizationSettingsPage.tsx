@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Building2, Upload, X, Loader2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { ArrowLeft, Building2, Upload, X, Loader2, Plus, Globe } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
 
 import { useTenantSettings } from "@/hooks/useTenantSettings";
 import { useUpdateTenantSettings } from "@/hooks/useUpdateTenantSettings";
@@ -31,6 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 const TIMEZONES = [
     { value: "UTC", label: "UTC" },
@@ -68,6 +69,16 @@ export function OrganizationSettingsPage() {
     const deleteLogo = useDeleteTenantLogo();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [allowedDomains, setAllowedDomains] = useState<string[]>([]);
+    const [newDomain, setNewDomain] = useState("");
+    const [domainsChanged, setDomainsChanged] = useState(false);
+
+    // Sync allowed domains from server
+    useEffect(() => {
+        if (settings?.allowed_domains) {
+            setAllowedDomains(settings.allowed_domains);
+        }
+    }, [settings?.allowed_domains]);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -132,6 +143,42 @@ export function OrganizationSettingsPage() {
             toast.success("Logo removed");
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to remove logo");
+        }
+    };
+
+    const handleAddDomain = () => {
+        const domain = newDomain.trim().toLowerCase();
+        if (!domain) return;
+
+        // Basic domain validation
+        const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/;
+        if (!domainRegex.test(domain)) {
+            toast.error("Please enter a valid domain (e.g., example.com)");
+            return;
+        }
+
+        if (allowedDomains.includes(domain)) {
+            toast.error("Domain already added");
+            return;
+        }
+
+        setAllowedDomains([...allowedDomains, domain]);
+        setNewDomain("");
+        setDomainsChanged(true);
+    };
+
+    const handleRemoveDomain = (domain: string) => {
+        setAllowedDomains(allowedDomains.filter(d => d !== domain));
+        setDomainsChanged(true);
+    };
+
+    const handleSaveDomains = async () => {
+        try {
+            await updateSettings.mutateAsync({ allowed_domains: allowedDomains });
+            toast.success("SSO domains updated");
+            setDomainsChanged(false);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update SSO domains");
         }
     };
 
@@ -371,6 +418,90 @@ export function OrganizationSettingsPage() {
                                 </div>
                             </form>
                         </Form>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* SSO Allowed Domains */}
+            <Card className="mt-6">
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Globe className="h-5 w-5" />
+                        SSO Allowed Domains
+                    </CardTitle>
+                    <CardDescription>
+                        Users with email addresses from these domains will automatically join this organization when signing in with Microsoft SSO.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-8 w-24" />
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {/* Current domains */}
+                            {allowedDomains.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {allowedDomains.map((domain) => (
+                                        <Badge key={domain} variant="secondary" className="text-sm py-1 px-3">
+                                            {domain}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveDomain(domain)}
+                                                className="ml-2 hover:text-destructive"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </Badge>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    No domains configured. SSO users will create new organizations unless invited.
+                                </p>
+                            )}
+
+                            {/* Add domain input */}
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="example.com"
+                                    value={newDomain}
+                                    onChange={(e) => setNewDomain(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddDomain();
+                                        }
+                                    }}
+                                    className="max-w-xs"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleAddDomain}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add
+                                </Button>
+                            </div>
+
+                            {/* Save button (only show if changes made) */}
+                            {domainsChanged && (
+                                <div className="flex justify-end pt-2">
+                                    <Button
+                                        onClick={handleSaveDomains}
+                                        disabled={updateSettings.isPending}
+                                    >
+                                        {updateSettings.isPending && (
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        )}
+                                        Save Domain Changes
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </CardContent>
             </Card>

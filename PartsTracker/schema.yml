@@ -1457,11 +1457,11 @@ paths:
         schema:
           type: string
           enum:
-          - assembly
-          - disassembly
+          - ASSEMBLY
+          - DISASSEMBLY
         description: |-
-          * `assembly` - Assembly
-          * `disassembly` - Disassembly
+          * `ASSEMBLY` - Assembly
+          * `DISASSEMBLY` - Disassembly
       - name: limit
         required: false
         in: query
@@ -1490,13 +1490,13 @@ paths:
         schema:
           type: string
           enum:
-          - draft
-          - obsolete
-          - released
+          - DRAFT
+          - OBSOLETE
+          - RELEASED
         description: |-
-          * `draft` - Draft
-          * `released` - Released
-          * `obsolete` - Obsolete
+          * `DRAFT` - Draft
+          * `RELEASED` - Released
+          * `OBSOLETE` - Obsolete
       tags:
       - api
       security:
@@ -2304,17 +2304,17 @@ paths:
         schema:
           type: string
           enum:
-          - after_adjustment
-          - after_repair
-          - initial
-          - scheduled
-          - verification
+          - AFTER_ADJUSTMENT
+          - AFTER_REPAIR
+          - INITIAL
+          - SCHEDULED
+          - VERIFICATION
         description: |-
-          * `scheduled` - Scheduled
-          * `initial` - Initial
-          * `after_repair` - After Repair
-          * `after_adjustment` - After Adjustment
-          * `verification` - Verification Check
+          * `SCHEDULED` - Scheduled
+          * `INITIAL` - Initial
+          * `AFTER_REPAIR` - After Repair
+          * `AFTER_ADJUSTMENT` - After Adjustment
+          * `VERIFICATION` - Verification Check
       - in: query
         name: days
         schema:
@@ -2349,13 +2349,13 @@ paths:
         schema:
           type: string
           enum:
-          - fail
-          - limited
-          - pass
+          - FAIL
+          - LIMITED
+          - PASS
         description: |-
-          * `pass` - Pass
-          * `fail` - Fail
-          * `limited` - Limited/Restricted Use
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `LIMITED` - Limited/Restricted Use
       - name: search
         required: false
         in: query
@@ -2414,17 +2414,17 @@ paths:
         schema:
           type: string
           enum:
-          - after_adjustment
-          - after_repair
-          - initial
-          - scheduled
-          - verification
+          - AFTER_ADJUSTMENT
+          - AFTER_REPAIR
+          - INITIAL
+          - SCHEDULED
+          - VERIFICATION
         description: |-
-          * `scheduled` - Scheduled
-          * `initial` - Initial
-          * `after_repair` - After Repair
-          * `after_adjustment` - After Adjustment
-          * `verification` - Verification Check
+          * `SCHEDULED` - Scheduled
+          * `INITIAL` - Initial
+          * `AFTER_REPAIR` - After Repair
+          * `AFTER_ADJUSTMENT` - After Adjustment
+          * `VERIFICATION` - Verification Check
       - in: query
         name: equipment
         schema:
@@ -2459,13 +2459,13 @@ paths:
         schema:
           type: string
           enum:
-          - fail
-          - limited
-          - pass
+          - FAIL
+          - LIMITED
+          - PASS
         description: |-
-          * `pass` - Pass
-          * `fail` - Fail
-          * `limited` - Limited/Restricted Use
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `LIMITED` - Limited/Restricted Use
       - name: search
         required: false
         in: query
@@ -2511,17 +2511,17 @@ paths:
         schema:
           type: string
           enum:
-          - after_adjustment
-          - after_repair
-          - initial
-          - scheduled
-          - verification
+          - AFTER_ADJUSTMENT
+          - AFTER_REPAIR
+          - INITIAL
+          - SCHEDULED
+          - VERIFICATION
         description: |-
-          * `scheduled` - Scheduled
-          * `initial` - Initial
-          * `after_repair` - After Repair
-          * `after_adjustment` - After Adjustment
-          * `verification` - Verification Check
+          * `SCHEDULED` - Scheduled
+          * `INITIAL` - Initial
+          * `AFTER_REPAIR` - After Repair
+          * `AFTER_ADJUSTMENT` - After Adjustment
+          * `VERIFICATION` - Verification Check
       - in: query
         name: equipment
         schema:
@@ -2550,13 +2550,13 @@ paths:
         schema:
           type: string
           enum:
-          - fail
-          - limited
-          - pass
+          - FAIL
+          - LIMITED
+          - PASS
         description: |-
-          * `pass` - Pass
-          * `fail` - Fail
-          * `limited` - Limited/Restricted Use
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `LIMITED` - Limited/Restricted Use
       - name: search
         required: false
         in: query
@@ -3781,29 +3781,29 @@ paths:
         schema:
           type: string
           enum:
-          - customer_return
-          - purchased
-          - trade_in
-          - warranty
+          - CUSTOMER_RETURN
+          - PURCHASED
+          - TRADE_IN
+          - WARRANTY
         description: |-
-          * `customer_return` - Customer Return
-          * `purchased` - Purchased Core
-          * `warranty` - Warranty Return
-          * `trade_in` - Trade-In
+          * `CUSTOMER_RETURN` - Customer Return
+          * `PURCHASED` - Purchased Core
+          * `WARRANTY` - Warranty Return
+          * `TRADE_IN` - Trade-In
       - in: query
         name: status
         schema:
           type: string
           enum:
-          - disassembled
-          - in_disassembly
-          - received
-          - scrapped
+          - DISASSEMBLED
+          - IN_DISASSEMBLY
+          - RECEIVED
+          - SCRAPPED
         description: |-
-          * `received` - Received
-          * `in_disassembly` - In Disassembly
-          * `disassembled` - Disassembled
-          * `scrapped` - Scrapped
+          * `RECEIVED` - Received
+          * `IN_DISASSEMBLY` - In Disassembly
+          * `DISASSEMBLED` - Disassembled
+          * `SCRAPPED` - Scrapped
       tags:
       - api
       security:
@@ -4091,29 +4091,29 @@ paths:
         schema:
           type: string
           enum:
-          - customer_return
-          - purchased
-          - trade_in
-          - warranty
+          - CUSTOMER_RETURN
+          - PURCHASED
+          - TRADE_IN
+          - WARRANTY
         description: |-
-          * `customer_return` - Customer Return
-          * `purchased` - Purchased Core
-          * `warranty` - Warranty Return
-          * `trade_in` - Trade-In
+          * `CUSTOMER_RETURN` - Customer Return
+          * `PURCHASED` - Purchased Core
+          * `WARRANTY` - Warranty Return
+          * `TRADE_IN` - Trade-In
       - in: query
         name: status
         schema:
           type: string
           enum:
-          - disassembled
-          - in_disassembly
-          - received
-          - scrapped
+          - DISASSEMBLED
+          - IN_DISASSEMBLY
+          - RECEIVED
+          - SCRAPPED
         description: |-
-          * `received` - Received
-          * `in_disassembly` - In Disassembly
-          * `disassembled` - Disassembled
-          * `scrapped` - Scrapped
+          * `RECEIVED` - Received
+          * `IN_DISASSEMBLY` - In Disassembly
+          * `DISASSEMBLED` - Disassembled
+          * `SCRAPPED` - Scrapped
       tags:
       - api
       security:
@@ -5390,25 +5390,25 @@ paths:
         schema:
           type: string
           enum:
-          - calibration
-          - changeover
-          - material
-          - no_operator
-          - no_work
-          - other
-          - planned
-          - quality
-          - unplanned
+          - CALIBRATION
+          - CHANGEOVER
+          - MATERIAL
+          - NO_OPERATOR
+          - NO_WORK
+          - OTHER
+          - PLANNED
+          - QUALITY
+          - UNPLANNED
         description: |-
-          * `planned` - Planned Maintenance
-          * `unplanned` - Unplanned/Breakdown
-          * `changeover` - Changeover/Setup
-          * `calibration` - Calibration
-          * `no_work` - No Work Available
-          * `no_operator` - No Operator Available
-          * `material` - Waiting for Material
-          * `quality` - Quality Issue
-          * `other` - Other
+          * `PLANNED` - Planned Maintenance
+          * `UNPLANNED` - Unplanned/Breakdown
+          * `CHANGEOVER` - Changeover/Setup
+          * `CALIBRATION` - Calibration
+          * `NO_WORK` - No Work Available
+          * `NO_OPERATOR` - No Operator Available
+          * `MATERIAL` - Waiting for Material
+          * `QUALITY` - Quality Issue
+          * `OTHER` - Other
       - in: query
         name: equipment
         schema:
@@ -5773,17 +5773,17 @@ paths:
         schema:
           type: string
           enum:
-          - in_calibration
-          - in_maintenance
-          - in_service
-          - out_of_service
-          - retired
+          - IN_CALIBRATION
+          - IN_MAINTENANCE
+          - IN_SERVICE
+          - OUT_OF_SERVICE
+          - RETIRED
         description: |-
-          * `in_service` - In Service
-          * `out_of_service` - Out of Service
-          * `in_calibration` - In Calibration
-          * `in_maintenance` - In Maintenance
-          * `retired` - Retired
+          * `IN_SERVICE` - In Service
+          * `OUT_OF_SERVICE` - Out of Service
+          * `IN_CALIBRATION` - In Calibration
+          * `IN_MAINTENANCE` - In Maintenance
+          * `RETIRED` - Retired
       tags:
       - api
       security:
@@ -9568,17 +9568,17 @@ paths:
         schema:
           type: string
           enum:
-          - consumed
-          - in_use
-          - quarantine
-          - received
-          - scrapped
+          - CONSUMED
+          - IN_USE
+          - QUARANTINE
+          - RECEIVED
+          - SCRAPPED
         description: |-
-          * `received` - Received
-          * `in_use` - In Use
-          * `consumed` - Consumed
-          * `scrapped` - Scrapped
-          * `quarantine` - Quarantine
+          * `RECEIVED` - Received
+          * `IN_USE` - In Use
+          * `CONSUMED` - Consumed
+          * `SCRAPPED` - Scrapped
+          * `QUARANTINE` - Quarantine
       - in: query
         name: supplier
         schema:
@@ -10962,11 +10962,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedStepDistributionResponseList'
           description: ''
-  /api/Orders/export/:
+  /api/Orders/export/{export_format}/:
     get:
       operationId: api_Orders_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -10978,14 +10984,10 @@ paths:
           type: string
         description: Custom filename for the download
       - in: query
-        name: format
+        name: include_references
         schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
       - Import/Export
       security:
@@ -11106,21 +11108,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/Orders/import-template/:
+  /api/Orders/import-template/{template_format}/:
     get:
       operationId: api_Orders_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
+      - in: path
+        name: template_format
         schema:
           type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -11403,11 +11402,17 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/PartTypes/export/:
+  /api/PartTypes/export/{export_format}/:
     get:
       operationId: api_PartTypes_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -11419,14 +11424,10 @@ paths:
           type: string
         description: Custom filename for the download
       - in: query
-        name: format
+        name: include_references
         schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       - in: query
         name: part_type
         schema:
@@ -11569,26 +11570,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/PartTypes/import-template/:
+  /api/PartTypes/import-template/{template_format}/:
     get:
       operationId: api_PartTypes_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
       - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
-      - in: query
         name: part_type
         schema:
           type: string
         description: Filter processes by associated part type UUID
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -12160,11 +12158,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartTravelerResponse'
           description: ''
-  /api/Parts/export/:
+  /api/Parts/export/{export_format}/:
     get:
       operationId: api_Parts_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -12176,14 +12180,10 @@ paths:
           type: string
         description: Custom filename for the download
       - in: query
-        name: format
+        name: include_references
         schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       - in: query
         name: status__in
         schema:
@@ -12342,21 +12342,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/Parts/import-template/:
+  /api/Parts/import-template/{template_format}/:
     get:
       operationId: api_Parts_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
       - in: query
         name: status__in
         schema:
@@ -12366,6 +12357,12 @@ paths:
         description: Filter by multiple status values.
         explode: true
         style: form
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -12567,17 +12564,17 @@ paths:
         schema:
           type: string
           enum:
-          - approved
-          - deprecated
-          - draft
-          - pending_approval
+          - APPROVED
+          - DEPRECATED
+          - DRAFT
+          - PENDING_APPROVAL
         description: |-
           Controls editability and availability for work orders
 
-          * `draft` - Draft
-          * `pending_approval` - Pending Approval
-          * `approved` - Approved
-          * `deprecated` - Deprecated
+          * `DRAFT` - Draft
+          * `PENDING_APPROVAL` - Pending Approval
+          * `APPROVED` - Approved
+          * `DEPRECATED` - Deprecated
       tags:
       - api
       security:
@@ -12965,17 +12962,17 @@ paths:
         schema:
           type: string
           enum:
-          - approved
-          - deprecated
-          - draft
-          - pending_approval
+          - APPROVED
+          - DEPRECATED
+          - DRAFT
+          - PENDING_APPROVAL
         description: |-
           Controls editability and availability for work orders
 
-          * `draft` - Draft
-          * `pending_approval` - Pending Approval
-          * `approved` - Approved
-          * `deprecated` - Deprecated
+          * `DRAFT` - Draft
+          * `PENDING_APPROVAL` - Pending Approval
+          * `APPROVED` - Approved
+          * `DEPRECATED` - Deprecated
       tags:
       - api
       security:
@@ -13413,17 +13410,17 @@ paths:
         schema:
           type: string
           enum:
-          - approved
-          - deprecated
-          - draft
-          - pending_approval
+          - APPROVED
+          - DEPRECATED
+          - DRAFT
+          - PENDING_APPROVAL
         description: |-
           Controls editability and availability for work orders
 
-          * `draft` - Draft
-          * `pending_approval` - Pending Approval
-          * `approved` - Approved
-          * `deprecated` - Deprecated
+          * `DRAFT` - Draft
+          * `PENDING_APPROVAL` - Pending Approval
+          * `APPROVED` - Approved
+          * `DEPRECATED` - Deprecated
       tags:
       - api
       security:
@@ -14669,19 +14666,19 @@ paths:
         schema:
           type: string
           enum:
-          - every_nth_part
-          - exact_count
-          - first_n_parts
-          - last_n_parts
-          - percentage
-          - random
+          - EVERY_NTH_PART
+          - EXACT_COUNT
+          - FIRST_N_PARTS
+          - LAST_N_PARTS
+          - PERCENTAGE
+          - RANDOM
         description: |-
-          * `every_nth_part` - Every Nth Part
-          * `percentage` - Percentage of Parts
-          * `random` - Pure Random
-          * `first_n_parts` - First N Parts
-          * `last_n_parts` - Last N Parts
-          * `exact_count` - Exact Count (No Variance)
+          * `EVERY_NTH_PART` - Every Nth Part
+          * `PERCENTAGE` - Percentage of Parts
+          * `RANDOM` - Pure Random
+          * `FIRST_N_PARTS` - First N Parts
+          * `LAST_N_PARTS` - Last N Parts
+          * `EXACT_COUNT` - Exact Count (No Variance)
       - in: query
         name: ruleset
         schema:
@@ -15054,15 +15051,15 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - completed
-          - in_progress
-          - scheduled
+          - CANCELLED
+          - COMPLETED
+          - IN_PROGRESS
+          - SCHEDULED
         description: |-
-          * `scheduled` - Scheduled
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `cancelled` - Cancelled
+          * `SCHEDULED` - Scheduled
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `CANCELLED` - Cancelled
       - in: query
         name: work_center
         schema:
@@ -15818,21 +15815,21 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - claimed
-          - completed
-          - in_progress
-          - pending
-          - rolled_back
-          - skipped
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
         description: |-
-          * `pending` - Pending
-          * `claimed` - Claimed
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `skipped` - Skipped
-          * `cancelled` - Cancelled
-          * `rolled_back` - Rolled Back
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -16168,21 +16165,21 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - claimed
-          - completed
-          - in_progress
-          - pending
-          - rolled_back
-          - skipped
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
         description: |-
-          * `pending` - Pending
-          * `claimed` - Claimed
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `skipped` - Skipped
-          * `cancelled` - Cancelled
-          * `rolled_back` - Rolled Back
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -16273,21 +16270,21 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - claimed
-          - completed
-          - in_progress
-          - pending
-          - rolled_back
-          - skipped
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
         description: |-
-          * `pending` - Pending
-          * `claimed` - Claimed
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `skipped` - Skipped
-          * `cancelled` - Cancelled
-          * `rolled_back` - Rolled Back
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -16378,21 +16375,21 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - claimed
-          - completed
-          - in_progress
-          - pending
-          - rolled_back
-          - skipped
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
         description: |-
-          * `pending` - Pending
-          * `claimed` - Claimed
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `skipped` - Skipped
-          * `cancelled` - Cancelled
-          * `rolled_back` - Rolled Back
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -16483,21 +16480,21 @@ paths:
         schema:
           type: string
           enum:
-          - cancelled
-          - claimed
-          - completed
-          - in_progress
-          - pending
-          - rolled_back
-          - skipped
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
         description: |-
-          * `pending` - Pending
-          * `claimed` - Claimed
-          * `in_progress` - In Progress
-          * `completed` - Completed
-          * `skipped` - Skipped
-          * `cancelled` - Cancelled
-          * `rolled_back` - Rolled Back
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
       - in: query
         name: status__in
         schema:
@@ -18487,17 +18484,17 @@ paths:
         schema:
           type: string
           enum:
-          - downtime
-          - indirect
-          - production
-          - rework
-          - setup
+          - DOWNTIME
+          - INDIRECT
+          - PRODUCTION
+          - REWORK
+          - SETUP
         description: |-
-          * `production` - Production
-          * `setup` - Setup/Changeover
-          * `rework` - Rework
-          * `downtime` - Downtime
-          * `indirect` - Indirect Labor
+          * `PRODUCTION` - Production
+          * `SETUP` - Setup/Changeover
+          * `REWORK` - Rework
+          * `DOWNTIME` - Downtime
+          * `INDIRECT` - Indirect Labor
       - name: limit
         required: false
         in: query
@@ -21220,11 +21217,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrderStepHistoryResponse'
           description: ''
-  /api/WorkOrders/export/:
+  /api/WorkOrders/export/{export_format}/:
     get:
       operationId: api_WorkOrders_export_retrieve
       description: Export filtered data to CSV or Excel format.
       parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
       - in: query
         name: fields
         schema:
@@ -21236,14 +21239,10 @@ paths:
           type: string
         description: Custom filename for the download
       - in: query
-        name: format
+        name: include_references
         schema:
-          type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Export format (csv or xlsx)
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
       - Import/Export
       security:
@@ -21364,21 +21363,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImportStatusResponse'
           description: ''
-  /api/WorkOrders/import-template/:
+  /api/WorkOrders/import-template/{template_format}/:
     get:
       operationId: api_WorkOrders_import_template_retrieve
       description: Download an import template with headers, hints, and FK lookups
         (Excel only).
       parameters:
-      - in: query
-        name: format
+      - in: path
+        name: template_format
         schema:
           type: string
-          enum:
-          - csv
-          - xlsx
-          default: xlsx
-        description: Template format (csv or xlsx)
+          pattern: ^csv|xlsx$
+        required: true
       tags:
       - Import/Export
       security:
@@ -23492,7 +23488,7 @@ paths:
                             {
                                 "id": "019c4a5d-...",
                                 "label": "Outer Diameter",
-                                "type": "NUMERIC",
+                                "type": "numeric",
                                 "unit": "mm",
                                 "nominal": 25.0,
                                 "upper_tol": 0.1,
@@ -23537,18 +23533,55 @@ paths:
         - Display tenant name in header
 
         Authentication is optional - unauthenticated requests get deployment info only.
+        Authenticated users trying to access other tenants will be blocked.
       tags:
       - api
       security:
       - cookieAuth: []
       - tokenAuth: []
-      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/CurrentTenantResponse'
+          description: ''
+  /api/tenant/demo-reset/:
+    post:
+      operationId: api_tenant_demo_reset_create
+      description: |-
+        Reset demo tenant data to a fresh state.
+
+        Only available for demo tenants and requires admin permissions.
+        Calls the reset_demo management command which clears and repopulates data.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoResetRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoResetResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoResetForbidden'
           description: ''
   /api/tenant/logo/:
     post:
@@ -23774,8 +23807,7 @@ paths:
       - in: path
         name: user_id
         schema:
-          type: string
-          format: uuid
+          type: integer
         required: true
       tags:
       - api
@@ -24239,7 +24271,7 @@ components:
         visibility:
           allOf:
           - $ref: '#/components/schemas/VisibilityEnum'
-          default: visible
+          default: VISIBLE
       required:
       - message
     ApprovalFlowTypeEnum:
@@ -25228,22 +25260,22 @@ components:
       - revision
     BOMStatusEnum:
       enum:
-      - draft
-      - released
-      - obsolete
+      - DRAFT
+      - RELEASED
+      - OBSOLETE
       type: string
       description: |-
-        * `draft` - Draft
-        * `released` - Released
-        * `obsolete` - Obsolete
+        * `DRAFT` - Draft
+        * `RELEASED` - Released
+        * `OBSOLETE` - Obsolete
     BOMTypeEnum:
       enum:
-      - assembly
-      - disassembly
+      - ASSEMBLY
+      - DISASSEMBLY
       type: string
       description: |-
-        * `assembly` - Assembly
-        * `disassembly` - Disassembly
+        * `ASSEMBLY` - Assembly
+        * `DISASSEMBLY` - Disassembly
     BaselineStatusEnum:
       enum:
       - ACTIVE
@@ -25257,30 +25289,30 @@ components:
       - ''
     BlockTypeEnum:
       enum:
-      - qa_signoff
-      - fpi_required
-      - measurement_failed
-      - quarantine
-      - sampling_required
-      - batch_incomplete
-      - training_expired
-      - calibration_expired
-      - regulatory_hold
-      - rollback
-      - other
+      - QA_SIGNOFF
+      - FPI_REQUIRED
+      - MEASUREMENT_FAILED
+      - QUARANTINE
+      - SAMPLING_REQUIRED
+      - BATCH_INCOMPLETE
+      - TRAINING_EXPIRED
+      - CALIBRATION_EXPIRED
+      - REGULATORY_HOLD
+      - ROLLBACK
+      - OTHER
       type: string
       description: |-
-        * `qa_signoff` - QA Signoff Required
-        * `fpi_required` - FPI Required
-        * `measurement_failed` - Measurement Failed
-        * `quarantine` - Part Quarantined
-        * `sampling_required` - Sampling Required
-        * `batch_incomplete` - Batch Incomplete
-        * `training_expired` - Training Expired
-        * `calibration_expired` - Calibration Expired
-        * `regulatory_hold` - Regulatory Hold
-        * `rollback` - Step Rollback
-        * `other` - Other
+        * `QA_SIGNOFF` - QA Signoff Required
+        * `FPI_REQUIRED` - FPI Required
+        * `MEASUREMENT_FAILED` - Measurement Failed
+        * `QUARANTINE` - Part Quarantined
+        * `SAMPLING_REQUIRED` - Sampling Required
+        * `BATCH_INCOMPLETE` - Batch Incomplete
+        * `TRAINING_EXPIRED` - Training Expired
+        * `CALIBRATION_EXPIRED` - Calibration Expired
+        * `REGULATORY_HOLD` - Regulatory Hold
+        * `ROLLBACK` - Step Rollback
+        * `OTHER` - Other
     BulkAddPartsInputRequest:
       type: object
       properties:
@@ -25777,14 +25809,14 @@ components:
       - equipment
     CalibrationRecordResultEnum:
       enum:
-      - pass
-      - fail
-      - limited
+      - PASS
+      - FAIL
+      - LIMITED
       type: string
       description: |-
-        * `pass` - Pass
-        * `fail` - Fail
-        * `limited` - Limited/Restricted Use
+        * `PASS` - Pass
+        * `FAIL` - Fail
+        * `LIMITED` - Limited/Restricted Use
     CalibrationStats:
       type: object
       description: Serializer for calibration statistics response.
@@ -25808,18 +25840,18 @@ components:
       - total_equipment
     CalibrationTypeEnum:
       enum:
-      - scheduled
-      - initial
-      - after_repair
-      - after_adjustment
-      - verification
+      - SCHEDULED
+      - INITIAL
+      - AFTER_REPAIR
+      - AFTER_ADJUSTMENT
+      - VERIFICATION
       type: string
       description: |-
-        * `scheduled` - Scheduled
-        * `initial` - Initial
-        * `after_repair` - After Repair
-        * `after_adjustment` - After Adjustment
-        * `verification` - Verification Check
+        * `SCHEDULED` - Scheduled
+        * `INITIAL` - Initial
+        * `AFTER_REPAIR` - After Repair
+        * `AFTER_ADJUSTMENT` - After Adjustment
+        * `VERIFICATION` - Verification Check
     CapaTaskAssignee:
       type: object
       description: CAPA task assignee serializer
@@ -26175,14 +26207,14 @@ components:
       - verification_method
     ChannelTypeEnum:
       enum:
-      - email
-      - in_app
-      - sms
+      - EMAIL
+      - IN_APP
+      - SMS
       type: string
       description: |-
-        * `email` - Email
-        * `in_app` - In-App Notification
-        * `sms` - SMS
+        * `EMAIL` - Email
+        * `IN_APP` - In-App Notification
+        * `SMS` - SMS
     ChartTypeEnum:
       enum:
       - XBAR_R
@@ -26239,18 +26271,18 @@ components:
       - langgraph_thread_id
     ClassificationEnum:
       enum:
-      - public
-      - internal
-      - confidential
-      - restricted
-      - secret
+      - PUBLIC
+      - INTERNAL
+      - CONFIDENTIAL
+      - RESTRICTED
+      - SECRET
       type: string
       description: |-
-        * `public` - Public
-        * `internal` - Internal Use
-        * `confidential` - Confidential
-        * `restricted` - Restricted
-        * `secret` - Secret
+        * `PUBLIC` - Public
+        * `INTERNAL` - Internal Use
+        * `CONFIDENTIAL` - Confidential
+        * `RESTRICTED` - Restricted
+        * `SECRET` - Secret
     ClockInRequest:
       type: object
       description: Serializer for clocking in
@@ -26685,16 +26717,16 @@ components:
           default: ''
     CoreStatusEnum:
       enum:
-      - received
-      - in_disassembly
-      - disassembled
-      - scrapped
+      - RECEIVED
+      - IN_DISASSEMBLY
+      - DISASSEMBLED
+      - SCRAPPED
       type: string
       description: |-
-        * `received` - Received
-        * `in_disassembly` - In Disassembly
-        * `disassembled` - Disassembled
-        * `scrapped` - Scrapped
+        * `RECEIVED` - Received
+        * `IN_DISASSEMBLY` - In Disassembly
+        * `DISASSEMBLED` - Disassembled
+        * `SCRAPPED` - Scrapped
     CurrentStateEnum:
       enum:
       - OPEN
@@ -26872,14 +26904,14 @@ components:
         * `DELEGATED` - Delegated
     DecisionTypeEnum:
       enum:
-      - qa_result
-      - measurement
-      - manual
+      - QA_RESULT
+      - MEASUREMENT
+      - MANUAL
       type: string
       description: |-
-        * `qa_result` - Based on QA Pass/Fail
-        * `measurement` - Based on Measurement Threshold
-        * `manual` - Manual Operator Selection
+        * `QA_RESULT` - Based on QA Pass/Fail
+        * `MEASUREMENT` - Based on Measurement Threshold
+        * `MANUAL` - Manual Operator Selection
     DefectParetoResponse:
       type: object
       properties:
@@ -26955,6 +26987,34 @@ components:
       description: |-
         * `OPTIONAL` - Optional
         * `DISABLED` - Disabled
+    DemoResetForbidden:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    DemoResetRequestRequest:
+      type: object
+      properties:
+        scale:
+          allOf:
+          - $ref: '#/components/schemas/ScaleEnum'
+          default: small
+    DemoResetResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        reset_at:
+          type: string
+          format: date-time
+      required:
+      - message
+      - reset_at
+      - success
     DeploymentInfo:
       type: object
       description: Serializer for deployment mode information.
@@ -27243,11 +27303,11 @@ components:
           description: |-
             Security classification level for document access control
 
-            * `public` - Public
-            * `internal` - Internal Use
-            * `confidential` - Confidential
-            * `restricted` - Restricted
-            * `secret` - Secret
+            * `PUBLIC` - Public
+            * `INTERNAL` - Internal Use
+            * `CONFIDENTIAL` - Confidential
+            * `RESTRICTED` - Restricted
+            * `SECRET` - Secret
           oneOf:
           - $ref: '#/components/schemas/ClassificationEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -27446,11 +27506,11 @@ components:
           description: |-
             Security classification level for document access control
 
-            * `public` - Public
-            * `internal` - Internal Use
-            * `confidential` - Confidential
-            * `restricted` - Restricted
-            * `secret` - Secret
+            * `PUBLIC` - Public
+            * `INTERNAL` - Internal Use
+            * `CONFIDENTIAL` - Confidential
+            * `RESTRICTED` - Restricted
+            * `SECRET` - Secret
           oneOf:
           - $ref: '#/components/schemas/ClassificationEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -27536,26 +27596,26 @@ components:
         * `OBSOLETE` - Obsolete
     DowntimeCategoryEnum:
       enum:
-      - planned
-      - unplanned
-      - changeover
-      - calibration
-      - no_work
-      - no_operator
-      - material
-      - quality
-      - other
+      - PLANNED
+      - UNPLANNED
+      - CHANGEOVER
+      - CALIBRATION
+      - NO_WORK
+      - NO_OPERATOR
+      - MATERIAL
+      - QUALITY
+      - OTHER
       type: string
       description: |-
-        * `planned` - Planned Maintenance
-        * `unplanned` - Unplanned/Breakdown
-        * `changeover` - Changeover/Setup
-        * `calibration` - Calibration
-        * `no_work` - No Work Available
-        * `no_operator` - No Operator Available
-        * `material` - Waiting for Material
-        * `quality` - Quality Issue
-        * `other` - Other
+        * `PLANNED` - Planned Maintenance
+        * `UNPLANNED` - Unplanned/Breakdown
+        * `CHANGEOVER` - Changeover/Setup
+        * `CALIBRATION` - Calibration
+        * `NO_WORK` - No Work Available
+        * `NO_OPERATOR` - No Operator Available
+        * `MATERIAL` - Waiting for Material
+        * `QUALITY` - Quality Issue
+        * `OTHER` - Other
     DowntimeEvent:
       type: object
       description: Equipment/work center downtime serializer
@@ -27688,14 +27748,14 @@ components:
           default: ' (Copy)'
     EdgeTypeEnum:
       enum:
-      - default
-      - alternate
-      - escalation
+      - DEFAULT
+      - ALTERNATE
+      - ESCALATION
       type: string
       description: |-
-        * `default` - Default/Pass
-        * `alternate` - Alternate/Fail
-        * `escalation` - Escalation
+        * `DEFAULT` - Default/Pass
+        * `ALTERNATE` - Alternate/Fail
+        * `ESCALATION` - Escalation
     EffectivePermissionsResponse:
       type: object
       properties:
@@ -27757,17 +27817,16 @@ components:
           type: string
           format: uuid
           readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -27776,12 +27835,6 @@ components:
           type: string
           format: date-time
           readOnly: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           maxLength: 50
@@ -27800,15 +27853,6 @@ components:
           type: boolean
         track_downtime:
           type: boolean
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
       required:
       - created_at
       - id
@@ -27818,23 +27862,16 @@ components:
       type: object
       description: Equipment type serializer
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
@@ -27854,15 +27891,6 @@ components:
           type: boolean
         track_downtime:
           type: boolean
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
       required:
       - name
     Equipments:
@@ -27949,18 +27977,18 @@ components:
       - name
     EquipmentsStatusEnum:
       enum:
-      - in_service
-      - out_of_service
-      - in_calibration
-      - in_maintenance
-      - retired
+      - IN_SERVICE
+      - OUT_OF_SERVICE
+      - IN_CALIBRATION
+      - IN_MAINTENANCE
+      - RETIRED
       type: string
       description: |-
-        * `in_service` - In Service
-        * `out_of_service` - Out of Service
-        * `in_calibration` - In Calibration
-        * `in_maintenance` - In Maintenance
-        * `retired` - Retired
+        * `IN_SERVICE` - In Service
+        * `OUT_OF_SERVICE` - Out of Service
+        * `IN_CALIBRATION` - In Calibration
+        * `IN_MAINTENANCE` - In Maintenance
+        * `RETIRED` - Retired
     ExecuteQueryRequestRequest:
       type: object
       properties:
@@ -28021,20 +28049,16 @@ components:
           type: string
           format: uuid
           readOnly: true
-        customer_display_name:
+        tenant:
           type: string
-          readOnly: true
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -28043,12 +28067,6 @@ components:
           type: string
           format: date-time
           readOnly: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         stage_name:
           type: string
           maxLength: 100
@@ -28066,23 +28084,19 @@ components:
         last_synced_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
         include_in_progress:
           type: boolean
-        tenant:
+        customer_display_name:
           type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
+          readOnly: true
       required:
       - API_id
       - created_at
       - customer_display_name
       - id
+      - last_synced_at
       - stage_name
       - updated_at
     ExternalAPIOrderIdentifierRequest:
@@ -28092,23 +28106,16 @@ components:
 
         Provides customer-facing display names and full stage information.
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         stage_name:
           type: string
           minLength: 1
@@ -28125,21 +28132,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        last_synced_at:
-          type: string
-          format: date-time
-          nullable: true
         include_in_progress:
           type: boolean
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
       required:
       - API_id
       - stage_name
@@ -28207,11 +28201,11 @@ components:
           description: |-
             Current status of the FPI
 
-            * `not_required` - Not Required
-            * `pending` - Pending
-            * `passed` - Passed
-            * `failed` - Failed
-            * `waived` - Waived
+            * `NOT_REQUIRED` - Not Required
+            * `PENDING` - Pending
+            * `PASSED` - Passed
+            * `FAILED` - Failed
+            * `WAIVED` - Waived
         status_display:
           type: string
           readOnly: true
@@ -28222,9 +28216,9 @@ components:
           description: |-
             Final result of the FPI
 
-            * `pass` - Pass
-            * `fail` - Fail
-            * `conditional` - Conditional Pass
+            * `PASS` - Pass
+            * `FAIL` - Fail
+            * `CONDITIONAL` - Conditional Pass
         result_display:
           type: string
           readOnly: true
@@ -28331,28 +28325,28 @@ components:
       - work_order
     FPIRecordResultEnum:
       enum:
-      - pass
-      - fail
-      - conditional
+      - PASS
+      - FAIL
+      - CONDITIONAL
       type: string
       description: |-
-        * `pass` - Pass
-        * `fail` - Fail
-        * `conditional` - Conditional Pass
+        * `PASS` - Pass
+        * `FAIL` - Fail
+        * `CONDITIONAL` - Conditional Pass
     FPIRecordStatusEnum:
       enum:
-      - not_required
-      - pending
-      - passed
-      - failed
-      - waived
+      - NOT_REQUIRED
+      - PENDING
+      - PASSED
+      - FAILED
+      - WAIVED
       type: string
       description: |-
-        * `not_required` - Not Required
-        * `pending` - Pending
-        * `passed` - Passed
-        * `failed` - Failed
-        * `waived` - Waived
+        * `NOT_REQUIRED` - Not Required
+        * `PENDING` - Pending
+        * `PASSED` - Passed
+        * `FAILED` - Failed
+        * `WAIVED` - Waived
     FPYTrendResponse:
       type: object
       properties:
@@ -29248,16 +29242,16 @@ components:
       - position_z
     HeatMapAnnotationsSeverityEnum:
       enum:
-      - low
-      - medium
-      - high
-      - critical
+      - LOW
+      - MEDIUM
+      - HIGH
+      - CRITICAL
       type: string
       description: |-
-        * `low` - Low
-        * `medium` - Medium
-        * `high` - High
-        * `critical` - Critical
+        * `LOW` - Low
+        * `MEDIUM` - Medium
+        * `HIGH` - High
+        * `CRITICAL` - Critical
     HeatMapFacetsResponse:
       type: object
       properties:
@@ -29419,12 +29413,12 @@ components:
       - data
     IntervalTypeEnum:
       enum:
-      - fixed
-      - deadline_based
+      - FIXED
+      - DEADLINE_BASED
       type: string
       description: |-
-        * `fixed` - fixed
-        * `deadline_based` - deadline_based
+        * `FIXED` - FIXED
+        * `DEADLINE_BASED` - DEADLINE_BASED
     InviteError:
       type: object
       properties:
@@ -29705,18 +29699,18 @@ components:
       - quantity
     MaterialLotStatusEnum:
       enum:
-      - received
-      - in_use
-      - consumed
-      - scrapped
-      - quarantine
+      - RECEIVED
+      - IN_USE
+      - CONSUMED
+      - SCRAPPED
+      - QUARANTINE
       type: string
       description: |-
-        * `received` - Received
-        * `in_use` - In Use
-        * `consumed` - Consumed
-        * `scrapped` - Scrapped
-        * `quarantine` - Quarantine
+        * `RECEIVED` - Received
+        * `IN_USE` - In Use
+        * `CONSUMED` - Consumed
+        * `SCRAPPED` - Scrapped
+        * `QUARANTINE` - Quarantine
     MaterialUsage:
       type: object
       description: Material consumption record serializer
@@ -30225,16 +30219,16 @@ components:
       - interval_type
     NotificationTaskStatusEnum:
       enum:
-      - pending
-      - sent
-      - failed
-      - cancelled
+      - PENDING
+      - SENT
+      - FAILED
+      - CANCELLED
       type: string
       description: |-
-        * `pending` - Pending
-        * `sent` - Sent
-        * `failed` - Failed
-        * `cancelled` - Cancelled
+        * `PENDING` - Pending
+        * `SENT` - Sent
+        * `FAILED` - Failed
+        * `CANCELLED` - Cancelled
     NotificationTypeEnum:
       enum:
       - WEEKLY_REPORT
@@ -32085,17 +32079,16 @@ components:
           type: string
           format: uuid
           readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -32104,12 +32097,6 @@ components:
           type: string
           format: date-time
           readOnly: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           maxLength: 50
@@ -32132,15 +32119,6 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
       required:
       - created_at
       - id
@@ -32150,23 +32128,16 @@ components:
       type: object
       description: Part types serializer
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
@@ -32190,15 +32161,6 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
       required:
       - name
     Parts:
@@ -32215,6 +32177,12 @@ components:
         part_status:
           $ref: '#/components/schemas/PartsStatusEnum'
         requires_sampling:
+          type: boolean
+          readOnly: true
+        needs_qa:
+          type: boolean
+          readOnly: true
+        qa_completed:
           type: boolean
           readOnly: true
         order:
@@ -32304,12 +32272,14 @@ components:
       - has_error
       - id
       - is_from_batch_process
+      - needs_qa
       - order_name
       - part_type
       - part_type_info
       - part_type_name
       - process
       - process_name
+      - qa_completed
       - quality_info
       - requires_sampling
       - step
@@ -32362,7 +32332,7 @@ components:
       - PENDING
       - IN_PROGRESS
       - AWAITING_QA
-      - READY FOR NEXT STEP
+      - READY_FOR_NEXT_STEP
       - COMPLETED
       - QUARANTINED
       - REWORK_NEEDED
@@ -32379,7 +32349,7 @@ components:
         * `PENDING` - Pending
         * `IN_PROGRESS` - In Progress
         * `AWAITING_QA` - Awaiting QA
-        * `READY FOR NEXT STEP` - Ready for next step
+        * `READY_FOR_NEXT_STEP` - Ready for next step
         * `COMPLETED` - Completed
         * `QUARANTINED` - Quarantined
         * `REWORK_NEEDED` - Rework Needed
@@ -33009,11 +32979,11 @@ components:
           description: |-
             Security classification level for document access control
 
-            * `public` - Public
-            * `internal` - Internal Use
-            * `confidential` - Confidential
-            * `restricted` - Restricted
-            * `secret` - Secret
+            * `PUBLIC` - Public
+            * `INTERNAL` - Internal Use
+            * `CONFIDENTIAL` - Confidential
+            * `RESTRICTED` - Restricted
+            * `SECRET` - Secret
           oneOf:
           - $ref: '#/components/schemas/ClassificationEnum'
           - $ref: '#/components/schemas/NullEnum'
@@ -33117,23 +33087,16 @@ components:
       type: object
       description: Equipment type serializer
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
@@ -33153,15 +33116,6 @@ components:
           type: boolean
         track_downtime:
           type: boolean
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
     PatchedEquipmentsRequest:
       type: object
       description: Equipment serializer
@@ -33199,23 +33153,16 @@ components:
 
         Provides customer-facing display names and full stage information.
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         stage_name:
           type: string
           minLength: 1
@@ -33232,21 +33179,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
-        last_synced_at:
-          type: string
-          format: date-time
-          nullable: true
         include_in_progress:
           type: boolean
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
     PatchedFPIRecordRequest:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -33561,23 +33495,16 @@ components:
       type: object
       description: Part types serializer
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
@@ -33601,15 +33528,6 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
     PatchedPartsRequest:
       type: object
       description: Enhanced parts serializer using model methods
@@ -33697,10 +33615,10 @@ components:
           description: |-
             Controls editability and availability for work orders
 
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
         change_description:
           type: string
           nullable: true
@@ -33710,29 +33628,25 @@ components:
       type: object
       description: Processes serializer with graph structure
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
           maxLength: 50
         is_remanufactured:
           type: boolean
+        part_type:
+          type: string
+          format: uuid
         is_batch_process:
           type: boolean
           description: If True, UI treats work order parts as a batch unit
@@ -33742,45 +33656,26 @@ components:
           description: |-
             Controls editability and availability for work orders
 
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
         category:
           allOf:
           - $ref: '#/components/schemas/ProcessesCategoryEnum'
           description: |-
             Process category for workflow engine routing
 
-            * `manufacturing` - Manufacturing
-            * `quality` - Quality
-            * `maintenance` - Maintenance
-            * `npi` - New Product Introduction
-            * `document` - Document Control
+            * `MANUFACTURING` - Manufacturing
+            * `QUALITY` - Quality
+            * `MAINTENANCE` - Maintenance
+            * `NPI` - New Product Introduction
+            * `DOCUMENT` - Document Control
         change_description:
           type: string
           nullable: true
           description: Description of changes from previous version (for approval
             review)
-        approved_at:
-          type: string
-          format: date-time
-          nullable: true
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
-        part_type:
-          type: string
-          format: uuid
-        approved_by:
-          type: integer
-          nullable: true
     PatchedQualityErrorsListRequest:
       type: object
       description: Quality errors list serializer
@@ -34323,7 +34218,7 @@ components:
           description: The step this part moved to (for audit trail)
         decision_result:
           type: string
-          description: 'Result of decision: ''pass'', ''fail'', measurement value,
+          description: 'Result of decision: ''PASS'', ''FAIL'', measurement value,
             etc.'
           maxLength: 50
         status:
@@ -34343,17 +34238,17 @@ components:
           description: |-
             Type of block being overridden
 
-            * `qa_signoff` - QA Signoff Required
-            * `fpi_required` - FPI Required
-            * `measurement_failed` - Measurement Failed
-            * `quarantine` - Part Quarantined
-            * `sampling_required` - Sampling Required
-            * `batch_incomplete` - Batch Incomplete
-            * `training_expired` - Training Expired
-            * `calibration_expired` - Calibration Expired
-            * `regulatory_hold` - Regulatory Hold
-            * `rollback` - Step Rollback
-            * `other` - Other
+            * `QA_SIGNOFF` - QA Signoff Required
+            * `FPI_REQUIRED` - FPI Required
+            * `MEASUREMENT_FAILED` - Measurement Failed
+            * `QUARANTINE` - Part Quarantined
+            * `SAMPLING_REQUIRED` - Sampling Required
+            * `BATCH_INCOMPLETE` - Batch Incomplete
+            * `TRAINING_EXPIRED` - Training Expired
+            * `CALIBRATION_EXPIRED` - Calibration Expired
+            * `REGULATORY_HOLD` - Regulatory Hold
+            * `ROLLBACK` - Step Rollback
+            * `OTHER` - Other
         requested_by:
           type: integer
         reason:
@@ -34370,10 +34265,10 @@ components:
           description: |-
             Current status of the override request
 
-            * `pending` - Pending
-            * `approved` - Approved
-            * `rejected` - Rejected
-            * `expired` - Expired
+            * `PENDING` - Pending
+            * `APPROVED` - Approved
+            * `REJECTED` - Rejected
+            * `EXPIRED` - Expired
         expires_at:
           type: string
           format: date-time
@@ -34428,12 +34323,12 @@ components:
           description: |-
             Visual type for flow editor.
 
-            * `task` - Task
-            * `start` - Start
-            * `decision` - Decision
-            * `rework` - Rework
-            * `timer` - Timer/Wait
-            * `terminal` - Terminal
+            * `TASK` - Task
+            * `START` - Start
+            * `DECISION` - Decision
+            * `REWORK` - Rework
+            * `TIMER` - Timer/Wait
+            * `TERMINAL` - Terminal
         is_decision_point:
           type: boolean
         decision_type:
@@ -34555,6 +34450,11 @@ components:
         default_timezone:
           type: string
           minLength: 1
+        allowed_domains:
+          type: array
+          items:
+            type: string
+            minLength: 1
     PatchedThreeDModelRequest:
       type: object
       description: |-
@@ -34960,16 +34860,16 @@ components:
       - steps
     ProcessStatusEnum:
       enum:
-      - draft
-      - pending_approval
-      - approved
-      - deprecated
+      - DRAFT
+      - PENDING_APPROVAL
+      - APPROVED
+      - DEPRECATED
       type: string
       description: |-
-        * `draft` - Draft
-        * `pending_approval` - Pending Approval
-        * `approved` - Approved
-        * `deprecated` - Deprecated
+        * `DRAFT` - Draft
+        * `PENDING_APPROVAL` - Pending Approval
+        * `APPROVED` - Approved
+        * `DEPRECATED` - Deprecated
     ProcessStep:
       type: object
       description: ProcessStep junction serializer - links step to process with order
@@ -35086,10 +34986,10 @@ components:
           description: |-
             Controls editability and availability for work orders
 
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
         change_description:
           type: string
           nullable: true
@@ -35178,10 +35078,10 @@ components:
           description: |-
             Controls editability and availability for work orders
 
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
         change_description:
           type: string
           nullable: true
@@ -35198,6 +35098,70 @@ components:
           type: string
           format: uuid
           readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
+        external_id:
+          type: string
+          nullable: true
+          description: External system identifier for integration sync
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        is_remanufactured:
+          type: boolean
+        part_type:
+          type: string
+          format: uuid
+        is_batch_process:
+          type: boolean
+          description: If True, UI treats work order parts as a batch unit
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProcessStatusEnum'
+          description: |-
+            Controls editability and availability for work orders
+
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
+        category:
+          allOf:
+          - $ref: '#/components/schemas/ProcessesCategoryEnum'
+          description: |-
+            Process category for workflow engine routing
+
+            * `MANUFACTURING` - Manufacturing
+            * `QUALITY` - Quality
+            * `MAINTENANCE` - Maintenance
+            * `NPI` - New Product Introduction
+            * `DOCUMENT` - Document Control
+        change_description:
+          type: string
+          nullable: true
+          description: Description of changes from previous version (for approval
+            review)
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
         part_type_name:
           type: string
           readOnly: true
@@ -35211,88 +35175,16 @@ components:
           items:
             $ref: '#/components/schemas/StepEdge'
           readOnly: true
-        external_id:
-          type: string
-          nullable: true
-          description: External system identifier for integration sync
-          maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-        version:
+        num_steps:
           type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
-        name:
-          type: string
-          maxLength: 50
-        is_remanufactured:
-          type: boolean
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
-        status:
-          allOf:
-          - $ref: '#/components/schemas/ProcessStatusEnum'
-          description: |-
-            Controls editability and availability for work orders
-
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
-        category:
-          allOf:
-          - $ref: '#/components/schemas/ProcessesCategoryEnum'
-          description: |-
-            Process category for workflow engine routing
-
-            * `manufacturing` - Manufacturing
-            * `quality` - Quality
-            * `maintenance` - Maintenance
-            * `npi` - New Product Introduction
-            * `document` - Document Control
-        change_description:
-          type: string
-          nullable: true
-          description: Description of changes from previous version (for approval
-            review)
-        approved_at:
-          type: string
-          format: date-time
-          nullable: true
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
-        part_type:
-          type: string
-          format: uuid
-        approved_by:
-          type: integer
-          nullable: true
+          readOnly: true
       required:
+      - approved_at
+      - approved_by
       - created_at
       - id
       - name
+      - num_steps
       - part_type
       - part_type_name
       - process_steps
@@ -35300,45 +35192,41 @@ components:
       - updated_at
     ProcessesCategoryEnum:
       enum:
-      - manufacturing
-      - quality
-      - maintenance
-      - npi
-      - document
+      - MANUFACTURING
+      - QUALITY
+      - MAINTENANCE
+      - NPI
+      - DOCUMENT
       type: string
       description: |-
-        * `manufacturing` - Manufacturing
-        * `quality` - Quality
-        * `maintenance` - Maintenance
-        * `npi` - New Product Introduction
-        * `document` - Document Control
+        * `MANUFACTURING` - Manufacturing
+        * `QUALITY` - Quality
+        * `MAINTENANCE` - Maintenance
+        * `NPI` - New Product Introduction
+        * `DOCUMENT` - Document Control
     ProcessesRequest:
       type: object
       description: Processes serializer with graph structure
       properties:
+        tenant:
+          type: string
+          format: uuid
+          nullable: true
+          description: Tenant this record belongs to
         external_id:
           type: string
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
-        archived:
-          type: boolean
-        deleted_at:
-          type: string
-          format: date-time
-          nullable: true
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-        is_current_version:
-          type: boolean
         name:
           type: string
           minLength: 1
           maxLength: 50
         is_remanufactured:
           type: boolean
+        part_type:
+          type: string
+          format: uuid
         is_batch_process:
           type: boolean
           description: If True, UI treats work order parts as a batch unit
@@ -35348,60 +35236,41 @@ components:
           description: |-
             Controls editability and availability for work orders
 
-            * `draft` - Draft
-            * `pending_approval` - Pending Approval
-            * `approved` - Approved
-            * `deprecated` - Deprecated
+            * `DRAFT` - Draft
+            * `PENDING_APPROVAL` - Pending Approval
+            * `APPROVED` - Approved
+            * `DEPRECATED` - Deprecated
         category:
           allOf:
           - $ref: '#/components/schemas/ProcessesCategoryEnum'
           description: |-
             Process category for workflow engine routing
 
-            * `manufacturing` - Manufacturing
-            * `quality` - Quality
-            * `maintenance` - Maintenance
-            * `npi` - New Product Introduction
-            * `document` - Document Control
+            * `MANUFACTURING` - Manufacturing
+            * `QUALITY` - Quality
+            * `MAINTENANCE` - Maintenance
+            * `NPI` - New Product Introduction
+            * `DOCUMENT` - Document Control
         change_description:
           type: string
           nullable: true
           description: Description of changes from previous version (for approval
             review)
-        approved_at:
-          type: string
-          format: date-time
-          nullable: true
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        previous_version:
-          type: string
-          format: uuid
-          nullable: true
-        part_type:
-          type: string
-          format: uuid
-        approved_by:
-          type: integer
-          nullable: true
       required:
       - name
       - part_type
     ProcessingStatusEnum:
       enum:
-      - pending
-      - processing
-      - completed
-      - failed
+      - PENDING
+      - PROCESSING
+      - COMPLETED
+      - FAILED
       type: string
       description: |-
-        * `pending` - Pending
-        * `processing` - Processing
-        * `completed` - Completed
-        * `failed` - Failed
+        * `PENDING` - Pending
+        * `PROCESSING` - Processing
+        * `COMPLETED` - Completed
+        * `FAILED` - Failed
     QADocumentsResponse:
       type: object
       properties:
@@ -36254,16 +36123,16 @@ components:
       - detail
     RevisitAssignmentEnum:
       enum:
-      - any
-      - same
-      - different
-      - role
+      - ANY
+      - SAME
+      - DIFFERENT
+      - ROLE
       type: string
       description: |-
-        * `any` - Any Qualified Operator
-        * `same` - Same as Previous
-        * `different` - Different Operator
-        * `role` - Specific Role
+        * `ANY` - Any Qualified Operator
+        * `SAME` - Same as Previous
+        * `DIFFERENT` - Different Operator
+        * `ROLE` - Specific Role
     RoleEnum:
       enum:
       - PRIMARY
@@ -36380,20 +36249,20 @@ components:
         * `DISPUTED` - Disputed
     RuleTypeEnum:
       enum:
-      - every_nth_part
-      - percentage
-      - random
-      - first_n_parts
-      - last_n_parts
-      - exact_count
+      - EVERY_NTH_PART
+      - PERCENTAGE
+      - RANDOM
+      - FIRST_N_PARTS
+      - LAST_N_PARTS
+      - EXACT_COUNT
       type: string
       description: |-
-        * `every_nth_part` - Every Nth Part
-        * `percentage` - Percentage of Parts
-        * `random` - Pure Random
-        * `first_n_parts` - First N Parts
-        * `last_n_parts` - Last N Parts
-        * `exact_count` - Exact Count (No Variance)
+        * `EVERY_NTH_PART` - Every Nth Part
+        * `PERCENTAGE` - Percentage of Parts
+        * `RANDOM` - Pure Random
+        * `FIRST_N_PARTS` - First N Parts
+        * `LAST_N_PARTS` - Last N Parts
+        * `EXACT_COUNT` - Exact Count (No Variance)
     SPCBaseline:
       type: object
       description: Full SPC Baseline serializer with all fields and computed properties.
@@ -36517,8 +36386,8 @@ components:
           description: User who froze/created this baseline
         frozen_by_name:
           type: string
-          nullable: true
           readOnly: true
+          nullable: true
         frozen_at:
           type: string
           format: date-time
@@ -36704,8 +36573,8 @@ components:
           description: User who froze/created this baseline
         frozen_by_name:
           type: string
-          nullable: true
           readOnly: true
+          nullable: true
         frozen_at:
           type: string
           format: date-time
@@ -37200,6 +37069,16 @@ components:
       required:
       - order
       - rule_type
+    ScaleEnum:
+      enum:
+      - small
+      - medium
+      - large
+      type: string
+      description: |-
+        * `small` - small
+        * `medium` - medium
+        * `large` - large
     ScheduleSlot:
       type: object
       description: Production schedule slot serializer
@@ -37315,16 +37194,16 @@ components:
       - work_order
     ScheduleSlotStatusEnum:
       enum:
-      - scheduled
-      - in_progress
-      - completed
-      - cancelled
+      - SCHEDULED
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
       type: string
       description: |-
-        * `scheduled` - Scheduled
-        * `in_progress` - In Progress
-        * `completed` - Completed
-        * `cancelled` - Cancelled
+        * `SCHEDULED` - Scheduled
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
     SendInvitationInputRequest:
       type: object
       properties:
@@ -37480,16 +37359,16 @@ components:
       - user
     SourceTypeEnum:
       enum:
-      - customer_return
-      - purchased
-      - warranty
-      - trade_in
+      - CUSTOMER_RETURN
+      - PURCHASED
+      - WARRANTY
+      - TRADE_IN
       type: string
       description: |-
-        * `customer_return` - Customer Return
-        * `purchased` - Purchased Core
-        * `warranty` - Warranty Return
-        * `trade_in` - Trade-In
+        * `CUSTOMER_RETURN` - Customer Return
+        * `PURCHASED` - Purchased Core
+        * `WARRANTY` - Warranty Return
+        * `TRADE_IN` - Trade-In
     Step:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -37532,12 +37411,12 @@ components:
           description: |-
             Visual type for flow editor.
 
-            * `task` - Task
-            * `start` - Start
-            * `decision` - Decision
-            * `rework` - Rework
-            * `timer` - Timer/Wait
-            * `terminal` - Terminal
+            * `TASK` - Task
+            * `START` - Start
+            * `DECISION` - Decision
+            * `REWORK` - Rework
+            * `TIMER` - Timer/Wait
+            * `TERMINAL` - Terminal
         is_decision_point:
           type: boolean
         decision_type:
@@ -37747,7 +37626,7 @@ components:
           description: The step this part moved to (for audit trail)
         decision_result:
           type: string
-          description: 'Result of decision: ''pass'', ''fail'', measurement value,
+          description: 'Result of decision: ''PASS'', ''FAIL'', measurement value,
             etc.'
           maxLength: 50
         status:
@@ -37832,7 +37711,7 @@ components:
           readOnly: true
         decision_result:
           type: string
-          description: 'Result of decision: ''pass'', ''fail'', measurement value,
+          description: 'Result of decision: ''PASS'', ''FAIL'', measurement value,
             etc.'
           maxLength: 50
       required:
@@ -38005,7 +37884,7 @@ components:
           description: The step this part moved to (for audit trail)
         decision_result:
           type: string
-          description: 'Result of decision: ''pass'', ''fail'', measurement value,
+          description: 'Result of decision: ''PASS'', ''FAIL'', measurement value,
             etc.'
           maxLength: 50
         status:
@@ -38017,22 +37896,22 @@ components:
       - step
     StepExecutionStatusEnum:
       enum:
-      - pending
-      - claimed
-      - in_progress
-      - completed
-      - skipped
-      - cancelled
-      - rolled_back
+      - PENDING
+      - CLAIMED
+      - IN_PROGRESS
+      - COMPLETED
+      - SKIPPED
+      - CANCELLED
+      - ROLLED_BACK
       type: string
       description: |-
-        * `pending` - Pending
-        * `claimed` - Claimed
-        * `in_progress` - In Progress
-        * `completed` - Completed
-        * `skipped` - Skipped
-        * `cancelled` - Cancelled
-        * `rolled_back` - Rolled Back
+        * `PENDING` - Pending
+        * `CLAIMED` - Claimed
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+        * `SKIPPED` - Skipped
+        * `CANCELLED` - Cancelled
+        * `ROLLED_BACK` - Rolled Back
     StepIncrementInputRequest:
       type: object
       properties:
@@ -38073,17 +37952,17 @@ components:
           description: |-
             Type of block being overridden
 
-            * `qa_signoff` - QA Signoff Required
-            * `fpi_required` - FPI Required
-            * `measurement_failed` - Measurement Failed
-            * `quarantine` - Part Quarantined
-            * `sampling_required` - Sampling Required
-            * `batch_incomplete` - Batch Incomplete
-            * `training_expired` - Training Expired
-            * `calibration_expired` - Calibration Expired
-            * `regulatory_hold` - Regulatory Hold
-            * `rollback` - Step Rollback
-            * `other` - Other
+            * `QA_SIGNOFF` - QA Signoff Required
+            * `FPI_REQUIRED` - FPI Required
+            * `MEASUREMENT_FAILED` - Measurement Failed
+            * `QUARANTINE` - Part Quarantined
+            * `SAMPLING_REQUIRED` - Sampling Required
+            * `BATCH_INCOMPLETE` - Batch Incomplete
+            * `TRAINING_EXPIRED` - Training Expired
+            * `CALIBRATION_EXPIRED` - Calibration Expired
+            * `REGULATORY_HOLD` - Regulatory Hold
+            * `ROLLBACK` - Step Rollback
+            * `OTHER` - Other
         block_type_display:
           type: string
           readOnly: true
@@ -38123,10 +38002,10 @@ components:
           description: |-
             Current status of the override request
 
-            * `pending` - Pending
-            * `approved` - Approved
-            * `rejected` - Rejected
-            * `expired` - Expired
+            * `PENDING` - Pending
+            * `APPROVED` - Approved
+            * `REJECTED` - Rejected
+            * `EXPIRED` - Expired
         status_display:
           type: string
           readOnly: true
@@ -38187,17 +38066,17 @@ components:
           description: |-
             Type of block being overridden
 
-            * `qa_signoff` - QA Signoff Required
-            * `fpi_required` - FPI Required
-            * `measurement_failed` - Measurement Failed
-            * `quarantine` - Part Quarantined
-            * `sampling_required` - Sampling Required
-            * `batch_incomplete` - Batch Incomplete
-            * `training_expired` - Training Expired
-            * `calibration_expired` - Calibration Expired
-            * `regulatory_hold` - Regulatory Hold
-            * `rollback` - Step Rollback
-            * `other` - Other
+            * `QA_SIGNOFF` - QA Signoff Required
+            * `FPI_REQUIRED` - FPI Required
+            * `MEASUREMENT_FAILED` - Measurement Failed
+            * `QUARANTINE` - Part Quarantined
+            * `SAMPLING_REQUIRED` - Sampling Required
+            * `BATCH_INCOMPLETE` - Batch Incomplete
+            * `TRAINING_EXPIRED` - Training Expired
+            * `CALIBRATION_EXPIRED` - Calibration Expired
+            * `REGULATORY_HOLD` - Regulatory Hold
+            * `ROLLBACK` - Step Rollback
+            * `OTHER` - Other
         requested_by:
           type: integer
         reason:
@@ -38214,10 +38093,10 @@ components:
           description: |-
             Current status of the override request
 
-            * `pending` - Pending
-            * `approved` - Approved
-            * `rejected` - Rejected
-            * `expired` - Expired
+            * `PENDING` - Pending
+            * `APPROVED` - Approved
+            * `REJECTED` - Rejected
+            * `EXPIRED` - Expired
         expires_at:
           type: string
           format: date-time
@@ -38235,16 +38114,16 @@ components:
       - step_execution
     StepOverrideStatusEnum:
       enum:
-      - pending
-      - approved
-      - rejected
-      - expired
+      - PENDING
+      - APPROVED
+      - REJECTED
+      - EXPIRED
       type: string
       description: |-
-        * `pending` - Pending
-        * `approved` - Approved
-        * `rejected` - Rejected
-        * `expired` - Expired
+        * `PENDING` - Pending
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+        * `EXPIRED` - Expired
     StepRequest:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -38281,12 +38160,12 @@ components:
           description: |-
             Visual type for flow editor.
 
-            * `task` - Task
-            * `start` - Start
-            * `decision` - Decision
-            * `rework` - Rework
-            * `timer` - Timer/Wait
-            * `terminal` - Terminal
+            * `TASK` - Task
+            * `START` - Start
+            * `DECISION` - Decision
+            * `REWORK` - Rework
+            * `TIMER` - Timer/Wait
+            * `TERMINAL` - Terminal
         is_decision_point:
           type: boolean
         decision_type:
@@ -38387,20 +38266,20 @@ components:
       - step_order
     StepTypeEnum:
       enum:
-      - task
-      - start
-      - decision
-      - rework
-      - timer
-      - terminal
+      - TASK
+      - START
+      - DECISION
+      - REWORK
+      - TIMER
+      - TERMINAL
       type: string
       description: |-
-        * `task` - Task
-        * `start` - Start
-        * `decision` - Decision
-        * `rework` - Rework
-        * `timer` - Timer/Wait
-        * `terminal` - Terminal
+        * `TASK` - Task
+        * `START` - Start
+        * `DECISION` - Decision
+        * `REWORK` - Rework
+        * `TIMER` - Timer/Wait
+        * `TERMINAL` - Terminal
     Steps:
       type: object
       description: |-
@@ -38457,12 +38336,12 @@ components:
           description: |-
             Visual type for flow editor.
 
-            * `task` - Task
-            * `start` - Start
-            * `decision` - Decision
-            * `rework` - Rework
-            * `timer` - Timer/Wait
-            * `terminal` - Terminal
+            * `TASK` - Task
+            * `START` - Start
+            * `DECISION` - Decision
+            * `REWORK` - Rework
+            * `TIMER` - Timer/Wait
+            * `TERMINAL` - Terminal
         is_decision_point:
           type: boolean
         decision_type:
@@ -38549,12 +38428,12 @@ components:
           description: |-
             Visual type for flow editor.
 
-            * `task` - Task
-            * `start` - Start
-            * `decision` - Decision
-            * `rework` - Rework
-            * `timer` - Timer/Wait
-            * `terminal` - Terminal
+            * `TASK` - Task
+            * `START` - Start
+            * `DECISION` - Decision
+            * `REWORK` - Rework
+            * `TIMER` - Timer/Wait
+            * `TERMINAL` - Terminal
         is_decision_point:
           type: boolean
         decision_type:
@@ -39083,8 +38962,13 @@ components:
         logo_url:
           type: string
           nullable: true
+        allowed_domains:
+          type: array
+          items:
+            type: string
       required:
       - address
+      - allowed_domains
       - contact_email
       - contact_phone
       - default_timezone
@@ -39125,8 +39009,13 @@ components:
         logo_url:
           type: string
           nullable: true
+        allowed_domains:
+          type: array
+          items:
+            type: string
       required:
       - address
+      - allowed_domains
       - contact_email
       - contact_phone
       - default_timezone
@@ -39138,36 +39027,36 @@ components:
       - website
     TenantStatusEnum:
       enum:
-      - active
-      - trial
-      - suspended
-      - pending_deletion
+      - ACTIVE
+      - TRIAL
+      - SUSPENDED
+      - PENDING_DELETION
       type: string
       description: |-
-        * `active` - Active
-        * `trial` - Trial
-        * `suspended` - Suspended
-        * `pending_deletion` - Pending Deletion
+        * `ACTIVE` - Active
+        * `TRIAL` - Trial
+        * `SUSPENDED` - Suspended
+        * `PENDING_DELETION` - Pending Deletion
     TerminalStatusEnum:
       enum:
-      - completed
-      - shipped
-      - stock
-      - scrapped
-      - returned
-      - awaiting_pickup
-      - core_banked
-      - rma_closed
+      - COMPLETED
+      - SHIPPED
+      - STOCK
+      - SCRAPPED
+      - RETURNED
+      - AWAITING_PICKUP
+      - CORE_BANKED
+      - RMA_CLOSED
       type: string
       description: |-
-        * `completed` - Completed Successfully
-        * `shipped` - Shipped to Customer
-        * `stock` - Put into Inventory
-        * `scrapped` - Scrapped
-        * `returned` - Returned to Supplier
-        * `awaiting_pickup` - Awaiting Customer Pickup
-        * `core_banked` - Core Banked
-        * `rma_closed` - RMA Closed
+        * `COMPLETED` - Completed Successfully
+        * `SHIPPED` - Shipped to Customer
+        * `STOCK` - Put into Inventory
+        * `SCRAPPED` - Scrapped
+        * `RETURNED` - Returned to Supplier
+        * `AWAITING_PICKUP` - Awaiting Customer Pickup
+        * `CORE_BANKED` - Core Banked
+        * `RMA_CLOSED` - RMA Closed
     TestSendResponse:
       type: object
       properties:
@@ -39230,10 +39119,10 @@ components:
           description: |-
             Current processing state
 
-            * `pending` - Pending
-            * `processing` - Processing
-            * `completed` - Completed
-            * `failed` - Failed
+            * `PENDING` - Pending
+            * `PROCESSING` - Processing
+            * `COMPLETED` - Completed
+            * `FAILED` - Failed
         processing_error:
           type: string
           readOnly: true
@@ -39334,14 +39223,14 @@ components:
       - part_type
     TierEnum:
       enum:
-      - starter
-      - pro
-      - enterprise
+      - STARTER
+      - PRO
+      - ENTERPRISE
       type: string
       description: |-
-        * `starter` - Starter
-        * `pro` - Pro
-        * `enterprise` - Enterprise
+        * `STARTER` - Starter
+        * `PRO` - Pro
+        * `ENTERPRISE` - Enterprise
     TimeEntry:
       type: object
       description: Labor time entry serializer
@@ -39484,18 +39373,18 @@ components:
       - start_time
     TimeEntryTypeEnum:
       enum:
-      - production
-      - setup
-      - rework
-      - downtime
-      - indirect
+      - PRODUCTION
+      - SETUP
+      - REWORK
+      - DOWNTIME
+      - INDIRECT
       type: string
       description: |-
-        * `production` - Production
-        * `setup` - Setup/Changeover
-        * `rework` - Rework
-        * `downtime` - Downtime
-        * `indirect` - Indirect Labor
+        * `PRODUCTION` - Production
+        * `SETUP` - Setup/Changeover
+        * `REWORK` - Rework
+        * `DOWNTIME` - Downtime
+        * `INDIRECT` - Indirect Labor
     Token:
       type: object
       description: Serializer for Token model.
@@ -40519,12 +40408,12 @@ components:
       - key
     VisibilityEnum:
       enum:
-      - visible
-      - internal
+      - VISIBLE
+      - INTERNAL
       type: string
       description: |-
-        * `visible` - visible
-        * `internal` - internal
+        * `VISIBLE` - VISIBLE
+        * `INTERNAL` - INTERNAL
     WIPSummary:
       type: object
       description: Serializer for WIP summary by step.
