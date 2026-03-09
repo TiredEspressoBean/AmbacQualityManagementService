@@ -1,0 +1,9 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "proxy-service/Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
