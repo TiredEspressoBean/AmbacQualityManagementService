@@ -250,8 +250,8 @@ class TenantMiddleware:
         if not user.is_authenticated:
             return False
 
-        # Superusers can access any tenant
-        if user.is_superuser:
+        # Superusers and staff can access any tenant (for support)
+        if user.is_superuser or user.is_staff:
             return True
 
         # Check if it's the user's home tenant

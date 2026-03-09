@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Check, ChevronsUpDown, Plus, Settings } from "lucide-react";
+import { Building2, Check, ChevronsUpDown, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 import { useTenantContext } from "@/components/tenant-provider";
@@ -34,7 +34,7 @@ export function AppSidebarHeader() {
     const isStaff = user?.is_staff || user?.is_superuser;
     const hasMultipleTenants = tenants && tenants.length > 1;
 
-    // Staff always sees dropdown, others only if multiple tenants in SaaS mode
+    // Staff always sees dropdown (for support), others only if multiple tenants
     const showDropdown = isStaff || (isSaas && hasMultipleTenants);
 
     const handleTenantSwitch = (tenantId: string) => {
@@ -168,20 +168,6 @@ export function AppSidebarHeader() {
                         <span>Organization settings</span>
                     </Link>
                 </DropdownMenuItem>
-                {isStaff && (
-                    <DropdownMenuItem asChild>
-                        <Link
-                            to="/settings"
-                            className="gap-2 cursor-pointer"
-                            onClick={() => setOpen(false)}
-                        >
-                            <div className="size-6 rounded border border-dashed flex items-center justify-center">
-                                <Plus className="size-3" />
-                            </div>
-                            <span className="text-muted-foreground">Add organization</span>
-                        </Link>
-                    </DropdownMenuItem>
-                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );

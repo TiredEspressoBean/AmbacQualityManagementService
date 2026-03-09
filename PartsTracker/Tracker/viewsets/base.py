@@ -166,14 +166,22 @@ class TenantScopedMixin(TenantAwareMixin):
                 return queryset.for_user(self.request.user, include_archived=self._include_archived())
             return queryset
 
-        # Superuser bypass (if enabled)
-        if self.allow_superuser_bypass and self.request.user.is_superuser:
-            # Superusers can optionally filter by tenant via query param
+        # Superuser/staff bypass (if enabled) - staff can access any tenant for support
+        if self.allow_superuser_bypass and (self.request.user.is_superuser or self.request.user.is_staff):
+            # Filter by tenant from header/request context, or query param
             tenant_filter = self.request.query_params.get('tenant')
             if tenant_filter:
                 queryset = queryset.filter(tenant_id=tenant_filter)
+            elif self.tenant:
+                # Use tenant from X-Tenant-ID header (set by middleware)
+                queryset = queryset.filter(tenant=self.tenant)
+            # else: no tenant filter, show all tenants' data
 
-            # Still apply for_user for export control, but superusers see all
+            # Set _current_tenant on user for for_user() filtering
+            if self.tenant:
+                self.request.user._current_tenant = self.tenant
+
+            # Still apply for_user for export control, but superusers/staff see all
             if hasattr(queryset, 'for_user'):
                 return queryset.for_user(self.request.user, include_archived=self._include_archived())
             return queryset

@@ -86,8 +86,17 @@ class TenantPermissionBackend(ModelBackend):
         if not user_obj.is_active:
             return False
 
+        # Superusers have full access to everything
         if user_obj.is_superuser:
             return True
+
+        # Staff get read-only access to any tenant (for support)
+        # They can view but not add/change/delete
+        if user_obj.is_staff:
+            # Extract the permission codename (e.g., "Tracker.view_parts" -> "view_parts")
+            perm_codename = perm.split('.')[-1] if '.' in perm else perm
+            if perm_codename.startswith('view_'):
+                return True
 
         return perm in self.get_all_permissions(user_obj, obj)
 

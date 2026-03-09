@@ -449,6 +449,14 @@ class SecureQuerySet(models.QuerySet):
                 queryset = queryset.filter(tenant=tenant)
             return self._apply_security_filters(queryset, user, model_name)
 
+        # Staff get read-only access to any tenant (for support)
+        # They bypass relationship-based filtering but still get security filters
+        if user.is_staff:
+            tenant = getattr(user, '_current_tenant', None)
+            if tenant:
+                queryset = queryset.filter(tenant=tenant)
+            return self._apply_security_filters(queryset, user, model_name)
+
         # Check for view permission on this model
         # Django permissions are named view_{model_name} without trailing 's'
         view_perm = f'view_{model_name}'
@@ -691,6 +699,14 @@ class SecureManager(models.Manager):
 
         # Superuser bypasses all checks (but still apply security filters)
         if user.is_superuser:
+            tenant = getattr(user, '_current_tenant', None)
+            if tenant:
+                queryset = queryset.filter(tenant=tenant)
+            return self._apply_security_filters(queryset, user, model_name)
+
+        # Staff get read-only access to any tenant (for support)
+        # They bypass relationship-based filtering but still get security filters
+        if user.is_staff:
             tenant = getattr(user, '_current_tenant', None)
             if tenant:
                 queryset = queryset.filter(tenant=tenant)
@@ -1712,6 +1728,10 @@ class User(AbstractUser):
             bool: True if user has the permission
         """
         if self.is_superuser:
+            return True
+
+        # Staff get read-only access to any tenant (for support)
+        if self.is_staff and perm.startswith('view_'):
             return True
 
         tenant = self._resolve_tenant(tenant)

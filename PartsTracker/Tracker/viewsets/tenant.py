@@ -1311,27 +1311,33 @@ class UserTenantsView(APIView):
         user = request.user
         current_tenant = getattr(request, 'tenant', None)
 
-        # Get all tenants this user belongs to
-        # Users have a tenant FK, but could also have TenantGroupMembership in other tenants
-        tenants = set()
+        # Staff/superusers can see and switch to all tenants (for support)
+        if user.is_staff or user.is_superuser:
+            tenants = list(Tenant.objects.filter(is_active=True).order_by('name'))
+        else:
+            # Get all tenants this user belongs to
+            # Users have a tenant FK, but could also have TenantGroupMembership in other tenants
+            tenants_set = set()
 
-        # Primary tenant
-        if user.tenant:
-            tenants.add(user.tenant)
+            # Primary tenant
+            if user.tenant:
+                tenants_set.add(user.tenant)
 
-        # Additional tenants via group memberships
-        from Tracker.models import TenantGroupMembership
-        memberships = TenantGroupMembership.objects.filter(
-            user=user
-        ).select_related('tenant')
+            # Additional tenants via group memberships
+            from Tracker.models import TenantGroupMembership
+            memberships = TenantGroupMembership.objects.filter(
+                user=user
+            ).select_related('tenant')
 
-        for membership in memberships:
-            if membership.tenant:
-                tenants.add(membership.tenant)
+            for membership in memberships:
+                if membership.tenant:
+                    tenants_set.add(membership.tenant)
+
+            tenants = sorted(tenants_set, key=lambda t: t.name)
 
         # Build response
         result = []
-        for tenant in sorted(tenants, key=lambda t: t.name):
+        for tenant in tenants:
             logo_url = None
             if tenant.logo:
                 logo_url = request.build_absolute_uri(tenant.logo.url)
@@ -1470,8 +1476,8 @@ class SwitchTenantView(APIView):
         user = request.user
         has_access = False
 
-        # Superusers can access any tenant
-        if user.is_superuser:
+        # Superusers and staff can access any tenant (for support)
+        if user.is_superuser or user.is_staff:
             has_access = True
         elif user.tenant and str(user.tenant.id) == str(tenant_id):
             has_access = True

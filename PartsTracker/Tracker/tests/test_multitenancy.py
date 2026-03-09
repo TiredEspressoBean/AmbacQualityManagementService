@@ -763,3 +763,290 @@ class RLSPolicyTestCase(VectorTestCase):
                     """,
                     [str(self.tenant_b.id)]
                 )
+
+
+@skipIf(not is_vector_extension_available(), "Vector extension not available")
+@override_settings(DEDICATED_MODE=False)
+class StaffTenantAccessTestCase(VectorTestCase):
+    """
+    Tests for staff user access to all tenants.
+
+    Staff users (is_staff=True) should:
+    - Be able to list all tenants
+    - Be able to switch to any tenant
+    - Have read-only access (view_* permissions only)
+    - NOT be able to create/update/delete in other tenants
+
+    Superusers (is_superuser=True) should:
+    - Have full access to all tenants
+    """
+
+    def setUp(self):
+        # Create tenants
+        self.tenant_a = Tenant.objects.create(name="Tenant A", slug="tenant-a")
+        self.tenant_b = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+
+        # Create a regular user in Tenant A
+        self.regular_user = User.objects.create_user(
+            username='regular_user',
+            email='regular@test.com',
+            password='testpass',
+            tenant=self.tenant_a
+        )
+
+        # Create a staff user (NOT superuser) in Tenant A
+        self.staff_user = User.objects.create_user(
+            username='staff_user',
+            email='staff@test.com',
+            password='testpass',
+            tenant=self.tenant_a,
+            is_staff=True
+        )
+
+        # Create a superuser (no tenant)
+        self.superuser = User.objects.create_superuser(
+            username='superuser',
+            email='super@test.com',
+            password='testpass'
+        )
+
+        # Create test data in both tenants
+        self.company_a = Companies.objects.create(
+            tenant=self.tenant_a, name="Company A"
+        )
+        self.company_b = Companies.objects.create(
+            tenant=self.tenant_b, name="Company B"
+        )
+
+        self.order_a = Orders.objects.create(
+            tenant=self.tenant_a,
+            name="Order A",
+            company=self.company_a
+        )
+        self.order_b = Orders.objects.create(
+            tenant=self.tenant_b,
+            name="Order B",
+            company=self.company_b
+        )
+
+        self.client = APIClient()
+
+    # =========================================================================
+    # TENANT LISTING TESTS
+    # =========================================================================
+
+    def test_staff_sees_all_tenants_in_list(self):
+        """Staff users should see ALL tenants in the tenant list."""
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.get('/api/user/tenants/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        tenant_names = [t['name'] for t in response.data]
+        self.assertIn("Tenant A", tenant_names)
+        self.assertIn("Tenant B", tenant_names)
+
+    def test_regular_user_sees_only_own_tenant(self):
+        """Regular users should only see tenants they belong to."""
+        self.client.force_authenticate(user=self.regular_user)
+
+        response = self.client.get('/api/user/tenants/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        tenant_names = [t['name'] for t in response.data]
+        self.assertIn("Tenant A", tenant_names)
+        self.assertNotIn("Tenant B", tenant_names)
+
+    # =========================================================================
+    # TENANT SWITCHING TESTS
+    # =========================================================================
+
+    def test_staff_can_switch_to_any_tenant(self):
+        """Staff users should be able to switch to any tenant."""
+        self.client.force_authenticate(user=self.staff_user)
+
+        # Switch to Tenant B (not staff user's home tenant)
+        response = self.client.post('/api/user/tenants/switch/', {
+            'tenant_id': str(self.tenant_b.id)
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['tenant_name'], "Tenant B")
+
+    def test_regular_user_cannot_switch_to_other_tenant(self):
+        """Regular users should NOT be able to switch to other tenants."""
+        self.client.force_authenticate(user=self.regular_user)
+
+        # Try to switch to Tenant B
+        response = self.client.post('/api/user/tenants/switch/', {
+            'tenant_id': str(self.tenant_b.id)
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # =========================================================================
+    # HEADER ACCESS TESTS
+    # =========================================================================
+
+    def test_staff_can_access_any_tenant_via_header(self):
+        """Staff users should be able to use X-Tenant-ID header for any tenant."""
+        self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.get('/api/Orders/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        order_names = [o['name'] for o in response.data['results']]
+        self.assertIn("Order B", order_names)
+        self.assertNotIn("Order A", order_names)
+
+    def test_regular_user_cannot_access_other_tenant_via_header(self):
+        """Regular users should NOT be able to access other tenants via header."""
+        self.client.force_authenticate(user=self.regular_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.get('/api/Orders/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # =========================================================================
+    # PERMISSION TESTS - Staff Read-Only
+    # =========================================================================
+
+    def test_staff_can_view_data_in_other_tenant(self):
+        """Staff should have view_* permissions in any tenant."""
+        self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        # GET should work (view permission)
+        response = self.client.get('/api/Orders/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # GET specific order should work
+        response = self.client.get(f'/api/Orders/{self.order_b.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_staff_cannot_create_in_other_tenant(self):
+        """Staff should NOT be able to create data in other tenants."""
+        self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.post('/api/Orders/', {
+            'name': 'Staff Created Order',
+            'company': self.company_b.id,
+            'order_status': 'PENDING',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_cannot_update_in_other_tenant(self):
+        """Staff should NOT be able to update data in other tenants."""
+        self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.patch(f'/api/Orders/{self.order_b.id}/', {
+            'name': 'Staff Modified Order'
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Verify unchanged
+        self.order_b.refresh_from_db()
+        self.assertEqual(self.order_b.name, "Order B")
+
+    def test_staff_cannot_delete_in_other_tenant(self):
+        """Staff should NOT be able to delete data in other tenants."""
+        self.client.force_authenticate(user=self.staff_user)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.delete(f'/api/Orders/{self.order_b.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Verify still exists
+        self.assertTrue(Orders.objects.filter(id=self.order_b.id).exists())
+
+    # =========================================================================
+    # SUPERUSER TESTS - Full Access
+    # =========================================================================
+
+    def test_superuser_can_create_in_any_tenant(self):
+        """Superusers should have full access including create."""
+        self.client.force_authenticate(user=self.superuser)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.post('/api/Orders/', {
+            'name': 'Superuser Created Order',
+            'company': self.company_b.id,
+            'order_status': 'PENDING',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_superuser_can_update_in_any_tenant(self):
+        """Superusers should have full access including update."""
+        self.client.force_authenticate(user=self.superuser)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.patch(f'/api/Orders/{self.order_b.id}/', {
+            'name': 'Superuser Modified Order'
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.order_b.refresh_from_db()
+        self.assertEqual(self.order_b.name, "Superuser Modified Order")
+
+    def test_superuser_can_delete_in_any_tenant(self):
+        """Superusers should have full access including delete."""
+        self.client.force_authenticate(user=self.superuser)
+        self.client.credentials(HTTP_X_TENANT_ID=str(self.tenant_b.id))
+
+        response = self.client.delete(f'/api/Orders/{self.order_b.id}/')
+
+        # Orders use soft-delete (archived=True), so we check status and archived flag
+        self.assertIn(response.status_code, [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK])
+        self.order_b.refresh_from_db()
+        self.assertTrue(self.order_b.archived)
+
+    # =========================================================================
+    # PERMISSION BACKEND TESTS
+    # =========================================================================
+
+    def test_staff_has_view_permission_via_backend(self):
+        """Test that TenantPermissionBackend grants view_* to staff."""
+        from Tracker.backends import TenantPermissionBackend
+        backend = TenantPermissionBackend()
+
+        # Set tenant context
+        self.staff_user._current_tenant = self.tenant_b
+
+        # Staff should have view permissions
+        self.assertTrue(backend.has_perm(self.staff_user, 'Tracker.view_orders'))
+        self.assertTrue(backend.has_perm(self.staff_user, 'Tracker.view_parts'))
+        self.assertTrue(backend.has_perm(self.staff_user, 'Tracker.view_companies'))
+
+        # Staff should NOT have modify permissions
+        self.assertFalse(backend.has_perm(self.staff_user, 'Tracker.add_orders'))
+        self.assertFalse(backend.has_perm(self.staff_user, 'Tracker.change_orders'))
+        self.assertFalse(backend.has_perm(self.staff_user, 'Tracker.delete_orders'))
+
+    def test_superuser_has_all_permissions_via_backend(self):
+        """Test that TenantPermissionBackend grants all perms to superuser."""
+        from Tracker.backends import TenantPermissionBackend
+        backend = TenantPermissionBackend()
+
+        # Superuser should have ALL permissions
+        self.assertTrue(backend.has_perm(self.superuser, 'Tracker.view_orders'))
+        self.assertTrue(backend.has_perm(self.superuser, 'Tracker.add_orders'))
+        self.assertTrue(backend.has_perm(self.superuser, 'Tracker.change_orders'))
+        self.assertTrue(backend.has_perm(self.superuser, 'Tracker.delete_orders'))
+
+    def test_regular_user_no_implicit_permissions(self):
+        """Test that regular users don't get implicit permissions."""
+        from Tracker.backends import TenantPermissionBackend
+        backend = TenantPermissionBackend()
+
+        # Regular user should NOT have implicit permissions (needs TenantGroupMembership)
+        self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.view_orders'))
+        self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.add_orders'))

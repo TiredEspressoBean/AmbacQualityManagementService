@@ -466,8 +466,8 @@ class TenantAccessPermission(BasePermission):
 
     def _user_can_access_tenant(self, user, tenant):
         """Check if user has access to the specified tenant."""
-        # Superusers can access any tenant
-        if user.is_superuser:
+        # Superusers and staff can access any tenant (for support)
+        if user.is_superuser or user.is_staff:
             return True
 
         # Check if it's the user's home tenant
