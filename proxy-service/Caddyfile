@@ -1,47 +1,47 @@
 # Railway Edge Proxy
 # Routes all traffic to internal services via Railway private networking
 #
-# Railway private DNS uses lowercase service names:
-#   backend.railway.internal:8000
-#   frontend.railway.internal:8080
-#   docs.railway.internal:80
+# Environment variables (set in Railway):
+#   BACKEND_URL  - e.g., backend.railway.internal:8000
+#   FRONTEND_URL - e.g., frontend.railway.internal:8080
+#   DOCS_URL     - e.g., docs.railway.internal:80
 
 :{$PORT:80} {
     encode gzip
 
     # API routes to Django backend
     handle /api/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     handle /auth/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     handle /accounts/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     handle /admin/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     handle /media/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     handle /static/* {
-        reverse_proxy backend.railway.internal:8000
+        reverse_proxy {$BACKEND_URL}
     }
 
     # Documentation (MkDocs)
     handle /docs/* {
         uri strip_prefix /docs
-        reverse_proxy docs.railway.internal:80
+        reverse_proxy {$DOCS_URL}
     }
 
     # Frontend SPA (catch-all)
     handle {
-        reverse_proxy frontend.railway.internal:8080
+        reverse_proxy {$FRONTEND_URL}
     }
 }
