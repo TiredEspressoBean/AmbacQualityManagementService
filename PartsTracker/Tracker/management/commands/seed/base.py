@@ -65,12 +65,13 @@ class BaseSeeder:
     # =========================================================================
 
     def create_or_get_tenant(self, slug='ambac', name='AMBAC Manufacturing'):
-        """Create or get the tenant for demo data."""
-        tenant, created = Tenant.objects.get_or_create(
+        """Create or update the tenant for demo data."""
+        tenant, created = Tenant.objects.update_or_create(
             slug=slug,
             defaults={
                 'name': name,
                 'tier': Tenant.Tier.PRO,
+                'status': Tenant.Status.ACTIVE,
                 'is_active': True,
                 'settings': {
                     'industry': 'diesel_remanufacturing',
@@ -81,7 +82,7 @@ class BaseSeeder:
         if created:
             self.log(f"Created tenant: {tenant.name} (slug: {tenant.slug})")
         else:
-            self.log(f"Using existing tenant: {tenant.name}")
+            self.log(f"Using existing tenant: {tenant.name} (updated status/tier)")
         self.tenant = tenant
         return tenant
 

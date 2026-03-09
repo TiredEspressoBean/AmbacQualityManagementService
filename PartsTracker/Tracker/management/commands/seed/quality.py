@@ -81,7 +81,7 @@ class QualitySeeder(BaseSeeder):
             step=step,
             description=f"{step.name} results for {part.ERP_id} - "
                        f"{'measurements completed successfully' if status == 'PASS' else 'issues found during testing'}",
-            sampling_method="statistical" if random.random() > 0.3 else "manual",
+            sampling_method="STATISTICAL" if random.random() > 0.3 else "MANUAL",
             status=status,
             detected_by=operator,
         )
@@ -320,7 +320,7 @@ class QualitySeeder(BaseSeeder):
                     machine=selected_equipment,
                     step=step,
                     description=f"Historical QA at {step.name}",
-                    sampling_method="statistical",
+                    sampling_method="STATISTICAL",
                     status=status,
                     detected_by=operator,
                 )

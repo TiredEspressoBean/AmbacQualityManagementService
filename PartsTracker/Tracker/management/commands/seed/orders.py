@@ -10,6 +10,7 @@ from Tracker.models import (
     Orders, OrdersStatus, WorkOrder, WorkOrderStatus, Parts, PartsStatus,
     ProcessStep, StepTransitionLog, SamplingRuleSet, SamplingRule,
     QualityReports, ProcessStatus, StepExecution, StepEdge, EdgeType,
+    FPIRecord, FPIStatus, FPIResult, Steps,
 )
 from .base import BaseSeeder
 
@@ -33,6 +34,11 @@ class OrderSeeder(BaseSeeder):
         """Run the full order seeding process."""
         orders = self.create_orders(companies, users['customers'])
         self.create_parts_with_workflows(orders, part_types, users, equipment or [])
+
+        # Create FPI records for work orders
+        work_orders = list(WorkOrder.objects.filter(tenant=self.tenant, related_order__in=orders))
+        self.create_fpi_records(work_orders, part_types, users, equipment or [])
+
         return {'orders': orders}
 
     # =========================================================================
@@ -389,7 +395,7 @@ class OrderSeeder(BaseSeeder):
                 StepExecution.objects.filter(pk=previous_execution.pk).update(
                     exited_at=exit_time,
                     completed_by=previous_execution.assigned_to,
-                    status='completed'
+                    status='COMPLETED'
                 )
 
             # Create StepExecution record for current step
@@ -425,7 +431,7 @@ class OrderSeeder(BaseSeeder):
             except ValueError:
                 # Try with default decision if required
                 try:
-                    increment_result = part.increment_step(decision_result='default')
+                    increment_result = part.increment_step(decision_result='DEFAULT')
                 except ValueError:
                     break  # Can't advance
 
@@ -439,7 +445,7 @@ class OrderSeeder(BaseSeeder):
                     StepExecution.objects.filter(pk=previous_execution.pk).update(
                         exited_at=current_timestamp,
                         completed_by=previous_execution.assigned_to,
-                        status='completed'
+                        status='COMPLETED'
                     )
                 break
             elif increment_result == "marked_ready":
@@ -454,7 +460,7 @@ class OrderSeeder(BaseSeeder):
                 ).first()
                 if ps and ps.order >= target_depth:
                     # Don't stop if we're at a rework step - continue rework loop
-                    if part.step.step_type != 'rework':
+                    if part.step.step_type != 'REWORK':
                         break
 
         return result
@@ -481,7 +487,7 @@ class OrderSeeder(BaseSeeder):
             entered_at=entry_time,
             started_at=started_at,
             assigned_to=operator,
-            status='in_progress',
+            status='IN_PROGRESS',
         )
 
         # Backdate
@@ -513,23 +519,23 @@ class OrderSeeder(BaseSeeder):
 
         passed = random.random() > fail_rate
 
-        if step.decision_type == 'qa_result':
+        if step.decision_type == 'QA_RESULT':
             decision = 'PASS' if passed else 'FAIL'
-        elif step.decision_type == 'manual':
-            decision = 'default' if random.random() > 0.3 else 'alternate'
+        elif step.decision_type == 'MANUAL':
+            decision = 'DEFAULT' if random.random() > 0.3 else 'ALTERNATE'
         else:
             decision = 'PASS' if passed else 'FAIL'
 
         # Create QualityReport for decision points
         qr = None
-        if step.decision_type in ['qa_result', 'measurement']:
+        if step.decision_type in ['QA_RESULT', 'MEASUREMENT']:
             qr = QualityReports.objects.create(
                 tenant=self.tenant,
                 part=part,
                 step=step,
-                status=decision if decision in ['PASS', 'FAIL'] else ('PASS' if decision == 'default' else 'FAIL'),
+                status=decision if decision in ['PASS', 'FAIL'] else ('PASS' if decision == 'DEFAULT' else 'FAIL'),
                 description=f"QA decision at {step.name} - Visit #{visit_count}",
-                sampling_method='statistical',
+                sampling_method='STATISTICAL',
             )
             # Backdate the report
             QualityReports.objects.filter(pk=qr.pk).update(
@@ -596,7 +602,7 @@ class OrderSeeder(BaseSeeder):
                 started_at=started_at,
                 assigned_to=operator,
                 completed_by=operator,
-                status='completed',
+                status='COMPLETED',
             )
 
             current_time = exit_time + timedelta(minutes=random.randint(5, 30))
@@ -615,7 +621,7 @@ class OrderSeeder(BaseSeeder):
                 exited_at=None,  # Still in progress
                 started_at=started_at,
                 assigned_to=operator,
-                status='in_progress',
+                status='IN_PROGRESS',
             )
 
     def _advance_work_order_batch(self, work_order, target_step_index):
@@ -649,7 +655,7 @@ class OrderSeeder(BaseSeeder):
                 visits_at_step[step_id] = visits_at_step.get(step_id, 0) + 1
 
                 decision_result = None
-                if current_step.is_decision_point and current_step.decision_type == 'qa_result':
+                if current_step.is_decision_point and current_step.decision_type == 'QA_RESULT':
                     base_fail_rate = 0.15
                     rework_penalty = 0.05 * (visits_at_step.get(step_id, 1) - 1)
                     fail_rate = min(0.40, base_fail_rate + rework_penalty)
@@ -663,11 +669,11 @@ class OrderSeeder(BaseSeeder):
                         step=current_step,
                         status=decision_result,
                         description=f"QA check at {current_step.name}",
-                        sampling_method='statistical',
+                        sampling_method='STATISTICAL',
                     )
 
-                elif current_step.is_decision_point and current_step.decision_type == 'manual':
-                    decision_result = 'default' if random.random() > 0.3 else 'alternate'
+                elif current_step.is_decision_point and current_step.decision_type == 'MANUAL':
+                    decision_result = 'DEFAULT' if random.random() > 0.3 else 'ALTERNATE'
 
                 part.part_status = PartsStatus.READY_FOR_NEXT_STEP
                 part.save()
@@ -675,7 +681,7 @@ class OrderSeeder(BaseSeeder):
                 try:
                     result = part.increment_step(decision_result=decision_result)
                 except ValueError:
-                    result = part.increment_step(decision_result='default')
+                    result = part.increment_step(decision_result='DEFAULT')
 
                 advancement_count += 1
 
@@ -693,7 +699,7 @@ class OrderSeeder(BaseSeeder):
                     ).first()
                     step_order = ps.order if ps else 0
                     if step_order >= target_step_index:
-                        if part.step.step_type != 'rework':
+                        if part.step.step_type != 'REWORK':
                             break
 
     def _ensure_sampling_rulesets_exist(self, part_type, process, steps, employees):
@@ -734,3 +740,88 @@ class OrderSeeder(BaseSeeder):
             return [('percentage', 100)]  # All reworked parts get checked
         else:
             return [('percentage', 20)]  # 20% sampling for other steps
+
+    # =========================================================================
+    # First Piece Inspection (FPI) Records
+    # =========================================================================
+
+    def create_fpi_records(self, work_orders, part_types, users, equipment):
+        """Create First Piece Inspection records for work orders.
+
+        FPI verifies setup correctness before full production begins.
+        Creates records for key inspection/testing steps.
+        """
+        fpi_count = 0
+        qa_staff = users.get('qa_staff', users.get('employees', []))
+
+        # Identify steps that should have FPI
+        inspection_keywords = ['inspection', 'test', 'testing', 'flow', 'final']
+
+        for work_order in work_orders:
+            if not work_order.process:
+                continue
+
+            # Get first part in work order as designated FPI part
+            first_part = work_order.parts.order_by('created_at').first()
+            if not first_part:
+                continue
+
+            part_type = first_part.part_type
+
+            # Get process steps
+            process_steps = ProcessStep.objects.filter(
+                process=work_order.process
+            ).select_related('step')
+
+            for ps in process_steps:
+                step = ps.step
+                step_name_lower = step.name.lower()
+
+                # Only create FPI for inspection/testing steps (30% chance)
+                is_fpi_step = any(kw in step_name_lower for kw in inspection_keywords)
+                if not is_fpi_step or random.random() > 0.3:
+                    continue
+
+                # Determine FPI status based on work order status
+                if work_order.workorder_status == WorkOrderStatus.COMPLETED:
+                    fpi_status = FPIStatus.PASSED
+                    fpi_result = FPIResult.PASS
+                elif work_order.workorder_status == WorkOrderStatus.IN_PROGRESS:
+                    if random.random() > 0.2:
+                        fpi_status = FPIStatus.PASSED
+                        fpi_result = FPIResult.PASS
+                    else:
+                        fpi_status = random.choice([FPIStatus.PENDING, FPIStatus.FAILED])
+                        fpi_result = FPIResult.FAIL if fpi_status == FPIStatus.FAILED else ''
+                else:
+                    fpi_status = FPIStatus.PENDING
+                    fpi_result = ''
+
+                # Select equipment if available
+                step_equipment = None
+                if equipment:
+                    step_equipment = random.choice(equipment)
+
+                inspector = random.choice(qa_staff) if qa_staff else None
+
+                fpi, created = FPIRecord.objects.get_or_create(
+                    tenant=self.tenant,
+                    work_order=work_order,
+                    step=step,
+                    part_type=part_type,
+                    defaults={
+                        'designated_part': first_part,
+                        'equipment': step_equipment,
+                        'shift_date': timezone.now().date(),
+                        'status': fpi_status,
+                        'result': fpi_result,
+                        'inspected_by': inspector if fpi_status in [FPIStatus.PASSED, FPIStatus.FAILED] else None,
+                        'inspected_at': timezone.now() if fpi_status in [FPIStatus.PASSED, FPIStatus.FAILED] else None,
+                    }
+                )
+
+                if created:
+                    fpi_count += 1
+
+        if fpi_count > 0:
+            self.log(f"Created {fpi_count} FPI records")

@@ -517,9 +517,20 @@ FiveWhys (child of RcaRecord, NOT CAPA directly):
 CapaTasks (child of CAPA):
   - capa: FK(CAPA)
   - title: str
-  - assignee: FK(User)
+  - assignee: FK(User) (primary owner, for backwards compatibility)
   - status: enum (PENDING, IN_PROGRESS, COMPLETE)
   - due_date: DateField
+  - completion_mode: enum (SINGLE_OWNER, ANY_ASSIGNEE, ALL_ASSIGNEES)
+    - SINGLE_OWNER: Only the primary assignee works on this task (default)
+    - ANY_ASSIGNEE: Task completes when ANY one assignee finishes
+    - ALL_ASSIGNEES: Task completes only when ALL assignees finish
+
+CapaTaskAssignee (child of CapaTasks):
+  - task: FK(CapaTasks)
+  - user: FK(User)
+  - status: enum (NOT_STARTED, IN_PROGRESS, COMPLETED)
+  - completed_at: DateTimeField (nullable)
+  - completion_notes: TextField (nullable)
 ```
 
 **Relationships:**
@@ -635,11 +646,13 @@ Workflow for sign-offs:
 
 | Email | Password | Name | Role | Purpose |
 |-------|----------|------|------|---------|
-| admin@demo.ambac.com | demo123 | Alex Demo | Admin | Full access |
-| sarah.qa@demo.ambac.com | demo123 | Sarah Chen | QA Inspector | Quality workflow, CAPA tasks |
-| mike.ops@demo.ambac.com | demo123 | Mike Rodriguez | Operator | Production floor |
-| jennifer.mgr@demo.ambac.com | demo123 | Jennifer Walsh | Production Manager | Oversight, approvals |
-| dave.wilson@demo.ambac.com | demo123 | Dave Wilson | Operator | **Expired training demo** |
+| admin@demo.ambac.com | demo123 | Alex Demo | Tenant Admin | Full access, user management, configuration |
+| maria.qa@demo.ambac.com | demo123 | Maria Santos | QA Manager | CAPA ownership, disposition approvals, SPC oversight |
+| sarah.qa@demo.ambac.com | demo123 | Sarah Chen | QA Inspector | Inspections, quality reports, measurements |
+| jennifer.mgr@demo.ambac.com | demo123 | Jennifer Walsh | Production Manager | Production oversight, scheduling, approvals |
+| mike.ops@demo.ambac.com | demo123 | Mike Rodriguez | Operator | Step completion, measurements, work queue |
+| dave.wilson@demo.ambac.com | demo123 | Dave Wilson | Operator | **Expired training demo** - blocked from Flow Testing |
+| lisa.docs@demo.ambac.com | demo123 | Lisa Park | Document Controller | Document management, revisions, approvals |
 
 **Customer Portal Users:**
 
@@ -681,6 +694,36 @@ Each user type should have a tailored demo experience with data "in their queue.
 | Sampling decision | Tightened sampling active | ✓ Have |
 
 **Demo script:** Log in as Sarah → See SPC alert → Review quarantined part → Approve disposition → Check CAPA task → Approve pending approval request
+
+#### Maria Santos (QA Manager)
+**Role:** QA_Manager
+**Primary View:** Quality dashboard, CAPAs, disposition approvals, SPC oversight
+
+| Demo Need | Data Required | Status |
+|-----------|---------------|--------|
+| CAPA ownership | CAPA-2024-003 (closed), CAPA-2024-004 (open) | ✓ Have |
+| Pending disposition approvals | QD-2024-0003 awaiting MRB decision | ✓ Have |
+| SPC oversight | Frozen baselines, out-of-control signals | ✓ Have |
+| Sampling rule management | Active tightened sampling for nozzles | ✓ Have |
+| Document approvals pending | WI-1002 Nozzle Inspection revision | ✓ Have |
+| Quality metrics dashboard | FPY trends, defect Pareto | Need to verify |
+
+**Demo script:** Log in as Maria → Review quality dashboard → Check CAPA status → Approve disposition → Review SPC violation → Approve document revision
+
+#### Lisa Park (Document Controller)
+**Role:** Document_Controller
+**Primary View:** Document library, pending approvals, revision history
+
+| Demo Need | Data Required | Status |
+|-----------|---------------|--------|
+| Documents to manage | WI-1001, WI-1002, WI-1003 work instructions | ✓ Have |
+| Pending revision | WI-1002 updated per CAPA | ✓ Have |
+| Approval workflow | Document release requiring sign-off | ✓ Have |
+| Version history | WI-1002 showing Rev 2.0 → 2.1 | ✓ Have |
+| Document types | SOP, WI, POL, FRM configured | ✓ Have |
+| Controlled distribution | Track who has current revision | Need to verify |
+
+**Demo script:** Log in as Lisa → View document library → Check pending approvals → Review revision history → Initiate approval workflow → Show controlled distribution
 
 #### Jennifer Walsh (Production Manager)
 **Role:** Production_Manager
@@ -735,9 +778,12 @@ Map users to TenantGroups for RBAC demonstration:
 | User | TenantGroups | Key Permissions |
 |------|--------------|-----------------|
 | Alex Demo | Tenant Admin | Full access, user management, configuration |
-| Jennifer Walsh | Production Manager, QA Manager | CAPA ownership, approvals, dashboards |
-| Sarah Chen | QA Inspector | Quality reports, inspections, dispositions |
+| Maria Santos | QA Manager | CAPA ownership, disposition approvals, SPC management |
+| Sarah Chen | QA Inspector | Quality reports, inspections, measurements |
+| Jennifer Walsh | Production Manager | Production oversight, scheduling, approvals |
 | Mike Rodriguez | Operator | Step completion, measurements, work queue |
+| Dave Wilson | Operator | Step completion (blocked by expired training) |
+| Lisa Park | Document Controller | Document management, revisions, approvals |
 | Tom Bradley | Customer | View own orders only, notification prefs |
 
 ---
@@ -1669,13 +1715,15 @@ capa.quality_reports.add(*triggering_qrs)
 ```
 
 **Tasks:**
-| Task | Assignee | Status | Due |
-|------|----------|--------|-----|
-| Contact Delphi re: batch NZ-2024-0315 | Jennifer Walsh | Complete | - |
-| Quarantine remaining batch inventory | Mike Rodriguez | Complete | - |
-| Schedule supplier audit | Jennifer Walsh | In Progress | +7 days |
-| Update incoming inspection procedure | Sarah Chen | Pending | +10 days |
-| Implement tightened sampling for nozzles | Sarah Chen | Pending | +5 days |
+| Task | Assignee | Completion Mode | Status | Due |
+|------|----------|-----------------|--------|-----|
+| Contact Delphi re: batch NZ-2024-0315 | Jennifer Walsh | SINGLE_OWNER | Complete | - |
+| Quarantine remaining batch inventory | Mike Rodriguez | SINGLE_OWNER | Complete | - |
+| Schedule supplier audit | Jennifer Walsh | SINGLE_OWNER | In Progress | +7 days |
+| Update incoming inspection procedure | Sarah Chen, Maria Santos | ALL_ASSIGNEES | Pending | +10 days |
+| Implement tightened sampling for nozzles | Sarah Chen | SINGLE_OWNER | Pending | +5 days |
+
+**Multi-Person Task Example:** "Update incoming inspection procedure" uses ALL_ASSIGNEES mode, meaning both Sarah Chen and Maria Santos must complete their portion before the task is marked complete. See CapaTaskAssignee records for individual progress tracking.
 
 ---
 
@@ -2756,3 +2804,5 @@ class DemoSeeder(BaseSeeder):
 | 2026-03-02 | **MEDIUM FIX:** Added searchable document content for WI-1002 - enables AI "Ask Anything" demo queries about nozzle inspection |
 | 2026-03-02 | **HIGH FIX:** Added searchable document content for WI-1001 (Disassembly) and WI-1003 (Flow Test) - complete AI search coverage |
 | 2026-03-02 | **HIGH FIX:** Added INJ-0038-009 complex multi-step rework history - failed Nozzle Inspection then Flow Testing across multiple rework cycles |
+| 2026-03-04 | Added CapaTaskAssignee model and completion_mode field - multi-person task assignments with ALL_ASSIGNEES/ANY_ASSIGNEE modes |
+| 2026-03-04 | Added FPIRecord model seeding - separate table tracking FPI approvals with result, verifier, and notes |

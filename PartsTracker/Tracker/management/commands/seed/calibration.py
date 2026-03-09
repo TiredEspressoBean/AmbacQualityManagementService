@@ -90,25 +90,25 @@ class CalibrationSeeder(BaseSeeder):
                     days_since = random.randint(30, interval_days - 30)
                     cal_date = current_date - timedelta(days=days_since)
                     due_date = cal_date + timedelta(days=interval_days)
-                    result = 'pass'
+                    result = 'PASS'
                 elif status_roll < 0.85:
                     # 15% - Due soon (within 30 days)
                     days_until_due = random.randint(5, 25)
                     due_date = current_date + timedelta(days=days_until_due)
                     cal_date = due_date - timedelta(days=interval_days)
-                    result = 'pass'
+                    result = 'PASS'
                 elif status_roll < 0.95:
                     # 10% - Overdue
                     days_overdue = random.randint(5, 60)
                     due_date = current_date - timedelta(days=days_overdue)
                     cal_date = due_date - timedelta(days=interval_days)
-                    result = 'pass'
+                    result = 'PASS'
                 else:
                     # 5% - Failed/Limited
                     days_since = random.randint(10, 60)
                     cal_date = current_date - timedelta(days=days_since)
                     due_date = cal_date + timedelta(days=interval_days)
-                    result = random.choice(['fail', 'limited'])
+                    result = random.choice(['FAIL', 'LIMITED'])
             else:
                 # Historical calibration (always passed)
                 prev_record = CalibrationRecord.objects.filter(
@@ -122,7 +122,7 @@ class CalibrationSeeder(BaseSeeder):
                     cal_date = current_date - timedelta(days=(i + 1) * interval_days + random.randint(-14, 14))
                     due_date = cal_date + timedelta(days=interval_days)
 
-                result = 'pass'
+                result = 'PASS'
 
             # Select calibration lab
             if random.random() < 0.3:
@@ -134,9 +134,9 @@ class CalibrationSeeder(BaseSeeder):
             cert_number = f"CAL-{cal_date.strftime('%Y%m')}-{random.randint(1000, 9999)}"
 
             # Create notes based on result
-            if result == 'pass':
+            if result == 'PASS':
                 notes = "All measurements within specification. Equipment approved for use."
-            elif result == 'limited':
+            elif result == 'LIMITED':
                 notes = "Limited range approved. See restrictions on calibration certificate."
             else:
                 notes = "Equipment failed calibration. Removed from service pending repair/replacement."
@@ -189,7 +189,7 @@ class CalibrationSeeder(BaseSeeder):
                 equipment=eq,
                 calibration_date=cal_date,
                 due_date=due_date,
-                result='pass',
+                result='PASS',
                 performed_by=random.choice(self.CALIBRATION_LABS),
                 certificate_number=f"CAL-{cal_date.strftime('%Y%m')}-{random.randint(1000, 9999)}",
                 notes="CALIBRATION OVERDUE - Requires immediate attention",

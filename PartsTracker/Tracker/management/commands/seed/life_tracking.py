@@ -146,7 +146,7 @@ class LifeTrackingSeeder(BaseSeeder):
 
         for core in cores:
             # Skip scrapped cores - they don't need life tracking
-            if core.status == 'scrapped':
+            if core.status == 'SCRAPPED':
                 continue
 
             # Check if tracking already exists

@@ -74,12 +74,9 @@ class ManufacturingSeeder(BaseSeeder):
         equipment = []
         for eq_type_name, equipment_names in equipment_data:
             eq_type, _ = EquipmentType.objects.get_or_create(
+                tenant=self.tenant,
                 name=eq_type_name,
-                defaults={'tenant': self.tenant}
             )
-            if not eq_type.tenant:
-                eq_type.tenant = self.tenant
-                eq_type.save()
 
             for eq_name in equipment_names:
                 eq = Equipments.objects.create(
@@ -205,17 +202,17 @@ class ManufacturingSeeder(BaseSeeder):
         # Steps with branching support
         steps_data = [
             # (name, step_type, is_decision, decision_type, is_terminal, terminal_status, max_visits, requires_qa, sampling_req, sampling_rate, expected_duration)
-            ('Receive Core', 'start', False, '', False, '', None, False, False, 0, None),
-            ('Disassemble', 'task', False, '', False, '', None, False, False, 0, None),
-            ('Clean', 'timer', False, '', False, '', None, False, False, 0, '2h'),
-            ('Inspect', 'decision', True, 'qa_result', False, '', None, True, True, 100, None),
-            ('Reassemble', 'task', False, '', False, '', None, False, False, 0, None),
-            ('Final Test', 'decision', True, 'measurement', False, '', None, True, True, 25, None),
-            ('Rework', 'rework', True, 'qa_result', False, '', 3, True, True, 100, None),
-            ('Scrap Decision', 'decision', True, 'manual', False, '', None, False, False, 0, None),
-            ('Scrap', 'terminal', False, '', True, 'scrapped', None, False, False, 0, None),
-            ('Ship', 'terminal', False, '', True, 'shipped', None, False, False, 0, None),
-            ('Return to Supplier', 'terminal', False, '', True, 'returned', None, False, False, 0, None),
+            ('Receive Core', 'START', False, '', False, '', None, False, False, 0, None),
+            ('Disassemble', 'TASK', False, '', False, '', None, False, False, 0, None),
+            ('Clean', 'TIMER', False, '', False, '', None, False, False, 0, '2h'),
+            ('Inspect', 'DECISION', True, 'QA_RESULT', False, '', None, True, True, 100, None),
+            ('Reassemble', 'TASK', False, '', False, '', None, False, False, 0, None),
+            ('Final Test', 'DECISION', True, 'MEASUREMENT', False, '', None, True, True, 25, None),
+            ('Rework', 'REWORK', True, 'QA_RESULT', False, '', 3, True, True, 100, None),
+            ('Scrap Decision', 'DECISION', True, 'MANUAL', False, '', None, False, False, 0, None),
+            ('Scrap', 'TERMINAL', False, '', True, 'SCRAPPED', None, False, False, 0, None),
+            ('Ship', 'TERMINAL', False, '', True, 'SHIPPED', None, False, False, 0, None),
+            ('Return to Supplier', 'TERMINAL', False, '', True, 'RETURNED', None, False, False, 0, None),
         ]
 
         created_steps = {}
@@ -372,9 +369,9 @@ class ManufacturingSeeder(BaseSeeder):
                 name=step_name,
                 part_type=part_type,
                 description=description_template.format(step_name),
-                step_type='terminal' if is_last else ('start' if order == 1 else 'task'),
+                step_type='TERMINAL' if is_last else ('START' if order == 1 else 'TASK'),
                 is_terminal=is_last,
-                terminal_status='completed' if is_last else '',
+                terminal_status='COMPLETED' if is_last else '',
                 min_sampling_rate=0,
             )
             ProcessStep.objects.create(

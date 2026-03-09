@@ -4,10 +4,28 @@ Generate realistic production data for diesel fuel injector remanufacturing busi
 This command orchestrates the modular seed system to create comprehensive demo data.
 Each domain is handled by a specialized seeder module in the `seed/` package.
 
+Supports two modes:
+- dev: Random Faker data for development and testing
+- demo: Deterministic preset data for sales demos and training (from DEMO_DATA_SYSTEM.md)
+
 Usage:
+    # Default: seed both dev and demo tenants with small scale data, clearing existing
     python manage.py populate_test_data
-    python manage.py populate_test_data --scale small
-    python manage.py populate_test_data --scale large --clear-existing
+
+    # Seed only demo tenant with deterministic data
+    python manage.py populate_test_data --mode demo
+
+    # Seed only dev tenant with random data, medium scale
+    python manage.py populate_test_data --mode dev --scale medium
+
+    # Seed without clearing existing data
+    python manage.py populate_test_data --no-clear
+
+    # Preview what would be created without actually doing it
+    python manage.py populate_test_data --dry-run
+
+    # Verbose output
+    python manage.py populate_test_data -v
 """
 
 from auditlog.models import LogEntry
@@ -28,7 +46,7 @@ from Tracker.models import (
     # Workflow execution models
     StepExecution,
     # CAPA models
-    CAPA, CapaTasks, RcaRecord, FiveWhys, Fishbone, CapaVerification,
+    CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, CapaVerification,
     # Document models
     DocumentType, ApprovalTemplate, ApprovalRequest, ApprovalResponse,
     # 3D model and annotation models
@@ -64,18 +82,29 @@ from .seed import (
 class Command(BaseCommand):
     help = "Generate realistic production data for diesel fuel injector remanufacturing business"
 
+    # Admin users that are never deleted during clear
+    PLATFORM_ADMIN_EMAIL = 'admin@ambac.local'
+    PLATFORM_ADMIN_PASSWORD = 'admin'
+
     def add_arguments(self, parser):
+        parser.add_argument(
+            '--mode',
+            type=str,
+            default='all',
+            choices=['dev', 'demo', 'all'],
+            help='Which tenant(s) to seed: dev (random data), demo (deterministic), all (both). Default: all',
+        )
         parser.add_argument(
             '--scale',
             type=str,
-            default='medium',
+            default='small',
             choices=['small', 'medium', 'large'],
-            help='Scale of data generation (small=10 orders, medium=50 orders, large=200 orders)',
+            help='Scale of data generation (small=10 orders, medium=50 orders, large=200 orders). Default: small',
         )
         parser.add_argument(
-            '--clear-existing',
+            '--no-clear',
             action='store_true',
-            help='Clear existing data before generating new data',
+            help='Skip clearing existing data (by default, existing data is cleared)',
         )
         parser.add_argument(
             '--skip-historical',
@@ -88,29 +117,139 @@ class Command(BaseCommand):
             nargs='+',
             choices=['users', 'manufacturing', 'reman', 'life_tracking', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration', 'all'],
             default=['all'],
-            help='Specific modules to run (default: all)',
+            help='Specific modules to run. Ignored for demo mode which always runs full scenario. Default: all',
+        )
+        # Note: Django's BaseCommand already provides -v/--verbosity (0-3)
+        # We use verbosity >= 2 for verbose output instead of a separate flag
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show what would be created without actually doing it',
         )
 
     def handle(self, *args, **options):
         self.scale = options['scale']
-        self.clear_existing = options['clear_existing']
+        self.mode = options['mode']
+        self.no_clear = options['no_clear']
         self.skip_historical = options['skip_historical']
         self.modules = set(options['modules'])
+        self.verbose = options.get('verbosity', 1) >= 2  # Use Django's built-in verbosity
+        self.dry_run = options['dry_run']
 
         if 'all' in self.modules:
             self.modules = {'users', 'manufacturing', 'reman', 'life_tracking', 'orders', 'quality', 'capa', 'documents', '3d', 'training', 'calibration'}
 
-        self.stdout.write(f"Generating {self.scale} scale realistic production data...")
-        self.stdout.write(f"  Modules: {', '.join(sorted(self.modules))}")
+        # Determine which tenants to seed
+        tenants_to_seed = []
+        if self.mode in ('dev', 'all'):
+            tenants_to_seed.append(('dev', 'Development'))
+        if self.mode in ('demo', 'all'):
+            tenants_to_seed.append(('demo', 'Demo Company'))
 
-        if self.clear_existing:
+        # Show plan
+        self.stdout.write(f"\nPopulate Test Data - Mode: {self.mode}, Scale: {self.scale}")
+        self.stdout.write(f"  Tenants: {', '.join(t[0] for t in tenants_to_seed)}")
+        if self.mode == 'demo':
+            self.stdout.write(f"  Modules: full scenario (--modules ignored for demo mode)")
+        else:
+            self.stdout.write(f"  Modules: {', '.join(sorted(self.modules))}")
+        self.stdout.write(f"  Clear existing: {not self.no_clear}")
+
+        if self.dry_run:
+            self.stdout.write(self.style.WARNING("\n[DRY RUN] Would perform the following:"))
+            self._show_dry_run_plan(tenants_to_seed)
+            return
+
+        # Ensure platform admin exists (never deleted)
+        self._ensure_platform_admin()
+
+        # Clear existing data unless --no-clear
+        if not self.no_clear:
             self.clear_data()
 
+        # Seed each tenant
+        for tenant_slug, tenant_name in tenants_to_seed:
+            self.stdout.write(f"\n{'='*60}")
+            self.stdout.write(f"Seeding tenant: {tenant_name} ({tenant_slug})")
+            self.stdout.write('='*60)
+
+            if tenant_slug == 'demo':
+                self._seed_demo_tenant(tenant_slug, tenant_name)
+            else:
+                self._seed_dev_tenant(tenant_slug, tenant_name)
+
+        self.stdout.write(self.style.SUCCESS(f"\nGenerated realistic {self.scale} scale production data!"))
+        self.show_data_summary()
+
+    def _ensure_platform_admin(self):
+        """Ensure platform admin exists. This user is never deleted."""
+        admin, created = User.objects.get_or_create(
+            email=self.PLATFORM_ADMIN_EMAIL,
+            defaults={
+                'username': self.PLATFORM_ADMIN_EMAIL,
+                'first_name': 'Platform',
+                'last_name': 'Admin',
+                'is_superuser': True,
+                'is_staff': True,
+                'tenant': None,  # Platform-level, not tenant-scoped
+            }
+        )
+        if created:
+            admin.set_password(self.PLATFORM_ADMIN_PASSWORD)
+            admin.save()
+            self.stdout.write(f"  Created platform admin: {self.PLATFORM_ADMIN_EMAIL}")
+        elif self.verbose:
+            self.stdout.write(f"  Platform admin exists: {self.PLATFORM_ADMIN_EMAIL}")
+
+    def _show_dry_run_plan(self, tenants_to_seed):
+        """Show what would be created without actually doing it."""
+        if not self.no_clear:
+            self.stdout.write("  1. Clear all existing data (except platform admin)")
+        self.stdout.write(f"  2. Ensure platform admin: {self.PLATFORM_ADMIN_EMAIL}")
+
+        for tenant_slug, tenant_name in tenants_to_seed:
+            self.stdout.write(f"\n  Tenant: {tenant_name} ({tenant_slug})")
+            self.stdout.write(f"    - Create tenant with auto-seeded groups, doc types, approval templates")
+
+            if tenant_slug == 'demo':
+                self.stdout.write("    - Create preset demo users (one per training role):")
+                self.stdout.write("        admin@demo.ambac.com (Alex Demo - Tenant Admin)")
+                self.stdout.write("        maria.qa@demo.ambac.com (Maria Santos - QA Manager)")
+                self.stdout.write("        sarah.qa@demo.ambac.com (Sarah Chen - QA Inspector)")
+                self.stdout.write("        jennifer.mgr@demo.ambac.com (Jennifer Walsh - Production Manager)")
+                self.stdout.write("        mike.ops@demo.ambac.com (Mike Rodriguez - Operator)")
+                self.stdout.write("        dave.wilson@demo.ambac.com (Dave Wilson - Operator, expired training)")
+                self.stdout.write("        lisa.docs@demo.ambac.com (Lisa Park - Document Controller)")
+                self.stdout.write("        tom.bradley@midwestfleet.com (Tom Bradley - Customer)")
+                self.stdout.write("    - Create demo companies: AMBAC, Midwest Fleet, Great Lakes Diesel, Northern Trucking")
+                self.stdout.write("    - Create demo scenario with interconnected orders, quality events, CAPAs")
+            else:
+                self.stdout.write(f"    - Create random Faker users ({self.scale} scale)")
+                self.stdout.write(f"    - Create random companies and business data")
+                self.stdout.write(f"    - Modules: {', '.join(sorted(self.modules))}")
+
+    def _seed_demo_tenant(self, tenant_slug, tenant_name):
+        """Seed demo tenant with deterministic preset data."""
+        from .seed.demo import DemoScenario
+
+        # Initialize base seeder for tenant creation
+        base = BaseSeeder(self.stdout, self.style, scale=self.scale)
+
+        # Create or get demo tenant
+        tenant = base.create_or_get_tenant(slug=tenant_slug, name=tenant_name)
+
+        # Run demo scenario
+        scenario = DemoScenario(self.stdout, self.style, tenant=tenant, scale=self.scale)
+        scenario.verbose = self.verbose
+        scenario.seed()
+
+    def _seed_dev_tenant(self, tenant_slug, tenant_name):
+        """Seed dev tenant with random Faker data."""
         # Initialize base seeder for shared operations
         base = BaseSeeder(self.stdout, self.style, scale=self.scale)
 
-        # Create or get tenant
-        tenant = base.create_or_get_tenant()
+        # Create or get tenant with specified slug/name
+        tenant = base.create_or_get_tenant(slug=tenant_slug, name=tenant_name)
 
         # Initialize all seeders with shared tenant and scale
         user_seeder = UserSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
@@ -308,8 +447,8 @@ class Command(BaseCommand):
     def _load_existing_users(self, tenant):
         """Load existing users into the expected structure."""
         users = {
-            'customers': list(User.objects.filter(tenant=tenant, user_type='portal')),
-            'employees': list(User.objects.filter(tenant=tenant, user_type='internal')),
+            'customers': list(User.objects.filter(tenant=tenant, user_type='PORTAL')),
+            'employees': list(User.objects.filter(tenant=tenant, user_type='INTERNAL')),
             'managers': [],
             'qa_staff': [],
         }
@@ -370,6 +509,7 @@ class Command(BaseCommand):
             (FiveWhys, "Five whys"),
             (Fishbone, "Fishbone diagrams"),
             (RcaRecord, "RCA records"),
+            (CapaTaskAssignee, "CAPA task assignees"),
             (CapaTasks, "CAPA tasks"),
             (CAPA, "CAPAs"),
             # Training and calibration
@@ -538,9 +678,9 @@ class Command(BaseCommand):
             today = timezone.now().date()
             soon_threshold = today + timedelta(days=30)
 
-            overdue = sum(1 for r in cal_records if r.due_date < today and r.result != 'fail')
-            due_soon = sum(1 for r in cal_records if today <= r.due_date <= soon_threshold and r.result != 'fail')
-            failed = sum(1 for r in cal_records if r.result == 'fail')
+            overdue = sum(1 for r in cal_records if r.due_date < today and r.result != 'FAIL')
+            due_soon = sum(1 for r in cal_records if today <= r.due_date <= soon_threshold and r.result != 'FAIL')
+            failed = sum(1 for r in cal_records if r.result == 'FAIL')
 
             self.stdout.write("\nCalibration Status:")
             self.stdout.write(f"  Current: {cal_records.count() - overdue - due_soon - failed}")

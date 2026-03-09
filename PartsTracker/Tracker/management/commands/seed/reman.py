@@ -176,10 +176,10 @@ class RemanSeeder(BaseSeeder):
 
         # Status distribution: 20% received, 30% in_disassembly, 40% disassembled, 10% scrapped
         status_weights = [
-            ('received', 0.20),
-            ('in_disassembly', 0.30),
-            ('disassembled', 0.40),
-            ('scrapped', 0.10),
+            ('RECEIVED', 0.20),
+            ('IN_DISASSEMBLY', 0.30),
+            ('DISASSEMBLED', 0.40),
+            ('SCRAPPED', 0.10),
         ]
 
         # Condition grade distribution: 15% A, 45% B, 30% C, 10% SCRAP
@@ -192,10 +192,10 @@ class RemanSeeder(BaseSeeder):
 
         # Source distribution: 60% customer_return, 25% purchased, 10% warranty, 5% trade_in
         source_weights = [
-            ('customer_return', 0.60),
-            ('purchased', 0.25),
-            ('warranty', 0.10),
-            ('trade_in', 0.05),
+            ('CUSTOMER_RETURN', 0.60),
+            ('PURCHASED', 0.25),
+            ('WARRANTY', 0.10),
+            ('TRADE_IN', 0.05),
         ]
 
         # Get customers (companies that could return cores)
@@ -219,11 +219,11 @@ class RemanSeeder(BaseSeeder):
             condition_grade = self.weighted_choice(grade_weights)
 
             # Scrapped cores always have SCRAP grade
-            if status == 'scrapped':
+            if status == 'SCRAPPED':
                 condition_grade = 'SCRAP'
             # SCRAP grade cores should be scrapped
-            if condition_grade == 'SCRAP' and status != 'scrapped':
-                status = 'scrapped'
+            if condition_grade == 'SCRAP' and status != 'SCRAPPED':
+                status = 'SCRAPPED'
 
             source_type = self.weighted_choice(source_weights)
             customer = random.choice(customers) if customers else None
@@ -242,11 +242,11 @@ class RemanSeeder(BaseSeeder):
                 continue
 
             # Generate source reference based on type
-            if source_type == 'customer_return':
+            if source_type == 'CUSTOMER_RETURN':
                 source_ref = f"RMA-{random.randint(10000, 99999)}"
-            elif source_type == 'purchased':
+            elif source_type == 'PURCHASED':
                 source_ref = f"PO-{random.randint(10000, 99999)}"
-            elif source_type == 'warranty':
+            elif source_type == 'WARRANTY':
                 source_ref = f"WTY-{random.randint(10000, 99999)}"
             else:
                 source_ref = f"TI-{random.randint(10000, 99999)}"
@@ -270,7 +270,7 @@ class RemanSeeder(BaseSeeder):
                 source_reference=source_ref,
                 condition_grade=condition_grade,
                 condition_notes=self._generate_condition_notes(condition_grade),
-                status='received',  # Start as received, will update below
+                status='RECEIVED',  # Start as received, will update below
                 core_credit_value=credit_value,
             )
 
@@ -281,23 +281,23 @@ class RemanSeeder(BaseSeeder):
             Core.objects.filter(pk=core.pk).update(created_at=received_datetime)
 
             # Progress status with timestamps
-            if status in ['in_disassembly', 'disassembled', 'scrapped']:
+            if status in ['IN_DISASSEMBLY', 'DISASSEMBLED', 'SCRAPPED']:
                 disassembly_start = received_datetime + timedelta(hours=random.randint(2, 48))
                 Core.objects.filter(pk=core.pk).update(
-                    status='in_disassembly' if status != 'scrapped' else 'scrapped',
+                    status='IN_DISASSEMBLY' if status != 'SCRAPPED' else 'SCRAPPED',
                     disassembly_started_at=disassembly_start
                 )
 
-            if status == 'disassembled':
+            if status == 'DISASSEMBLED':
                 disassembly_complete = received_datetime + timedelta(hours=random.randint(4, 72))
                 Core.objects.filter(pk=core.pk).update(
-                    status='disassembled',
+                    status='DISASSEMBLED',
                     disassembly_completed_at=disassembly_complete,
                     disassembled_by=random.choice(employees)
                 )
 
-            if status == 'scrapped':
-                Core.objects.filter(pk=core.pk).update(status='scrapped')
+            if status == 'SCRAPPED':
+                Core.objects.filter(pk=core.pk).update(status='SCRAPPED')
 
             core.refresh_from_db()
             cores.append(core)
@@ -351,7 +351,7 @@ class RemanSeeder(BaseSeeder):
             return harvested
 
         # Only create components from cores that are in_disassembly or disassembled
-        processable_cores = [c for c in cores if c.status in ['in_disassembly', 'disassembled']]
+        processable_cores = [c for c in cores if c.status in ['IN_DISASSEMBLY', 'DISASSEMBLED']]
 
         # Grade distribution: 20% A, 50% B, 25% C, 5% SCRAP
         grade_weights = [
@@ -659,7 +659,7 @@ class RemanSeeder(BaseSeeder):
                 exited_at=None,  # Will be set when we advance
                 started_at=started_at,
                 assigned_to=operator,
-                status='in_progress',
+                status='IN_PROGRESS',
             )
 
             # Handle decision points - ALWAYS create QualityReport
@@ -678,7 +678,7 @@ class RemanSeeder(BaseSeeder):
                     step=current_step,
                     status=decision_result,
                     description=f"Reman QA at {current_step.name} - Visit #{visits_at_step[step_id]}",
-                    sampling_method='statistical',
+                    sampling_method='STATISTICAL',
                     detected_by=operator,
                 )
 
@@ -694,7 +694,7 @@ class RemanSeeder(BaseSeeder):
                 increment_result = part.increment_step(decision_result=decision_result)
             except ValueError:
                 try:
-                    increment_result = part.increment_step(decision_result='default')
+                    increment_result = part.increment_step(decision_result='DEFAULT')
                 except ValueError:
                     break  # Can't advance
 
@@ -703,7 +703,7 @@ class RemanSeeder(BaseSeeder):
             StepExecution.objects.filter(pk=execution.pk).update(
                 exited_at=exit_time,
                 completed_by=operator,
-                status='completed'
+                status='COMPLETED'
             )
 
             advancement_count += 1
@@ -718,5 +718,5 @@ class RemanSeeder(BaseSeeder):
             part.refresh_from_db()
             if part.step:
                 current_idx = next((i for i, s in enumerate(steps) if s.id == part.step.id), -1)
-                if current_idx >= target_idx and part.step.step_type != 'rework':
+                if current_idx >= target_idx and part.step.step_type != 'REWORK':
                     break

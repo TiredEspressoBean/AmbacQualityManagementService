@@ -8,8 +8,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 from Tracker.models import (
-    CAPA, CapaTasks, RcaRecord, FiveWhys, Fishbone, CapaVerification,
-    QualityReports, Equipments,
+    CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, CapaVerification,
+    QualityReports, Equipments, CapaTaskStatus, CapaTaskCompletionMode,
 )
 from .base import BaseSeeder
 
@@ -89,14 +89,14 @@ class CapaSeeder(BaseSeeder):
         self.log(f"Created {capa_count} CAPAs with tasks and RCA")
 
     def _create_tasks(self, capa, users, capa_status):
-        """Create realistic CAPA tasks."""
+        """Create realistic CAPA tasks with multi-person assignments."""
         task_templates = [
-            ('CONTAINMENT', 'Containment Action', 'Isolate affected parts and prevent further impact'),
-            ('CORRECTIVE', 'Corrective Action', 'Implement fix to address root cause'),
-            ('PREVENTIVE', 'Preventive Action', 'Implement controls to prevent recurrence'),
+            ('CONTAINMENT', 'Containment Action', 'Isolate affected parts and prevent further impact', False),
+            ('CORRECTIVE', 'Corrective Action', 'Implement fix to address root cause', True),  # Multi-person
+            ('PREVENTIVE', 'Preventive Action', 'Implement controls to prevent recurrence', True),  # Multi-person
         ]
 
-        for task_type, title, description in task_templates:
+        for task_type, title, description, allow_multi_assignee in task_templates:
             # Task status based on CAPA status
             if capa_status == 'OPEN':
                 task_status = 'NOT_STARTED'
@@ -104,21 +104,73 @@ class CapaSeeder(BaseSeeder):
                 task_status = random.choice(['NOT_STARTED', 'IN_PROGRESS'])
             elif capa_status == 'PENDING_VERIFICATION':
                 task_status = random.choice(['IN_PROGRESS', 'COMPLETED'])
-            else:  # CLOSED
+            else:  # closed
                 task_status = 'COMPLETED'
 
-            assignee = self.get_weighted_employee(users)
+            # Decide if this task uses multi-person assignment (30% chance for eligible tasks)
+            use_multi_assignee = allow_multi_assignee and random.random() < 0.3 and len(users.get('employees', [])) >= 2
 
-            CapaTasks.objects.create(
+            primary_assignee = self.get_weighted_employee(users)
+
+            # Set completion mode based on assignment type
+            if use_multi_assignee:
+                completion_mode = random.choice([
+                    CapaTaskCompletionMode.ANY_ASSIGNEE,
+                    CapaTaskCompletionMode.ALL_ASSIGNEES,
+                ])
+            else:
+                completion_mode = CapaTaskCompletionMode.SINGLE_OWNER
+
+            task = CapaTasks.objects.create(
                 tenant=self.tenant,
                 capa=capa,
                 task_type=task_type,
                 description=f"{title} - {description} for {capa.capa_number}",
-                assigned_to=assignee,
+                assigned_to=primary_assignee,
                 status=task_status,
+                completion_mode=completion_mode,
                 due_date=capa.due_date - timedelta(days=random.randint(1, 7)) if capa.due_date else None,
                 completed_date=timezone.now().date() if task_status == 'COMPLETED' else None,
-                completed_by=assignee if task_status == 'COMPLETED' else None,
+                completed_by=primary_assignee if task_status == 'COMPLETED' else None,
+            )
+
+            # Create CapaTaskAssignee records for multi-person tasks
+            if use_multi_assignee:
+                self._create_task_assignees(task, users, task_status)
+
+    def _create_task_assignees(self, task, users, task_status):
+        """Create CapaTaskAssignee records for multi-person task assignment."""
+        employees = users.get('employees', [])
+        if len(employees) < 2:
+            return
+
+        # Select 2-3 assignees
+        num_assignees = random.randint(2, min(3, len(employees)))
+        assignees = random.sample(employees, num_assignees)
+
+        for user in assignees:
+            # Determine assignee status based on task status and completion mode
+            if task_status == 'NOT_STARTED':
+                assignee_status = CapaTaskStatus.NOT_STARTED
+            elif task_status == 'IN_PROGRESS':
+                assignee_status = random.choice([CapaTaskStatus.NOT_STARTED, CapaTaskStatus.IN_PROGRESS])
+            elif task_status == 'COMPLETED':
+                if task.completion_mode == CapaTaskCompletionMode.ALL_ASSIGNEES:
+                    # All must be completed
+                    assignee_status = CapaTaskStatus.COMPLETED
+                else:
+                    # ANY_ASSIGNEE - at least one completed
+                    assignee_status = random.choice([CapaTaskStatus.COMPLETED, CapaTaskStatus.IN_PROGRESS])
+            else:
+                assignee_status = CapaTaskStatus.IN_PROGRESS
+
+            CapaTaskAssignee.objects.create(
+                tenant=self.tenant,
+                task=task,
+                user=user,
+                status=assignee_status,
+                completed_at=timezone.now() if assignee_status == CapaTaskStatus.COMPLETED else None,
+                completion_notes=f"Task completed by {user.first_name}" if assignee_status == CapaTaskStatus.COMPLETED else None,
             )
 
     def _create_rca(self, capa, users):
