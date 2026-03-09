@@ -107,6 +107,7 @@ from .mes_lite import (
     PartsStatus,
     OrdersStatus,
     WorkOrderStatus,
+    WorkOrderPriority,
     APQPStage,
     ProcessStatus,
 
@@ -210,6 +211,7 @@ from .qms import (
     RootCauseRole,
     EffectivenessResult,
     CAPA,
+    CapaStatusTransition,
     CapaTasks,
     CapaTaskAssignee,
     RcaRecord,

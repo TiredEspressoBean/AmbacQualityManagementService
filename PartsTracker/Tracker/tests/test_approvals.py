@@ -419,7 +419,7 @@ class DocumentApprovalIntegrationTestCase(VectorTestCase):
         self.tenant = Tenant.objects.create(
             name="Doc Approval Tenant",
             slug="doc-approval-tenant",
-            tier="pro"
+            tier="PRO"
         )
 
         self.user = User.objects.create_user(

@@ -377,7 +377,7 @@ class TrainingRecordTests(TrainingModuleTestCase):
         self.assertFalse(expired_record.is_current)
 
     def test_status_property(self):
-        """status returns 'current', 'expiring_soon', or 'expired'."""
+        """status returns 'CURRENT', 'EXPIRING_SOON', or 'EXPIRED'."""
         # Current (expires in 6 months)
         current = TrainingRecord.objects.create(
             user=self.operator,
@@ -386,7 +386,7 @@ class TrainingRecordTests(TrainingModuleTestCase):
             expires_date=date.today() + timedelta(days=180),
             tenant=self.tenant
         )
-        self.assertEqual(current.status, 'current')
+        self.assertEqual(current.status, 'CURRENT')
 
         # Expiring soon (expires in 15 days)
         expiring = TrainingRecord(
@@ -396,7 +396,7 @@ class TrainingRecordTests(TrainingModuleTestCase):
             expires_date=date.today() + timedelta(days=15),
             tenant=self.tenant
         )
-        self.assertEqual(expiring.status, 'expiring_soon')
+        self.assertEqual(expiring.status, 'EXPIRING_SOON')
 
         # Expired
         expired = TrainingRecord(
@@ -406,4 +406,4 @@ class TrainingRecordTests(TrainingModuleTestCase):
             expires_date=date.today() - timedelta(days=35),
             tenant=self.tenant
         )
-        self.assertEqual(expired.status, 'expired')
+        self.assertEqual(expired.status, 'EXPIRED')

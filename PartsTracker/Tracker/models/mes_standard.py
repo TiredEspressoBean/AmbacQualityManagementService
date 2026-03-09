@@ -80,17 +80,17 @@ class EquipmentType(SecureModel):
     def get_calibration_due_count(self) -> int:
         """Returns count of equipment of this type with calibration due or overdue."""
         return self.equipments_set.filter(
-            models.Q(_calibration_status='due_soon') | models.Q(_calibration_status='overdue')
+            models.Q(_calibration_status='DUE_SOON') | models.Q(_calibration_status='OVERDUE')
         ).count() if self.requires_calibration else 0
 
 
 class EquipmentStatus(models.TextChoices):
     """Status choices for equipment operational state."""
-    IN_SERVICE = 'in_service', 'In Service'
-    OUT_OF_SERVICE = 'out_of_service', 'Out of Service'
-    IN_CALIBRATION = 'in_calibration', 'In Calibration'
-    IN_MAINTENANCE = 'in_maintenance', 'In Maintenance'
-    RETIRED = 'retired', 'Retired'
+    IN_SERVICE = 'IN_SERVICE', 'In Service'
+    OUT_OF_SERVICE = 'OUT_OF_SERVICE', 'Out of Service'
+    IN_CALIBRATION = 'IN_CALIBRATION', 'In Calibration'
+    IN_MAINTENANCE = 'IN_MAINTENANCE', 'In Maintenance'
+    RETIRED = 'RETIRED', 'Retired'
 
 
 class EquipmentQuerySet(models.QuerySet):
@@ -241,7 +241,7 @@ class Equipments(SecureModel):
 
     @property
     def calibration_status(self) -> str | None:
-        """Returns calibration status: 'current', 'due_soon', 'overdue', 'failed', or None.
+        """Returns calibration status: 'CURRENT', 'DUE_SOON', 'OVERDUE', 'FAILED', or None.
 
         Returns None if equipment doesn't require calibration.
         """
@@ -249,7 +249,7 @@ class Equipments(SecureModel):
             return None
         latest = self.get_latest_calibration()
         if not latest:
-            return 'overdue'  # Never calibrated = overdue
+            return 'OVERDUE'  # Never calibrated = overdue
         return latest.status
 
     @property
@@ -337,12 +337,12 @@ class Equipments(SecureModel):
 # =============================================================================
 
 class SamplingRuleType(models.TextChoices):
-    EVERY_NTH_PART = "every_nth_part", "Every Nth Part"
-    PERCENTAGE = "percentage", "Percentage of Parts"
-    RANDOM = "random", "Pure Random"
-    FIRST_N_PARTS = "first_n_parts", "First N Parts"
-    LAST_N_PARTS = "last_n_parts", "Last N Parts"
-    EXACT_COUNT = "exact_count", "Exact Count (No Variance)"
+    EVERY_NTH_PART = "EVERY_NTH_PART", "Every Nth Part"
+    PERCENTAGE = "PERCENTAGE", "Percentage of Parts"
+    RANDOM = "RANDOM", "Pure Random"
+    FIRST_N_PARTS = "FIRST_N_PARTS", "First N Parts"
+    LAST_N_PARTS = "LAST_N_PARTS", "Last N Parts"
+    EXACT_COUNT = "EXACT_COUNT", "Exact Count (No Variance)"
 
 
 class SamplingRuleSet(SecureModel):
@@ -838,12 +838,12 @@ class ScheduleSlot(SecureModel):
     actual_end = models.DateTimeField(null=True, blank=True)
 
     STATUS_CHOICES = [
-        ('scheduled', 'Scheduled'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
+        ('SCHEDULED', 'Scheduled'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='SCHEDULED')
 
     notes = models.TextField(blank=True)
 
@@ -884,15 +884,15 @@ class DowntimeEvent(SecureModel):
     Used for OEE (Overall Equipment Effectiveness) calculations and maintenance tracking.
     """
     DOWNTIME_CATEGORY_CHOICES = [
-        ('planned', 'Planned Maintenance'),
-        ('unplanned', 'Unplanned/Breakdown'),
-        ('changeover', 'Changeover/Setup'),
-        ('calibration', 'Calibration'),
-        ('no_work', 'No Work Available'),
-        ('no_operator', 'No Operator Available'),
-        ('material', 'Waiting for Material'),
-        ('quality', 'Quality Issue'),
-        ('other', 'Other'),
+        ('PLANNED', 'Planned Maintenance'),
+        ('UNPLANNED', 'Unplanned/Breakdown'),
+        ('CHANGEOVER', 'Changeover/Setup'),
+        ('CALIBRATION', 'Calibration'),
+        ('NO_WORK', 'No Work Available'),
+        ('NO_OPERATOR', 'No Operator Available'),
+        ('MATERIAL', 'Waiting for Material'),
+        ('QUALITY', 'Quality Issue'),
+        ('OTHER', 'Other'),
     ]
 
     equipment = models.ForeignKey(
@@ -969,11 +969,11 @@ class MaterialLot(SecureModel):
     traceability from receipt through consumption.
     """
     LOT_STATUS_CHOICES = [
-        ('received', 'Received'),
-        ('in_use', 'In Use'),
-        ('consumed', 'Consumed'),
-        ('scrapped', 'Scrapped'),
-        ('quarantine', 'Quarantine'),
+        ('RECEIVED', 'Received'),
+        ('IN_USE', 'In Use'),
+        ('CONSUMED', 'Consumed'),
+        ('SCRAPPED', 'Scrapped'),
+        ('QUARANTINE', 'Quarantine'),
     ]
 
     lot_number = models.CharField(max_length=100)  # Unique per tenant, not globally
@@ -1024,7 +1024,7 @@ class MaterialLot(SecureModel):
     quantity_remaining = models.DecimalField(max_digits=12, decimal_places=4)
     unit_of_measure = models.CharField(max_length=20)  # "EA", "KG", "M", etc.
 
-    status = models.CharField(max_length=20, choices=LOT_STATUS_CHOICES, default='received')
+    status = models.CharField(max_length=20, choices=LOT_STATUS_CHOICES, default='RECEIVED')
 
     # Shelf life tracking
     manufacture_date = models.DateField(null=True, blank=True)
@@ -1089,7 +1089,7 @@ class MaterialLot(SecureModel):
             raise ValueError(f"Cannot split {quantity}, only {locked_self.quantity_remaining} remaining")
 
         # Validate lot status - can only split received or in_use lots
-        if locked_self.status not in ('received', 'in_use'):
+        if locked_self.status not in ('RECEIVED', 'IN_USE'):
             raise ValueError(f"Cannot split a {locked_self.status} lot")
 
         # Generate child lot number atomically
@@ -1109,7 +1109,7 @@ class MaterialLot(SecureModel):
             quantity=quantity,
             quantity_remaining=quantity,
             unit_of_measure=locked_self.unit_of_measure,
-            status='received',
+            status='RECEIVED',
             manufacture_date=locked_self.manufacture_date,
             expiration_date=locked_self.expiration_date,
             storage_location=locked_self.storage_location,
@@ -1118,7 +1118,7 @@ class MaterialLot(SecureModel):
         # Update parent remaining
         locked_self.quantity_remaining -= quantity
         if locked_self.quantity_remaining <= 0:
-            locked_self.status = 'consumed'
+            locked_self.status = 'CONSUMED'
         locked_self.save()
 
         # Refresh self to reflect changes
@@ -1216,9 +1216,9 @@ class MaterialUsage(SecureModel):
         if self.lot and not self.pk:  # Only on create
             self.lot.quantity_remaining -= self.qty_consumed
             if self.lot.quantity_remaining <= 0:
-                self.lot.status = 'consumed'
+                self.lot.status = 'CONSUMED'
             else:
-                self.lot.status = 'in_use'
+                self.lot.status = 'IN_USE'
             self.lot.save()
         super().save(*args, **kwargs)
 
@@ -1230,11 +1230,11 @@ class TimeEntry(SecureModel):
     Supports production time, setup/changeover, rework, downtime, and indirect labor.
     """
     ENTRY_TYPE_CHOICES = [
-        ('production', 'Production'),
-        ('setup', 'Setup/Changeover'),
-        ('rework', 'Rework'),
-        ('downtime', 'Downtime'),
-        ('indirect', 'Indirect Labor'),
+        ('PRODUCTION', 'Production'),
+        ('SETUP', 'Setup/Changeover'),
+        ('REWORK', 'Rework'),
+        ('DOWNTIME', 'Downtime'),
+        ('INDIRECT', 'Indirect Labor'),
     ]
 
     entry_type = models.CharField(max_length=20, choices=ENTRY_TYPE_CHOICES)
@@ -1334,14 +1334,14 @@ class BOM(SecureModel):
     Supports both assembly BOMs (building) and disassembly BOMs (for reman).
     """
     BOM_TYPE_CHOICES = [
-        ('assembly', 'Assembly'),
-        ('disassembly', 'Disassembly'),
+        ('ASSEMBLY', 'Assembly'),
+        ('DISASSEMBLY', 'Disassembly'),
     ]
 
     BOM_STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('released', 'Released'),
-        ('obsolete', 'Obsolete'),
+        ('DRAFT', 'Draft'),
+        ('RELEASED', 'Released'),
+        ('OBSOLETE', 'Obsolete'),
     ]
 
     part_type = models.ForeignKey(
@@ -1350,8 +1350,8 @@ class BOM(SecureModel):
         related_name='boms'
     )
     revision = models.CharField(max_length=10)
-    bom_type = models.CharField(max_length=20, choices=BOM_TYPE_CHOICES, default='assembly')
-    status = models.CharField(max_length=20, choices=BOM_STATUS_CHOICES, default='draft')
+    bom_type = models.CharField(max_length=20, choices=BOM_TYPE_CHOICES, default='ASSEMBLY')
+    status = models.CharField(max_length=20, choices=BOM_STATUS_CHOICES, default='DRAFT')
 
     description = models.TextField(blank=True)
     effective_date = models.DateField(null=True, blank=True)

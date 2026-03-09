@@ -172,7 +172,7 @@ def handle_approval_decision(sender, instance, **kwargs):
             content_object.approved_at = instance.completed_at
             content_object.save(update_fields=['approval_status', 'approved_by', 'approved_at'])
         elif instance.status == 'REJECTED':
-            # Set approval status to REJECTED and allow re-submission
+            # Set approval status to rejected and allow re-submission
             content_object.approval_status = 'REJECTED'
             content_object.approval_required = False  # Reset so they can re-request
             content_object.save(update_fields=['approval_status', 'approval_required'])
@@ -377,7 +377,7 @@ def handle_calibration_result(sender, instance, created, **kwargs):
 
     equipment = instance.equipment
 
-    if instance.result == 'fail':
+    if instance.result == 'FAIL':
         # Failed calibration - take equipment out of service
         if equipment.status != EquipmentStatus.OUT_OF_SERVICE:
             old_status = equipment.status
@@ -388,14 +388,14 @@ def handle_calibration_result(sender, instance, created, **kwargs):
                 f"due to failed calibration (was: {old_status})"
             )
 
-    elif instance.result in ('pass', 'limited'):
+    elif instance.result in ('PASS', 'LIMITED'):
         # Passed or limited - return to service if it was out due to calibration
         if equipment.status == EquipmentStatus.OUT_OF_SERVICE:
             equipment.status = EquipmentStatus.IN_SERVICE
             equipment.save(update_fields=['status'])
             logger.info(
                 f"Equipment {equipment.name} ({equipment.id}) returned to IN_SERVICE "
-                f"after {'passing' if instance.result == 'pass' else 'limited'} calibration"
+                f"after {'passing' if instance.result == 'PASS' else 'limited'} calibration"
             )
 
 
@@ -454,9 +454,9 @@ def cascade_schedule_slots_on_workorder_complete(sender, instance, **kwargs):
     # Update any in_progress or scheduled slots to completed
     updated = ScheduleSlot.objects.filter(
         work_order=instance,
-        status__in=['scheduled', 'in_progress']
+        status__in=['SCHEDULED', 'IN_PROGRESS']
     ).update(
-        status='completed',
+        status='COMPLETED',
         actual_end=timezone.now()
     )
 

@@ -227,7 +227,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         Soft delete: Cancel the notification instead of hard deleting.
         This preserves history and allows for audit logging.
         """
-        instance.status = 'cancelled'
+        instance.status = 'CANCELLED'
         instance.save()
 
     @extend_schema(description="Get available notification types that users can configure", responses={
@@ -282,7 +282,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
 
             # Check if can send
             if not handler.should_send(notification):
-                return Response({"status": "error", "message": "Notification validation failed"},
+                return Response({"detail": "Notification validation failed"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
             # Send it
@@ -292,11 +292,11 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
                 return Response(
                     {"status": "success", "message": f"Test notification sent to {notification.recipient.email}"})
             else:
-                return Response({"status": "error", "message": "Failed to send notification"},
+                return Response({"detail": "Failed to send notification"},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ===== CAPA VIEWSETS =====
@@ -451,15 +451,15 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
 
         # Count by computed status
         by_status = {
-            'open': 0,
-            'in_progress': 0,
-            'pending_verification': 0,
-            'closed': 0,
+            'OPEN': 0,
+            'IN_PROGRESS': 0,
+            'PENDING_VERIFICATION': 0,
+            'CLOSED': 0,
         }
         by_severity = {
-            'CRITICAL': 0,
-            'MAJOR': 0,
-            'MINOR': 0,
+            'critical': 0,
+            'major': 0,
+            'minor': 0,
         }
         overdue_count = 0
 
@@ -467,13 +467,13 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             # Status counts
             computed_status = capa.computed_status
             if computed_status == CapaStatus.OPEN:
-                by_status['open'] += 1
+                by_status['OPEN'] += 1
             elif computed_status == CapaStatus.IN_PROGRESS:
-                by_status['in_progress'] += 1
+                by_status['IN_PROGRESS'] += 1
             elif computed_status == CapaStatus.PENDING_VERIFICATION:
-                by_status['pending_verification'] += 1
+                by_status['PENDING_VERIFICATION'] += 1
             elif computed_status == CapaStatus.CLOSED:
-                by_status['closed'] += 1
+                by_status['CLOSED'] += 1
 
             # Severity counts (ALL CAPAs, not just non-closed)
             severity = capa.severity
@@ -611,12 +611,12 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
         except ValueError as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -690,7 +690,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -700,7 +700,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         # Check permission
         if not request.user.has_tenant_perm('review_rca'):
             return Response(
-                {'error': 'You do not have permission to review RCA records'},
+                {'detail': 'You do not have permission to review RCA records'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -715,7 +715,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1048,9 +1048,8 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
             from Tracker.models import StepOverride
             return StepOverride.objects.none()
 
-        from Tracker.models import StepOverride
-        qs = StepOverride.objects.all()
-        return qs.select_related(
+        # Call super() to apply tenant scoping from TenantScopedMixin
+        return super().get_queryset().select_related(
             'step_execution', 'step_execution__part', 'step_execution__step',
             'requested_by', 'approved_by'
         )
@@ -1182,8 +1181,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             from Tracker.models import FPIRecord
             return FPIRecord.objects.none()
 
-        from Tracker.models import FPIRecord
-        return FPIRecord.objects.select_related(
+        # Call super() to apply tenant scoping from TenantScopedMixin
+        return super().get_queryset().select_related(
             'work_order', 'step', 'part_type', 'designated_part',
             'equipment', 'inspected_by', 'waived_by'
         )
@@ -1292,7 +1291,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
         Returns existing pending FPI if one exists for the scope, otherwise
         creates a new one.
         """
-        from Tracker.models import FPIRecord, FPIStatus, WorkOrder, Steps
+        from Tracker.models import FPIRecord, FPIStatus, WorkOrder, Steps, Equipments
 
         work_order_id = request.data.get('work_order')
         step_id = request.data.get('step')
@@ -1303,9 +1302,11 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Use tenant-scoped queries to prevent cross-tenant access
+        tenant = self.tenant
         try:
-            work_order = WorkOrder.objects.get(id=work_order_id)
-            step = Steps.objects.get(id=step_id)
+            work_order = WorkOrder.objects.filter(tenant=tenant).get(id=work_order_id)
+            step = Steps.objects.filter(tenant=tenant).get(id=step_id)
         except (WorkOrder.DoesNotExist, Steps.DoesNotExist) as e:
             return Response(
                 {"detail": str(e)},
@@ -1333,9 +1334,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                     {"detail": "equipment required for per_equipment FPI scope"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            from Tracker.models import Equipments
             try:
-                equipment = Equipments.objects.get(id=equipment_id)
+                equipment = Equipments.objects.filter(tenant=tenant).get(id=equipment_id)
                 lookup['equipment'] = equipment
             except Equipments.DoesNotExist:
                 return Response(
@@ -1343,8 +1343,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-        # Try to find existing pending FPI
-        fpi = FPIRecord.objects.filter(**lookup).first()
+        # Try to find existing pending FPI using tenant-scoped queryset
+        fpi = self.get_queryset().filter(**lookup).first()
 
         if fpi:
             serializer = self.get_serializer(fpi)
@@ -1353,8 +1353,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 "fpi": serializer.data
             })
 
-        # Create new FPI record
+        # Create new FPI record with tenant
         create_data = {
+            'tenant': tenant,
             'work_order': work_order,
             'step': step,
             'part_type': work_order.part_type,
@@ -1386,7 +1387,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     @action(detail=False, methods=['get'], url_path='check-status')
     def check_status(self, request):
         """Check if FPI requirement is satisfied for a work order/step."""
-        from Tracker.models import FPIRecord, FPIStatus, Steps
+        from Tracker.models import FPIStatus, Steps
 
         work_order_id = request.query_params.get('work_order')
         step_id = request.query_params.get('step')
@@ -1397,8 +1398,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Use tenant-scoped query
+        tenant = self.tenant
         try:
-            step = Steps.objects.get(id=step_id)
+            step = Steps.objects.filter(tenant=tenant).get(id=step_id)
         except Steps.DoesNotExist:
             return Response(
                 {"detail": "Step not found"},
@@ -1414,14 +1417,15 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 "message": "Step does not require FPI"
             })
 
-        # Check for passed/waived FPI
-        passed_fpi = FPIRecord.objects.filter(
+        # Check for passed/waived FPI using tenant-scoped queryset
+        base_qs = self.get_queryset()
+        passed_fpi = base_qs.filter(
             work_order_id=work_order_id,
             step_id=step_id,
             status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]
         ).exists()
 
-        pending_fpi = FPIRecord.objects.filter(
+        pending_fpi = base_qs.filter(
             work_order_id=work_order_id,
             step_id=step_id,
             status=FPIStatus.PENDING
@@ -1473,8 +1477,8 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             from Tracker.models import StepExecutionMeasurement
             return StepExecutionMeasurement.objects.none()
 
-        from Tracker.models import StepExecutionMeasurement
-        return StepExecutionMeasurement.objects.select_related(
+        # Call super() to apply tenant scoping from TenantScopedMixin
+        return super().get_queryset().select_related(
             'step_execution', 'step_execution__part', 'step_execution__step',
             'measurement_definition', 'recorded_by', 'equipment'
         )
@@ -1519,8 +1523,10 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Use tenant-scoped queries
+        tenant = self.tenant
         try:
-            step_execution = StepExecution.objects.get(id=step_execution_id)
+            step_execution = StepExecution.objects.filter(tenant=tenant).get(id=step_execution_id)
         except StepExecution.DoesNotExist:
             return Response(
                 {"detail": "Step execution not found"},
@@ -1533,24 +1539,25 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
         for i, meas_data in enumerate(measurements_data):
             defn_id = meas_data.get('measurement_definition')
             if not defn_id:
-                errors.append({"index": i, "error": "measurement_definition required"})
+                errors.append({"index": i, "detail": "measurement_definition required"})
                 continue
 
             try:
-                defn = MeasurementDefinition.objects.get(id=defn_id)
+                defn = MeasurementDefinition.objects.filter(tenant=tenant).get(id=defn_id)
             except MeasurementDefinition.DoesNotExist:
-                errors.append({"index": i, "error": f"MeasurementDefinition {defn_id} not found"})
+                errors.append({"index": i, "detail": f"MeasurementDefinition {defn_id} not found"})
                 continue
 
             equipment = None
             if meas_data.get('equipment'):
                 try:
-                    equipment = Equipments.objects.get(id=meas_data['equipment'])
+                    equipment = Equipments.objects.filter(tenant=tenant).get(id=meas_data['equipment'])
                 except Equipments.DoesNotExist:
-                    errors.append({"index": i, "error": f"Equipment {meas_data['equipment']} not found"})
+                    errors.append({"index": i, "detail": f"Equipment {meas_data['equipment']} not found"})
                     continue
 
             measurement = StepExecutionMeasurement.objects.create(
+                tenant=tenant,
                 step_execution=step_execution,
                 measurement_definition=defn,
                 value=meas_data.get('value'),
@@ -1584,7 +1591,7 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
         Returns list of MeasurementDefinitions required for the step,
         with status indicating whether each has been recorded.
         """
-        from Tracker.models import StepExecution, MeasurementDefinition, StepExecutionMeasurement
+        from Tracker.models import StepExecution, MeasurementDefinition
 
         step_execution_id = request.query_params.get('step_execution')
         if not step_execution_id:
@@ -1593,8 +1600,10 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Use tenant-scoped queries
+        tenant = self.tenant
         try:
-            step_execution = StepExecution.objects.select_related('step').get(id=step_execution_id)
+            step_execution = StepExecution.objects.filter(tenant=tenant).select_related('step').get(id=step_execution_id)
         except StepExecution.DoesNotExist:
             return Response(
                 {"detail": "Step execution not found"},
@@ -1603,11 +1612,11 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
 
         step = step_execution.step
 
-        # Get measurement definitions for this step
-        definitions = MeasurementDefinition.objects.filter(step=step)
+        # Get measurement definitions for this step (tenant-scoped)
+        definitions = MeasurementDefinition.objects.filter(tenant=tenant, step=step)
 
-        # Get already recorded measurements
-        recorded = StepExecutionMeasurement.objects.filter(
+        # Get already recorded measurements using tenant-scoped queryset
+        recorded = self.get_queryset().filter(
             step_execution=step_execution
         ).values_list('measurement_definition_id', flat=True)
         recorded_set = set(recorded)
@@ -1656,7 +1665,7 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
 
         Returns summary of measurement compliance status.
         """
-        from Tracker.models import StepExecution, StepExecutionMeasurement
+        from Tracker.models import StepExecution
 
         step_execution_id = request.query_params.get('step_execution')
         if not step_execution_id:
@@ -1665,15 +1674,18 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Use tenant-scoped query
+        tenant = self.tenant
         try:
-            step_execution = StepExecution.objects.get(id=step_execution_id)
+            step_execution = StepExecution.objects.filter(tenant=tenant).get(id=step_execution_id)
         except StepExecution.DoesNotExist:
             return Response(
                 {"detail": "Step execution not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        measurements = StepExecutionMeasurement.objects.filter(
+        # Use tenant-scoped queryset
+        measurements = self.get_queryset().filter(
             step_execution=step_execution
         ).select_related('measurement_definition')
 

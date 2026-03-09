@@ -26,7 +26,7 @@ class UserInvitationTestCase(VectorTestCase):
         self.tenant = Tenant.objects.create(
             name="Test Tenant",
             slug="test-tenant",
-            tier="pro"
+            tier="PRO"
         )
 
         # Create a staff user who can send invitations

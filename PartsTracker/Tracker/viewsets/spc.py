@@ -158,7 +158,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                             {
                                 "id": "019c4a5d-...",
                                 "label": "Outer Diameter",
-                                "type": "NUMERIC",
+                                "type": "numeric",
                                 "unit": "mm",
                                 "nominal": 25.0,
                                 "upper_tol": 0.1,
@@ -251,7 +251,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         measurement_id = request.query_params.get('measurement_id')
         if not measurement_id:
             return Response(
-                {"error": "measurement_id is required"},
+                {"detail": "measurement_id is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -262,7 +262,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             ).get(id=measurement_id)
         except MeasurementDefinition.DoesNotExist:
             return Response(
-                {"error": "Measurement definition not found"},
+                {"detail": "Measurement definition not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -399,7 +399,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         measurement_id = request.query_params.get('measurement_id')
         if not measurement_id:
             return Response(
-                {"error": "measurement_id is required"},
+                {"detail": "measurement_id is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -408,7 +408,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             definition = self.qs_for_user(MeasurementDefinition).get(id=measurement_id)
         except MeasurementDefinition.DoesNotExist:
             return Response(
-                {"error": "Measurement definition not found"},
+                {"detail": "Measurement definition not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -433,7 +433,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             return Response({
                 'definition': MeasurementDefinitionSPCSerializer(definition).data,
                 'sample_size': len(values),
-                'error': 'Insufficient data for capability analysis (need at least 2 measurements)',
+                'detail': 'Insufficient data for capability analysis (need at least 2 measurements)',
             })
 
         # Calculate spec limits
@@ -445,7 +445,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             return Response({
                 'definition': MeasurementDefinitionSPCSerializer(definition).data,
                 'sample_size': len(values),
-                'error': 'Measurement definition missing nominal or tolerance values',
+                'detail': 'Measurement definition missing nominal or tolerance values',
             })
 
         usl = nominal + upper_tol
@@ -591,7 +591,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
 
         if not part_id and not work_order_id:
             return Response(
-                {"error": "Either part_id or work_order_id is required"},
+                {"detail": "Either part_id or work_order_id is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -616,7 +616,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 filters['report__part_id'] = part_id
             except Parts.DoesNotExist:
                 return Response(
-                    {"error": "Part not found"},
+                    {"detail": "Part not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
@@ -631,7 +631,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 filters['report__part__work_order_id'] = work_order_id
             except WorkOrder.DoesNotExist:
                 return Response(
-                    {"error": "Work order not found"},
+                    {"detail": "Work order not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
@@ -781,7 +781,7 @@ class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
 
         if baseline.status == BaselineStatus.SUPERSEDED:
             return Response(
-                {"error": "Baseline is already superseded"},
+                {"detail": "Baseline is already superseded"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -810,7 +810,7 @@ class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
         measurement_id = request.query_params.get('measurement_id')
         if not measurement_id:
             return Response(
-                {"error": "measurement_id required"},
+                {"detail": "measurement_id required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

@@ -45,15 +45,15 @@ class Tenant(models.Model):
     slug = models.SlugField(unique=True, help_text="URL-safe identifier, immutable after creation")
 
     class Tier(models.TextChoices):
-        STARTER = 'starter', 'Starter'
-        PRO = 'pro', 'Pro'
-        ENTERPRISE = 'enterprise', 'Enterprise'
+        STARTER = 'STARTER', 'Starter'
+        PRO = 'PRO', 'Pro'
+        ENTERPRISE = 'ENTERPRISE', 'Enterprise'
 
     class Status(models.TextChoices):
-        ACTIVE = 'active', 'Active'
-        TRIAL = 'trial', 'Trial'
-        SUSPENDED = 'suspended', 'Suspended'
-        PENDING_DELETION = 'pending_deletion', 'Pending Deletion'
+        ACTIVE = 'ACTIVE', 'Active'
+        TRIAL = 'TRIAL', 'Trial'
+        SUSPENDED = 'SUSPENDED', 'Suspended'
+        PENDING_DELETION = 'PENDING_DELETION', 'Pending Deletion'
 
     tier = models.CharField(max_length=20, choices=Tier.choices, default=Tier.STARTER)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
@@ -535,7 +535,7 @@ class SecureQuerySet(models.QuerySet):
             ).values_list('id', flat=True)
 
             return queryset.filter(
-                classification='public'
+                classification='PUBLIC'
             ).filter(
                 Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
                 Q(content_type=workorder_ct, object_id__in=[str(id) for id in accessible_workorder_ids]) |
@@ -785,7 +785,7 @@ class SecureManager(models.Manager):
 
             # Filter: PUBLIC classification AND attached to accessible object
             return queryset.filter(
-                classification='public'
+                classification='PUBLIC'
             ).filter(
                 Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
                 Q(content_type=workorder_ct, object_id__in=[str(id) for id in accessible_workorder_ids]) |
@@ -1074,11 +1074,11 @@ def part_doc_upload_path(self, filename):
 
 
 class ClassificationLevel(models.TextChoices):
-    PUBLIC = "public", "Public"
-    INTERNAL = "internal", "Internal Use"
-    CONFIDENTIAL = "confidential", "Confidential"
-    RESTRICTED = "restricted", "Restricted"  # serious impact
-    SECRET = "secret", "Secret"  # critical impact
+    PUBLIC = "PUBLIC", "Public"
+    INTERNAL = "INTERNAL", "Internal Use"
+    CONFIDENTIAL = "CONFIDENTIAL", "Confidential"
+    RESTRICTED = "RESTRICTED", "Restricted"  # serious impact
+    SECRET = "SECRET", "Secret"  # critical impact
 
 
 class Companies(SecureModel):
@@ -1244,8 +1244,8 @@ class User(AbstractUser):
     )
 
     class UserType(models.TextChoices):
-        INTERNAL = 'internal', 'Internal'  # Staff user of the tenant
-        PORTAL = 'portal', 'Portal'  # External customer portal user
+        INTERNAL = 'INTERNAL', 'Internal'  # Staff user of the tenant
+        PORTAL = 'PORTAL', 'Portal'  # External customer portal user
 
     user_type = models.CharField(
         max_length=20,
@@ -1334,6 +1334,12 @@ class User(AbstractUser):
     class Meta:
         verbose_name_plural = 'Users'
         verbose_name = 'User'
+
+    @property
+    def display_name(self):
+        """Return full name with username fallback for display purposes."""
+        full_name = self.get_full_name()
+        return full_name if full_name else self.username
 
     def save(self, *args, **kwargs):
         # Validate parent_company belongs to same tenant
@@ -1932,8 +1938,8 @@ class NotificationTask(models.Model):
     Supports multiple channels (email, in-app, SMS, etc.) via simple channel_type field.
 
     Examples:
-    - Weekly order reports: interval_type='fixed', day_of_week=4, time='15:00', interval_weeks=1
-    - CAPA reminders: interval_type='deadline_based', deadline=due_date, escalation_tiers=[...]
+    - Weekly order reports: interval_type='FIXED', day_of_week=4, time='15:00', interval_weeks=1
+    - CAPA reminders: interval_type='DEADLINE_BASED', deadline=due_date, escalation_tiers=[...]
     """
 
     # Notification types (hardcoded for now, can move to separate table later if needed)
@@ -1947,29 +1953,29 @@ class NotificationTask(models.Model):
 
     # Interval types
     INTERVAL_TYPES = [
-        ('fixed', 'Fixed Interval'),
-        ('deadline_based', 'Deadline Based'),
+        ('FIXED', 'Fixed Interval'),
+        ('DEADLINE_BASED', 'Deadline Based'),
     ]
 
     # Notification status
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('sent', 'Sent'),
-        ('failed', 'Failed'),
-        ('cancelled', 'Cancelled'),
+        ('PENDING', 'Pending'),
+        ('SENT', 'Sent'),
+        ('FAILED', 'Failed'),
+        ('CANCELLED', 'Cancelled'),
     ]
 
     # Channel types (email only for now, but structured for extension)
     CHANNEL_TYPES = [
-        ('email', 'Email'),
-        ('in_app', 'In-App Notification'),
-        ('sms', 'SMS'),
+        ('EMAIL', 'Email'),
+        ('IN_APP', 'In-App Notification'),
+        ('SMS', 'SMS'),
     ]
 
     # Core fields
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_tasks')
-    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPES, default='email')
+    channel_type = models.CharField(max_length=20, choices=CHANNEL_TYPES, default='EMAIL')
     interval_type = models.CharField(max_length=20, choices=INTERVAL_TYPES)
 
     # Fixed interval fields (for recurring notifications)
@@ -1986,7 +1992,7 @@ class NotificationTask(models.Model):
     )
 
     # State tracking
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     attempt_count = models.IntegerField(default=0)
     last_sent_at = models.DateTimeField(null=True, blank=True)
     next_send_at = models.DateTimeField(db_index=True, help_text="When this notification should be sent (UTC)")
@@ -2023,7 +2029,7 @@ class NotificationTask(models.Model):
 
         base_time = self.last_sent_at or self.created_at
 
-        if self.interval_type == 'fixed':
+        if self.interval_type == 'FIXED':
             # Fixed interval with specific day/time
             if self.last_sent_at:
                 # Add interval_weeks to last send
@@ -2043,7 +2049,7 @@ class NotificationTask(models.Model):
             # Make timezone aware in UTC
             return timezone.make_aware(next_dt, pytz.UTC)
 
-        elif self.interval_type == 'deadline_based':
+        elif self.interval_type == 'DEADLINE_BASED':
             # Deadline-based: use escalation tiers
             interval_days = self._get_current_interval()
             return base_time + timedelta(days=interval_days)
@@ -2053,10 +2059,10 @@ class NotificationTask(models.Model):
 
     def _get_current_interval(self):
         """Get the interval (in days) until next send based on escalation tier."""
-        if self.interval_type == 'fixed':
+        if self.interval_type == 'FIXED':
             return self.interval_weeks * 7
 
-        elif self.interval_type == 'deadline_based':
+        elif self.interval_type == 'DEADLINE_BASED':
             tier = self._find_matching_tier()
             return tier[1] if tier else 1  # Default to 1 day if no tier found
 
@@ -2065,7 +2071,7 @@ class NotificationTask(models.Model):
 
     def _find_matching_tier(self):
         """Find the matching escalation tier based on days until deadline."""
-        if self.interval_type != 'deadline_based' or not self.escalation_tiers or not self.deadline:
+        if self.interval_type != 'DEADLINE_BASED' or not self.escalation_tiers or not self.deadline:
             return None
 
         base_time = self.last_sent_at or self.created_at
@@ -2081,7 +2087,7 @@ class NotificationTask(models.Model):
 
     def should_send(self):
         """Check if this notification should be sent now."""
-        if self.status != 'pending':
+        if self.status != 'PENDING':
             return False
 
         if timezone.now() < self.next_send_at:
@@ -2095,14 +2101,14 @@ class NotificationTask(models.Model):
         self.last_sent_at = sent_at or self.next_send_at
 
         if success:
-            self.status = 'sent'
+            self.status = 'SENT'
 
             # Check if we should continue sending
             if self.max_attempts is None or self.attempt_count < self.max_attempts:
-                self.status = 'pending'
+                self.status = 'PENDING'
                 self.next_send_at = self.calculate_next_send()
         else:
-            self.status = 'failed'
+            self.status = 'FAILED'
 
         self.save()
 
@@ -2697,8 +2703,8 @@ class ApprovalRequest(SecureModel):
             NotificationTask.objects.create(
                 notification_type='APPROVAL_REQUEST',
                 recipient=approver,
-                channel_type='email',
-                interval_type='fixed',
+                channel_type='EMAIL',
+                interval_type='FIXED',
                 related_content_type=ContentType.objects.get_for_model(self),
                 related_object_id=self.id,
                 next_send_at=timezone.now()
@@ -2712,8 +2718,8 @@ class ApprovalRequest(SecureModel):
         NotificationTask.objects.create(
             notification_type='APPROVAL_DECISION',
             recipient=self.requested_by,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             related_content_type=ContentType.objects.get_for_model(self),
             related_object_id=self.id,
             next_send_at=timezone.now()
@@ -2732,8 +2738,8 @@ class ApprovalRequest(SecureModel):
             NotificationTask.objects.create(
                 notification_type='APPROVAL_ESCALATION',
                 recipient=self.escalate_to,
-                channel_type='email',
-                interval_type='fixed',
+                channel_type='EMAIL',
+                interval_type='FIXED',
                 related_content_type=ContentType.objects.get_for_model(self),
                 related_object_id=self.id,
                 next_send_at=timezone.now()
@@ -3417,7 +3423,7 @@ class Documents(SecureModel):
             ValueError: If document is not in APPROVED status
         """
         if self.status != 'APPROVED':
-            raise ValueError(f"Cannot release document with status {self.status}. Must be APPROVED.")
+            raise ValueError(f"Cannot release document with status {self.status}. Must be approved.")
 
         self.status = 'RELEASED'
         self.calculate_compliance_dates(effective_date)
@@ -3457,7 +3463,7 @@ class Documents(SecureModel):
                         or template not found
         """
         if self.status != 'DRAFT':
-            raise ValueError(f"Cannot submit document with status {self.status}. Must be DRAFT.")
+            raise ValueError(f"Cannot submit document with status {self.status}. Must be draft.")
 
         # Check if this document type requires approval
         if self.document_type and not self.document_type.requires_approval:

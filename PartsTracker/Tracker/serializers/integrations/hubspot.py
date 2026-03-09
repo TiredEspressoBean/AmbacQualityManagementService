@@ -23,7 +23,14 @@ class ExternalAPIOrderIdentifierSerializer(serializers.ModelSerializer, SecureMo
 
     class Meta:
         model = ExternalAPIOrderIdentifier
-        fields = "__all__"
+        fields = [
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'stage_name', 'API_id', 'pipeline_id',
+            'display_order', 'last_synced_at', 'include_in_progress',
+            # Serializer-specific fields
+            'customer_display_name',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_synced_at']
 
     @extend_schema_field(serializers.CharField())
     def get_customer_display_name(self, obj) -> str:

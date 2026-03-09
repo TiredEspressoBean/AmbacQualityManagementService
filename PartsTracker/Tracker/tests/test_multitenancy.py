@@ -51,7 +51,7 @@ class TenantModelTestCase(TestCase):
         )
         self.assertEqual(tenant.name, "Acme Corporation")
         self.assertEqual(tenant.slug, "acme")
-        self.assertEqual(tenant.tier, "starter")  # Default
+        self.assertEqual(tenant.tier, Tenant.Tier.STARTER)  # Default
         self.assertTrue(tenant.is_active)
         self.assertIsNotNone(tenant.id)  # UUID7
 

@@ -20,9 +20,7 @@ logger = logging.getLogger(__name__)
 
 def get_frontend_url() -> str:
     """Get the frontend URL for links in notifications."""
-    if settings.DEBUG:
-        return "http://localhost:5173"
-    return getattr(settings, 'FRONTEND_URL', 'https://govtracker.ambac.local')
+    return getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
 
 
 # ============================================================================
@@ -228,7 +226,7 @@ def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
 def validate_weekly_report_send(task) -> bool:
     """Check if weekly report should send."""
     if not task.recipient.is_active:
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
     return True
@@ -239,14 +237,14 @@ def validate_capa_send(task) -> bool:
     capa = task.related_object
 
     if not capa:
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
     # Check status field (CAPA model uses 'status', others might use 'current_state')
     status = getattr(capa, 'status', None) or getattr(capa, 'current_state', None)
     if status in ('CLOSED', 'CANCELLED'):
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
@@ -256,14 +254,14 @@ def validate_capa_send(task) -> bool:
 def validate_approval_request_send(task) -> bool:
     """Check if approval request notification should send."""
     if not task.related_object:
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
     approval_request = task.related_object
     # Don't send if already decided
     if hasattr(approval_request, 'status') and approval_request.status != 'PENDING':
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
@@ -273,7 +271,7 @@ def validate_approval_request_send(task) -> bool:
 def validate_approval_decision_send(task) -> bool:
     """Check if approval decision notification should send."""
     if not task.related_object:
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
     return True
@@ -282,14 +280,14 @@ def validate_approval_decision_send(task) -> bool:
 def validate_approval_escalation_send(task) -> bool:
     """Check if approval escalation notification should send."""
     if not task.related_object:
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
     approval_request = task.related_object
     # Don't escalate if already decided
     if hasattr(approval_request, 'status') and approval_request.status != 'PENDING':
-        task.status = 'cancelled'
+        task.status = 'CANCELLED'
         task.save()
         return False
 
@@ -399,8 +397,8 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_weekly_report_context,
         send_validator=validate_weekly_report_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/weekly_customer_update'),
-            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/weekly_customer_update'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'info',
                 'title': 'Weekly Order Report Available',
                 'message': f"Your report for week ending {ctx['week_ending']} is ready",
@@ -413,8 +411,8 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_capa_context,
         send_validator=validate_capa_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/capa_reminder'),
-            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/capa_reminder'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'warning' if ctx.get('is_overdue') else 'info',
                 'title': f"CAPA Action Required: {ctx['disposition_number']}",
                 'message': f"Due in {ctx['days_until_due']} days" if not ctx['is_overdue'] else f"OVERDUE by {abs(ctx['days_until_due'])} days",
@@ -427,8 +425,8 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_approval_request_context,
         send_validator=validate_approval_request_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_request'),
-            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_request'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'info',
                 'title': f"Approval Required: {ctx['content_title']}",
                 'message': f"Requested by {ctx['requested_by']}",
@@ -441,8 +439,8 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_approval_decision_context,
         send_validator=validate_approval_decision_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_decision'),
-            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_decision'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'success' if ctx['status'] == 'APPROVED' else 'warning',
                 'title': f"Approval {ctx['status']}: {ctx['content_title']}",
                 'message': f"Your request has been {ctx['status'].lower()}",
@@ -455,8 +453,8 @@ NOTIFICATION_HANDLERS = {
         context_builder=build_approval_escalation_context,
         send_validator=validate_approval_escalation_send,
         senders={
-            'email': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_escalation'),
-            'in_app': lambda task, ctx: send_via_in_app(task, ctx, {
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/approval_escalation'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
                 'type': 'danger',
                 'title': f"ESCALATION: {ctx['content_title']}",
                 'message': f"{ctx['days_overdue']} days overdue",

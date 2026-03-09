@@ -72,19 +72,19 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
 
             if status_filter == 'current':
                 # Current: not overdue and not failed
-                qs = qs.filter(due_date__gte=today).exclude(result='fail')
+                qs = qs.filter(due_date__gte=today).exclude(result='FAIL')
             elif status_filter == 'due_soon':
                 # Due soon: within 30 days but not overdue
                 qs = qs.filter(
                     due_date__lte=thirty_days,
                     due_date__gte=today
-                ).exclude(result='fail')
+                ).exclude(result='FAIL')
             elif status_filter == 'overdue':
                 # Overdue: past due date
                 qs = qs.filter(due_date__lt=today)
             elif status_filter == 'failed':
                 # Failed result
-                qs = qs.filter(result='fail')
+                qs = qs.filter(result='FAIL')
 
         return qs
 
@@ -105,7 +105,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
         qs = self.get_queryset()
         if hasattr(qs, 'latest_per_equipment'):
             qs = qs.latest_per_equipment()
-        qs = qs.filter(due_date__lte=cutoff, due_date__gte=today).exclude(result='fail')
+        qs = qs.filter(due_date__lte=cutoff, due_date__gte=today).exclude(result='FAIL')
         qs = qs.order_by('due_date')
 
         page = self.paginate_queryset(qs)
@@ -163,13 +163,13 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
         # Current calibrations (not overdue, not failed)
         current = latest_per_equipment.filter(
             due_date__gte=today
-        ).exclude(result='fail').count()
+        ).exclude(result='FAIL').count()
 
         # Due soon (within 30 days)
         due_soon = latest_per_equipment.filter(
             due_date__lte=thirty_days,
             due_date__gte=today
-        ).exclude(result='fail').count()
+        ).exclude(result='FAIL').count()
 
         # Overdue
         overdue = latest_per_equipment.filter(due_date__lt=today).count()
@@ -199,7 +199,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
         """Return all calibration records for a specific piece of equipment."""
         equipment_id = request.query_params.get('equipment_id')
         if not equipment_id:
-            return Response({'error': 'equipment_id is required'}, status=400)
+            return Response({'detail': 'equipment_id is required'}, status=400)
 
         qs = self.get_queryset().filter(equipment_id=equipment_id).order_by('-calibration_date')
         serializer = self.get_serializer(qs, many=True)

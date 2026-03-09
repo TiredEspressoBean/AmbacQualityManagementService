@@ -50,7 +50,7 @@ class PartsStatus(models.TextChoices):
     # Core flow
     IN_PROGRESS = "IN_PROGRESS", "In Progress"  # Actively being worked on
     AWAITING_QA = "AWAITING_QA", "Awaiting QA"  # Step done, waiting for inspection
-    READY_FOR_NEXT_STEP = "READY FOR NEXT STEP", "Ready for next step"
+    READY_FOR_NEXT_STEP = "READY_FOR_NEXT_STEP", "Ready for next step"
     COMPLETED = "COMPLETED", "Completed"  # Fully passed all steps
 
     # Exceptions
@@ -130,10 +130,10 @@ class PartTypes(SecureModel):
 
 class ProcessStatus(models.TextChoices):
     """Approval status for a Process."""
-    DRAFT = 'draft', 'Draft'           # Editable, not available for production
-    PENDING_APPROVAL = 'pending_approval', 'Pending Approval'  # Submitted, awaiting approval
-    APPROVED = 'approved', 'Approved'  # Locked, available for work orders
-    DEPRECATED = 'deprecated', 'Deprecated'  # Still works, but hidden from new orders
+    DRAFT = 'DRAFT', 'Draft'           # Editable, not available for production
+    PENDING_APPROVAL = 'PENDING_APPROVAL', 'Pending Approval'  # Submitted, awaiting approval
+    APPROVED = 'APPROVED', 'Approved'  # Locked, available for work orders
+    DEPRECATED = 'DEPRECATED', 'Deprecated'  # Still works, but hidden from new orders
 
 
 class Processes(SecureModel):
@@ -176,16 +176,16 @@ class Processes(SecureModel):
     """Approval status - DRAFT processes are editable, APPROVED are locked."""
 
     CATEGORY_CHOICES = [
-        ('manufacturing', 'Manufacturing'),
-        ('quality', 'Quality'),
-        ('maintenance', 'Maintenance'),
-        ('npi', 'New Product Introduction'),
-        ('document', 'Document Control'),
+        ('MANUFACTURING', 'Manufacturing'),
+        ('QUALITY', 'Quality'),
+        ('MAINTENANCE', 'Maintenance'),
+        ('NPI', 'New Product Introduction'),
+        ('DOCUMENT', 'Document Control'),
     ]
     category = models.CharField(
         max_length=20,
         choices=CATEGORY_CHOICES,
-        default='manufacturing',
+        default='MANUFACTURING',
         help_text="Process category for workflow engine routing"
     )
     """Category classification for routing and reporting."""
@@ -448,7 +448,7 @@ class Processes(SecureModel):
         """Get all outgoing edges from a step in this process."""
         return self.step_edges.filter(from_step=step)
 
-    def get_next_step(self, current_step, edge_type='default'):
+    def get_next_step(self, current_step, edge_type='DEFAULT'):
         """Get the next step for a given edge type."""
         edge = self.step_edges.filter(
             from_step=current_step,
@@ -594,15 +594,15 @@ class Steps(SecureModel):
     """
 
     FPI_SCOPE_CHOICES = [
-        ('per_workorder', 'Per Work Order'),
-        ('per_shift', 'Per Shift'),
-        ('per_equipment', 'Per Equipment'),
-        ('per_operator', 'Per Operator'),
+        ('PER_WORKORDER', 'Per Work Order'),
+        ('PER_SHIFT', 'Per Shift'),
+        ('PER_EQUIPMENT', 'Per Equipment'),
+        ('PER_OPERATOR', 'Per Operator'),
     ]
     fpi_scope = models.CharField(
         max_length=20,
         choices=FPI_SCOPE_CHOICES,
-        default='per_workorder',
+        default='PER_WORKORDER',
         help_text="Scope at which FPI applies"
     )
 
@@ -641,17 +641,17 @@ class Steps(SecureModel):
     # ===== STEP TYPE (Visual representation in flow editor) =====
 
     STEP_TYPE_CHOICES = [
-        ('task', 'Task'),
-        ('start', 'Start'),
-        ('decision', 'Decision'),
-        ('rework', 'Rework'),
-        ('timer', 'Timer/Wait'),
-        ('terminal', 'Terminal'),
+        ('TASK', 'Task'),
+        ('START', 'Start'),
+        ('DECISION', 'Decision'),
+        ('REWORK', 'Rework'),
+        ('TIMER', 'Timer/Wait'),
+        ('TERMINAL', 'Terminal'),
     ]
     step_type = models.CharField(
         max_length=20,
         choices=STEP_TYPE_CHOICES,
-        default='task',
+        default='TASK',
         help_text="Visual type for flow editor."
     )
 
@@ -661,9 +661,9 @@ class Steps(SecureModel):
     """If True, this step routes parts based on a decision (QA result, measurement, or manual)."""
 
     DECISION_TYPE_CHOICES = [
-        ('qa_result', 'Based on QA Pass/Fail'),
-        ('measurement', 'Based on Measurement Threshold'),
-        ('manual', 'Manual Operator Selection'),
+        ('QA_RESULT', 'Based on QA Pass/Fail'),
+        ('MEASUREMENT', 'Based on Measurement Threshold'),
+        ('MANUAL', 'Manual Operator Selection'),
     ]
     decision_type = models.CharField(max_length=20, choices=DECISION_TYPE_CHOICES, blank=True)
     """Type of decision logic used at this step. Routing is defined via StepEdge."""
@@ -674,14 +674,14 @@ class Steps(SecureModel):
     """If True, this is an endpoint - parts completing this step are finished."""
 
     TERMINAL_STATUS_CHOICES = [
-        ('completed', 'Completed Successfully'),
-        ('shipped', 'Shipped to Customer'),
-        ('stock', 'Put into Inventory'),
-        ('scrapped', 'Scrapped'),
-        ('returned', 'Returned to Supplier'),
-        ('awaiting_pickup', 'Awaiting Customer Pickup'),
-        ('core_banked', 'Core Banked'),
-        ('rma_closed', 'RMA Closed'),
+        ('COMPLETED', 'Completed Successfully'),
+        ('SHIPPED', 'Shipped to Customer'),
+        ('STOCK', 'Put into Inventory'),
+        ('SCRAPPED', 'Scrapped'),
+        ('RETURNED', 'Returned to Supplier'),
+        ('AWAITING_PICKUP', 'Awaiting Customer Pickup'),
+        ('CORE_BANKED', 'Core Banked'),
+        ('RMA_CLOSED', 'RMA Closed'),
     ]
     terminal_status = models.CharField(max_length=20, choices=TERMINAL_STATUS_CHOICES, blank=True)
     """Final status to assign to parts reaching this terminal step."""
@@ -692,16 +692,16 @@ class Steps(SecureModel):
         null=True, blank=True,
         help_text="Max times a part can visit this step. Null = unlimited."
     )
-    """Escalation routing when exceeded is defined via StepEdge with type='escalation'."""
+    """Escalation routing when exceeded is defined via StepEdge with type='ESCALATION'."""
 
     REVISIT_ASSIGNMENT_CHOICES = [
-        ('any', 'Any Qualified Operator'),
-        ('same', 'Same as Previous'),
-        ('different', 'Different Operator'),
-        ('role', 'Specific Role'),
+        ('ANY', 'Any Qualified Operator'),
+        ('SAME', 'Same as Previous'),
+        ('DIFFERENT', 'Different Operator'),
+        ('ROLE', 'Specific Role'),
     ]
     revisit_assignment = models.CharField(
-        max_length=20, choices=REVISIT_ASSIGNMENT_CHOICES, default='any'
+        max_length=20, choices=REVISIT_ASSIGNMENT_CHOICES, default='ANY'
     )
     revisit_role = models.ForeignKey(
         'auth.Group', null=True, blank=True,
@@ -866,7 +866,7 @@ class Steps(SecureModel):
         # Check First Piece Inspection requirement
         if step.requires_first_piece_inspection:
             fpi_status = step.get_fpi_status(work_order)
-            if fpi_status['status'] != 'PASSED':
+            if fpi_status['status'] not in ('PASSED', 'WAIVED'):
                 return False
 
         return True
@@ -1078,7 +1078,7 @@ class Steps(SecureModel):
         if blockers:
             valid_overrides = StepOverride.objects.filter(
                 step_execution=step_execution,
-                status='approved',
+                status='APPROVED',
                 used=False
             )
             # Check each blocker against overrides
@@ -1116,16 +1116,16 @@ class DecisionDataMissing(ValueError):
 
 class RequirementType(models.TextChoices):
     """Types of requirements for step advancement."""
-    MEASUREMENT = 'measurement', 'Measurement'
-    DOCUMENT = 'document', 'Document'
-    SIGNOFF = 'signoff', 'Signoff'
-    EQUIPMENT_CHECK = 'equipment_check', 'Equipment Check'
-    MATERIAL_SCAN = 'material_scan', 'Material Scan'
-    TRAINING_VALID = 'training_valid', 'Training Valid'
-    CALIBRATION_VALID = 'calibration_valid', 'Calibration Valid'
-    FPI_PASSED = 'fpi_passed', 'FPI Passed'
-    QA_APPROVAL = 'qa_approval', 'QA Approval'
-    CUSTOM = 'custom', 'Custom'
+    MEASUREMENT = 'MEASUREMENT', 'Measurement'
+    DOCUMENT = 'DOCUMENT', 'Document'
+    SIGNOFF = 'SIGNOFF', 'Signoff'
+    EQUIPMENT_CHECK = 'EQUIPMENT_CHECK', 'Equipment Check'
+    MATERIAL_SCAN = 'MATERIAL_SCAN', 'Material Scan'
+    TRAINING_VALID = 'TRAINING_VALID', 'Training Valid'
+    CALIBRATION_VALID = 'CALIBRATION_VALID', 'Calibration Valid'
+    FPI_PASSED = 'FPI_PASSED', 'FPI Passed'
+    QA_APPROVAL = 'QA_APPROVAL', 'QA Approval'
+    CUSTOM = 'CUSTOM', 'Custom'
 
 
 class StepRequirement(SecureModel):
@@ -1226,7 +1226,7 @@ class StepRequirement(SecureModel):
             fpi = FPIRecord.objects.filter(
                 work_order=step_execution.part.work_order,
                 step=step_execution.step,
-                status='passed'
+                status='PASSED'
             ).first()
             return fpi is not None
 
@@ -1298,9 +1298,9 @@ class ProcessStep(models.Model):
 
 class EdgeType(models.TextChoices):
     """Types of edges between steps in a process flow."""
-    DEFAULT = 'default', 'Default/Pass'  # Normal flow or pass condition
-    ALTERNATE = 'alternate', 'Alternate/Fail'  # Fail condition or alternate path
-    ESCALATION = 'escalation', 'Escalation'  # Max visits exceeded
+    DEFAULT = 'DEFAULT', 'Default/Pass'  # Normal flow or pass condition
+    ALTERNATE = 'ALTERNATE', 'Alternate/Fail'  # Fail condition or alternate path
+    ESCALATION = 'ESCALATION', 'Escalation'  # Max visits exceeded
 
 
 class StepEdge(models.Model):
@@ -1432,7 +1432,7 @@ class StepExecution(SecureModel):
     # Decision result (for branching steps)
     decision_result = models.CharField(
         max_length=50, blank=True,
-        help_text="Result of decision: 'pass', 'fail', measurement value, etc."
+        help_text="Result of decision: 'PASS', 'FAIL', measurement value, etc."
     )
 
     # Workflow tracking fields
@@ -1451,16 +1451,16 @@ class StepExecution(SecureModel):
         help_text="Whether this execution is a First Piece Inspection"
     )
     FPI_STATUS_CHOICES = [
-        ('not_required', 'Not Required'),
-        ('pending', 'Pending'),
-        ('passed', 'Passed'),
-        ('failed', 'Failed'),
-        ('waived', 'Waived'),
+        ('NOT_REQUIRED', 'Not Required'),
+        ('PENDING', 'Pending'),
+        ('PASSED', 'Passed'),
+        ('FAILED', 'Failed'),
+        ('WAIVED', 'Waived'),
     ]
     fpi_status = models.CharField(
         max_length=20,
         choices=FPI_STATUS_CHOICES,
-        default='not_required',
+        default='NOT_REQUIRED',
         help_text="First Piece Inspection status for this execution"
     )
 
@@ -1478,16 +1478,16 @@ class StepExecution(SecureModel):
 
     # Status (updated choices)
     EXECUTION_STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('claimed', 'Claimed'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('skipped', 'Skipped'),
-        ('cancelled', 'Cancelled'),
-        ('rolled_back', 'Rolled Back'),
+        ('PENDING', 'Pending'),
+        ('CLAIMED', 'Claimed'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('SKIPPED', 'Skipped'),
+        ('CANCELLED', 'Cancelled'),
+        ('ROLLED_BACK', 'Rolled Back'),
     ]
     status = models.CharField(
-        max_length=20, choices=EXECUTION_STATUS_CHOICES, default='pending'
+        max_length=20, choices=EXECUTION_STATUS_CHOICES, default='PENDING'
     )
 
     class Meta:
@@ -1550,7 +1550,7 @@ class StepExecution(SecureModel):
         """Get all parts currently at a step (work in progress)."""
         return cls.objects.filter(
             step=step,
-            status__in=['pending', 'in_progress']
+            status__in=['PENDING', 'IN_PROGRESS']
         ).select_related('part', 'assigned_to')
 
     @classmethod
@@ -1558,7 +1558,7 @@ class StepExecution(SecureModel):
         """Get all active step executions assigned to an operator."""
         return cls.objects.filter(
             assigned_to=user,
-            status__in=['pending', 'in_progress']
+            status__in=['PENDING', 'IN_PROGRESS']
         ).select_related('part', 'step')
 
 
@@ -1573,9 +1573,9 @@ class OrdersStatus(models.TextChoices):
 
 class APQPStage(models.TextChoices):
     PLANNING = 'PLANNING', "Planning"
-    PRODUCT_DESIGN_AND_DEVELOPMENT = 'PRODUCT DESIGN AND DEVELOPMENT', "Product design and development"
-    PROCESS_DESIGN_AND_DEVELOPMENT = 'PROCESS DESIGN AND DEVELOPMENT', "Process and development"
-    PRODUCT_AND_PROCESS_VALIDATION = 'PRODUCT AND PROCESS VALIDATION', "Product and process validation"
+    PRODUCT_DESIGN_AND_DEVELOPMENT = 'PRODUCT_DESIGN_AND_DEVELOPMENT', "Product design and development"
+    PROCESS_DESIGN_AND_DEVELOPMENT = 'PROCESS_DESIGN_AND_DEVELOPMENT', "Process and development"
+    PRODUCT_AND_PROCESS_VALIDATION = 'PRODUCT_AND_PROCESS_VALIDATION', "Product and process validation"
     PRODUCTION = 'PRODUCTION', "Production"
 
 
@@ -1587,9 +1587,9 @@ class OrderViewer(models.Model):
     Tracks invitation metadata for audit trail.
     """
     class InvitationType(models.TextChoices):
-        DIRECT = 'direct', 'Direct Invitation'
-        COMPANY = 'company', 'Company Member'
-        STAFF = 'staff', 'Staff Assigned'
+        DIRECT = 'DIRECT', 'Direct Invitation'
+        COMPANY = 'COMPANY', 'Company Member'
+        STAFF = 'STAFF', 'Staff Assigned'
 
     order = models.ForeignKey('Orders', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -2040,7 +2040,7 @@ class Orders(SecureModel):
     # NOTES TIMELINE METHODS
     # =========================================================================
 
-    def add_note(self, user, message, visibility='visible'):
+    def add_note(self, user, message, visibility='VISIBLE'):
         """Add a note to the timeline (newest first)."""
         from django.utils import timezone
 
@@ -2083,11 +2083,11 @@ class Orders(SecureModel):
                         'visibility': parts[2],
                         'message': lines[1] if len(lines) > 1 else ''
                     }
-                    if not customer_view or note['visibility'] == 'visible':
+                    if not customer_view or note['visibility'].upper() == 'VISIBLE':
                         notes.append(note)
             elif block.strip():
                 # Legacy format - treat as visible note
-                notes.append({'timestamp': None, 'user': 'Unknown', 'visibility': 'visible', 'message': block.strip()})
+                notes.append({'timestamp': None, 'user': 'Unknown', 'visibility': 'VISIBLE', 'message': block.strip()})
 
         return notes
 
@@ -2551,7 +2551,7 @@ class Parts(SecureModel):
         Supports linear flow, decision branching, and cycle limits.
 
         Args:
-            decision_result: 'pass', 'fail', 'default', 'alternate', or measurement value.
+            decision_result: 'PASS', 'FAIL', 'DEFAULT', 'ALTERNATE', or measurement value.
                              If None, will look up from QualityReport for qa_result decisions.
 
         Returns:
@@ -2568,7 +2568,7 @@ class Parts(SecureModel):
 
         # Decision point - route based on result
         if current.is_decision_point:
-            if current.decision_type == 'qa_result':
+            if current.decision_type == 'QA_RESULT':
                 # Use latest QualityReport result if not provided
                 if decision_result is None:
                     from .qms import QualityReports
@@ -2581,12 +2581,12 @@ class Parts(SecureModel):
                         )
                     decision_result = latest_qr.status
 
-                if str(decision_result).upper() == 'PASS':
+                if decision_result == 'PASS':
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
                 else:
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.ALTERNATE))
 
-            elif current.decision_type == 'measurement':
+            elif current.decision_type == 'MEASUREMENT':
                 # Evaluate measurement against threshold from StepEdge condition
                 process = self.work_order.process if self.work_order else None
                 if process:
@@ -2623,14 +2623,14 @@ class Parts(SecureModel):
                 # Fallback to default edge if no condition matched
                 return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
 
-            elif current.decision_type == 'manual':
+            elif current.decision_type == 'MANUAL':
                 # Require explicit decision_result
-                if decision_result in ('default', 'pass'):
+                if decision_result in ('DEFAULT', 'PASS'):
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))
-                elif decision_result in ('alternate', 'fail'):
+                elif decision_result in ('ALTERNATE', 'FAIL'):
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.ALTERNATE))
                 else:
-                    raise ValueError("Manual decision required: 'default'/'pass' or 'alternate'/'fail'")
+                    raise ValueError("Manual decision required: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'")
 
         # Non-decision point: use default edge
         default_next = self._get_edge(current, EdgeType.DEFAULT)
@@ -2687,7 +2687,7 @@ class Parts(SecureModel):
 
         Args:
             operator: User who performed the transition. If None, logged as system/automated.
-            decision_result: For decision points - 'pass', 'fail', 'default', 'alternate', or measurement value.
+            decision_result: For decision points - 'PASS', 'FAIL', 'DEFAULT', 'ALTERNATE', or measurement value.
 
         Returns:
             str: "completed" if terminal/final step reached,
@@ -2718,7 +2718,7 @@ class Parts(SecureModel):
         if current_execution:
             current_execution.exited_at = timezone.now()
             current_execution.completed_by = operator
-            current_execution.status = 'completed'
+            current_execution.status = 'COMPLETED'
             current_execution.decision_result = str(decision_result) if decision_result else ''
 
         # Determine next step using workflow logic
@@ -2837,7 +2837,7 @@ class Parts(SecureModel):
                     step=next_step,
                     visit_number=visit_number,
                     assigned_to=assigned_operator,
-                    status='pending'
+                    status='PENDING'
                 ))
 
             Parts.objects.bulk_update(ready_parts, [
@@ -2859,7 +2859,7 @@ class Parts(SecureModel):
             step=next_step,
             visit_number=visit_number,
             assigned_to=assigned_operator,
-            status='pending'
+            status='PENDING'
         )
 
         # Move to next step first so sampling evaluation sees the new step
@@ -2941,7 +2941,7 @@ class Parts(SecureModel):
     @property
     def qa_completed(self):
         """
-        Returns True if this part has completed QA (has a PASS report).
+        Returns True if this part has completed QA (has a pass report).
         Inverse of needs_qa for parts that require sampling.
         """
         if not self.requires_sampling:
@@ -3008,7 +3008,7 @@ class Parts(SecureModel):
         current_execution = StepExecution.objects.filter(
             part=self,
             step=self.step,
-            status='completed'
+            status='COMPLETED'
         ).order_by('-exited_at').first()
 
         if not current_execution:
@@ -3018,7 +3018,7 @@ class Parts(SecureModel):
         previous_execution = StepExecution.objects.filter(
             part=self,
             next_step=self.step,
-            status='completed'
+            status='COMPLETED'
         ).order_by('-exited_at').first()
 
         if not previous_execution:
@@ -3108,13 +3108,13 @@ class Parts(SecureModel):
         current_execution = StepExecution.objects.filter(
             part=self,
             step=self.step,
-            status='completed'
+            status='COMPLETED'
         ).order_by('-exited_at').first()
 
         previous_execution = StepExecution.objects.filter(
             part=self,
             next_step=self.step,
-            status='completed'
+            status='COMPLETED'
         ).order_by('-exited_at').first()
 
         if not current_execution or not previous_execution:
@@ -3170,7 +3170,7 @@ class Parts(SecureModel):
 
         # Perform the rollback
         # 1. Mark current execution as rolled back
-        current_execution.status = 'rolled_back'
+        current_execution.status = 'ROLLED_BACK'
         current_execution.save(update_fields=['status'])
 
         # 2. Create new execution for previous step (reopening it)
@@ -3180,7 +3180,7 @@ class Parts(SecureModel):
             step=previous_step,
             visit_number=visit_number,
             assigned_to=operator,  # Assign to person doing rollback
-            status='in_progress',
+            status='IN_PROGRESS',
             started_at=timezone.now()
         )
 

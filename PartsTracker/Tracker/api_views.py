@@ -17,15 +17,31 @@ def get_csrf_token(request):
     return JsonResponse({'detail': 'CSRF cookie set'})
 
 
-@csrf_exempt
+@csrf_protect
 def login_view(request):
+    """
+    Login endpoint - requires CSRF token.
+    Frontend must call /api/csrf/ first to get a CSRF cookie, then include
+    the token in the X-CSRFToken header for this request.
+    """
     if request.method == "POST":
-        data = json.loads(request.body)
-        user = authenticate(username=data["username"], password=data["password"])
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+        username = data.get("username", "").strip()
+        password = data.get("password", "")
+
+        if not username or not password:
+            return JsonResponse({"success": False, "error": "Missing credentials"}, status=400)
+
+        user = authenticate(username=username, password=password)
         if user:
             login(request, user)
             return JsonResponse({"success": True})
-        return JsonResponse({"success": False}, status=401)
+        return JsonResponse({"success": False, "error": "Invalid credentials"}, status=401)
+    return JsonResponse({"success": False, "error": "Method not allowed"}, status=405)
 
 
 def logout_view(request):
@@ -147,4 +163,4 @@ def get_user_api_token(request):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Token creation failed: {e}")
-        return Response({"error": "Failed to get API token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"detail": "Failed to get API token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

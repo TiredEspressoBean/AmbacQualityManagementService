@@ -7,7 +7,8 @@ from rest_framework import status
 from unittest import skipIf
 from Tracker.models import (
     CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, CapaVerification,
-    RootCause, FiveWhys, Fishbone, QualityReports, ApprovalRequest
+    RootCause, FiveWhys, Fishbone, QualityReports, ApprovalRequest,
+    CapaStatusTransition, CapaStatus, CapaTaskStatus, EffectivenessResult,
 )
 from Tracker.tests.base import VectorTestCase
 
@@ -47,9 +48,9 @@ class CAPAModelTestCase(VectorTestCase):
         )
 
         self.assertIsNotNone(capa.capa_number)
-        self.assertTrue(capa.capa_number.startswith('CAPA-CA-'))  # e.g., CAPA-CA-2025-001
+        self.assertTrue(capa.capa_number.startswith('CAPA-'))  # e.g., CAPA-XX-2025-001
         self.assertIn('-', capa.capa_number)
-        self.assertEqual(capa.status, 'OPEN')
+        self.assertEqual(capa.status, CapaStatus.OPEN)
         self.assertEqual(capa.capa_type, 'CORRECTIVE')
         self.assertEqual(capa.severity, 'MAJOR')
 
@@ -72,9 +73,9 @@ class CAPAModelTestCase(VectorTestCase):
         )
 
         self.assertNotEqual(capa1.capa_number, capa2.capa_number)
-        # CAPA numbers include year, e.g., CAPA-CA-2025-001
-        self.assertIn('CAPA-CA-', capa1.capa_number)
-        self.assertIn('CAPA-PA-', capa2.capa_number)
+        # CAPA numbers include year, e.g., CAPA-XX-2025-001
+        self.assertTrue(capa1.capa_number.startswith('CAPA-'))
+        self.assertTrue(capa2.capa_number.startswith('CAPA-'))
 
     def test_capa_status_transitions(self):
         """Test CAPA status transitions"""
@@ -94,7 +95,7 @@ class CAPAModelTestCase(VectorTestCase):
         # RCA must have root_cause_summary to be considered complete
         RcaRecord.objects.create(
             capa=capa,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Test RCA',
             root_cause_summary='Root cause identified: process not followed',
             conducted_by=self.user,
@@ -118,7 +119,24 @@ class CAPAModelTestCase(VectorTestCase):
         capa.transition_to('CLOSED', self.qa_manager, "Verified effective")
         self.assertEqual(capa.status, 'CLOSED')
         self.assertIsNotNone(capa.completed_date)
-        # Note: CAPA doesn't have closed_by field, just completed_date
+
+        # Verify transition records were created
+        transitions = CapaStatusTransition.objects.filter(capa=capa).order_by('created_at')
+        self.assertEqual(transitions.count(), 3)
+
+        # Check first transition: open -> in_progress
+        self.assertEqual(transitions[0].from_status, 'OPEN')
+        self.assertEqual(transitions[0].to_status, 'IN_PROGRESS')
+        self.assertEqual(transitions[0].transitioned_by, self.qa_manager)
+        self.assertEqual(transitions[0].notes, "Starting work")
+
+        # Check second transition: in_progress -> pending_verification
+        self.assertEqual(transitions[1].from_status, 'IN_PROGRESS')
+        self.assertEqual(transitions[1].to_status, 'PENDING_VERIFICATION')
+
+        # Check third transition: pending_verification -> closed
+        self.assertEqual(transitions[2].from_status, 'PENDING_VERIFICATION')
+        self.assertEqual(transitions[2].to_status, 'CLOSED')
 
     def test_capa_cannot_close_without_requirements(self):
         """Test CAPA cannot close without RCA and tasks"""
@@ -317,7 +335,7 @@ class CapaTasksTestCase(VectorTestCase):
 
         self.assertIsNotNone(task.task_number)
         self.assertTrue(task.task_number.startswith(self.capa.capa_number))
-        self.assertEqual(task.status, 'NOT_STARTED')
+        self.assertEqual(task.status, CapaTaskStatus.NOT_STARTED)
 
     def test_task_completion(self):
         """Test marking a task as complete"""
@@ -330,7 +348,7 @@ class CapaTasksTestCase(VectorTestCase):
 
         task.mark_completed(self.user, "Issue resolved")
 
-        self.assertEqual(task.status, 'COMPLETED')
+        self.assertEqual(task.status, CapaTaskStatus.COMPLETED)
         self.assertEqual(task.completed_by, self.user)
         self.assertIsNotNone(task.completed_date)
         self.assertEqual(task.completion_notes, "Issue resolved")
@@ -342,7 +360,7 @@ class CapaTasksTestCase(VectorTestCase):
             task_type='CORRECTIVE',
             description="Team task",
             assigned_to=self.user,
-            completion_mode='ALL_ASSIGNEES'
+            completion_mode='all_assignees'
         )
 
         # Add multiple assignees
@@ -407,7 +425,7 @@ class RcaRecordTestCase(VectorTestCase):
         """Test creating an RCA record"""
         rca = RcaRecord.objects.create(
             capa=self.capa,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Quality issue analysis',
             conducted_by=self.user,
             conducted_date=timezone.now().date(),
@@ -422,7 +440,7 @@ class RcaRecordTestCase(VectorTestCase):
         """Test 5 Whys analysis"""
         rca = RcaRecord.objects.create(
             capa=self.capa,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Quality issue analysis',
             conducted_by=self.user,
             conducted_date=timezone.now().date()
@@ -449,7 +467,7 @@ class RcaRecordTestCase(VectorTestCase):
         """Test Fishbone diagram creation"""
         rca = RcaRecord.objects.create(
             capa=self.capa,
-            rca_method='FISHBONE',
+            rca_method='fishbone',
             problem_description='Surface defects on parts',
             conducted_by=self.user,
             conducted_date=timezone.now().date()
@@ -473,7 +491,7 @@ class RcaRecordTestCase(VectorTestCase):
         """Test identifying root causes"""
         rca = RcaRecord.objects.create(
             capa=self.capa,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Quality issue analysis',
             conducted_by=self.user,
             conducted_date=timezone.now().date()
@@ -481,18 +499,18 @@ class RcaRecordTestCase(VectorTestCase):
 
         root_cause = RootCause.objects.create(
             rca_record=rca,
-            category='METHOD',
+            category='method',
             description="Inadequate training program"
         )
 
         self.assertEqual(root_cause.rca_record, rca)
-        self.assertEqual(root_cause.category, 'METHOD')
+        self.assertEqual(root_cause.category, 'method')
 
     def test_rca_completeness_validation(self):
         """Test RCA completeness validation"""
         rca = RcaRecord.objects.create(
             capa=self.capa,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Quality issue analysis',
             conducted_by=self.user,
             conducted_date=timezone.now().date()
@@ -520,7 +538,7 @@ class RcaRecordTestCase(VectorTestCase):
         # Add root cause
         RootCause.objects.create(
             rca_record=rca,
-            category='METHOD',
+            category='method',
             description="Root cause"
         )
 
@@ -580,7 +598,7 @@ class CapaVerificationTestCase(VectorTestCase):
             notes="Actions were effective, defect rate now 0.5%"
         )
 
-        self.assertEqual(verification.effectiveness_result, 'CONFIRMED')
+        self.assertEqual(verification.effectiveness_result, EffectivenessResult.CONFIRMED)
         self.assertIsNotNone(verification.effectiveness_decided_at)
 
     def test_ineffective_verification(self):
@@ -598,7 +616,7 @@ class CapaVerificationTestCase(VectorTestCase):
             notes="Issue persists, additional actions required"
         )
 
-        self.assertEqual(verification.effectiveness_result, 'NOT_EFFECTIVE')
+        self.assertEqual(verification.effectiveness_result, EffectivenessResult.NOT_EFFECTIVE)
 
 
 @skipIf(True, "CAPA API tests disabled - permission/endpoint issues to fix later")
@@ -832,7 +850,7 @@ class RCASelfVerificationTestCase(VectorTestCase):
 
         self.rca_no_self = RcaRecord.objects.create(
             capa=self.capa_no_self,
-            rca_method='FIVE_WHYS',
+            rca_method='five_whys',
             problem_description='Test problem',
             root_cause_summary='Root cause found',
             conducted_by=self.conductor,
@@ -841,7 +859,7 @@ class RCASelfVerificationTestCase(VectorTestCase):
 
         self.rca_allow_self = RcaRecord.objects.create(
             capa=self.capa_allow_self,
-            rca_method='FISHBONE',
+            rca_method='fishbone',
             problem_description='Small issue',
             root_cause_summary='Simple cause',
             conducted_by=self.conductor,

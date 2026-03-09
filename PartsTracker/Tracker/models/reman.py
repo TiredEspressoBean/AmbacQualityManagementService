@@ -40,17 +40,17 @@ class Core(SecureModel):
     ]
 
     SOURCE_TYPE_CHOICES = [
-        ('customer_return', 'Customer Return'),
-        ('purchased', 'Purchased Core'),
-        ('warranty', 'Warranty Return'),
-        ('trade_in', 'Trade-In'),
+        ('CUSTOMER_RETURN', 'Customer Return'),
+        ('PURCHASED', 'Purchased Core'),
+        ('WARRANTY', 'Warranty Return'),
+        ('TRADE_IN', 'Trade-In'),
     ]
 
     CORE_STATUS_CHOICES = [
-        ('received', 'Received'),
-        ('in_disassembly', 'In Disassembly'),
-        ('disassembled', 'Disassembled'),
-        ('scrapped', 'Scrapped'),
+        ('RECEIVED', 'Received'),
+        ('IN_DISASSEMBLY', 'In Disassembly'),
+        ('DISASSEMBLED', 'Disassembled'),
+        ('SCRAPPED', 'Scrapped'),
     ]
 
     # Identification
@@ -92,7 +92,7 @@ class Core(SecureModel):
     source_type = models.CharField(
         max_length=20,
         choices=SOURCE_TYPE_CHOICES,
-        default='customer_return'
+        default='CUSTOMER_RETURN'
     )
     source_reference = models.CharField(
         max_length=100,
@@ -115,7 +115,7 @@ class Core(SecureModel):
     status = models.CharField(
         max_length=20,
         choices=CORE_STATUS_CHOICES,
-        default='received'
+        default='RECEIVED'
     )
     disassembly_started_at = models.DateTimeField(null=True, blank=True)
     disassembly_completed_at = models.DateTimeField(null=True, blank=True)
@@ -173,25 +173,25 @@ class Core(SecureModel):
     def start_disassembly(self, user):
         """Mark core as being disassembled."""
         from django.utils import timezone
-        if self.status != 'received':
+        if self.status != 'RECEIVED':
             raise ValueError(f"Cannot start disassembly - core is {self.status}")
-        self.status = 'in_disassembly'
+        self.status = 'IN_DISASSEMBLY'
         self.disassembly_started_at = timezone.now()
         self.save()
 
     def complete_disassembly(self, user):
         """Mark disassembly as complete."""
         from django.utils import timezone
-        if self.status != 'in_disassembly':
+        if self.status != 'IN_DISASSEMBLY':
             raise ValueError(f"Cannot complete disassembly - core is {self.status}")
-        self.status = 'disassembled'
+        self.status = 'DISASSEMBLED'
         self.disassembly_completed_at = timezone.now()
         self.disassembled_by = user
         self.save()
 
     def scrap(self, reason=""):
         """Mark core as scrapped (not suitable for disassembly)."""
-        self.status = 'scrapped'
+        self.status = 'SCRAPPED'
         self.condition_grade = 'SCRAP'
         if reason:
             self.condition_notes = f"{self.condition_notes}\nScrapped: {reason}".strip()

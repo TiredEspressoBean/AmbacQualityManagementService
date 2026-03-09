@@ -49,11 +49,11 @@ class CoreSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):
-        return obj.received_by.get_full_name() if obj.received_by else None
+        return obj.received_by.display_name if obj.received_by else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_disassembled_by_name(self, obj):
-        return obj.disassembled_by.get_full_name() if obj.disassembled_by else None
+        return obj.disassembled_by.display_name if obj.disassembled_by else None
 
 
 class CoreListSerializer(serializers.ModelSerializer):
@@ -103,11 +103,11 @@ class HarvestedComponentSerializer(serializers.ModelSerializer, SecureModelMixin
 
     @extend_schema_field(serializers.CharField())
     def get_disassembled_by_name(self, obj):
-        return obj.disassembled_by.get_full_name() if obj.disassembled_by else None
+        return obj.disassembled_by.display_name if obj.disassembled_by else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_scrapped_by_name(self, obj):
-        return obj.scrapped_by.get_full_name() if obj.scrapped_by else None
+        return obj.scrapped_by.display_name if obj.scrapped_by else None
 
 
 class HarvestedComponentScrapSerializer(serializers.Serializer):

@@ -196,7 +196,7 @@ class SPCBaseline(SecureModel):
     @property
     def control_limits(self):
         """Return control limits as a dictionary matching frontend types."""
-        if self.chart_type == ChartType.I_MR:
+        if self.chart_type == ChartType.I_MR.value:
             return {
                 'individualUCL': float(self.individual_ucl) if self.individual_ucl else None,
                 'individualLCL': float(self.individual_lcl) if self.individual_lcl else None,

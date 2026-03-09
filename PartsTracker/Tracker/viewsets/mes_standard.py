@@ -84,12 +84,12 @@ class ScheduleSlotViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def start(self, request, pk=None):
         """Mark schedule slot as started"""
         slot = self.get_object()
-        if slot.status != 'scheduled':
+        if slot.status != 'SCHEDULED':
             return Response(
                 {'detail': f'Cannot start slot with status "{slot.status}"'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        slot.status = 'in_progress'
+        slot.status = 'IN_PROGRESS'
         slot.actual_start = timezone.now()
         slot.save()
         return Response(ScheduleSlotSerializer(slot, context={'request': request}).data)
@@ -102,12 +102,12 @@ class ScheduleSlotViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         """Mark schedule slot as completed"""
         slot = self.get_object()
-        if slot.status != 'in_progress':
+        if slot.status != 'IN_PROGRESS':
             return Response(
                 {'detail': f'Cannot complete slot with status "{slot.status}"'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        slot.status = 'completed'
+        slot.status = 'COMPLETED'
         slot.actual_end = timezone.now()
         slot.save()
         return Response(ScheduleSlotSerializer(slot, context={'request': request}).data)
@@ -295,10 +295,10 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def release(self, request, pk=None):
         """Release a BOM for production use"""
         bom = self.get_object()
-        if bom.status != 'draft':
+        if bom.status != 'DRAFT':
             return Response({'detail': 'Only draft BOMs can be released'}, status=status.HTTP_400_BAD_REQUEST)
 
-        bom.status = 'released'
+        bom.status = 'RELEASED'
         bom.effective_date = timezone.now().date()
         bom.approved_by = request.user
         bom.approved_at = timezone.now()
@@ -313,9 +313,9 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def obsolete(self, request, pk=None):
         """Mark a BOM as obsolete"""
         bom = self.get_object()
-        if bom.status == 'obsolete':
+        if bom.status == 'OBSOLETE':
             return Response({'detail': 'BOM is already obsolete'}, status=status.HTTP_400_BAD_REQUEST)
-        bom.status = 'obsolete'
+        bom.status = 'OBSOLETE'
         bom.obsolete_date = timezone.now().date()
         bom.save()
         return Response(BOMSerializer(bom, context={'request': request}).data)

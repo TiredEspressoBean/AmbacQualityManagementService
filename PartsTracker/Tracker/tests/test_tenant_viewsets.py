@@ -91,15 +91,15 @@ class TenantSettingsViewTestCase(TenantTestCase):
         self.user_a.save()
 
     def test_requires_authentication(self):
-        """Unauthenticated requests are rejected."""
+        """Unauthenticated requests are rejected with 401."""
         client = APIClient()
         response = client.get('/api/tenant/settings/')
 
-        # DRF returns 403 for unauthenticated with IsAuthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_requires_tenant_context(self):
-        """Request without tenant context returns 400."""
+        """User without tenant cannot access tenant-specific endpoints."""
         # Create a user without tenant
         user = User.objects.create_user(
             username='no_tenant_user',
@@ -110,8 +110,13 @@ class TenantSettingsViewTestCase(TenantTestCase):
         self.client.force_authenticate(user=user)
         response = self.client.get('/api/tenant/settings/')
 
-        # Should fail due to no tenant context
-        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
+        # Behavior differs by mode:
+        # - Dedicated: User is forbidden from default tenant (403)
+        # - SaaS: No tenant context resolved (400)
+        if settings.DEDICATED_MODE:
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        else:
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_non_admin_denied(self):
         """Non-admin users are denied access."""
@@ -132,8 +137,9 @@ class TenantSettingsViewTestCase(TenantTestCase):
             HTTP_X_TENANT_ID=str(self.tenant_a.id)
         )
 
-        # May be 400 if middleware doesn't set tenant - that's expected
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('name', response.data)
+        self.assertIn('tier', response.data)
 
     def test_superuser_can_access(self):
         """Superusers have access regardless of group membership."""
@@ -146,7 +152,7 @@ class TenantSettingsViewTestCase(TenantTestCase):
             HTTP_X_TENANT_ID=str(self.tenant_a.id)
         )
 
-        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class TenantLogoViewTestCase(TenantTestCase):
@@ -162,8 +168,8 @@ class TenantLogoViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.post('/api/tenant/logo/')
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_upload_requires_admin(self):
         """Logo upload requires admin permission."""
@@ -248,7 +254,7 @@ class TenantViewSetTestCase(TestCase):
         response = self.client.post('/api/Tenants/', {
             'name': 'New Tenant',
             'slug': 'new-tenant',
-            'tier': 'starter',
+            'tier': 'STARTER',
             'admin_email': 'newadmin@example.com',
             'admin_first_name': 'New',
             'admin_last_name': 'Admin',
@@ -270,7 +276,7 @@ class TenantViewSetTestCase(TestCase):
         response = self.client.post('/api/Tenants/', {
             'name': 'Duplicate',
             'slug': 'test-tenant',  # Already exists
-            'tier': 'starter',
+            'tier': 'STARTER',
             'admin_email': 'dup@example.com',
         })
 
@@ -423,8 +429,8 @@ class TenantGroupViewSetTestCase(TenantTestCase):
         client = APIClient()
         response = client.get('/api/TenantGroups/')
 
-        # DRF returns 403 for unauthenticated when IsAuthenticated is used
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_groups(self):
         """Authenticated user can list groups."""
@@ -456,9 +462,10 @@ class TenantGroupViewSetTestCase(TenantTestCase):
             HTTP_X_TENANT_ID=str(self.tenant_a.id)
         )
 
-        # May fail due to middleware, but permission check should pass
-        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'New Custom Group')
 
+    @unittest.skipUnless(settings.SAAS_MODE, "Requires tenant header support (SaaS mode)")
     def test_delete_group_with_members_fails(self):
         """Cannot delete group that has members."""
         # Add a member to the group
@@ -471,20 +478,31 @@ class TenantGroupViewSetTestCase(TenantTestCase):
         self.authenticate_as(self.user_a, self.tenant_a)
         response = self.client.delete(f'/api/TenantGroups/{self.group.id}/')
 
-        # May return 404 if middleware doesn't set request.tenant in tests
-        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+        # Should return 400 with validation error
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('members', str(response.data).lower())
 
+    @unittest.skipUnless(settings.SAAS_MODE, "Requires tenant header support (SaaS mode)")
     def test_add_member_to_group(self):
-        """Admin can add members to a group."""
+        """Admin can add members from the same tenant to a group."""
+        # Create a user in tenant_a (same tenant as group)
+        same_tenant_user = User.objects.create_user(
+            username='same_tenant_user',
+            email='same@tenant-a.com',
+            password='testpass123',
+            tenant=self.tenant_a
+        )
+
         self.client.force_authenticate(user=self.user_a)
         response = self.client.post(
             f'/api/TenantGroups/{self.group.id}/members/',
-            {'user_id': str(self.user_b.id)},
+            {'user_id': str(same_tenant_user.id)},
             HTTP_X_TENANT_ID=str(self.tenant_a.id)
         )
 
-        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @unittest.skipUnless(settings.SAAS_MODE, "Requires tenant header support (SaaS mode)")
     def test_clone_group(self):
         """Admin can clone a group."""
         # Add some permissions to original group
@@ -498,19 +516,20 @@ class TenantGroupViewSetTestCase(TenantTestCase):
             {'name': 'Cloned Group'}
         )
 
-        # May return 404 if middleware doesn't set request.tenant in tests
-        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Cloned Group')
 
+    @unittest.skipUnless(settings.SAAS_MODE, "Requires tenant header support (SaaS mode)")
     def test_clone_requires_name(self):
-        """Cloning without name fails."""
+        """Cloning without name fails with 400."""
         self.authenticate_as(self.user_a, self.tenant_a)
         response = self.client.post(
             f'/api/TenantGroups/{self.group.id}/clone/',
             {}
         )
 
-        # May return 404 if middleware doesn't set request.tenant in tests
-        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', response.data)
 
 
 class PermissionListViewTestCase(TenantTestCase):
@@ -521,8 +540,8 @@ class PermissionListViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.get('/api/permissions/')
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_permissions(self):
         """Authenticated user can list permissions."""
@@ -549,8 +568,8 @@ class EffectivePermissionsViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.get('/api/users/me/effective-permissions/')
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_get_own_permissions(self):
         """User can get their own effective permissions."""
@@ -606,8 +625,8 @@ class SwitchTenantViewTestCase(TenantTestCase):
             'tenant_id': str(self.tenant_a.id)
         })
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_switch_to_own_tenant(self):
         """User can switch to their own tenant."""
@@ -661,8 +680,8 @@ class DemoResetViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.post('/api/tenant/demo-reset/')
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_requires_admin(self):
         """Demo reset requires admin permission."""
@@ -688,8 +707,13 @@ class DemoResetViewTestCase(TenantTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+@unittest.skipUnless(settings.SAAS_MODE, "Tenant isolation tests only apply in SaaS mode")
 class TenantIsolationTestCase(TenantTestCase):
-    """Test tenant isolation in tenant viewsets."""
+    """Test tenant isolation in tenant viewsets.
+
+    These tests verify that users can only see/access resources within their
+    tenant. In dedicated mode, there's only one tenant, so these don't apply.
+    """
 
     def setUp(self):
         super().setUp()
@@ -746,8 +770,8 @@ class TenantIsolationTestCase(TenantTestCase):
             HTTP_X_TENANT_ID=str(self.tenant_a.id)
         )
 
-        # Should fail - user not in tenant
-        self.assertIn(response.status_code, [status.HTTP_404_NOT_FOUND, status.HTTP_400_BAD_REQUEST])
+        # User from different tenant is not found
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class PresetListViewTestCase(TenantTestCase):
@@ -758,8 +782,8 @@ class PresetListViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.get('/api/presets/')
 
-        # DRF returns 403 for unauthenticated
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_presets(self):
         """Authenticated user can list presets."""
@@ -779,7 +803,8 @@ class UserTenantsViewTestCase(TenantTestCase):
         client = APIClient()
         response = client.get('/api/user/tenants/')
 
-        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+        # Custom exception handler ensures 401 for unauthenticated
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_own_tenants(self):
         """User can list tenants they belong to."""
@@ -846,7 +871,7 @@ class TenantMiddlewareTestCase(TenantTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @override_settings(DEDICATED_MODE=False, SAAS_MODE=True)
+    @unittest.skipUnless(settings.SAAS_MODE, "Only runs in SaaS mode")
     def test_invalid_tenant_header_returns_403_saas_mode(self):
         """Invalid tenant ID in header returns 403 (SaaS mode only)."""
         self.client.force_authenticate(user=self.user_a)
@@ -855,11 +880,10 @@ class TenantMiddlewareTestCase(TenantTestCase):
             HTTP_X_TENANT_ID='nonexistent-tenant-slug'
         )
 
-        # In SaaS mode, invalid tenant header should return 403
-        # In dedicated mode, header is ignored so this returns 200
-        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_200_OK])
+        # In SaaS mode, invalid tenant header returns 403
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @override_settings(DEDICATED_MODE=False, SAAS_MODE=True)
+    @unittest.skipUnless(settings.SAAS_MODE, "Only runs in SaaS mode")
     def test_user_cannot_access_other_tenant_via_header_saas_mode(self):
         """User cannot access tenant they don't belong to via header (SaaS mode)."""
         self.client.force_authenticate(user=self.user_a)
@@ -868,9 +892,8 @@ class TenantMiddlewareTestCase(TenantTestCase):
             HTTP_X_TENANT_ID=str(self.tenant_b.id)
         )
 
-        # In SaaS mode, accessing other tenant should return 403
-        # In dedicated mode, header is ignored
-        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_200_OK])
+        # In SaaS mode, accessing other tenant returns 403
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_superuser_can_access_any_tenant(self):
         """Superuser can access any tenant via header."""
@@ -946,6 +969,55 @@ class TenantStatusMiddlewareTestCase(TenantTestCase):
         # Tenant status should be visible
         if response.data.get('tenant'):
             self.assertIn('status', response.data['tenant'])
+
+    @unittest.skipUnless(settings.SAAS_MODE, "Suspended tenant blocking only applies in SaaS mode")
+    def test_suspended_tenant_blocked_from_data_endpoints(self):
+        """Suspended tenant is blocked from accessing data endpoints.
+
+        While suspended tenants can view their status via /api/tenant/current/,
+        they should be blocked from accessing actual data endpoints.
+
+        This test only runs in SaaS mode because in dedicated mode, the X-Tenant-ID
+        header is ignored and the default tenant is always used.
+        """
+        self.tenant_a.status = Tenant.Status.SUSPENDED
+        self.tenant_a.save()
+
+        self.authenticate_as(self.user_a, self.tenant_a)
+
+        # Should be blocked from TenantGroups endpoint
+        response = self.client.get('/api/TenantGroups/')
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+            "Suspended tenant should be blocked from data endpoints"
+        )
+
+    @unittest.skipUnless(settings.SAAS_MODE, "Suspended tenant blocking only applies in SaaS mode")
+    def test_suspended_tenant_blocked_from_write_operations(self):
+        """Suspended tenant cannot perform write operations.
+
+        Suspended tenants should be blocked from creating, updating, or
+        deleting any data.
+
+        This test only runs in SaaS mode because in dedicated mode, the X-Tenant-ID
+        header is ignored and the default tenant is always used.
+        """
+        self.tenant_a.status = Tenant.Status.SUSPENDED
+        self.tenant_a.save()
+
+        self.authenticate_as(self.user_a, self.tenant_a)
+
+        # Should be blocked from creating a group
+        response = self.client.post(
+            '/api/TenantGroups/',
+            {'name': 'New Group', 'description': 'Test'}
+        )
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+            "Suspended tenant should be blocked from write operations"
+        )
 
 
 class TenantTrialTestCase(TenantTestCase):

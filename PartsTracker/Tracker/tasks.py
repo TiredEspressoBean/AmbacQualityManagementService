@@ -515,7 +515,7 @@ def send_notification_task(self, notification_id: int):
                 'status': 'success',
                 'notification_id': notification_id,
                 'attempt_count': task.attempt_count,
-                'next_send_at': task.next_send_at.isoformat() if task.status == 'pending' else None
+                'next_send_at': task.next_send_at.isoformat() if task.status == 'PENDING' else None
             }
         else:
             logger.warning(f"Failed to send notification {notification_id}")
@@ -550,12 +550,7 @@ def send_invitation_email_task(self, invitation_id: int):
         logger.warning(f"Invitation {invitation_id} is no longer valid (expired or accepted)")
         return {'status': 'skipped', 'message': 'Invitation no longer valid'}
 
-    # Get frontend URL
-    if settings.DEBUG:
-        frontend_url = "http://localhost:5173"
-    else:
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://yourdomain.com')
-
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
     signup_url = f"{frontend_url}/signup?token={invitation.token}"
 
     # Prepare email context
@@ -620,7 +615,7 @@ def dispatch_pending_notifications():
     # This is safe because we're just reading IDs and dispatching individual tasks
     now = timezone.now()
     ready_notifications = NotificationTaskModel.objects.filter(
-        status='pending',
+        status='PENDING',
         next_send_at__lte=now
     ).select_related('recipient').values_list('id', flat=True)
 
@@ -691,7 +686,7 @@ def create_weekly_report_notifications():
                 existing = NotificationTaskModel.objects.filter(
                     notification_type='WEEKLY_REPORT',
                     recipient=customer,
-                    status='pending'
+                    status='PENDING'
                 ).exists()
 
                 if existing:
@@ -702,9 +697,9 @@ def create_weekly_report_notifications():
                 NotificationTaskModel.objects.create(
                     notification_type='WEEKLY_REPORT',
                     recipient=customer,
-                    channel_type='email',
-                    interval_type='fixed',
-                    status='pending',
+                    channel_type='EMAIL',
+                    interval_type='FIXED',
+                    status='PENDING',
                     next_send_at=timezone.now(),
                 )
                 created_count += 1
@@ -790,7 +785,7 @@ def check_capa_reminders():
                     notification_type='CAPA_REMINDER',
                     related_content_type=capa_ct,
                     related_object_id=str(capa.id),
-                    status='sent',
+                    status='SENT',
                     last_sent_at__gte=timezone.now() - timezone.timedelta(days=interval_days)
                 ).exists()
 
@@ -803,7 +798,7 @@ def check_capa_reminders():
                     notification_type='CAPA_REMINDER',
                     related_content_type=capa_ct,
                     related_object_id=str(capa.id),
-                    status='pending'
+                    status='PENDING'
                 ).exists()
 
                 if pending_exists:
@@ -814,12 +809,12 @@ def check_capa_reminders():
                 NotificationTaskModel.objects.create(
                     notification_type='CAPA_REMINDER',
                     recipient=capa.assigned_to,
-                    channel_type='email',
-                    interval_type='deadline_based',
+                    channel_type='EMAIL',
+                    interval_type='DEADLINE_BASED',
                     deadline=timezone.make_aware(
                         timezone.datetime.combine(capa.due_date, timezone.datetime.min.time())
                     ) if capa.due_date else None,
-                    status='pending',
+                    status='PENDING',
                     next_send_at=timezone.now(),
                     related_content_type=capa_ct,
                     related_object_id=str(capa.id),
@@ -1099,7 +1094,7 @@ def escalate_approvals():
                     notification_type='APPROVAL_ESCALATION',
                     related_content_type=approval_ct,
                     related_object_id=str(approval.id),
-                    status='sent',
+                    status='SENT',
                     last_sent_at__date=today
                 ).exists()
 
@@ -1112,7 +1107,7 @@ def escalate_approvals():
                     notification_type='APPROVAL_ESCALATION',
                     related_content_type=approval_ct,
                     related_object_id=str(approval.id),
-                    status='pending'
+                    status='PENDING'
                 ).exists()
 
                 if pending_exists:
@@ -1123,9 +1118,9 @@ def escalate_approvals():
                 NotificationTaskModel.objects.create(
                     notification_type='APPROVAL_ESCALATION',
                     recipient=approval.escalate_to,
-                    channel_type='email',
-                    interval_type='fixed',
-                    status='pending',
+                    channel_type='EMAIL',
+                    interval_type='FIXED',
+                    status='PENDING',
                     next_send_at=timezone.now(),
                     related_content_type=approval_ct,
                     related_object_id=str(approval.id),

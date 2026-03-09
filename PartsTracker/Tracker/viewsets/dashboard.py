@@ -579,9 +579,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         )
 
         disp_by_type = {d['disposition_type']: d['count'] for d in disposition_counts}
-        scrap_count = disp_by_type.get('SCRAP', 0)
-        rework_count = disp_by_type.get('REWORK', 0)
-        use_as_is_count = disp_by_type.get('USE_AS_IS', 0)
+        scrap_count = disp_by_type.get('scrap', 0)
+        rework_count = disp_by_type.get('rework', 0)
+        use_as_is_count = disp_by_type.get('use_as_is', 0)
 
         # Calculate rates as percentage of total inspected
         scrap_rate = round((scrap_count / total_inspected * 100), 1) if total_inspected > 0 else 0
@@ -731,10 +731,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         ).order_by('-count')
 
         type_labels = {
-            'SCRAP': 'Scrap',
-            'REWORK': 'Rework',
-            'USE_AS_IS': 'Use As-Is',
-            'RETURN_TO_VENDOR': 'Return to Vendor',
+            'scrap': 'Scrap',
+            'rework': 'Rework',
+            'use_as_is': 'Use As-Is',
+            'return_to_vendor': 'Return to Vendor',
             None: 'Pending',
         }
 
@@ -913,13 +913,13 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'count': pending_dispositions,
                 'severity': 'medium',
                 'link': '/production/dispositions',
-                'linkParams': {'status': 'pending'},
+                'linkParams': {'status': 'PENDING'},
             })
 
         # 4. Parts in quarantine
         quarantine_parts = self.qs_for_user(Parts).filter(
             archived=False,
-            part_status='QUARANTINE',
+            part_status='QUARANTINED',
         ).count()
 
         if quarantine_parts > 0:
@@ -929,7 +929,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'count': quarantine_parts,
                 'severity': 'low',
                 'link': '/editor/parts',
-                'linkParams': {'status': 'QUARANTINE'},
+                'linkParams': {'status': 'quarantined'},
             })
 
         # 5. CAPAs pending verification

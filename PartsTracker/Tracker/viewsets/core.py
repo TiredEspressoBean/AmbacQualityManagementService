@@ -882,8 +882,8 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         # Create notification preference if opted in
         if opt_in_notifications:
             from Tracker.models import NotificationTask
-            NotificationTask.objects.create(recipient=user, notification_type='WEEKLY_REPORT', channel_type='email',
-                                            interval_type='fixed', day_of_week=4,  # Friday
+            NotificationTask.objects.create(recipient=user, notification_type='WEEKLY_REPORT', channel_type='EMAIL',
+                                            interval_type='FIXED', day_of_week=4,  # Friday
                                             time=timezone.now().time().replace(hour=15, minute=0),  # 3 PM
                                             interval_weeks=1, next_send_at=timezone.now() + timedelta(days=7))
 
@@ -1011,7 +1011,6 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         if new_status == 'RELEASED' and old_status != 'RELEASED':
             if instance.document_type and instance.document_type.requires_approval:
                 # Check if document has an approved ApprovalRequest
-                from django.contrib.contenttypes.models import ContentType
                 from Tracker.models import ApprovalRequest, Approval_Status_Type
                 content_type = ContentType.objects.get_for_model(instance)
                 has_approval = ApprovalRequest.objects.filter(
@@ -1096,14 +1095,14 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             )
         except ValueError as e:
             return Response(
-                {"error": str(e)},
+                {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Failed to submit for approval: {e}")
             return Response(
-                {"error": "Failed to submit for approval"},
+                {"detail": "Failed to submit for approval"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -1127,14 +1126,14 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         change_justification = request.data.get('change_justification', '').strip()
         if not change_justification:
             return Response(
-                {"error": "change_justification is required when creating a revision"},
+                {"detail": "change_justification is required when creating a revision"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         # Check document is current version
         if not document.is_current_version:
             return Response(
-                {"error": "Can only create revisions from the current version"},
+                {"detail": "Can only create revisions from the current version"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1164,14 +1163,14 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
         except ValueError as e:
             return Response(
-                {"error": str(e)},
+                {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Failed to create revision: {e}")
             return Response(
-                {"error": "Failed to create revision"},
+                {"detail": "Failed to create revision"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -1203,7 +1202,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
                 effective_date = datetime.strptime(request.data['effective_date'], '%Y-%m-%d').date()
             except ValueError:
                 return Response(
-                    {"error": "effective_date must be in YYYY-MM-DD format"},
+                    {"detail": "effective_date must be in YYYY-MM-DD format"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -1215,7 +1214,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             )
         except ValueError as e:
             return Response(
-                {"error": str(e)},
+                {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1236,7 +1235,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             )
         except ValueError as e:
             return Response(
-                {"error": str(e)},
+                {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1268,7 +1267,6 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         queryset = self.get_queryset()
 
         # Get pending approval count for documents
-        from django.contrib.contenttypes.models import ContentType
         doc_ct = ContentType.objects.get_for_model(Documents)
         pending_approval_ids = ApprovalRequest.objects.filter(
             content_type=doc_ct,
@@ -1448,7 +1446,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
         # Check permission
         if not request.user.has_tenant_perm('manage_approval_workflow'):
             return Response(
-                {'error': 'You do not have permission to manage approval templates'},
+                {'detail': 'You do not have permission to manage approval templates'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -1463,7 +1461,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
         # Check permission
         if not request.user.has_tenant_perm('manage_approval_workflow'):
             return Response(
-                {'error': 'You do not have permission to manage approval templates'},
+                {'detail': 'You do not have permission to manage approval templates'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -1560,14 +1558,14 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         # Check permission
         if not request.user.has_tenant_perm('respond_to_approval'):
             return Response(
-                {'error': 'You do not have permission to respond to approval requests'},
+                {'detail': 'You do not have permission to respond to approval requests'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         # Check if user is an assigned approver
         if not approval.can_approve(request.user):
             return Response(
-                {'error': 'You are not assigned as an approver for this request'},
+                {'detail': 'You are not assigned as an approver for this request'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -1575,7 +1573,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         decision = request.data.get('decision')
         if not decision:
             return Response(
-                {'error': 'Decision is required'},
+                {'detail': 'Decision is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1596,7 +1594,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
 
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1610,9 +1608,10 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         user = request.user
 
         # Find approvals where user is assigned and hasn't responded (tenant-scoped groups)
+        # Use get_queryset() to ensure tenant filtering is applied
         user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
         user_group_ids = [g.id for g in user_groups]
-        pending_approvals = ApprovalRequest.objects.filter(
+        pending_approvals = self.get_queryset().filter(
             status='PENDING'
         ).filter(
             models.Q(approver_assignments__user=user) |
@@ -1678,14 +1677,14 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
         # Check permission - user must have respond_to_approval permission
         if not request.user.has_tenant_perm('respond_to_approval'):
             return Response(
-                {'error': 'You do not have permission to delegate approval requests'},
+                {'detail': 'You do not have permission to delegate approval requests'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         # Check if user is the approver for this response
         if response.approver != request.user:
             return Response(
-                {'error': 'You can only delegate your own approval responses'},
+                {'detail': 'You can only delegate your own approval responses'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -1695,7 +1694,7 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
 
         if not delegatee_id or not reason:
             return Response(
-                {'error': 'delegatee_id and reason are required'},
+                {'detail': 'delegatee_id and reason are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1706,12 +1705,12 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
 
         except User.DoesNotExist:
             return Response(
-                {'error': 'Delegatee user not found'},
+                {'detail': 'Delegatee user not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
             return Response(
-                {'error': str(e)},
+                {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1821,14 +1820,14 @@ class ScopeView(viewsets.ViewSet):
         root_param = request.query_params.get('root')
         if not root_param:
             return Response(
-                {'error': "root parameter required (e.g., 'orders:123')"},
+                {'detail': "root parameter required (e.g., 'orders:123')"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
             model_class, obj_id = self._parse_root(root_param)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get root object with permission check
         try:
@@ -1838,7 +1837,7 @@ class ScopeView(viewsets.ViewSet):
                 root_obj = model_class.objects.get(pk=obj_id)
         except model_class.DoesNotExist:
             return Response(
-                {'error': f'{model_class.__name__} {obj_id} not found'},
+                {'detail': f'{model_class.__name__} {obj_id} not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -1846,7 +1845,7 @@ class ScopeView(viewsets.ViewSet):
         include_param = request.query_params.get('include')
         if not include_param:
             return Response(
-                {'error': "include parameter required (e.g., 'documents')"},
+                {'detail': "include parameter required (e.g., 'documents')"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1857,7 +1856,7 @@ class ScopeView(viewsets.ViewSet):
         invalid = [t for t in include_types if t not in valid_types]
         if invalid:
             return Response(
-                {'error': f"Unknown types: {invalid}. Valid: {valid_types}"},
+                {'detail': f"Unknown types: {invalid}. Valid: {valid_types}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1865,7 +1864,7 @@ class ScopeView(viewsets.ViewSet):
         direction = request.query_params.get('direction', 'down')
         if direction not in ('down', 'up'):
             return Response(
-                {'error': "direction must be 'down' or 'up'"},
+                {'detail': "direction must be 'down' or 'up'"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1918,12 +1917,20 @@ def serve_media_iframe_safe(request, path):
     """
     Serve media files (PDFs, images, 3D models, etc.) with iframe-safe headers.
 
-    This function allows media files to be embedded in iframes from localhost:5173
-    (the frontend development server). It sets appropriate CSP and CORS headers.
+    This function allows media files to be embedded in iframes from the frontend.
+    It sets appropriate CSP and CORS headers based on FRONTEND_URL setting.
     """
     import mimetypes
 
     full_path = os.path.join(settings.MEDIA_ROOT, path)
+
+    # Security: Prevent path traversal attacks
+    # Resolve to absolute path and verify it's within MEDIA_ROOT
+    real_path = os.path.realpath(full_path)
+    media_root = os.path.realpath(settings.MEDIA_ROOT)
+    if not real_path.startswith(media_root + os.sep) and real_path != media_root:
+        raise Http404()
+
     if not os.path.exists(full_path):
         raise Http404()
 
@@ -1939,11 +1946,12 @@ def serve_media_iframe_safe(request, path):
     elif content_type is None:
         content_type = 'application/octet-stream'
 
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+
     response = FileResponse(open(full_path, 'rb'), content_type=content_type)
     response["Content-Disposition"] = f'inline; filename="{os.path.basename(full_path)}"'
-    response["Content-Security-Policy"] = "frame-ancestors http://localhost:5173"
-    # CORS headers for frontend dev server
-    response["Access-Control-Allow-Origin"] = "http://localhost:5173"
+    response["Content-Security-Policy"] = f"frame-ancestors {frontend_url}"
+    response["Access-Control-Allow-Origin"] = frontend_url
     response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response["Access-Control-Allow-Headers"] = "Content-Type"
     return response

@@ -52,12 +52,12 @@ class TenantTestCase(VectorTestCase):
         self.tenant_a = Tenant.objects.create(
             name="Tenant A",
             slug="tenant-a",
-            tier="pro"
+            tier="PRO"
         )
         self.tenant_b = Tenant.objects.create(
             name="Tenant B",
             slug="tenant-b",
-            tier="starter"
+            tier="STARTER"
         )
 
         User = get_user_model()

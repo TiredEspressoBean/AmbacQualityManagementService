@@ -536,11 +536,11 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             # Determine status
             if part.step_id == step_id:
                 step_status = 'IN_PROGRESS'
-            elif step_execs and any(ex.status == 'completed' for ex in step_execs):
+            elif step_execs and any(ex.status == 'COMPLETED' for ex in step_execs):
                 step_status = 'COMPLETED'
             elif order < current_step_order:
                 step_status = 'COMPLETED'
-            elif step_execs and any(ex.status == 'skipped' for ex in step_execs):
+            elif step_execs and any(ex.status == 'SKIPPED' for ex in step_execs):
                 step_status = 'SKIPPED'
             else:
                 step_status = 'PENDING'
@@ -833,7 +833,7 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
             name="AddNoteInput",
             fields={
                 "message": serializers.CharField(),
-                "visibility": serializers.ChoiceField(choices=['visible', 'internal'], default='visible')
+                "visibility": serializers.ChoiceField(choices=['VISIBLE', 'INTERNAL'], default='VISIBLE')
             }
         ),
         responses={200: OrdersSerializer}
@@ -844,13 +844,13 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         order = self.get_object()
 
         message = request.data.get('message')
-        visibility = request.data.get('visibility', 'visible')
+        visibility = request.data.get('visibility', 'VISIBLE')
 
         if not message:
             return Response({"detail": "Message is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if visibility not in ('visible', 'internal'):
-            return Response({"detail": "Visibility must be 'visible' or 'internal'"}, status=status.HTTP_400_BAD_REQUEST)
+        if visibility not in ('VISIBLE', 'INTERNAL'):
+            return Response({"detail": "Visibility must be 'VISIBLE' or 'INTERNAL'"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             order.add_note(request.user, message, visibility)
@@ -961,7 +961,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         if not parts_needing_qa.exists():
             return Response({'work_order_documents': [], 'current_step_documents': [], 'part_type_documents': [],
-                             'current_step_id': None})
+                             'current_step_id': None, 'parts_in_qa': 0})
 
         # Determine the most common step (current step)
         step_counts = Counter(part.step.id for part in parts_needing_qa if part.step)
@@ -1327,11 +1327,11 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         ).select_related('step').annotate(
             pending_count=Count(
                 'step__executions',
-                filter=Q(step__executions__status='pending', step__executions__exited_at__isnull=True)
+                filter=Q(step__executions__status='PENDING', step__executions__exited_at__isnull=True)
             ),
             in_progress_count=Count(
                 'step__executions',
-                filter=Q(step__executions__status='in_progress', step__executions__exited_at__isnull=True)
+                filter=Q(step__executions__status='IN_PROGRESS', step__executions__exited_at__isnull=True)
             ),
         ).order_by('order')
 
@@ -1372,7 +1372,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         queryset = self.get_queryset().filter(
             step_id=step_id,
             exited_at__isnull=True,
-            status__in=['pending', 'in_progress']
+            status__in=['PENDING', 'IN_PROGRESS']
         )
 
         serializer = StepExecutionListSerializer(queryset, many=True)
@@ -1393,7 +1393,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         queryset = self.get_queryset().filter(
             assigned_to=request.user,
             exited_at__isnull=True,
-            status__in=['pending', 'in_progress']
+            status__in=['PENDING', 'IN_PROGRESS']
         ).order_by('entered_at')
 
         serializer = StepExecutionListSerializer(queryset, many=True)
@@ -1445,7 +1445,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
         """
         execution = self.get_object()
 
-        if execution.status == 'completed':
+        if execution.status == 'COMPLETED':
             return Response(
                 {"detail": "Cannot claim a completed execution"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -1458,7 +1458,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
             )
 
         execution.assigned_to = request.user
-        execution.status = 'in_progress'
+        execution.status = 'IN_PROGRESS'
         execution.save()
 
         serializer = StepExecutionSerializer(execution)
@@ -1497,7 +1497,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
 
         stats = StepExecution.objects.filter(
             step__process_memberships__process_id=process_id,
-            status='completed',
+            status='COMPLETED',
             exited_at__isnull=False
         ).values(
             'step__id', 'step__name'

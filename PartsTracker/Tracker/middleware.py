@@ -32,8 +32,9 @@ class TenantMiddleware:
 
     In SaaS mode, resolution order:
     1. X-Tenant-ID header (for API clients, testing)
-    2. Subdomain (acme.example.com -> tenant slug "acme")
-    3. User's default tenant (if authenticated)
+    2. Session active_tenant_id (set by tenant switcher)
+    3. Subdomain (acme.example.com -> tenant slug "acme")
+    4. User's default tenant (if authenticated)
 
     In dedicated/demo mode:
     - Directly use the configured default/demo tenant
@@ -113,11 +114,11 @@ class TenantMiddleware:
         Resolve tenant from request using multiple strategies.
 
         In dedicated mode, always returns the default tenant.
-        In SaaS mode, uses header -> subdomain -> user fallback.
+        In SaaS mode, uses header -> session -> subdomain -> user fallback.
 
         Returns:
             Tuple of (Tenant instance or None, source string or None)
-            Source is one of: 'header', 'subdomain', 'user', 'default', None
+            Source is one of: 'header', 'session', 'subdomain', 'user', 'default', None
 
         Raises:
             TenantResolutionError: If user explicitly requests a tenant via header
@@ -161,13 +162,22 @@ class TenantMiddleware:
             logger.debug(f"Tenant resolved from header: {tenant.slug}")
             return tenant, 'header'
 
-        # 2. Check subdomain
+        # 2. Check session (set by SwitchTenantView)
+        if request.user.is_authenticated and hasattr(request, 'session'):
+            session_tenant_id = request.session.get('active_tenant_id')
+            if session_tenant_id:
+                tenant = self._get_tenant_by_id_or_slug(session_tenant_id)
+                if tenant and self._user_can_access_tenant(request.user, tenant):
+                    logger.debug(f"Tenant resolved from session: {tenant.slug}")
+                    return tenant, 'session'
+
+        # 3. Check subdomain
         tenant = self._get_tenant_from_subdomain(request)
         if tenant:
             logger.debug(f"Tenant resolved from subdomain: {tenant.slug}")
             return tenant, 'subdomain'
 
-        # 3. Fall back to user's tenant (if authenticated)
+        # 4. Fall back to user's tenant (if authenticated)
         if request.user.is_authenticated and hasattr(request.user, 'tenant'):
             tenant = request.user.tenant
             if tenant and tenant.is_active:

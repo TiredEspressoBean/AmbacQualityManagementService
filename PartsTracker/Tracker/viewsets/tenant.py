@@ -11,9 +11,11 @@ Provides:
 from drf_spectacular.utils import extend_schema, extend_schema_field, inline_serializer, OpenApiParameter
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from Tracker.permissions import AllowAnyWithTenantAccess
+from Tracker.exceptions import TenantContextRequired, TenantAccessDenied, ResourceNotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings as django_settings
@@ -216,17 +218,11 @@ class TenantSettingsView(APIView):
     def get(self, request):
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response(
-                {'detail': 'No tenant context'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise TenantContextRequired()
 
         # Check user is tenant admin
         if not self._is_tenant_admin(request.user):
-            return Response(
-                {'detail': 'Permission denied'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only tenant administrators can access settings.")
 
         logo_url = None
         if tenant.logo:
@@ -277,17 +273,11 @@ class TenantSettingsView(APIView):
     def patch(self, request):
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response(
-                {'detail': 'No tenant context'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise TenantContextRequired()
 
         # Check user is tenant admin
         if not self._is_tenant_admin(request.user):
-            return Response(
-                {'detail': 'Permission denied'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only tenant administrators can modify settings.")
 
         # Update allowed fields
         if 'name' in request.data:
@@ -347,6 +337,11 @@ class TenantLogoView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    # Allowed image types for logo upload
+    ALLOWED_LOGO_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'}
+    ALLOWED_LOGO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'}
+    MAX_LOGO_SIZE = 5 * 1024 * 1024  # 5MB
+
     def _is_tenant_admin(self, user):
         if user.is_superuser or user.is_staff:
             return True
@@ -362,14 +357,32 @@ class TenantLogoView(APIView):
     def post(self, request):
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response({'detail': 'No tenant context'}, status=status.HTTP_400_BAD_REQUEST)
+            raise TenantContextRequired()
 
         if not self._is_tenant_admin(request.user):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only tenant administrators can upload logos.")
 
         logo = request.FILES.get('logo')
         if not logo:
-            return Response({'detail': 'No logo file provided'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'logo': 'No logo file provided.'})
+
+        # Validate file size
+        if logo.size > self.MAX_LOGO_SIZE:
+            raise ValidationError({'logo': f'Logo file too large. Maximum size is {self.MAX_LOGO_SIZE // (1024 * 1024)}MB.'})
+
+        # Validate file extension
+        import os
+        ext = os.path.splitext(logo.name)[1].lower()
+        if ext not in self.ALLOWED_LOGO_EXTENSIONS:
+            raise ValidationError({
+                'logo': f'Invalid file type. Allowed types: {", ".join(self.ALLOWED_LOGO_EXTENSIONS)}'
+            })
+
+        # Validate content type
+        if logo.content_type not in self.ALLOWED_LOGO_TYPES:
+            raise ValidationError({
+                'logo': f'Invalid content type. Allowed types: {", ".join(self.ALLOWED_LOGO_TYPES)}'
+            })
 
         # Delete old logo if exists
         if tenant.logo:
@@ -391,10 +404,10 @@ class TenantLogoView(APIView):
     def delete(self, request):
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response({'detail': 'No tenant context'}, status=status.HTTP_400_BAD_REQUEST)
+            raise TenantContextRequired()
 
         if not self._is_tenant_admin(request.user):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only tenant administrators can delete logos.")
 
         if tenant.logo:
             tenant.logo.delete(save=True)
@@ -635,10 +648,7 @@ class SignupView(APIView):
     def post(self, request):
         # Check if signup is enabled
         if not getattr(django_settings, 'SAAS_MODE', False):
-            return Response(
-                {'detail': 'Self-service signup is not available.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Self-service signup is not available in this deployment mode.")
 
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -785,15 +795,12 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         if not self.check_admin_permission(request):
-            return Response(
-                {'detail': 'Permission denied - only admins can create groups'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only administrators can create groups.")
 
         from Tracker.models import TenantGroup
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response({'detail': 'No tenant context'}, status=status.HTTP_400_BAD_REQUEST)
+            raise TenantContextRequired()
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -809,25 +816,16 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         if not self.check_admin_permission(request):
-            return Response(
-                {'detail': 'Permission denied'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only administrators can update groups.")
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
         if not self.check_admin_permission(request):
-            return Response(
-                {'detail': 'Permission denied'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only administrators can delete groups.")
 
         instance = self.get_object()
         if instance.role_assignments.exists():
-            return Response(
-                {'detail': 'Cannot delete group with members. Remove all members first.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError({'detail': 'Cannot delete group with members. Remove all members first.'})
 
         return super().destroy(request, *args, **kwargs)
 
@@ -846,7 +844,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         DELETE: Remove permissions
         """
         if not self.check_admin_permission(request):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only administrators can manage group permissions.")
 
         group = self.get_object()
         Permission = self._get_permission_model()
@@ -857,7 +855,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
 
         codenames = request.data.get('permissions', [])
         if not isinstance(codenames, list):
-            return Response({'detail': 'permissions must be a list'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'permissions': 'Must be a list of permission codenames.'})
 
         perms = Permission.objects.filter(codename__in=codenames)
 
@@ -890,7 +888,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         POST: Add member (user_id required, facility_id/company_id optional)
         """
         if not self.check_admin_permission(request):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only administrators can manage group members.")
 
         group = self.get_object()
 
@@ -903,12 +901,12 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         from Tracker.models import UserRole
         user_id = request.data.get('user_id')
         if not user_id:
-            return Response({'detail': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'user_id': 'This field is required.'})
 
         try:
             user = User.objects.get(id=user_id, tenant=request.tenant)
         except User.DoesNotExist:
-            return Response({'detail': 'User not found in tenant'}, status=status.HTTP_404_NOT_FOUND)
+            raise ResourceNotFound("User not found in this tenant.")
 
         role, created = UserRole.objects.get_or_create(
             user=user,
@@ -919,7 +917,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         )
 
         if not created:
-            return Response({'detail': 'User already in group'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'user_id': 'User is already a member of this group.'})
 
         return Response(UserRoleSerializer(role).data, status=status.HTTP_201_CREATED)
 
@@ -931,13 +929,13 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     def remove_member(self, request, id=None, user_id=None):
         """Remove a user from the group."""
         if not self.check_admin_permission(request):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only administrators can remove group members.")
 
         group = self.get_object()
         deleted, _ = group.role_assignments.filter(user_id=user_id).delete()
 
         if deleted == 0:
-            return Response({'detail': 'User not in group'}, status=status.HTTP_404_NOT_FOUND)
+            raise ResourceNotFound("User is not a member of this group.")
 
         return Response({'status': 'removed'})
 
@@ -949,16 +947,16 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     def clone(self, request, id=None):
         """Clone a group with a new name."""
         if not self.check_admin_permission(request):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only administrators can clone groups.")
 
         source = self.get_object()
         new_name = request.data.get('name')
         if not new_name:
-            return Response({'detail': 'name is required'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'name': 'This field is required.'})
 
         from Tracker.models import TenantGroup
         if TenantGroup.objects.filter(tenant=source.tenant, name=new_name).exists():
-            return Response({'detail': 'Group with this name already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'name': 'A group with this name already exists.'})
 
         new_group = TenantGroup.objects.create(
             tenant=source.tenant,
@@ -1013,28 +1011,28 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     def from_preset(self, request):
         """Create a new group from a preset template."""
         if not self.check_admin_permission(request):
-            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("Only administrators can create groups from presets.")
 
         preset_key = request.data.get('preset')
         custom_name = request.data.get('name')  # Optional override
 
         from Tracker.presets import GROUP_PRESETS
         if preset_key not in GROUP_PRESETS:
-            return Response(
-                {'detail': f'Unknown preset: {preset_key}', 'available': list(GROUP_PRESETS.keys())},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError({
+                'preset': f"Unknown preset: '{preset_key}'.",
+                'available': list(GROUP_PRESETS.keys())
+            })
 
         preset = GROUP_PRESETS[preset_key]
         name = custom_name or preset['name']
 
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response({'detail': 'No tenant context'}, status=status.HTTP_400_BAD_REQUEST)
+            raise TenantContextRequired()
 
         from Tracker.models import TenantGroup
         if TenantGroup.objects.filter(tenant=tenant, name=name).exists():
-            return Response({'detail': 'Group with this name already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({'name': 'A group with this name already exists.'})
 
         group = TenantGroup.objects.create(
             tenant=tenant,
@@ -1228,12 +1226,12 @@ class EffectivePermissionsView(APIView):
         if str(target_user_id) != str(request.user.id):
             if not (request.user.is_superuser or request.user.is_staff or
                     request.user.has_tenant_perm('view_user')):
-                return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+                raise PermissionDenied("You can only view your own permissions.")
 
         try:
             target_user = User.objects.get(id=target_user_id)
         except User.DoesNotExist:
-            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            raise ResourceNotFound("User not found.")
 
         # Get all permissions from all groups
         tenant = getattr(request, 'tenant', None) or target_user.tenant
@@ -1374,25 +1372,16 @@ class DemoResetView(APIView):
     def post(self, request):
         tenant = getattr(request, 'tenant', None)
         if not tenant:
-            return Response(
-                {'detail': 'No tenant context'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise TenantContextRequired()
 
         # Only allow on demo tenants
         if not tenant.is_demo:
-            return Response(
-                {'detail': 'Demo reset is only available for demo tenants'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Demo reset is only available for demo tenants.")
 
         # Require admin permission
         user = request.user
         if not (user.is_superuser or user.is_staff or user.has_tenant_perm('change_tenantgroup')):
-            return Response(
-                {'detail': 'Permission denied - admin access required'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise PermissionDenied("Only administrators can reset demo data.")
 
         scale = request.data.get('scale', 'small')
         if scale not in ('small', 'medium', 'large'):
@@ -1456,24 +1445,21 @@ class SwitchTenantView(APIView):
 
         tenant_id = request.data.get('tenant_id')
         if not tenant_id:
-            return Response(
-                {'detail': 'tenant_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError({'tenant_id': 'This field is required.'})
 
         try:
             tenant = Tenant.objects.get(id=tenant_id)
         except Tenant.DoesNotExist:
-            return Response(
-                {'detail': 'Tenant not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            raise ResourceNotFound("Tenant not found.")
 
         # Verify user has access to this tenant
         user = request.user
         has_access = False
 
-        if user.tenant and str(user.tenant.id) == str(tenant_id):
+        # Superusers can access any tenant
+        if user.is_superuser:
+            has_access = True
+        elif user.tenant and str(user.tenant.id) == str(tenant_id):
             has_access = True
         elif TenantGroupMembership.objects.filter(
             user=user,
@@ -1482,10 +1468,7 @@ class SwitchTenantView(APIView):
             has_access = True
 
         if not has_access:
-            return Response(
-                {'detail': 'You do not have access to this organization'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            raise TenantAccessDenied("You do not have access to this organization.")
 
         # Store in session
         request.session['active_tenant_id'] = str(tenant.id)

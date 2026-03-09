@@ -57,18 +57,18 @@ class HubSpotSyncLog(models.Model):
     """
 
     SYNC_TYPE_CHOICES = [
-        ('full', 'Full Sync'),
-        ('incremental', 'Incremental Sync'),
-        ('single', 'Single Deal Sync'),
+        ('FULL', 'Full Sync'),
+        ('INCREMENTAL', 'Incremental Sync'),
+        ('SINGLE', 'Single Deal Sync'),
     ]
 
     STATUS_CHOICES = [
-        ('running', 'Running'),
-        ('success', 'Success'),
-        ('failed', 'Failed'),
+        ('RUNNING', 'Running'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
     ]
 
-    sync_type = models.CharField(max_length=20, choices=SYNC_TYPE_CHOICES, default='full')
+    sync_type = models.CharField(max_length=20, choices=SYNC_TYPE_CHOICES, default='FULL')
     """Type of sync operation performed."""
 
     started_at = models.DateTimeField(auto_now_add=True)
@@ -77,7 +77,7 @@ class HubSpotSyncLog(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     """When the sync operation finished (null if still running)."""
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='running')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='RUNNING')
     """Current status of the sync operation."""
 
     deals_processed = models.IntegerField(default=0)

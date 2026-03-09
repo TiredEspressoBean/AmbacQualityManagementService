@@ -233,12 +233,7 @@ class UserInvitationSerializer(serializers.ModelSerializer):
         """Generate invitation signup URL"""
         request = self.context.get('request')
         if request:
-            # Get frontend URL from settings
-            if settings.DEBUG:
-                frontend_url = "http://localhost:5173"
-            else:
-                frontend_url = getattr(settings, 'FRONTEND_URL', 'https://yourdomain.com')
-
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
             return f"{frontend_url}/signup?token={obj.token}"
         return None
 
@@ -270,11 +265,7 @@ class CustomAllAuthPasswordResetForm(AllAuthPasswordResetForm):
         except Exception as e:
             print(f" Template selection error: {e}")
 
-        # Get frontend URL from settings
-        if settings.DEBUG:
-            frontend_url = "http://localhost:5173"
-        else:
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://yourdomain.com')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
 
         for user in self.users:
             temp_key = token_generator.make_token(user)

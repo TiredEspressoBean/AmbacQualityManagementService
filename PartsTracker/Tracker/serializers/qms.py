@@ -446,7 +446,7 @@ class NotificationScheduleSerializer(serializers.Serializer):
     Nested serializer for notification schedule configuration.
     Handles both fixed and deadline-based interval types.
     """
-    interval_type = serializers.ChoiceField(choices=['fixed', 'deadline_based'])
+    interval_type = serializers.ChoiceField(choices=['FIXED', 'DEADLINE_BASED'])
 
     day_of_week = serializers.IntegerField(min_value=0, max_value=6, required=False, allow_null=True,
                                           help_text="0=Monday, 6=Sunday")
@@ -465,7 +465,7 @@ class NotificationScheduleSerializer(serializers.Serializer):
         """Validate that correct fields are present for each interval_type."""
         interval_type = attrs.get('interval_type')
 
-        if interval_type == 'fixed':
+        if interval_type == 'FIXED':
             required_fields = ['day_of_week', 'time', 'interval_weeks']
             missing = [f for f in required_fields if not attrs.get(f)]
             if missing:
@@ -473,7 +473,7 @@ class NotificationScheduleSerializer(serializers.Serializer):
                     f"Fixed interval requires: {', '.join(missing)}"
                 )
 
-        elif interval_type == 'deadline_based':
+        elif interval_type == 'DEADLINE_BASED':
             if not attrs.get('escalation_tiers'):
                 raise serializers.ValidationError(
                     "Deadline-based interval requires escalation_tiers"
@@ -549,7 +549,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer, SecureModelM
             'interval_type': instance.interval_type,
         }
 
-        if instance.interval_type == 'fixed':
+        if instance.interval_type == 'FIXED':
             schedule['day_of_week'] = instance.day_of_week
             schedule['interval_weeks'] = instance.interval_weeks
 
@@ -566,7 +566,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer, SecureModelM
                 else:
                     schedule['time'] = instance.time.isoformat()
 
-        elif instance.interval_type == 'deadline_based':
+        elif instance.interval_type == 'DEADLINE_BASED':
             schedule['escalation_tiers'] = instance.escalation_tiers
 
         data['schedule'] = schedule
@@ -615,7 +615,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer, SecureModelM
         if schedule_data:
             instance.interval_type = schedule_data.get('interval_type', instance.interval_type)
 
-            if instance.interval_type == 'fixed':
+            if instance.interval_type == 'FIXED':
                 instance.day_of_week = schedule_data.get('day_of_week', instance.day_of_week)
                 instance.interval_weeks = schedule_data.get('interval_weeks', instance.interval_weeks)
 
@@ -630,7 +630,7 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer, SecureModelM
                 elif time_local:
                     instance.time = time_local
 
-            elif instance.interval_type == 'deadline_based':
+            elif instance.interval_type == 'DEADLINE_BASED':
                 instance.escalation_tiers = schedule_data.get('escalation_tiers', instance.escalation_tiers)
 
             instance.next_send_at = instance.calculate_next_send()
@@ -697,10 +697,7 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
 
     @extend_schema_field(serializers.CharField())
     def get_resolution_completed_by_name(self, obj):
-        if obj.resolution_completed_by:
-            return f"{obj.resolution_completed_by.first_name} {obj.resolution_completed_by.last_name}".strip() or obj.resolution_completed_by.username
-        else:
-            return ""
+        return obj.resolution_completed_by.display_name if obj.resolution_completed_by else ""
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_choices_data(self, obj):
@@ -718,16 +715,12 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
     @extend_schema_field(serializers.CharField())
     def get_containment_completed_by_name(self, obj):
         """Get name of user who completed containment action"""
-        if obj.containment_completed_by:
-            return f"{obj.containment_completed_by.first_name} {obj.containment_completed_by.last_name}".strip() or obj.containment_completed_by.username
-        return ""
+        return obj.containment_completed_by.display_name if obj.containment_completed_by else ""
 
     @extend_schema_field(serializers.CharField())
     def get_scrap_verified_by_name(self, obj):
         """Get name of user who verified scrap"""
-        if obj.scrap_verified_by:
-            return f"{obj.scrap_verified_by.first_name} {obj.scrap_verified_by.last_name}".strip() or obj.scrap_verified_by.username
-        return ""
+        return obj.scrap_verified_by.display_name if obj.scrap_verified_by else ""
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_step_info(self, obj):

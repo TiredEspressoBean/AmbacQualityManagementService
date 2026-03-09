@@ -37,6 +37,15 @@ class DocumentTypeSerializer(SecureModelMixin, serializers.ModelSerializer):
 
 class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Enhanced documents serializer using model methods"""
+    # Allowed file types for document uploads
+    ALLOWED_EXTENSIONS = {
+        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+        '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg',
+        '.txt', '.csv', '.json', '.xml',
+        '.glb', '.gltf', '.step', '.stp', '.stl',  # 3D model formats
+    }
+    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+
     file_url = serializers.SerializerMethodField()
     uploaded_by_info = serializers.SerializerMethodField()
     content_type_info = serializers.SerializerMethodField()
@@ -120,6 +129,23 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
             return DocumentTypeSerializer(obj.document_type).data
         return None
 
+    def validate_file(self, file):
+        """Validate uploaded file type and size."""
+        import os
+
+        if file.size > self.MAX_FILE_SIZE:
+            raise serializers.ValidationError(
+                f'File too large. Maximum size is {self.MAX_FILE_SIZE // (1024 * 1024)}MB.'
+            )
+
+        ext = os.path.splitext(file.name)[1].lower()
+        if ext not in self.ALLOWED_EXTENSIONS:
+            raise serializers.ValidationError(
+                f'Unsupported file type "{ext}". Allowed types: {", ".join(sorted(self.ALLOWED_EXTENSIONS))}'
+            )
+
+        return file
+
     def create(self, validated_data):
         """Enhanced create using model methods"""
         request = self.context.get('request')
@@ -167,11 +193,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             return None
 
     def get_uploaded_by_name(self, obj) -> str:
-        if obj.uploaded_by:
-            first = obj.uploaded_by.first_name or ""
-            last = obj.uploaded_by.last_name or ""
-            return f"{first} {last}".strip() or obj.uploaded_by.username
-        return "Unknown"
+        return obj.uploaded_by.display_name if obj.uploaded_by else "Unknown"
 
     def get_content_type_model(self, obj) -> str | None:
         return obj.content_type.model if obj.content_type else None
@@ -278,12 +300,12 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
     @extend_schema_field(serializers.BooleanField())
     def get_is_ready(self, obj) -> bool:
         """True if model is processed and ready for viewing."""
-        return obj.processing_status == 'completed'
+        return obj.processing_status == 'COMPLETED'
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_processing_metrics(self, obj) -> dict | None:
         """Return processing metrics if model is completed."""
-        if obj.processing_status != 'completed':
+        if obj.processing_status != 'COMPLETED':
             return None
 
         return {

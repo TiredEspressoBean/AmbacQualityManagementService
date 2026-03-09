@@ -155,7 +155,7 @@ class ScopeTraversalTestCase(VectorTestCase):
         cls.step = Steps.objects.create(
             name="Test Step",
             part_type=cls.part_type,
-            step_type='task',
+            step_type='TASK',
         )
         ProcessStep.objects.create(
             process=cls.process,
@@ -456,7 +456,7 @@ class LargeHierarchyTestCase(VectorTestCase):
             step = Steps.objects.create(
                 name=f"Step {i}",
                 part_type=cls.part_type,
-                step_type='start' if i == 0 else 'task',
+                step_type='START' if i == 0 else 'TASK',
             )
             ProcessStep.objects.create(
                 process=cls.process,
@@ -835,7 +835,7 @@ class ExplainPathTestCase(VectorTestCase):
         cls.step = Steps.objects.create(
             name="Test Step",
             part_type=cls.part_type,
-            step_type='task',
+            step_type='TASK',
         )
         ProcessStep.objects.create(
             process=cls.process,
@@ -925,14 +925,14 @@ class RelatedToTestCase(VectorTestCase):
             content_type=order_ct,
             object_id=cls.order.pk,
             uploaded_by=cls.user,
-            classification='public'
+            classification='PUBLIC'
         )
         cls.part_doc = Documents.objects.create(
             file_name="part_doc.pdf",
             content_type=part_ct,
             object_id=cls.part.pk,
             uploaded_by=cls.user,
-            classification='public'
+            classification='PUBLIC'
         )
 
         # Create a document on a different order (should not be included)
@@ -946,7 +946,7 @@ class RelatedToTestCase(VectorTestCase):
             content_type=order_ct,
             object_id=cls.other_order.pk,
             uploaded_by=cls.user,
-            classification='public'
+            classification='PUBLIC'
         )
 
     def test_related_to_finds_all_documents(self):

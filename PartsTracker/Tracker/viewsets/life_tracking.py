@@ -159,11 +159,11 @@ class LifeTrackingViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def warnings(self, request):
         """Get all tracking records at warning level"""
-        records = self.get_queryset().filter(cached_status='warning')
+        records = self.get_queryset().filter(cached_status='WARNING')
         return Response(LifeTrackingListSerializer(records, many=True).data)
 
     @action(detail=False, methods=['get'])
     def expired(self, request):
         """Get all tracking records that have exceeded limits"""
-        records = self.get_queryset().filter(cached_status='expired')
+        records = self.get_queryset().filter(cached_status='EXPIRED')
         return Response(LifeTrackingListSerializer(records, many=True).data)

@@ -105,11 +105,11 @@ class DowntimeEventSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_reported_by_name(self, obj):
-        return obj.reported_by.get_full_name() if obj.reported_by else None
+        return obj.reported_by.display_name if obj.reported_by else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_resolved_by_name(self, obj):
-        return obj.resolved_by.get_full_name() if obj.resolved_by else None
+        return obj.resolved_by.display_name if obj.resolved_by else None
 
     @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_duration_minutes(self, obj):
@@ -182,7 +182,7 @@ class MaterialUsageSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField())
     def get_consumed_by_name(self, obj):
-        return obj.consumed_by.get_full_name() if obj.consumed_by else None
+        return obj.consumed_by.display_name if obj.consumed_by else None
 
 
 # ===== TIME ENTRY SERIALIZERS =====
@@ -209,7 +209,7 @@ class TimeEntrySerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField())
     def get_user_name(self, obj):
-        return obj.user.get_full_name() if obj.user else None
+        return obj.user.display_name if obj.user else None
 
     @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_duration_hours(self, obj):
@@ -306,7 +306,7 @@ class AssemblyUsageSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField())
     def get_installed_by_name(self, obj):
-        return obj.installed_by.get_full_name() if obj.installed_by else None
+        return obj.installed_by.display_name if obj.installed_by else None
 
 
 class AssemblyRemoveSerializer(serializers.Serializer):

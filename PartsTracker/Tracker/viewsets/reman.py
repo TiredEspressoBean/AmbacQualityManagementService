@@ -85,7 +85,7 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     def scrap(self, request, pk=None):
         """Scrap a core (not suitable for disassembly)"""
         core = self.get_object()
-        if core.status == 'scrapped':
+        if core.status == 'SCRAPPED':
             return Response({'detail': 'Core is already scrapped'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = CoreScrapSerializer(data=request.data)

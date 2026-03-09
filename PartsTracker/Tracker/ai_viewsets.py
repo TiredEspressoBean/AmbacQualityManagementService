@@ -770,13 +770,13 @@ class QueryViewSet(viewsets.GenericViewSet):
                     filters = ast.literal_eval(filters)
                 except (ValueError, SyntaxError):
                     return Response({
-                        "error": "Invalid filters format. Must be a valid JSON object or Python dict."
+                        "detail": "Invalid filters format. Must be a valid JSON object or Python dict."
                     }, status=status.HTTP_400_BAD_REQUEST)
 
         # Ensure filters is a dict
         if not isinstance(filters, dict):
             return Response({
-                "error": "Filters must be a dictionary"
+                "detail": "Filters must be a dictionary"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Parse fields if they come as a string
@@ -789,13 +789,13 @@ class QueryViewSet(viewsets.GenericViewSet):
                     fields = ast.literal_eval(fields)
                 except (ValueError, SyntaxError):
                     return Response({
-                        "error": "Invalid fields format. Must be a valid JSON array."
+                        "detail": "Invalid fields format. Must be a valid JSON array."
                     }, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate model is allowed
         if model_name not in self.ALLOWED_MODELS:
             return Response({
-                "error": f"Model '{model_name}' not allowed",
+                "detail": f"Model '{model_name}' not allowed",
                 "allowed_models": list(self.ALLOWED_MODELS.keys())
             }, status=status.HTTP_400_BAD_REQUEST)
         
@@ -813,7 +813,7 @@ class QueryViewSet(viewsets.GenericViewSet):
             
             if invalid_fields:
                 return Response({
-                    "error": f"Fields {invalid_fields} not allowed for {model_name}",
+                    "detail": f"Fields {invalid_fields} not allowed for {model_name}",
                     "allowed_fields": allowed_fields,
                     "allowed_relationships": list(allowed_relationships)
                 }, status=status.HTTP_400_BAD_REQUEST)
@@ -842,14 +842,14 @@ class QueryViewSet(viewsets.GenericViewSet):
             
             if not field_allowed:
                 return Response({
-                    "error": f"Field '{base_field}' not allowed for {model_name}",
+                    "detail": f"Field '{base_field}' not allowed for {model_name}",
                     "allowed_fields": allowed_fields,
                     "allowed_relationships": list(allowed_relationships)
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             if operation not in self.ALLOWED_OPERATIONS:
                 return Response({
-                    "error": f"Operation '{operation}' not allowed",
+                    "detail": f"Operation '{operation}' not allowed",
                     "allowed_operations": self.ALLOWED_OPERATIONS
                 }, status=status.HTTP_400_BAD_REQUEST)
         
@@ -872,7 +872,7 @@ class QueryViewSet(viewsets.GenericViewSet):
                     return Response({"result": result, "aggregate": aggregate})
                 else:
                     return Response({
-                        "error": f"Aggregate '{aggregate}' not implemented"
+                        "detail": f"Aggregate '{aggregate}' not implemented"
                     }, status=status.HTTP_400_BAD_REQUEST)
             
             # Apply field selection and limit
@@ -917,5 +917,5 @@ class QueryViewSet(viewsets.GenericViewSet):
             import logging
             logging.getLogger(__name__).error(f"Query execution failed: {e}")
             return Response({
-                "error": "Query execution failed"
+                "detail": "Query execution failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

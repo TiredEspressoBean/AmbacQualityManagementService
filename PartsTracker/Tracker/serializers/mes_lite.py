@@ -348,7 +348,7 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
             return obj.work_order.process.id
         # Fallback: find approved process for part_type
         if obj.part_type:
-            process = obj.part_type.processes.filter(status__in=['approved', 'deprecated']).first()
+            process = obj.part_type.processes.filter(status__in=['APPROVED', 'DEPRECATED']).first()
             if process:
                 return process.id
         return None
@@ -411,7 +411,7 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
             return obj.work_order.process.name
         # Fallback: find approved process for part_type
         if obj.part_type:
-            process = obj.part_type.processes.filter(status__in=['approved', 'deprecated']).first()
+            process = obj.part_type.processes.filter(status__in=['APPROVED', 'DEPRECATED']).first()
             if process:
                 return process.name
         return None
@@ -519,6 +519,7 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
         from Tracker.models import PartsStatus
         active_statuses = [
             PartsStatus.PENDING, PartsStatus.IN_PROGRESS,
+            PartsStatus.AWAITING_QA,  # Parts waiting for QA inspection
             PartsStatus.REWORK_NEEDED, PartsStatus.REWORK_IN_PROGRESS,
             PartsStatus.READY_FOR_NEXT_STEP, PartsStatus.COMPLETED
         ]
@@ -584,7 +585,7 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         # Parts needing QA = requires_sampling but no PASS report yet (mirrors Parts.needs_qa property)
         needs_qa_parts = parts.filter(
             requires_sampling=True,
-            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'READY FOR NEXT STEP',
+            part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'READY_FOR_NEXT_STEP',
                             'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
         ).exclude(error_reports__status='PASS')
         return {'total': parts.count(), 'requiring_qa': needs_qa_parts.count(),
@@ -965,7 +966,12 @@ class PartTypesSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     class Meta:
         model = PartTypes
-        fields = "__all__"
+        fields = [
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'name', 'ID_prefix', 'ERP_id',
+            'itar_controlled', 'eccn', 'usml_category',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class PartTypeSerializer(serializers.ModelSerializer):
@@ -973,7 +979,12 @@ class PartTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PartTypes
-        fields = "__all__"
+        fields = [
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'name', 'ID_prefix', 'ERP_id',
+            'itar_controlled', 'eccn', 'usml_category',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class PartTypeSelectSerializer(serializers.ModelSerializer):
@@ -989,10 +1000,23 @@ class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
     part_type_name = serializers.CharField(source="part_type.name", read_only=True)
     process_steps = ProcessStepSerializer(many=True, read_only=True)
     step_edges = StepEdgeSerializer(many=True, read_only=True)
+    num_steps = serializers.SerializerMethodField()
 
     class Meta:
         model = Processes
-        fields = "__all__"
+        fields = [
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'name', 'is_remanufactured', 'part_type', 'is_batch_process',
+            'status', 'category', 'change_description', 'approved_at', 'approved_by',
+            # Serializer-specific fields
+            'part_type_name', 'process_steps', 'step_edges', 'num_steps',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'approved_at', 'approved_by']
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_num_steps(self, obj):
+        """Return the number of steps in this process."""
+        return obj.process_steps.count()
 
 
 class ProcessWithStepsSerializer(serializers.ModelSerializer):
@@ -1220,7 +1244,12 @@ class EquipmentTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     class Meta:
         model = EquipmentType
-        fields = "__all__"
+        fields = [
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'name', 'description', 'requires_calibration',
+            'default_calibration_interval_days', 'is_portable', 'track_downtime',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class EquipmentsSerializer(serializers.ModelSerializer, SecureModelMixin):
@@ -1257,7 +1286,10 @@ class EquipmentSelectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Equipments
-        fields = "__all__"
+        fields = [
+            'id', 'name', 'serial_number', 'equipment_type',
+            'status', 'location', 'manufacturer', 'model_number',
+        ]
 
 
 # Note: ExternalAPIOrderIdentifier serializer moved to integrations/hubspot_serializers.py

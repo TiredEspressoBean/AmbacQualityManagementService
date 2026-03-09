@@ -18,7 +18,7 @@ class SPCBaselineSerializer(serializers.ModelSerializer):
 
     chart_type_display = serializers.CharField(source='get_chart_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    frozen_by_name = serializers.SerializerMethodField()
+    frozen_by_name = serializers.CharField(source='frozen_by.display_name', read_only=True, allow_null=True)
     measurement_label = serializers.CharField(source='measurement_definition.label', read_only=True)
     process_name = serializers.SerializerMethodField()
     step_name = serializers.CharField(source='measurement_definition.step.name', read_only=True)
@@ -61,20 +61,13 @@ class SPCBaselineSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'frozen_at', 'superseded_at', 'created_at', 'updated_at']
 
-    @extend_schema_field(serializers.CharField(allow_null=True))
-    def get_frozen_by_name(self, obj):
-        if obj.frozen_by:
-            name = f"{obj.frozen_by.first_name} {obj.frozen_by.last_name}".strip()
-            return name or obj.frozen_by.username
-        return None
-
 
 class SPCBaselineListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing baselines."""
 
     chart_type_display = serializers.CharField(source='get_chart_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    frozen_by_name = serializers.SerializerMethodField()
+    frozen_by_name = serializers.CharField(source='frozen_by.display_name', read_only=True, allow_null=True)
     measurement_label = serializers.CharField(source='measurement_definition.label', read_only=True)
 
     class Meta:
@@ -86,13 +79,6 @@ class SPCBaselineListSerializer(serializers.ModelSerializer):
             'frozen_by', 'frozen_by_name', 'frozen_at',
             'sample_count',
         ]
-
-    @extend_schema_field(serializers.CharField(allow_null=True))
-    def get_frozen_by_name(self, obj):
-        if obj.frozen_by:
-            name = f"{obj.frozen_by.first_name} {obj.frozen_by.last_name}".strip()
-            return name or obj.frozen_by.username
-        return None
 
 
 class SPCBaselineFreezeSerializer(serializers.Serializer):

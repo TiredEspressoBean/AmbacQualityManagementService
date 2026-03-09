@@ -65,9 +65,9 @@ class QualityErrorsList(SecureModel):
 
 class DefectSeverity(models.TextChoices):
     """Severity classification for individual defect instances."""
-    MINOR = 'minor', 'Minor'
-    MAJOR = 'major', 'Major'
-    CRITICAL = 'critical', 'Critical'
+    MINOR = 'MINOR', 'Minor'
+    MAJOR = 'MAJOR', 'Major'
+    CRITICAL = 'CRITICAL', 'Critical'
 
 
 class QualityReportDefect(models.Model):
@@ -590,15 +590,15 @@ class QuarantineDisposition(SecureModel):
         if not self.disposition_number:
             self.disposition_number = self._generate_disposition_number()
 
-        # Auto-set requires_customer_approval for USE_AS_IS or REPAIR
+        # Auto-set requires_customer_approval for use_as_is or repair
         if self.disposition_type in ['USE_AS_IS', 'REPAIR']:
             self.requires_customer_approval = True
 
-        # Auto-transition from OPEN to IN_PROGRESS when disposition type is set
+        # Auto-transition from open to in_progress when disposition type is set
         if self.disposition_type and self.current_state == 'OPEN':
             self.current_state = 'IN_PROGRESS'
 
-        # Block transition to CLOSED if annotations are pending
+        # Block transition to closed if annotations are pending
         if self.current_state == 'CLOSED' and old_state != 'CLOSED':
             has_pending, pending_reports = self.has_pending_annotations()
             if has_pending:
@@ -660,17 +660,17 @@ class QuarantineDisposition(SecureModel):
             return
 
         # Only update if disposition is being implemented/closed
-        if self.current_state not in ['IN_PROGRESS', 'CLOSED']:
+        if self.current_state not in ['in_progress', 'closed']:
             return
 
         # Map disposition types to part statuses (QMS standard workflow)
-        # REPAIR uses same status as REWORK per AS9100 - both need rework processing
+        # repair uses same status as rework per AS9100 - both need rework processing
         status_mapping = {
-            'REWORK': PartsStatus.REWORK_NEEDED,
-            'REPAIR': PartsStatus.REWORK_NEEDED,  # AS9100: May not fully conform, requires approval
-            'SCRAP': PartsStatus.SCRAPPED,
-            'USE_AS_IS': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
-            'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
+            'rework': PartsStatus.REWORK_NEEDED,
+            'repair': PartsStatus.REWORK_NEEDED,  # AS9100: May not fully conform, requires approval
+            'scrap': PartsStatus.SCRAPPED,
+            'use_as_is': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
+            'return_to_supplier': PartsStatus.CANCELLED,
         }
 
         new_status = status_mapping.get(self.disposition_type)
@@ -679,7 +679,7 @@ class QuarantineDisposition(SecureModel):
             self.part.part_status = new_status
 
             # Increment rework counter if rework or repair disposition
-            if self.disposition_type in ['REWORK', 'REPAIR']:
+            if self.disposition_type in ['rework', 'repair']:
                 self.part.total_rework_count += 1
 
             self.part.save(update_fields=['part_status', 'total_rework_count'])
@@ -707,7 +707,7 @@ class QuarantineDisposition(SecureModel):
         """Check if disposition is ready to be marked as completed"""
         if not self.disposition_type:  # Must have a disposition decision
             return False
-        if self.current_state not in ['OPEN', 'IN_PROGRESS']:  # Must be active
+        if self.current_state not in ['open', 'in_progress']:  # Must be active
             return False
         if self.resolution_completed:  # Not already completed
             return False
@@ -725,7 +725,7 @@ class QuarantineDisposition(SecureModel):
 
         if not self.disposition_type:
             blockers.append("No disposition decision selected")
-        if self.current_state not in ['OPEN', 'IN_PROGRESS']:
+        if self.current_state not in ['open', 'in_progress']:
             blockers.append(f"Disposition is {self.get_current_state_display()}, not active")
         if self.resolution_completed:
             blockers.append("Resolution already completed")
@@ -900,11 +900,11 @@ class CAPA(SecureModel):
         from Tracker.utils.sequences import generate_next_sequence
 
         type_codes = {
-            'CORRECTIVE': 'CA',
-            'PREVENTIVE': 'PA',
-            'CUSTOMER_COMPLAINT': 'CC',
-            'INTERNAL_AUDIT': 'IA',
-            'SUPPLIER': 'SU'
+            'corrective': 'CA',
+            'preventive': 'PA',
+            'customer_complaint': 'CC',
+            'internal_audit': 'IA',
+            'supplier': 'SU'
         }
         year = initiated_date.year
         type_code = type_codes.get(capa_type, 'XX')
@@ -927,7 +927,7 @@ class CAPA(SecureModel):
         - MINOR: 90 business days
         """
         from datetime import timedelta
-        days_map = {'CRITICAL': 30, 'MAJOR': 60, 'MINOR': 90}
+        days_map = {'critical': 30, 'major': 60, 'minor': 90}
         days = days_map.get(severity, 90)
         # Simple calendar days for now, could add business day calculation
         return initiated_date + timedelta(days=days)
@@ -991,12 +991,12 @@ class CAPA(SecureModel):
             progress += 25
 
         if hasattr(self, 'tasks') and self.tasks.exists():
-            completed = self.tasks.filter(status='COMPLETED').count()
+            completed = self.tasks.filter(status=CapaTaskStatus.COMPLETED).count()
             total = self.tasks.count()
             progress += int((completed / total) * 50)
 
         if hasattr(self, 'verification') and self.verification:
-            if self.verification.effectiveness_result == 'CONFIRMED':
+            if self.verification.effectiveness_result == EffectivenessResult.CONFIRMED:
                 progress += 25
 
         return progress
@@ -1031,7 +1031,7 @@ class CAPA(SecureModel):
         from django.utils import timezone
 
         # Closed CAPAs are never overdue
-        if self.status == 'CLOSED':
+        if self.status == CapaStatus.CLOSED:
             return False
 
         # No due date means not overdue
@@ -1110,30 +1110,38 @@ class CAPA(SecureModel):
         """
         from django.utils import timezone
 
+        # Normalize new_status to enum value (accept string or enum)
+        if isinstance(new_status, str):
+            # Try to get enum by name (e.g., 'IN_PROGRESS') or value (e.g., 'in_progress')
+            try:
+                new_status = CapaStatus[new_status]
+            except KeyError:
+                new_status = CapaStatus(new_status.lower())
+
         # Define allowed transitions
         allowed_transitions = {
-            'OPEN': ['IN_PROGRESS', 'CANCELLED'],
-            'IN_PROGRESS': ['PENDING_VERIFICATION', 'CANCELLED'],
-            'PENDING_VERIFICATION': ['CLOSED', 'IN_PROGRESS', 'CANCELLED'],
-            'CLOSED': [],
-            'CANCELLED': [],
+            CapaStatus.OPEN: [CapaStatus.IN_PROGRESS, CapaStatus.CANCELLED],
+            CapaStatus.IN_PROGRESS: [CapaStatus.PENDING_VERIFICATION, CapaStatus.CANCELLED],
+            CapaStatus.PENDING_VERIFICATION: [CapaStatus.CLOSED, CapaStatus.IN_PROGRESS, CapaStatus.CANCELLED],
+            CapaStatus.CLOSED: [],
+            CapaStatus.CANCELLED: [],
         }
 
-        current = self.status
+        current = CapaStatus(self.status) if isinstance(self.status, str) else self.status
         allowed = allowed_transitions.get(current, [])
 
         if new_status not in allowed:
             raise ValueError(
-                f"Cannot transition from {current} to {new_status}. "
-                f"Allowed transitions: {allowed}"
+                f"Cannot transition from {current.value} to {new_status.value}. "
+                f"Allowed transitions: {[s.value for s in allowed]}"
             )
 
         # Validate requirements for specific transitions
-        if new_status == 'PENDING_VERIFICATION':
+        if new_status == CapaStatus.PENDING_VERIFICATION:
             if not self.rca_complete():
                 raise ValueError("Cannot move to PENDING_VERIFICATION: RCA not completed")
 
-        if new_status == 'CLOSED':
+        if new_status == CapaStatus.CLOSED:
             blockers = self.get_blocking_items()
             if blockers:
                 raise ValueError(
@@ -1141,16 +1149,69 @@ class CAPA(SecureModel):
                 )
 
         # Perform the transition
-        self.status = new_status
+        self.status = new_status.value
 
         # Set completed_date when closing
-        if new_status == 'CLOSED':
+        if new_status == CapaStatus.CLOSED:
             self.completed_date = timezone.now().date()
 
         self.save()
 
-        # TODO: Could add audit log entry here with user and notes
+        # Record the transition with user and notes
+        CapaStatusTransition.objects.create(
+            capa=self,
+            from_status=current.value,
+            to_status=new_status.value,
+            transitioned_by=user,
+            notes=notes or '',
+        )
+
         return self
+
+
+class CapaStatusTransition(SecureModel):
+    """
+    Records CAPA status transitions for audit trail.
+
+    Captures who changed the status, when, and why - important for
+    QMS compliance and traceability.
+    """
+
+    capa = models.ForeignKey(
+        CAPA,
+        on_delete=models.CASCADE,
+        related_name='status_transitions',
+        help_text="The CAPA that was transitioned"
+    )
+    from_status = models.CharField(
+        max_length=30,
+        choices=CapaStatus.choices,
+        help_text="Status before transition"
+    )
+    to_status = models.CharField(
+        max_length=30,
+        choices=CapaStatus.choices,
+        help_text="Status after transition"
+    )
+    transitioned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='capa_transitions',
+        help_text="User who performed the transition"
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Reason or notes for the transition"
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'CAPA Status Transition'
+        verbose_name_plural = 'CAPA Status Transitions'
+
+    def __str__(self):
+        return f"{self.capa.capa_number}: {self.from_status} → {self.to_status}"
 
 
 class CapaTaskType(models.TextChoices):
@@ -1587,11 +1648,22 @@ class CapaVerification(SecureModel):
         self.self_verified = is_self_verification
         self.save()
 
+        old_status = self.capa.status
+
         if self.effectiveness_result == EffectivenessResult.CONFIRMED:
             # Close the CAPA when effectiveness is confirmed
             self.capa.status = CapaStatus.CLOSED
             self.capa.completed_date = timezone.now().date()
             self.capa.save(update_fields=['status', 'completed_date'])
+
+            # Log the transition
+            CapaStatusTransition.objects.create(
+                capa=self.capa,
+                from_status=old_status,
+                to_status=CapaStatus.CLOSED,
+                transitioned_by=user,
+                notes=f"Effectiveness verified: {notes}" if notes else "Effectiveness verified",
+            )
         else:
             # Mark RCA for review and move CAPA back to IN_PROGRESS
             rca = self.capa.rca_records.first()
@@ -1601,6 +1673,15 @@ class CapaVerification(SecureModel):
 
             self.capa.status = CapaStatus.IN_PROGRESS
             self.capa.save()
+
+            # Log the transition
+            CapaStatusTransition.objects.create(
+                capa=self.capa,
+                from_status=old_status,
+                to_status=CapaStatus.IN_PROGRESS,
+                transitioned_by=user,
+                notes=f"Effectiveness not confirmed, reopened for review: {notes}" if notes else "Effectiveness not confirmed, reopened for review",
+            )
 
             # Create follow-up task (task_number auto-generated by CapaTasks.save())
             CapaTasks.objects.create(
@@ -1647,10 +1728,10 @@ def threed_model_upload_path(self, filename):
 
 class ModelProcessingStatus(models.TextChoices):
     """Processing status for 3D model conversion and optimization."""
-    PENDING = 'pending', 'Pending'
-    PROCESSING = 'processing', 'Processing'
-    COMPLETED = 'completed', 'Completed'
-    FAILED = 'failed', 'Failed'
+    PENDING = 'PENDING', 'Pending'
+    PROCESSING = 'PROCESSING', 'Processing'
+    COMPLETED = 'COMPLETED', 'Completed'
+    FAILED = 'FAILED', 'Failed'
 
 
 class ThreeDModel(SecureModel):
@@ -1670,9 +1751,9 @@ class ThreeDModel(SecureModel):
         - glTF: GLB, glTF - optimized if needed
 
     All uploads are processed asynchronously:
-        1. File uploaded with processing_status='pending'
+        1. File uploaded with processing_status='PENDING'
         2. Celery task converts/optimizes to GLB
-        3. Status updated to 'completed' or 'failed'
+        3. Status updated to 'COMPLETED' or 'FAILED'
     """
 
     documents = GenericRelation('Tracker.Documents')
@@ -1788,10 +1869,10 @@ class HeatMapAnnotations(SecureModel):
     severity = models.CharField(
         max_length=50,
         choices=[
-            ('low', 'Low'),
-            ('medium', 'Medium'),
-            ('high', 'High'),
-            ('critical', 'Critical')
+            ('LOW', 'Low'),
+            ('MEDIUM', 'Medium'),
+            ('HIGH', 'High'),
+            ('CRITICAL', 'Critical')
         ],
         null=True,
         blank=True
@@ -2025,16 +2106,16 @@ class TrainingRecord(SecureModel):
 
     @property
     def status(self):
-        """Returns 'current', 'expiring_soon', or 'expired'."""
+        """Returns 'CURRENT', 'EXPIRING_SOON', or 'EXPIRED'."""
         if not self.expires_date:
-            return 'current'
+            return 'CURRENT'
         today = timezone.now().date()
         if self.expires_date < today:
-            return 'expired'
+            return 'EXPIRED'
         from datetime import timedelta
         if self.expires_date <= today + timedelta(days=30):
-            return 'expiring_soon'
-        return 'current'
+            return 'EXPIRING_SOON'
+        return 'CURRENT'
 
 
 class TrainingRequirement(SecureModel):
@@ -2160,7 +2241,7 @@ class CalibrationRecordQuerySet(models.QuerySet):
         """Calibration records that are current (not overdue, not failed)."""
         return self.filter(
             due_date__gte=timezone.now().date()
-        ).exclude(result='fail')
+        ).exclude(result='FAIL')
 
     def for_equipment(self, equipment):
         """Calibration records for a specific piece of equipment."""
@@ -2207,16 +2288,16 @@ class CalibrationRecord(SecureModel):
     """
 
     class CalibrationResult(models.TextChoices):
-        PASS = 'pass', 'Pass'
-        FAIL = 'fail', 'Fail'
-        LIMITED = 'limited', 'Limited/Restricted Use'
+        PASS = 'PASS', 'Pass'
+        FAIL = 'FAIL', 'Fail'
+        LIMITED = 'LIMITED', 'Limited/Restricted Use'
 
     class CalibrationType(models.TextChoices):
-        SCHEDULED = 'scheduled', 'Scheduled'
-        INITIAL = 'initial', 'Initial'
-        AFTER_REPAIR = 'after_repair', 'After Repair'
-        AFTER_ADJUSTMENT = 'after_adjustment', 'After Adjustment'
-        VERIFICATION = 'verification', 'Verification Check'
+        SCHEDULED = 'SCHEDULED', 'Scheduled'
+        INITIAL = 'INITIAL', 'Initial'
+        AFTER_REPAIR = 'AFTER_REPAIR', 'After Repair'
+        AFTER_ADJUSTMENT = 'AFTER_ADJUSTMENT', 'After Adjustment'
+        VERIFICATION = 'VERIFICATION', 'Verification Check'
 
     documents = GenericRelation('Tracker.Documents')
     """Calibration certificate and related documentation."""
@@ -2319,16 +2400,16 @@ class CalibrationRecord(SecureModel):
 
     @property
     def status(self) -> str:
-        """Returns 'current', 'due_soon', 'overdue', or 'failed'."""
+        """Returns 'CURRENT', 'DUE_SOON', 'OVERDUE', or 'FAILED'."""
         if self.result == self.CalibrationResult.FAIL:
-            return 'failed'
+            return 'FAILED'
         today = timezone.now().date()
         if self.due_date < today:
-            return 'overdue'
+            return 'OVERDUE'
         from datetime import timedelta
         if self.due_date <= today + timedelta(days=30):
-            return 'due_soon'
-        return 'current'
+            return 'DUE_SOON'
+        return 'CURRENT'
 
     @property
     def days_until_due(self) -> int:
@@ -2379,18 +2460,18 @@ class CalibrationRecord(SecureModel):
 
 class FPIStatus(models.TextChoices):
     """First Piece Inspection status choices."""
-    NOT_REQUIRED = 'not_required', 'Not Required'
-    PENDING = 'pending', 'Pending'
-    PASSED = 'passed', 'Passed'
-    FAILED = 'failed', 'Failed'
-    WAIVED = 'waived', 'Waived'
+    NOT_REQUIRED = 'NOT_REQUIRED', 'Not Required'
+    PENDING = 'PENDING', 'Pending'
+    PASSED = 'PASSED', 'Passed'
+    FAILED = 'FAILED', 'Failed'
+    WAIVED = 'WAIVED', 'Waived'
 
 
 class FPIResult(models.TextChoices):
     """FPI result choices."""
-    PASS = 'pass', 'Pass'
-    FAIL = 'fail', 'Fail'
-    CONDITIONAL = 'conditional', 'Conditional Pass'
+    PASS = 'PASS', 'Pass'
+    FAIL = 'FAIL', 'Fail'
+    CONDITIONAL = 'CONDITIONAL', 'Conditional Pass'
 
 
 class FPIRecord(SecureModel):
@@ -2529,25 +2610,25 @@ class FPIRecord(SecureModel):
 
 class BlockType(models.TextChoices):
     """Types of blocks that can prevent step advancement."""
-    QA_SIGNOFF = 'qa_signoff', 'QA Signoff Required'
-    FPI_REQUIRED = 'fpi_required', 'FPI Required'
-    MEASUREMENT_FAILED = 'measurement_failed', 'Measurement Failed'
-    QUARANTINE = 'quarantine', 'Part Quarantined'
-    SAMPLING_REQUIRED = 'sampling_required', 'Sampling Required'
-    BATCH_INCOMPLETE = 'batch_incomplete', 'Batch Incomplete'
-    TRAINING_EXPIRED = 'training_expired', 'Training Expired'
-    CALIBRATION_EXPIRED = 'calibration_expired', 'Calibration Expired'
-    REGULATORY_HOLD = 'regulatory_hold', 'Regulatory Hold'
-    ROLLBACK = 'rollback', 'Step Rollback'
-    OTHER = 'other', 'Other'
+    QA_SIGNOFF = 'QA_SIGNOFF', 'QA Signoff Required'
+    FPI_REQUIRED = 'FPI_REQUIRED', 'FPI Required'
+    MEASUREMENT_FAILED = 'MEASUREMENT_FAILED', 'Measurement Failed'
+    QUARANTINE = 'QUARANTINE', 'Part Quarantined'
+    SAMPLING_REQUIRED = 'SAMPLING_REQUIRED', 'Sampling Required'
+    BATCH_INCOMPLETE = 'BATCH_INCOMPLETE', 'Batch Incomplete'
+    TRAINING_EXPIRED = 'TRAINING_EXPIRED', 'Training Expired'
+    CALIBRATION_EXPIRED = 'CALIBRATION_EXPIRED', 'Calibration Expired'
+    REGULATORY_HOLD = 'REGULATORY_HOLD', 'Regulatory Hold'
+    ROLLBACK = 'ROLLBACK', 'Step Rollback'
+    OTHER = 'OTHER', 'Other'
 
 
 class OverrideStatus(models.TextChoices):
     """Status of an override request."""
-    PENDING = 'pending', 'Pending'
-    APPROVED = 'approved', 'Approved'
-    REJECTED = 'rejected', 'Rejected'
-    EXPIRED = 'expired', 'Expired'
+    PENDING = 'PENDING', 'Pending'
+    APPROVED = 'APPROVED', 'Approved'
+    REJECTED = 'REJECTED', 'Rejected'
+    EXPIRED = 'EXPIRED', 'Expired'
 
 
 class StepOverride(SecureModel):
@@ -2884,24 +2965,24 @@ class RecordEdit(SecureModel):
 
 class RollbackReason(models.TextChoices):
     """Standard reasons for rolling back a step."""
-    OPERATOR_ERROR = 'operator_error', 'Operator Error'
-    DATA_ENTRY_ERROR = 'data_entry_error', 'Data Entry Error'
-    WRONG_DECISION = 'wrong_decision', 'Wrong Decision Path'
-    DEFECT_FOUND = 'defect_found', 'Defect Found Later'
-    REWORK_REQUIRED = 'rework_required', 'Rework Required'
-    EQUIPMENT_ISSUE = 'equipment_issue', 'Equipment Issue Discovered'
-    PROCESS_DEVIATION = 'process_deviation', 'Process Deviation'
-    ENGINEERING_REQUEST = 'engineering_request', 'Engineering Request'
-    CUSTOMER_REJECTION = 'customer_rejection', 'Customer Rejection'
-    OTHER = 'other', 'Other'
+    OPERATOR_ERROR = 'OPERATOR_ERROR', 'Operator Error'
+    DATA_ENTRY_ERROR = 'DATA_ENTRY_ERROR', 'Data Entry Error'
+    WRONG_DECISION = 'WRONG_DECISION', 'Wrong Decision Path'
+    DEFECT_FOUND = 'DEFECT_FOUND', 'Defect Found Later'
+    REWORK_REQUIRED = 'REWORK_REQUIRED', 'Rework Required'
+    EQUIPMENT_ISSUE = 'EQUIPMENT_ISSUE', 'Equipment Issue Discovered'
+    PROCESS_DEVIATION = 'PROCESS_DEVIATION', 'Process Deviation'
+    ENGINEERING_REQUEST = 'ENGINEERING_REQUEST', 'Engineering Request'
+    CUSTOMER_REJECTION = 'CUSTOMER_REJECTION', 'Customer Rejection'
+    OTHER = 'OTHER', 'Other'
 
 
 class RollbackStatus(models.TextChoices):
     """Status of a rollback request."""
-    PENDING = 'pending', 'Pending Approval'
-    APPROVED = 'approved', 'Approved'
-    EXECUTED = 'executed', 'Executed'
-    REJECTED = 'rejected', 'Rejected'
+    PENDING = 'PENDING', 'Pending Approval'
+    APPROVED = 'APPROVED', 'Approved'
+    EXECUTED = 'EXECUTED', 'Executed'
+    REJECTED = 'REJECTED', 'Rejected'
 
 
 class StepRollback(SecureModel):

@@ -54,7 +54,7 @@ class SamplingFallbackApplier:
                     "context": {"reason": f"{context_info} - matched {rule.rule_type}"}
                 }
 
-            if rule.rule_type in ["first_n_parts", "last_n_parts"]:
+            if rule.rule_type in ["FIRST_N_PARTS", "LAST_N_PARTS"]:
                 self._log_sampling_decision(rule, False, ruleset_type)
                 return {
                     "requires_sampling": False,
@@ -85,7 +85,7 @@ class SamplingFallbackApplier:
             step=self.step
         ).order_by('created_at', 'id')
 
-        if rule.rule_type == "every_nth_part":
+        if rule.rule_type == "EVERY_NTH_PART":
             parts = list(qs)
             try:
                 index = parts.index(self.part)
@@ -93,25 +93,25 @@ class SamplingFallbackApplier:
             except ValueError:
                 return False
 
-        elif rule.rule_type == "percentage":
+        elif rule.rule_type == "PERCENTAGE":
             parts = list(qs)
             threshold = int(len(parts) * (rule.value / 100))
             return self.part in parts[:threshold]
 
-        elif rule.rule_type == "random":
+        elif rule.rule_type == "RANDOM":
             import random
             random.seed(self.part.created_at.timestamp())  # use timestamp as deterministic seed
             return random.random() < (rule.value / 100.0)
 
-        elif rule.rule_type == "first_n_parts":
+        elif rule.rule_type == "FIRST_N_PARTS":
             return qs.filter(created_at__lte=self.part.created_at).count() <= rule.value
 
-        elif rule.rule_type == "last_n_parts":
+        elif rule.rule_type == "LAST_N_PARTS":
             total = qs.count()
             index = qs.filter(created_at__lte=self.part.created_at).count()
             return index > (total - rule.value)
 
-        elif rule.rule_type == "exact_count":
+        elif rule.rule_type == "EXACT_COUNT":
             return self._evaluate_exact_count_rule(rule, qs)
 
         return False

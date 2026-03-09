@@ -280,19 +280,28 @@ class DocumentSignalTestCase(VectorTestCase):
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
 class SignalIntegrationTestCase(VectorTestCase):
     def setUp(self):
+        from Tracker.models import Tenant
+        self.tenant = Tenant.objects.create(
+            name="Signal Test Tenant",
+            slug="signal-test-tenant",
+            tier="PRO"
+        )
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
-            password='testpass'
+            password='testpass',
+            tenant=self.tenant
         )
         self.approver = User.objects.create_user(
             username='approver',
             email='approver@example.com',
-            password='testpass'
+            password='testpass',
+            tenant=self.tenant
         )
 
         self.template, _ = ApprovalTemplate.objects.update_or_create(
             approval_type="DOCUMENT_RELEASE",
+            tenant=self.tenant,
             defaults={
                 "template_name": "Document Release",
                 "approval_flow_type": "ALL_REQUIRED",
@@ -308,7 +317,8 @@ class SignalIntegrationTestCase(VectorTestCase):
         document = Documents.objects.create(
             file_name="workflow_test.pdf",
             uploaded_by=self.user,
-            status="DRAFT"
+            status="DRAFT",
+            tenant=self.tenant
         )
 
         # Clear notifications
@@ -343,7 +353,8 @@ class SignalIntegrationTestCase(VectorTestCase):
         document = Documents.objects.create(
             file_name="rejection_test.pdf",
             uploaded_by=self.user,
-            status="DRAFT"
+            status="DRAFT",
+            tenant=self.tenant
         )
 
         approval = document.submit_for_approval(self.user)

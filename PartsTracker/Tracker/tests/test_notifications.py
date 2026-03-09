@@ -51,31 +51,31 @@ class NotificationTaskTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,  # Friday
             time=datetime_time(15, 0),  # 3 PM UTC
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() + timedelta(days=1),
             max_attempts=None  # Infinite
         )
 
         self.assertEqual(notification.notification_type, 'WEEKLY_REPORT')
         self.assertEqual(notification.recipient, self.user)
-        self.assertEqual(notification.status, 'pending')
+        self.assertEqual(notification.status, 'PENDING')
 
     def test_calculate_next_send(self):
         """Test calculate_next_send method"""
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,  # Friday
             time=datetime_time(15, 0),
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -89,12 +89,12 @@ class NotificationTaskTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,
             time=datetime_time(15, 0),
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() + timedelta(days=1),
         )
 
@@ -105,12 +105,12 @@ class NotificationTaskTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,
             time=datetime_time(15, 0),
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
 
@@ -121,9 +121,9 @@ class NotificationTaskTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='sent',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='SENT',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
 
@@ -134,12 +134,12 @@ class NotificationTaskTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,
             time=datetime_time(15, 0),
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
 
@@ -149,32 +149,32 @@ class NotificationTaskTestCase(TestCase):
         self.assertEqual(notification.attempt_count, initial_attempt_count + 1)
         self.assertIsNotNone(notification.last_sent_at)
         # For recurring notifications, status should remain pending
-        self.assertEqual(notification.status, 'pending')
+        self.assertEqual(notification.status, 'PENDING')
 
     def test_mark_sent_failure(self):
         """Test mark_sent with failure sets status to failed"""
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
             max_attempts=3,
         )
 
         notification.mark_sent(success=False)
         self.assertEqual(notification.attempt_count, 1)
-        self.assertEqual(notification.status, 'failed')  # Failed on first failure
+        self.assertEqual(notification.status, 'FAILED')  # Failed on first failure
 
     def test_max_attempts_reached(self):
         """Test notification is cancelled when max_attempts reached"""
         notification = NotificationTask.objects.create(
             notification_type='APPROVAL_REQUEST',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
             max_attempts=1,
             attempt_count=0,
@@ -200,8 +200,8 @@ class DeadlineNotificationTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user,
-            channel_type='email',
-            interval_type='deadline_based',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
             deadline=timezone.now() + timedelta(days=20),
             escalation_tiers=[
                 [28, 28],   # > 28 days: monthly
@@ -209,13 +209,13 @@ class DeadlineNotificationTestCase(TestCase):
                 [0, 3.5],   # 1-14 days: twice weekly
                 [-999, 1]   # overdue: daily
             ],
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now(),
             max_attempts=30
         )
 
         self.assertEqual(notification.notification_type, 'CAPA_REMINDER')
-        self.assertEqual(notification.interval_type, 'deadline_based')
+        self.assertEqual(notification.interval_type, 'DEADLINE_BASED')
         self.assertIsNotNone(notification.deadline)
 
     def test_escalation_tier_matching(self):
@@ -223,8 +223,8 @@ class DeadlineNotificationTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user,
-            channel_type='email',
-            interval_type='deadline_based',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
             deadline=timezone.now() + timedelta(days=20),
             escalation_tiers=[
                 [28, 28],   # > 28 days: monthly
@@ -232,7 +232,7 @@ class DeadlineNotificationTestCase(TestCase):
                 [0, 3.5],   # 1-14 days: twice weekly
                 [-999, 1]   # overdue: daily
             ],
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -245,8 +245,8 @@ class DeadlineNotificationTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user,
-            channel_type='email',
-            interval_type='deadline_based',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
             deadline=timezone.now() - timedelta(days=5),  # 5 days overdue
             escalation_tiers=[
                 [28, 28],
@@ -254,7 +254,7 @@ class DeadlineNotificationTestCase(TestCase):
                 [0, 3],
                 [-999, 1]  # overdue: daily
             ],
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -310,19 +310,19 @@ class NotificationHandlerTestCase(TestCase):
         """Test that handlers have email sender configured"""
         for notification_type in ['WEEKLY_REPORT', 'CAPA_REMINDER', 'APPROVAL_REQUEST']:
             handler = get_notification_handler(notification_type)
-            self.assertIn('email', handler.senders)
+            self.assertIn('EMAIL', handler.senders)
 
     def test_handler_validation(self):
         """Test handler validation logic"""
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,
             time=datetime_time(15, 0),
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
 
@@ -353,9 +353,9 @@ class NotificationValidatorTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.active_user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -367,25 +367,25 @@ class NotificationValidatorTestCase(TestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.inactive_user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
         result = validate_weekly_report_send(notification)
         self.assertFalse(result)
         notification.refresh_from_db()
-        self.assertEqual(notification.status, 'cancelled')
+        self.assertEqual(notification.status, 'CANCELLED')
 
     def test_validate_capa_no_related_object(self):
         """Test CAPA validation fails when no related object"""
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.active_user,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now(),
             # No related_object set
         )
@@ -393,23 +393,23 @@ class NotificationValidatorTestCase(TestCase):
         result = validate_capa_send(notification)
         self.assertFalse(result)
         notification.refresh_from_db()
-        self.assertEqual(notification.status, 'cancelled')
+        self.assertEqual(notification.status, 'CANCELLED')
 
     def test_validate_approval_request_no_related_object(self):
         """Test approval request validation fails when no related object"""
         notification = NotificationTask.objects.create(
             notification_type='APPROVAL_REQUEST',
             recipient=self.active_user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
         result = validate_approval_request_send(notification)
         self.assertFalse(result)
         notification.refresh_from_db()
-        self.assertEqual(notification.status, 'cancelled')
+        self.assertEqual(notification.status, 'CANCELLED')
 
 
 class ContextBuilderTestCase(TenantTestCase):
@@ -420,9 +420,9 @@ class ContextBuilderTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -448,9 +448,9 @@ class ContextBuilderTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -477,9 +477,9 @@ class ContextBuilderTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now(),
             related_content_type=capa_ct,
             related_object_id=str(capa.id),
@@ -508,9 +508,9 @@ class ContextBuilderTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now(),
             related_content_type=capa_ct,
             related_object_id=str(capa.id),
@@ -537,9 +537,9 @@ class ContextBuilderTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now(),
             related_content_type=capa_ct,
             related_object_id=str(capa.id),
@@ -554,7 +554,7 @@ class ContextBuilderTestCase(TenantTestCase):
 class FrontendUrlTestCase(TestCase):
     """Test frontend URL generation"""
 
-    @override_settings(DEBUG=True)
+    @override_settings(DEBUG=True, FRONTEND_URL='http://localhost:5173')
     def test_frontend_url_debug(self):
         """Test frontend URL in debug mode"""
         url = get_frontend_url()
@@ -583,25 +583,25 @@ class NotificationQueryTestCase(TestCase):
         NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=5),
         )
         NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() + timedelta(days=1),
         )
 
-        pending = NotificationTask.objects.filter(status='pending')
+        pending = NotificationTask.objects.filter(status='PENDING')
         self.assertEqual(pending.count(), 2)
 
         ready_now = NotificationTask.objects.filter(
-            status='pending',
+            status='PENDING',
             next_send_at__lte=timezone.now()
         )
         self.assertEqual(ready_now.count(), 1)
@@ -611,17 +611,17 @@ class NotificationQueryTestCase(TestCase):
         NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
         NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now(),
         )
 
@@ -663,7 +663,7 @@ class NotificationTasksTestCase(TenantTestCase):
         notification = NotificationTask.objects.filter(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            status='pending'
+            status='PENDING'
         ).first()
         self.assertIsNotNone(notification)
 
@@ -695,7 +695,7 @@ class NotificationTasksTestCase(TenantTestCase):
         count = NotificationTask.objects.filter(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            status='pending'
+            status='PENDING'
         ).count()
         self.assertEqual(count, 1)
 
@@ -727,7 +727,7 @@ class NotificationTasksTestCase(TenantTestCase):
             notification_type='CAPA_REMINDER',
             related_content_type=capa_ct,
             related_object_id=str(capa.id),
-            status='pending'
+            status='PENDING'
         ).first()
         self.assertIsNotNone(notification)
 
@@ -804,7 +804,7 @@ class NotificationTasksTestCase(TenantTestCase):
             related_content_type=approval_ct,
             related_object_id=str(approval.id),
             recipient=self.user_b,
-            status='pending'
+            status='PENDING'
         ).first()
         self.assertIsNotNone(notification)
 
@@ -872,12 +872,12 @@ class SendNotificationTaskTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
+            channel_type='EMAIL',
+            interval_type='FIXED',
             day_of_week=4,  # Friday
             time=datetime_time(15, 0),  # 3 PM
             interval_weeks=1,
-            status='pending',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
 
@@ -912,9 +912,9 @@ class SendNotificationTaskTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
             related_content_type=capa_ct,
             related_object_id=str(capa.id),
@@ -944,9 +944,9 @@ class SendNotificationTaskTestCase(TenantTestCase):
         notification = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() + timedelta(days=1),  # Future
         )
 
@@ -967,26 +967,26 @@ class DispatchNotificationsTestCase(TenantTestCase):
         notification1 = NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=5),
         )
         notification2 = NotificationTask.objects.create(
             notification_type='CAPA_REMINDER',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='deadline_based',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
             next_send_at=timezone.now() - timedelta(minutes=1),
         )
         # Future notification - should not be dispatched
         NotificationTask.objects.create(
             notification_type='WEEKLY_REPORT',
             recipient=self.user_a,
-            channel_type='email',
-            interval_type='fixed',
-            status='pending',
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
             next_send_at=timezone.now() + timedelta(days=1),
         )
 

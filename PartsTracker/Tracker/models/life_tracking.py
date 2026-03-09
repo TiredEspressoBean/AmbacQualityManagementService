@@ -128,11 +128,11 @@ class LifeTrackingQuerySet(SecureQuerySet):
 
     def expired(self):
         """Filter to expired tracking records."""
-        return self.filter(cached_status='expired')
+        return self.filter(cached_status='EXPIRED')
 
     def warning(self):
         """Filter to tracking records at warning level."""
-        return self.filter(cached_status='warning')
+        return self.filter(cached_status='WARNING')
 
 
 class LifeTrackingManager(SecureManager):
@@ -163,19 +163,19 @@ class LifeTracking(SecureModel):
         tracking.increment(100)
 
         # Check status
-        tracking.status        # 'ok', 'warning', 'expired'
+        tracking.status        # 'OK', 'WARNING', 'EXPIRED'
         tracking.remaining     # cycles/hours/days until hard limit
         tracking.percent_used  # 0-100+
     """
 
     class Source(models.TextChoices):
-        OEM = 'oem', 'OEM Records'
-        CUSTOMER = 'customer', 'Customer Provided'
-        LOGBOOK = 'logbook', 'Logbook Entry'
-        CALCULATED = 'calculated', 'Calculated'
-        ESTIMATED = 'estimated', 'Estimated'
-        TRANSFERRED = 'transferred', 'Transferred from Core'
-        RESET = 'reset', 'Reset After Rebuild'
+        OEM = 'OEM', 'OEM Records'
+        CUSTOMER = 'CUSTOMER', 'Customer Provided'
+        LOGBOOK = 'LOGBOOK', 'Logbook Entry'
+        CALCULATED = 'CALCULATED', 'Calculated'
+        ESTIMATED = 'ESTIMATED', 'Estimated'
+        TRANSFERRED = 'TRANSFERRED', 'Transferred from Core'
+        RESET = 'RESET', 'Reset After Rebuild'
 
     objects = LifeTrackingManager()
 
@@ -216,7 +216,7 @@ class LifeTracking(SecureModel):
     # Cached for efficient queryset filtering
     cached_status = models.CharField(
         max_length=10,
-        default='ok',
+        default='OK',
         db_index=True,
         help_text="Cached status, updated on save"
     )
@@ -406,21 +406,21 @@ class LifeTracking(SecureModel):
 
     @property
     def status(self):
-        """Returns 'ok', 'warning', or 'expired'."""
+        """Returns 'OK', 'WARNING', or 'EXPIRED'."""
         current = self.current_value
         hard = self.effective_hard_limit
         soft = self.effective_soft_limit
 
         if hard is not None and current >= hard:
-            return 'expired'
+            return 'EXPIRED'
         if soft is not None and current >= soft:
-            return 'warning'
-        return 'ok'
+            return 'WARNING'
+        return 'OK'
 
     @property
     def is_blocked(self):
         """Should this entity be blocked from advancement?"""
-        return self.status == 'expired'
+        return self.status == 'EXPIRED'
 
     def save(self, *args, **kwargs):
         # Update cached status for efficient filtering

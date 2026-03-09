@@ -263,7 +263,7 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
         """Return all training requirements for a specific step."""
         step_id = request.query_params.get('step_id')
         if not step_id:
-            return Response({'error': 'step_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'step_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = self.get_queryset().filter(step_id=step_id)
         serializer = self.get_serializer(qs, many=True)
@@ -281,7 +281,7 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
         """Return all training requirements for a specific process."""
         process_id = request.query_params.get('process_id')
         if not process_id:
-            return Response({'error': 'process_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'process_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = self.get_queryset().filter(process_id=process_id)
         serializer = self.get_serializer(qs, many=True)

@@ -116,7 +116,7 @@ class SamplingSystemTestCase(TestCase):
     def test_every_nth_part_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='every_nth_part',
+            rule_type='EVERY_NTH_PART',
             value=5,
             order=1
         )
@@ -130,7 +130,7 @@ class SamplingSystemTestCase(TestCase):
     def test_percentage_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='percentage',
+            rule_type='PERCENTAGE',
             value=20,
             order=1
         )
@@ -142,7 +142,7 @@ class SamplingSystemTestCase(TestCase):
     def test_first_n_parts_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='first_n_parts',
+            rule_type='FIRST_N_PARTS',
             value=15,
             order=1
         )
@@ -156,7 +156,7 @@ class SamplingSystemTestCase(TestCase):
     def test_last_n_parts_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='last_n_parts',
+            rule_type='LAST_N_PARTS',
             value=10,
             order=1
         )
@@ -170,7 +170,7 @@ class SamplingSystemTestCase(TestCase):
     def test_random_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='random',
+            rule_type='RANDOM',
             value=30,
             order=1
         )
@@ -183,7 +183,7 @@ class SamplingSystemTestCase(TestCase):
     def test_exact_count_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='exact_count',
+            rule_type='EXACT_COUNT',
             value=20,
             order=1
         )
@@ -197,13 +197,13 @@ class SamplingSystemTestCase(TestCase):
     def test_multiple_rules_priority(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='first_n_parts',
+            rule_type='FIRST_N_PARTS',
             value=5,
             order=1
         )
         SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='every_nth_part',
+            rule_type='EVERY_NTH_PART',
             value=10,
             order=2
         )
@@ -224,7 +224,7 @@ class SamplingSystemTestCase(TestCase):
         # Zero percentage
         rule = SamplingRule.objects.create(
             ruleset=self.ruleset,
-            rule_type='percentage',
+            rule_type='PERCENTAGE',
             value=0,
             order=1
         )
@@ -539,7 +539,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_basic,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         can_advance, blockers = self.step_basic.can_advance_from_step(step_exec, self.work_order)
@@ -554,7 +554,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_qa,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         can_advance, blockers = self.step_with_qa.can_advance_from_step(step_exec, self.work_order)
@@ -569,7 +569,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_qa,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Create QA approval (uses qa_staff, not approver/status)
@@ -591,7 +591,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_fpi,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Create pending FPI
@@ -614,7 +614,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_fpi,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Create passed FPI
@@ -640,7 +640,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_fpi,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Create waived FPI
@@ -670,7 +670,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_basic,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         can_advance, blockers = self.step_basic.can_advance_from_step(step_exec, self.work_order)
@@ -686,7 +686,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_sampling,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         can_advance, blockers = self.step_with_sampling.can_advance_from_step(step_exec, self.work_order)
@@ -702,7 +702,7 @@ class StepAdvancementGatingTestCase(TestCase):
         step_exec = StepExecution.objects.create(
             part=self.part,
             step=self.step_with_sampling,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Create passing quality report
@@ -792,7 +792,7 @@ class StepExecutionMeasurementTestCase(TestCase):
         self.step_execution = StepExecution.objects.create(
             part=self.part,
             step=self.step,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
     def test_record_numeric_measurement_within_spec(self):
@@ -931,14 +931,14 @@ class RollbackTestCase(TestCase):
         exec1 = StepExecution.objects.create(
             part=self.part,
             step=self.step1,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=5),
             next_step=self.step2
         )
         exec2 = StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=1)
         )
 
@@ -952,14 +952,14 @@ class RollbackTestCase(TestCase):
         exec1 = StepExecution.objects.create(
             part=self.part,
             step=self.step1,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(hours=1),
             next_step=self.step2
         )
         exec2 = StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=30)
         )
 
@@ -976,7 +976,7 @@ class RollbackTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step1,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=1)
         )
 
@@ -992,14 +992,14 @@ class RollbackTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=5),
             next_step=self.step3_approval_required
         )
         StepExecution.objects.create(
             part=self.part,
             step=self.step3_approval_required,
-            status='completed',
+            status='COMPLETED',
             exited_at=timezone.now() - timedelta(minutes=1)
         )
 
@@ -1070,7 +1070,7 @@ class StepOverrideTestCase(TestCase):
         self.step_execution = StepExecution.objects.create(
             part=self.part,
             step=self.step,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
     def test_create_override_request(self):
@@ -1587,7 +1587,7 @@ class RecordEditTestCase(TestCase):
         self.step_execution = StepExecution.objects.create(
             part=self.part,
             step=self.step,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
     def test_create_record_edit(self):
@@ -1601,15 +1601,15 @@ class RecordEditTestCase(TestCase):
             content_type=content_type,
             object_id=self.step_execution.id,
             field_name='status',
-            old_value='in_progress',
-            new_value='completed',
+            old_value='IN_PROGRESS',
+            new_value='COMPLETED',
             reason='Operator completed step',
             edited_by=self.user
         )
 
         self.assertEqual(edit.field_name, 'status')
-        self.assertEqual(edit.old_value, 'in_progress')
-        self.assertEqual(edit.new_value, 'completed')
+        self.assertEqual(edit.old_value, 'IN_PROGRESS')
+        self.assertEqual(edit.new_value, 'COMPLETED')
         self.assertIsNotNone(edit.edited_at)
 
     def test_multiple_edits_same_record(self):
@@ -1624,8 +1624,8 @@ class RecordEditTestCase(TestCase):
             content_type=content_type,
             object_id=self.step_execution.id,
             field_name='status',
-            old_value='pending',
-            new_value='in_progress',
+            old_value='PENDING',
+            new_value='IN_PROGRESS',
             reason='Operator started work',
             edited_by=self.user
         )
@@ -1635,8 +1635,8 @@ class RecordEditTestCase(TestCase):
             content_type=content_type,
             object_id=self.step_execution.id,
             field_name='status',
-            old_value='in_progress',
-            new_value='completed',
+            old_value='IN_PROGRESS',
+            new_value='COMPLETED',
             reason='Operator completed work',
             edited_by=self.user
         )
@@ -1647,8 +1647,8 @@ class RecordEditTestCase(TestCase):
         ).order_by('edited_at')
 
         self.assertEqual(edits.count(), 2)
-        self.assertEqual(edits.first().new_value, 'in_progress')
-        self.assertEqual(edits.last().new_value, 'completed')
+        self.assertEqual(edits.first().new_value, 'IN_PROGRESS')
+        self.assertEqual(edits.last().new_value, 'COMPLETED')
 
     def test_edit_measurement_value(self):
         """Test tracking measurement value edits"""
@@ -2044,7 +2044,7 @@ class IncrementStepTestCase(TestCase):
             part_type=self.part_type,
             description='Final step',
             is_terminal=True,
-            terminal_status='completed',
+            terminal_status='COMPLETED',
         )
 
         # Link steps to process
@@ -2079,7 +2079,7 @@ class IncrementStepTestCase(TestCase):
         self.step_execution = StepExecution.objects.create(
             part=self.part,
             step=self.step1,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
     def test_increment_moves_to_next_step(self):
@@ -2104,7 +2104,7 @@ class IncrementStepTestCase(TestCase):
         # New execution should be for step2
         new_exec = StepExecution.objects.filter(part=self.part, step=self.step2).first()
         self.assertIsNotNone(new_exec)
-        self.assertEqual(new_exec.status, 'pending')
+        self.assertEqual(new_exec.status, 'PENDING')
         self.assertEqual(new_exec.visit_number, 1)
 
     def test_increment_completes_previous_execution(self):
@@ -2112,7 +2112,7 @@ class IncrementStepTestCase(TestCase):
         self.part.increment_step(operator=self.user)
 
         self.step_execution.refresh_from_db()
-        self.assertEqual(self.step_execution.status, 'completed')
+        self.assertEqual(self.step_execution.status, 'COMPLETED')
         self.assertIsNotNone(self.step_execution.exited_at)
         self.assertEqual(self.step_execution.completed_by, self.user)
         self.assertEqual(self.step_execution.next_step, self.step2)
@@ -2127,7 +2127,7 @@ class IncrementStepTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step3_terminal,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         result = self.part.increment_step(operator=self.user)
@@ -2154,7 +2154,7 @@ class IncrementStepTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=step_with_qa,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Should raise ValueError because QA signoff not present
@@ -2175,7 +2175,7 @@ class IncrementStepTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Step 2 -> Step 3 (terminal)
@@ -2188,7 +2188,7 @@ class IncrementStepTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step3_terminal,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
         # Step 3 (terminal) -> completed
@@ -2221,7 +2221,7 @@ class IncrementStepTestCase(TestCase):
         )
         SamplingRule.objects.create(
             ruleset=ruleset,
-            rule_type='first_n_parts',
+            rule_type='FIRST_N_PARTS',
             order=1,
             value=5
         )
@@ -2261,7 +2261,7 @@ class DecisionPointTestCase(TestCase):
             part_type=self.part_type,
             description='Decision based on QA result',
             is_decision_point=True,
-            decision_type='qa_result',
+            decision_type='QA_RESULT',
         )
 
         # Create pass/fail destinations
@@ -2330,7 +2330,7 @@ class DecisionPointTestCase(TestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.decision_step,
-            status='in_progress'
+            status='IN_PROGRESS'
         )
 
     def test_qa_decision_routes_to_pass_step(self):
@@ -2375,27 +2375,27 @@ class DecisionPointTestCase(TestCase):
     def test_manual_decision_with_pass_result(self):
         """Test manual decision point with 'pass' result"""
         # Change decision type to manual
-        self.decision_step.decision_type = 'manual'
+        self.decision_step.decision_type = 'MANUAL'
         self.decision_step.save()
 
-        self.part.increment_step(operator=self.user, decision_result='pass')
+        self.part.increment_step(operator=self.user, decision_result='PASS')
 
         self.part.refresh_from_db()
         self.assertEqual(self.part.step, self.pass_step)
 
     def test_manual_decision_with_fail_result(self):
         """Test manual decision point with 'fail' result"""
-        self.decision_step.decision_type = 'manual'
+        self.decision_step.decision_type = 'MANUAL'
         self.decision_step.save()
 
-        self.part.increment_step(operator=self.user, decision_result='fail')
+        self.part.increment_step(operator=self.user, decision_result='FAIL')
 
         self.part.refresh_from_db()
         self.assertEqual(self.part.step, self.fail_step)
 
     def test_manual_decision_without_result_raises_error(self):
         """Test that manual decision without decision_result raises error"""
-        self.decision_step.decision_type = 'manual'
+        self.decision_step.decision_type = 'MANUAL'
         self.decision_step.save()
 
         with self.assertRaises(ValueError) as context:
@@ -2470,7 +2470,7 @@ class BatchAdvancementTestCase(TestCase):
             StepExecution.objects.create(
                 part=part,
                 step=self.batch_step,
-                status='in_progress'
+                status='IN_PROGRESS'
             )
             self.parts.append(part)
 
@@ -2517,7 +2517,7 @@ class BatchAdvancementTestCase(TestCase):
         for part in self.parts:
             exec_at_next = StepExecution.objects.filter(part=part, step=self.next_step).first()
             self.assertIsNotNone(exec_at_next)
-            self.assertEqual(exec_at_next.status, 'pending')
+            self.assertEqual(exec_at_next.status, 'PENDING')
 
 
 class TerminalStatusTestCase(TestCase):
@@ -2573,32 +2573,32 @@ class TerminalStatusTestCase(TestCase):
             order=self.order,
             part_status=PartsStatus.IN_PROGRESS
         )
-        StepExecution.objects.create(part=part, step=step, status='in_progress')
+        StepExecution.objects.create(part=part, step=step, status='IN_PROGRESS')
         return part
 
     def test_terminal_status_completed(self):
-        """Test terminal_status='completed' sets COMPLETED"""
+        """Test terminal_status='COMPLETED' sets COMPLETED"""
         part = self._create_terminal_step_and_part('completed')
         part.increment_step(operator=self.user)
         part.refresh_from_db()
         self.assertEqual(part.part_status, PartsStatus.COMPLETED)
 
     def test_terminal_status_shipped(self):
-        """Test terminal_status='shipped' sets SHIPPED"""
+        """Test terminal_status='SHIPPED' sets SHIPPED"""
         part = self._create_terminal_step_and_part('shipped')
         part.increment_step(operator=self.user)
         part.refresh_from_db()
         self.assertEqual(part.part_status, PartsStatus.SHIPPED)
 
     def test_terminal_status_scrapped(self):
-        """Test terminal_status='scrapped' sets SCRAPPED"""
+        """Test terminal_status='SCRAPPED' sets SCRAPPED"""
         part = self._create_terminal_step_and_part('scrapped')
         part.increment_step(operator=self.user)
         part.refresh_from_db()
         self.assertEqual(part.part_status, PartsStatus.SCRAPPED)
 
     def test_terminal_status_stock(self):
-        """Test terminal_status='stock' sets IN_STOCK"""
+        """Test terminal_status='STOCK' sets IN_STOCK"""
         part = self._create_terminal_step_and_part('stock')
         part.increment_step(operator=self.user)
         part.refresh_from_db()

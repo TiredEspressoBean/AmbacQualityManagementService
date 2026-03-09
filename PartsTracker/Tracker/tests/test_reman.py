@@ -106,13 +106,13 @@ class CoreModelTests(RemanBaseTestCase):
             received_date=date.today(),
             received_by=self.receiving_clerk,
             customer=self.customer,
-            source_type='customer_return',
+            source_type='CUSTOMER_RETURN',
             source_reference="RMA-001",
             condition_grade='B',
             condition_notes="Minor wear on housing"
         )
 
-        self.assertEqual(core.status, 'received')
+        self.assertEqual(core.status, 'RECEIVED')
         self.assertEqual(core.core_number, "CORE-001")
         self.assertFalse(core.core_credit_issued)
         self.assertEqual(str(core), "Core CORE-001 (Fuel Injector Core)")
@@ -151,7 +151,7 @@ class CoreModelTests(RemanBaseTestCase):
 
         core.start_disassembly(user=self.disassembly_tech)
 
-        self.assertEqual(core.status, 'in_disassembly')
+        self.assertEqual(core.status, 'IN_DISASSEMBLY')
         self.assertIsNotNone(core.disassembly_started_at)
 
     def test_cannot_start_disassembly_twice(self):
@@ -168,7 +168,7 @@ class CoreModelTests(RemanBaseTestCase):
 
         with self.assertRaises(ValueError) as ctx:
             core.start_disassembly(user=self.disassembly_tech)
-        self.assertIn("in_disassembly", str(ctx.exception))
+        self.assertIn("IN_DISASSEMBLY", str(ctx.exception))
 
     def test_complete_disassembly(self):
         """Test completing disassembly workflow."""
@@ -183,7 +183,7 @@ class CoreModelTests(RemanBaseTestCase):
         core.start_disassembly(user=self.disassembly_tech)
         core.complete_disassembly(user=self.disassembly_tech)
 
-        self.assertEqual(core.status, 'disassembled')
+        self.assertEqual(core.status, 'DISASSEMBLED')
         self.assertIsNotNone(core.disassembly_completed_at)
         self.assertEqual(core.disassembled_by, self.disassembly_tech)
 
@@ -200,7 +200,7 @@ class CoreModelTests(RemanBaseTestCase):
 
         core.scrap(reason="Cracked housing, not salvageable")
 
-        self.assertEqual(core.status, 'scrapped')
+        self.assertEqual(core.status, 'SCRAPPED')
         self.assertEqual(core.condition_grade, 'SCRAP')
         self.assertIn("Cracked housing", core.condition_notes)
 
@@ -476,7 +476,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
         self.assertTrue(created)
         self.assertEqual(tracking.accumulated, Decimal('500000'))
-        self.assertEqual(tracking.status, 'ok')
+        self.assertEqual(tracking.status, 'OK')
         self.assertEqual(tracking.percent_used, 50.0)
 
     def test_life_tracking_status_warning(self):
@@ -496,8 +496,8 @@ class LifeTrackingTests(RemanBaseTestCase):
             accumulated=Decimal('850000')  # Above soft limit
         )
 
-        self.assertEqual(tracking.status, 'warning')
-        self.assertEqual(tracking.cached_status, 'warning')
+        self.assertEqual(tracking.status, 'WARNING')
+        self.assertEqual(tracking.cached_status, 'WARNING')
 
     def test_life_tracking_status_expired(self):
         """Test life tracking expired status."""
@@ -516,7 +516,7 @@ class LifeTrackingTests(RemanBaseTestCase):
             accumulated=Decimal('1000001')  # Above hard limit
         )
 
-        self.assertEqual(tracking.status, 'expired')
+        self.assertEqual(tracking.status, 'EXPIRED')
         self.assertTrue(tracking.is_blocked)
 
     def test_life_tracking_increment(self):
@@ -592,7 +592,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
         self.assertEqual(tracking.effective_hard_limit, Decimal('1200000'))
         self.assertEqual(tracking.effective_soft_limit, Decimal('1000000'))
-        self.assertEqual(tracking.status, 'ok')  # No longer warning
+        self.assertEqual(tracking.status, 'OK')  # No longer warning
 
     def test_calendar_based_life_tracking(self):
         """Test calendar-based life tracking."""
@@ -616,7 +616,7 @@ class LifeTrackingTests(RemanBaseTestCase):
 
         # Current value should be ~200 days
         self.assertAlmostEqual(float(tracking.current_value), 200, delta=1)
-        self.assertEqual(tracking.status, 'ok')  # Still within 365 day limit
+        self.assertEqual(tracking.status, 'OK')  # Still within 365 day limit
 
     def test_life_transfer_on_accept_to_inventory(self):
         """Test life tracking transfer when accepting component to inventory."""
@@ -716,16 +716,16 @@ class RemanWorkflowIntegrationTests(RemanBaseTestCase):
             received_date=date.today(),
             received_by=self.receiving_clerk,
             customer=self.customer,
-            source_type='customer_return',
+            source_type='CUSTOMER_RETURN',
             source_reference="RMA-100",
             condition_grade='B',
             core_credit_value=Decimal('200.00')
         )
-        self.assertEqual(core.status, 'received')
+        self.assertEqual(core.status, 'RECEIVED')
 
         # 2. Start disassembly
         core.start_disassembly(user=self.disassembly_tech)
-        self.assertEqual(core.status, 'in_disassembly')
+        self.assertEqual(core.status, 'IN_DISASSEMBLY')
 
         # 3. Harvest components
         nozzle = HarvestedComponent.objects.create(
@@ -757,7 +757,7 @@ class RemanWorkflowIntegrationTests(RemanBaseTestCase):
 
         # 4. Complete disassembly
         core.complete_disassembly(user=self.disassembly_tech)
-        self.assertEqual(core.status, 'disassembled')
+        self.assertEqual(core.status, 'DISASSEMBLED')
 
         # 5. Disposition components
         # Accept good ones
@@ -1035,7 +1035,7 @@ class RemanMultiCoreIntegrationTests(RemanBaseTestCase):
                 received_date=date.today(),
                 received_by=self.receiving_clerk,
                 customer=self.customer,
-                source_type='customer_return',
+                source_type='CUSTOMER_RETURN',
                 source_reference="RMA-BATCH-001",
                 condition_grade='B'
             )
