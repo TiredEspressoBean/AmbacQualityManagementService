@@ -7,6 +7,10 @@
 !!! note "Training Data Setup"
     Exercises in this guide reference sample data (e.g., "DISP-TRAIN-001", "CAPA-TRAIN-COMPLETE"). Your administrator should set up this training data before you begin. If specific records aren't available, create your own test records following the exercise patterns.
 
+!!! info "Demo Environment Login"
+    **Email:** maria.qa@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: QA Manager Role Overview
@@ -255,8 +259,12 @@ By the end of this module, you will:
 1. Open CAPA
 2. Go to **Tasks** section
 3. Click **+ Add Task**
-4. Define: task description, assignee, due date
-5. Save
+4. Define: task description, assignee(s), due date
+5. For multi-person tasks, select **Completion Mode**:
+   - **Single Owner**: Only primary assignee works on task (default)
+   - **Any Assignee**: Task completes when any one assignee finishes
+   - **All Assignees**: Task completes only when all assignees finish
+6. Save
 
 **Exercise 3.2:** Add CAPA Tasks
 
@@ -264,8 +272,11 @@ Add these tasks to your training CAPA:
 
 1. "Containment: Quarantine all PT-100 parts in WIP" - Due: Today
 2. "Investigation: Analyze measurement data for trends" - Due: +3 days
-3. "Investigation: Interview operators" - Due: +3 days
+3. "Investigation: Interview operators" - Due: +3 days (try **All Assignees** mode with 2 people)
 4. "Root Cause: Complete 5-Why analysis" - Due: +5 days
+
+!!! tip "Multi-Person Assignment"
+    For task #3, try adding two assignees and using "All Assignees" completion mode. This ensures both team members complete their interviews before the task is marked done.
 
 ---
 

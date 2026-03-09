@@ -103,15 +103,15 @@ Pre-built reports available:
 
 ### Scheduling Reports
 
-Set up recurring reports:
+!!! note "Planned Feature"
+    Report scheduling is planned for a future release. Currently, reports must be generated manually.
 
-1. Configure report as desired
-2. Click **Schedule**
-3. Set frequency (daily, weekly, monthly)
-4. Add email recipients
-5. Save schedule
+When available, you will be able to:
 
-Reports are emailed as attachments.
+1. Configure report parameters
+2. Set frequency (daily, weekly, monthly)
+3. Add email recipients
+4. Receive reports automatically via email
 
 ## Data Exports
 

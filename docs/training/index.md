@@ -31,6 +31,17 @@ These supplemental modules cover topics that apply across multiple roles:
 | [SPC Fundamentals](spc-fundamentals.md) | 1-2 hours | Operators, QA Inspectors, QA Managers, Production Managers |
 | [Training Data Setup](training-data-setup.md) | 30 min | Administrators setting up training environments |
 
+## Specialized Workflows
+
+The following workflows have dedicated documentation:
+
+| Workflow | Documentation | Description |
+|----------|--------------|-------------|
+| Remanufacturing | [Reman Overview](../workflows/reman/overview.md) | Core receiving, disassembly, and component harvesting |
+| Life Tracking | [Life Tracking Guide](../workflows/tracking/life-tracking.md) | Monitoring cycles, hours, shelf life, and limits |
+
+These features are fully operational. Refer to the workflow documentation for training on these specialized areas.
+
 !!! tip "SPC Training"
     All production floor staff should complete **SPC Fundamentals** to understand control charts and process capability. This is referenced throughout the role-specific training guides.
 

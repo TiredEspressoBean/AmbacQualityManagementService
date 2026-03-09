@@ -15,14 +15,18 @@ If your organization has demo mode enabled, training data is pre-populated autom
 
 ### Demo Accounts
 
-| Role | Email | Password |
-|------|-------|----------|
-| Operator | mike.ops@demo.ambac.com | (set by admin) |
-| QA Inspector | sarah.qa@demo.ambac.com | (set by admin) |
-| Production Manager | jennifer.mgr@demo.ambac.com | (set by admin) |
-| QA Manager | maria.qa@demo.ambac.com | (set by admin) |
-| Customer | tom.bradley@midwestfleet.com | (set by admin) |
-| Administrator | alex.admin@demo.ambac.com | (set by admin) |
+All demo accounts use password: `demo123`
+
+| Role | Email | Name | Training Guide |
+|------|-------|------|----------------|
+| Administrator | admin@demo.ambac.com | Alex Demo | [Administrator Guide](administrator.md) |
+| QA Manager | maria.qa@demo.ambac.com | Maria Santos | [QA Manager Guide](qa-manager.md) |
+| QA Inspector | sarah.qa@demo.ambac.com | Sarah Chen | [QA Inspector Guide](qa-inspector.md) |
+| Production Manager | jennifer.mgr@demo.ambac.com | Jennifer Walsh | [Production Manager Guide](production-manager.md) |
+| Operator | mike.ops@demo.ambac.com | Mike Rodriguez | [Operator Guide](operator.md) |
+| Operator (Expired Training) | dave.wilson@demo.ambac.com | Dave Wilson | Training compliance demo |
+| Document Controller | lisa.docs@demo.ambac.com | Lisa Park | [Document Controller Guide](document-controller.md) |
+| Customer Portal | tom.bradley@midwestfleet.com | Tom Bradley | [Customer Guide](../roles/customer.md) |
 
 ### Demo Data Included
 
@@ -52,26 +56,43 @@ For self-hosted installations, use the management command to generate training d
 ### Running the Command
 
 ```bash
-# Basic population (medium scale)
-python manage.py populate_test_data
+# Recommended: Demo mode with preset training data
+python manage.py seed_demo
 
-# Clear existing and repopulate
-python manage.py populate_test_data --clear-existing
+# Dev mode with random data (for development/testing)
+python manage.py seed_dev
 
-# Small dataset (faster, fewer records)
-python manage.py populate_test_data --scale small
+# Both demo and dev tenants
+python manage.py seed_all
 
-# Large dataset (comprehensive, more records)
-python manage.py populate_test_data --scale large
+# Keep existing data (don't clear first)
+python manage.py seed_demo --no-clear
+
+# Larger dev dataset
+python manage.py seed_dev --scale medium
+
+# Preview what would be created (dry run)
+python manage.py seed_demo --dry-run
+
+# Seed specific modules only (dev mode)
+python manage.py seed_dev --modules users manufacturing orders
 ```
+
+### Command Options
+
+| Command | Tenant | Data Type | Use Case |
+|---------|--------|-----------|----------|
+| `seed_demo` | Demo Company | Deterministic, preset users | Training, sales demos |
+| `seed_dev` | Development | Random Faker data | Development, testing |
+| `seed_all` | Both | Both types | Full environment setup |
 
 ### Scale Options
 
 | Scale | Orders | Parts | Use Case |
 |-------|--------|-------|----------|
-| `small` | 3 | ~30 | Quick setup, individual training |
-| `medium` | 5 | ~100 | Standard training (default) |
-| `large` | 10+ | ~300 | Comprehensive exercises, demos |
+| `small` | ~10 | ~100 | Quick setup, individual training (default) |
+| `medium` | ~50 | ~500 | Standard training |
+| `large` | ~200 | ~2000 | Load testing, comprehensive demos |
 
 ### What Gets Created
 
@@ -221,6 +242,92 @@ Navigate to **Production > Work Orders**:
 - Frozen SPC baseline
 - At least one out-of-control signal visible
 
+### Document Controller Training
+
+**Minimum data needed:**
+- [ ] Draft document for upload exercise
+- [ ] Document pending approval
+- [ ] Document revision history
+
+**Exercise support:**
+- Document for revision exercise
+- Approval workflow examples
+
+---
+
+## Exercise Data Matrix
+
+This matrix lists all specific training records referenced in exercise instructions. These records should be created by the `seed_demo` command.
+
+### Orders
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| TRAIN-001 | Basic operator training order | Operator | In progress, 10 parts at various steps |
+| TRAIN-PM-001 | Production manager exercise order | Production Manager | Pending, 5 parts ready to process |
+| TRAIN-BOTTLE | Bottleneck scenario | Production Manager | In progress, 8 parts stuck at one step |
+| TRAIN-HOLD | Quality hold scenario | Production Manager | On hold for QA issue, 6 parts |
+| TRAIN-FPI-001 | FPI training exercise | QA Inspector | In progress, 15 parts awaiting FPI |
+
+### Assessment Orders
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| ASSESS-001 | Operator assessment - find and track order | Operator | In progress, 6 parts distributed |
+| ASSESS-003 | Operator assessment - specific part lookup | Operator | In progress, 5 parts distributed |
+| ASSESS-004 | Operator assessment - search exercise | Operator | Pending, 4 parts |
+| ASSESS-QA-001 | QA Inspector assessment - FPI completion | QA Inspector | In progress, 10 parts for FPI |
+| ASSESS-QA-002 | QA Inspector assessment - sampling inspection | QA Inspector | In progress, 12 parts for sampling |
+| ASSESS-PM-001 | Production manager assessment - order management | Production Manager | Pending, 8 parts |
+
+### Work Orders
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| TRAIN-FPI-001 | FPI training work order | QA Inspector | In progress, first piece awaiting inspection |
+| ASSESS-QA-001 | QA Inspector assessment - FPI completion | QA Inspector | In progress, 10 parts for FPI exercise |
+| ASSESS-QA-002 | QA Inspector assessment - sampling inspection | QA Inspector | In progress, 12 parts for sampling exercise |
+
+### Parts
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| TRAIN-101-003 | Part for quality report exercise (surface scratch) | QA Inspector | At inspection step with defect |
+| TRAIN-101-005 | Part for quality report exercise (flow test failure) | QA Inspector | At inspection step with defect |
+| TRAIN-001-* | Parts in TRAIN-001 order (10 total) | Operator | Distributed across process steps |
+| ASSESS-003-002 | Part for operator assessment lookup exercise | Operator | At inspection step |
+
+### Quality Reports
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| QR-TRAIN-001 | Review exercise quality report | QA Inspector | Open, pending review |
+| QR-TRAIN-002 | Disposition recommendation exercise | QA Inspector | Open, needs disposition |
+| QR-ASSESS-001 | Assessment - dimensional out of tolerance | QA Inspector | Failed, for assessment exercise |
+| QR-ASSESS-002 | Assessment - visual defect found | QA Inspector | Failed, for assessment exercise |
+
+### Dispositions
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| DISP-TRAIN-001 | Pending approval exercise | QA Manager | Pending approval (rework) |
+| DISP-TRAIN-002 | Rejection exercise | QA Manager | Pending (should be rejected - incomplete info) |
+| DISP-ASSESS-001 | Assessment disposition - rework recommendation | QA Manager | In progress, ready for approval |
+
+### CAPAs
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| CAPA-TRAIN-COMPLETE | Verification closure exercise | QA Manager | Pending verification, all tasks complete |
+| CAPA-ASSESS-READY | Assessment CAPA - ready for closure verification | QA Manager | Pending verification, all actions complete |
+
+### Documents
+
+| ID | Description | Used By | State |
+|----|-------------|---------|-------|
+| WI-TRAIN-001 | Work instruction exercise | Document Controller, QA Manager | Pending approval |
+| DOC-REJECT-TRAIN | Rejection scenario document | Document Controller | Pending (should be rejected) |
+
 ---
 
 ## Verifying Training Data
@@ -261,10 +368,14 @@ To reset between training sessions:
 ### Option A: Clear and Repopulate
 
 ```bash
-python manage.py populate_test_data --clear-existing
+# Reset demo tenant (recommended for training)
+python manage.py seed_demo
+
+# Reset both tenants
+python manage.py seed_all
 ```
 
-This removes all training data and recreates fresh.
+This clears existing data (except platform admin) and recreates fresh.
 
 ### Option B: Reset Specific Records
 

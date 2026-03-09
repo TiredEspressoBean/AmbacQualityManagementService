@@ -7,6 +7,10 @@
 !!! note "Training Data Setup"
     Exercises reference sample data (e.g., "TRAIN-PM-001", "TRAIN-BOTTLE"). Your administrator should set up training data, or you can create your own test records following the exercise patterns.
 
+!!! info "Demo Environment Login"
+    **Email:** jennifer.mgr@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: Production Manager Role Overview

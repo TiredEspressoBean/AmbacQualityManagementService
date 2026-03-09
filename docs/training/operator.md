@@ -7,6 +7,10 @@
 !!! note "Role Name"
     This training is for the **Production_Operator** role in the system.
 
+!!! info "Demo Environment Login"
+    **Email:** mike.ops@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: System Basics

@@ -88,6 +88,24 @@ POST   /api/work-orders/      # Create work order
 GET    /api/work-orders/{id}/ # Get work order detail
 ```
 
+### Material Lots
+```
+GET    /api/MaterialLots/           # List material lots
+POST   /api/MaterialLots/           # Create lot
+GET    /api/MaterialLots/{id}/      # Get lot detail
+POST   /api/MaterialLots/{id}/split/ # Split a lot
+```
+
+### Schedule Slots
+```
+GET    /api/ScheduleSlots/          # List schedule slots
+POST   /api/ScheduleSlots/          # Create slot
+GET    /api/ScheduleSlots/{id}/     # Get slot detail
+```
+
+!!! note "API-Only Endpoints"
+    Material Lots and Schedule Slots are fully functional via API but do not have dedicated UI pages yet. Use these endpoints for programmatic access to lot tracking and scheduling features.
+
 ## Filtering
 
 Use query parameters:

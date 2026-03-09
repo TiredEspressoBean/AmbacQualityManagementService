@@ -7,6 +7,10 @@
 !!! note "Training Data Setup"
     Exercises reference sample documents (e.g., "WI-TRAIN-001", "DOC-REJECT-TRAIN"). Your administrator should set up training data, or you can create test documents following the exercise patterns.
 
+!!! info "Demo Environment Login"
+    **Email:** lisa.docs@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: Document Controller Role Overview

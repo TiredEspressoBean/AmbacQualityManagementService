@@ -2,6 +2,9 @@
 
 Single Sign-On integration with Microsoft Azure AD and other identity providers.
 
+!!! note "Administrator Configuration"
+    SSO is configured by system administrators via backend settings. Contact your administrator or uqmes support for SSO setup.
+
 ## Overview
 
 SSO allows users to:
@@ -66,22 +69,14 @@ SSO allows users to:
 - Set email to match Azure AD
 - User links on first SSO login
 
-### SCIM (if available)
-- Automatic user sync
-- Group sync
-- Deprovisioning sync
+### SCIM
+
+!!! note "Planned Feature"
+    SCIM provisioning is planned for a future release.
 
 ## Group Mapping
 
-Map Azure AD groups to uqmes groups:
-
-| Azure AD Group | uqmes Group |
-|----------------|---------------------|
-| QA_Inspectors | QA Inspector |
-| Production_Team | Operator |
-| Quality_Managers | QA Manager |
-
-Configure in Admin settings.
+Azure AD groups can be mapped to uqmes permission groups. Contact your administrator for group mapping configuration.
 
 ## MFA Enforcement
 

@@ -104,10 +104,9 @@ Build reports for audits:
 3. Export PDF or CSV
 
 ### Scheduled Reports
-Automate regular audit reports:
-- Daily activity summary
-- Weekly change report
-- Monthly compliance report
+
+!!! note "Planned Feature"
+    Automated scheduled reports are planned for a future release. Currently, generate reports manually using the export functions above.
 
 ## Regulatory Mappings
 

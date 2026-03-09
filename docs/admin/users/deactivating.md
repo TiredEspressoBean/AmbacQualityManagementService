@@ -71,9 +71,9 @@ Before deactivating, consider reassigning:
 - Items awaiting user's approval need reassignment
 - Or use backup approver
 
-### Scheduled Reports
-- Disable or reassign scheduled reports
-- Update email recipients
+### Reports
+- Review any reports owned by this user
+- Reassign ownership if needed
 
 ## Immediate Termination
 
@@ -135,15 +135,8 @@ User can log in immediately.
 
 ## Automation
 
-### Integration with HR
-- Connect to HR system
-- Automatic deactivation on termination
-- Sync employment status
-
-### Scheduled Deactivation
-- Set future deactivation date
-- For contract end dates
-- For project-based access
+!!! note "Planned Features"
+    HR system integration and scheduled deactivation are planned for future releases. Currently, user deactivation is a manual process.
 
 ## Audit Trail
 
@@ -175,7 +168,7 @@ View in Admin > Audit Log.
 - [ ] Identify user to deactivate
 - [ ] Reassign active work
 - [ ] Reassign pending approvals
-- [ ] Update scheduled reports
+- [ ] Review user's reports and reassign if needed
 - [ ] Deactivate in uqmes
 - [ ] Deactivate in SSO (if applicable)
 - [ ] Document the change

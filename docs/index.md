@@ -20,6 +20,7 @@ uqmes helps manufacturing teams:
 | [Role Guides](roles/index.md) | Find documentation specific to your role |
 | [Training](training/index.md) | Hands-on training guides with exercises |
 | [Core Workflows](workflows/index.md) | Day-to-day operations: orders, tracking, quality control |
+| [Remanufacturing](workflows/reman/overview.md) | Core receiving, disassembly, and component harvesting |
 | [Analysis & Reporting](analysis/dashboard.md) | Dashboards, SPC, defect analysis, and data exports |
 | [Compliance](compliance/audit-trails.md) | Audit trails, signatures, and regulatory requirements |
 

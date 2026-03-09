@@ -4,6 +4,10 @@
 **Prerequisites:** Understanding of all user roles
 **Goal:** Learn to configure the system, manage users, set up processes, and maintain system health
 
+!!! info "Demo Environment Login"
+    **Email:** admin@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: Administrator Role Overview

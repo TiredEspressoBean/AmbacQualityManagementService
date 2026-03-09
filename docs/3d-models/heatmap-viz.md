@@ -189,11 +189,8 @@ Document improvement in CAPA verification.
 
 ### Scheduled Reports
 
-Set up recurring heat map reports:
-1. Configure report parameters
-2. Set schedule (weekly, monthly)
-3. Select recipients
-4. Reports email automatically
+!!! note "Planned Feature"
+    Scheduled heat map reports are planned for a future release. Currently, export reports manually using the Export function.
 
 ## Permissions
 

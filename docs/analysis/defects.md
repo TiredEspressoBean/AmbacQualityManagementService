@@ -187,9 +187,9 @@ Build custom defect reports:
 5. Save report
 
 ### Scheduled Reports
-- Daily summary email
-- Weekly trend report
-- Monthly management report
+
+!!! note "Planned Feature"
+    Scheduled defect reports are planned for a future release. Currently, export reports manually.
 
 ## Export Options
 

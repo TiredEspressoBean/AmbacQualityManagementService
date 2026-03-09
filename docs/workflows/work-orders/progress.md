@@ -167,7 +167,6 @@ Generate progress reports:
 ### Export Options
 - PDF for distribution
 - CSV for analysis
-- Scheduled email reports
 
 ## Bulk Progress Updates
 

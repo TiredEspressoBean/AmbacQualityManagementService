@@ -2,6 +2,9 @@
 
 Connect uqmes with HubSpot CRM for deal and order synchronization.
 
+!!! note "Administrator Configuration"
+    HubSpot integration is configured by system administrators via backend settings. A self-service configuration UI is planned for a future release.
+
 ## Overview
 
 The HubSpot integration enables:
@@ -41,23 +44,19 @@ Order status reflects in HubSpot:
 ### Setup Steps
 
 1. **Get HubSpot API Credentials**
-   - HubSpot Settings > Integrations > API Key
-   - Or configure OAuth app
+   - HubSpot Settings > Integrations > Private Apps
+   - Create a private app with required scopes
+   - Copy the access token
 
-2. **Configure in uqmes**
-   - Navigate to Settings > Integrations
-   - Enter HubSpot credentials
-   - Configure mapping
+2. **Contact Administrator**
+   - Provide HubSpot credentials to your system administrator
+   - Administrator configures integration via backend settings
+   - Configuration includes field mapping and sync settings
 
-3. **Map Fields**
-   - Map HubSpot deal properties to order fields
-   - Map company properties
-   - Configure custom fields
-
-4. **Test Connection**
+3. **Test Connection**
    - Create test deal in HubSpot
-   - Verify order creation
-   - Check field mapping
+   - Verify order creation in uqmes
+   - Check field mapping accuracy
 
 ## Field Mapping
 
@@ -127,11 +126,8 @@ Order status reflects in HubSpot:
 
 ## Viewing Integration Status
 
-Navigate to Settings > Integrations > HubSpot:
-- Connection status
-- Recent sync activity
-- Error log
-- Sync history
+!!! note "Planned Feature"
+    A self-service integration status dashboard is planned for a future release. Currently, contact your administrator for integration status and logs.
 
 ## Troubleshooting
 

@@ -45,6 +45,8 @@ Moving parts through production steps.
 - [Recording Measurements](tracking/measurements.md) - Capturing inspection data
 - [Flagging Issues](tracking/flagging-issues.md) - Reporting problems
 - [Part History](tracking/part-history.md) - Viewing audit trail
+- [Life Tracking](tracking/life-tracking.md) - Monitoring cycles, hours, and shelf life
+- [Lot Tracking](tracking/lot-tracking.md) - Material lot traceability
 
 ### [Work Orders](work-orders/basics.md)
 Managing production assignments.
@@ -77,6 +79,14 @@ Document control and management.
 - [Uploading Documents](documents/uploading.md) - Adding new files
 - [Document Revisions](documents/revisions.md) - Version control
 - [Document Approval](documents/approval.md) - Review workflows
+
+### [Remanufacturing](reman/overview.md)
+Core receiving and disassembly for component harvesting.
+
+- [Reman Overview](reman/overview.md) - Understanding the reman workflow
+- [Receiving Cores](reman/receiving.md) - Logging incoming cores
+- [Disassembly](reman/disassembly.md) - Extracting components
+- [Component Management](reman/components.md) - Managing harvested parts
 
 ## Role-Based Quick Reference
 

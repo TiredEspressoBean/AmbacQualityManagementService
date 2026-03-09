@@ -4,6 +4,10 @@
 **Prerequisites:** None (Operator training recommended)
 **Goal:** Learn to perform inspections, record results, create quality reports, and manage dispositions
 
+!!! info "Demo Environment Login"
+    **Email:** sarah.qa@demo.ambac.com
+    **Password:** `demo123`
+
 ---
 
 ## Module 1: Inspector Role Overview

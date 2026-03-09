@@ -172,10 +172,15 @@ For urgent orders:
 
 ### Equipment Assignment
 
-1. Open work order
-2. Assign to specific equipment
-3. Check equipment availability
-4. Avoid conflicts
+!!! note "Step-Level Assignment"
+    Equipment is assigned when executing individual steps, not at the work order level. This allows different equipment to be used for different steps in the process.
+
+Equipment tracking:
+
+1. Equipment is selected during step execution
+2. Each step records which equipment was used
+3. Equipment usage is tracked for calibration and maintenance
+4. Check equipment availability via the Equipment page
 
 ### Capacity Planning
 
