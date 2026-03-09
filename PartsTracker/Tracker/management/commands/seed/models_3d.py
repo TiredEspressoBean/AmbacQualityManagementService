@@ -17,23 +17,23 @@ from .base import BaseSeeder
 # These are positions in scaled space (model scaled to ~3 units)
 BENCHY_ANNOTATIONS = [
     # Hull area - coating defects
-    {'x': 0.4710, 'y': -0.3082, 'z': 0.5955, 'defect_type': 'Coating defects present', 'severity': 'low'},
-    {'x': 0.2821, 'y': -0.3059, 'z': 0.5298, 'defect_type': 'Coating defects present', 'severity': 'medium'},
-    {'x': 0.2999, 'y': -0.1841, 'z': 0.6156, 'defect_type': 'Coating defects present', 'severity': 'low'},
-    {'x': 0.4050, 'y': -0.0024, 'z': -0.1466, 'defect_type': 'Coating defects present', 'severity': 'low'},
-    {'x': 0.5941, 'y': -0.2539, 'z': 0.5218, 'defect_type': 'Coating defects present', 'severity': 'low'},
-    {'x': 0.3851, 'y': 0.0180, 'z': -0.0699, 'defect_type': 'Coating defects present', 'severity': 'high'},
-    {'x': -0.0131, 'y': -0.1376, 'z': 0.5827, 'defect_type': 'Coating defects present', 'severity': 'medium'},
+    {'x': 0.4710, 'y': -0.3082, 'z': 0.5955, 'defect_type': 'Coating defects present', 'severity': 'LOW'},
+    {'x': 0.2821, 'y': -0.3059, 'z': 0.5298, 'defect_type': 'Coating defects present', 'severity': 'MEDIUM'},
+    {'x': 0.2999, 'y': -0.1841, 'z': 0.6156, 'defect_type': 'Coating defects present', 'severity': 'LOW'},
+    {'x': 0.4050, 'y': -0.0024, 'z': -0.1466, 'defect_type': 'Coating defects present', 'severity': 'LOW'},
+    {'x': 0.5941, 'y': -0.2539, 'z': 0.5218, 'defect_type': 'Coating defects present', 'severity': 'LOW'},
+    {'x': 0.3851, 'y': 0.0180, 'z': -0.0699, 'defect_type': 'Coating defects present', 'severity': 'HIGH'},
+    {'x': -0.0131, 'y': -0.1376, 'z': 0.5827, 'defect_type': 'Coating defects present', 'severity': 'MEDIUM'},
     # Cabin/deck area - layer separation
-    {'x': 0.6779, 'y': 0.5497, 'z': -0.6679, 'defect_type': 'Layer separation', 'severity': 'low'},
-    {'x': 0.6787, 'y': 0.5377, 'z': -0.6980, 'defect_type': 'Layer separation', 'severity': 'low'},
-    {'x': 1.2149, 'y': 0.1190, 'z': -0.6669, 'defect_type': 'Layer separation', 'severity': 'medium'},
-    {'x': 0.9073, 'y': 0.5218, 'z': -0.3667, 'defect_type': 'Layer separation', 'severity': 'high'},
-    {'x': -0.6264, 'y': 0.5147, 'z': -0.9464, 'defect_type': 'Layer separation', 'severity': 'medium'},
+    {'x': 0.6779, 'y': 0.5497, 'z': -0.6679, 'defect_type': 'Layer separation', 'severity': 'LOW'},
+    {'x': 0.6787, 'y': 0.5377, 'z': -0.6980, 'defect_type': 'Layer separation', 'severity': 'LOW'},
+    {'x': 1.2149, 'y': 0.1190, 'z': -0.6669, 'defect_type': 'Layer separation', 'severity': 'MEDIUM'},
+    {'x': 0.9073, 'y': 0.5218, 'z': -0.3667, 'defect_type': 'Layer separation', 'severity': 'HIGH'},
+    {'x': -0.6264, 'y': 0.5147, 'z': -0.9464, 'defect_type': 'Layer separation', 'severity': 'MEDIUM'},
     # Chimney area - dimensional issues
-    {'x': -0.2860, 'y': -0.1342, 'z': 1.0418, 'defect_type': 'Dimensional out of tolerance', 'severity': 'high'},
-    {'x': -0.1081, 'y': 0.0956, 'z': 1.0661, 'defect_type': 'Dimensional out of tolerance', 'severity': 'medium'},
-    {'x': -0.2720, 'y': 0.1473, 'z': 1.1223, 'defect_type': 'Dimensional out of tolerance', 'severity': 'low'},
+    {'x': -0.2860, 'y': -0.1342, 'z': 1.0418, 'defect_type': 'Dimensional out of tolerance', 'severity': 'HIGH'},
+    {'x': -0.1081, 'y': 0.0956, 'z': 1.0661, 'defect_type': 'Dimensional out of tolerance', 'severity': 'MEDIUM'},
+    {'x': -0.2720, 'y': 0.1473, 'z': 1.1223, 'defect_type': 'Dimensional out of tolerance', 'severity': 'LOW'},
 ]
 
 
