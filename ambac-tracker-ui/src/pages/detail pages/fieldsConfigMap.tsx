@@ -733,11 +733,12 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     is_staff: commonRenderers.boolean,
                     is_active: commonRenderers.boolean,
                     date_joined: commonRenderers.datetime,
-                    full_name: (_value, data) => {
-                        const firstName = data.first_name || "";
-                        const lastName = data.last_name || "";
+                    username: (value: any, data: any) => value || data?.email || '—',
+                    full_name: (_value: any, data: any) => {
+                        const firstName = data?.first_name || "";
+                        const lastName = data?.last_name || "";
                         const fullName = `${firstName} ${lastName}`.trim();
-                        return fullName || "—";
+                        return fullName || data?.username || data?.email || "—";
                     },
                 },
                 sections: [
@@ -755,7 +756,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_Customers_retrieve',
+                apiPath: 'api_User_retrieve',
                 relatedModels: [
                     {
                         modelType: 'companies',

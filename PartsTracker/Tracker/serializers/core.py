@@ -111,7 +111,8 @@ class UserSelectSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField())
     def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}".strip() or obj.username
+        full_name = f"{obj.first_name or ''} {obj.last_name or ''}".strip()
+        return full_name or obj.username or obj.email or f"User {obj.id}"
 
 
 class EmployeeSelectSerializer(serializers.ModelSerializer):
@@ -195,8 +196,9 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     @extend_schema_field(serializers.CharField())
     def get_full_name(self, obj):
-        """Get formatted full name or fallback to username"""
-        return f"{obj.first_name} {obj.last_name}".strip() or obj.username
+        """Get formatted full name or fallback to username/email"""
+        full_name = f"{obj.first_name or ''} {obj.last_name or ''}".strip()
+        return full_name or obj.username or obj.email or f"User {obj.id}"
 
     @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_groups(self, obj):

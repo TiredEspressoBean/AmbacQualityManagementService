@@ -358,19 +358,19 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
 
         # Check tenant group membership
         user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
-        is_internal = bool(user_group_names - {'Customer', 'Customers'})
+        is_customer_only = user_group_names and user_group_names <= {'Customer', 'Customers'}
 
-        if is_internal:
-            # Internal tenant users (Tenant Admin, QA Manager, etc.) see all users in their tenant
-            if user.tenant:
-                return User.objects.filter(tenant=user.tenant).select_related('parent_company', 'tenant')
-            return User.objects.none()
-        else:
-            # Portal/Customer users see only users from their company
-            if user.parent_company:
-                return User.objects.filter(parent_company=user.parent_company).select_related('parent_company', 'tenant')
-            # No company - can only see themselves
-            return User.objects.filter(id=user.id).select_related('parent_company', 'tenant')
+        # Users with a tenant (internal users) see all users in their tenant
+        # This includes users with any TenantGroup except Customer-only
+        if user.tenant and not is_customer_only:
+            return User.objects.filter(tenant=user.tenant).select_related('parent_company', 'tenant')
+
+        # Portal/Customer users see only users from their company
+        if user.parent_company:
+            return User.objects.filter(parent_company=user.parent_company).select_related('parent_company', 'tenant')
+
+        # No tenant and no company - can only see themselves
+        return User.objects.filter(id=user.id).select_related('parent_company', 'tenant')
 
     @extend_schema(request=inline_serializer(name="BulkUserActivationInput", fields={
         "user_ids": serializers.ListField(child=serializers.IntegerField()), "is_active": serializers.BooleanField()}),
@@ -803,11 +803,12 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if user.is_staff or user.is_superuser:
             return qs
 
-        # Check if internal tenant user
+        # Check if internal tenant user (has tenant and not Customer-only)
         user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
-        is_internal = bool(user_group_names - {'Customer', 'Customers'})
+        is_customer_only = user_group_names and user_group_names <= {'Customer', 'Customers'}
 
-        if is_internal:
+        # Tenant users who aren't Customer-only can see invitations
+        if user.tenant and not is_customer_only:
             return qs
         return qs.none()
 
