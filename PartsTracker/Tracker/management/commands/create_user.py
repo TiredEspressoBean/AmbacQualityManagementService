@@ -85,11 +85,6 @@ class Command(BaseCommand):
             help=f'Group to assign user to. Available: {", ".join(AVAILABLE_GROUPS)}',
         )
         parser.add_argument(
-            '--staff',
-            action='store_true',
-            help='Grant Django staff status (access to admin site)',
-        )
-        parser.add_argument(
             '--portal',
             action='store_true',
             help='Create as portal user (external customer)',
@@ -145,14 +140,12 @@ class Command(BaseCommand):
             user.tenant = tenant
             user.first_name = options['first_name'] or user.first_name
             user.last_name = options['last_name'] or user.last_name
-            if options['staff']:
-                user.is_staff = True
             if options['portal']:
                 user.user_type = User.UserType.PORTAL
             user.save()
             created = False
         else:
-            # Create new user
+            # Create new user (is_staff=False - that's for UQMES platform staff only)
             user = User.objects.create_user(
                 email=email,
                 username=email,
@@ -160,7 +153,7 @@ class Command(BaseCommand):
                 first_name=options['first_name'],
                 last_name=options['last_name'],
                 tenant=tenant,
-                is_staff=options['staff'],
+                is_staff=False,
                 user_type=User.UserType.PORTAL if options['portal'] else User.UserType.INTERNAL,
             )
             created = True
@@ -185,4 +178,3 @@ class Command(BaseCommand):
         self.stdout.write(f'  Tenant: {tenant.name}')
         self.stdout.write(f'  Group: {group_name}')
         self.stdout.write(f'  Type: {user.user_type}')
-        self.stdout.write(f'  Staff: {user.is_staff}')

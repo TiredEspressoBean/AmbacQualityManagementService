@@ -350,29 +350,27 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
 
-        # User model doesn't inherit from SecureModel, so filter by company manually
         user = self.request.user
-        if user.is_staff:
-            # Superusers always see all users
-            if user.is_superuser:
-                return User.objects.all().select_related('parent_company')
 
-            # Check if user has any groups that are NOT 'Customers' (tenant-scoped)
-            user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
-            non_customer_groups = bool(user_group_names - {'Customer', 'Customers'})
-            if non_customer_groups:
-                # Staff with non-customer groups (Employees, QA, Admin, Manager, Operator, etc.) see all users
-                return User.objects.all().select_related('parent_company')
+        # Platform staff (UQMES) see all users
+        if user.is_staff or user.is_superuser:
+            return User.objects.all().select_related('parent_company', 'tenant')
 
-            # Staff with no company see all users (system-level staff)
-            if not user.parent_company:
-                return User.objects.all().select_related('parent_company')
+        # Check tenant group membership
+        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        is_internal = bool(user_group_names - {'Customer', 'Customers'})
 
-            # Other staff (or staff only in Customers group) see their company's users
-            return User.objects.filter(parent_company=user.parent_company).select_related('parent_company')
+        if is_internal:
+            # Internal tenant users (Tenant Admin, QA Manager, etc.) see all users in their tenant
+            if user.tenant:
+                return User.objects.filter(tenant=user.tenant).select_related('parent_company', 'tenant')
+            return User.objects.none()
         else:
-            # Non-staff users can only see themselves
-            return User.objects.filter(id=user.id).select_related('parent_company')
+            # Portal/Customer users see only users from their company
+            if user.parent_company:
+                return User.objects.filter(parent_company=user.parent_company).select_related('parent_company', 'tenant')
+            # No company - can only see themselves
+            return User.objects.filter(id=user.id).select_related('parent_company', 'tenant')
 
     @extend_schema(request=inline_serializer(name="BulkUserActivationInput", fields={
         "user_ids": serializers.ListField(child=serializers.IntegerField()), "is_active": serializers.BooleanField()}),
@@ -790,25 +788,35 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
-        """Staff can see all invitations within tenant, others can't list"""
+        """Internal tenant users can see invitations within their tenant"""
         if getattr(self, 'swagger_fake_view', False):
+            return UserInvitation.objects.none()
+
+        user = self.request.user
+        if not user:
             return UserInvitation.objects.none()
 
         # Apply tenant scoping first
         qs = super().get_queryset().select_related('user', 'invited_by')
 
-        if self.request.user and self.request.user.is_staff:
+        # Platform staff see all
+        if user.is_staff or user.is_superuser:
+            return qs
+
+        # Check if internal tenant user
+        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        is_internal = bool(user_group_names - {'Customer', 'Customers'})
+
+        if is_internal:
             return qs
         return qs.none()
 
     def get_permissions(self):
         """Allow unauthenticated access to validate and accept actions"""
-        from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+        from rest_framework.permissions import AllowAny, IsAuthenticated
 
         if self.action in ['validate_token', 'accept_invitation']:
             return [AllowAny()]
-        elif self.action in ['resend']:
-            return [IsAdminUser()]
         return [IsAuthenticated()]
 
     @extend_schema(request=inline_serializer(name="ValidateTokenInput", fields={"token": serializers.CharField()}),

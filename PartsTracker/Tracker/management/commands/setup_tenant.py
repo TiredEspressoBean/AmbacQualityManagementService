@@ -177,7 +177,7 @@ class Command(BaseCommand):
                 existing_user.save(update_fields=['tenant'])
                 admin_user = existing_user
             else:
-                # Create admin user
+                # Create admin user (is_staff=False - that's for UQMES platform staff only)
                 admin_user = User.objects.create_user(
                     email=admin_email,
                     username=admin_email,
@@ -185,16 +185,18 @@ class Command(BaseCommand):
                     first_name=options['admin_first_name'],
                     last_name=options['admin_last_name'],
                     tenant=tenant,
-                    is_staff=True,
+                    is_staff=False,
                 )
                 self.stdout.write(
                     self.style.SUCCESS(f'Created admin user: {admin_email}')
                 )
 
-            # Add to Admin group
-            admin_group, _ = Group.objects.get_or_create(name='Admin')
-            admin_user.groups.add(admin_group)
-            self.stdout.write(f'  Added to Admin group')
+            # Add to Tenant Admin group via UserRole
+            from Tracker.models import TenantGroup, UserRole
+            tenant_admin_group = TenantGroup.objects.filter(tenant=tenant, name='Tenant Admin').first()
+            if tenant_admin_group:
+                UserRole.objects.get_or_create(user=admin_user, group=tenant_admin_group)
+                self.stdout.write(f'  Added to Tenant Admin group')
 
         # Print summary
         self.stdout.write('')
