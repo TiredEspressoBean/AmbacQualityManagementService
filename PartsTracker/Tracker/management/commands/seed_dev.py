@@ -31,13 +31,13 @@ from django.core.management.base import BaseCommand
 
 from Tracker.models import (
     # Core models
-    Tenant, TenantGroupMembership,
+    Tenant, TenantGroupMembership, NotificationTask,
     Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents, Equipments,
     EquipmentType, WorkOrder, ExternalAPIOrderIdentifier,
     # Process graph models
     ProcessStep, StepEdge,
     # Quality models
-    QualityErrorsList, QualityReports, MeasurementDefinition, MeasurementResult,
+    QualityErrorsList, QualityReports, QualityReportDefect, MeasurementDefinition, MeasurementResult,
     QuarantineDisposition, QaApproval, StepTransitionLog, EquipmentUsage,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
@@ -186,6 +186,8 @@ class Command(BaseCommand):
 
     def _clear_tenant_data(self):
         """Clear existing dev tenant data in dependency order."""
+        from django.db import connection
+
         self.stdout.write(f"Clearing existing {self.TENANT_SLUG} tenant data...")
 
         # Get the tenant if it exists
@@ -195,13 +197,86 @@ class Command(BaseCommand):
             self.stdout.write("  No existing dev tenant to clear")
             return
 
+        tenant_id = str(tenant.id)
+
+        # Helper to clear M2M tables via raw SQL (these block FK deletes)
+        def clear_m2m_table(table_name, fk_column, source_table):
+            """Clear M2M table entries related to tenant data."""
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(f'''
+                        DELETE FROM "{table_name}"
+                        WHERE {fk_column} IN (
+                            SELECT id FROM "{source_table}" WHERE tenant_id = %s
+                        )
+                    ''', [tenant_id])
+                    if cursor.rowcount > 0:
+                        self.stdout.write(f"  Cleared {cursor.rowcount} {table_name} entries")
+            except Exception as e:
+                pass  # Table might not exist or have different structure
+
+        # Clear M2M junction tables first (these block FK deletes on main tables)
+        m2m_tables = [
+            # CAPA M2M tables
+            ('Tracker_capa_quality_reports', 'capa_id', 'Tracker_capa'),
+            ('Tracker_rcarecord_quality_reports', 'rcarecord_id', 'Tracker_rcarecord'),
+            # Quality report M2M tables
+            ('Tracker_qualityreports_operators', 'qualityreports_id', 'Tracker_qualityreports'),
+            # Quarantine disposition M2M tables (clear from both sides)
+            ('Tracker_quarantinedisposition_quality_reports', 'quarantinedisposition_id', 'Tracker_quarantinedisposition'),
+            ('Tracker_quarantinedisposition_quality_reports', 'qualityreports_id', 'Tracker_qualityreports'),
+            # HeatMap annotation M2M tables
+            ('Tracker_heatmapannotations_quality_reports', 'heatmapannotations_id', 'Tracker_heatmapannotations'),
+            # Approver assignments
+            ('tracker_approver_assignment', 'approval_request_id', 'Tracker_approvalrequest'),
+            # User role assignments
+            ('tracker_user_role', 'user_id', 'Tracker_user'),
+        ]
+
+        for table, fk_col, source in m2m_tables:
+            clear_m2m_table(table, fk_col, source)
+
+        # Clear records that reference tenant parts (via raw SQL in batches for speed)
+        # These records would block ORM deletes due to FK constraints
+        def clear_by_part_fk_batched(table_name, name):
+            """Clear records that reference parts from this tenant in batches."""
+            total_deleted = 0
+            try:
+                while True:
+                    with connection.cursor() as cursor:
+                        cursor.execute(f'''
+                            DELETE FROM "{table_name}"
+                            WHERE id IN (
+                                SELECT t.id FROM "{table_name}" t
+                                JOIN "Tracker_parts" p ON t.part_id = p.id
+                                WHERE p.tenant_id = %s
+                                LIMIT 5000
+                            )
+                        ''', [tenant_id])
+                        if cursor.rowcount == 0:
+                            break
+                        total_deleted += cursor.rowcount
+                if total_deleted > 0:
+                    self.stdout.write(f"  Cleared {total_deleted} {name} (by part FK)")
+            except Exception as e:
+                if total_deleted > 0:
+                    self.stdout.write(f"  Cleared {total_deleted} {name} (partial)")
+
+        # Tables with part FK that may have NULL tenant - clear before Parts deletion
+        clear_by_part_fk_batched("Tracker_steptransitionlog", "Step transition logs")
+        clear_by_part_fk_batched("Tracker_stepexecution", "Step executions")
+        clear_by_part_fk_batched("Tracker_samplingauditlog", "Sampling audit logs")
+
         # Clear tenant-scoped data in dependency order
-        # Most models inherit from SecureModel which has direct 'tenant' FK
+        # Order matters: clear child tables before parent tables
+        # FK constraints require children to be deleted before parents
         models_to_clear = [
-            (TenantGroupMembership, "Tenant group memberships", {'user__tenant': tenant}),
-            (LogEntry, "Audit log entries", {}),  # Not tenant-scoped
+            # Audit logs first (not tenant-scoped but references many models)
+            (LogEntry, "Audit log entries", {}),
+            # Approval workflow (has FK to many models)
             (ApprovalResponse, "Approval responses", {'tenant': tenant}),
             (ApprovalRequest, "Approval requests", {'tenant': tenant}),
+            # CAPA hierarchy (deepest children first)
             (CapaVerification, "CAPA verifications", {'capa__tenant': tenant}),
             (FiveWhys, "Five whys", {'rca_record__capa__tenant': tenant}),
             (Fishbone, "Fishbone diagrams", {'rca_record__capa__tenant': tenant}),
@@ -209,50 +284,76 @@ class Command(BaseCommand):
             (CapaTaskAssignee, "CAPA task assignees", {'task__capa__tenant': tenant}),
             (CapaTasks, "CAPA tasks", {'capa__tenant': tenant}),
             (CAPA, "CAPAs", {'tenant': tenant}),
+            # Training
             (TrainingRecord, "Training records", {'tenant': tenant}),
             (TrainingRequirement, "Training requirements", {'tenant': tenant}),
             (TrainingType, "Training types", {'tenant': tenant}),
+            # Calibration
             (CalibrationRecord, "Calibration records", {'tenant': tenant}),
-            (SamplingAnalytics, "Sampling analytics", {'tenant': tenant}),
-            (SamplingAuditLog, "Sampling audit logs", {'tenant': tenant}),
-            (SamplingTriggerState, "Sampling trigger states", {'tenant': tenant}),
-            (SamplingRule, "Sampling rules", {'tenant': tenant}),
-            (SamplingRuleSet, "Sampling rule sets", {'tenant': tenant}),
+            # Quality: EquipmentUsage has FK to QualityReports, must go first
+            (QualityReportDefect, "Quality report defects", {'report__tenant': tenant}),
             (MeasurementResult, "Measurement results", {'tenant': tenant}),
             (MeasurementDefinition, "Measurement definitions", {'tenant': tenant}),
             (QaApproval, "QA approvals", {'tenant': tenant}),
-            (QuarantineDisposition, "Quarantine dispositions", {'tenant': tenant}),
+            (EquipmentUsage, "Equipment usage", {'tenant': tenant}),
+            # QuarantineDisposition has PROTECT FK to Parts AND Steps - delete by multiple filters
+            (QuarantineDisposition, "Quarantine dispositions (by tenant)", {'tenant': tenant}),
+            (QuarantineDisposition, "Quarantine dispositions (by part)", {'part__tenant': tenant}),
+            (QuarantineDisposition, "Quarantine dispositions (by step)", {'step__tenant': tenant}),
             (QualityReports, "Quality reports", {'tenant': tenant}),
             (QualityErrorsList, "Quality errors", {'tenant': tenant}),
+            # 3D Models: HeatMapAnnotations before ThreeDModel (has FK)
             (HeatMapAnnotations, "Heatmap annotations", {'tenant': tenant}),
             (ThreeDModel, "3D models", {'tenant': tenant}),
+            # Workflow execution: Records cleared via raw SQL above, this catches any remaining
             (StepExecution, "Step executions", {'tenant': tenant}),
             (StepTransitionLog, "Step transition logs", {'tenant': tenant}),
-            (EquipmentUsage, "Equipment usage", {'tenant': tenant}),
             (FPIRecord, "FPI records", {'tenant': tenant}),
+            # Sampling: SamplingAuditLog cleared via raw SQL above
+            (SamplingAnalytics, "Sampling analytics", {'ruleset__tenant': tenant}),
+            (SamplingAuditLog, "Sampling audit logs", {'rule__ruleset__tenant': tenant}),
+            (SamplingTriggerState, "Sampling trigger states", {'ruleset__tenant': tenant}),
+            # Life tracking
             (LifeTracking, "Life tracking records", {'tenant': tenant}),
             (PartTypeLifeLimit, "Part type life limits", {'tenant': tenant}),
             (LifeLimitDefinition, "Life limit definitions", {'tenant': tenant}),
+            # Reman
             (HarvestedComponent, "Harvested components", {'tenant': tenant}),
             (Core, "Cores", {'tenant': tenant}),
             (DisassemblyBOMLine, "Disassembly BOM lines", {'tenant': tenant}),
-            (WorkOrder, "Work orders", {'tenant': tenant}),
+            # Parts/Orders: Parts has FK to SamplingRule, WorkOrder, Orders - delete Parts first
+            # Then sampling can be deleted (Parts.sampling_rule FK is gone)
             (Parts, "Parts", {'tenant': tenant}),
+            # Sampling: Now that Parts is gone, we can delete sampling models
+            # SamplingRule has FK to SamplingRuleSet, so Rule before RuleSet
+            (SamplingRule, "Sampling rules", {'ruleset__tenant': tenant}),
+            (SamplingRuleSet, "Sampling rule sets", {'tenant': tenant}),
+            # WorkOrder and Orders: Now that Parts is gone
+            (WorkOrder, "Work orders", {'tenant': tenant}),
             (ExternalAPIOrderIdentifier, "External order identifiers", {'tenant': tenant}),
             (Orders, "Orders", {'tenant': tenant}),
+            # SPC
             (SPCBaseline, "SPC baselines", {'tenant': tenant}),
+            # Process graph: SamplingRuleSet has FK to Steps and Process, must delete sampling first
             (StepEdge, "Step edges", {'process__tenant': tenant}),
             (ProcessStep, "Process steps", {'process__tenant': tenant}),
             (Steps, "Steps", {'tenant': tenant}),
             (Processes, "Processes", {'tenant': tenant}),
-            (Documents, "Documents", {'tenant': tenant}),
+            # Documents - has FK to User via approved_by
+            (Documents, "Documents (by tenant)", {'tenant': tenant}),
+            (Documents, "Documents (by approver)", {'approved_by__tenant': tenant}),
             (ApprovalTemplate, "Approval templates", {'tenant': tenant}),
             (DocumentType, "Document types", {'tenant': tenant}),
+            # Equipment: QualityReports has FK to Equipment, must delete QR first (done above)
             (Equipments, "Equipment", {'tenant': tenant}),
             (EquipmentType, "Equipment types", {'tenant': tenant}),
+            # Part types: Parts has FK to PartTypes, must delete Parts first (done above)
             (PartTypes, "Part types", {'tenant': tenant}),
+            # Notifications (has FK to User)
+            (NotificationTask, "Notification tasks", {'recipient__tenant': tenant}),
+            # Users and companies last (referenced by many models)
+            (TenantGroupMembership, "Tenant group memberships", {'user__tenant': tenant}),
             (User, "Users", {'tenant': tenant, 'is_superuser': False}),
-            (Companies, "Companies", {'tenant': tenant}),
         ]
 
         for model, name, filters in models_to_clear:
@@ -269,6 +370,24 @@ class Command(BaseCommand):
             except Exception as e:
                 error_msg = str(e).encode('ascii', 'replace').decode('ascii')
                 self.stdout.write(self.style.WARNING(f"  Could not clear {name}: {error_msg[:200]}"))
+
+        # Clear parent_company for admin users before deleting Companies
+        # (admin users are preserved but their company reference blocks deletion)
+        admin_users = User.objects.filter(tenant=tenant, is_superuser=True, parent_company__isnull=False)
+        if admin_users.exists():
+            admin_users.update(parent_company=None)
+            self.stdout.write(f"  Cleared parent_company for {admin_users.count()} admin users")
+
+        # Now delete Companies
+        try:
+            companies = Companies.objects.filter(tenant=tenant)
+            count = companies.count()
+            if count > 0:
+                companies._raw_delete(companies.db)
+                self.stdout.write(f"  Cleared {count} Companies")
+        except Exception as e:
+            error_msg = str(e).encode('ascii', 'replace').decode('ascii')
+            self.stdout.write(self.style.WARNING(f"  Could not clear Companies: {error_msg[:200]}"))
 
         # Don't delete tenant - it has auto-seeded doc types/approval templates with protected FKs
         # The tenant will be reused with fresh data
