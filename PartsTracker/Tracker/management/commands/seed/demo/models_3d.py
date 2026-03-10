@@ -8,7 +8,6 @@ Creates:
 """
 
 import os
-import shutil
 from django.conf import settings
 from django.core.files.base import ContentFile
 
@@ -209,20 +208,12 @@ class DemoThreeDModelSeeder(BaseSeeder):
         - is_current_version: BooleanField
         - version: IntegerField
         - processing_status: CharField (uses ModelProcessingStatus enum)
+
+        Uses Django's storage API (model.file.save) to ensure files are stored
+        in the correct backend (local filesystem or S3) based on settings.
         """
-        # Prepare the file path first
         safe_name = part_type.name.replace(' ', '_').replace('/', '_')
         dest_filename = f"3DBenchy_{safe_name}.glb"
-        file_path = f"models/{dest_filename}"
-
-        # Handle file copying
-        if source_benchy and os.path.exists(source_benchy):
-            dest_path = os.path.join(settings.MEDIA_ROOT, 'models', dest_filename)
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            try:
-                shutil.copy2(source_benchy, dest_path)
-            except Exception as e:
-                self.log(f"  Could not copy benchy file: {e}", warning=True)
 
         # Explicitly set all fields - do NOT rely on model defaults
         defaults = {
@@ -230,7 +221,6 @@ class DemoThreeDModelSeeder(BaseSeeder):
             'is_current_version': model_data['is_current_version'],
             'version': model_data['version'],
             'processing_status': ModelProcessingStatus.COMPLETED,
-            'file': file_path,
         }
 
         model, created = ThreeDModel.objects.update_or_create(
@@ -240,10 +230,19 @@ class DemoThreeDModelSeeder(BaseSeeder):
             defaults=defaults,
         )
 
-        # Handle file for new models without source benchy
-        if created and (not source_benchy or not os.path.exists(source_benchy)):
+        # Use Django's storage API to save file (works with both local and S3)
+        if source_benchy and os.path.exists(source_benchy):
+            with open(source_benchy, 'rb') as f:
+                file_content = f.read()
             model.file.save(
-                dest_filename,
+                f"models/{dest_filename}",
+                ContentFile(file_content),
+                save=True
+            )
+        elif created:
+            # Placeholder for new models without source file
+            model.file.save(
+                f"models/{dest_filename}",
                 ContentFile(b'Demo 3D model placeholder - benchy file not found'),
                 save=True
             )

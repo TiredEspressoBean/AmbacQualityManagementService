@@ -836,22 +836,43 @@ def check_capa_reminders():
 # ============================================================================
 
 @shared_task(bind=True, base=RetryableHubSpotTask)
-def sync_hubspot_deals_task(self):
+def sync_hubspot_deals_task(self, tenant_id=None):
     """
-    Celery task to sync all HubSpot deals.
+    Celery task to sync all HubSpot deals for a specific tenant.
     Uses RetryableHubSpotTask for automatic retry with exponential backoff.
 
     Scheduled via Celery Beat for automatic periodic syncing.
     Can also be triggered manually via management command.
 
+    Args:
+        tenant_id: UUID string of the tenant to sync into.
+                   Defaults to 'ambac-international' tenant if not provided.
+
     Returns:
         dict with status and sync results
     """
     from Tracker.hubspot.sync import sync_all_deals
+    from Tracker.models import Tenant
 
-    logger.info("Starting HubSpot deals sync task")
+    # Default to Ambac tenant (this sync will be replaced by n8n)
+    DEFAULT_TENANT_SLUG = 'ambac-international'
 
-    result = sync_all_deals()
+    if tenant_id:
+        try:
+            tenant = Tenant.objects.get(id=tenant_id)
+        except Tenant.DoesNotExist:
+            logger.error(f"Tenant {tenant_id} not found")
+            return {'status': 'error', 'message': f'Tenant {tenant_id} not found'}
+    else:
+        try:
+            tenant = Tenant.objects.get(slug=DEFAULT_TENANT_SLUG)
+        except Tenant.DoesNotExist:
+            logger.error(f"Default tenant {DEFAULT_TENANT_SLUG} not found")
+            return {'status': 'error', 'message': f'Default tenant {DEFAULT_TENANT_SLUG} not found'}
+
+    logger.info(f"Starting HubSpot deals sync task for tenant: {tenant.slug}")
+
+    result = sync_all_deals(tenant=tenant)
 
     if result.get('status') == 'success':
         logger.info(f"HubSpot sync task completed: {result}")

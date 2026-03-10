@@ -13,8 +13,10 @@ from Tracker.models import Orders, Companies, User, ExternalAPIOrderIdentifier, 
 logger = logging.getLogger(__name__)
 
 
-def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict):
+def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict, tenant):
     """Extract order data from HubSpot deal (eliminates code duplication)."""
+    from django.contrib.auth.models import Group
+
     deal_id = deal['id']
 
     # Get pipeline stage
@@ -32,6 +34,7 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
             # Use company ID as fallback if name is missing
             company_name = company_info.get('name') or f"Company {company_id}"
             company, _ = Companies.objects.get_or_create(
+                tenant=tenant,
                 name=company_name,
                 defaults={}
             )
@@ -49,6 +52,7 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
                 if contact_company_info:
                     company_name = contact_company_info.get('name') or f"Company {contact_company_id}"
                     contact_company, _ = Companies.objects.get_or_create(
+                        tenant=tenant,
                         name=company_name,
                         defaults={}
                     )
@@ -60,6 +64,8 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
                     'last_name': contact_info.get('last_name', ''),
                     'username': contact_info['email'],
                     'parent_company': contact_company,
+                    'tenant': tenant,
+                    'user_type': User.UserType.PORTAL,
                     'is_active': True,
                 }
             )
@@ -69,6 +75,9 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
                 placeholder_password = f"HUBSPOT_PLACEHOLDER_{secrets.token_urlsafe(48)}"
                 customer.set_password(placeholder_password)
                 customer.save()
+                # Add to Customer group
+                customer_group, _ = Group.objects.get_or_create(name='Customer')
+                customer.groups.add(customer_group)
                 logger.info(f"Created new user from HubSpot contact: {customer.email} with company: {contact_company.name if contact_company else 'None'}")
             else:
                 logger.info(f"Updated user from HubSpot contact: {customer.email} with company: {contact_company.name if contact_company else 'None'}")
@@ -80,12 +89,21 @@ def _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_
         'current_hubspot_gate': current_gate,
         'archived': deal.get('archived', False),
         'hubspot_last_synced_at': timezone.now(),
+        'tenant': tenant,
     }
 
 
 
-def sync_all_deals():
-    """Sync deals from HubSpot. Only touches orders with hubspot_deal_id."""
+def sync_all_deals(tenant=None):
+    """
+    Sync deals from HubSpot. Only touches orders with hubspot_deal_id.
+
+    Args:
+        tenant: Tenant instance to scope all created records to (required for Ambac).
+    """
+    if tenant is None:
+        raise ValueError("Tenant is required for HubSpot sync")
+
     # Create sync log
     sync_log = HubSpotSyncLog.objects.create(sync_type='FULL', status='RUNNING')
 
@@ -132,7 +150,7 @@ def sync_all_deals():
                 continue
 
             # Use helper to prepare order data
-            order_data = _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict)
+            order_data = _prepare_order_from_deal(deal, deal_to_contacts, deal_to_companies, contact_dict, company_dict, tenant)
 
             # Create or update order
             obj, created = Orders.objects.update_or_create(

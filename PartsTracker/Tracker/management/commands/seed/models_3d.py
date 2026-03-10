@@ -4,11 +4,12 @@
 
 import os
 import random
-import shutil
 from django.conf import settings
+from django.core.files.base import ContentFile
 
 from Tracker.models import (
     ThreeDModel, HeatMapAnnotations, Parts, QualityReports,
+    ModelProcessingStatus,
 )
 from .base import BaseSeeder
 
@@ -77,7 +78,11 @@ class ThreeDModelSeeder(BaseSeeder):
         self.log(f"Created {models_created} 3D models and {annotations_created} annotations", success=True)
 
     def _create_model_for_part_type(self, part_type, employees, source_benchy):
-        """Create 3D model and annotations for a single part type."""
+        """Create 3D model and annotations for a single part type.
+
+        Uses Django's storage API (model.file.save) to ensure files are stored
+        in the correct backend (local filesystem or S3) based on settings.
+        """
         # Check if model already exists for this part type
         existing_model = ThreeDModel.objects.filter(
             part_type=part_type,
@@ -91,31 +96,31 @@ class ThreeDModelSeeder(BaseSeeder):
         # Create a unique filename for this part type
         safe_name = part_type.name.replace(' ', '_').replace('/', '_')
         dest_filename = f"3DBenchy_{safe_name}.glb"
-        dest_path = os.path.join(settings.MEDIA_ROOT, 'models', dest_filename)
 
-        # Ensure models directory exists
-        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-
-        # Copy benchy file
+        # Read source file content
         try:
-            shutil.copy2(source_benchy, dest_path)
+            with open(source_benchy, 'rb') as f:
+                file_content = f.read()
         except Exception as e:
-            self.log(f"  Could not copy benchy file for {part_type.name}: {e}", warning=True)
-            return None
-
-        if not os.path.exists(dest_path):
-            self.log(f"  Could not create model file for {part_type.name}", warning=True)
+            self.log(f"  Could not read benchy file for {part_type.name}: {e}", warning=True)
             return None
 
         # Create the ThreeDModel record
         three_d_model = ThreeDModel.objects.create(
             tenant=self.tenant,
             name=f"3D Benchy - {part_type.name}",
-            file=f"models/{dest_filename}",
             part_type=part_type,
             file_type="glb",
             is_current_version=True,
             version=1,
+            processing_status=ModelProcessingStatus.COMPLETED,
+        )
+
+        # Use Django's storage API to save file (works with both local and S3)
+        three_d_model.file.save(
+            f"models/{dest_filename}",
+            ContentFile(file_content),
+            save=True
         )
 
         self.log(f"  Created 3D model for {part_type.name}")
