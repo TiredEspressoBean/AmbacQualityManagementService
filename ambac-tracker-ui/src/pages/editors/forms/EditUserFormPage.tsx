@@ -69,15 +69,15 @@ const required = {
 export default function UserFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
-    const userId = params.id;
+    const userId = params.id ? Number(params.id) : undefined;
     const [companySearch, setCompanySearch] = useState("");
     const [open, setOpen] = useState(false);
     const [groupSearch, setGroupSearch] = useState("");
     const [groupsOpen, setGroupsOpen] = useState(false);
 
     const { data: user, isLoading: isLoadingUser } = useRetrieveUser(
-        { params: { id: userId! } },
-        { enabled: mode === "edit" && !!userId }
+        { params: { id: userId as number } },
+        { enabled: mode === "edit" && userId !== undefined }
     );
 
     const { data: companies, isLoading: isLoadingCompanies } = useRetrieveCompanies({
@@ -142,7 +142,7 @@ export default function UserFormPage() {
             submitData.is_staff = values.is_staff || false;
         }
 
-        if (mode === "edit" && userId) {
+        if (mode === "edit" && userId !== undefined) {
             updateUser.mutate(
                 { id: userId, data: submitData },
                 {
