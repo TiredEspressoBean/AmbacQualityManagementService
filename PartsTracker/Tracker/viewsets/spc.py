@@ -433,7 +433,18 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             return Response({
                 'definition': MeasurementDefinitionSPCSerializer(definition).data,
                 'sample_size': len(values),
-                'detail': 'Insufficient data for capability analysis (need at least 2 measurements)',
+                'subgroup_size': subgroup_size,
+                'num_subgroups': 0,
+                'usl': 0,
+                'lsl': 0,
+                'mean': 0,
+                'std_dev_within': 0,
+                'std_dev_overall': 0,
+                'cp': 0,
+                'cpk': 0,
+                'pp': 0,
+                'ppk': 0,
+                'interpretation': 'Insufficient data for capability analysis (need at least 2 measurements)',
             })
 
         # Calculate spec limits
@@ -445,7 +456,18 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             return Response({
                 'definition': MeasurementDefinitionSPCSerializer(definition).data,
                 'sample_size': len(values),
-                'detail': 'Measurement definition missing nominal or tolerance values',
+                'subgroup_size': subgroup_size,
+                'num_subgroups': 0,
+                'usl': 0,
+                'lsl': 0,
+                'mean': 0,
+                'std_dev_within': 0,
+                'std_dev_overall': 0,
+                'cp': 0,
+                'cpk': 0,
+                'pp': 0,
+                'ppk': 0,
+                'interpretation': 'Measurement definition missing nominal or tolerance values',
             })
 
         usl = nominal + upper_tol

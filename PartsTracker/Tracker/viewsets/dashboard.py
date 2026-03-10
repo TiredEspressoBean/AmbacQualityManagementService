@@ -579,9 +579,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         )
 
         disp_by_type = {d['disposition_type']: d['count'] for d in disposition_counts}
-        scrap_count = disp_by_type.get('scrap', 0)
-        rework_count = disp_by_type.get('rework', 0)
-        use_as_is_count = disp_by_type.get('use_as_is', 0)
+        scrap_count = disp_by_type.get('SCRAP', 0)
+        rework_count = disp_by_type.get('REWORK', 0)
+        use_as_is_count = disp_by_type.get('USE_AS_IS', 0)
 
         # Calculate rates as percentage of total inspected
         scrap_rate = round((scrap_count / total_inspected * 100), 1) if total_inspected > 0 else 0

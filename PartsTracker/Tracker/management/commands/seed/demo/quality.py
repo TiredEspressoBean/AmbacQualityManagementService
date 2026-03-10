@@ -32,8 +32,35 @@ from ..base import BaseSeeder
 
 # Demo quality reports matching DEMO_DATA_SYSTEM.md
 # NOTE: All status values must be UPPERCASE: 'PASS', 'FAIL', 'PENDING'
+# FPY is calculated from QualityReports, so we need PASS records for realistic FPY metrics
 DEMO_QUALITY_REPORTS = [
-    # From ORD-2024-0038 (Great Lakes) - these triggered CAPA-2024-003
+    # PASSING inspections - completed parts that passed inspection
+    # From ORD-2024-0042 (Midwest Fleet) - completed parts
+    {'id': 'QR-0042-001-FT', 'part': 'INJ-0042-001', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-002-FT', 'part': 'INJ-0042-002', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-003-FT', 'part': 'INJ-0042-003', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-004-FT', 'part': 'INJ-0042-004', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 4},
+    {'id': 'QR-0042-005-FT', 'part': 'INJ-0042-005', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 4},
+    {'id': 'QR-0042-006-FT', 'part': 'INJ-0042-006', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 4},
+    {'id': 'QR-0042-007-FT', 'part': 'INJ-0042-007', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 123 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-008-FT', 'part': 'INJ-0042-008', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-009-FT', 'part': 'INJ-0042-009', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-010-FT', 'part': 'INJ-0042-010', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 2},
+    {'id': 'QR-0042-011-FT', 'part': 'INJ-0042-011', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 2},
+    {'id': 'QR-0042-012-FT', 'part': 'INJ-0042-012', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 2},
+    {'id': 'QR-0042-013-FT', 'part': 'INJ-0042-013', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 1},
+    {'id': 'QR-0042-014-FT', 'part': 'INJ-0042-014', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 1},
+    {'id': 'QR-0042-015-FT', 'part': 'INJ-0042-015', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 1},
+    {'id': 'QR-0042-016-FT', 'part': 'INJ-0042-016', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 1},
+    # From ORD-2024-0038 (Great Lakes) - completed parts that passed
+    {'id': 'QR-0038-001-FT', 'part': 'INJ-0038-001', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 20},
+    {'id': 'QR-0038-002-FT', 'part': 'INJ-0038-002', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 19},
+    {'id': 'QR-0038-004-FT', 'part': 'INJ-0038-004', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 19},
+    {'id': 'QR-0038-005-FT', 'part': 'INJ-0038-005', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 18},
+    {'id': 'QR-0038-006-FT', 'part': 'INJ-0038-006', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 17},
+    {'id': 'QR-0038-009-FT', 'part': 'INJ-0038-009', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 15},
+    {'id': 'QR-0038-012-FT', 'part': 'INJ-0038-012', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 13},
+    # FAILING inspections - From ORD-2024-0038 (Great Lakes) - these triggered CAPA-2024-003
     {
         'id': 'QR-0038-003-NI',
         'part': 'INJ-0038-003',
@@ -143,6 +170,16 @@ DEMO_DISPOSITIONS = [
         'severity': 'MINOR',
         'resolution_notes': 'Flow rate 145 mL/min acceptable per customer concession CON-2024-001',
         'days_ago': 14,
+    },
+    # Scrap disposition (shows irreparable defect workflow)
+    {
+        'quality_report': 'QR-0038-010-NI',
+        'part': 'INJ-0038-010',
+        'disposition_type': 'SCRAP',
+        'current_state': 'CLOSED',
+        'severity': 'CRITICAL',
+        'resolution_notes': 'Nozzle damage beyond repair limits. Part scrapped per procedure QP-007.',
+        'days_ago': 13,
     },
 ]
 
@@ -360,6 +397,11 @@ class DemoQualitySeeder(BaseSeeder):
             }
         )
 
+        # Backdate created_at for historical data (FPY trend needs dated records)
+        if qr_data.get('days_ago'):
+            backdate = self.today - timedelta(days=qr_data['days_ago'])
+            QualityReports.objects.filter(pk=qr.pk).update(created_at=backdate)
+
         # Add operators if provided (M2M field)
         if operators:
             qr.operators.set(operators)
@@ -460,9 +502,10 @@ class DemoQualitySeeder(BaseSeeder):
 
     def seed_spc_data(self, measurement_definitions, quality_reports, users):
         """
-        Create SPC measurement data with rule violations.
+        Create SPC measurement data for capability analysis.
 
-        Creates measurement results attached to existing quality reports.
+        Creates measurement results attached to quality reports. For proper SPC
+        capability analysis, we need 25-30+ measurements with realistic variation.
 
         MeasurementResult model fields:
         - report: ForeignKey to QualityReports (required)
@@ -476,6 +519,71 @@ class DemoQualitySeeder(BaseSeeder):
         All enum values must be UPPERCASE.
         """
         self.log("  Creating SPC measurement data...")
+
+        # Build measurement definition lookup by label
+        md_by_label = {md.label: md for md in measurement_definitions}
+
+        # Get an inspector
+        qa_users = users.get('qa_staff', [])
+        inspector = qa_users[0] if qa_users else None
+
+        results = []
+        import random
+
+        # Create measurements for each measurement definition that has tolerances
+        for md in measurement_definitions:
+            if not md.nominal or not md.upper_tol or not md.lower_tol:
+                continue  # Skip definitions without spec limits
+
+            nominal = float(md.nominal)
+            lower_tol = float(md.lower_tol)
+            upper_tol = float(md.upper_tol)
+            lsl = nominal - lower_tol
+            usl = nominal + upper_tol
+
+            # Process variation as percentage of tolerance (realistic manufacturing)
+            tolerance_range = upper_tol + lower_tol
+            std_dev = tolerance_range / 6  # Cpk ~1.0 baseline
+
+            # Create measurements for quality reports that have this step
+            for i, qr in enumerate(quality_reports):
+                random.seed(hash(f"{md.label}-{i}"))  # Deterministic per definition+index
+
+                # Generate realistic values - mostly within spec
+                if i % 15 == 0:
+                    # Occasional out-of-spec (rule violation)
+                    value = round(nominal + upper_tol * 1.1, 2)
+                elif i % 7 == 0:
+                    # Some values trending high (Rule 2 pattern)
+                    value = round(nominal + std_dev * 1.5, 2)
+                else:
+                    # Normal variation around nominal
+                    variation = random.gauss(0, std_dev)
+                    value = round(nominal + variation, 2)
+
+                # Calculate is_within_spec
+                is_within_spec = lsl <= value <= usl
+                value_pass_fail = 'PASS' if is_within_spec else 'FAIL'
+
+                mr, _ = MeasurementResult.objects.update_or_create(
+                    tenant=self.tenant,
+                    report=qr,
+                    definition=md,
+                    defaults={
+                        'value_numeric': value,
+                        'value_pass_fail': value_pass_fail,
+                        'is_within_spec': is_within_spec,
+                        'created_by': inspector,
+                    }
+                )
+                results.append(mr)
+
+        self.log(f"    Created {len(results)} SPC measurement results")
+        return results
+
+    def _seed_spc_data_legacy(self, measurement_definitions, quality_reports, users):
+        """Legacy method - kept for reference. Creates measurements only for Flow Rate."""
+        self.log("  Creating SPC measurement data (legacy)...")
 
         # Find Flow Rate measurement definition (uses 'label' field, not 'name')
         flow_rate_def = None
@@ -500,6 +608,7 @@ class DemoQualitySeeder(BaseSeeder):
         usl = nominal + upper_tol
 
         # Create measurements for each quality report
+        import random
         for i, qr in enumerate(quality_reports):
             # Generate value - mostly normal distribution around nominal
             if 3 <= i <= 5:
@@ -507,7 +616,6 @@ class DemoQualitySeeder(BaseSeeder):
                 value = round(nominal + 5 + (i % 5), 1)
             else:
                 # Normal variation
-                import random
                 random.seed(i)  # Deterministic
                 variation = random.gauss(0, 3)
                 value = round(nominal + variation, 1)
@@ -519,6 +627,7 @@ class DemoQualitySeeder(BaseSeeder):
             value_pass_fail = 'PASS' if is_within_spec else 'FAIL'
 
             mr, _ = MeasurementResult.objects.update_or_create(
+                tenant=self.tenant,
                 report=qr,
                 definition=flow_rate_def,
                 defaults={
