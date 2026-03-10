@@ -28,10 +28,11 @@ MODULE_APPS: dict[str, str] = {
     'core': 'Tracker',      # User, Companies, Documents, Approvals
     'qms': 'Tracker',       # QualityReports, CAPA, RCA, Dispositions
     'mes': 'Tracker',       # Orders, Parts, WorkOrders, Equipment, Sampling
+    'reman': 'Tracker',     # Core, HarvestedComponent, DisassemblyBOMLine (Remanufacturing)
     'dms': 'Tracker',       # DocChunk (AI/vector embeddings)
 }
 
-ModuleName = Literal['core', 'qms', 'mes', 'dms']
+ModuleName = Literal['core', 'qms', 'mes', 'reman', 'dms']
 
 
 # =============================================================================
@@ -136,6 +137,26 @@ MODULE_PERMISSIONS: dict[str, dict[str, list[str]]] = {
     },
 
     # -------------------------------------------------------------------------
+    # REMAN - Remanufacturing Module
+    # -------------------------------------------------------------------------
+    'reman': {
+        'models': [
+            # Cores (incoming units for remanufacturing)
+            'add_core', 'change_core', 'delete_core', 'view_core',
+            # Harvested components (parts extracted from cores)
+            'add_harvestedcomponent', 'change_harvestedcomponent', 'delete_harvestedcomponent', 'view_harvestedcomponent',
+            # Disassembly BOM (expected components from core types)
+            'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
+            # Custom reman workflow permissions
+            'start_disassembly', 'complete_disassembly', 'scrap_core',
+            'grade_component', 'accept_component', 'reject_component',
+        ],
+        'wildcards': {
+            'view_all': 'view_*',
+        },
+    },
+
+    # -------------------------------------------------------------------------
     # DMS - Document Management / AI Module
     # -------------------------------------------------------------------------
     'dms': {
@@ -162,7 +183,7 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'QA_Manager': {
         'description': 'QA management, approve inspections, manage documents, full CAPA control',
-        'modules_view_all': ['core', 'qms', 'mes'],  # view_* from these modules
+        'modules_view_all': ['core', 'qms', 'mes', 'reman'],  # view_* from these modules
         'permissions': {
             'qms': [
                 # Quality Reports - full control + approval
@@ -196,7 +217,7 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'QA_Inspector': {
         'description': 'Perform quality inspections, initiate CAPAs, conduct RCA',
-        'modules_view_all': ['core', 'qms', 'mes'],
+        'modules_view_all': ['core', 'qms', 'mes', 'reman'],
         'permissions': {
             'qms': [
                 # Quality Reports - create and edit
@@ -216,10 +237,18 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'Production_Manager': {
         'description': 'Production oversight, view/change manufacturing data, respond to approvals',
-        'modules_view_all': ['core', 'qms', 'mes'],
+        'modules_view_all': ['core', 'qms', 'mes', 'reman'],
         'permissions': {
             'mes': [
                 'change_orders', 'change_parts', 'change_workorder',
+            ],
+            'reman': [
+                # Full reman workflow control
+                'add_core', 'change_core', 'delete_core',
+                'add_harvestedcomponent', 'change_harvestedcomponent',
+                'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline',
+                'start_disassembly', 'complete_disassembly', 'scrap_core',
+                'grade_component', 'accept_component', 'reject_component',
             ],
             'core': [
                 'view_confidential_documents',
@@ -231,17 +260,24 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'Production_Operator': {
         'description': 'Run production, create and update parts',
-        'modules_view_all': ['core', 'mes'],
+        'modules_view_all': ['core', 'mes', 'reman'],
         'permissions': {
             'mes': [
                 'add_parts', 'change_parts',
+            ],
+            'reman': [
+                # Disassembly workflow (operators do the work)
+                'add_core', 'change_core',
+                'add_harvestedcomponent', 'change_harvestedcomponent',
+                'start_disassembly', 'complete_disassembly',
+                'grade_component',
             ],
         },
     },
 
     'Document_Controller': {
         'description': 'Manage documents, classification, and approval templates',
-        'modules_view_all': ['core', 'mes', 'qms'],
+        'modules_view_all': ['core', 'mes', 'qms', 'reman'],
         'permissions': {
             'core': [
                 # Documents - full CRUD
@@ -262,7 +298,7 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'Engineering': {
         'description': 'Engineering changes, drawing control, design approvals',
-        'modules_view_all': ['core', 'qms', 'mes'],
+        'modules_view_all': ['core', 'qms', 'mes', 'reman'],
         'permissions': {
             'core': [
                 # Documents - create and edit (drawings, specs, ECOs)
@@ -281,7 +317,7 @@ GROUP_DEFINITIONS: dict[str, dict] = {
 
     'Supplier_Quality': {
         'description': 'Supplier management, incoming inspection, SCARs',
-        'modules_view_all': ['core', 'qms', 'mes'],
+        'modules_view_all': ['core', 'qms', 'mes', 'reman'],
         'permissions': {
             'qms': [
                 # Quality Reports - for incoming inspection
