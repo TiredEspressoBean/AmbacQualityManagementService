@@ -372,6 +372,45 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         # No tenant and no company - can only see themselves
         return User.objects.filter(id=user.id).select_related('parent_company', 'tenant')
 
+    @extend_schema(
+        responses={200: OpenApiResponse(response=dict, description="Debug info about current user's filtering context")}
+    )
+    @action(detail=False, methods=['get'], url_path='debug-filter')
+    def debug_filter(self, request):
+        """Debug endpoint to show what filtering is applied to the current user"""
+        user = request.user
+        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        is_customer_only = bool(user_group_names and user_group_names <= {'Customer', 'Customers'})
+
+        # Determine which branch of filtering will be applied
+        if user.is_staff or user.is_superuser:
+            filter_mode = "staff_all_users"
+            queryset_count = User.objects.count()
+        elif user.tenant and not is_customer_only:
+            filter_mode = "tenant_users"
+            queryset_count = User.objects.filter(tenant=user.tenant).count()
+        elif user.parent_company:
+            filter_mode = "company_users"
+            queryset_count = User.objects.filter(parent_company=user.parent_company).count()
+        else:
+            filter_mode = "self_only"
+            queryset_count = 1
+
+        return Response({
+            "user_id": user.id,
+            "email": user.email,
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
+            "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+            "tenant_name": user.tenant.name if user.tenant else None,
+            "parent_company_id": str(user.parent_company_id) if user.parent_company_id else None,
+            "parent_company_name": user.parent_company.name if user.parent_company else None,
+            "tenant_group_names": list(user_group_names),
+            "is_customer_only": is_customer_only,
+            "filter_mode": filter_mode,
+            "queryset_count": queryset_count,
+        })
+
     @extend_schema(request=inline_serializer(name="BulkUserActivationInput", fields={
         "user_ids": serializers.ListField(child=serializers.IntegerField()), "is_active": serializers.BooleanField()}),
                    responses={
