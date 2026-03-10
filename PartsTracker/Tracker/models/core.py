@@ -135,6 +135,132 @@ class Tenant(models.Model):
 
 
 # =============================================================================
+# TENANT LLM PROVIDER - Per-tenant LLM configuration with encrypted API keys
+# =============================================================================
+
+class TenantLLMProvider(models.Model):
+    """
+    LLM provider configuration for a tenant.
+
+    Stores API keys (encrypted) and model preferences for each LLM provider.
+    Tenants can configure multiple providers and set one as default.
+
+    Supported providers:
+    - ollama: Local/self-hosted models (no API key needed, just base_url)
+    - openai: OpenAI API (GPT-4, etc.)
+    - anthropic: Anthropic API (Claude models)
+    """
+
+    class Provider(models.TextChoices):
+        OLLAMA = 'ollama', 'Ollama (Local/Self-hosted)'
+        OPENAI = 'openai', 'OpenAI'
+        ANTHROPIC = 'anthropic', 'Anthropic'
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+
+    tenant = models.ForeignKey(
+        'Tenant',
+        on_delete=models.CASCADE,
+        related_name='llm_providers'
+    )
+
+    provider = models.CharField(
+        max_length=20,
+        choices=Provider.choices,
+        help_text="LLM provider type"
+    )
+
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Use this provider as the default for AI features"
+    )
+
+    is_enabled = models.BooleanField(
+        default=True,
+        help_text="Whether this provider configuration is active"
+    )
+
+    # Model configuration
+    model_name = models.CharField(
+        max_length=100,
+        help_text="Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620', 'llama3')"
+    )
+
+    # Ollama-specific: base URL for the Ollama server
+    base_url = models.URLField(
+        blank=True,
+        default='',
+        help_text="Base URL for Ollama server (e.g., 'http://localhost:11434')"
+    )
+
+    # Encrypted API key for cloud providers (OpenAI, Anthropic)
+    # Uses django-encrypted-model-fields for automatic encryption/decryption
+    from encrypted_model_fields.fields import EncryptedCharField
+    api_key = EncryptedCharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text="API key (encrypted at rest)"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tracker_tenant_llm_provider'
+        unique_together = [('tenant', 'provider')]
+        ordering = ['-is_default', 'provider']
+        verbose_name = 'Tenant LLM Provider'
+        verbose_name_plural = 'Tenant LLM Providers'
+
+    def __str__(self):
+        default_marker = " (default)" if self.is_default else ""
+        return f"{self.tenant.name} - {self.get_provider_display()}{default_marker}"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one default per tenant
+        if self.is_default:
+            TenantLLMProvider.objects.filter(
+                tenant=self.tenant,
+                is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @property
+    def full_model_name(self) -> str:
+        """Returns the provider/model format used by LangGraph."""
+        return f"{self.provider}/{self.model_name}"
+
+    @property
+    def has_api_key(self) -> bool:
+        """Check if an API key is configured (without exposing the key)."""
+        return bool(self.api_key)
+
+    def get_config_for_langgraph(self) -> dict:
+        """
+        Get configuration dict for passing to LangGraph.
+
+        Returns a dict suitable for the 'configurable' parameter.
+        """
+        config = {
+            'model': self.full_model_name,
+        }
+
+        if self.provider == self.Provider.OLLAMA:
+            if self.base_url:
+                config['ollama_base_url'] = self.base_url
+        elif self.provider == self.Provider.OPENAI:
+            if self.api_key:
+                config['openai_api_key'] = self.api_key
+        elif self.provider == self.Provider.ANTHROPIC:
+            if self.api_key:
+                config['anthropic_api_key'] = self.api_key
+
+        return config
+
+
+# =============================================================================
 # FACILITY MODEL - Multi-site support within a tenant
 # =============================================================================
 

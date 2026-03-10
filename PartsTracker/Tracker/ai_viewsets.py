@@ -919,3 +919,88 @@ class QueryViewSet(viewsets.GenericViewSet):
             return Response({
                 "detail": "Query execution failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# =============================================================================
+# LLM CONFIG VIEWSET - Provides LLM configuration to LangGraph
+# =============================================================================
+
+@extend_schema(tags=['ai-config'])
+class LLMConfigViewSet(viewsets.GenericViewSet):
+    """
+    Provides LLM provider configuration for LangGraph server-to-server calls.
+
+    This endpoint returns the tenant's default LLM provider configuration,
+    including the decrypted API key. It should only be called by the LangGraph
+    server, authenticated via the user's token.
+
+    Security:
+    - Requires valid user token (TokenAuthentication)
+    - Returns config for the user's tenant only
+    - API keys are transmitted server-to-server (never to browser)
+    """
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses=inline_serializer(
+            name='LLMConfigResponse',
+            fields={
+                'configured': serializers.BooleanField(),
+                'provider': serializers.CharField(),
+                'model': serializers.CharField(),
+                'full_model_name': serializers.CharField(),
+                'api_key': serializers.CharField(),
+                'base_url': serializers.CharField(),
+            }
+        )
+    )
+    @action(detail=False, methods=['get'], url_path='config')
+    def get_config(self, request):
+        """
+        Get the tenant's default LLM provider configuration.
+
+        Returns the full configuration including decrypted API key.
+        This endpoint is designed for server-to-server calls from LangGraph.
+        """
+        from Tracker.models import TenantLLMProvider
+
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            # Fall back to user's tenant
+            tenant = getattr(request.user, 'tenant', None)
+
+        if not tenant:
+            return Response({
+                'configured': False,
+                'error': 'No tenant context available'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the default enabled provider, or any enabled provider
+        provider = TenantLLMProvider.objects.filter(
+            tenant=tenant,
+            is_default=True,
+            is_enabled=True
+        ).first()
+
+        if not provider:
+            provider = TenantLLMProvider.objects.filter(
+                tenant=tenant,
+                is_enabled=True
+            ).first()
+
+        if not provider:
+            return Response({
+                'configured': False,
+                'error': 'No LLM provider configured for this tenant'
+            })
+
+        # Return full config including API key (for server-to-server use)
+        return Response({
+            'configured': True,
+            'provider': provider.provider,
+            'model': provider.model_name,
+            'full_model_name': provider.full_model_name,
+            'api_key': provider.api_key or '',  # Decrypted automatically by encrypted field
+            'base_url': provider.base_url or '',
+        })

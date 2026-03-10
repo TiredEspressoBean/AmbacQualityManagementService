@@ -1499,3 +1499,235 @@ class SwitchTenantView(APIView):
             'tenant_id': str(tenant.id),
             'tenant_name': tenant.name,
         })
+
+
+# =============================================================================
+# TENANT LLM PROVIDER (Per-tenant AI configuration)
+# =============================================================================
+
+class TenantLLMProviderSerializer(serializers.ModelSerializer):
+    """
+    Serializer for TenantLLMProvider.
+
+    API keys are write-only for security - they are never returned in responses.
+    Instead, we return has_api_key to indicate if a key is configured.
+    """
+    # Write-only: accept API key on create/update but never return it
+    api_key = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        help_text="API key (write-only, never returned in responses)"
+    )
+
+    # Read-only: indicate if API key is set without exposing it
+    has_api_key = serializers.SerializerMethodField()
+
+    # Read-only: full model name for display
+    full_model_name = serializers.CharField(read_only=True)
+
+    # Read-only: provider display name
+    provider_display = serializers.CharField(source='get_provider_display', read_only=True)
+
+    class Meta:
+        from Tracker.models import TenantLLMProvider
+        model = TenantLLMProvider
+        fields = [
+            'id', 'provider', 'provider_display', 'is_default', 'is_enabled',
+            'model_name', 'full_model_name', 'base_url',
+            'api_key', 'has_api_key',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_has_api_key(self, obj) -> bool:
+        return obj.has_api_key
+
+    def validate(self, attrs):
+        """Validate provider-specific requirements."""
+        provider = attrs.get('provider', getattr(self.instance, 'provider', None))
+        api_key = attrs.get('api_key', '')
+        base_url = attrs.get('base_url', '')
+
+        # OpenAI and Anthropic require API keys (unless updating other fields)
+        if provider in ('openai', 'anthropic'):
+            # Only require API key on create, or if explicitly clearing it
+            if not self.instance and not api_key:
+                raise ValidationError({
+                    'api_key': f'API key is required for {provider}.'
+                })
+
+        # Ollama requires base_url
+        if provider == 'ollama':
+            if not self.instance and not base_url:
+                # Default to localhost if not provided
+                attrs['base_url'] = 'http://localhost:11434'
+
+        return attrs
+
+
+class TenantLLMProviderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing tenant LLM provider configurations.
+
+    Only accessible by tenant admins.
+
+    Endpoints:
+    - GET /api/tenant/llm-providers/ - List all providers for current tenant
+    - POST /api/tenant/llm-providers/ - Create a new provider config
+    - GET /api/tenant/llm-providers/{id}/ - Get provider details
+    - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+    - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+    - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+    """
+    serializer_class = TenantLLMProviderSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        from Tracker.models import TenantLLMProvider
+
+        if getattr(self, 'swagger_fake_view', False):
+            return TenantLLMProvider.objects.none()
+
+        tenant = getattr(self.request, 'tenant', None)
+        if not tenant:
+            return TenantLLMProvider.objects.none()
+
+        return TenantLLMProvider.objects.filter(tenant=tenant)
+
+    def _is_tenant_admin(self, user):
+        """Check if user is a tenant admin."""
+        if user.is_superuser or user.is_staff:
+            return True
+        return user.has_tenant_perm('change_tenantgroup')
+
+    def _check_admin(self, request):
+        """Raise PermissionDenied if user is not a tenant admin."""
+        if not self._is_tenant_admin(request.user):
+            raise PermissionDenied("Only tenant administrators can manage LLM providers.")
+
+    def list(self, request, *args, **kwargs):
+        self._check_admin(request)
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        self._check_admin(request)
+        return super().retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        self._check_admin(request)
+
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            raise TenantContextRequired()
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Check if provider already exists for this tenant
+        from Tracker.models import TenantLLMProvider
+        provider = serializer.validated_data.get('provider')
+        if TenantLLMProvider.objects.filter(tenant=tenant, provider=provider).exists():
+            raise ValidationError({
+                'provider': f'A configuration for {provider} already exists. Update it instead.'
+            })
+
+        # Create with tenant set
+        instance = serializer.save(tenant=tenant)
+
+        return Response(
+            TenantLLMProviderSerializer(instance).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    def update(self, request, *args, **kwargs):
+        self._check_admin(request)
+
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        # Don't clear API key if not provided in partial update
+        if partial and 'api_key' not in request.data:
+            serializer.validated_data.pop('api_key', None)
+
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        self._check_admin(request)
+
+        instance = self.get_object()
+
+        # Warn if deleting the default provider
+        if instance.is_default:
+            # Find another provider to make default, or just delete
+            from Tracker.models import TenantLLMProvider
+            other = TenantLLMProvider.objects.filter(
+                tenant=instance.tenant,
+                is_enabled=True
+            ).exclude(pk=instance.pk).first()
+
+            if other:
+                other.is_default = True
+                other.save()
+
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='set-default')
+    def set_default(self, request, id=None):
+        """Set this provider as the default for the tenant."""
+        self._check_admin(request)
+
+        instance = self.get_object()
+
+        if not instance.is_enabled:
+            raise ValidationError({'detail': 'Cannot set a disabled provider as default.'})
+
+        instance.is_default = True
+        instance.save()  # save() handles clearing other defaults
+
+        return Response({
+            'success': True,
+            'message': f'{instance.get_provider_display()} is now the default provider.'
+        })
+
+    @action(detail=False, methods=['get'], url_path='default')
+    def get_default(self, request):
+        """Get the default provider configuration for the current tenant."""
+        # This endpoint can be accessed by any authenticated user (for AI features)
+        tenant = getattr(request, 'tenant', None)
+        if not tenant:
+            raise TenantContextRequired()
+
+        from Tracker.models import TenantLLMProvider
+        provider = TenantLLMProvider.objects.filter(
+            tenant=tenant,
+            is_default=True,
+            is_enabled=True
+        ).first()
+
+        if not provider:
+            # Fall back to any enabled provider
+            provider = TenantLLMProvider.objects.filter(
+                tenant=tenant,
+                is_enabled=True
+            ).first()
+
+        if not provider:
+            return Response({
+                'configured': False,
+                'message': 'No LLM provider configured for this tenant.'
+            })
+
+        return Response({
+            'configured': True,
+            'provider': provider.provider,
+            'provider_display': provider.get_provider_display(),
+            'model_name': provider.model_name,
+            'full_model_name': provider.full_model_name,
+        })

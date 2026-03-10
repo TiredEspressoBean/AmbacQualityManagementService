@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'encrypted_model_fields',
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -437,6 +438,18 @@ AI_EMBED_MAX_FILE_BYTES = int(os.getenv("AI_EMBED_MAX_FILE_BYTES", "2000000"))  
 AI_EMBED_CHUNK_CHARS    = int(os.getenv("AI_EMBED_CHUNK_CHARS", "1200"))
 AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
 AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))
+
+# Encryption key for sensitive fields (LLM API keys, etc.)
+# Required by django-encrypted-model-fields
+# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+_encryption_key = os.getenv("FIELD_ENCRYPTION_KEY")
+if not _encryption_key:
+    if DEBUG:
+        # Dev-only fallback key (valid Fernet key) - DO NOT use in production
+        _encryption_key = "YJL3Y7Fvwl0qAOhVwVNlUlYahNcKrQIr6_P-VEMyrpE="
+    else:
+        raise ValueError("FIELD_ENCRYPTION_KEY environment variable is required in production")
+FIELD_ENCRYPTION_KEY = _encryption_key
 
 # ---------------- Redis cache ----------------
 # Redis cache - use REDIS_URL from Railway, append /1 for cache db

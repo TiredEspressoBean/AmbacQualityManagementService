@@ -32,6 +32,9 @@ from .core import (
     # Tenant model (multi-tenancy)
     Tenant,
 
+    # Tenant LLM Provider (per-tenant AI configuration)
+    TenantLLMProvider,
+
     # Facility (multi-site support)
     Facility,
 
@@ -269,6 +272,7 @@ __all__ = [
     'SecureManager',
     'SecureModel',
     'Tenant',
+    'TenantLLMProvider',
     'Facility',
     'TenantGroup',
     'UserRole',

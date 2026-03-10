@@ -25,7 +25,7 @@ from rest_framework.routers import DefaultRouter
 from Tracker import views
 # Note: Updated to use new modular viewsets structure
 from Tracker.viewsets import *
-from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet
+from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet, LLMConfigViewSet
 from Tracker.api_views import get_csrf_token, get_user_api_token
 from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
@@ -38,7 +38,7 @@ from Tracker.health_views import health_check, ready_check
 from Tracker.viewsets.tenant import (
     CurrentTenantView, TenantSettingsView, TenantLogoView, TenantViewSet, SignupView,
     TenantGroupViewSet, PermissionListView, PresetListView, EffectivePermissionsView,
-    UserTenantsView, SwitchTenantView, DemoResetView
+    UserTenantsView, SwitchTenantView, DemoResetView, TenantLLMProviderViewSet
 )
 
 urlpatterns = [
@@ -201,6 +201,7 @@ router.register("User", UserViewSet, basename="User")
 router.register("Groups", GroupViewSet, basename="Groups")
 router.register("TenantGroups", TenantGroupViewSet, basename="TenantGroups")
 router.register("Tenants", TenantViewSet, basename="Tenants")
+router.register("TenantLLMProviders", TenantLLMProviderViewSet, basename="TenantLLMProviders")
 router.register("QuarantineDispositions", QuarantineDispositionViewSet, basename="QuarantineDispositions")
 router.register("HeatMapAnnotation", HeatMapAnnotationsViewSet, basename="HeatMapAnnotation")
 router.register("ThreeDModels", ThreeDModelViewSet, basename="ThreeDModels")
@@ -237,6 +238,7 @@ router.register("StepExecutionMeasurements", StepExecutionMeasurementViewSet, ba
 router.register("ai/search", AISearchViewSet, basename="ai-search")
 router.register("ai/query", QueryViewSet, basename="ai-query")
 router.register("ai/embedding", EmbeddingViewSet, basename="ai-embedding")
+router.register("ai/llm", LLMConfigViewSet, basename="ai-llm")
 
 # Scope endpoint for graph traversal queries
 router.register("scope", ScopeView, basename="scope")
