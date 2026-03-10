@@ -351,20 +351,19 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
 
+        # Start with the base queryset from parent (applies standard mixin processing)
+        qs = super().get_queryset().select_related('parent_company', 'tenant')
+
         user = self.request.user
-        # Get tenant from request context (set by middleware) - this is the key difference from other viewsets
-        request_tenant = self.tenant
+        request_tenant = self.tenant  # From middleware
 
         # Platform staff (UQMES) see all users, optionally filtered by request tenant
         if user.is_staff or user.is_superuser:
-            qs = User.objects.all()
-            # If a tenant context is set (via header/subdomain), filter to that tenant
             if request_tenant:
-                qs = qs.filter(tenant=request_tenant)
-            return qs.select_related('parent_company', 'tenant')
+                return qs.filter(tenant=request_tenant)
+            return qs
 
         # Check tenant group membership for the request tenant context
-        # Use request tenant if available, otherwise fall back to user's tenant
         tenant_for_groups = request_tenant or user.tenant
         user_group_names = set()
         if tenant_for_groups and hasattr(user, 'get_tenant_group_names'):
@@ -374,18 +373,18 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
 
         # Internal tenant users see all users in the request tenant context
         if request_tenant and not is_customer_only:
-            return User.objects.filter(tenant=request_tenant).select_related('parent_company', 'tenant')
+            return qs.filter(tenant=request_tenant)
 
         # Fallback: use user's own tenant if no request tenant context
         if user.tenant and not is_customer_only:
-            return User.objects.filter(tenant=user.tenant).select_related('parent_company', 'tenant')
+            return qs.filter(tenant=user.tenant)
 
         # Portal/Customer users see only users from their company
         if user.parent_company:
-            return User.objects.filter(parent_company=user.parent_company).select_related('parent_company', 'tenant')
+            return qs.filter(parent_company=user.parent_company)
 
         # No tenant and no company - can only see themselves
-        return User.objects.filter(id=user.id).select_related('parent_company', 'tenant')
+        return qs.filter(id=user.id)
 
     @extend_schema(
         responses={200: OpenApiResponse(response=dict, description="Debug info about current user's filtering context")}
