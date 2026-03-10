@@ -56,7 +56,7 @@ export function UserEditorPage() {
             modelName="Users"
             useList={useUsersList}
             columns={[
-                { header: "Username", renderCell: (user: any) => user.username, priority: 1 },
+                { header: "Username", renderCell: (user: any) => user.username || user.email || "-", priority: 1 },
                 {
                     header: "Full Name",
                     renderCell: (user: any) => {
@@ -68,7 +68,21 @@ export function UserEditorPage() {
                     priority: 1
                 },
                 { header: "Email", renderCell: (user: any) => user.email || "-", priority: 1 },
+                { header: "Tenant", renderCell: (user: any) => user.tenant?.name || "-", priority: 3 },
                 { header: "Company", renderCell: (user: any) => user.parent_company?.name || "-", priority: 5 },
+                {
+                    header: "Type",
+                    renderCell: (user: any) => (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            user.user_type === 'PORTAL'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}>
+                            {user.user_type_display || user.user_type || 'Internal'}
+                        </span>
+                    ),
+                    priority: 2
+                },
                 {
                     header: "Status",
                     renderCell: (user: any) => (
@@ -84,7 +98,7 @@ export function UserEditorPage() {
                             )}
                             {user.is_staff && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    Staff
+                                    Platform Staff
                                 </span>
                             )}
                         </div>

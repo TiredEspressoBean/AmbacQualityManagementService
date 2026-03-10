@@ -154,6 +154,7 @@ class UserFilter(TenantFilterMixin, django_filters.FilterSet):
     is_staff = django_filters.BooleanFilter()
     is_active = django_filters.BooleanFilter()
     archived = django_filters.BooleanFilter()
+    user_type = django_filters.ChoiceFilter(choices=User.UserType.choices)
 
     parent_company = django_filters.ModelChoiceFilter(queryset=Companies.objects.none())
 
@@ -169,7 +170,7 @@ class UserFilter(TenantFilterMixin, django_filters.FilterSet):
         model = User
         fields = [
             "username", "first_name", "last_name", "email",
-            "is_staff", "is_active", "archived",
+            "is_staff", "is_active", "archived", "user_type",
             "parent_company",
             "date_joined__gte", "date_joined__lte"
         ]

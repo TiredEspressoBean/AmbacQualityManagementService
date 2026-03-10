@@ -723,11 +723,15 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     first_name: { label: 'First Name' },
                     last_name: { label: 'Last Name' },
                     email: { label: 'Email' },
-                    is_staff: { label: 'Staff Status' },
+                    is_staff: { label: 'Platform Staff' },
                     is_active: { label: 'Active Status' },
                     date_joined: { label: 'Date Joined' },
                     parent_company: { label: 'Parent Company ID' },
                     parent_company_name: { label: 'Company Name' },
+                    // New fields
+                    user_type: { label: 'User Type' },
+                    user_type_display: { label: 'User Type' },
+                    tenant_name: { label: 'Tenant' },
                 },
                 customRenderers: {
                     is_staff: commonRenderers.boolean,
@@ -740,6 +744,8 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         const fullName = `${firstName} ${lastName}`.trim();
                         return fullName || data?.username || data?.email || "—";
                     },
+                    user_type_display: (value: any) => value || '—',
+                    tenant_name: (_value: any, data: any) => data?.tenant?.name || '—',
                 },
                 sections: [
                     {
@@ -748,11 +754,11 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     },
                     {
                         title: 'Account Status',
-                        fields: ['is_active', 'is_staff', 'date_joined'],
+                        fields: ['is_active', 'user_type_display', 'is_staff', 'date_joined'],
                     },
                     {
-                        title: 'Company Association',
-                        fields: ['parent_company_name'],
+                        title: 'Organization',
+                        fields: ['tenant_name', 'parent_company_name'],
                         auditLog: true,
                     },
                 ],

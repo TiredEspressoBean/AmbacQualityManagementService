@@ -151,13 +151,22 @@ class UserDetailSerializer(serializers.ModelSerializer):
     parent_company = CompanySerializer(read_only=True, allow_null=True)
     parent_company_id = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), source='parent_company',
                                                            write_only=True, required=False)
+    user_type = serializers.CharField(read_only=True)
+    user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
 
     class Meta:
         model = User
         fields = (
-        'id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'date_joined', 'parent_company',
-        'parent_company_id')
-        read_only_fields = ('date_joined',)
+            'id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'date_joined',
+            'parent_company', 'parent_company_id', 'user_type', 'user_type_display')
+        read_only_fields = ('date_joined', 'user_type', 'user_type_display')
+
+
+class TenantMinimalSerializer(serializers.Serializer):
+    """Minimal tenant serializer for nested use"""
+    id = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    slug = serializers.SlugField(read_only=True)
 
 
 class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
@@ -169,13 +178,19 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
     groups = serializers.SerializerMethodField()
     group_ids = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all(), source='groups',
                                                    write_only=True, required=False)
+    # Tenant info (read-only)
+    tenant = TenantMinimalSerializer(read_only=True, allow_null=True)
+    # User type (INTERNAL/PORTAL)
+    user_type = serializers.CharField(read_only=True)
+    user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
-            'parent_company', 'parent_company_id', 'groups', 'group_ids')
-        read_only_fields = ('date_joined', 'full_name')
+            'parent_company', 'parent_company_id', 'groups', 'group_ids',
+            'tenant', 'user_type', 'user_type_display')
+        read_only_fields = ('date_joined', 'full_name', 'tenant', 'user_type', 'user_type_display')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
