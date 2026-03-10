@@ -87,7 +87,7 @@ DEMO_QUALITY_REPORTS = [
         'part': 'INJ-0038-008',
         'step': 'Flow Testing',
         'status': 'FAIL',  # UPPERCASE enum value
-        'defect': 'Flow rate high',
+        'defect': 'Flow rate out of spec',
         'description': 'Flow rate 145 mL/min exceeds USL of 140 mL/min',
         'days_ago': 16,
         'linked_to_capa': True,
@@ -107,7 +107,7 @@ DEMO_QUALITY_REPORTS = [
         'part': 'INJ-0038-011',
         'step': 'Flow Testing',
         'status': 'FAIL',  # UPPERCASE enum value
-        'defect': 'Flow rate OOS',
+        'defect': 'Flow rate out of spec',
         'description': 'Flow rate 138 mL/min - SPC rule violation detected',
         'days_ago': 14,
         'linked_to_capa': True,
@@ -118,7 +118,7 @@ DEMO_QUALITY_REPORTS = [
         'part': 'INJ-0042-017',
         'step': 'Flow Testing',
         'status': 'FAIL',  # UPPERCASE enum value
-        'defect': 'Flow rate OOS',
+        'defect': 'Flow rate out of spec',
         'description': 'Flow rate 98 mL/min - below LSL of 100 mL/min. Awaiting disposition.',
         'days_ago': 2,
         'linked_to_capa': False,
@@ -213,6 +213,12 @@ DEMO_QUALITY_ERRORS = [
     {
         'error_name': 'Surface porosity',
         'error_example': 'Visible pores in nozzle tip indicating casting defect',
+        'part_type': 'Fuel Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Spray pattern failure',
+        'error_example': 'Irregular or asymmetric spray pattern not meeting specification',
         'part_type': 'Fuel Injector',
         'requires_3d_annotation': True,
     },
