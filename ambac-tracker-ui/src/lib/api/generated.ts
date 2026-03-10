@@ -4916,6 +4916,70 @@ export type TenantGroup = {
   created_at: string;
   updated_at: string;
 };
+export type PaginatedTenantLLMProviderList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<TenantLLMProvider>;
+};
+export type TenantLLMProvider = {
+  id: string;
+  /**
+     * LLM provider type
+    
+    * `ollama` - Ollama (Local/Self-hosted)
+    * `openai` - OpenAI
+    * `anthropic` - Anthropic
+     */
+  provider: ProviderEnum;
+  provider_display: string;
+  is_default?: /**
+   * Use this provider as the default for AI features
+   */
+  boolean | undefined;
+  is_enabled?: /**
+   * Whether this provider configuration is active
+   */
+  boolean | undefined;
+  /**
+   * Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620', 'llama3')
+   *
+   * @maxLength 100
+   */
+  model_name: string;
+  full_model_name: string;
+  base_url?: /**
+   * Base URL for Ollama server (e.g., 'http://localhost:11434')
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+  has_api_key: boolean;
+  created_at: string;
+  updated_at: string;
+};
+export type ProviderEnum =
+  /**
+   * * `ollama` - Ollama (Local/Self-hosted)
+   * `openai` - OpenAI
+   * `anthropic` - Anthropic
+   *
+   * @enum ollama, openai, anthropic
+   */
+  "ollama" | "openai" | "anthropic";
 export type PaginatedTenantList = {
   /**
    * @example 123
@@ -5368,6 +5432,17 @@ export type User = {
   date_joined: string;
   parent_company: Company;
   groups: Array<{}>;
+  tenant: TenantMinimal;
+  user_type: string;
+  user_type_display: string;
+};
+export type TenantMinimal = {
+  id: string;
+  name: string;
+  /**
+   * @pattern ^[-a-zA-Z0-9_]+$
+   */
+  slug: string;
 };
 export type PaginatedUserSelectList = {
   /**
@@ -6729,6 +6804,41 @@ export type PatchedStepsRequest = Partial<{
   revisit_role: number | null;
   archived: boolean;
 }>;
+export type PatchedTenantLLMProviderRequest = Partial<{
+  /**
+     * LLM provider type
+    
+    * `ollama` - Ollama (Local/Self-hosted)
+    * `openai` - OpenAI
+    * `anthropic` - Anthropic
+     */
+  provider: ProviderEnum;
+  /**
+   * Use this provider as the default for AI features
+   */
+  is_default: boolean;
+  /**
+   * Whether this provider configuration is active
+   */
+  is_enabled: boolean;
+  /**
+   * Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620', 'llama3')
+   *
+   * @minLength 1
+   * @maxLength 100
+   */
+  model_name: string;
+  /**
+   * Base URL for Ollama server (e.g., 'http://localhost:11434')
+   *
+   * @maxLength 200
+   */
+  base_url: string;
+  /**
+   * API key (write-only, never returned in responses)
+   */
+  api_key: string;
+}>;
 export type PatchedTenantRequest = Partial<{
   /**
    * Display name of the organization
@@ -7833,6 +7943,41 @@ export type TenantCreateRequest = {
    */
   string | undefined;
 };
+export type TenantLLMProviderRequest = {
+  /**
+     * LLM provider type
+    
+    * `ollama` - Ollama (Local/Self-hosted)
+    * `openai` - OpenAI
+    * `anthropic` - Anthropic
+     */
+  provider: ProviderEnum;
+  is_default?: /**
+   * Use this provider as the default for AI features
+   */
+  boolean | undefined;
+  is_enabled?: /**
+   * Whether this provider configuration is active
+   */
+  boolean | undefined;
+  /**
+   * Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620', 'llama3')
+   *
+   * @minLength 1
+   * @maxLength 100
+   */
+  model_name: string;
+  base_url?: /**
+   * Base URL for Ollama server (e.g., 'http://localhost:11434')
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+  api_key?: /**
+   * API key (write-only, never returned in responses)
+   */
+  string | undefined;
+};
 export type TenantRequest = {
   /**
    * Display name of the organization
@@ -7954,6 +8099,8 @@ export type UserDetail = {
   boolean | undefined;
   date_joined: string;
   parent_company: Company;
+  user_type: string;
+  user_type_display: string;
 };
 export type WorkOrder = {
   id: string;
@@ -9190,6 +9337,8 @@ const UserDetail = z
     is_active: z.boolean().optional(),
     date_joined: z.string().datetime({ offset: true }),
     parent_company: Company.nullable(),
+    user_type: z.string(),
+    user_type_display: z.string(),
   })
   .passthrough();
 const UserDetailRequest = z
@@ -11961,6 +12110,51 @@ const PatchedTenantGroupRequest = z
   .partial()
   .passthrough();
 const RemoveMemberResponse = z.object({ status: z.string() }).passthrough();
+const ProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
+const TenantLLMProvider = z
+  .object({
+    id: z.string().uuid(),
+    provider: ProviderEnum,
+    provider_display: z.string(),
+    is_default: z.boolean().optional(),
+    is_enabled: z.boolean().optional(),
+    model_name: z.string().max(100),
+    full_model_name: z.string(),
+    base_url: z.string().max(200).url().optional(),
+    has_api_key: z.boolean(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const PaginatedTenantLLMProviderList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(TenantLLMProvider),
+  })
+  .passthrough();
+const TenantLLMProviderRequest = z
+  .object({
+    provider: ProviderEnum,
+    is_default: z.boolean().optional(),
+    is_enabled: z.boolean().optional(),
+    model_name: z.string().min(1).max(100),
+    base_url: z.string().max(200).url().optional(),
+    api_key: z.string().optional(),
+  })
+  .passthrough();
+const PatchedTenantLLMProviderRequest = z
+  .object({
+    provider: ProviderEnum,
+    is_default: z.boolean(),
+    is_enabled: z.boolean(),
+    model_name: z.string().min(1).max(100),
+    base_url: z.string().max(200).url(),
+    api_key: z.string(),
+  })
+  .partial()
+  .passthrough();
 const TierEnum = z.enum(["STARTER", "PRO", "ENTERPRISE"]);
 const TenantStatusEnum = z.enum([
   "ACTIVE",
@@ -12405,6 +12599,13 @@ const PatchedTrainingTypeRequest = z
   })
   .partial()
   .passthrough();
+const TenantMinimal = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
+  })
+  .passthrough();
 const User = z
   .object({
     id: z.number().int(),
@@ -12421,6 +12622,9 @@ const User = z
     date_joined: z.string().datetime({ offset: true }),
     parent_company: Company.nullable(),
     groups: z.array(z.object({}).partial().passthrough()),
+    tenant: TenantMinimal.nullable(),
+    user_type: z.string(),
+    user_type_display: z.string(),
   })
   .passthrough();
 const PaginatedUserList = z
@@ -12745,6 +12949,16 @@ const EmbedQueryRequestRequest = z
   .passthrough();
 const EmbedQueryResponse = z
   .object({ embedding: z.array(z.number()) })
+  .passthrough();
+const LLMConfigResponse = z
+  .object({
+    configured: z.boolean(),
+    provider: z.string(),
+    model: z.string(),
+    full_model_name: z.string(),
+    api_key: z.string(),
+    base_url: z.string(),
+  })
   .passthrough();
 const ExecuteQueryResponse = z
   .object({
@@ -13420,6 +13634,7 @@ const TenantSettingsResponse = z
     address: z.string().nullable(),
     default_timezone: z.string(),
     logo_url: z.string().nullable(),
+    allowed_domains: z.array(z.string()),
   })
   .passthrough();
 const PatchedTenantSettingsUpdateRequestRequest = z
@@ -13431,6 +13646,7 @@ const PatchedTenantSettingsUpdateRequestRequest = z
     website: z.string().url().nullable(),
     address: z.string().nullable(),
     default_timezone: z.string().min(1),
+    allowed_domains: z.array(z.string().min(1)),
   })
   .partial()
   .passthrough();
@@ -13446,6 +13662,7 @@ const TenantSettingsUpdateResponse = z
     address: z.string().nullable(),
     default_timezone: z.string(),
     logo_url: z.string().nullable(),
+    allowed_domains: z.array(z.string()),
   })
   .passthrough();
 const SignupRequest = z
@@ -14010,6 +14227,11 @@ export const schemas = {
   TenantGroupDetail,
   PatchedTenantGroupRequest,
   RemoveMemberResponse,
+  ProviderEnum,
+  TenantLLMProvider,
+  PaginatedTenantLLMProviderList,
+  TenantLLMProviderRequest,
+  PatchedTenantLLMProviderRequest,
   TierEnum,
   TenantStatusEnum,
   Tenant,
@@ -14048,6 +14270,7 @@ export const schemas = {
   PaginatedTrainingTypeList,
   TrainingTypeRequest,
   PatchedTrainingTypeRequest,
+  TenantMinimal,
   User,
   PaginatedUserList,
   UserRequest,
@@ -14081,6 +14304,7 @@ export const schemas = {
   WorkOrderStepHistoryResponse,
   EmbedQueryRequestRequest,
   EmbedQueryResponse,
+  LLMConfigResponse,
   ExecuteQueryResponse,
   ExecuteQueryRequestRequest,
   QueryRequest,
@@ -14193,6 +14417,17 @@ const endpoints = makeApi([
       },
     ],
     response: EmbedQueryResponse,
+  },
+  {
+    method: "get",
+    path: "/api/ai/llm/config/",
+    alias: "api_ai_llm_config_retrieve",
+    description: `Get the tenant&#x27;s default LLM provider configuration.
+
+Returns the full configuration including decrypted API key.
+This endpoint is designed for server-to-server calls from LangGraph.`,
+    requestFormat: "json",
+    response: LLMConfigResponse,
   },
   {
     method: "get",
@@ -22415,6 +22650,11 @@ Import/Export endpoints (auto-configured from model):
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
     ],
     response: z.instanceof(File),
   },
@@ -22846,6 +23086,11 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
         schema: z.string().optional(),
       },
       {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "status__in",
         type: "Query",
         schema: z.array(z.string()).optional(),
@@ -23246,6 +23491,11 @@ Import/Export endpoints (auto-configured from model):
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "part_type",
@@ -28180,6 +28430,204 @@ Returns added/removed permissions vs the preset template.`,
   },
   {
     method: "get",
+    path: "/api/TenantLLMProviders/",
+    alias: "api_TenantLLMProviders_list",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedTenantLLMProviderList,
+  },
+  {
+    method: "post",
+    path: "/api/TenantLLMProviders/",
+    alias: "api_TenantLLMProviders_create",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantLLMProviderRequest,
+      },
+    ],
+    response: TenantLLMProvider,
+  },
+  {
+    method: "get",
+    path: "/api/TenantLLMProviders/:id/",
+    alias: "api_TenantLLMProviders_retrieve",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantLLMProvider,
+  },
+  {
+    method: "put",
+    path: "/api/TenantLLMProviders/:id/",
+    alias: "api_TenantLLMProviders_update",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantLLMProviderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantLLMProvider,
+  },
+  {
+    method: "patch",
+    path: "/api/TenantLLMProviders/:id/",
+    alias: "api_TenantLLMProviders_partial_update",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedTenantLLMProviderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantLLMProvider,
+  },
+  {
+    method: "delete",
+    path: "/api/TenantLLMProviders/:id/",
+    alias: "api_TenantLLMProviders_destroy",
+    description: `ViewSet for managing tenant LLM provider configurations.
+
+Only accessible by tenant admins.
+
+Endpoints:
+- GET /api/tenant/llm-providers/ - List all providers for current tenant
+- POST /api/tenant/llm-providers/ - Create a new provider config
+- GET /api/tenant/llm-providers/{id}/ - Get provider details
+- PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+- DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+- POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/TenantLLMProviders/:id/set-default/",
+    alias: "api_TenantLLMProviders_set_default_create",
+    description: `Set this provider as the default for the tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantLLMProviderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantLLMProvider,
+  },
+  {
+    method: "get",
+    path: "/api/TenantLLMProviders/default/",
+    alias: "api_TenantLLMProviders_default_retrieve",
+    description: `Get the default provider configuration for the current tenant.`,
+    requestFormat: "json",
+    response: TenantLLMProvider,
+  },
+  {
+    method: "get",
     path: "/api/Tenants/",
     alias: "api_Tenants_list",
     description: `ViewSet for managing tenants (platform admin only).
@@ -29653,6 +30101,11 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.string().optional(),
       },
       {
+        name: "user_type",
+        type: "Query",
+        schema: z.enum(["INTERNAL", "PORTAL"]).optional(),
+      },
+      {
         name: "username",
         type: "Query",
         schema: z.string().optional(),
@@ -29773,6 +30226,14 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: BulkCompanyAssignmentInputRequest,
       },
     ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/User/debug-filter/",
+    alias: "api_User_debug_filter_retrieve",
+    description: `Debug endpoint to show what filtering is applied to the current user`,
+    requestFormat: "json",
     response: z.object({}).partial().passthrough(),
   },
   {
@@ -30510,6 +30971,11 @@ Import/Export endpoints (auto-configured from model):
         name: "filename",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.instanceof(File),

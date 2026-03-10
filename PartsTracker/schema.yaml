@@ -10983,6 +10983,11 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
       - Import/Export
       security:
@@ -11418,6 +11423,11 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       - in: query
         name: part_type
         schema:
@@ -12169,6 +12179,11 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       - in: query
         name: status__in
         schema:
@@ -17922,6 +17937,298 @@ paths:
               schema:
                 $ref: '#/components/schemas/TenantGroup'
           description: ''
+  /api/TenantLLMProviders/:
+    get:
+      operationId: api_TenantLLMProviders_list
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTenantLLMProviderList'
+          description: ''
+    post:
+      operationId: api_TenantLLMProviders_create
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
+  /api/TenantLLMProviders/{id}/:
+    get:
+      operationId: api_TenantLLMProviders_retrieve
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tenant LLM Provider.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
+    put:
+      operationId: api_TenantLLMProviders_update
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tenant LLM Provider.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
+    patch:
+      operationId: api_TenantLLMProviders_partial_update
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tenant LLM Provider.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantLLMProviderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantLLMProviderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantLLMProviderRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
+    delete:
+      operationId: api_TenantLLMProviders_destroy
+      description: |-
+        ViewSet for managing tenant LLM provider configurations.
+
+        Only accessible by tenant admins.
+
+        Endpoints:
+        - GET /api/tenant/llm-providers/ - List all providers for current tenant
+        - POST /api/tenant/llm-providers/ - Create a new provider config
+        - GET /api/tenant/llm-providers/{id}/ - Get provider details
+        - PATCH /api/tenant/llm-providers/{id}/ - Update provider config
+        - DELETE /api/tenant/llm-providers/{id}/ - Delete provider config
+        - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tenant LLM Provider.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/TenantLLMProviders/{id}/set-default/:
+    post:
+      operationId: api_TenantLLMProviders_set_default_create
+      description: Set this provider as the default for the tenant.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Tenant LLM Provider.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantLLMProviderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
+  /api/TenantLLMProviders/default/:
+    get:
+      operationId: api_TenantLLMProviders_default_retrieve
+      description: Get the default provider configuration for the current tenant.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantLLMProvider'
+          description: ''
   /api/Tenants/:
     get:
       operationId: api_Tenants_list
@@ -20008,6 +20315,18 @@ paths:
         schema:
           type: string
       - in: query
+        name: user_type
+        schema:
+          type: string
+          enum:
+          - INTERNAL
+          - PORTAL
+        description: |-
+          Type of user account
+
+          * `INTERNAL` - Internal
+          * `PORTAL` - Portal
+      - in: query
         name: username
         schema:
           type: string
@@ -20217,6 +20536,24 @@ paths:
                 type: object
                 additionalProperties: {}
           description: Bulk company assignment response
+  /api/User/debug-filter/:
+    get:
+      operationId: api_User_debug_filter_retrieve
+      description: Debug endpoint to show what filtering is applied to the current
+        user
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Debug info about current user's filtering context
   /api/User/export-excel/:
     get:
       operationId: api_User_export_excel_retrieve
@@ -21223,6 +21560,11 @@ paths:
         schema:
           type: string
         description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
       tags:
       - Import/Export
       security:
@@ -21413,6 +21755,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmbedQueryResponse'
+          description: ''
+  /api/ai/llm/config/:
+    get:
+      operationId: api_ai_llm_config_retrieve
+      description: |-
+        Get the tenant's default LLM provider configuration.
+
+        Returns the full configuration including decrypted API key.
+        This endpoint is designed for server-to-server calls from LangGraph.
+      tags:
+      - ai-config
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LLMConfigResponse'
           description: ''
   /api/ai/query/execute_read_only/:
     get:
@@ -29449,6 +29811,28 @@ components:
       - query
       - results
       - total_results
+    LLMConfigResponse:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        provider:
+          type: string
+        model:
+          type: string
+        full_model_name:
+          type: string
+        api_key:
+          type: string
+        base_url:
+          type: string
+      required:
+      - api_key
+      - base_url
+      - configured
+      - full_model_name
+      - model
+      - provider
     ListMetadataResponse:
       type: object
       properties:
@@ -31686,6 +32070,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TenantGroup'
+    PaginatedTenantLLMProviderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantLLMProvider'
     PaginatedTenantList:
       type: object
       required:
@@ -34346,6 +34753,44 @@ components:
           maxLength: 100
         description:
           type: string
+    PatchedTenantLLMProviderRequest:
+      type: object
+      description: |-
+        Serializer for TenantLLMProvider.
+
+        API keys are write-only for security - they are never returned in responses.
+        Instead, we return has_api_key to indicate if a key is configured.
+      properties:
+        provider:
+          allOf:
+          - $ref: '#/components/schemas/ProviderEnum'
+          description: |-
+            LLM provider type
+
+            * `ollama` - Ollama (Local/Self-hosted)
+            * `openai` - OpenAI
+            * `anthropic` - Anthropic
+        is_default:
+          type: boolean
+          description: Use this provider as the default for AI features
+        is_enabled:
+          type: boolean
+          description: Whether this provider configuration is active
+        model_name:
+          type: string
+          minLength: 1
+          description: Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620',
+            'llama3')
+          maxLength: 100
+        base_url:
+          type: string
+          format: uri
+          description: Base URL for Ollama server (e.g., 'http://localhost:11434')
+          maxLength: 200
+        api_key:
+          type: string
+          writeOnly: true
+          description: API key (write-only, never returned in responses)
     PatchedTenantRequest:
       type: object
       description: Serializer for Tenant model.
@@ -34430,6 +34875,11 @@ components:
         default_timezone:
           type: string
           minLength: 1
+        allowed_domains:
+          type: array
+          items:
+            type: string
+            minLength: 1
     PatchedThreeDModelRequest:
       type: object
       description: |-
@@ -35246,6 +35696,16 @@ components:
         * `PROCESSING` - Processing
         * `COMPLETED` - Completed
         * `FAILED` - Failed
+    ProviderEnum:
+      enum:
+      - ollama
+      - openai
+      - anthropic
+      type: string
+      description: |-
+        * `ollama` - Ollama (Local/Self-hosted)
+        * `openai` - OpenAI
+        * `anthropic` - Anthropic
     QADocumentsResponse:
       type: object
       properties:
@@ -38829,6 +39289,110 @@ components:
       - tier
       - trial_ends_at
       - website
+    TenantLLMProvider:
+      type: object
+      description: |-
+        Serializer for TenantLLMProvider.
+
+        API keys are write-only for security - they are never returned in responses.
+        Instead, we return has_api_key to indicate if a key is configured.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          allOf:
+          - $ref: '#/components/schemas/ProviderEnum'
+          description: |-
+            LLM provider type
+
+            * `ollama` - Ollama (Local/Self-hosted)
+            * `openai` - OpenAI
+            * `anthropic` - Anthropic
+        provider_display:
+          type: string
+          readOnly: true
+        is_default:
+          type: boolean
+          description: Use this provider as the default for AI features
+        is_enabled:
+          type: boolean
+          description: Whether this provider configuration is active
+        model_name:
+          type: string
+          description: Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620',
+            'llama3')
+          maxLength: 100
+        full_model_name:
+          type: string
+          readOnly: true
+        base_url:
+          type: string
+          format: uri
+          description: Base URL for Ollama server (e.g., 'http://localhost:11434')
+          maxLength: 200
+        has_api_key:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - full_model_name
+      - has_api_key
+      - id
+      - model_name
+      - provider
+      - provider_display
+      - updated_at
+    TenantLLMProviderRequest:
+      type: object
+      description: |-
+        Serializer for TenantLLMProvider.
+
+        API keys are write-only for security - they are never returned in responses.
+        Instead, we return has_api_key to indicate if a key is configured.
+      properties:
+        provider:
+          allOf:
+          - $ref: '#/components/schemas/ProviderEnum'
+          description: |-
+            LLM provider type
+
+            * `ollama` - Ollama (Local/Self-hosted)
+            * `openai` - OpenAI
+            * `anthropic` - Anthropic
+        is_default:
+          type: boolean
+          description: Use this provider as the default for AI features
+        is_enabled:
+          type: boolean
+          description: Whether this provider configuration is active
+        model_name:
+          type: string
+          minLength: 1
+          description: Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20240620',
+            'llama3')
+          maxLength: 100
+        base_url:
+          type: string
+          format: uri
+          description: Base URL for Ollama server (e.g., 'http://localhost:11434')
+          maxLength: 200
+        api_key:
+          type: string
+          writeOnly: true
+          description: API key (write-only, never returned in responses)
+      required:
+      - model_name
+      - provider
     TenantLogoDeleteResponse:
       type: object
       properties:
@@ -38845,6 +39409,25 @@ components:
           nullable: true
       required:
       - logo_url
+    TenantMinimal:
+      type: object
+      description: Minimal tenant serializer for nested use
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - id
+      - name
+      - slug
     TenantRequest:
       type: object
       description: Serializer for Tenant model.
@@ -38937,8 +39520,13 @@ components:
         logo_url:
           type: string
           nullable: true
+        allowed_domains:
+          type: array
+          items:
+            type: string
       required:
       - address
+      - allowed_domains
       - contact_email
       - contact_phone
       - default_timezone
@@ -38979,8 +39567,13 @@ components:
         logo_url:
           type: string
           nullable: true
+        allowed_domains:
+          type: array
+          items:
+            type: string
       required:
       - address
+      - allowed_domains
       - contact_email
       - contact_phone
       - default_timezone
@@ -39952,12 +40545,26 @@ components:
             type: object
             additionalProperties: {}
           readOnly: true
+        tenant:
+          allOf:
+          - $ref: '#/components/schemas/TenantMinimal'
+          readOnly: true
+          nullable: true
+        user_type:
+          type: string
+          readOnly: true
+        user_type_display:
+          type: string
+          readOnly: true
       required:
       - date_joined
       - full_name
       - groups
       - id
       - parent_company
+      - tenant
+      - user_type
+      - user_type_display
       - username
     UserDetail:
       type: object
@@ -40003,10 +40610,18 @@ components:
           - $ref: '#/components/schemas/Company'
           readOnly: true
           nullable: true
+        user_type:
+          type: string
+          readOnly: true
+        user_type_display:
+          type: string
+          readOnly: true
       required:
       - date_joined
       - id
       - parent_company
+      - user_type
+      - user_type_display
       - username
     UserDetailRequest:
       type: object

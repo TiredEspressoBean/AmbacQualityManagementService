@@ -338,6 +338,7 @@ class CustomerViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 @with_int_pk_schema
 class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Enhanced User ViewSet with comprehensive filtering, ordering, and search"""
+    queryset = User.objects.all()  # Base queryset - filtered in get_queryset()
     serializer_class = UserSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -351,17 +352,31 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             return User.objects.none()
 
         user = self.request.user
+        # Get tenant from request context (set by middleware) - this is the key difference from other viewsets
+        request_tenant = self.tenant
 
-        # Platform staff (UQMES) see all users
+        # Platform staff (UQMES) see all users, optionally filtered by request tenant
         if user.is_staff or user.is_superuser:
-            return User.objects.all().select_related('parent_company', 'tenant')
+            qs = User.objects.all()
+            # If a tenant context is set (via header/subdomain), filter to that tenant
+            if request_tenant:
+                qs = qs.filter(tenant=request_tenant)
+            return qs.select_related('parent_company', 'tenant')
 
-        # Check tenant group membership
-        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        # Check tenant group membership for the request tenant context
+        # Use request tenant if available, otherwise fall back to user's tenant
+        tenant_for_groups = request_tenant or user.tenant
+        user_group_names = set()
+        if tenant_for_groups and hasattr(user, 'get_tenant_group_names'):
+            user_group_names = user.get_tenant_group_names(tenant_for_groups)
+
         is_customer_only = user_group_names and user_group_names <= {'Customer', 'Customers'}
 
-        # Users with a tenant (internal users) see all users in their tenant
-        # This includes users with any TenantGroup except Customer-only
+        # Internal tenant users see all users in the request tenant context
+        if request_tenant and not is_customer_only:
+            return User.objects.filter(tenant=request_tenant).select_related('parent_company', 'tenant')
+
+        # Fallback: use user's own tenant if no request tenant context
         if user.tenant and not is_customer_only:
             return User.objects.filter(tenant=user.tenant).select_related('parent_company', 'tenant')
 
@@ -379,15 +394,28 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     def debug_filter(self, request):
         """Debug endpoint to show what filtering is applied to the current user"""
         user = request.user
-        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        request_tenant = self.tenant  # From middleware (header/subdomain)
+        tenant_for_groups = request_tenant or user.tenant
+
+        user_group_names = set()
+        if tenant_for_groups and hasattr(user, 'get_tenant_group_names'):
+            user_group_names = user.get_tenant_group_names(tenant_for_groups)
+
         is_customer_only = bool(user_group_names and user_group_names <= {'Customer', 'Customers'})
 
-        # Determine which branch of filtering will be applied
+        # Determine which branch of filtering will be applied (matches get_queryset logic)
         if user.is_staff or user.is_superuser:
-            filter_mode = "staff_all_users"
-            queryset_count = User.objects.count()
+            if request_tenant:
+                filter_mode = "staff_tenant_filtered"
+                queryset_count = User.objects.filter(tenant=request_tenant).count()
+            else:
+                filter_mode = "staff_all_users"
+                queryset_count = User.objects.count()
+        elif request_tenant and not is_customer_only:
+            filter_mode = "request_tenant_users"
+            queryset_count = User.objects.filter(tenant=request_tenant).count()
         elif user.tenant and not is_customer_only:
-            filter_mode = "tenant_users"
+            filter_mode = "user_tenant_users"
             queryset_count = User.objects.filter(tenant=user.tenant).count()
         elif user.parent_company:
             filter_mode = "company_users"
@@ -401,10 +429,17 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             "email": user.email,
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
-            "tenant_id": str(user.tenant_id) if user.tenant_id else None,
-            "tenant_name": user.tenant.name if user.tenant else None,
+            # Request tenant (from middleware)
+            "request_tenant_id": str(request_tenant.id) if request_tenant else None,
+            "request_tenant_name": request_tenant.name if request_tenant else None,
+            "request_tenant_source": getattr(request, 'tenant_source', None),
+            # User's own tenant
+            "user_tenant_id": str(user.tenant_id) if user.tenant_id else None,
+            "user_tenant_name": user.tenant.name if user.tenant else None,
+            # Company
             "parent_company_id": str(user.parent_company_id) if user.parent_company_id else None,
             "parent_company_name": user.parent_company.name if user.parent_company else None,
+            # Groups (evaluated in tenant context)
             "tenant_group_names": list(user_group_names),
             "is_customer_only": is_customer_only,
             "filter_mode": filter_mode,
@@ -835,19 +870,25 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if not user:
             return UserInvitation.objects.none()
 
-        # Apply tenant scoping first
+        # Apply tenant scoping first (uses self.tenant from middleware)
         qs = super().get_queryset().select_related('user', 'invited_by')
 
-        # Platform staff see all
+        # Platform staff see all (already tenant-filtered by super() if request tenant set)
         if user.is_staff or user.is_superuser:
             return qs
 
-        # Check if internal tenant user (has tenant and not Customer-only)
-        user_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        # Check if internal tenant user (using request tenant context)
+        request_tenant = self.tenant
+        tenant_for_groups = request_tenant or user.tenant
+
+        user_group_names = set()
+        if tenant_for_groups and hasattr(user, 'get_tenant_group_names'):
+            user_group_names = user.get_tenant_group_names(tenant_for_groups)
+
         is_customer_only = user_group_names and user_group_names <= {'Customer', 'Customers'}
 
         # Tenant users who aren't Customer-only can see invitations
-        if user.tenant and not is_customer_only:
+        if (request_tenant or user.tenant) and not is_customer_only:
             return qs
         return qs.none()
 
