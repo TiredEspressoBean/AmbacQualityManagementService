@@ -25,6 +25,7 @@ from Tracker.models import (
     QualityReports, QuarantineDisposition, MeasurementResult,
     MeasurementDefinition, Parts, Steps, User, QualityErrorsList,
     QaApproval, SPCBaseline, ChartType, BaselineStatus,
+    QualityReportDefect,
 )
 
 from ..base import BaseSeeder
@@ -352,7 +353,12 @@ class DemoQualitySeeder(BaseSeeder):
         qa_approvals = self._create_qa_approvals(disp_map, qr_map, step_map, qa_users)
         result['qa_approvals'] = qa_approvals
 
+        # Link FAIL quality reports to error types for Pareto analysis
+        defect_links = self._create_defect_links(qr_map, result['error_lists'])
+        result['defect_links'] = defect_links
+
         self.log(f"  Created {len(result['quality_reports'])} quality reports")
+        self.log(f"  Created {len(result['defect_links'])} defect links")
         self.log(f"  Created {len(result['dispositions'])} dispositions")
         self.log(f"  Created {len(result['error_lists'])} quality error types")
         self.log(f"  Created {len(result['qa_approvals'])} QA approvals")
@@ -726,6 +732,60 @@ class DemoQualitySeeder(BaseSeeder):
                     approvals.append(approval)
 
         return approvals
+
+    def _create_defect_links(self, qr_map, error_lists):
+        """
+        Create QualityReportDefect records linking FAIL reports to error types.
+
+        This enables Pareto analysis by connecting quality reports to their defect types.
+
+        Args:
+            qr_map: dict mapping quality report IDs to quality reports
+            error_lists: list of QualityErrorsList objects
+
+        Returns:
+            list of created QualityReportDefect objects
+        """
+        defect_links = []
+
+        # Build error type lookup by name
+        error_by_name = {e.error_name: e for e in error_lists}
+
+        # Link FAIL quality reports to their defect types
+        for qr_data in DEMO_QUALITY_REPORTS:
+            if qr_data.get('status') != 'FAIL':
+                continue
+
+            defect_name = qr_data.get('defect')
+            if not defect_name:
+                continue
+
+            qr = qr_map.get(qr_data['id'])
+            if not qr:
+                continue
+
+            # Find matching error type (try exact match first, then partial)
+            error_type = error_by_name.get(defect_name)
+            if not error_type:
+                # Try partial match
+                for name, err in error_by_name.items():
+                    if defect_name.lower() in name.lower() or name.lower() in defect_name.lower():
+                        error_type = err
+                        break
+
+            if error_type:
+                defect_link, _ = QualityReportDefect.objects.update_or_create(
+                    report=qr,
+                    error_type=error_type,
+                    defaults={
+                        'count': 1,
+                        'location': '',
+                        'severity': 'MAJOR',
+                    }
+                )
+                defect_links.append(defect_link)
+
+        return defect_links
 
     def seed_spc_baselines(self, users):
         """
