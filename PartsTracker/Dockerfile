@@ -37,6 +37,7 @@ CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
       celery -A PartsTrackerApp beat -l info; \
     else \
       python manage.py migrate --noinput && \
+      python manage.py setup_defaults && \
       python manage.py collectstatic --noinput && \
       gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4; \
     fi
