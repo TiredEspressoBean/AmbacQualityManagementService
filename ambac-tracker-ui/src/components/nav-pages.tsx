@@ -22,6 +22,7 @@ export type Page = {
     url: string
     icon: LucideIcon
     badge?: number | string
+    external?: boolean  // Opens in new tab as regular link
 }
 
 // Simple flat list of nav items (no header)
@@ -39,10 +40,21 @@ export function NavPages({
                 {pages.map((item) => (
                     <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton asChild>
-                            <Link to={item.url}>
-                                <item.icon />
-                                <span>{item.name}</span>
-                            </Link>
+                            {item.external ? (
+                                <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <item.icon />
+                                    <span>{item.name}</span>
+                                </a>
+                            ) : (
+                                <Link to={item.url}>
+                                    <item.icon />
+                                    <span>{item.name}</span>
+                                </Link>
+                            )}
                         </SidebarMenuButton>
                         {item.badge !== undefined && item.badge !== 0 && (
                             <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>

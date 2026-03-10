@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useMemo } from "react"
 import {
+    BookOpen,
     Bot,
     CheckSquare,
     ClipboardList,
@@ -84,6 +85,11 @@ const adminPages = [
     { name: "Audit Log", url: "/admin/audit-log", icon: History },
 ]
 
+// Help - available to all authenticated users (at top of nav)
+const helpPages: Page[] = [
+    { name: "Help & Docs", url: "/docs/", icon: BookOpen, external: true },
+]
+
 export function AppSidebar({
     ...props
 }: React.ComponentProps<typeof Sidebar>) {
@@ -136,6 +142,9 @@ export function AppSidebar({
             </SidebarHeader>
             <SidebarContent>
                 <ScrollArea className="h-full">
+                    {/* Help & Docs - available to all authenticated users */}
+                    {isAuthenticated && <NavPages pages={helpPages} />}
+
                     {/* Portal - available to all authenticated users */}
                     {isAuthenticated && <NavPages pages={portalPages} />}
 
