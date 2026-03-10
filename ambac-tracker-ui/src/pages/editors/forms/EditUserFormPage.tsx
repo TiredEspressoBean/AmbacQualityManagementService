@@ -36,6 +36,7 @@ import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRetrieveGroups } from "@/hooks/useRetrieveGroups";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 
@@ -87,6 +88,10 @@ export default function UserFormPage() {
         search: groupSearch,
     });
 
+    // Get current user to check staff/superuser status
+    const { data: currentUser } = useAuthUser();
+    const canEditStaffStatus = currentUser?.is_staff === true || currentUser?.is_superuser === true;
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -122,16 +127,20 @@ export default function UserFormPage() {
 
     function onSubmit(values: FormValues) {
         // Clean up the data before sending
-        const submitData = {
+        const submitData: Record<string, unknown> = {
             username: values.username,
             first_name: values.first_name || undefined,
             last_name: values.last_name || undefined,
             email: values.email || undefined,
-            is_staff: values.is_staff || false,
             is_active: values.is_active !== undefined ? values.is_active : true,
             parent_company_id: values.parent_company_id || undefined,
             group_ids: values.group_ids || [],
         };
+
+        // Only staff users can set is_staff field
+        if (canEditStaffStatus) {
+            submitData.is_staff = values.is_staff || false;
+        }
 
         if (mode === "edit" && userId) {
             updateUser.mutate(
@@ -441,7 +450,7 @@ export default function UserFormPage() {
                         )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className={`grid grid-cols-1 ${canEditStaffStatus ? 'md:grid-cols-2' : ''} gap-6`}>
                         <FormField
                             control={form.control}
                             name="is_active"
@@ -465,28 +474,31 @@ export default function UserFormPage() {
                             )}
                         />
 
-                        <FormField
-                            control={form.control}
-                            name="is_staff"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                        <FormLabel>
-                                            Staff Status
-                                        </FormLabel>
-                                        <FormDescription>
-                                            Designates whether the user can log into the admin site.
-                                        </FormDescription>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                        {/* Staff status field - only visible to staff users */}
+                        {canEditStaffStatus && (
+                            <FormField
+                                control={form.control}
+                                name="is_staff"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Staff Status
+                                            </FormLabel>
+                                            <FormDescription>
+                                                Designates whether the user can log into the admin site.
+                                            </FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                     </div>
 
                     <div className="flex gap-4">

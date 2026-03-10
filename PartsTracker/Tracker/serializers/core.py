@@ -177,6 +177,22 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
         read_only_fields = ('date_joined', 'full_name')
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate(self, attrs):
+        """
+        Prevent non-staff users from setting is_staff field.
+
+        Only staff or superusers can grant/revoke staff status.
+        This is a security measure to prevent privilege escalation.
+        """
+        request = self.context.get('request')
+        if request and request.user:
+            # Only staff or superusers can modify is_staff
+            can_modify_staff = request.user.is_staff or request.user.is_superuser
+            if not can_modify_staff and 'is_staff' in attrs:
+                # Silently remove is_staff - non-privileged users can't set it
+                attrs.pop('is_staff')
+        return super().validate(attrs)
+
     @extend_schema_field(serializers.CharField())
     def get_full_name(self, obj):
         """Get formatted full name or fallback to username"""
