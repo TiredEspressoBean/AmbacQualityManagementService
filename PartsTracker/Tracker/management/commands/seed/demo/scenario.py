@@ -254,10 +254,13 @@ class DemoScenario(BaseSeeder):
         seeder = DemoQualitySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         result = seeder.seed(orders, users)
 
-        # Also seed SPC data
+        # Also seed SPC data and baselines
         measurement_defs = manufacturing.get('measurement_definitions', [])
         if measurement_defs and result.get('quality_reports'):
             seeder.seed_spc_data(measurement_defs, result['quality_reports'], users)
+
+        # Seed SPC baselines (frozen control limits)
+        seeder.seed_spc_baselines(users)
 
         return result
 
