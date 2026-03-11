@@ -86,9 +86,15 @@ nav:
       - Uploading Documents: workflows/documents/uploading.md
       - Document Revisions: workflows/documents/revisions.md
       - Document Approval: workflows/documents/approval.md
+    - Remanufacturing:
+      - Reman Overview: workflows/reman/overview.md
+      - Receiving Cores: workflows/reman/receiving.md
+      - Disassembly: workflows/reman/disassembly.md
+      - Component Management: workflows/reman/components.md
   - Analysis & Reporting:
     - Dashboard Overview: analysis/dashboard.md
     - SPC Charts: analysis/spc.md
+    - SPC Practitioner Guide: analysis/spc-practitioner-guide.md
     - Defect Analysis: analysis/defects.md
     - Heat Maps: analysis/heatmaps.md
     - Exporting Data: analysis/exporting.md

@@ -1,5 +1,8 @@
 # Material Lot Tracking
 
+!!! warning "Planned Feature"
+    Material lot tracking is planned but not yet implemented. This documentation describes the intended functionality.
+
 Material lot tracking provides full traceability for raw materials, components, and consumables used in production.
 
 ## Overview
