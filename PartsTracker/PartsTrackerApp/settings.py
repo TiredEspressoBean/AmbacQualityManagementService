@@ -367,12 +367,25 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# File storage configuration (Django 4.2+ STORAGES dict)
+# Default: local filesystem for development
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # S3-compatible storage (Railway Buckets, R2, AWS S3, etc.)
 # Activated when AWS_S3_ENDPOINT_URL is set
 # Railway sets: AWS_S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
 # AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME - django-storages reads these automatically
 if os.getenv("AWS_S3_ENDPOINT_URL"):
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    }
     AWS_DEFAULT_ACL = 'private'
     AWS_QUERYSTRING_AUTH = True  # Generate signed URLs for private files
     AWS_S3_SIGNATURE_VERSION = 's3v4'
