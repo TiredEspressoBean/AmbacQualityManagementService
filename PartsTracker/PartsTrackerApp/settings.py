@@ -381,11 +381,16 @@ STORAGES = {
 # S3-compatible storage (Railway Buckets, R2, AWS S3, etc.)
 # Activated when AWS_S3_ENDPOINT_URL is set
 # Railway sets: AWS_S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
-# AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME - django-storages reads these automatically
+# AWS_STORAGE_BUCKET_NAME, AWS_S3_REGION_NAME
 if os.getenv("AWS_S3_ENDPOINT_URL"):
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     }
+    # Railway uses AWS_STORAGE_BUCKET_NAME, django-storages expects AWS_STORAGE_BUCKET_NAME
+    # but some versions need explicit setting
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "auto")
     AWS_DEFAULT_ACL = 'private'
     AWS_QUERYSTRING_AUTH = True  # Generate signed URLs for private files
     AWS_S3_SIGNATURE_VERSION = 's3v4'
