@@ -142,7 +142,7 @@ Click a process to see:
 
 ### Visual Flow (if enabled)
 
-Navigate to **Process Flow** for visual editor:
+Go to `/process-flow` for the visual editor:
 - Flowchart representation
 - Drag-and-drop editing
 - Visual branching

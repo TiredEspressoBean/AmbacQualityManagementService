@@ -64,7 +64,7 @@ Tasks can have different completion requirements:
 
 ### Viewing Your Tasks
 
-1. Navigate to **Inbox** or **My Tasks**
+1. Navigate to **Personal > Inbox**
 2. See all assigned tasks
 3. Filter by status, CAPA, due date
 
@@ -176,9 +176,9 @@ Track task performance:
 | **Average completion time** | Efficiency |
 | **Tasks per CAPA** | Workload indicator |
 
-## My Tasks View
+## Your Tasks in Inbox
 
-The **Inbox** or **My Tasks** page shows:
+The **Personal > Inbox** page shows:
 
 - All tasks assigned to you
 - Grouped by CAPA

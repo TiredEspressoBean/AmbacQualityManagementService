@@ -33,7 +33,7 @@ Process is created in **Draft** status.
 
 ### From Visual Editor
 
-1. Navigate to **Process Flow**
+1. Go to `/process-flow` in your browser
 2. Click **New Process**
 3. Use drag-and-drop to build flow
 4. Add steps and connections

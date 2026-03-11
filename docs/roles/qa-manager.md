@@ -71,7 +71,7 @@ Start with the Quality Dashboard:
 
 ### Reviewing Disposition Requests
 
-1. Navigate to **Personal > Inbox** or **Dispositions**
+1. Navigate to **Personal > Inbox** or **Production > Dispositions**
 2. Open disposition request
 3. Review:
    - Original NCR and issue
@@ -152,7 +152,7 @@ Before closure:
 
 ### Reviewing Documents
 
-1. Navigate to **Personal > Inbox** or **Documents**
+1. Navigate to **Personal > Inbox** or **Tools > Documents**
 2. Open document pending approval
 3. Review document content
 4. Check revision notes
