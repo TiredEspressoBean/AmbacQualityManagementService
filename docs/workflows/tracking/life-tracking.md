@@ -111,10 +111,13 @@ Each part displays its life tracking:
 
 ### Warning and Expired Lists
 
+!!! note "Planned Feature"
+    A dedicated life tracking reports page is planned. Currently, life status is visible on individual part detail pages.
+
 View parts approaching or exceeding limits:
 
-1. Navigate to life tracking reports
-2. Filter by status (WARNING, EXPIRED)
+1. Open part details to see life tracking status
+2. Check for WARNING or EXPIRED indicators
 3. Review parts needing attention
 
 ## Limit Overrides

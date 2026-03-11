@@ -27,53 +27,52 @@ As an Operator, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Tracker** | Portal > Tracker | View all orders and move parts |
-| **Inbox** | Personal > Inbox | Your assigned tasks |
-| **Work Orders** | Production > Work Orders | Detailed work order view |
+| **Work Orders** | Production > Work Orders | Your main work queue |
+| **Inbox** | Personal > Inbox | CAPA tasks and notifications (if assigned) |
+| **Tracker** | Portal > Tracker | Customer-facing order view |
 
 ## Daily Workflow
 
-### 1. Check Your Inbox
+### 1. Get Your Assignment
 
-Start your shift by checking your inbox:
+Your supervisor assigns you to specific work orders:
 
-1. Navigate to **Inbox**
-2. Review assigned tasks
-3. Note any urgent items
-4. Plan your work
+1. Check with your supervisor for today's work assignment
+2. Note the work order number and operation you're assigned to
+3. Review any special instructions
 
-### 2. View Orders on Tracker
+### 2. Find Your Work Order
 
-1. Navigate to **Tracker**
-2. Find orders you're working on
-3. Expand to see step distribution
-4. Identify parts ready to work
+1. Navigate to **Production** > **Work Orders**
+2. Search or filter to find your assigned work order
+3. Click to open the work order detail
+4. Review parts at your step
 
 ### 3. Work on Parts
 
 For each operation:
 
-1. Complete the physical work
-2. Move parts forward in the system
-3. Record any required data
-4. Continue to next part
+1. Complete the physical work on the parts
+2. Record any required measurements using the Quality Report function
+3. Pass parts to the next step when complete
+4. Continue to next part or batch
 
 ## Moving Parts Forward
 
-### Passing Parts (Order Level)
+### Passing Parts (Work Order Level)
 
-1. Navigate to **QA Work Orders**
-2. Find the order
-3. Click the **Pass** button
+1. Navigate to **Production** > **Work Orders**
+2. Find your assigned work order
+3. Click the **Pass** button on the work order row
 4. Select the step you completed in the "Pass Part by Step" dialog
 5. Click **Submit**
 6. All parts at that step move to the next step
 
 ### Quality Reports (Individual Parts)
 
-For individual parts needing measurements:
+For individual parts needing measurements or in-process checks:
 
-1. Find the part in the parts table
+1. From your work order, find the part in the parts list
 2. Click **Quality Report**
 3. Fill in operator, machine, measurements, status
 4. Submit the form
@@ -239,7 +238,7 @@ Check for:
 
 ### Part not showing
 
-- Check filters on Tracker
+- Check filters on Work Orders page
 - Verify correct work order
 - Part may be at different step
 

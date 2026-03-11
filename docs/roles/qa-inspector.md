@@ -34,46 +34,46 @@ As a QA Inspector, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Tracker** | Portal > Tracker | View orders and parts |
-| **Inbox** | Personal > Inbox | Your inspection tasks |
+| **Work Orders** | Production > Work Orders | Your main inspection queue |
 | **Quality Reports** | Quality > Quality Reports | NCRs you've created |
-| **Work Orders** | Production > Work Orders | Assigned inspections |
+| **Dispositions** | Production > Dispositions | Quarantined parts |
+| **Inbox** | Personal > Inbox | CAPA tasks and pending approvals |
 | **Heat Map** | Quality > Heat Map | Visual defect analysis |
 
 ## Daily Workflow
 
-### 1. Check Your Inbox
+### 1. Check Your Queue
 
-1. Navigate to **Inbox**
-2. Review inspection assignments
-3. Check pending approvals needing your input
+1. Navigate to **Production** > **Work Orders**
+2. Review work orders requiring inspection
+3. Also check **Inbox** for CAPA tasks and approval requests
 4. Prioritize your work
 
 ### 2. Perform Inspections
 
 For each inspection point:
 
-1. Identify parts to inspect
-2. Apply sampling (if applicable)
-3. Perform measurements/checks
-4. Record results
-5. Disposition or pass parts
+1. Open the work order requiring inspection
+2. Identify parts to inspect
+3. Apply sampling (if applicable)
+4. Perform measurements/checks
+5. Record results
+6. Disposition or pass parts
 
 ### 3. Document Issues
 
 When problems are found:
 
-1. Create quality report
-2. Quarantine affected parts
-3. Add annotations (if 3D model available)
-4. Notify appropriate parties
+1. Create quality report (part is automatically quarantined)
+2. Add annotations (if 3D model available)
+3. Notify appropriate parties
 
 ## Performing Inspections
 
 ### At Inspection Steps
 
-1. Open work order or find parts on Tracker
-2. See parts waiting at inspection step
+1. Open the work order from **Production** > **Work Orders**
+2. See parts waiting at the inspection step
 3. Determine sample size (per sampling rules)
 4. Inspect selected parts
 5. Record results
@@ -242,7 +242,7 @@ For material from suppliers:
 
 You may be assigned CAPA tasks:
 
-1. Check **Inbox** for CAPA tasks
+1. Check **Personal** > **Inbox** for assigned CAPA tasks
 2. Perform assigned investigation
 3. Document findings
 4. Complete task with evidence

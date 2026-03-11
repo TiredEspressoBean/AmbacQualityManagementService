@@ -1,51 +1,19 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, schemas } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import { z } from "zod";
 
-export type TenantSettingsUpdate = {
-    name?: string;
-    contact_email?: string;
-    contact_phone?: string;
-    website?: string;
-    address?: string;
-    default_timezone?: string;
-    settings?: Record<string, unknown>;
-    allowed_domains?: string[];
-};
-
-export type TenantSettingsResponse = {
-    name: string;
-    tier: string;
-    status: string;
-    settings: Record<string, unknown>;
-    contact_email: string;
-    contact_phone: string;
-    website: string;
-    address: string;
-    default_timezone: string;
-    logo_url: string | null;
-    allowed_domains: string[];
-};
+export type TenantSettingsUpdate = z.infer<typeof schemas.PatchedTenantSettingsUpdateRequestRequest>;
+export type TenantSettingsResponse = Awaited<ReturnType<typeof api.api_tenant_settings_partial_update>>;
 
 export function useUpdateTenantSettings() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: TenantSettingsUpdate): Promise<TenantSettingsResponse> => {
-            const response = await fetch("/api/tenant/settings/", {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken") ?? "",
-                },
-                credentials: "include",
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || "Failed to update tenant settings");
-            }
-            return response.json();
-        },
+        mutationFn: (data: TenantSettingsUpdate) =>
+            api.api_tenant_settings_partial_update(data, {
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+            }),
         onSuccess: () => {
             // Invalidate all tenant-related queries to refresh branding
             queryClient.invalidateQueries({ queryKey: ["tenant", "current"] });

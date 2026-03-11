@@ -55,7 +55,7 @@ Click an order card to expand and see:
 ## Searching
 
 !!! note "Filtering"
-    Advanced filtering and filter presets are planned for the Tracker page. Currently, use the search functionality or access filtered views through the QA Work Orders page which has more filtering options.
+    Advanced filtering and filter presets are planned for the Tracker page. Currently, use the search functionality or access filtered views through the **Work Orders** page (Production > Work Orders) which has more filtering options.
 
 ## Search Bar
 

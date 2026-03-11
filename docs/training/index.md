@@ -40,7 +40,7 @@ The following workflows have dedicated documentation:
 | Remanufacturing | [Reman Overview](../workflows/reman/overview.md) | Core receiving, disassembly, and component harvesting |
 | Life Tracking | [Life Tracking Guide](../workflows/tracking/life-tracking.md) | Monitoring cycles, hours, shelf life, and limits |
 
-These features are fully operational. Refer to the workflow documentation for training on these specialized areas.
+Remanufacturing is fully operational. Life tracking core functionality works (viewing status on parts), but dedicated reporting pages are planned.
 
 !!! tip "SPC Training"
     All production floor staff should complete **SPC Fundamentals** to understand control charts and process capability. This is referenced throughout the role-specific training guides.

@@ -122,7 +122,7 @@ Missing required documents may:
 
 Find documents across orders:
 
-1. Go to **Documents** in the main navigation
+1. Go to **Tools > Documents** in the sidebar
 2. Use filters:
    - Document type
    - Date range

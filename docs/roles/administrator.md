@@ -82,7 +82,7 @@ User cannot log in; history preserved.
 
 ### Creating Processes
 
-1. Navigate to **Data Management** > **Processes**
+1. Navigate to **Production** > **Processes**
 2. Click **+ New Process**
 3. Add steps in sequence
 4. Configure requirements per step
@@ -149,7 +149,7 @@ For each step:
 
 ### Organization Settings
 
-Navigate to **Settings**:
+Navigate to **Admin > Settings**:
 - Organization name
 - Timezone
 - Date/number formats
@@ -271,7 +271,7 @@ When you can't resolve:
 | Add user | Data Management > Users > + New |
 | Create group | Data Management > Groups > + New |
 | Edit permissions | Groups > [Group] > Permissions |
-| Configure process | Data Management > Processes |
+| Configure process | Production > Processes |
 | View audit log | Admin > Audit Log |
 | System settings | Admin > Settings |
 

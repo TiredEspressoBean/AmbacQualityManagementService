@@ -14,13 +14,13 @@ Each step represents a manufacturing operation. Parts must complete each step be
 
 ## Passing Parts (Primary Method)
 
-The primary way to move parts forward is using the **Pass** button at the order level.
+The primary way to move parts forward is using the **Pass** button at the work order level.
 
 ### Steps
 
-1. Navigate to **QA Work Orders**
-2. Find the order in the table
-3. Click the **Pass** button on the order row
+1. Navigate to **Production** > **Work Orders**
+2. Find your work order in the table
+3. Click the **Pass** button on the work order row
 4. The **"Pass Part by Step"** dialog opens
 5. Select the step you want to pass (shows step name and part count)
 6. Click **Submit**
@@ -41,15 +41,14 @@ For detailed quality documentation on individual parts:
 
 ### Steps
 
-1. Navigate to **QA Work Orders** and expand an order, or use **QA Parts** table
-2. Find the specific part
-3. Click **Quality Report**
-4. Fill in the form:
+1. From your work order, find the specific part in the parts list
+2. Click **Quality Report**
+3. Fill in the form:
    - Operator
    - Machine/equipment used
    - Measurements
    - Status (pass/fail)
-5. Submit
+4. Submit
 
 ### When to Use
 

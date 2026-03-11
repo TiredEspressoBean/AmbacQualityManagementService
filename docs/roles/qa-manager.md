@@ -28,7 +28,8 @@ As a QA Manager, you:
 | **Quality Dashboard** | Quality > Dashboard | KPIs and overview |
 | **CAPAs** | Quality > CAPAs | Corrective actions |
 | **Quality Reports** | Quality > Quality Reports | All NCRs |
-| **Inbox** | Personal > Inbox | Pending approvals |
+| **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
+| **Approvals** | Approvals > Overview | All pending approval requests |
 | **Analytics** | Tools > Analytics | Trends and analysis |
 | **Dispositions** | Production > Dispositions | Quarantine management |
 
@@ -45,7 +46,7 @@ Start with the Quality Dashboard:
 
 ### 2. Process Approvals
 
-1. Navigate to **Inbox**
+1. Navigate to **Personal > Inbox**
 2. Review pending approvals:
    - Disposition approvals
    - Document approvals
@@ -70,7 +71,7 @@ Start with the Quality Dashboard:
 
 ### Reviewing Disposition Requests
 
-1. Navigate to **Inbox** or **Dispositions**
+1. Navigate to **Personal > Inbox** or **Dispositions**
 2. Open disposition request
 3. Review:
    - Original NCR and issue
@@ -151,7 +152,7 @@ Before closure:
 
 ### Reviewing Documents
 
-1. Navigate to **Inbox** or **Documents**
+1. Navigate to **Personal > Inbox** or **Documents**
 2. Open document pending approval
 3. Review document content
 4. Check revision notes
@@ -204,7 +205,7 @@ When trends indicate problems:
 
 ### Capability Analysis
 
-1. Navigate to **Analytics** > **SPC**
+1. Navigate to **Tools > Analytics**, then select **SPC**
 2. Review control charts for key characteristics
 3. Check Cp/Cpk values
 4. Identify out-of-control conditions

@@ -1,8 +1,18 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api, type PaginatedQualityReportsList, type PaginatedMeasurementDefinitionList } from "@/lib/api/generated";
 
+// Extract queries types from Zodios endpoints
+type ErrorReportsListQueries = Parameters<typeof api.api_ErrorReports_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_ErrorReports_list>[0];
+type MeasurementDefinitionsListQueries = Parameters<typeof api.api_MeasurementDefinitions_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_MeasurementDefinitions_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+  headers?: Record<string, string>;
+};
+
 export function useQualityReports(
-    queries?: Parameters<typeof api.api_ErrorReports_list>[0],
+    queries?: ErrorReportsListQueries,
+    config?: ListHookConfig,
     options?: Omit<
         UseQueryOptions<
             PaginatedQualityReportsList,
@@ -12,14 +22,15 @@ export function useQualityReports(
     >
 ) {
     return useQuery<PaginatedQualityReportsList, Error>({
-        queryKey: ["quality-reports", queries],
-        queryFn: () => api.api_ErrorReports_list(queries),
+        queryKey: ["quality-reports", queries, config],
+        queryFn: () => api.api_ErrorReports_list(queries || config ? { queries, ...config } : undefined),
         ...options
     });
 }
 
 export function useMeasurementDefinitions(
-    queries?: Parameters<typeof api.api_MeasurementDefinitions_list>[0],
+    queries?: MeasurementDefinitionsListQueries,
+    config?: ListHookConfig,
     options?: Omit<
         UseQueryOptions<
             PaginatedMeasurementDefinitionList,
@@ -29,8 +40,8 @@ export function useMeasurementDefinitions(
     >
 ) {
     return useQuery<PaginatedMeasurementDefinitionList, Error>({
-        queryKey: ["measurement-definitions", queries],
-        queryFn: () => api.api_MeasurementDefinitions_list(queries),
+        queryKey: ["measurement-definitions", queries, config],
+        queryFn: () => api.api_MeasurementDefinitions_list(queries || config ? { queries, ...config } : undefined),
         ...options
     });
 }

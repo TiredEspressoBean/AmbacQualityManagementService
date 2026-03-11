@@ -35,7 +35,8 @@ You have read-only access limited to your company's data.
 When you log in, you'll see:
 
 - **Tracker**: Your orders and their status
-- **Documents**: Shared documents for your orders
+
+Documents for your orders are accessible from within the order details on Tracker.
 
 ## Viewing Your Orders
 
@@ -102,9 +103,10 @@ You can access documents shared with you:
 
 ### Viewing Documents
 
-1. Navigate to **Documents** or see order's Documents section
-2. Click document to view
-3. Download if needed
+1. Open an order from **Tracker**
+2. Navigate to the **Documents** section within the order
+3. Click document to view
+4. Download if needed
 
 ### Document Types
 

@@ -199,6 +199,7 @@ export function useWorkOrderFlow({ workOrderId, enabled = true }: UseWorkOrderFl
     error: partsError,
   } = useRetrieveParts(
     { work_order: workOrderId ?? undefined },
+    undefined,
     { enabled: enabled && workOrderId !== null }
   );
 

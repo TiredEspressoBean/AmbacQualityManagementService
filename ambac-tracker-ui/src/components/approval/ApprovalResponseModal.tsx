@@ -70,6 +70,7 @@ export function ApprovalResponseModal({
     // Fetch users for delegation dropdown
     const { data: usersData } = useRetrieveUsers(
         { limit: 100, is_active: true },
+        undefined,
         { enabled: decision === 'DELEGATED' }
     );
     const users = usersData?.results || [];

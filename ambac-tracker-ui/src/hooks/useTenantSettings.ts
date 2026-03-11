@@ -1,19 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import type { TenantSettingsResponse } from "./useUpdateTenantSettings";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 
-export function useTenantSettings(options?: { enabled?: boolean }) {
-    return useQuery<TenantSettingsResponse>({
+type TenantSettingsResponse = Awaited<ReturnType<typeof api.api_tenant_settings_retrieve>>;
+
+export function useTenantSettings(
+    options?: Omit<UseQueryOptions<TenantSettingsResponse, Error>, "queryKey" | "queryFn">
+) {
+    return useQuery({
         queryKey: ["tenantSettings"],
-        queryFn: async () => {
-            const response = await fetch("/api/tenant/settings/", {
-                credentials: "include",
-            });
-            if (!response.ok) {
-                throw new Error("Failed to fetch tenant settings");
-            }
-            return response.json();
-        },
+        queryFn: () => api.api_tenant_settings_retrieve(),
         staleTime: 5 * 60 * 1000,
-        enabled: options?.enabled ?? true,
+        ...options,
     });
 }

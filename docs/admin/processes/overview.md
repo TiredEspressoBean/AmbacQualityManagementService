@@ -124,7 +124,7 @@ Conditional paths through process:
 
 ### Process List
 
-Navigate to **Data Management** > **Processes**
+Navigate to **Production** > **Processes**
 
 See all processes with:
 - Name and description

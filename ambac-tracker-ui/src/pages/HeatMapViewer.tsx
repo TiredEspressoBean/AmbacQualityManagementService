@@ -736,9 +736,9 @@ function HeatMapViewerContent({
         return filters;
     }, [baseFilters, selectedErrorTypes, selectedSeverities]);
 
-    const { data: annotationsData, isLoading: isFetchingAnnotations } = useRetrieveHeatMapAnnotations({
-        queries: annotationFilters,
-    });
+    const { data: annotationsData, isLoading: isFetchingAnnotations } = useRetrieveHeatMapAnnotations(
+        annotationFilters
+    );
 
     // Annotations are already filtered server-side
     const filteredAnnotations = annotationsData?.results || [];

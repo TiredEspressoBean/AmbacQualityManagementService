@@ -45,7 +45,7 @@ Document control is critical for quality certifications (ISO, AS9100, etc.).
 | **Documents** | Tools > Documents | Document dashboard |
 | **Document List** | Documents > All | Complete library |
 | **Inbox** | Personal > Inbox | Pending approvals |
-| **Approval History** | Documents > Approvals | Approval records |
+| **Approval History** | Approvals > History | Approval records |
 
 **Exercise 1.1:** Navigate Document Pages
 
@@ -112,7 +112,7 @@ By the end of this module, you will:
 
 **Steps:**
 
-1. Navigate to **Documents**
+1. Navigate to **Tools > Documents**
 2. Click **+ Upload**
 3. Select file from your computer
 4. Fill in metadata:
@@ -126,7 +126,7 @@ By the end of this module, you will:
 
 **Exercise 2.1:** Upload a Document
 
-1. Go to Documents
+1. Go to **Tools > Documents**
 2. Click **+ Upload**
 3. Select training file provided
 4. Fill in:

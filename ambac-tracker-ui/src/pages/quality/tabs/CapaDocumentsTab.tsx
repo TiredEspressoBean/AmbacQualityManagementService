@@ -23,6 +23,7 @@ export function CapaDocumentsTab({ capa }: CapaDocumentsTabProps) {
             content_type: capaContentType?.id,
             object_id: capa?.id,
         },
+        undefined,
         {
             enabled: !!capaContentType?.id && !!capa?.id,
         }

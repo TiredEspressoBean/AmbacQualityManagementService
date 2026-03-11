@@ -12,21 +12,17 @@ type Props = {
 export function MeasurementProgressChart({ workOrder }: Props) {
     // Filter quality reports by work order using the backend filter
     const { data: qualityReports, isLoading: loadingReports } = useQualityReports({
-        queries: {
-            part__work_order: workOrder.id,
-            limit: 500
-        }
-    }, {
+        part__work_order: workOrder.id,
+        limit: 500
+    }, undefined, {
         enabled: !!workOrder.id
     });
 
     // Get measurement definitions for the work order's process steps
     const { data: measurementDefs, isLoading: loadingDefs } = useMeasurementDefinitions({
-        queries: {
-            step__process: workOrder.related_order_info?.process_id,
-            limit: 100
-        }
-    }, {
+        step__process: workOrder.related_order_info?.process_id,
+        limit: 100
+    }, undefined, {
         enabled: !!workOrder.related_order_info?.process_id
     });
 

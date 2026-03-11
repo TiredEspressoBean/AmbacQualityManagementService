@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { api } from "@/lib/api/generated";
 import { useTenantContext } from "@/components/tenant-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,21 +118,7 @@ function DemoResetCard() {
     const handleReset = async () => {
         setIsResetting(true);
         try {
-            const response = await fetch("/api/tenant/demo-reset/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({ scale: "small" }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.detail || "Reset failed");
-            }
-
-            const data = await response.json();
+            const data = await api.api_tenant_demo_reset_create({ scale: "small" });
             toast.success(data.message || "Data has been reset successfully.");
             setDialogOpen(false);
             // Reload the page to reflect new data

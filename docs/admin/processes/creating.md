@@ -16,7 +16,7 @@ Before creating in uqmes:
 
 ### From Process Editor
 
-1. Navigate to **Data Management** > **Processes**
+1. Navigate to **Production** > **Processes**
 2. Click **+ New Process**
 3. Fill in basic information:
 

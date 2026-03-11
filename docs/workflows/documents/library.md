@@ -4,7 +4,7 @@ The Document Library is the central repository for all controlled documents in u
 
 ## Accessing the Library
 
-Navigate to **Documents** in the main sidebar navigation.
+Navigate to **Tools > Documents** in the sidebar.
 
 ## Library Overview
 

@@ -40,10 +40,10 @@ Your work directly impacts product quality and customer satisfaction.
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **QA Work Orders** | Quality > Work Orders | Your inspection queue |
+| **Work Orders** | Production > Work Orders | Your inspection queue |
 | **Quality Reports** | Quality > Quality Reports | NCR management |
-| **Tracker** | Portal > Tracker | Part status overview |
-| **Inbox** | Personal > Inbox | Your notifications |
+| **Dispositions** | Production > Dispositions | Quarantined parts |
+| **Inbox** | Personal > Inbox | CAPA tasks and approvals |
 
 **Exercise 1.1:** Navigate QA Pages
 
@@ -82,9 +82,9 @@ By the end of this module, you will:
 - [ ] Complete sampling inspections
 - [ ] Record inspection results
 
-### 2.1 QA Work Orders Page
+### 2.1 Work Orders Page
 
-**Concept:** The QA Work Orders page shows orders needing quality attention.
+**Concept:** The Work Orders page shows orders in production, including those needing quality inspection.
 
 **Information displayed:**
 
@@ -94,12 +94,12 @@ By the end of this module, you will:
 - Parts requiring inspection
 - Priority indicators
 
-**Exercise 2.1:** Review QA Queue
+**Exercise 2.1:** Review Work Orders Queue
 
-1. Navigate to **Quality** > **Work Orders**
+1. Navigate to **Production** > **Work Orders**
 2. Identify orders with pending inspections
 3. Note the priority indicators
-4. Click an order to see details
+4. Click a work order to see details
 
 ---
 
@@ -126,7 +126,7 @@ By the end of this module, you will:
 
 **Exercise 2.2:** Complete an FPI
 
-1. Find work order "TRAIN-FPI-001" in QA Work Orders
+1. Find work order "TRAIN-FPI-001" in **Production** > **Work Orders**
 2. Locate the first piece
 3. Click **Perform FPI**
 4. Enter the measurement values provided
@@ -237,7 +237,7 @@ By the end of this module, you will:
 
 **Exercise 3.1:** Create a Quality Report
 
-1. Go to Quality Reports
+1. Go to **Quality > Quality Reports**
 2. Click **+ New Report**
 3. Create report for:
    - Title: "Surface scratch on housing - TRAIN-101"
@@ -524,8 +524,8 @@ By the end of this module, you will:
 ### 7.1 Start of Shift
 
 1. **Log in** to uqmes
-2. **Check Inbox** for notifications
-3. **Review QA Work Orders** queue
+2. **Check Inbox** for CAPA tasks and approval requests
+3. **Review Work Orders** queue (Production > Work Orders)
 4. **Verify equipment** calibration status
 5. **Plan your inspections**
 
@@ -617,16 +617,16 @@ Complete these tasks to demonstrate competency:
 ## Quick Reference Card
 
 ### FPI Process
-1. QA Work Orders → Find order → **Perform FPI** → Enter measurements → Submit
+1. Production > Work Orders → Find work order → **Perform FPI** → Enter measurements → Submit
 
 ### Quality Report
-1. Quality Reports → **+ New** → Fill details → Link parts → Attach evidence → Save
+1. Quality > Quality Reports → **+ New** → Fill details → Link parts → Attach evidence → Save
 
 ### Disposition
 1. Open report → **Recommend Disposition** → Select type → Justify → Submit
 
 ### Quarantine Check
-1. Look for "Quarantine" status on parts
+1. View quarantined parts in Production > Dispositions
 2. Part needs quality report and disposition
 
 ---

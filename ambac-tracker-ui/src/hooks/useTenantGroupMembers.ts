@@ -16,7 +16,7 @@ export function useTenantGroupMembers(groupId: string | undefined, options?: { e
     return useQuery<TenantGroupMember[]>({
         queryKey: ["tenantGroup", groupId, "members"],
         queryFn: async () => {
-            // Bypass zodios validation since schema says object but API returns array
+            // eslint-disable-next-line no-restricted-syntax -- OpenAPI schema is wrong: schema says TenantGroup object but API returns array of members. Fix backend schema to use typed client.
             const response = await fetch(`/api/TenantGroups/${groupId}/members/`, {
                 credentials: "include",
             });

@@ -187,7 +187,7 @@ export function CreateCapaPage() {
     const { data: steps } = useRetrieveSteps({ search: debouncedStepSearch, limit: 50 })
     const { data: workOrders } = useRetrieveWorkOrders({ search: debouncedWorkOrderSearch, limit: 50 })
     const { data: qualityReports } = useQualityReports({ search: debouncedQualityReportSearch, limit: 50 })
-    const { data: dispositions } = useRetrieveQuarantineDispositions({ search: debouncedDispositionSearch, limit: 50 }, { enabled: true })
+    const { data: dispositions } = useRetrieveQuarantineDispositions({ search: debouncedDispositionSearch, limit: 50 })
     const createCapa = useCreateCapa()
     const createRcaRecord = useCreateRcaRecord()
 

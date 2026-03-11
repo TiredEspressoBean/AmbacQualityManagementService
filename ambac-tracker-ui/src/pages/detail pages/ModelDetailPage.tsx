@@ -120,6 +120,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
             object_id: modelData.id,
             content_type: mainContentTypeId,
         },
+        undefined,
         {
             enabled: !!mainContentTypeId && !!modelData.id,
         }

@@ -41,53 +41,59 @@ By the end of this module, you will:
 
 ---
 
-### 1.2 The Tracker Page
+### 1.2 The Work Orders Page
 
-**Concept:** The Tracker is your main workspace showing orders and parts.
+**Concept:** The Work Orders page is your main workspace for finding and working on production orders.
+
+**How you get your work:**
+
+1. Your supervisor assigns you to specific work orders
+2. You find those work orders on the Work Orders page
+3. You work on the parts in that order, recording measurements and checks
 
 **What you'll see:**
 
 | Element | Purpose |
 |---------|---------|
-| Order cards | Each card is a customer order |
-| Progress bar | Shows completion percentage |
-| Search bar | Find specific orders or parts |
-| Filters | Narrow down what you see |
+| Work order table | List of all work orders |
+| Search/filter | Find your assigned work orders |
+| Status column | Shows order progress |
+| Actions | Pass parts, view details, record quality |
 
-**Exercise 1.1:** Finding an Order
+**Exercise 1.1:** Finding Your Work Order
 
-1. Go to **Tracker**
-2. Use the search bar to find order "TRAIN-001"
-3. Click the order card to expand it
-4. Note the order number, customer, and progress
+1. Go to **Work Orders** in the sidebar
+2. Use the search bar to find the work order your supervisor assigned
+3. Click the work order row to see details
+4. Note the work order number, part type, and current progress
 
-**Expected result:** You see the order details and a list of parts.
+**Expected result:** You see the work order details and can access parts to work on.
 
 ---
 
 ### 1.3 Understanding Parts
 
-**Concept:** Each order contains parts that move through production steps.
+**Concept:** Each work order contains parts that move through production steps.
 
 **Part information includes:**
 
 - Serial number (unique identifier)
 - Part type (what it is)
 - Current step (where it is in the process)
-- Status (in process, complete, on hold)
+- Status (in process, complete, on hold, quarantined)
 
 **Exercise 1.2:** Viewing Part Details
 
-1. In the expanded order, find a part
-2. Click the part row to see details
+1. From your work order, view the parts list
+2. Click a part row to see details
 3. Note the serial number and current step
 
 ---
 
 ### Knowledge Check: Module 1
 
-1. Where do you go to see orders and parts?
-2. What does the progress bar on an order card show?
+1. Where do you go to find your assigned work orders?
+2. How do you know what work order to work on?
 3. Why is it important that your actions are logged?
 
 ---
@@ -121,15 +127,15 @@ Each step may require:
 
 ---
 
-### 2.2 Passing Parts (Order-Level)
+### 2.2 Passing Parts (Work Order Level)
 
-The primary way to move parts forward is at the order level, passing all parts at a specific step.
+The primary way to move parts forward is from your work order, passing all parts at a specific step.
 
 **Steps:**
 
-1. Navigate to **QA Work Orders** page
-2. Find your order in the table
-3. Click the **Pass** button on the order row
+1. Navigate to **Work Orders** page
+2. Find your assigned work order
+3. Click the **Pass** button on the work order row
 4. The "Pass Part by Step" dialog opens
 5. Select the step you completed (shows step name and part count)
 6. Click **Submit**
@@ -143,8 +149,8 @@ The primary way to move parts forward is at the order level, passing all parts a
 
 **Exercise 2.1:** Passing Parts
 
-1. Go to **QA Work Orders**
-2. Find order "TRAIN-001"
+1. Go to **Work Orders**
+2. Find your assigned work order
 3. Click **Pass**
 4. In the dialog, select the step showing parts you completed
 5. Click **Submit**
@@ -155,20 +161,20 @@ The primary way to move parts forward is at the order level, passing all parts a
 
 ### 2.3 Individual Part Quality Reports
 
-For individual parts requiring quality documentation:
+For individual parts requiring quality documentation or in-process checks:
 
 **Steps:**
 
-1. Find the part in the QA Parts table
+1. From your work order, find the part in the parts list
 2. Click the **Quality Report** button
 3. Fill in the quality report form:
-   - Operator
+   - Operator (your name)
    - Machine/equipment used
    - Measurements
    - Pass/fail status
 4. Submit the form
 
-**When to use:** When you need to record detailed measurements or quality data for specific parts.
+**When to use:** When recording in-process measurements or quality data for specific parts during your operation.
 
 ---
 
@@ -189,7 +195,7 @@ A part cannot be passed if:
 ### Knowledge Check: Module 2
 
 1. What happens when you pass parts to the next step?
-2. Where do you click the "Pass" button?
+2. Where do you find your work order to pass parts?
 3. What might prevent parts from being passed?
 
 ---
@@ -306,7 +312,7 @@ Issues are reported through the same **Quality Report** form used for measuremen
 
 **Steps:**
 
-1. Find the part in the QA Parts table
+1. From your work order, find the part in the parts list
 2. Click **Quality Report**
 3. Fill in the form:
    - Select your name as Operator
@@ -325,7 +331,7 @@ Issues are reported through the same **Quality Report** form used for measuremen
 
 **Exercise 4.1:** Reporting a Quality Issue
 
-1. Find a part in the QA Parts table
+1. From your work order, find a part in the parts list
 2. Click **Quality Report**
 3. Set Status to FAIL
 4. Select error type "Visual Defect"
@@ -365,22 +371,26 @@ By the end of this module, you will:
 
 ### 5.1 Starting Your Shift
 
-1. **Log in** to uqmes
-2. **Check your work area** for parts to process
-3. **Find your orders** on Tracker
-4. **Review any notes** or special instructions
+1. **Get your assignment** from your supervisor (work order number and operation)
+2. **Log in** to uqmes
+3. **Go to Work Orders** page
+4. **Find your assigned work order** using search or filters
+5. **Review any special instructions** in the work order details
+
+!!! tip "Know Your Assignment First"
+    Your supervisor tells you what to work on. The system helps you track progress and record quality data—it doesn't assign work to you.
 
 ---
 
 ### 5.2 During Production
 
-As you work:
+As you work on your assigned work order:
 
-1. Complete your operation on the parts
-2. Take required measurements
-3. Pass parts to the next step in the system
-4. Flag any issues immediately
-5. Move to next batch
+1. **Open your work order** on the Work Orders page
+2. **Complete your operation** on the parts
+3. **Record measurements** using in-process checks on the work order page
+4. **Pass parts** to the next step when your operation is complete
+5. **Flag any issues** immediately using the quality report function
 
 **Stay in sync:** Pass parts as you complete them, not at end of shift.
 
@@ -442,30 +452,30 @@ Complete these tasks to demonstrate competency:
 
 ### Task 1: Part Tracking
 
-1. Find order "ASSESS-001" on QA Work Orders
-2. Click **Pass** on the order
+1. Go to **Work Orders** and find your assigned work order
+2. Click **Pass** on the work order
 3. Select the step with parts to pass
 4. Submit
 
 ### Task 2: Quality Report
 
-1. Find a part in the QA Parts table
+1. From your work order, find a part in the parts list
 2. Click **Quality Report**
 3. Fill in measurements and status
 4. Submit the form
 
 ### Task 3: Issue Reporting
 
-1. Find part "ASSESS-003-002"
+1. From your work order, find a part
 2. Click **Quality Report**
 3. Set status to FAIL, select error type "Dimensional"
 4. Add appropriate description and submit
 
 ### Task 4: Navigation
 
-1. Use search to find order "ASSESS-004"
-2. View the order details
-3. Identify which parts are complete
+1. Go to **Work Orders** and use search to find a specific work order
+2. View the work order details
+3. Identify which parts are complete vs. in progress
 
 ---
 
@@ -493,14 +503,17 @@ By completing this training, I confirm that I:
 
 Print this for your workstation:
 
-### Passing Parts (Batch)
-1. QA Work Orders → Find order → **Pass** → Select step → **Submit**
+### Starting Work
+1. Get assignment from supervisor → **Work Orders** → Find your work order
 
-### Quality Report (Individual)
-1. QA Parts → Find part → **Quality Report** → Fill form → **Submit**
+### Passing Parts (Batch)
+1. Work Orders → Find work order → **Pass** → Select step → **Submit**
+
+### Quality Report / In-Process Check
+1. Work Orders → Find work order → Find part → **Quality Report** → Fill form → **Submit**
 
 ### Reporting Issues
-1. QA Parts → Find part → **Quality Report** → Set FAIL status → Select error type → Describe → **Submit**
+1. From work order → Find part → **Quality Report** → Set FAIL status → Select error type → Describe → **Submit**
 
 ### Need Help?
 - Check the part's current step and requirements

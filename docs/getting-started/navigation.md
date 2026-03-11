@@ -31,7 +31,7 @@ Available to all users:
 ### Personal Section
 Your personal work queue:
 
-- **Inbox** - Tasks assigned to you and pending approvals
+- **Inbox** - CAPA tasks and pending approvals (not work assignments—those come from your supervisor)
 
 ### Production Section
 For production and manufacturing staff:

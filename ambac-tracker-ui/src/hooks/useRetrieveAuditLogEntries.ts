@@ -1,8 +1,17 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
+// Extract queries type from Zodios endpoint
+type AuditLogListQueries = Parameters<typeof api.api_auditlog_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_auditlog_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+  headers?: Record<string, string>;
+};
+
 export function useRetrieveAuditLogEntries(
-  queries?: Parameters<typeof api.api_auditlog_list>[0],
+  queries?: AuditLogListQueries,
+  config?: ListHookConfig,
   options?: Omit<
     UseQueryOptions<
       Awaited<ReturnType<typeof api.api_auditlog_list>>,
@@ -12,8 +21,8 @@ export function useRetrieveAuditLogEntries(
   >
 ) {
   return useQuery({
-    queryKey: ["logs", queries],
-    queryFn: () => api.api_auditlog_list(queries),
+    queryKey: ["logs", queries, config],
+    queryFn: () => api.api_auditlog_list(queries || config ? { queries, ...config } : undefined),
     ...options,
   });
 }

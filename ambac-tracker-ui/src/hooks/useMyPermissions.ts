@@ -1,34 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 
-export type EffectivePermissionsResponse = {
-    user_id: string;
-    user_email: string;
-    groups: {
-        group_id: string;
-        group_name: string;
-        facility: string | null;
-        company: string | null;
-        permission_count: number;
-    }[];
-    effective_permissions: string[];
-    total_count: number;
-};
+type EffectivePermissionsResponse = Awaited<ReturnType<typeof api.api_users_me_effective_permissions_retrieve>>;
 
-export function useMyPermissions(options?: { enabled?: boolean }) {
-    return useQuery<EffectivePermissionsResponse>({
+export type { EffectivePermissionsResponse };
+
+export function useMyPermissions(
+    options?: Omit<UseQueryOptions<EffectivePermissionsResponse, Error>, "queryKey" | "queryFn">
+) {
+    return useQuery({
         queryKey: ["myPermissions"],
-        queryFn: async () => {
-            const response = await fetch("/api/users/me/effective-permissions/", {
-                credentials: "include",
-            });
-            if (!response.ok) {
-                throw new Error("Failed to fetch permissions");
-            }
-            return response.json();
-        },
+        queryFn: () => api.api_users_me_effective_permissions_retrieve(),
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: 1,
-        enabled: options?.enabled ?? true,
+        ...options,
     });
 }
 

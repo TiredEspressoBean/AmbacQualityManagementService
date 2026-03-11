@@ -17,7 +17,7 @@ Flag an issue when:
 
 The primary way to flag a quality issue is through a Quality Report with FAIL status:
 
-1. Find the part in **QA Parts** table
+1. From your work order, find the part in the parts list
 2. Click the **Quality Report** button
 3. Fill in the form with status set to **FAIL**
 4. Select the error type
@@ -30,7 +30,7 @@ The part enters quarantine status and cannot proceed until disposition is determ
 
 When creating a quality report:
 
-1. Navigate to the part in **QA Parts** or from the order detail
+1. From your work order, find the part in the parts list
 2. Click **Quality Report**
 3. Fill in the report form:
 

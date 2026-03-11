@@ -24,19 +24,23 @@ SPC data connects to several pages in uqmes:
 ### Navigation Path
 
 ```
-Analytics (sidebar)
-    ├── Analysis Dashboard (/analysis)
-    │       └── Links to: SPC, Defects, CAPAs
-    ├── SPC (/spc)
-    │       └── Process → Step → Measurement selection
-    └── Process Flow (/process-flow)
+Tools (sidebar)
+    ├── Documents (/documents)
+    ├── Analytics (/analysis)
+    │       └── Links to: SPC, Defects, Process Flow
+    └── AI Chat (/ai-chat)
+
+    From Analytics page:
+        └── SPC (/spc)
+                └── Process → Step → Measurement selection
 
 Quality (sidebar)
     ├── Dashboard (/quality)
     ├── CAPAs (/quality/capas)
-    ├── Defects (/quality/defects)
+    ├── Quality Reports (/editor/qualityReports)
     ├── Training (/quality/training)
-    └── Calibrations (/quality/calibrations)
+    ├── Calibrations (/quality/calibrations)
+    └── Heat Map (/heatmap)
 ```
 
 ---
@@ -83,7 +87,7 @@ When a signal appears, systematically check these factors:
 !!! example "Demo: Flow Rate Investigation"
     In demo mode, the Flow Rate Rule 2 violation can be traced to:
 
-    1. Navigate to `/spc` or **Analytics > SPC** in sidebar
+    1. Navigate to **Tools > Analytics**, then select **SPC** (or go directly to `/spc`)
     2. Select: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar
     3. Click on the red-flagged points to see timestamps
     4. Cross-reference with parts INJ-0042-017 and INJ-0042-019 (search in `/tracker`)

@@ -19,7 +19,7 @@ PDF is recommended for controlled documents (non-editable, consistent display).
 
 ## File Size Limits
 
-- **Maximum file size**: 10 MB
+- **Maximum file size**: Configured by your administrator (typically 10-50 MB)
 - **Recommended**: Under 5 MB for best performance
 
 For large files, consider:
@@ -27,11 +27,14 @@ For large files, consider:
 - Splitting into multiple documents
 - Using external links
 
+!!! note "Check with your administrator"
+    File size limits depend on server configuration. Contact your administrator for the specific limit in your deployment.
+
 ## Uploading a New Document
 
 ### From Document Library
 
-1. Navigate to **Documents**
+1. Navigate to **Tools > Documents**
 2. Click **+ Upload** or **+ New Document**
 3. Drag and drop file, or click to browse
 4. Fill in metadata

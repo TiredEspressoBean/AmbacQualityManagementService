@@ -195,7 +195,8 @@ Configure webhooks for events:
 | `part.status_changed` | Part moved |
 | `quality_report.created` | New NCR |
 
-Configure in Settings > Integrations > Webhooks.
+!!! note "Planned Feature"
+    Webhook configuration UI is planned. Contact your administrator to configure webhooks via backend settings.
 
 ## OpenAPI Schema
 

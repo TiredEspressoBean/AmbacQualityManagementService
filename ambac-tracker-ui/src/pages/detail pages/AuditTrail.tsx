@@ -18,12 +18,11 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
     )?.id;
 
     const { data, isLoading, error } = useRetrieveAuditLogEntries({
-        queries: {
-            object_pk: String(objectId),
-            content_type: contentTypeId,
-            limit: 5,
-            ordering: "-timestamp",
-        },
+        object_pk: String(objectId),
+        content_type: contentTypeId,
+        limit: 5,
+        ordering: "-timestamp",
+    }, undefined, {
         enabled: !!contentTypeId && !!objectId,
     });
 

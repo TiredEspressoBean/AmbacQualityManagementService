@@ -63,7 +63,8 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
 
   // Fetch measurement count
   const { data: measurementsResponse } = useRetrieveMeasurementDefinitions(
-    { queries: { step: stepId } },
+    { step: stepId },
+    undefined,
     { enabled: !!stepId }
   );
   const measurementCount = measurementsResponse?.count ?? 0;
@@ -82,6 +83,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
       content_type: stepsContentTypeId,
       object_id: stepId,
     },
+    undefined,
     { enabled: !!stepId && !!stepsContentTypeId && !contentTypesLoading }
   );
   const documentCount = documentsResponse?.count ?? 0;

@@ -22,7 +22,7 @@ export default function MeasurementDefinitionsManager({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: measurementDefinitions, refetch } = useRetrieveMeasurementDefinitions({
-    queries: { step: stepId },
+    step: stepId,
   });
 
   const definitions = measurementDefinitions?.results || [];

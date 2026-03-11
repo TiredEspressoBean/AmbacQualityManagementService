@@ -18,10 +18,8 @@ export function AnnotatorPage() {
 
     // Fetch all quality reports
     const { data: qualityReportsData, isLoading: isLoadingReports } = useQualityReports({
-        queries: {
-            limit: 1000,
-            ordering: "-created_at" // Most recent first
-        }
+        limit: 1000,
+        ordering: "-created_at" // Most recent first
     });
 
     // Fetch error types to check requires_3d_annotation
@@ -59,12 +57,10 @@ export function AnnotatorPage() {
 
     // Fetch 3D model for the part type
     const { data: modelsData, isLoading: isLoadingModel } = useRetrieveThreeDModels({
-        queries: {
-            part_type: partData?.part_type,
-            archived: false,
-            limit: 1,
-        },
-    }, {
+        part_type: partData?.part_type,
+        archived: false,
+        limit: 1,
+    }, undefined, {
         enabled: !!partData?.part_type,
     });
 

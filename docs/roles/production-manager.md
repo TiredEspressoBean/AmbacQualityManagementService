@@ -34,31 +34,31 @@ As a Production Manager, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Tracker** | Portal > Tracker | Order status overview |
-| **Orders** | Data Management > Orders | Order management |
-| **Work Orders** | Production > Work Orders | Production assignments |
+| **Work Orders** | Production > Work Orders | Main production management |
+| **Orders** | Data Management > Orders | Customer order management |
+| **Tracker** | Portal > Tracker | Customer-facing order overview |
 | **Analytics** | Tools > Analytics | Production metrics |
-| **Inbox** | Personal > Inbox | Tasks and notifications |
+| **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
 
 ## Daily Workflow
 
 ### 1. Review Production Status
 
-1. Navigate to **Tracker**
-2. Check order progress bars
+1. Navigate to **Production** > **Work Orders**
+2. Check work order progress
 3. Identify behind-schedule orders
 4. Note bottlenecks
 
 ### 2. Manage Priorities
 
-1. Review rush and high-priority orders
-2. Adjust work order priorities as needed
-3. Communicate changes to floor
+1. Review rush and high-priority work orders
+2. Adjust priorities as needed
+3. Communicate changes to floor supervisors
 
 ### 3. Handle Exceptions
 
-1. Check **Inbox** for alerts
-2. Address quality holds
+1. Check **Inbox** for CAPA tasks and approval requests
+2. Address quality holds via **Production** > **Dispositions**
 3. Resolve resource conflicts
 4. Update customer if needed
 
@@ -126,15 +126,16 @@ For multiple orders:
 
 ### Monitoring Progress
 
-On **Tracker**:
-- Progress bars show completion
-- Color coding shows on-time status
-- Expand for step distribution
-
-On **Work Orders**:
+On **Work Orders** page:
 - Detailed progress by work order
 - Parts by step
 - Time metrics
+- Priority and status indicators
+
+On **Tracker** (for customer-facing overview):
+- Progress bars show completion
+- Color coding shows on-time status
+- Expand for step distribution
 
 ### Identifying Bottlenecks
 
@@ -155,7 +156,7 @@ Look for:
 
 When parts are quarantined:
 
-1. Alert appears in Inbox
+1. View quarantined parts in **Production** > **Dispositions**
 2. Understand the issue
 3. Coordinate with Quality
 4. Adjust schedule if needed
@@ -195,7 +196,7 @@ Consider:
 ### Order Status Updates
 
 When customers inquire:
-1. Open order on Tracker
+1. Open the order in **Data Management** > **Orders** or view on **Tracker**
 2. Review progress and ETD
 3. Check for quality issues
 4. Provide accurate status
@@ -274,11 +275,11 @@ Generate for management:
 
 | Task | Steps |
 |------|-------|
-| Create order | Orders → + New → Fill form → Save |
+| Create order | Data Management > Orders → + New → Fill form → Save |
 | Add parts | Open order → Parts → + Add → Configure → Save |
-| Create work order | Work Orders → + New → Configure → Save |
+| Create work order | Production > Work Orders → + New → Configure → Save |
 | Change priority | Open work order → Change priority → Save |
-| Check status | Tracker → Find order → View progress |
+| Check status | Production > Work Orders → Find work order → View progress |
 
 ## Related Documentation
 

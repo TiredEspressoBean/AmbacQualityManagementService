@@ -4,7 +4,7 @@ Analyze defect data to identify patterns, prioritize improvements, and track qua
 
 ## Accessing Defect Analysis
 
-Navigate to **Analytics** or **Quality** > **Defects**
+Navigate to **Tools > Analytics**, then click **Defects**, or go directly to `/quality/defects`
 
 ## Pareto Analysis
 

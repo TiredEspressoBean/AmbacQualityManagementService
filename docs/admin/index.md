@@ -115,10 +115,13 @@ Organization settings include:
 - Retention policies
 - Approval requirements
 
-### Integration
+### Integration (Coming Soon)
 - SSO configuration
 - API settings
 - Webhook configuration
+
+!!! note "Planned Feature"
+    The Integrations settings panel is planned. API access is available now via tokens (see [API documentation](../integrations/api.md)).
 
 ## Quick Start Checklist
 

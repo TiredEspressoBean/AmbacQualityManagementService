@@ -23,7 +23,7 @@ Equipment records represent:
 
 ## Creating Equipment
 
-1. Navigate to **Data Management** > **Equipment**
+1. Navigate to **Admin** > **Data Management** > **Equipment**
 2. Click **+ New Equipment**
 3. Fill in details:
 
@@ -54,7 +54,7 @@ Define equipment categories:
 
 ### Creating Equipment Types
 
-1. Navigate to **Data Management** > **Equipment Types**
+1. Navigate to **Admin** > **Data Management** > **Equipment Types**
 2. Click **+ New**
 3. Enter type name and description
 4. Set calibration requirements

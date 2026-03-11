@@ -14,7 +14,7 @@ uqmes provides several dashboards for monitoring operations, quality, and produc
 
 ### Analysis Dashboard (`/analysis`)
 
-Navigate to **Analytics** in the sidebar or go directly to `/analysis`
+Navigate to **Tools > Analytics** in the sidebar or go directly to `/analysis`
 
 Focus: Comprehensive KPI analysis
 - First Pass Yield trend with date range toggle
@@ -36,9 +36,9 @@ Focus: Quality metrics and performance
 
 | Page | Route | Focus |
 |------|-------|-------|
-| Tracker | `/tracker` | Order cards with progress bars |
-| Work Orders | `/workOrders` | Production assignments |
-| QA Work Orders | `/qaWorkOrders` | Quality inspection queue |
+| Tracker | `/tracker` | Order cards with progress bars (customer-facing) |
+| Work Orders | `/production/work-orders` | Production queue and inspection |
+| Dispositions | `/production/dispositions` | Quarantine and disposition management |
 
 ## Quality Dashboard
 

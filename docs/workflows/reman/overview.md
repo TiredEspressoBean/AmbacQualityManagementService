@@ -67,7 +67,7 @@ The **Disassembly BOM** defines expected yields:
 
 When a core arrives:
 
-1. Navigate to **Reman > Receive Core**
+1. Navigate to **Reman > Cores**, then click **+ New**
 2. Enter core number and serial (if available)
 3. Select core type
 4. Assign condition grade

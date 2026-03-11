@@ -47,16 +47,25 @@ export type BulkRecordResponse = {
     errors: Array<{ index: number; error: string }> | null;
 };
 
+// Extract queries type from Zodios endpoint
+type StepExecutionMeasurementsListQueries = Parameters<typeof api.api_StepExecutionMeasurements_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_StepExecutionMeasurements_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+    headers?: Record<string, string>;
+};
+
 /**
  * Query hook for listing step execution measurements
  */
 export function useStepExecutionMeasurements(
-    queries?: Parameters<typeof api.api_StepExecutionMeasurements_list>[0],
+    queries?: StepExecutionMeasurementsListQueries,
+    config?: ListHookConfig,
     options?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["step-execution-measurements", queries],
-        queryFn: () => api.api_StepExecutionMeasurements_list(queries),
+        queryKey: ["step-execution-measurements", queries, config],
+        queryFn: () => api.api_StepExecutionMeasurements_list(queries || config ? { queries, ...config } : undefined),
         ...options
     });
 }

@@ -23,14 +23,12 @@ function useCapasListWithFilter(needsMyApproval: boolean) {
         search?: string;
     }) {
         return useListCapas({
-            queries: {
-                offset,
-                limit,
-                ordering,
-                search,
-                needs_my_approval: needsMyApproval ? true : undefined,
-            } as any,
-        });
+            offset,
+            limit,
+            ordering,
+            search,
+            needs_my_approval: needsMyApproval ? true : undefined,
+        } as any);
     };
 }
 

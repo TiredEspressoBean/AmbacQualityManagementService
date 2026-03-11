@@ -1,8 +1,17 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
+// Extract queries type from Zodios endpoint
+type ProcessesListQueries = Parameters<typeof api.api_Processes_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Processes_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+  headers?: Record<string, string>;
+};
+
 export function useRetrieveProcesses(
-  queries?: Parameters<typeof api.api_Processes_list>[0],
+  queries?: ProcessesListQueries,
+  config?: ListHookConfig,
   options?: Omit<
     UseQueryOptions<
       Awaited<ReturnType<typeof api.api_Processes_list>>,
@@ -12,8 +21,8 @@ export function useRetrieveProcesses(
   >
 ) {
   return useQuery({
-    queryKey: ["process", queries],
-    queryFn: () => api.api_Processes_list(queries),
+    queryKey: ["process", queries, config],
+    queryFn: () => api.api_Processes_list(queries || config ? { queries, ...config } : undefined),
     ...options,
   });
 }

@@ -45,7 +45,8 @@ You have authority to make disposition decisions that affect product, cost, and 
 | **Quality Dashboard** | Quality > Dashboard | KPIs and overview |
 | **CAPAs** | Quality > CAPAs | Corrective actions |
 | **Quality Reports** | Quality > Quality Reports | All NCRs |
-| **Inbox** | Personal > Inbox | Pending approvals |
+| **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
+| **Approvals** | Approvals > Overview | All pending approval requests |
 | **Analytics** | Tools > Analytics | Trends |
 
 **Exercise 1.1:** Dashboard Review
@@ -92,7 +93,7 @@ By the end of this module, you will:
 
 **Finding pending approvals:**
 
-1. Navigate to **Inbox**
+1. Navigate to **Personal > Inbox**
 2. Look for "Disposition Approval" items
 3. Or go to **Quality Reports** and filter by "Pending Approval"
 
@@ -233,7 +234,7 @@ By the end of this module, you will:
 
 **Exercise 3.1:** Create a CAPA
 
-1. Go to CAPAs
+1. Go to **Quality > CAPAs**
 2. Click **+ New CAPA**
 3. Create with:
    - Title: "Recurring dimensional failures on part type PT-100"
@@ -297,7 +298,7 @@ Add these tasks to your training CAPA:
 
 **Exercise 3.3:** Monitor CAPAs
 
-1. Go to CAPAs
+1. Go to **Quality > CAPAs**
 2. Filter to "Open" status
 3. Identify any overdue tasks
 4. Note which CAPAs need attention

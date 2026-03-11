@@ -84,7 +84,7 @@ export function CoreDisassemblyPage() {
 
     // Start disassembly mutation
     const startDisassemblyMutation = useMutation({
-        mutationFn: () => api.api_Cores_start_disassembly_create({ id }),
+        mutationFn: () => api.api_Cores_start_disassembly_create(undefined, { params: { id } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["core", id] });
             queryClient.invalidateQueries({ queryKey: ["cores"] });
@@ -97,7 +97,7 @@ export function CoreDisassemblyPage() {
 
     // Complete disassembly mutation
     const completeDisassemblyMutation = useMutation({
-        mutationFn: () => api.api_Cores_complete_disassembly_create({ id }),
+        mutationFn: () => api.api_Cores_complete_disassembly_create(undefined, { params: { id } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["core", id] });
             queryClient.invalidateQueries({ queryKey: ["cores"] });
@@ -137,7 +137,7 @@ export function CoreDisassemblyPage() {
     // Scrap component mutation
     const scrapComponentMutation = useMutation({
         mutationFn: ({ componentId, reason }: { componentId: string; reason: string }) =>
-            api.api_HarvestedComponents_scrap_create({ id: componentId, reason }),
+            api.api_HarvestedComponents_scrap_create({ reason }, { params: { id: componentId } }),
         onSuccess: () => {
             refetchComponents();
             toast.success("Component scrapped");
@@ -150,7 +150,7 @@ export function CoreDisassemblyPage() {
     // Accept to inventory mutation
     const acceptToInventoryMutation = useMutation({
         mutationFn: (componentId: string) =>
-            api.api_HarvestedComponents_accept_to_inventory_create({ id: componentId }),
+            api.api_HarvestedComponents_accept_to_inventory_create(undefined, { params: { id: componentId } }),
         onSuccess: (data: any) => {
             refetchComponents();
             toast.success(`Component accepted. Part ID: ${data.part_erp_id}`);

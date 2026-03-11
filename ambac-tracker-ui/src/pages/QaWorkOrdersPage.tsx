@@ -74,7 +74,7 @@ export default function QaWorkOrdersPage() {
         needs_qa: true,
         status__in: ["PENDING", "IN_PROGRESS", "AWAITING_QA", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY_FOR_NEXT_STEP"],
         limit: 100,
-    }, {
+    }, undefined, {
         enabled: !!selectedWorkOrder?.id,
     });
 

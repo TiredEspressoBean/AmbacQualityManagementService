@@ -27,14 +27,15 @@ As a Document Controller, you:
 |------|----------|---------|
 | **Documents** | Tools > Documents | Document dashboard |
 | **Document List** | Documents > List | All documents |
-| **Inbox** | Personal > Inbox | Pending approvals |
+| **Inbox** | Personal > Inbox | Pending approvals and tasks |
+| **Approvals** | Approvals > Overview | Pending approval requests |
 | **Approval History** | Approvals > History | Approval records |
 
 ## Daily Workflow
 
 ### 1. Check Pending Items
 
-1. Navigate to **Inbox**
+1. Navigate to **Personal > Inbox**
 2. Review documents pending your action
 3. Check approval queue
 4. Note any urgent items
@@ -56,7 +57,7 @@ As a Document Controller, you:
 
 ### Browsing Documents
 
-1. Navigate to **Documents**
+1. Navigate to **Tools > Documents**
 2. Use filters:
    - Document type
    - Status
@@ -76,7 +77,7 @@ Organize by:
 
 ### New Document
 
-1. Navigate to **Documents**
+1. Navigate to **Tools > Documents**
 2. Click **+ Upload**
 3. Select file
 4. Fill in metadata:

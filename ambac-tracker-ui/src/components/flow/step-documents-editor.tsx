@@ -59,11 +59,10 @@ export function StepDocumentsEditor({
   // Fetch documents for this step
   const { data: documentsData, isLoading: documentsLoading, refetch } = useRetrieveDocuments(
     {
-      queries: {
-        content_type: stepsContentTypeId,
-        object_id: stepId,
-      },
+      content_type: stepsContentTypeId,
+      object_id: stepId,
     },
+    undefined,
     {
       enabled: open && !!stepsContentTypeId && !contentTypesLoading,
     }

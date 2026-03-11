@@ -306,7 +306,7 @@ Processes define how parts move through production.
 
 **Steps:**
 
-1. Navigate to **Data Management** > **Processes**
+1. Navigate to **Production** > **Processes**
 2. Click **+ New Process**
 3. Fill in:
    - Name: Descriptive name
@@ -563,7 +563,7 @@ By the end of this module, you will:
 
 **Exercise 7.1:** Review Audit Log
 
-1. Go to Audit Log
+1. Go to **Admin > Audit Log**
 2. Filter to last 7 days
 3. Find permission changes
 4. Export a report

@@ -15,8 +15,8 @@ Receive a core when:
 
 ### Step 1: Navigate to Core Receiving
 
-1. Go to **Reman** in the sidebar
-2. Click **Receive Core**
+1. Go to **Reman > Cores** in the sidebar
+2. Click **+ New** to receive a new core
 
 ### Step 2: Enter Core Information
 
@@ -105,7 +105,7 @@ Core numbers must be unique. If the number is already used:
 
 If the returning customer isn't in the system:
 
-- Add the company first via **Admin > Companies**
+- Add the company first via **Data Management > Companies**
 - Or leave customer blank and add later
 
 ## Next Steps

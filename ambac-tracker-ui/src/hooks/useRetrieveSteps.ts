@@ -1,8 +1,17 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
+// Extract queries type from Zodios endpoint
+type StepsListQueries = Parameters<typeof api.api_Steps_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Steps_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+  headers?: Record<string, string>;
+};
+
 export function useRetrieveSteps(
-  queries?: Parameters<typeof api.api_Steps_list>[0],
+  queries?: StepsListQueries,
+  config?: ListHookConfig,
   options?: Omit<
     UseQueryOptions<
       Awaited<ReturnType<typeof api.api_Steps_list>>,
@@ -12,8 +21,8 @@ export function useRetrieveSteps(
   >
 ) {
   return useQuery({
-    queryKey: ["step", queries],
-    queryFn: () => api.api_Steps_list(queries),
+    queryKey: ["step", queries, config],
+    queryFn: () => api.api_Steps_list(queries || config ? { queries, ...config } : undefined),
     ...options,
   });
 }

@@ -70,6 +70,7 @@ function PartTypeGroup({
             content_type: partTypesContentTypeId,
             object_id: partTypeId!,
         },
+        undefined,
         { enabled: !!partTypesContentTypeId && !!partTypeId && isOpen }
     );
 
@@ -190,6 +191,7 @@ export function OrderDetailsPage() {
             content_type: ordersContentTypeId,
             object_id: orderNumber,
         },
+        undefined,
         { enabled: !!ordersContentTypeId }
     );
 

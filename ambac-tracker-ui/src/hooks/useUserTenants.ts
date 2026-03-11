@@ -1,30 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 
-export type UserTenant = {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    tier: string;
-    is_current: boolean;
-};
+type UserTenantsResponse = Awaited<ReturnType<typeof api.api_user_tenants_list>>;
+export type UserTenant = UserTenantsResponse[number];
 
 /**
  * Fetch all tenants the current user has access to.
  * Used for the tenant switcher in the sidebar.
  */
-export function useUserTenants() {
+export function useUserTenants(
+    options?: Omit<UseQueryOptions<UserTenantsResponse, Error>, "queryKey" | "queryFn">
+) {
     return useQuery({
         queryKey: ["user", "tenants"],
-        queryFn: async (): Promise<UserTenant[]> => {
-            const response = await fetch("/api/user/tenants/", {
-                credentials: "include",
-            });
-            if (!response.ok) {
-                throw new Error("Failed to fetch user tenants");
-            }
-            return response.json();
-        },
+        queryFn: () => api.api_user_tenants_list(),
         staleTime: 5 * 60 * 1000, // 5 minutes
+        ...options,
     });
 }

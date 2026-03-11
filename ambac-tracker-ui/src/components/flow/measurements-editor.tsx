@@ -33,7 +33,8 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
   const [editingMeasurement, setEditingMeasurement] = useState<MeasurementDefinition | null>(null);
 
   const { data: measurementsResponse, refetch } = useRetrieveMeasurementDefinitions(
-    { queries: { step: stepId } },
+    { step: stepId },
+    undefined,
     { enabled: open }
   );
   const deleteMutation = useDeleteMeasurementDefinition();

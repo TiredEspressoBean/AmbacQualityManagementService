@@ -223,20 +223,20 @@ export default function DocumentFormPage() {
     const selectedContentTypeModel = contentTypeOptions.find(ct => ct.id === selectedContentType)?.model;
 
     // Object search queries - MES models
-    const { data: parts } = useRetrieveParts({ search: objectSearch }, { enabled: selectedContentTypeModel === "parts" });
-    const { data: partTypes } = useRetrievePartTypes({ search: objectSearch }, { enabled: selectedContentTypeModel === "parttype" });
-    const { data: orders } = useRetrieveOrders({ search: objectSearch }, { enabled: selectedContentTypeModel === "orders" });
-    const { data: workOrders } = useRetrieveWorkOrders({ search: objectSearch }, { enabled: selectedContentTypeModel === "workorder" });
-    const { data: processes } = useRetrieveProcesses({ search: objectSearch }, { enabled: selectedContentTypeModel === "processes" });
-    const { data: steps } = useRetrieveSteps({ search: objectSearch }, { enabled: selectedContentTypeModel === "steps" });
+    const { data: parts } = useRetrieveParts({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parts" });
+    const { data: partTypes } = useRetrievePartTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parttype" });
+    const { data: orders } = useRetrieveOrders({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "orders" });
+    const { data: workOrders } = useRetrieveWorkOrders({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "workorder" });
+    const { data: processes } = useRetrieveProcesses({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "processes" });
+    const { data: steps } = useRetrieveSteps({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "steps" });
     // Core models
-    const { data: equipment } = useRetrieveEquipments({ search: objectSearch }, { enabled: selectedContentTypeModel === "equipment" });
-    const { data: companies } = useRetrieveCompanies({ search: objectSearch }, { enabled: selectedContentTypeModel === "companies" });
+    const { data: equipment } = useRetrieveEquipments({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "equipment" });
+    const { data: companies } = useRetrieveCompanies({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "companies" });
     // QMS models
-    const { data: errorTypes } = useRetrieveErrorTypes({ search: objectSearch }, { enabled: selectedContentTypeModel === "errortype" });
-    const { data: dispositions } = useRetrieveQuarantineDispositions({ search: objectSearch }, { enabled: selectedContentTypeModel === "quarantinedisposition" });
-    const { data: capas } = useListCapas({ search: objectSearch }, { enabled: selectedContentTypeModel === "capa" });
-    const { data: threeDModels } = useRetrieveThreeDModels({ search: objectSearch }, { enabled: selectedContentTypeModel === "threedmodel" });
+    const { data: errorTypes } = useRetrieveErrorTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "errortype" });
+    const { data: dispositions } = useRetrieveQuarantineDispositions({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "quarantinedisposition" });
+    const { data: capas } = useListCapas({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "capa" });
+    const { data: threeDModels } = useRetrieveThreeDModels({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "threedmodel" });
 
     // Map content type model to results
     const getObjectsForModel = (model: string | undefined) => {

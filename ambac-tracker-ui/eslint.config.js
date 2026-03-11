@@ -27,6 +27,16 @@ export default tseslint.config(
       // TypeScript flexibility - allow 'any' during rapid development
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Catch forgotten console.log before production
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Prevent empty catch blocks (swallowing errors silently)
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      // Require explanation when bypassing TypeScript
+      '@typescript-eslint/ban-ts-comment': ['warn', {
+        'ts-ignore': 'allow-with-description',
+        'ts-expect-error': 'allow-with-description',
+        minimumDescriptionLength: 10,
+      }],
       // Prevent empty string value on SelectItem/CommandItem (causes runtime errors or filtering issues)
       'no-restricted-syntax': [
         'error',
@@ -64,6 +74,60 @@ export default tseslint.config(
         {
           selector: 'CallExpression[callee.property.name=/^api_.*_create$/][callee.property.name!=/^api_[A-Z][a-z]+_create$/] > ObjectExpression:first-child > Property[key.name="id"]',
           message: 'Custom action endpoints with :id in path require wrapper: use { params: { id }, ... } not { id, ... }.',
+        },
+        // =============================================================================
+        // List Hook Query Parameter Rules
+        // =============================================================================
+        // List hooks handle { queries: ... } wrapping internally. Callers pass params directly.
+        //
+        // LIST HOOKS (3-arg: queries, config, options):
+        //   useRetrieveParts, useRetrieveOrders, useRetrieveUsers, useListCapas, etc.
+        //
+        // EXCLUDED (single-item or special hooks with 2-arg signature):
+        //   useRetrievePart, useRetrieveWorkOrder, useRetrieveProcessWithSteps, etc.
+        //
+        // CORRECT:   useRetrieveParts({ search, limit, offset })
+        // WRONG:     useRetrieveParts({ queries: { search, limit } })
+        // =============================================================================
+        {
+          selector: 'CallExpression[callee.name=/^use(Retrieve(Parts|Orders|Users|Companies|Customers|Cores|Documents|Steps|Processes|Equipments|Groups|Errors|Types)$|List|QualityReports|FpiRecords|MeasurementDefinitions)/] > ObjectExpression:first-child > Property[key.name="queries"]',
+          message: 'List hooks handle { queries } wrapping internally. Pass query params directly: useRetrieveFoo({ search, limit }) not useRetrieveFoo({ queries: { search, limit } }).',
+        },
+        // =============================================================================
+        // List Hook Argument Order Rules
+        // =============================================================================
+        // List hooks have signature: (queries?, config?, options?)
+        // - queries: API query params (search, limit, offset, etc.)
+        // - config: Zodios config (headers, etc.) - pass undefined if not needed
+        // - options: React Query options (enabled, staleTime, etc.)
+        //
+        // CORRECT:   useRetrieveParts({ search }, undefined, { enabled: false })
+        // WRONG:     useRetrieveParts({ search }, { enabled: false })
+        // =============================================================================
+        {
+          selector: 'CallExpression[callee.name=/^use(Retrieve(Parts|Orders|Users|Companies|Customers|Cores|Documents|Steps|Processes|Equipments|Groups)$|List|QualityReports|FpiRecords|MeasurementDefinitions)/] > ObjectExpression:nth-child(2) > Property[key.name="enabled"]',
+          message: 'List hooks: React Query options (enabled) go in 3rd arg, not 2nd. Use: hook(queries, undefined, { enabled }) not hook(queries, { enabled }).',
+        },
+        {
+          selector: 'CallExpression[callee.name=/^use(Retrieve(Parts|Orders|Users|Companies|Customers|Cores|Documents|Steps|Processes|Equipments|Groups)$|List|QualityReports|FpiRecords|MeasurementDefinitions)/] > ObjectExpression:nth-child(2) > Property[key.name="staleTime"]',
+          message: 'List hooks: React Query options (staleTime) go in 3rd arg, not 2nd. Use: hook(queries, undefined, { staleTime }) not hook(queries, { staleTime }).',
+        },
+        {
+          selector: 'CallExpression[callee.name=/^use(Retrieve(Parts|Orders|Users|Companies|Customers|Cores|Documents|Steps|Processes|Equipments|Groups)$|List|QualityReports|FpiRecords|MeasurementDefinitions)/] > ObjectExpression:nth-child(2) > Property[key.name="refetchInterval"]',
+          message: 'List hooks: React Query options (refetchInterval) go in 3rd arg, not 2nd. Use: hook(queries, undefined, { refetchInterval }) not hook(queries, { refetchInterval }).',
+        },
+        // =============================================================================
+        // Code Quality & Security Rules
+        // =============================================================================
+        // Prevent direct fetch() - use typed API client instead
+        {
+          selector: 'CallExpression[callee.name="fetch"]',
+          message: 'Use the typed API client (api.api_*) instead of raw fetch() for API calls.',
+        },
+        // Catch hardcoded localhost/API URLs
+        {
+          selector: 'Literal[value=/https?:\\/\\/(localhost|127\\.0\\.0\\.1)/]',
+          message: 'Avoid hardcoded localhost URLs. Use environment variables instead.',
         },
       ],
     },

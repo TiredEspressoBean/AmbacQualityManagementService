@@ -87,8 +87,8 @@ The **Tracker** page shows all orders and their progress:
 
 As work is completed, parts move through steps:
 
-1. Navigate to **QA Work Orders**
-2. Find your order and click the **Pass** button
+1. Navigate to **Production** > **Work Orders**
+2. Find your work order and click the **Pass** button
 3. In the "Pass Part by Step" dialog, select the step you completed
 4. Click **Submit**
 

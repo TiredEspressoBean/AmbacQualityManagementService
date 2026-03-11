@@ -96,6 +96,7 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
             content_type: partsContentTypeId,
             object_id: part.id,
         },
+        undefined,
         { enabled: !!partsContentTypeId && isOpen }
     );
 

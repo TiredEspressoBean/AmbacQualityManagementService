@@ -19,7 +19,7 @@ SPC applies statistical methods to:
 | SPC Print | `/spc/print` | Print-optimized view for reports |
 | Analysis Dashboard | `/analysis` | Overview with links to SPC |
 
-Navigate to **Analytics** > **SPC** in the sidebar, or go directly to `/spc`
+Navigate to **Tools > Analytics**, then select **SPC**, or go directly to `/spc`
 
 ## Control Charts
 

@@ -40,11 +40,11 @@ As a Production Manager, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Tracker** | Portal > Tracker | Order overview |
-| **Orders** | Data Management > Orders | Order management |
-| **Work Orders** | Production > Work Orders | Production assignments |
-| **Analytics** | Tools > Analytics | Metrics |
-| **Inbox** | Personal > Inbox | Alerts |
+| **Work Orders** | Production > Work Orders | Main production management |
+| **Orders** | Data Management > Orders | Customer order management |
+| **Analytics** | Tools > Analytics | Production metrics |
+| **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
+| **Tracker** | Portal > Tracker | Customer-facing order overview |
 
 **Exercise 1.1:** Navigation Tour
 
@@ -333,7 +333,7 @@ Use this to identify:
 - WIP levels
 - Cycle time trends
 
-Navigate to **Analytics** for detailed views.
+Navigate to **Tools > Analytics** for detailed views.
 
 ---
 
@@ -386,7 +386,7 @@ By the end of this module, you will:
 Check **Inbox** for notifications.
 
 !!! tip "First Piece Inspection"
-    FPI status is visible on the QA Work Orders page. When FPI fails, production should stop until the issue is resolved. Coordinate with QA to expedite FPI reviews for critical orders.
+    FPI status is visible on the Work Orders page (Production > Work Orders). When FPI fails, production should stop until the issue is resolved. Coordinate with QA to expedite FPI reviews for critical orders.
 
 ---
 

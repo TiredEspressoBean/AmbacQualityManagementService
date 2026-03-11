@@ -27,9 +27,9 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
     }), [partTypeId]);
 
     // Fetch 3D models for the selected part's part type (non-archived only)
-    const { data: modelsData, isLoading: modelsLoading } = useRetrieveThreeDModels({
-        queries: threeDModelQueries,
-    });
+    const { data: modelsData, isLoading: modelsLoading } = useRetrieveThreeDModels(
+        threeDModelQueries
+    );
 
     // Fetch part traveler when a part is selected
     const { data: travelerData, isLoading: travelerLoading } = usePartTraveler(

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 /**
@@ -9,21 +10,11 @@ export function useSwitchTenant() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (tenantId: string): Promise<void> => {
-            const response = await fetch("/api/user/tenants/switch/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken") ?? "",
-                },
-                credentials: "include",
-                body: JSON.stringify({ tenant_id: tenantId }),
-            });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.detail || "Failed to switch tenant");
-            }
-        },
+        mutationFn: (tenantId: string) =>
+            api.api_user_tenants_switch_create(
+                { tenant_id: tenantId },
+                { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } }
+            ),
         onSuccess: () => {
             // Invalidate all queries to refresh data for new tenant
             queryClient.invalidateQueries();

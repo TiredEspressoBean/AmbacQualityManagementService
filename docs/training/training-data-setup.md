@@ -354,10 +354,10 @@ print(f'CAPAs: {CAPA.objects.count()}')
 |-------|-------------|----------|
 | Orders exist | Tracker | See order cards |
 | Parts distributed | Order detail | Parts at various steps |
-| Quality reports | Quality > Reports | Sample NCRs visible |
+| Quality reports | Quality > Quality Reports | Sample NCRs visible |
 | CAPA active | Quality > CAPAs | At least one open |
 | Equipment | Data Management > Equipment | Items with calibration |
-| SPC data | Analytics > SPC | Chart displays with points |
+| SPC data | Tools > Analytics > SPC | Chart displays with points |
 
 ---
 

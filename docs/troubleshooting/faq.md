@@ -65,7 +65,7 @@ Complete all tasks, document verification, then click **Request Closure**. Appro
 ## Documents
 
 ### How do I upload a document?
-Navigate to **Documents**, click **+ Upload**, select file, enter metadata, and save.
+Navigate to **Tools > Documents**, click **+ Upload**, select file, enter metadata, and save.
 
 ### Why is my document stuck in "Draft"?
 Controlled document types require approval. Click **Submit for Approval** to start the workflow.
@@ -88,7 +88,7 @@ If using SSO, this is handled by your identity provider. Otherwise, use "Passwor
 Edit the user, modify group membership. Groups determine permissions.
 
 ### How do I create a new process?
-Navigate to **Data Management** > **Processes**, click **+ New Process**, add steps, configure.
+Navigate to **Production** > **Processes**, click **+ New Process**, add steps, configure.
 
 ## Technical
 

@@ -88,13 +88,11 @@ export function PartAnnotator({
 
     // Fetch existing annotations for the provided quality reports
     const { data: existingAnnotationsData } = useRetrieveHeatMapAnnotations({
-        queries: {
-            quality_reports__in: qualityReportIds.join(','),
-            part: partId,
-            model: modelId,
-            limit: 1000,
-        },
-    }, {
+        quality_reports__in: qualityReportIds.join(','),
+        part: partId,
+        model: modelId,
+        limit: 1000,
+    }, undefined, {
         enabled: qualityReportIds.length > 0,
     });
 
@@ -117,7 +115,8 @@ export function PartAnnotator({
 
     // Fetch failed quality reports for this work order
     const { data: qualityReportsData, isLoading: isLoadingReports } = useQualityReports(
-        { queries: { part__work_order: workOrderId, status: 'FAIL', limit: 100 } },
+        { part__work_order: workOrderId, status: 'FAIL', limit: 100 },
+        undefined,
         { enabled: !!workOrderId }
     );
 

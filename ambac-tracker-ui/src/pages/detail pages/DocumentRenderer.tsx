@@ -121,6 +121,7 @@ const TextFileViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fil
         (async () => {
             try {
                 setLoading(true);
+                // eslint-disable-next-line no-restricted-syntax -- Fetching static document content, not an API call
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
                 const text = await response.text();
@@ -172,6 +173,7 @@ const ImageViewer: React.FC<{ url: string; fileName?: string }> = ({ url, fileNa
                 setLoading(true);
                 setError(null);
 
+                // eslint-disable-next-line no-restricted-syntax -- Fetching static image content, not an API call
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
@@ -333,6 +335,7 @@ const PDFViewer: React.FC<{ url: string; fileName?: string }> = ({ url }) => {
                 setLoading(true);
                 setError(null);
 
+                // eslint-disable-next-line no-restricted-syntax -- Fetching static PDF content, not an API call
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 

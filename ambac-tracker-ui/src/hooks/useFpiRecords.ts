@@ -17,16 +17,25 @@ export type FpiGetOrCreateResponse = {
     fpi: any;
 };
 
+// Extract queries type from Zodios endpoint
+type FpiRecordsListQueries = Parameters<typeof api.api_FPIRecords_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_FPIRecords_list>[0];
+
+// Optional config for advanced cases (headers, etc.)
+type ListHookConfig = {
+    headers?: Record<string, string>;
+};
+
 /**
  * Query hook for listing FPI records
  */
 export function useFpiRecords(
-    queries?: Parameters<typeof api.api_FPIRecords_list>[0],
+    queries?: FpiRecordsListQueries,
+    config?: ListHookConfig,
     options?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["fpi-records", queries],
-        queryFn: () => api.api_FPIRecords_list(queries),
+        queryKey: ["fpi-records", queries, config],
+        queryFn: () => api.api_FPIRecords_list(queries || config ? { queries, ...config } : undefined),
         ...options
     });
 }
