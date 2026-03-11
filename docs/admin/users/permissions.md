@@ -129,10 +129,13 @@ The recommended approach:
 
 ### View Effective Permissions
 
-1. Navigate to **Users**
-2. Open user record
-3. View **Permissions** tab
-4. See all effective permissions with source groups
+Users get permissions through their group memberships:
+
+1. Navigate to **Data Management > Users**
+2. Open user record and note their assigned **Groups**
+3. Navigate to **Data Management > Groups**
+4. Open each group to view its **Permissions** tab
+5. User has the combined permissions of all their groups
 
 ### Test Permission
 

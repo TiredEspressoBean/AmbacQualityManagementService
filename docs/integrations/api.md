@@ -47,12 +47,10 @@ JSON responses:
 
 ## Getting API Token
 
-1. Navigate to **Profile** > **API Tokens**
-2. Click **Generate Token**
-3. Copy and securely store token
-4. Use in Authorization header
+!!! note "Contact Administrator"
+    API token management UI is planned. Contact your administrator to obtain an API token.
 
-Tokens inherit user's permissions.
+Once you have a token, use it in the Authorization header. Tokens inherit user's permissions.
 
 ## Core Endpoints
 

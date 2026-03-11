@@ -25,14 +25,15 @@ Create annotations when:
 
 ## Creating an Annotation
 
-### Method 1: From Part Annotator
+### Method 1: From Work Order
 
-1. Navigate to **Part Annotator** (`/annotator`)
-2. Select the part
-3. Model loads with existing annotations
-4. Click location on model where defect is
-5. Fill in annotation form
-6. Save
+1. Navigate to **Production > Work Orders**
+2. Open the work order containing the part you want to annotate
+3. Find the part and click **Annotate** or open the annotation tool
+4. Model loads with existing annotations
+5. Click location on model where defect is
+6. Fill in annotation form
+7. Save
 
 ### Method 2: During Quality Report Creation
 

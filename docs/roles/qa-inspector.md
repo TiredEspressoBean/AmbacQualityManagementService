@@ -168,8 +168,8 @@ If 3D models are configured:
 
 ### Adding Annotations
 
-1. Open Heat Map or Part Annotator
-2. Select the part
+1. Open the work order containing the part (**Production > Work Orders**)
+2. Find the part and open the annotation tool
 3. Click location of defect on model
 4. Fill in annotation details:
    - Error type

@@ -102,8 +102,8 @@ Pre-built reports available:
 
 ### Running a Report
 
-1. Navigate to **Reports** or find in relevant section
-2. Select report type
+1. Navigate to the relevant section (e.g., **Tools > Analytics**, **Quality > Quality Reports**)
+2. Select report type or use export function
 3. Configure parameters:
    - Date range
    - Filters

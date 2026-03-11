@@ -95,15 +95,16 @@ Filter heat map data:
 4. Enter defect details
 5. Save annotation
 
-### From Part Annotator
+### From Work Order
 
-Navigate to **Part Annotator** (`/annotator`):
+Navigate to **Production > Work Orders**:
 
-1. Select part and model
-2. Click location of defect
-3. Fill in annotation form
-4. Attach photo if available
-5. Save
+1. Open the work order containing the part
+2. Find the part and open the annotation tool
+3. Click location of defect on 3D model
+4. Fill in annotation form
+5. Attach photo if available
+6. Save
 
 ### Annotation Details
 

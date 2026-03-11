@@ -401,7 +401,7 @@ Good documentation:
 6. Save
 
 !!! tip "3D Part Annotations"
-    For parts with 3D models, you can use the Part Annotator to place visual annotations directly on the 3D model. Access this via the **Annotator** link on part details or quality reports.
+    For parts with 3D models, you can place visual annotations directly on the 3D model. Access the annotation tool from the work order page (**Production > Work Orders**) by finding the part you want to annotate.
 
 ---
 

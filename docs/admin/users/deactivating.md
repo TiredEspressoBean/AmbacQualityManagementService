@@ -89,7 +89,7 @@ For urgent access removal:
 
 For multiple users:
 
-1. Navigate to **Users**
+1. Navigate to **Data Management > Users**
 2. Select users (checkboxes)
 3. Click **Bulk Actions** > **Deactivate**
 4. Confirm
@@ -103,7 +103,7 @@ Use for:
 
 If user needs access again:
 
-1. Navigate to **Users**
+1. Navigate to **Data Management > Users**
 2. Show inactive users (filter toggle)
 3. Find the user
 4. Open user record

@@ -23,7 +23,7 @@ Review [Common Issues](common-issues.md) for known problems and solutions.
 Hover over icons and fields for contextual help.
 
 ### AI Assistant
-Navigate to **AI Chat** for intelligent assistance:
+Navigate to **Tools > AI Chat** for intelligent assistance:
 - Ask questions about your data
 - Get guidance on features
 - Explore capabilities
