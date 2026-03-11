@@ -15,10 +15,10 @@ Usage:
 """
 
 import os
-import shutil
 import random
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.core.files.base import ContentFile
 
 from Tracker.models import (
     ThreeDModel, HeatMapAnnotations, PartTypes, Parts, QualityReports, User
@@ -70,7 +70,6 @@ class Command(BaseCommand):
 
         # Paths
         seed_assets_dir = os.path.join(settings.BASE_DIR, 'seed_assets', 'models')
-        media_models_dir = os.path.join(settings.MEDIA_ROOT, 'models')
         source_benchy = os.path.join(seed_assets_dir, '3DBenchy.glb')
 
         # Verify source file exists
@@ -81,8 +80,9 @@ class Command(BaseCommand):
             ))
             return
 
-        # Ensure media/models directory exists
-        os.makedirs(media_models_dir, exist_ok=True)
+        # Read source file content once (will be uploaded via storage API)
+        with open(source_benchy, 'rb') as f:
+            benchy_content = f.read()
 
         # Get all part types
         part_types = PartTypes.objects.all()
@@ -118,19 +118,20 @@ class Command(BaseCommand):
             # Create unique filename for this part type
             safe_name = part_type.name.replace(' ', '_').replace('/', '_')
             dest_filename = f"3DBenchy_{safe_name}.glb"
-            dest_path = os.path.join(media_models_dir, dest_filename)
-
-            # Copy benchy file
-            shutil.copy2(source_benchy, dest_path)
 
             # Create ThreeDModel record
             three_d_model = ThreeDModel.objects.create(
                 name=f"3D Benchy - {part_type.name}",
-                file=f"models/{dest_filename}",
                 part_type=part_type,
                 file_type="glb",
                 is_current_version=True,
                 version=1,
+            )
+            # Use Django's storage API to save file (works with both local and S3)
+            three_d_model.file.save(
+                f"models/{dest_filename}",
+                ContentFile(benchy_content),
+                save=True
             )
             models_created += 1
             self.stdout.write(self.style.SUCCESS(f"  Created 3D model for {part_type.name}"))
