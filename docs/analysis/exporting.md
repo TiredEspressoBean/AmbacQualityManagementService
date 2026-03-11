@@ -79,7 +79,10 @@ Some exports can include related data:
 
 ### Dashboard Export
 
-Export entire dashboard:
+!!! note "Planned Feature"
+    Dashboard export is planned for a future release.
+
+When available, you will be able to:
 
 1. Click **Export Dashboard**
 2. Select format (PDF recommended)
@@ -88,28 +91,24 @@ Export entire dashboard:
 
 ## Report Generation
 
-### Standard Reports
+### Available Reports
 
-Pre-built reports available:
+Currently available report types:
 
-| Report | Contents |
-|--------|----------|
-| **Order Status** | All orders with progress |
-| **Quality Summary** | NCRs, dispositions, CAPAs |
-| **Production Report** | Output, throughput, efficiency |
-| **Audit Trail** | System activity log |
-| **Part Traveler** | Complete part history |
+| Report | How to Access |
+|--------|---------------|
+| **Table Exports** | Click **Export** on any data table (Orders, Parts, Quality Reports, etc.) |
+| **Audit Trail** | **Admin > Audit Log** then **Export** |
+| **Part Traveler** | API: `GET /api/Parts/{id}/traveler/` |
+| **SPC Charts** | Via management command (see [Compliance Reports](../compliance/reports.md)) |
 
-### Running a Report
+### Running a Table Export
 
-1. Navigate to the relevant section (e.g., **Tools > Analytics**, **Quality > Quality Reports**)
-2. Select report type or use export function
-3. Configure parameters:
-   - Date range
-   - Filters
-   - Grouping
-4. Click **Generate**
-5. View or download
+1. Navigate to the data page (e.g., **Quality > Quality Reports**, **Data Management > Orders**)
+2. Apply filters as needed
+3. Click **Export** button
+4. Select format (CSV or Excel)
+5. Download file
 
 ### Scheduling Reports
 
@@ -125,21 +124,20 @@ When available, you will be able to:
 
 ## Data Exports
 
-### Full Data Export
+### Bulk Data Export
 
-For bulk data extraction:
+For bulk data extraction, use the export feature on individual data tables:
 
-1. Navigate to **Data Management**
-2. Click **Export Data**
-3. Select data types to include
-4. Choose date range
-5. Generate export
+1. Navigate to the data page in **Data Management** (Orders, Parts, etc.)
+2. Apply filters for date range or other criteria
+3. Click **Export**
+4. Download CSV or Excel file
 
-Includes:
+Each data type has its own export:
 - Orders and parts
 - Quality reports
 - Measurements
-- Documents metadata
+- Equipment, companies, etc.
 
 ### API Access
 
@@ -169,7 +167,18 @@ Includes:
 
 ## Part Traveler
 
-Generate complete part documentation:
+Complete part history is available via API:
+
+```
+GET /api/Parts/{id}/traveler/
+```
+
+Returns step-by-step history including timing, operators, equipment, measurements, defects, and attachments.
+
+!!! note "Planned Feature"
+    A UI button to generate Part Traveler PDFs is planned. Currently, traveler data is available via the API endpoint above.
+
+When UI export is available:
 
 1. Navigate to part detail
 2. Click **Generate Traveler** or **Export History**
@@ -188,7 +197,10 @@ Use for:
 
 ## Certificate of Conformance
 
-Generate CoC documents:
+!!! note "Planned Feature"
+    Certificate of Conformance generation is planned for a future release.
+
+When available:
 
 1. Open order
 2. Click **Generate CoC**
@@ -199,7 +211,10 @@ Generate CoC documents:
 
 ## Document Packages
 
-Export multiple documents together:
+!!! note "Planned Feature"
+    Document package export is planned for a future release.
+
+When available:
 
 1. Select documents
 2. Click **Create Package**
@@ -231,10 +246,9 @@ Exports may be limited by data retention policies.
 ## Best Practices
 
 1. **Filter first** - Export only what you need
-2. **Select columns** - Include relevant fields
-3. **Use schedules** - Automate recurring reports
-4. **Secure downloads** - Exported data is sensitive
-5. **Archive properly** - Store exports per retention policy
+2. **Use API for automation** - Part traveler and other data available via REST API
+3. **Secure downloads** - Exported data is sensitive
+4. **Archive properly** - Store exports per retention policy
 
 ## Next Steps
 
