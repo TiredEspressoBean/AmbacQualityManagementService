@@ -27,7 +27,7 @@ The first piece must pass inspection before remaining parts can proceed.
 
 FPI is configured per process step:
 
-1. Navigate to **Admin** > **Processes**
+1. Navigate to **Production** > **Processes**
 2. Edit the process
 3. On the relevant step, enable **Requires First Piece Inspection**
 4. Select the **FPI Scope** (when FPI resets)
