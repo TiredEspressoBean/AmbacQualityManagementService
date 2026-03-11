@@ -357,7 +357,7 @@ print(f'CAPAs: {CAPA.objects.count()}')
 | Quality reports | Quality > Quality Reports | Sample NCRs visible |
 | CAPA active | Quality > CAPAs | At least one open |
 | Equipment | Data Management > Equipment | Items with calibration |
-| SPC data | Tools > Analytics > SPC | Chart displays with points |
+| SPC data | Tools > Analytics (SPC tab) | Chart displays with points |
 
 ---
 

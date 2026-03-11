@@ -488,7 +488,7 @@ By the end of this module, you will:
 
 **Exercise 5.2:** SPC Review
 
-1. Go to **Analytics > SPC**
+1. Go to **Tools > Analytics**, then select the **SPC** tab
 2. Select Process: Common Rail Injector Remanufacturing
 3. Select Step: Flow Testing
 4. Select Measurement: Flow Rate @ 1000 bar

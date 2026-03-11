@@ -101,7 +101,7 @@ The system flags these patterns automatically:
 
 In demo mode, the Flow Rate chart shows a **Rule 2 violation** (2 of 3 points beyond 2σ):
 
-1. Navigate to **Analytics > SPC**
+1. Navigate to **Tools > Analytics**, then select the **SPC** tab
 2. Select Process: Common Rail Injector Remanufacturing
 3. Select Step: Flow Testing
 4. Select Measurement: Flow Rate @ 1000 bar
@@ -286,7 +286,7 @@ By the end of this module, you will:
 ### Exercise 5.1: Navigate to SPC
 
 1. Log into the demo environment
-2. Navigate to **Analytics > SPC**
+2. Navigate to **Tools > Analytics**, then select the **SPC** tab
 3. Select:
    - Process: Common Rail Injector Remanufacturing
    - Step: Flow Testing

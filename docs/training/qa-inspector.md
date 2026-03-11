@@ -460,7 +460,7 @@ By the end of this module, you will:
 - **Cpk:** Process capability index (target ≥ 1.33)
 
 !!! example "Demo: Flow Rate SPC"
-    In demo mode, navigate to **Analytics > SPC** and select Flow Testing > Flow Rate. Notice the control chart shows a Rule 2 violation (red points) that triggered an alert for your inbox.
+    In demo mode, navigate to **Tools > Analytics**, then select the **SPC** tab. Choose Flow Testing > Flow Rate. Notice the control chart shows a Rule 2 violation (red points) that triggered an alert for your inbox.
 
 ---
 
