@@ -98,9 +98,9 @@ Currently available report types:
 | Report | How to Access |
 |--------|---------------|
 | **Table Exports** | Click **Export** on any data table (Orders, Parts, Quality Reports, etc.) |
-| **Audit Trail** | **Admin > Audit Log** then **Export** |
 | **Part Traveler** | API: `GET /api/Parts/{id}/traveler/` |
 | **SPC Charts** | Via management command (see [Compliance Reports](../compliance/reports.md)) |
+| **Audit Trail** | Planned - see [Audit Trail Export](#audit-trail-export) |
 
 ### Running a Table Export
 
@@ -152,18 +152,24 @@ See [API Overview](../integrations/api.md) for details.
 
 ## Audit Trail Export
 
-Export audit logs for compliance:
+!!! note "Planned Feature"
+    Audit Trail UI export is planned for a future release. Currently, audit logs can be viewed and filtered in the UI, or accessed via the API.
+
+When available:
 
 1. Navigate to **Admin** > **Audit Log**
 2. Filter as needed
 3. Click **Export**
 4. Download CSV or PDF
 
-Includes:
+Audit log data includes:
+
 - All system changes
 - User actions
 - Timestamps
 - Before/after values
+
+**Current access:** Use the REST API endpoint `GET /api/AuditLog/` with filters to retrieve audit data programmatically.
 
 ## Part Traveler
 
@@ -241,7 +247,7 @@ Exports may be limited by data retention policies.
 |------------|--------|
 | `export_data` | Export data and reports |
 | `view_*` | Must have view permission for data type |
-| `view_auditlog` | Export audit trails |
+| `view_auditlog` | View audit trail (export planned) |
 
 ## Best Practices
 
@@ -254,4 +260,4 @@ Exports may be limited by data retention policies.
 
 - [Dashboard Overview](dashboard.md) - Visualize before export
 - [API Overview](../integrations/api.md) - Programmatic access
-- [Audit Trail](audit-trail.md) - Compliance exports
+- [Audit Trail](audit-trail.md) - View compliance history

@@ -178,13 +178,8 @@ From any chart, drill down:
 
 ## Custom Reports
 
-Build custom defect reports:
-
-1. Select metrics
-2. Apply filters
-3. Choose visualization
-4. Add calculations
-5. Save report
+!!! note "Planned Feature"
+    Custom report builder functionality is planned for a future release. Currently, use filters on the defect analysis page and export data for external analysis.
 
 ### Scheduled Reports
 
@@ -193,11 +188,15 @@ Build custom defect reports:
 
 ## Export Options
 
+Export defect data from the Quality Reports table (**Quality > Quality Reports**):
+
 | Format | Use Case |
 |--------|----------|
 | **CSV** | Data analysis in Excel |
-| **PDF** | Sharing, archives |
-| **Image** | Presentations |
+| **Excel** | Includes reference sheets and validation |
+
+!!! note "Planned Feature"
+    PDF and image export from analytics charts are planned for a future release.
 
 ## Permissions
 

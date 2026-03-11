@@ -151,26 +151,27 @@ Correlate heat map with:
 
 ## Heat Map Reports
 
-### Export Options
+!!! note "Planned Feature"
+    Heat map export functionality (PNG, PDF, CSV) is planned for a future release.
 
-- **Image**: PNG for presentations
-- **PDF**: With statistics summary
-- **Data**: CSV of annotation locations
-
-### Report Contents
+When available, reports will include:
 
 - 3D view capture
 - Location frequency table
 - Error type breakdown
 - Trend comparison
 
+Currently, annotation data can be accessed via the REST API.
+
 ## Time-Based Analysis
 
-Compare heat maps over time:
+Use date range filters to compare defect patterns over time:
 
 - Before and after process changes
 - Different production periods
 - Improvement validation
+
+Filter annotations by date range to see how defect patterns evolve.
 
 ## Permissions
 

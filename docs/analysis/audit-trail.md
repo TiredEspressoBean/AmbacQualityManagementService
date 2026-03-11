@@ -154,7 +154,11 @@ Combine filters:
 
 ### Saved Searches
 
-Save common searches:
+!!! note "Planned Feature"
+    Saved search functionality is planned for a future release.
+
+When available:
+
 1. Configure filters
 2. Click **Save Search**
 3. Name the search
@@ -162,31 +166,26 @@ Save common searches:
 
 ## Audit Reports
 
-### Standard Reports
+!!! note "Planned Feature"
+    Pre-built audit reports and custom report generation are planned for a future release. Currently, audit data can be viewed in the UI or accessed via the API.
+
+When available, standard reports will include:
 
 - **User Activity Report**: Actions by user
 - **Record History Report**: Changes to specific records
 - **Login Report**: Authentication activity
 - **Change Summary**: Aggregate change statistics
 
-### Custom Reports
-
-Build custom audit reports:
-1. Select filters
-2. Choose columns
-3. Set grouping
-4. Export or schedule
-
-### Compliance Reports
-
-Pre-built for common requirements:
-- FDA 21 CFR Part 11
-- ISO 13485 audit
-- AS9100D review
+Custom and compliance-focused reports (FDA 21 CFR Part 11, ISO 13485, AS9100D) are also planned.
 
 ## Exporting Audit Data
 
-### Export Options
+!!! note "Planned Feature"
+    UI export of audit data is planned for a future release.
+
+**Current access:** Use the REST API endpoint `GET /api/AuditLog/` with filters to retrieve audit data programmatically for external reporting or archival.
+
+When UI export is available:
 
 | Format | Use Case |
 |--------|----------|
@@ -194,20 +193,12 @@ Pre-built for common requirements:
 | **PDF** | Auditor submission |
 | **JSON** | Integration, backup |
 
-### Exporting
+Steps will be:
 
 1. Filter to desired data
 2. Click **Export**
 3. Select format
 4. Download
-
-### Bulk Export
-
-For large exports:
-1. Select date range
-2. Click **Request Export**
-3. Export prepared asynchronously
-4. Download link sent via email
 
 ## Retention
 
@@ -243,9 +234,9 @@ Full audit log access is typically admin-only.
 
 1. **Review regularly** - Check for anomalies
 2. **Investigate issues** - Use trail for root cause
-3. **Export for audits** - Prepare reports ahead
+3. **Prepare for audits** - Use API to extract data for compliance reviews
 4. **Monitor sensitive** - Watch critical record types
-5. **Protect access** - Limit who can view
+5. **Protect access** - Limit who can view full audit log
 
 ## Next Steps
 

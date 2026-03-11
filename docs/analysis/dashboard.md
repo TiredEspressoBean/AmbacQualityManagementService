@@ -136,16 +136,6 @@ Track recurring issues:
 
 ## Dashboard Widgets
 
-### Customizing Widgets
-
-Some dashboards allow widget customization:
-
-1. Click **Customize** or gear icon
-2. Add/remove widgets
-3. Resize widgets
-4. Arrange layout
-5. Save configuration
-
 ### Widget Types
 
 | Type | Purpose |
@@ -155,7 +145,9 @@ Some dashboards allow widget customization:
 | **Bar Chart** | Comparisons |
 | **Pie Chart** | Distributions |
 | **Table** | Lists of records |
-| **Gauge** | Progress toward goal |
+
+!!! note "Planned Feature"
+    Dashboard widget customization (add/remove, resize, rearrange) is planned for a future release.
 
 ## Date Range Selection
 
@@ -178,11 +170,8 @@ Some dashboards allow widget customization:
 
 ### Comparing Periods
 
-Some charts support comparison:
-
-1. Enable **Compare to Previous**
-2. Current period vs same length prior
-3. Identify improvements or declines
+!!! note "Planned Feature"
+    Period comparison (e.g., "Compare to Previous") is planned for a future release.
 
 ## Drilling Down
 
@@ -208,31 +197,27 @@ Dashboards update automatically, but you can force refresh:
 
 ## Exporting Dashboard Data
 
-Export for reporting:
+!!! note "Planned Feature"
+    Dashboard export functionality is planned for a future release.
 
-1. Click **Export** on chart
-2. Select format (PNG, CSV)
-3. Download
+When available:
 
-Or export entire dashboard:
+- Export individual charts as PNG or CSV
+- Export entire dashboard as PDF
 
-1. Click **Export Dashboard**
-2. PDF or presentation format
-3. Include all visible charts
+For current data exports, see [Exporting Data](exporting.md).
 
 ## Big Screen Mode
 
 For shop floor displays:
 
 1. Navigate to **Big Screen** (`/big-screen`)
-2. Full-screen optimized display
-3. Auto-rotating metrics
-4. Large, readable fonts
+2. Full-screen optimized display (press F11)
+3. Large, readable fonts
+4. Shows KPIs, FPY trend, defects by type, and recent activity
 
-Configure:
-- Metrics to display
-- Rotation interval
-- Display theme
+!!! note "Planned Feature"
+    Big screen configuration options (metrics selection, rotation interval, display theme) are planned for a future release.
 
 ## Permissions
 
