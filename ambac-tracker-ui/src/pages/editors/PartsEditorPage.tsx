@@ -4,6 +4,7 @@ import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
 import {EditPartActionsCell} from "@/components/edit-parts-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // Default params that match what usePartsList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -59,7 +60,7 @@ export function PartsEditorPage() {
             useList={usePartsList}
             columns={[
                 { header: "ERP ID", renderCell: (p: any) => p.ERP_id, priority: 1 },
-                { header: "Status", renderCell: (p: any) => p.part_status, priority: 1 },
+                { header: "Status", renderCell: (p: any) => <StatusBadge status={p.part_status} size="sm" />, priority: 1 },
                 { header: "Part Type", renderCell: (p: any) => p.part_type_name || p.part_type, priority: 2 },
                 { header: "Step", renderCell: (p: any) => p.step_name || p.step_description, priority: 3 },
                 { header: "Created At", renderCell: (p: any) => new Date(p.created_at).toLocaleString(), priority: 4 },

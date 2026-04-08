@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { asOrderDetailInfo, asPartsSummary, withExtendedPartFields } from "@/lib/extended-types";
 import {
     Table,
@@ -159,15 +160,7 @@ export default function QaWorkOrdersPage() {
                                         {workOrder.ERP_id}
                                     </TableCell>
                                     <TableCell>
-                                        <span className={`px-2 py-1 text-xs rounded-full ${
-                                            workOrder.workorder_status === 'IN_PROGRESS'
-                                                ? 'bg-blue-100 text-blue-800'
-                                                : workOrder.workorder_status === 'READY_FOR_QA'
-                                                ? 'bg-yellow-100 text-yellow-800'
-                                                : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {workOrder.workorder_status?.replace('_', ' ') || 'Unknown'}
-                                        </span>
+                                        <StatusBadge status={workOrder.workorder_status} size="sm" />
                                     </TableCell>
                                     <TableCell>
                                         {asOrderDetailInfo(workOrder.related_order_detail)?.name || "-"}
@@ -251,17 +244,7 @@ export default function QaWorkOrdersPage() {
                             <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium">{part.ERP_id}</span>
-                                    <span className={`px-2 py-1 text-xs rounded-full ${
-                                        part.part_status === 'PENDING'
-                                            ? 'bg-yellow-100 text-yellow-800'
-                                            : part.part_status === 'IN_PROGRESS'
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : part.part_status === 'REWORK_NEEDED'
-                                            ? 'bg-red-100 text-red-800'
-                                            : 'bg-gray-100 text-gray-800'
-                                    }`}>
-                                        {part.part_status.replace('_', ' ')}
-                                    </span>
+                                    <StatusBadge status={part.part_status} size="sm" />
                                 </div>
                                 <div className="text-sm text-muted-foreground">
                                     {withExtendedPartFields(part).step_name || withExtendedPartFields(part).step_description} • {withExtendedPartFields(part).process_name} • {withExtendedPartFields(part).part_type_name}
@@ -280,7 +263,7 @@ export default function QaWorkOrdersPage() {
         </div>
     );
 
-    const isBatchWorkOrder = selectedWorkOrder && parts.some(part => withExtendedPartFields(part).is_batch_step);
+    const isBatchWorkOrder = selectedWorkOrder?.is_batch_work_order || false;
 
     return (
         <div className="space-y-6">

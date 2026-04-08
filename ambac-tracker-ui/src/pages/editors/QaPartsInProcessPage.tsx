@@ -2,6 +2,7 @@ import { useRetrieveParts } from "@/hooks/useRetrieveParts";
 import { useNavigate } from "@tanstack/react-router";
 import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
 import {QaPartActionsCell} from "@/components/qa-parts-actions-cell.tsx";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // Custom wrapper hook for consistent usage
 function usePartsList({
@@ -51,7 +52,7 @@ export function QaPartsInProcessPage() {
             ]}
             columns={[
                 { header: "ERP ID", renderCell: (p: any) => p.ERP_id },
-                { header: "Status", renderCell: (p: any) => p.part_status },
+                { header: "Status", renderCell: (p: any) => <StatusBadge status={p.part_status} size="sm" /> },
                 { header: "WorkOrder", renderCell:(p:any) => p.work_order_erp_id || "-"},
                 { header: "Step", renderCell: (p: any) => p.step_name || p.step_description }, // depending on serialization
                 {header: "Process", renderCell: (p:any) => p.process_name},
