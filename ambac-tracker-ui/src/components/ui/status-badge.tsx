@@ -144,6 +144,10 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     // ═══════════════════════════════════════════════════════════════
     AWAITING_QA: { icon: Eye, colorClass: COLORS.purple, label: "Awaiting QA" },
     REWORK_NEEDED: { icon: RotateCcw, colorClass: COLORS.orange, label: "Rework Needed" },
+    REWORK_IN_PROGRESS: { icon: RotateCcw, colorClass: COLORS.info, label: "Rework In Progress" },
+    QUARANTINED: { icon: AlertTriangle, colorClass: COLORS.danger, label: "Quarantined" },
+    READY_FOR_NEXT_STEP: { icon: CheckCircle2, colorClass: COLORS.successLight, label: "Ready for Next Step" },
+    IN_STOCK: { icon: Warehouse, colorClass: COLORS.neutral, label: "In Stock" },
     SCRAPPED: { icon: XCircle, colorClass: COLORS.danger, label: "Scrapped" },
 
     // ═══════════════════════════════════════════════════════════════
@@ -274,7 +278,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
 const DEFAULT_CONFIG: StatusConfig = {
     icon: HelpCircle,
     colorClass: COLORS.neutral,
-    label: "Unknown",
+    label: "",  // Empty so unmapped statuses fall through to formatted string display
 };
 
 /**
@@ -334,7 +338,7 @@ export function StatusBadge({
 
     // Use provided label, configured label, or format the status string
     const statusStr = status == null ? "Unknown" : String(status);
-    const displayLabel = label ?? config.label ?? statusStr.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const displayLabel = label || config.label || statusStr.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
     const Icon = config.icon;
 
