@@ -19,6 +19,13 @@ import {
     CircleDot,
     CircleSlash,
     HelpCircle,
+    Package,
+    Warehouse,
+    RotateCcw,
+    Eye,
+    Truck,
+    Search,
+    Inbox,
     type LucideIcon,
 } from "lucide-react";
 
@@ -128,7 +135,68 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     // QUALITY REPORT STATUSES
     // ═══════════════════════════════════════════════════════════════
     PASS: { icon: CheckCircle2, colorClass: COLORS.success, label: "Pass" },
+    PASSED: { icon: CheckCircle2, colorClass: COLORS.success, label: "Passed" },
     FAIL: { icon: XCircle, colorClass: COLORS.danger, label: "Fail" },
+    FAILED: { icon: XCircle, colorClass: COLORS.danger, label: "Failed" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // PART STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    AWAITING_QA: { icon: Eye, colorClass: COLORS.purple, label: "Awaiting QA" },
+    REWORK_NEEDED: { icon: RotateCcw, colorClass: COLORS.orange, label: "Rework Needed" },
+    SCRAPPED: { icon: XCircle, colorClass: COLORS.danger, label: "Scrapped" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // TERMINAL / SHIPPING STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    SHIPPED: { icon: Package, colorClass: COLORS.success, label: "Shipped" },
+    STOCK: { icon: Warehouse, colorClass: COLORS.neutral, label: "In Stock" },
+    RETURNED: { icon: RotateCcw, colorClass: COLORS.warning, label: "Returned" },
+    AWAITING_PICKUP: { icon: Truck, colorClass: COLORS.warning, label: "Awaiting Pickup" },
+    CORE_BANKED: { icon: Warehouse, colorClass: COLORS.neutral, label: "Core Banked" },
+    RMA_CLOSED: { icon: CheckCircle2, colorClass: COLORS.success, label: "RMA Closed" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // MATERIAL LOT STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    RECEIVED: { icon: Inbox, colorClass: COLORS.info, label: "Received" },
+    IN_USE: { icon: PlayCircle, colorClass: COLORS.info, label: "In Use" },
+    CONSUMED: { icon: CheckCircle2, colorClass: COLORS.neutral, label: "Consumed" },
+    QUARANTINE: { icon: AlertTriangle, colorClass: COLORS.danger, label: "Quarantine" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // REMAN / CORE STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    IN_DISASSEMBLY: { icon: Wrench, colorClass: COLORS.info, label: "In Disassembly" },
+    DISASSEMBLY_COMPLETE: { icon: CheckCircle2, colorClass: COLORS.success, label: "Disassembly Complete" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // SCHEDULE SLOT STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    SCHEDULED: { icon: Clock, colorClass: COLORS.info, label: "Scheduled" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // PROCESS STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    PENDING_APPROVAL: { icon: Clock, colorClass: COLORS.warning, label: "Pending Approval" },
+    DEPRECATED: { icon: Archive, colorClass: COLORS.neutral, label: "Deprecated" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // FPI STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    WAIVED: { icon: CircleSlash, colorClass: COLORS.neutral, label: "Waived" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // EXECUTION STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    CLAIMED: { icon: UserPlus, colorClass: COLORS.info, label: "Claimed" },
+    SKIPPED: { icon: CircleSlash, colorClass: COLORS.neutral, label: "Skipped" },
+    ROLLED_BACK: { icon: RotateCcw, colorClass: COLORS.warning, label: "Rolled Back" },
+
+    // ═══════════════════════════════════════════════════════════════
+    // ORDER STATUSES
+    // ═══════════════════════════════════════════════════════════════
+    READY_FOR_QA: { icon: Search, colorClass: COLORS.purple, label: "Ready for QA" },
 
     // ═══════════════════════════════════════════════════════════════
     // EQUIPMENT STATUSES

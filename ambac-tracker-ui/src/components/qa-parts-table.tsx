@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell.tsx";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { z } from "zod";
 import { schemas } from "@/lib/api/generated";
 import {useDebounce} from "@/hooks/useDebounce.ts";
@@ -141,7 +142,7 @@ export default function QaPartsTable() {
                             <TableCell>{part.part_type_name ?? "—"}</TableCell>
                             <TableCell>{part.step_description ?? "—"}</TableCell>
                             <TableCell>
-                                {formatStatusLabel(part.part_status)}
+                                <StatusBadge status={part.part_status} size="sm" />
                             </TableCell>
                             <QaPartActionsCell part={part} />
                         </TableRow>
