@@ -9329,206 +9329,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
-  /api/HubspotGates/:
-    get:
-      operationId: api_HubspotGates_list
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: List HubSpot gates/milestones
-      parameters:
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExternalAPIOrderIdentifier'
-          description: ''
-    post:
-      operationId: api_HubspotGates_create
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: Create HubSpot gate
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExternalAPIOrderIdentifier'
-          description: ''
-  /api/HubspotGates/{id}/:
-    get:
-      operationId: api_HubspotGates_retrieve
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: Get HubSpot gate details
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this External API Order Identifier.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExternalAPIOrderIdentifier'
-          description: ''
-    put:
-      operationId: api_HubspotGates_update
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: Update HubSpot gate
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this External API Order Identifier.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ExternalAPIOrderIdentifierRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExternalAPIOrderIdentifier'
-          description: ''
-    patch:
-      operationId: api_HubspotGates_partial_update
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: Partially update HubSpot gate
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this External API Order Identifier.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedExternalAPIOrderIdentifierRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedExternalAPIOrderIdentifierRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedExternalAPIOrderIdentifierRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExternalAPIOrderIdentifier'
-          description: ''
-    delete:
-      operationId: api_HubspotGates_destroy
-      description: ViewSet for managing HubSpot gate/milestone data
-      summary: Delete HubSpot gate
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this External API Order Identifier.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/HubspotGates/export-excel/:
-    get:
-      operationId: api_HubspotGates_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
-      parameters:
-      - in: query
-        name: fields
-        schema:
-          type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
-      - in: query
-        name: filename
-        schema:
-          type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: string
-                format: binary
-                description: Excel file download
-          description: ''
   /api/MaterialLots/:
     get:
       operationId: api_MaterialLots_list
@@ -23182,7 +22982,8 @@ paths:
   /api/hubspot-pipeline-stages/:
     get:
       operationId: api_hubspot_pipeline_stages_list
-      description: Read-only pipeline stages for HubSpot integrations.
+      description: Read-only pipeline stages for HubSpot integrations. Admin/staff
+        only.
       parameters:
       - name: limit
         required: false
@@ -23217,7 +23018,8 @@ paths:
   /api/hubspot-pipeline-stages/{id}/:
     get:
       operationId: api_hubspot_pipeline_stages_retrieve
-      description: Read-only pipeline stages for HubSpot integrations.
+      description: Read-only pipeline stages for HubSpot integrations. Admin/staff
+        only.
       parameters:
       - in: path
         name: id
@@ -23241,7 +23043,7 @@ paths:
   /api/integration-sync-logs/:
     get:
       operationId: api_integration_sync_logs_list
-      description: Read-only sync log history.
+      description: Read-only sync log history. Admin/staff only.
       parameters:
       - name: limit
         required: false
@@ -23276,7 +23078,7 @@ paths:
   /api/integration-sync-logs/{id}/:
     get:
       operationId: api_integration_sync_logs_retrieve
-      description: Read-only sync log history.
+      description: Read-only sync log history. Admin/staff only.
       parameters:
       - in: path
         name: id
@@ -23302,7 +23104,7 @@ paths:
       operationId: api_integrations_list
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       parameters:
       - name: limit
         required: false
@@ -23338,7 +23140,7 @@ paths:
       operationId: api_integrations_create
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       tags:
       - api
       requestBody:
@@ -23368,7 +23170,7 @@ paths:
       operationId: api_integrations_retrieve
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       parameters:
       - in: path
         name: id
@@ -23393,7 +23195,7 @@ paths:
       operationId: api_integrations_update
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       parameters:
       - in: path
         name: id
@@ -23430,7 +23232,7 @@ paths:
       operationId: api_integrations_partial_update
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       parameters:
       - in: path
         name: id
@@ -23466,7 +23268,7 @@ paths:
       operationId: api_integrations_destroy
       description: |-
         CRUD for integration management.
-        Scoped to the request user's tenant.
+        Scoped to the request user's tenant. Admin/staff only.
       parameters:
       - in: path
         name: id
@@ -23731,23 +23533,12 @@ paths:
     post:
       operationId: api_reports_download_create
       description: |-
-        Generate and download a PDF report directly (synchronous).
+        Compile synchronously and return PDF bytes as an attachment.
 
-        This endpoint generates the PDF and returns it immediately for download,
-        rather than emailing it. Use for on-device saves.
-
-        Request body:
-        {
-            "report_type": "spc",
-            "params": {
-                "processId": 1,
-                "stepId": 101,
-                "measurementId": 1001,
-                "mode": "xbar-r"
-            }
-        }
-
-        Returns: PDF file as binary response
+        A hard timeout is enforced via concurrent.futures. If the
+        compile exceeds SYNC_COMPILE_TIMEOUT_SECONDS, the worker thread
+        is abandoned (Python cannot kill threads forcibly) — the request
+        returns 504 and memory is reclaimed on gunicorn worker rotation.
       tags:
       - api
       requestBody:
@@ -23777,24 +23568,8 @@ paths:
     post:
       operationId: api_reports_generate_create
       description: |-
-        Generate and email a PDF report.
-
-        Request body:
-        {
-            "report_type": "spc",
-            "params": {
-                "process_id": 1,
-                "step_id": 101,
-                "measurement_id": 1001,
-                "mode": "xbar-r"
-            }
-        }
-
-        Response:
-        {
-            "message": "Report is being generated. You'll receive an email shortly.",
-            "report_id": 123
-        }
+        Queue a Celery task to generate the report and email it to the
+        requesting user. Responds 202 immediately.
       tags:
       - api
       requestBody:
@@ -23822,13 +23597,7 @@ paths:
   /api/reports/history/:
     get:
       operationId: api_reports_history_list
-      description: |-
-        List the current user's generated reports.
-
-        Query params:
-            report_type: Filter by report type (optional)
-            status: Filter by status (optional)
-            limit: Number of results (default 50)
+      description: List the current user's generated reports.
       parameters:
       - name: limit
         required: false
@@ -23863,15 +23632,7 @@ paths:
   /api/reports/types/:
     get:
       operationId: api_reports_types_retrieve
-      description: |-
-        List available report types with their configurations.
-
-        Response:
-        {
-            "spc": {"title": "SPC Report", "route": "/spc/print"},
-            "capa": {"title": "CAPA Report", "route": "/quality/capas/{id}/print"},
-            ...
-        }
+      description: Return a list of registered report types.
       tags:
       - api
       security:
@@ -27509,10 +27270,6 @@ components:
           maxLength: 50
         description:
           type: string
-        hubspot_api_id:
-          type: string
-          nullable: true
-          maxLength: 50
         user_count:
           type: integer
           readOnly: true
@@ -27544,10 +27301,6 @@ components:
         description:
           type: string
           minLength: 1
-        hubspot_api_id:
-          type: string
-          nullable: true
-          maxLength: 50
         archived:
           type: boolean
       required:
@@ -29214,105 +28967,6 @@ components:
       - limit
       - model
       - results
-    ExternalAPIOrderIdentifier:
-      type: object
-      description: |-
-        Serializer for ExternalAPIOrderIdentifier (HubSpot pipeline stages).
-
-        Provides customer-facing display names and full stage information.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        external_id:
-          type: string
-          nullable: true
-          description: External system identifier for integration sync
-          maxLength: 255
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-        stage_name:
-          type: string
-          maxLength: 100
-        API_id:
-          type: string
-          maxLength: 50
-        pipeline_id:
-          type: string
-          nullable: true
-          maxLength: 50
-        display_order:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        last_synced_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        include_in_progress:
-          type: boolean
-        customer_display_name:
-          type: string
-          readOnly: true
-      required:
-      - API_id
-      - created_at
-      - customer_display_name
-      - id
-      - last_synced_at
-      - stage_name
-      - updated_at
-    ExternalAPIOrderIdentifierRequest:
-      type: object
-      description: |-
-        Serializer for ExternalAPIOrderIdentifier (HubSpot pipeline stages).
-
-        Provides customer-facing display names and full stage information.
-      properties:
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        external_id:
-          type: string
-          nullable: true
-          description: External system identifier for integration sync
-          maxLength: 255
-        stage_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        API_id:
-          type: string
-          minLength: 1
-          maxLength: 50
-        pipeline_id:
-          type: string
-          nullable: true
-          maxLength: 50
-        display_order:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        include_in_progress:
-          type: boolean
-      required:
-      - API_id
-      - stage_name
     FPIRecord:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -29886,23 +29540,22 @@ components:
       - rca_record
     GenerateReportRequest:
       type: object
-      description: Serializer for report generation requests.
+      description: |-
+        Top-level shape: {report_type, params}.
+
+        Per-adapter param validation happens inside PdfGenerator via the
+        adapter's `param_serializer_class`. We do NOT repeat that here —
+        this serializer just ensures the top-level envelope is well-formed.
       properties:
         report_type:
-          allOf:
-          - $ref: '#/components/schemas/ReportTypeEnum'
-          description: |-
-            Type of report to generate (spc, capa, quality_report, etc.)
-
-            * `spc` - spc
-            * `capa` - capa
-            * `quality_report` - quality_report
+          type: string
+          minLength: 1
+          description: Registry key of the report to generate (e.g. 'cert_of_conformance').
         params:
           type: object
           additionalProperties: {}
-          description: Parameters specific to the report type
+          description: Parameters specific to the report_type. Validated by the adapter.
       required:
-      - params
       - report_type
     GenerateReportResponse:
       type: object
@@ -29916,7 +29569,7 @@ components:
       - task_id
     GeneratedReport:
       type: object
-      description: Serializer for GeneratedReport model.
+      description: Serializer for GeneratedReport audit records.
       properties:
         id:
           type: string
@@ -34673,10 +34326,6 @@ components:
         description:
           type: string
           minLength: 1
-        hubspot_api_id:
-          type: string
-          nullable: true
-          maxLength: 50
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -34989,41 +34638,6 @@ components:
         notes:
           type: string
         archived:
-          type: boolean
-    PatchedExternalAPIOrderIdentifierRequest:
-      type: object
-      description: |-
-        Serializer for ExternalAPIOrderIdentifier (HubSpot pipeline stages).
-
-        Provides customer-facing display names and full stage information.
-      properties:
-        tenant:
-          type: string
-          format: uuid
-          nullable: true
-          description: Tenant this record belongs to
-        external_id:
-          type: string
-          nullable: true
-          description: External system identifier for integration sync
-          maxLength: 255
-        stage_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        API_id:
-          type: string
-          minLength: 1
-          maxLength: 50
-        pipeline_id:
-          type: string
-          nullable: true
-          maxLength: 50
-        display_order:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-        include_in_progress:
           type: boolean
     PatchedFPIRecordRequest:
       type: object
@@ -38039,30 +37653,19 @@ components:
       required:
       - data
       - total_repeat_count
-    ReportTypeEnum:
-      enum:
-      - spc
-      - capa
-      - quality_report
-      type: string
-      description: |-
-        * `spc` - spc
-        * `capa` - capa
-        * `quality_report` - quality_report
     ReportTypesResponse:
       type: object
       properties:
-        spc:
-          type: object
-          additionalProperties: {}
-          description: SPC report configuration
-        capa:
-          type: object
-          additionalProperties: {}
-          description: CAPA report configuration
+        name:
+          type: string
+        title:
+          type: string
+        template:
+          type: string
       required:
-      - capa
-      - spc
+      - name
+      - template
+      - title
     ResendEmailVerificationRequest:
       type: object
       properties:
