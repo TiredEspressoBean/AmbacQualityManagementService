@@ -61,6 +61,11 @@ class TenantMiddleware:
         self._default_tenant = None  # Cached for dedicated/demo modes
 
     def __call__(self, request):
+        from Tracker.utils.tenant_context import (
+            set_current_tenant_id,
+            reset_current_tenant,
+        )
+
         # Skip tenant resolution for exempt paths
         if self._is_exempt_path(request.path):
             request.tenant = None
@@ -95,7 +100,17 @@ class TenantMiddleware:
         if tenant and getattr(settings, 'ENABLE_RLS', False):
             self._set_rls_context(tenant)
 
-        response = self.get_response(request)
+        # Set the application-layer tenant ContextVar for this request.
+        # Phase 2a lands this without consuming it; Phase 2b will have
+        # SecureManager.get_queryset() read this and auto-scope. We set it
+        # in every request (even when tenant is None) so teardown is
+        # symmetric and we never leak context to a subsequent request.
+        cv_token = set_current_tenant_id(tenant.id if tenant else None)
+
+        try:
+            response = self.get_response(request)
+        finally:
+            reset_current_tenant(cv_token)
 
         # Add tenant context headers to response for debugging/transparency
         # Only add headers if response supports it (has __setitem__)

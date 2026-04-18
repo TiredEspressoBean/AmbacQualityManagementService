@@ -31,13 +31,48 @@ Usage in Celery tasks:
 import functools
 import logging
 from contextlib import contextmanager
-from typing import Union
+from contextvars import ContextVar
+from typing import Optional, Union
 from uuid import UUID
 
 from django.conf import settings
 from django.db import connection, transaction
 
 logger = logging.getLogger(__name__)
+
+# Python ContextVar holding the current tenant id (as a string UUID).
+# Set by TenantMiddleware per HTTP request and by tenant_context() for
+# Celery tasks. Read by SecureManager once Phase 2b lands, to auto-scope
+# queries to the current tenant.
+#
+# The sentinel `None` means "no tenant context active." In Phase 2b the
+# manager will raise if reading this returns None at query time; escape
+# hatches (management commands, shell, migrations) will use the
+# Model.unscoped or Model.all_tenants managers explicitly.
+current_tenant_var: ContextVar[Optional[str]] = ContextVar(
+    'current_tenant_id', default=None,
+)
+
+
+def set_current_tenant_id(tenant_id: Optional[Union[str, UUID]]) -> object:
+    """Set the current-tenant ContextVar and return the reset token.
+
+    Callers (middleware, tenant_context()) should use `try/finally` to
+    reset the token when their scope ends, preventing leakage between
+    requests or tasks.
+    """
+    value = str(tenant_id) if tenant_id is not None else None
+    return current_tenant_var.set(value)
+
+
+def get_current_tenant_id() -> Optional[str]:
+    """Return the current tenant id as a string, or None if unset."""
+    return current_tenant_var.get()
+
+
+def reset_current_tenant(token: object) -> None:
+    """Reset the ContextVar using the token returned from set_current_tenant_id."""
+    current_tenant_var.reset(token)
 
 
 @contextmanager
@@ -69,37 +104,48 @@ def tenant_context(tenant_or_id: Union['Tenant', str, UUID, None]):
     # Resolve tenant ID
     tenant_id = _resolve_tenant_id(tenant_or_id)
 
-    if tenant_id is None:
-        # No tenant context - proceed without RLS filtering
-        # This is intentional for some tasks (e.g., cross-tenant reports)
-        logger.debug("tenant_context called with None - proceeding without tenant isolation")
-        yield
-        return
+    # Always set the Python ContextVar, regardless of RLS / tenant_id.
+    # - tenant_id is a real uuid -> application-layer scoping can read it
+    # - tenant_id is None -> ContextVar stays None, app-layer callers that
+    #   require it will raise (Phase 2b behavior)
+    cv_token = set_current_tenant_id(tenant_id)
 
-    # Check if RLS is enabled
-    if not getattr(settings, 'ENABLE_RLS', False):
-        # RLS disabled - just yield without setting context
-        logger.debug(f"RLS disabled, skipping tenant context for {tenant_id}")
-        yield
-        return
-
-    # Set RLS context within a transaction
     try:
-        with transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SET LOCAL app.current_tenant_id = %s",
-                    [str(tenant_id)]
-                )
-                logger.debug(f"Set RLS context for tenant {tenant_id}")
-
+        if tenant_id is None:
+            # No tenant context at the DB layer either — this is intentional
+            # for some tasks (e.g., cross-tenant reports). Application-layer
+            # enforcement will still raise if the code path tries to query
+            # through Model.objects without explicitly opting out.
+            logger.debug("tenant_context called with None - proceeding without tenant isolation")
             yield
+            return
 
-            # Transaction commits here, SET LOCAL is automatically cleared
+        # Check if RLS is enabled
+        if not getattr(settings, 'ENABLE_RLS', False):
+            # RLS disabled - ContextVar is set, but no DB-layer SET LOCAL
+            logger.debug(f"RLS disabled, skipping DB SET LOCAL for tenant {tenant_id}")
+            yield
+            return
 
-    except Exception as e:
-        logger.error(f"Error in tenant_context for {tenant_id}: {e}")
-        raise
+        # Set RLS context within a transaction
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SET LOCAL app.current_tenant_id = %s",
+                        [str(tenant_id)]
+                    )
+                    logger.debug(f"Set RLS context for tenant {tenant_id}")
+
+                yield
+
+                # Transaction commits here, SET LOCAL is automatically cleared
+
+        except Exception as e:
+            logger.error(f"Error in tenant_context for {tenant_id}: {e}")
+            raise
+    finally:
+        reset_current_tenant(cv_token)
 
 
 def _resolve_tenant_id(tenant_or_id) -> Union[UUID, str, None]:

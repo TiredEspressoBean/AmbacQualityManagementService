@@ -1058,11 +1058,23 @@ class SecureModel(models.Model):
                                          related_name='next_versions')
     is_current_version = models.BooleanField(default=True)
 
-    # Single manager that does everything
+    # Primary manager (will auto-scope by tenant in Phase 2b).
     objects = SecureManager()
+
+    # Explicit no-tenant-filter manager for contexts that intentionally
+    # run outside a request (management commands, data migrations, shell
+    # sessions). Use this instead of `objects` when the code path has no
+    # tenant ContextVar set and auto-scoping would raise.
+    unscoped = models.Manager()
+
+    # Explicit cross-tenant manager for admin/superuser paths that need
+    # to see records across all tenants (e.g., Django admin for support
+    # staff). Semantically: "I know what I'm doing, show me everything."
+    all_tenants = models.Manager()
 
     class Meta:
         abstract = True
+        base_manager_name = 'unscoped'
         indexes = [
             models.Index(fields=['tenant', 'created_at']),
         ]
