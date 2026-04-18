@@ -811,7 +811,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
-    queryset = Companies.objects.all()
+    queryset = Companies.unscoped.all()
     serializer_class = CompanySerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["name"]
@@ -1032,7 +1032,7 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 )
 class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing document attachments (universal infrastructure)"""
-    queryset = Documents.objects.all()
+    queryset = Documents.unscoped.all()
     serializer_class = DocumentsSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -1442,7 +1442,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
 class DocumentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing document types"""
-    queryset = DocumentType.objects.all()
+    queryset = DocumentType.unscoped.all()
     serializer_class = DocumentTypeSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['requires_approval']
@@ -1510,7 +1510,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     Approval templates define the rules and default settings for approval workflows,
     including approver assignments, sequence types, delegation policies, and SLA settings.
     """
-    queryset = ApprovalTemplate.objects.all()
+    queryset = ApprovalTemplate.unscoped.all()
     serializer_class = ApprovalTemplateSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['approval_type', 'approval_flow_type', 'delegation_policy', 'approval_sequence']
@@ -1587,7 +1587,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     Approval requests track the approval workflow for specific content objects,
     managing approver assignments, responses, status tracking, and escalations.
     """
-    queryset = ApprovalRequest.objects.all()
+    queryset = ApprovalRequest.unscoped.all()
     serializer_class = ApprovalRequestSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'approval_type', 'requested_by', 'content_type', 'object_id']
@@ -1744,7 +1744,7 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     Approval responses record individual approver decisions with signature capture,
     identity verification, and delegation support.
     """
-    queryset = ApprovalResponse.objects.all()
+    queryset = ApprovalResponse.unscoped.all()
     serializer_class = ApprovalResponseSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['approval_request', 'approver', 'decision', 'verification_method']

@@ -38,7 +38,7 @@ from .core import ExcelExportMixin
 
 class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Work center management"""
-    queryset = WorkCenter.objects.all()
+    queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'code', 'description']
@@ -48,7 +48,7 @@ class WorkCenterViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewS
 
 class WorkCenterSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     """Lightweight work center endpoint for dropdowns"""
-    queryset = WorkCenter.objects.all()
+    queryset = WorkCenter.unscoped.all()
     serializer_class = WorkCenterSelectSerializer
     pagination_class = None
 
@@ -57,7 +57,7 @@ class WorkCenterSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
 class ShiftViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Shift definition management"""
-    queryset = Shift.objects.all()
+    queryset = Shift.unscoped.all()
     serializer_class = ShiftSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['is_active']
@@ -69,7 +69,7 @@ class ShiftViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 class ScheduleSlotViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Production schedule management"""
-    queryset = ScheduleSlot.objects.select_related('work_center', 'shift', 'work_order')
+    queryset = ScheduleSlot.unscoped.select_related('work_center', 'shift', 'work_order')
     serializer_class = ScheduleSlotSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['work_center', 'shift', 'work_order', 'status', 'scheduled_date']
@@ -117,7 +117,7 @@ class ScheduleSlotViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Equipment/work center downtime tracking"""
-    queryset = DowntimeEvent.objects.select_related(
+    queryset = DowntimeEvent.unscoped.select_related(
         'equipment', 'work_center', 'work_order', 'reported_by', 'resolved_by'
     )
     serializer_class = DowntimeEventSerializer
@@ -152,7 +152,7 @@ class DowntimeEventViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelVi
 
 class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
-    queryset = MaterialLot.objects.select_related('material_type', 'supplier', 'parent_lot', 'received_by')
+    queryset = MaterialLot.unscoped.select_related('material_type', 'supplier', 'parent_lot', 'received_by')
     serializer_class = MaterialLotSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description']
@@ -192,7 +192,7 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
 
 class MaterialUsageViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     """Material consumption records (read-only, created via lot consumption)"""
-    queryset = MaterialUsage.objects.select_related('lot', 'part', 'work_order', 'step', 'consumed_by')
+    queryset = MaterialUsage.unscoped.select_related('lot', 'part', 'work_order', 'step', 'consumed_by')
     serializer_class = MaterialUsageSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['lot', 'part', 'work_order', 'is_substitute']
@@ -204,7 +204,7 @@ class MaterialUsageViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
 class TimeEntryViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Labor time tracking with clock-in/out"""
-    queryset = TimeEntry.objects.select_related(
+    queryset = TimeEntry.unscoped.select_related(
         'user', 'part', 'work_order', 'step', 'equipment', 'work_center'
     )
     serializer_class = TimeEntrySerializer
@@ -275,7 +275,7 @@ class TimeEntryViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSe
 
 class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Bill of Materials management"""
-    queryset = BOM.objects.select_related('part_type', 'approved_by').prefetch_related('lines')
+    queryset = BOM.unscoped.select_related('part_type', 'approved_by').prefetch_related('lines')
     serializer_class = BOMSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['part_type', 'bom_type', 'status']
@@ -323,7 +323,7 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 class BOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """BOM line item management"""
-    queryset = BOMLine.objects.select_related('bom', 'component_type')
+    queryset = BOMLine.unscoped.select_related('bom', 'component_type')
     serializer_class = BOMLineSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['bom', 'component_type', 'is_optional']
@@ -335,7 +335,7 @@ class BOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 class AssemblyUsageViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Assembly component tracking"""
-    queryset = AssemblyUsage.objects.select_related(
+    queryset = AssemblyUsage.unscoped.select_related(
         'assembly', 'component', 'bom_line', 'installed_by', 'removed_by', 'step'
     )
     serializer_class = AssemblyUsageSerializer

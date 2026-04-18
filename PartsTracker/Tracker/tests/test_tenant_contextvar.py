@@ -81,12 +81,19 @@ class TenantContextVarInfrastructureTests(TestCase):
 
 
 class TenantMiddlewareContextVarTests(TenantTestCase):
-    """TenantMiddleware must set the ContextVar during the request and reset after."""
+    """TenantMiddleware must set the ContextVar during the request and
+    restore the prior value after.
+
+    TenantTestCase.setUp sets the ContextVar to tenant_a (so tests can
+    query SecureModels without explicit context). These tests verify the
+    middleware nests correctly: it switches to the request's tenant
+    during the view and restores the prior (outer) value after.
+    """
 
     def test_middleware_sets_contextvar_for_resolved_tenant(self):
-        """Inside get_response, ContextVar is set; after response, reset."""
+        """Inside get_response, ContextVar is set to the request's tenant;
+        after response, restored to the outer (setUp-provided) value."""
         factory = RequestFactory()
-        # Observed states across the request lifecycle.
         observed_during: list = []
 
         def get_response(request):
@@ -96,27 +103,27 @@ class TenantMiddlewareContextVarTests(TenantTestCase):
 
         middleware = TenantMiddleware(get_response)
 
-        # Use X-Tenant-ID header for resolution (testing-friendly path).
+        # Outer state: tenant_a (set by TenantTestCase.setUp).
+        outer_value = get_current_tenant_id()
+        self.assertEqual(outer_value, str(self.tenant_a.id))
+
+        # Middleware switches to tenant_b for the duration of the request.
         request = factory.get(
             '/api/Orders/',
-            HTTP_X_TENANT_ID=str(self.tenant_a.id),
+            HTTP_X_TENANT_ID=str(self.tenant_b.id),
         )
-        request.user = self.user_a
-
-        # Pre-request: ContextVar should be None
-        self.assertIsNone(get_current_tenant_id())
-
+        request.user = self.superuser  # can access any tenant
         middleware(request)
 
-        # During request: ContextVar should have been set to tenant_a's id
+        # During request: ContextVar was tenant_b's id.
         self.assertEqual(len(observed_during), 1)
-        self.assertEqual(observed_during[0], str(self.tenant_a.id))
+        self.assertEqual(observed_during[0], str(self.tenant_b.id))
 
-        # Post-request: ContextVar reset to None
-        self.assertIsNone(get_current_tenant_id())
+        # Post-request: ContextVar restored to the outer value.
+        self.assertEqual(get_current_tenant_id(), outer_value)
 
     def test_middleware_resets_contextvar_on_exception(self):
-        """If the view raises, middleware still resets the ContextVar."""
+        """If the view raises, middleware still restores the prior ContextVar."""
         factory = RequestFactory()
 
         class _ViewBoom(Exception):
@@ -128,32 +135,79 @@ class TenantMiddlewareContextVarTests(TenantTestCase):
         middleware = TenantMiddleware(raising_view)
         request = factory.get(
             '/api/Orders/',
-            HTTP_X_TENANT_ID=str(self.tenant_a.id),
+            HTTP_X_TENANT_ID=str(self.tenant_b.id),
         )
-        request.user = self.user_a
+        request.user = self.superuser  # can access any tenant
 
-        self.assertIsNone(get_current_tenant_id())
+        outer_value = get_current_tenant_id()
         with self.assertRaises(_ViewBoom):
             middleware(request)
-        self.assertIsNone(get_current_tenant_id())
+        # ContextVar restored to the outer (pre-middleware) value.
+        self.assertEqual(get_current_tenant_id(), outer_value)
 
-    def test_exempt_path_does_not_set_contextvar(self):
-        """Admin/health/etc. paths bypass resolution; ContextVar stays unset."""
+    def test_exempt_path_does_not_change_contextvar(self):
+        """Admin/health/etc. paths skip middleware resolution entirely —
+        the ContextVar stays at whatever the outer scope has set."""
         factory = RequestFactory()
+        observed_during: list = []
 
         def get_response(request):
-            # Inside the exempt path handler, ContextVar should NOT have been set
-            self.assertIsNone(get_current_tenant_id())
+            observed_during.append(get_current_tenant_id())
             from django.http import HttpResponse
             return HttpResponse('ok')
 
         middleware = TenantMiddleware(get_response)
         request = factory.get('/admin/')
-        request.user = self.user_a
+        request.user = self.superuser  # can access any tenant
 
-        self.assertIsNone(get_current_tenant_id())
+        outer_value = get_current_tenant_id()
         middleware(request)
-        self.assertIsNone(get_current_tenant_id())
+        # Exempt path: no attempt to set/reset the ContextVar.
+        self.assertEqual(observed_during[0], outer_value)
+        self.assertEqual(get_current_tenant_id(), outer_value)
+
+
+class TenantScopedPrimaryKeyRelatedFieldTests(TenantTestCase):
+    """Verify TenantScopedPrimaryKeyRelatedField rejects cross-tenant PKs
+    at validation time regardless of RLS state."""
+
+    def test_cross_tenant_fk_fails_validation(self):
+        """A request body referencing a foreign-tenant PK must fail
+        DRF validation even when the base queryset is `unscoped`."""
+        from rest_framework.exceptions import ValidationError
+        from Tracker.models import Companies
+        from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
+
+        # Use `unscoped.create` to create a company in tenant_b without
+        # touching the current (tenant_a) ContextVar set by setUp.
+        company_b = Companies.unscoped.create(
+            tenant=self.tenant_b,
+            name='Tenant B Company',
+        )
+
+        field = TenantScopedPrimaryKeyRelatedField(
+            queryset=Companies.unscoped.all(),
+        )
+        # setUp set ContextVar to tenant_a; validating a tenant_b PK
+        # must fail because the field re-scopes its queryset.
+        with self.assertRaises(ValidationError):
+            field.to_internal_value(str(company_b.id))
+
+    def test_same_tenant_fk_passes_validation(self):
+        """A PK belonging to the current tenant resolves successfully."""
+        from Tracker.models import Companies
+        from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
+
+        company_a = Companies.unscoped.create(
+            tenant=self.tenant_a,
+            name='Tenant A Company',
+        )
+
+        field = TenantScopedPrimaryKeyRelatedField(
+            queryset=Companies.unscoped.all(),
+        )
+        resolved = field.to_internal_value(str(company_a.id))
+        self.assertEqual(resolved.pk, company_a.pk)
 
 
 class SecureModelManagersTests(TestCase):

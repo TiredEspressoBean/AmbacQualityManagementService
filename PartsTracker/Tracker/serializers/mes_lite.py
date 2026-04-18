@@ -2,6 +2,7 @@
 from django.db import models
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.models import (
     # MES Lite models
@@ -52,12 +53,12 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
 
     # Write fields
     customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), allow_null=True, required=False)
-    company = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), allow_null=True, required=False)
+    company = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all(), allow_null=True, required=False)
     # TODO: Remove current_hubspot_gate after Phase 5 cleanup (replaced by current_milestone)
-    current_hubspot_gate = serializers.PrimaryKeyRelatedField(queryset=ExternalAPIOrderIdentifier.objects.all(),
+    current_hubspot_gate = TenantScopedPrimaryKeyRelatedField(queryset=ExternalAPIOrderIdentifier.unscoped.all(),
                                                               allow_null=True, required=False)
-    current_milestone = serializers.PrimaryKeyRelatedField(
-        queryset=Milestone.objects.all(), allow_null=True, required=False
+    current_milestone = TenantScopedPrimaryKeyRelatedField(
+        queryset=Milestone.unscoped.all(), allow_null=True, required=False
     )
 
     class Meta:
@@ -319,10 +320,10 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     is_from_batch_process = serializers.SerializerMethodField(read_only=True)
 
     # Write fields
-    step = serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all())
-    part_type = serializers.PrimaryKeyRelatedField(queryset=PartTypes.objects.all())
-    order = serializers.PrimaryKeyRelatedField(queryset=Orders.objects.all(), required=False, allow_null=True)
-    work_order = serializers.PrimaryKeyRelatedField(queryset=WorkOrder.objects.all(), required=False, allow_null=True)
+    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all())
+    part_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all())
+    order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
+    work_order = TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False, allow_null=True)
 
     class Meta:
         model = Parts
@@ -554,7 +555,7 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     is_batch_work_order = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
 
-    related_order = serializers.PrimaryKeyRelatedField(queryset=Orders.objects.all(), required=False, allow_null=True)
+    related_order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
 
     class Meta:
         model = WorkOrder
@@ -1355,8 +1356,8 @@ class MilestoneTemplateListSerializer(serializers.ModelSerializer, SecureModelMi
 
 class BulkAddPartsSerializer(serializers.Serializer):
     """Legacy bulk add parts serializer"""
-    part_type = serializers.PrimaryKeyRelatedField(queryset=PartTypes.objects.all(), source="part_type_id")
-    step = serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all(), source="step_id")
+    part_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all(), source="part_type_id")
+    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all(), source="step_id")
     quantity = serializers.IntegerField(min_value=1)
     part_status = serializers.ChoiceField(choices=PartsStatus.choices)
     process_id = serializers.UUIDField()

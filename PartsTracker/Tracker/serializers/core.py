@@ -8,6 +8,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.conf import settings
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.models.core import (
     User, Companies, UserInvitation, TenantGroup,
@@ -150,7 +151,7 @@ class CustomerSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(serializers.ModelSerializer):
     """Detailed user serializer with company info"""
     parent_company = CompanySerializer(read_only=True, allow_null=True)
-    parent_company_id = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), source='parent_company',
+    parent_company_id = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all(), source='parent_company',
                                                            write_only=True, required=False)
     user_type = serializers.CharField(read_only=True)
     user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
@@ -174,7 +175,7 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Enhanced user serializer with company and permission info"""
     full_name = serializers.SerializerMethodField()
     parent_company = CompanySerializer(read_only=True, allow_null=True)
-    parent_company_id = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), source='parent_company',
+    parent_company_id = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all(), source='parent_company',
                                                            write_only=True, required=False, allow_null=True)
     groups = serializers.SerializerMethodField()
     group_ids = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all(), source='groups',

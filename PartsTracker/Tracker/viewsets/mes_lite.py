@@ -13,6 +13,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
@@ -63,7 +64,7 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
     Use /api/Orders/ for full CRUD operations (staff only).
     """
-    queryset = Orders.objects.all()
+    queryset = Orders.unscoped.all()
     serializer_class = CustomerOrderSerializer
     pagination_class = LimitOffsetPagination
 
@@ -221,7 +222,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
     - POST /import/ - Import data from CSV/Excel file
     - GET /export/ - Export filtered data to CSV/Excel
     """
-    queryset = Parts.objects.all()
+    queryset = Parts.unscoped.all()
     serializer_class = PartsSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, filters.SearchFilter]
@@ -710,7 +711,7 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
     - POST /import/ - Import data from CSV/Excel file
     - GET /export/ - Export filtered data to CSV/Excel
     """
-    queryset = Orders.objects.all()
+    queryset = Orders.unscoped.all()
     serializer_class = OrdersSerializer
     pagination_class = LimitOffsetPagination
 
@@ -795,11 +796,11 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         return Response(result, status=status.HTTP_200_OK)
 
     @extend_schema(request=inline_serializer(name="BulkAddPartsInput", fields={
-        "part_type": serializers.PrimaryKeyRelatedField(queryset=PartTypes.objects.all()),
-        "step": serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all()),
+        "part_type": TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all()),
+        "step": TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all()),
         "quantity": serializers.IntegerField(),
         "part_status": serializers.ChoiceField(choices=PartsStatus.choices, default=PartsStatus.PENDING),
-        "work_order": serializers.PrimaryKeyRelatedField(queryset=WorkOrder.objects.all(), required=False),
+        "work_order": TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False),
         "erp_id_start": serializers.IntegerField(default=1)}), responses={201: dict})
     @action(detail=True, methods=["post"], url_path="parts/bulk-add")
     def bulk_add_parts(self, request, pk=None):
@@ -926,7 +927,7 @@ class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD for milestone templates. Admin-only."""
     from Tracker.serializers.mes_lite import MilestoneTemplateSerializer, MilestoneTemplateListSerializer
 
-    queryset = MilestoneTemplate.objects.all()
+    queryset = MilestoneTemplate.unscoped.all()
     serializer_class = MilestoneTemplateSerializer
     pagination_class = None
 
@@ -950,7 +951,7 @@ class MilestoneViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD for milestones within templates. Admin-only."""
     from Tracker.serializers.mes_lite import MilestoneSerializer
 
-    queryset = Milestone.objects.all()
+    queryset = Milestone.unscoped.all()
     serializer_class = MilestoneSerializer
     pagination_class = None
 
@@ -984,7 +985,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     - GET /import-status/{task_id}/ - Check status of background import
     - GET /export/ - Export filtered data to CSV/Excel
     """
-    queryset = WorkOrder.objects.all()
+    queryset = WorkOrder.unscoped.all()
     serializer_class = WorkOrderSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -1306,7 +1307,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     OpenApiParameter(name="part_type", type=str, location=OpenApiParameter.QUERY, required=False,
                      description="Filter steps by process's part type UUID"), ])
 class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = Steps.objects.all()
+    queryset = Steps.unscoped.all()
     serializer_class = StepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     # Steps are now linked to processes via ProcessStep junction table
@@ -1382,7 +1383,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
 
     Used by the workflow engine for tracking part progression through steps.
     """
-    queryset = StepExecution.objects.all()
+    queryset = StepExecution.unscoped.all()
     serializer_class = StepExecutionSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
@@ -1643,7 +1644,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelV
 
 
 class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = Processes.objects.all()
+    queryset = Processes.unscoped.all()
     serializer_class = ProcessesSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["part_type", "status"]
@@ -1672,7 +1673,7 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
     - POST /import/ - Import data from CSV/Excel file
     - GET /export/ - Export filtered data to CSV/Excel
     """
-    queryset = PartTypes.objects.all()
+    queryset = PartTypes.unscoped.all()
     serializer_class = PartTypesSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, OrderingFilter]
     ordering_fields = ['created_at', 'name', 'updated_at', 'ID_prefix']
@@ -1701,7 +1702,7 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
 
 
 class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = Processes.objects.all()
+    queryset = Processes.unscoped.all()
     serializer_class = ProcessWithStepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["part_type", "status"]
@@ -1837,7 +1838,7 @@ class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mode
 # ===== EQUIPMENT VIEWSETS =====
 
 class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = Equipments.objects.all()
+    queryset = Equipments.unscoped.all()
     serializer_class = EquipmentsSerializer
 
     def get_queryset(self):
@@ -1850,7 +1851,7 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
 
 class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = Equipments.objects.all()
+    queryset = Equipments.unscoped.all()
     serializer_class = EquipmentsSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["equipment_type", "status", "location"]
@@ -1868,7 +1869,7 @@ class EquipmentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
 
 class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = EquipmentType.objects.all()
+    queryset = EquipmentType.unscoped.all()
     serializer_class = EquipmentTypeSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["name"]

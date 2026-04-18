@@ -3,6 +3,11 @@ from django.db import connections
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
+from Tracker.utils.tenant_context import (
+    set_current_tenant_id,
+    reset_current_tenant,
+)
+
 
 class VectorTestCase(TestCase):
     """
@@ -48,7 +53,9 @@ class TenantTestCase(VectorTestCase):
         super().setUp()
         from Tracker.models import Tenant
 
-        # Create tenants
+        # Tenant itself is not a SecureModel, so its default manager does
+        # not auto-scope. Create tenants first so we have an id to set the
+        # ContextVar to.
         self.tenant_a = Tenant.objects.create(
             name="Tenant A",
             slug="tenant-a",
@@ -59,6 +66,11 @@ class TenantTestCase(VectorTestCase):
             slug="tenant-b",
             tier="STARTER"
         )
+
+        # Set the tenant ContextVar so any SecureManager queries during
+        # the test auto-scope to tenant_a. Tests that need to query as
+        # tenant_b can call self.switch_tenant_context(self.tenant_b).
+        self._tenant_cv_token = set_current_tenant_id(self.tenant_a.id)
 
         User = get_user_model()
 
@@ -85,6 +97,22 @@ class TenantTestCase(VectorTestCase):
 
         # Set up API client
         self.client = APIClient()
+
+    def tearDown(self):
+        # Reset the tenant ContextVar so it doesn't leak into the next
+        # test. Using a per-test token keeps nested contexts safe.
+        token = getattr(self, '_tenant_cv_token', None)
+        if token is not None:
+            reset_current_tenant(token)
+            self._tenant_cv_token = None
+        super().tearDown()
+
+    def switch_tenant_context(self, tenant):
+        """Switch the ContextVar to a different tenant mid-test. Returns
+        a token the caller can pass to reset_current_tenant if they want
+        to revert. Useful when a test needs to query as tenant_b after
+        setUp established tenant_a as default."""
+        return set_current_tenant_id(tenant.id if tenant else None)
 
     def authenticate_as(self, user, tenant=None):
         """
@@ -118,6 +146,10 @@ class TenantTestCase(VectorTestCase):
         """
         Helper to create a model instance for a specific tenant.
 
+        Uses `unscoped` so the create succeeds regardless of which tenant
+        the test's ContextVar currently points at. The caller specifies
+        the owning tenant explicitly via the `tenant` argument.
+
         Args:
             model_class: The Django model class
             tenant: The tenant to assign
@@ -126,7 +158,8 @@ class TenantTestCase(VectorTestCase):
         Returns:
             The created model instance
         """
-        return model_class.objects.create(tenant=tenant, **kwargs)
+        manager = getattr(model_class, 'unscoped', model_class.objects)
+        return manager.create(tenant=tenant, **kwargs)
 
     def grant_tenant_permissions(self, user, tenant, permissions):
         """

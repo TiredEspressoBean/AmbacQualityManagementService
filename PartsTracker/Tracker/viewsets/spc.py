@@ -131,7 +131,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         GET /api/spc/capability/ - Get process capability metrics (Cpk/Ppk)
     """
     permission_classes = [IsAuthenticated]
-    queryset = MeasurementResult.objects.none()  # For drf-spectacular schema generation
+    queryset = MeasurementResult.unscoped.none()  # For drf-spectacular schema generation
     pagination_class = None  # Disable pagination - these endpoints return custom responses
 
     @extend_schema(responses={200: ProcessSPCSerializer(many=True)})
@@ -727,7 +727,7 @@ class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
     """
-    queryset = SPCBaseline.objects.all()
+    queryset = SPCBaseline.unscoped.all()
     serializer_class = SPCBaselineSerializer
     pagination_class = LimitOffsetPagination
     permission_classes = [IsAuthenticated]

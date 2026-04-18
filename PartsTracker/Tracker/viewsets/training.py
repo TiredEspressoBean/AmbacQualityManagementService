@@ -42,7 +42,7 @@ class TrainingTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin
     Training types define categories of training/qualifications that personnel can hold,
     such as 'Blueprint Reading', 'CMM Operation', or 'Soldering IPC-A-610'.
     """
-    queryset = TrainingType.objects.all()
+    queryset = TrainingType.unscoped.all()
     serializer_class = TrainingTypeSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['validity_period_days']
@@ -82,7 +82,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
     Training records track when a user has completed a specific training,
     including completion date, expiration, and trainer information.
     """
-    queryset = TrainingRecord.objects.all()
+    queryset = TrainingRecord.unscoped.all()
     serializer_class = TrainingRecordSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['user', 'training_type', 'trainer']
@@ -235,7 +235,7 @@ class TrainingRequirementViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExpo
     Training requirements link a TrainingType to work activities
     (Step, Process, or EquipmentType).
     """
-    queryset = TrainingRequirement.objects.all()
+    queryset = TrainingRequirement.unscoped.all()
     serializer_class = TrainingRequirementSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['training_type', 'step', 'process', 'equipment_type']

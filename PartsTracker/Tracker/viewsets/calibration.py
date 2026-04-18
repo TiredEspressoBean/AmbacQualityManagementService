@@ -45,7 +45,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
     - Traceability information (certificate number, standards used)
     - As-found/as-left status
     """
-    queryset = CalibrationRecord.objects.all()
+    queryset = CalibrationRecord.unscoped.all()
     serializer_class = CalibrationRecordSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['equipment', 'result', 'calibration_type']

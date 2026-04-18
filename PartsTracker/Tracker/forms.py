@@ -79,12 +79,29 @@ class PartTypeForm(forms.ModelForm):
 
 class LineItemForm(forms.Form):
     quantity = forms.IntegerField(min_value=1)
-    part_type = forms.ModelChoiceField(queryset=PartTypes.objects.all(), required=False)
+    # Module-level queries bypass SecureManager auto-scoping (no tenant
+    # context at import time). The ModelChoiceField's queryset should
+    # be tenant-filtered at runtime via form.__init__ — see Phase 3 TODO.
+    part_type = forms.ModelChoiceField(queryset=PartTypes.unscoped.all(), required=False)
     enumeration_start = forms.IntegerField(min_value=0)
-    process = forms.ModelChoiceField(queryset=Processes.objects.all(), required=False)
+    process = forms.ModelChoiceField(queryset=Processes.unscoped.all(), required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Re-scope the ModelChoiceField querysets to the current tenant at
+        # form-instantiation time. The class-level queryset is `unscoped`
+        # (needed to avoid raising at import time when no tenant context
+        # exists), so we must narrow it here to prevent cross-tenant
+        # selections. Works whether the form is instantiated inside a
+        # request (middleware set the ContextVar) or in a shell; in the
+        # unset case the queryset stays global — rely on RLS or the view
+        # layer to gate.
+        from Tracker.utils.tenant_context import current_tenant_var
+        _tenant_id = current_tenant_var.get()
+        if _tenant_id is not None:
+            self.fields['part_type'].queryset = PartTypes.unscoped.filter(tenant_id=_tenant_id)
+            self.fields['process'].queryset = Processes.unscoped.filter(tenant_id=_tenant_id)
 
         # Define the base form control classes (your Tailwind input style)
         input_classes = map_generic_form_input_styles(None)
@@ -142,13 +159,13 @@ class ErrorReportForm(forms.ModelForm):
     other_error = forms.CharField(required=False, label="Other error (not listed)")
 
     errors_associated = forms.ModelMultipleChoiceField(
-        queryset=QualityErrorsList.objects.none(),
+        queryset=QualityErrorsList.unscoped.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Common Error Types (for this part)"
     )
     errors_unassociated = forms.ModelMultipleChoiceField(
-        queryset=QualityErrorsList.objects.none(),
+        queryset=QualityErrorsList.unscoped.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Other Error Types"

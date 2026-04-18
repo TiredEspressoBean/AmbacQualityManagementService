@@ -36,7 +36,7 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
 
     Alternative: scrap -> status: scrapped (if core not suitable)
     """
-    queryset = Core.objects.select_related('core_type', 'customer', 'received_by', 'disassembled_by', 'work_order')
+    queryset = Core.unscoped.select_related('core_type', 'customer', 'received_by', 'disassembled_by', 'work_order')
     serializer_class = CoreSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['core_number', 'serial_number', 'source_reference']
@@ -127,7 +127,7 @@ class HarvestedComponentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mo
     - accept_to_inventory -> Creates a Parts record for reuse
     - scrap -> Marks as scrapped
     """
-    queryset = HarvestedComponent.objects.select_related(
+    queryset = HarvestedComponent.unscoped.select_related(
         'core', 'component_type', 'component_part', 'disassembled_by', 'scrapped_by'
     )
     serializer_class = HarvestedComponentSerializer
@@ -191,7 +191,7 @@ class HarvestedComponentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mo
 
 class DisassemblyBOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Disassembly BOM line management (expected yields from cores)"""
-    queryset = DisassemblyBOMLine.objects.select_related('core_type', 'component_type')
+    queryset = DisassemblyBOMLine.unscoped.select_related('core_type', 'component_type')
     serializer_class = DisassemblyBOMLineSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['core_type', 'component_type']

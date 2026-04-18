@@ -787,8 +787,26 @@ class SecureQuerySet(models.QuerySet):
         return self.active().current_versions()
 
 
+class TenantContextRequired(Exception):
+    """Raised when a SecureManager query is attempted without a tenant
+    ContextVar set. The caller must either:
+      - Run inside a request (TenantMiddleware sets the ContextVar), or
+      - Wrap the code in `tenant_context(tenant_id)` (Celery tasks,
+        scripts that know the tenant), or
+      - Use `Model.unscoped` (no filter) or `Model.all_tenants`
+        (explicit cross-tenant, e.g. admin) instead of `Model.objects`.
+    """
+
+
 class SecureManager(models.Manager):
-    """Unified manager with filtering, soft delete, versioning, and security"""
+    """Unified manager with filtering, soft delete, versioning, and security.
+
+    Auto-scopes queries by the current-request tenant when the ContextVar
+    is set (see `Tracker.utils.tenant_context.current_tenant_var`). Raises
+    TenantContextRequired if the ContextVar is unset — forcing every
+    caller to either operate inside a request/tenant_context or use the
+    explicit `unscoped` / `all_tenants` escape-hatch managers.
+    """
 
     # Define which models support customer filtering (Upgrade #4: Model Registration)
     RELATIONSHIP_FILTERABLE_MODELS = {
@@ -797,7 +815,24 @@ class SecureManager(models.Manager):
     }
 
     def get_queryset(self):
-        return SecureQuerySet(self.model, using=self._db)
+        from Tracker.utils.tenant_context import current_tenant_var
+
+        qs = SecureQuerySet(self.model, using=self._db)
+
+        # Only tenant-scoped models should hit this path. The SecureModel
+        # `tenant` FK must exist on the concrete subclass.
+        if not any(f.name == 'tenant' for f in self.model._meta.get_fields()):
+            return qs
+
+        tenant_id = current_tenant_var.get()
+        if tenant_id is None:
+            raise TenantContextRequired(
+                f"{self.model.__name__}.objects query attempted without "
+                f"tenant context. Use `tenant_context(tenant_id)`, run "
+                f"inside a request, or switch to `{self.model.__name__}.unscoped` "
+                f"or `{self.model.__name__}.all_tenants`."
+            )
+        return qs.filter(tenant_id=tenant_id)
 
     # User-based filtering
     def for_user(self, user, include_archived=False):
@@ -1074,7 +1109,13 @@ class SecureModel(models.Model):
 
     class Meta:
         abstract = True
+        # Both base and default managers point at `unscoped` so Django
+        # internals (related-object descriptors, form-field queryset
+        # generation, django-auditlog) don't trip the auto-scoping /
+        # raise on `objects`. Application code explicitly writing
+        # `Model.objects.xxx` gets the scoped and raise behavior.
         base_manager_name = 'unscoped'
+        default_manager_name = 'unscoped'
         indexes = [
             models.Index(fields=['tenant', 'created_at']),
         ]

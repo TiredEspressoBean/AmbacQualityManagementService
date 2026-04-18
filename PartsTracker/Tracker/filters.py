@@ -42,10 +42,14 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
 
     archived = django_filters.BooleanFilter()
 
-    order = django_filters.ModelChoiceFilter(queryset=Orders.objects.none())
-    step = django_filters.ModelChoiceFilter(queryset=Steps.objects.none())
-    part_type = django_filters.ModelChoiceFilter(queryset=PartTypes.objects.none())
-    work_order = django_filters.ModelChoiceFilter(queryset=WorkOrder.objects.none())
+    # Module-level ModelChoiceFilter querysets use `unscoped` so import
+    # doesn't trip SecureManager (no tenant context at import time). The
+    # runtime queryset is set per-request in __init__ via filter_by_tenant,
+    # which does tenant-scope via the user's current tenant.
+    order = django_filters.ModelChoiceFilter(queryset=Orders.unscoped.none())
+    step = django_filters.ModelChoiceFilter(queryset=Steps.unscoped.none())
+    part_type = django_filters.ModelChoiceFilter(queryset=PartTypes.unscoped.none())
+    work_order = django_filters.ModelChoiceFilter(queryset=WorkOrder.unscoped.none())
     requires_sampling = django_filters.BooleanFilter()
 
     # Filter for parts that need QA (require sampling but don't have a PASS report)
@@ -101,8 +105,8 @@ class OrderFilter(TenantFilterMixin, django_filters.FilterSet):
     status = django_filters.CharFilter(lookup_expr='icontains')
     archived = django_filters.BooleanFilter()
 
-    customer = django_filters.ModelChoiceFilter(queryset=User.objects.none())
-    company = django_filters.ModelChoiceFilter(queryset=Companies.objects.none())
+    customer = django_filters.ModelChoiceFilter(queryset=User.objects.none())  # User isn't SecureModel; default manager is safe
+    company = django_filters.ModelChoiceFilter(queryset=Companies.unscoped.none())
 
     created_at__gte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr='gte')
     created_at__lte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr='lte')
@@ -161,7 +165,7 @@ class UserFilter(TenantFilterMixin, django_filters.FilterSet):
     archived = django_filters.BooleanFilter()
     user_type = django_filters.ChoiceFilter(choices=User.UserType.choices)
 
-    parent_company = django_filters.ModelChoiceFilter(queryset=Companies.objects.none())
+    parent_company = django_filters.ModelChoiceFilter(queryset=Companies.unscoped.none())
 
     date_joined__gte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="gte")
     date_joined__lte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="lte")

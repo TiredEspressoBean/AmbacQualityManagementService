@@ -1,6 +1,7 @@
 # serializers/dms.py - Document Management System serializers
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.models import (
     # Core models
@@ -242,13 +243,13 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
     part_type_display = serializers.CharField(source='part_type.__str__', read_only=True)
     step_display = serializers.CharField(source='step.__str__', read_only=True)
     annotation_count = serializers.SerializerMethodField()
-    part_type = serializers.PrimaryKeyRelatedField(
-        queryset=PartTypes.objects.all(),
+    part_type = TenantScopedPrimaryKeyRelatedField(
+        queryset=PartTypes.unscoped.all(),
         required=True,
         allow_null=False
     )
-    step = serializers.PrimaryKeyRelatedField(
-        queryset=Steps.objects.all(),
+    step = TenantScopedPrimaryKeyRelatedField(
+        queryset=Steps.unscoped.all(),
         required=False,
         allow_null=True
     )

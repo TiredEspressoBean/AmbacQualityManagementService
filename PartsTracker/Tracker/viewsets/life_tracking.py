@@ -32,7 +32,7 @@ class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
     - Shot Count (soft_limit=400000, hard_limit=500000)
     """
-    queryset = LifeLimitDefinition.objects.all()
+    queryset = LifeLimitDefinition.unscoped.all()
     serializer_class = LifeLimitDefinitionSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'unit', 'unit_label']
@@ -54,7 +54,7 @@ class PartTypeLifeLimitViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     Defines which life limits apply to which part types,
     and whether tracking is required when creating parts.
     """
-    queryset = PartTypeLifeLimit.objects.select_related('part_type', 'definition')
+    queryset = PartTypeLifeLimit.unscoped.select_related('part_type', 'definition')
     serializer_class = PartTypeLifeLimitSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['part_type', 'definition', 'is_required']
@@ -69,7 +69,7 @@ class LifeTrackingViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     Tracks accumulated life for parts, cores, equipment, etc.
     Supports increment, reset (overhaul), and per-instance limit overrides.
     """
-    queryset = LifeTracking.objects.select_related('definition', 'content_type', 'override_approved_by')
+    queryset = LifeTracking.unscoped.select_related('definition', 'content_type', 'override_approved_by')
     serializer_class = LifeTrackingSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['definition', 'cached_status', 'source', 'content_type', 'object_id']

@@ -37,7 +37,7 @@ from .base import TenantScopedMixin
 # ===== QUALITY VIEWSETS =====
 
 class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = QualityReports.objects.all()
+    queryset = QualityReports.unscoped.all()
     serializer_class = QualityReportsSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -61,7 +61,7 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
 
 
 class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = QualityErrorsList.objects.all()
+    queryset = QualityErrorsList.unscoped.all()
     serializer_class = QualityErrorsListSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["error_name", "part_type"]
@@ -79,7 +79,7 @@ class ErrorTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
 
 class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = QuarantineDisposition.objects.all()
+    queryset = QuarantineDisposition.unscoped.all()
     serializer_class = QuarantineDispositionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
 
@@ -110,7 +110,7 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
 # ===== SAMPLING VIEWSETS =====
 
 class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = SamplingRuleSet.objects.all()
+    queryset = SamplingRuleSet.unscoped.all()
     serializer_class = SamplingRuleSetSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["part_type", "process", "step", "active", "version"]
@@ -128,7 +128,7 @@ class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
 
 
 class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = SamplingRule.objects.all()
+    queryset = SamplingRule.unscoped.all()
     serializer_class = SamplingRuleSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["ruleset", "rule_type"]
@@ -146,7 +146,7 @@ class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin
 
 
 class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
-    queryset = MeasurementDefinition.objects.all()
+    queryset = MeasurementDefinition.unscoped.all()
     serializer_class = MeasurementDefinitionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["step__name", "label", "step"]
@@ -327,7 +327,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     CAPAs track the full lifecycle from problem identification through
     root cause analysis, corrective actions, verification, and closure.
     """
-    queryset = CAPA.objects.all()
+    queryset = CAPA.unscoped.all()
     serializer_class = CAPASerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'capa_type', 'severity', 'assigned_to', 'initiated_by']
@@ -553,7 +553,7 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     Individual action items within a CAPA workflow, with assignment tracking,
     due dates, and completion verification.
     """
-    queryset = CapaTasks.objects.all()
+    queryset = CapaTasks.unscoped.all()
     serializer_class = CapaTasksSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['capa', 'status', 'task_type', 'assigned_to', 'completion_mode']
@@ -661,7 +661,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
 
     Tracks RCA methodology (5 Whys, Fishbone, etc.) and findings for CAPAs.
     """
-    queryset = RcaRecord.objects.all()
+    queryset = RcaRecord.unscoped.all()
     serializer_class = RcaRecordSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['capa', 'rca_method', 'rca_review_status', 'conducted_by', 'root_cause_verified_by']
@@ -741,7 +741,7 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
 
     Tracks verification of CAPA effectiveness with findings and evidence.
     """
-    queryset = CapaVerification.objects.all()
+    queryset = CapaVerification.unscoped.all()
     serializer_class = CapaVerificationSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['capa', 'effectiveness_result', 'verified_by']
@@ -781,7 +781,7 @@ class FiveWhysViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     The 5 Whys is an iterative interrogative technique used to explore
     the cause-and-effect relationships underlying a particular problem.
     """
-    queryset = FiveWhys.objects.all()
+    queryset = FiveWhys.unscoped.all()
     serializer_class = FiveWhysSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['rca_record']
@@ -819,7 +819,7 @@ class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     The Fishbone diagram organizes potential causes into 6M categories:
     Man, Machine, Material, Method, Measurement, and Environment.
     """
-    queryset = Fishbone.objects.all()
+    queryset = Fishbone.unscoped.all()
     serializer_class = FishboneSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['rca_record']
@@ -857,7 +857,7 @@ class FishboneViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 )
 class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing 3D model files for quality visualization"""
-    queryset = ThreeDModel.objects.all()
+    queryset = ThreeDModel.unscoped.all()
     serializer_class = ThreeDModelSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, OrderingFilter]
@@ -903,7 +903,7 @@ class ThreeDModelViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
 )
 class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """ViewSet for managing heatmap annotations on 3D models for quality inspection"""
-    queryset = HeatMapAnnotations.objects.all()
+    queryset = HeatMapAnnotations.unscoped.all()
     serializer_class = HeatMapAnnotationsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, OrderingFilter]
     filterset_fields = {
@@ -1032,7 +1032,7 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     Supports rollback requests, measurement failures, QA signoff bypasses, etc.
     """
     from Tracker.models import StepOverride
-    queryset = StepOverride.objects.all()
+    queryset = StepOverride.unscoped.all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status', 'block_type', 'step_execution']
     ordering_fields = ['requested_at', 'approved_at', 'expires_at']
@@ -1166,7 +1166,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     - per_equipment: One FPI per equipment per step
     """
     from Tracker.models import FPIRecord
-    queryset = FPIRecord.objects.all()
+    queryset = FPIRecord.unscoped.all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
     ordering_fields = ['created_at', 'shift_date', 'inspected_at']
@@ -1462,7 +1462,7 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
     and can block step advancement if out of spec.
     """
     from Tracker.models import StepExecutionMeasurement
-    queryset = StepExecutionMeasurement.objects.all()
+    queryset = StepExecutionMeasurement.unscoped.all()
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['step_execution', 'measurement_definition', 'is_within_spec', 'equipment']
     ordering_fields = ['recorded_at', 'created_at']

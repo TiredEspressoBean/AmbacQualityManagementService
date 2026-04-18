@@ -9,6 +9,7 @@ Serializers for MES Standard tier models:
 from decimal import Decimal
 
 from rest_framework import serializers
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import (
@@ -219,11 +220,11 @@ class TimeEntrySerializer(serializers.ModelSerializer, SecureModelMixin):
 class ClockInSerializer(serializers.Serializer):
     """Serializer for clocking in"""
     entry_type = serializers.ChoiceField(choices=TimeEntry.ENTRY_TYPE_CHOICES)
-    work_order = serializers.PrimaryKeyRelatedField(queryset=WorkOrder.objects.all(), required=False, allow_null=True)
-    part = serializers.PrimaryKeyRelatedField(queryset=Parts.objects.all(), required=False, allow_null=True)
-    step = serializers.PrimaryKeyRelatedField(queryset=Steps.objects.all(), required=False, allow_null=True)
-    equipment = serializers.PrimaryKeyRelatedField(queryset=Equipments.objects.all(), required=False, allow_null=True)
-    work_center = serializers.PrimaryKeyRelatedField(queryset=WorkCenter.objects.all(), required=False, allow_null=True)
+    work_order = TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False, allow_null=True)
+    part = TenantScopedPrimaryKeyRelatedField(queryset=Parts.unscoped.all(), required=False, allow_null=True)
+    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all(), required=False, allow_null=True)
+    equipment = TenantScopedPrimaryKeyRelatedField(queryset=Equipments.unscoped.all(), required=False, allow_null=True)
+    work_center = TenantScopedPrimaryKeyRelatedField(queryset=WorkCenter.unscoped.all(), required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True, default="")
 
 

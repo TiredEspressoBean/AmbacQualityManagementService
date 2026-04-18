@@ -135,7 +135,7 @@ class ReportViewSet(viewsets.GenericViewSet):
     """
 
     permission_classes = [IsAuthenticated]
-    queryset = GeneratedReport.objects.none()  # drf-spectacular schema
+    queryset = GeneratedReport.unscoped.none()  # drf-spectacular schema
 
     # ---- Async path ------------------------------------------------------
 
