@@ -22,8 +22,13 @@ class HubSpotAdapter(BaseAdapter):
             return False, f'Connection failed: {e}'
 
     def dispatch_sync_task(self, integration):
+        from django.db import transaction
         from integrations.tasks import sync_hubspot_deals_task
-        sync_hubspot_deals_task.delay(integration_id=str(integration.id))
+        integration_id = str(integration.id)
+        # Wrap so callers inside an ORM transaction (e.g. a viewset action
+        # under ATOMIC_REQUESTS) don't dispatch before commit. Outside a
+        # transaction, on_commit fires immediately.
+        transaction.on_commit(lambda: sync_hubspot_deals_task.delay(integration_id=integration_id))
 
     def sync_orders(self, integration):
         from .sync import sync_all_deals

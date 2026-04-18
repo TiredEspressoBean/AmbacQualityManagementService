@@ -450,6 +450,7 @@ class CSVImportMixin:
 
     def _queue_background_import(self, rows, mode, serializer_class, tenant, user):
         """Queue large imports to Celery."""
+        from uuid import uuid4
         from Tracker.tasks import process_import_task
 
         # Get serializer path for task
@@ -458,21 +459,28 @@ class CSVImportMixin:
         model = self._get_model()
         model_name = model.__name__ if model else 'Unknown'
 
-        # Queue task
-        task = process_import_task.delay(
-            rows=rows,
-            model_name=model_name,
-            mode=mode,
-            tenant_id=str(tenant.id) if tenant else None,
-            user_id=user.id,
-            serializer_path=serializer_path,
-        )
+        # Pre-generate a task id so we can return it synchronously and still
+        # dispatch after commit. apply_async accepts task_id as kwarg.
+        task_id = str(uuid4())
+        tenant_id = str(tenant.id) if tenant else None
+        user_id = user.id
+        transaction.on_commit(lambda: process_import_task.apply_async(
+            kwargs={
+                'rows': rows,
+                'model_name': model_name,
+                'mode': mode,
+                'tenant_id': tenant_id,
+                'user_id': user_id,
+                'serializer_path': serializer_path,
+            },
+            task_id=task_id,
+        ))
 
         return Response({
-            'task_id': task.id,
+            'task_id': task_id,
             'status': 'queued',
             'total_rows': len(rows),
-            'message': f'Import queued for background processing. Poll /import-status/{task.id}/ for progress.',
+            'message': f'Import queued for background processing. Poll /import-status/{task_id}/ for progress.',
         }, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(

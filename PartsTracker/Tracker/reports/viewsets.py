@@ -15,6 +15,7 @@ import concurrent.futures
 import logging
 
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, extend_schema_field, inline_serializer
 from rest_framework import serializers, status, viewsets
@@ -160,18 +161,22 @@ class ReportViewSet(viewsets.GenericViewSet):
         report_type = envelope.validated_data["report_type"]
         params = envelope.validated_data.get("params") or {}
 
-        task = generate_and_email_report.delay(
-            user_id=request.user.id,
-            user_email=request.user.email,
+        # Dispatch after commit so a rolled-back request doesn't leave an
+        # orphan task. ATOMIC_REQUESTS wraps every request in a transaction.
+        user_id = request.user.id
+        user_email = request.user.email
+        tenant_id = str(request.user.tenant_id) if request.user.tenant_id else None
+        transaction.on_commit(lambda: generate_and_email_report.delay(
+            user_id=user_id,
+            user_email=user_email,
             report_type=report_type,
             params=params,
-            tenant_id=str(request.user.tenant_id) if request.user.tenant_id else None,
-        )
+            tenant_id=tenant_id,
+        ))
 
         return Response(
             {
                 "message": "Report is being generated. You'll receive an email shortly.",
-                "task_id": task.id,
             },
             status=status.HTTP_202_ACCEPTED,
         )

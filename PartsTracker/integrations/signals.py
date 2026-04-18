@@ -8,6 +8,7 @@ and respects _skip_external_push flag to prevent loops during sync.
 
 import logging
 
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -36,12 +37,16 @@ def push_stage_change_to_hubspot(sender, instance, **kwargs):
         return
 
     from integrations.tasks import push_hubspot_deal_stage_task
-    push_hubspot_deal_stage_task.delay(
-        integration_id=str(instance.integration_id),
-        deal_id=instance.deal_id,
-        stage_id=str(instance.current_stage_id),
-        order_id=str(instance.order_id),
-    )
+    integration_id = str(instance.integration_id)
+    deal_id = instance.deal_id
+    stage_id = str(instance.current_stage_id)
+    order_id = str(instance.order_id)
+    transaction.on_commit(lambda: push_hubspot_deal_stage_task.delay(
+        integration_id=integration_id,
+        deal_id=deal_id,
+        stage_id=stage_id,
+        order_id=order_id,
+    ))
     logger.info(
         f"Queued HubSpot push for deal {instance.deal_id} "
         f"-> stage {instance.current_stage_id}"

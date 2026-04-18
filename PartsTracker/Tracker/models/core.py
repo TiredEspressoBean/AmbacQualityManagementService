@@ -3344,6 +3344,15 @@ class Documents(SecureModel):
         return properties
 
     def embed_async(self):
+        """Dispatch embedding task immediately and return the AsyncResult.
+
+        Callers that invoke this from inside a transaction (e.g. the
+        post_save signal handler) must wrap with `transaction.on_commit` at
+        the call site to avoid orphan tasks on rollback. Management commands
+        and other out-of-transaction callers can call this directly.
+
+        Phase-3 target: move to Tracker/services/documents/.
+        """
         from Tracker.tasks import embed_document_async
         return embed_document_async.delay(self.id)
 

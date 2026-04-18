@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
@@ -70,9 +71,11 @@ def queue_3d_model_processing(sender, instance, created, **kwargs):
     file_ext = Path(instance.file.name).suffix.lower()
 
     if file_ext in ACCEPTED_EXTENSIONS:
-        # Queue for async processing
+        # Queue for async processing — dispatch after commit so a rollback
+        # of the signaling save doesn't leave an orphan task.
         from .tasks import process_3d_model
-        process_3d_model.delay(str(instance.id))
+        model_id = str(instance.id)
+        transaction.on_commit(lambda: process_3d_model.delay(model_id))
         logger.info(f"Queued 3D model {instance.id} ({instance.name}) for processing")
     else:
         # Unsupported format - mark as failed immediately
@@ -105,9 +108,9 @@ def auto_embed_document(sender, instance, created, **kwargs):
     if not instance.ai_readable or instance.archived:
         return
 
-    # Trigger async embedding
-    # Note: The signal runs after save, so the file should be available
-    instance.embed_async()
+    # Trigger async embedding — wrap in on_commit so the dispatch doesn't
+    # fire if the saving transaction rolls back.
+    transaction.on_commit(instance.embed_async)
 
 
 @receiver(post_save, sender=ApprovalResponse)
@@ -208,7 +211,8 @@ def notify_assignment(sender, instance, created, **kwargs):
     """Notify assigned user when CAPA is created or reassigned"""
     if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
         from .tasks import send_capa_assignment_notification
-        send_capa_assignment_notification.delay(instance.id)
+        capa_id = instance.id
+        transaction.on_commit(lambda: send_capa_assignment_notification.delay(capa_id))
 
 
 @receiver(post_save, sender=CAPA)
@@ -253,7 +257,8 @@ def notify_task_assignment(sender, instance, created, **kwargs):
     """Notify assignee when task is created or reassigned"""
     if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
         from .tasks import send_capa_task_assignment_notification
-        send_capa_task_assignment_notification.delay(instance.id)
+        task_id = instance.id
+        transaction.on_commit(lambda: send_capa_task_assignment_notification.delay(task_id))
 
 
 @receiver(post_save, sender=CapaTasks)
@@ -263,7 +268,8 @@ def check_capa_ready_for_verification(sender, instance, **kwargs):
         capa = instance.capa
         if capa.all_tasks_completed() and capa.rca_complete():
             from .tasks import send_capa_ready_for_verification_notification
-            send_capa_ready_for_verification_notification.delay(capa.id)
+            capa_id = capa.id
+            transaction.on_commit(lambda: send_capa_ready_for_verification_notification.delay(capa_id))
 
 
 @receiver(post_save, sender=CapaVerification)
@@ -272,7 +278,8 @@ def handle_verification_outcome(sender, instance, **kwargs):
     if instance.effectiveness_result == 'CONFIRMED':
         # Notify that CAPA is ready to close
         from .tasks import send_capa_verification_complete_notification
-        send_capa_verification_complete_notification.delay(instance.capa.id)
+        capa_id = instance.capa.id
+        transaction.on_commit(lambda: send_capa_verification_complete_notification.delay(capa_id))
     elif instance.effectiveness_result == 'NOT_EFFECTIVE':
         # Notification already handled in verify_effectiveness method
         # RCA review status already set

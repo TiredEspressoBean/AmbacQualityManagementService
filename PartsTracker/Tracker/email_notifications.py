@@ -8,6 +8,7 @@ synchronously (immediate) or asynchronously (via Celery).
 import logging
 from typing import List, Dict, Any
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -33,10 +34,14 @@ def send_weekly_order_update(customer_id: int, order_data: List[Dict[str, Any]],
         logger.info(f"Sent weekly order update to customer {customer_id} (immediate)")
         return None
     else:
-        # Queue to Celery (async)
-        result = send_weekly_order_update_task.delay(customer_id, order_data)
-        logger.info(f"Queued weekly order update for customer {customer_id} (task_id: {result.id})")
-        return result
+        # Queue to Celery after the enclosing transaction commits. If called
+        # outside a transaction, on_commit fires immediately. Returns None
+        # because the AsyncResult isn't available until dispatch actually runs.
+        def _dispatch():
+            result = send_weekly_order_update_task.delay(customer_id, order_data)
+            logger.info(f"Queued weekly order update for customer {customer_id} (task_id: {result.id})")
+        transaction.on_commit(_dispatch)
+        return None
 
 
 def send_invitation_email(invitation_id: int, immediate: bool = False):
@@ -58,7 +63,9 @@ def send_invitation_email(invitation_id: int, immediate: bool = False):
         logger.info(f"Sent invitation email for invitation {invitation_id} (immediate)")
         return None
     else:
-        # Queue to Celery (async)
-        result = send_invitation_email_task.delay(invitation_id)
-        logger.info(f"Queued invitation email for invitation {invitation_id} (task_id: {result.id})")
-        return result
+        # Queue to Celery after the enclosing transaction commits.
+        def _dispatch():
+            result = send_invitation_email_task.delay(invitation_id)
+            logger.info(f"Queued invitation email for invitation {invitation_id} (task_id: {result.id})")
+        transaction.on_commit(_dispatch)
+        return None
