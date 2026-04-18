@@ -28,17 +28,6 @@
       "last_result": "PASS"
     },
     {
-      "equipment_name": "CMM — Brown & Sharpe Micro",
-      "equipment_serial": "SN-CMM-2017-0003",
-      "equipment_type": "CMM",
-      "location": "Metrology Room",
-      "last_cal_date": "2025-10-01",
-      "due_date": "2026-04-25",
-      "days_until_due": 11,
-      "status": "DUE_SOON",
-      "last_result": "PASS"
-    },
-    {
       "equipment_name": "Digital Height Gauge 24\"",
       "equipment_serial": "SN-HGT-2021-0088",
       "equipment_type": "Height Gauge",
@@ -48,6 +37,17 @@
       "days_until_due": 6,
       "status": "DUE_SOON",
       "last_result": "LIMITED"
+    },
+    {
+      "equipment_name": "CMM — Brown & Sharpe Micro",
+      "equipment_serial": "SN-CMM-2017-0003",
+      "equipment_type": "CMM",
+      "location": "Metrology Room",
+      "last_cal_date": "2025-10-01",
+      "due_date": "2026-04-25",
+      "days_until_due": 11,
+      "status": "DUE_SOON",
+      "last_result": "PASS"
     },
     {
       "equipment_name": "Torque Wrench 10–150 ft-lb",
