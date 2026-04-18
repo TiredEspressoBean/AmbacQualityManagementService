@@ -28,7 +28,6 @@ import { isFieldRequired } from "@/lib/zod-config";
 const formSchema = schemas.CompanyRequest.pick({
     name: true,
     description: true,
-    hubspot_api_id: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -37,7 +36,6 @@ type FormValues = z.infer<typeof formSchema>;
 const required = {
     name: isFieldRequired(formSchema.shape.name),
     description: isFieldRequired(formSchema.shape.description),
-    hubspot_api_id: isFieldRequired(formSchema.shape.hubspot_api_id),
 };
 
 export default function CompanyFormPage() {
@@ -55,7 +53,6 @@ export default function CompanyFormPage() {
         defaultValues: {
             name: "",
             description: "",
-            hubspot_api_id: "",
         },
     });
 
@@ -65,7 +62,6 @@ export default function CompanyFormPage() {
             form.reset({
                 name: company.name || "",
                 description: company.description || "",
-                hubspot_api_id: company.hubspot_api_id || "",
             });
         }
     }, [mode, company, form]);
@@ -77,7 +73,6 @@ export default function CompanyFormPage() {
         const submitData = {
             name: values.name,
             description: values.description,
-            hubspot_api_id: values.hubspot_api_id,
         };
 
         if (mode === "edit" && companyId) {
@@ -171,27 +166,6 @@ export default function CompanyFormPage() {
                                 </FormControl>
                                 <FormDescription>
                                     Detailed description of the company and its operations
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="hubspot_api_id"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel required={required.hubspot_api_id}>HubSpot API ID</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="e.g. 12345678"
-                                        {...field}
-                                        value={field.value ?? ""}
-                                    />
-                                </FormControl>
-                                <FormDescription>
-                                    The unique identifier for this company in HubSpot CRM
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

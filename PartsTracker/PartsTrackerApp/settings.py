@@ -39,6 +39,10 @@ SECRET_KEY = _secret_key or "dev-secret-key-DO-NOT-USE-IN-PRODUCTION"
 # Defaults to False for safety - must explicitly enable with DJANGO_DEBUG=true
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
+# Product/brand name used in emails, PDF reports, and other customer-facing text.
+# Override per-deployment via SITE_NAME env var (e.g., a white-label install).
+SITE_NAME = os.environ.get('SITE_NAME', 'UQMES')
+
 # Custom test runner for vector extension support
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
@@ -85,7 +89,13 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_celery_beat",
     "django_celery_results",
+    "integrations.apps.IntegrationsConfig",
 ]
+
+# Integration adapter registry — settings-based with import_string()
+INTEGRATION_ADAPTERS = {
+    ('hubspot', 'cloud'): 'integrations.adapters.hubspot.adapter.HubSpotAdapter',
+}
 
 
 
@@ -317,6 +327,9 @@ SPECTACULAR_SETTINGS = {
         "SourceTypeEnum": "Tracker.models.reman.Core.SOURCE_TYPE_CHOICES",
         # Traveler serializer status (non-model inline choices)
         "TravelerStepStatusEnum": ["COMPLETED", "IN_PROGRESS", "PENDING", "SKIPPED"],
+        # Integration enums (resolve collision between IntegrationConfig.provider and TenantLLMProvider.provider)
+        "IntegrationProviderEnum": [('hubspot', 'HubSpot CRM'), ('salesforce', 'Salesforce CRM'), ('quickbooks', 'QuickBooks Online'), ('xero', 'Xero')],
+        "IntegrationSyncStatusEnum": [('IDLE', 'Idle'), ('SYNCING', 'Syncing'), ('ERROR', 'Error')],
     },
 }
 # CORS: Allow localhost for dev, Railway subdomains for production
@@ -351,10 +364,6 @@ CORS_ALLOW_CREDENTIALS = True
 LOGIN_REDIRECT_URL = '/'
 
 LOGOUT_REDIRECT_URL = '/'
-
-HUBSPOT_API_KEY = os.environ.get("HUBSPOT_API_KEY")
-
-HUBSPOT_SYNC_ORDER_NAMES = ["Test Order Sync", "Production Alpha"]
 
 TAILWIND_APP_NAME = 'theme'
 
@@ -399,8 +408,6 @@ NPM_BIN_PATH = os.environ.get("NPM_BIN_PATH")
 
 AUDITLOG_INCLUDE_ALL_MODELS = True
 
-HUBSPOT_DEBUG = os.getenv("HUBSPOT_DEBUG", "false").lower() in {"1", "true", "yes"}
-
 # Password reset URL configuration
 # FRONTEND_URL should be full URL like https://app.example.com
 _frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
@@ -428,11 +435,12 @@ REST_AUTH = {
     'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
 
-# PDF Generation / Frontend URL for Playwright
-# This URL is used by the backend to access the frontend for PDF generation
+# FRONTEND_URL — used by password-reset emails, notification links, and
+# any other server-to-client URL construction. No longer used for PDF
+# generation (reports compile via Typst, no browser round-trip).
 # In development: http://localhost:5173
-# In Docker: Use service name like http://frontend:5173
-# In production: Use the actual frontend URL
+# In Docker: service name like http://frontend:5173
+# In production: actual frontend URL
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -573,11 +581,16 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=8, minute=0),
         "options": {"expires": 3600},
     },
-    # HubSpot sync
-    "sync-hubspot-deals-hourly": {
-        "task": "Tracker.tasks.sync_hubspot_deals_task",
+    # Integration sync
+    "sync-integrations-hourly": {
+        "task": "integrations.tasks.sync_all_integrations_task",
         "schedule": crontab(minute=0),
         "options": {"expires": 1800},
+    },
+    # Webhook cleanup
+    "cleanup-processed-webhooks": {
+        "task": "integrations.tasks.cleanup_processed_webhooks",
+        "schedule": crontab(hour=3, minute=0),  # Daily at 3am
     },
     # Keep django-db Celery results small before backups
     "cleanup-celery-results": {

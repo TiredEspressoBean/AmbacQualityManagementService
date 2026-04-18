@@ -36,9 +36,11 @@ whitenoise
 requests~=2.32.3
 pandas==2.2.3
 PyPDF2
-playwright>=1.40.0
 cascadio==0.0.13
 Faker==37.1.0
+typst==0.14.8     # PDF reports — Tracker/reports/
+python-barcode>=0.15.1  # 1D barcodes (Code 128 etc) for labels
+qrcode>=7.4.2     # QR codes for labels
 
 # Required by Django for image handling if needed
 pillow==11.2.1

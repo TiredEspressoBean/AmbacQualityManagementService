@@ -39,16 +39,6 @@ class RetryableEmbeddingTask(Task):
     time_limit = 600  # 10 minutes hard limit
 
 
-class RetryableHubSpotTask(Task):
-    """Base task for HubSpot API operations with automatic retry on rate limits."""
-    autoretry_for = (ConnectionError, TimeoutError, OSError)
-    retry_backoff = True
-    retry_backoff_max = 900  # Max 15 minutes between retries (for rate limits)
-    retry_jitter = True
-    max_retries = 4
-    soft_time_limit = 60  # 1 minute soft limit
-    time_limit = 120  # 2 minutes hard limit
-
 
 class RetryableFileTask(Task):
     """Base task for file conversion operations with automatic retry."""
@@ -831,99 +821,6 @@ def check_capa_reminders():
     }
 
 
-# ============================================================================
-# HUBSPOT SYNC TASKS
-# ============================================================================
-
-@shared_task(bind=True, base=RetryableHubSpotTask)
-def sync_hubspot_deals_task(self, tenant_id=None):
-    """
-    Celery task to sync all HubSpot deals for a specific tenant.
-    Uses RetryableHubSpotTask for automatic retry with exponential backoff.
-
-    Scheduled via Celery Beat for automatic periodic syncing.
-    Can also be triggered manually via management command.
-
-    Args:
-        tenant_id: UUID string of the tenant to sync into.
-                   Defaults to 'ambac-international' tenant if not provided.
-
-    Returns:
-        dict with status and sync results
-    """
-    from Tracker.hubspot.sync import sync_all_deals
-    from Tracker.models import Tenant
-
-    # Default to Ambac tenant (this sync will be replaced by n8n)
-    DEFAULT_TENANT_SLUG = 'ambac-international'
-
-    if tenant_id:
-        try:
-            tenant = Tenant.objects.get(id=tenant_id)
-        except Tenant.DoesNotExist:
-            logger.error(f"Tenant {tenant_id} not found")
-            return {'status': 'error', 'message': f'Tenant {tenant_id} not found'}
-    else:
-        try:
-            tenant = Tenant.objects.get(slug=DEFAULT_TENANT_SLUG)
-        except Tenant.DoesNotExist:
-            logger.error(f"Default tenant {DEFAULT_TENANT_SLUG} not found")
-            return {'status': 'error', 'message': f'Default tenant {DEFAULT_TENANT_SLUG} not found'}
-
-    logger.info(f"Starting HubSpot deals sync task for tenant: {tenant.slug}")
-
-    result = sync_all_deals(tenant=tenant)
-
-    if result.get('status') == 'success':
-        logger.info(f"HubSpot sync task completed: {result}")
-        return result
-    else:
-        logger.error(f"HubSpot sync task failed: {result}")
-        return result
-
-
-@shared_task(bind=True, base=RetryableHubSpotTask)
-def update_hubspot_deal_stage_task(self, deal_id, new_stage_id, order_id):
-    """
-    Update a deal stage in HubSpot asynchronously.
-    Uses RetryableHubSpotTask for automatic retry with exponential backoff.
-
-    Called when a user changes an order's HubSpot stage in the app.
-    Pushes the change back to HubSpot.
-
-    Args:
-        deal_id: HubSpot deal ID
-        new_stage_id: New stage ID (ExternalAPIOrderIdentifier ID)
-        order_id: Local Order ID
-
-    Returns:
-        dict with status
-    """
-    from Tracker.hubspot.api import update_deal_stage
-    from Tracker.models import Orders, ExternalAPIOrderIdentifier
-
-    logger.info(f"Updating HubSpot deal {deal_id} to stage {new_stage_id}")
-
-    order = Orders.objects.get(id=order_id)
-
-    # Double-check this is a HubSpot order
-    if not order.hubspot_deal_id:
-        logger.warning(f"Order {order_id} is not a HubSpot order, skipping push")
-        return {'status': 'skipped', 'reason': 'not_hubspot_order'}
-
-    stage = ExternalAPIOrderIdentifier.objects.get(id=new_stage_id)
-    result = update_deal_stage(deal_id, stage, order)
-
-    if result:
-        logger.info(f"Successfully updated HubSpot deal {deal_id}")
-        return {
-            'status': 'success',
-            'deal_id': deal_id,
-            'new_stage': stage.stage_name
-        }
-    else:
-        raise Exception("Failed to update deal stage in HubSpot")
-
 
 @shared_task(bind=True, base=RetryableEmailTask)
 def send_approval_request_notification(self, approval_request_id):
@@ -979,17 +876,21 @@ def send_approval_decision_notification(self, approval_request_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
+    # Initial lookup to get tenant context
     try:
         approval = ApprovalRequest.objects.get(id=approval_request_id)
     except ApprovalRequest.DoesNotExist:
         logger.error(f"ApprovalRequest {approval_request_id} not found")
         return {'status': 'error', 'message': 'Approval request not found'}
 
-    if approval.requested_by and approval.requested_by.email:
-        subject = f"Approval Decision: {approval.approval_number}"
-        decision = approval.get_status_display()
+    # Run with tenant context for RLS enforcement
+    tenant_id = get_tenant_for_object(approval)
+    with tenant_context(tenant_id):
+        if approval.requested_by and approval.requested_by.email:
+            subject = f"Approval Decision: {approval.approval_number}"
+            decision = approval.get_status_display()
 
-        message = f"""
+            message = f"""
 Your approval request has been {decision.lower()}.
 
 Approval Number: {approval.approval_number}
@@ -998,19 +899,19 @@ Decision: {decision}
 Completed At: {approval.completed_at.strftime('%Y-%m-%d %H:%M') if approval.completed_at else 'N/A'}
 
 You can view the details in the system.
-        """
+            """
 
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [approval.requested_by.email],
-            fail_silently=False,
-        )
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [approval.requested_by.email],
+                fail_silently=False,
+            )
 
-        return {'status': 'success'}
+            return {'status': 'success'}
 
-    return {'status': 'skipped', 'message': 'No email address for requester'}
+        return {'status': 'skipped', 'message': 'No email address for requester'}
 
 
 @shared_task(bind=True, base=RetryableEmailTask)
@@ -1214,15 +1115,19 @@ def send_capa_task_assignment_notification(self, task_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
+    # Initial lookup to get tenant context
     try:
         task = CapaTasks.objects.get(id=task_id)
     except CapaTasks.DoesNotExist:
         logger.error(f"CapaTasks {task_id} not found")
         return {'status': 'error', 'message': 'Task not found'}
 
-    if task.assigned_to and task.assigned_to.email:
-        subject = f"CAPA Task Assignment: {task.task_number}"
-        message = f"""
+    # Run with tenant context for RLS enforcement
+    tenant_id = get_tenant_for_object(task)
+    with tenant_context(tenant_id):
+        if task.assigned_to and task.assigned_to.email:
+            subject = f"CAPA Task Assignment: {task.task_number}"
+            message = f"""
 You have been assigned a CAPA task.
 
 Task Number: {task.task_number}
@@ -1234,19 +1139,19 @@ Description:
 {task.description}
 
 Please log in to view details and complete this task.
-        """
+            """
 
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [task.assigned_to.email],
-            fail_silently=False,
-        )
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [task.assigned_to.email],
+                fail_silently=False,
+            )
 
-        return {'status': 'success'}
+            return {'status': 'success'}
 
-    return {'status': 'skipped', 'message': 'No email for assigned user'}
+        return {'status': 'skipped', 'message': 'No email for assigned user'}
 
 
 @shared_task(bind=True, base=RetryableEmailTask)
@@ -1257,27 +1162,31 @@ def send_capa_ready_for_verification_notification(self, capa_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
+    # Initial lookup to get tenant context
     try:
         capa = CAPA.objects.get(id=capa_id)
     except CAPA.DoesNotExist:
         logger.error(f"CAPA {capa_id} not found")
         return {'status': 'error', 'message': 'CAPA not found'}
 
-    # Notify initiated_by and QA managers
-    recipients = []
-    if capa.initiated_by and capa.initiated_by.email:
-        recipients.append(capa.initiated_by.email)
+    # Run with tenant context for RLS enforcement
+    tenant_id = get_tenant_for_object(capa)
+    with tenant_context(tenant_id):
+        # Notify initiated_by and QA managers
+        recipients = []
+        if capa.initiated_by and capa.initiated_by.email:
+            recipients.append(capa.initiated_by.email)
 
-    # Add QA managers
-    from django.contrib.auth.models import Group
-    qa_group = Group.objects.filter(name='QA').first()
-    if qa_group:
-        qa_emails = list(qa_group.user_set.filter(email__isnull=False).values_list('email', flat=True))
-        recipients.extend(qa_emails)
+        # Add QA managers
+        from django.contrib.auth.models import Group
+        qa_group = Group.objects.filter(name='QA').first()
+        if qa_group:
+            qa_emails = list(qa_group.user_set.filter(email__isnull=False).values_list('email', flat=True))
+            recipients.extend(qa_emails)
 
-    if recipients:
-        subject = f"CAPA Ready for Verification: {capa.capa_number}"
-        message = f"""
+        if recipients:
+            subject = f"CAPA Ready for Verification: {capa.capa_number}"
+            message = f"""
 CAPA {capa.capa_number} is ready for verification.
 
 All tasks have been completed and RCA is complete.
@@ -1287,19 +1196,19 @@ Severity: {capa.get_severity_display()}
 Assigned To: {capa.assigned_to.get_full_name() if capa.assigned_to else 'None'}
 
 Please perform effectiveness verification to proceed with closure.
-        """
+            """
 
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            list(set(recipients)),  # Remove duplicates
-            fail_silently=False,
-        )
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                list(set(recipients)),  # Remove duplicates
+                fail_silently=False,
+            )
 
-        return {'status': 'success', 'recipients': len(recipients)}
+            return {'status': 'success', 'recipients': len(recipients)}
 
-    return {'status': 'skipped', 'message': 'No recipients'}
+        return {'status': 'skipped', 'message': 'No recipients'}
 
 
 @shared_task(bind=True, base=RetryableEmailTask)
@@ -1310,21 +1219,25 @@ def send_capa_verification_complete_notification(self, capa_id):
     from django.core.mail import send_mail
     from django.conf import settings
 
+    # Initial lookup to get tenant context
     try:
         capa = CAPA.objects.get(id=capa_id)
     except CAPA.DoesNotExist:
         logger.error(f"CAPA {capa_id} not found")
         return {'status': 'error', 'message': 'CAPA not found'}
 
-    recipients = []
-    if capa.initiated_by and capa.initiated_by.email:
-        recipients.append(capa.initiated_by.email)
-    if capa.assigned_to and capa.assigned_to.email:
-        recipients.append(capa.assigned_to.email)
+    # Run with tenant context for RLS enforcement
+    tenant_id = get_tenant_for_object(capa)
+    with tenant_context(tenant_id):
+        recipients = []
+        if capa.initiated_by and capa.initiated_by.email:
+            recipients.append(capa.initiated_by.email)
+        if capa.assigned_to and capa.assigned_to.email:
+            recipients.append(capa.assigned_to.email)
 
-    if recipients:
-        subject = f"CAPA Verification Complete: {capa.capa_number}"
-        message = f"""
+        if recipients:
+            subject = f"CAPA Verification Complete: {capa.capa_number}"
+            message = f"""
 CAPA {capa.capa_number} has been verified as effective and is ready to close.
 
 CAPA Number: {capa.capa_number}
@@ -1332,19 +1245,19 @@ Verified By: {capa.verification.verified_by.get_full_name() if capa.verification
 Result: {capa.verification.get_effectiveness_result_display() if capa.verification else 'N/A'}
 
 You can now close this CAPA.
-        """
+            """
 
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            list(set(recipients)),
-            fail_silently=False,
-        )
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                list(set(recipients)),
+                fail_silently=False,
+            )
 
-        return {'status': 'success'}
+            return {'status': 'success'}
 
-    return {'status': 'skipped', 'message': 'No recipients'}
+        return {'status': 'skipped', 'message': 'No recipients'}
 
 
 @shared_task(bind=True, base=RetryableEmailTask)
@@ -1447,16 +1360,9 @@ Please complete this task as soon as possible.
 
 
 # ============================================================================
-# PDF REPORT GENERATION TASKS
+# PDF REPORT GENERATION TASKS — moved to Tracker.reports.tasks
+# Re-exported below for Celery autodiscover and backwards compatibility.
 # ============================================================================
-
-class RetryablePdfTask(Task):
-    """Base task for PDF generation operations with automatic retry."""
-    autoretry_for = (ConnectionError, TimeoutError, OSError)
-    retry_backoff = True
-    retry_backoff_max = 300  # Max 5 minutes between retries
-    retry_jitter = True
-    max_retries = 3
 
 
 # ============================================================================
@@ -1578,115 +1484,8 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
         }
 
 
-@shared_task(bind=True, base=RetryablePdfTask)
-def generate_and_email_report(self, user_id: int, user_email: str, report_type: str, params: dict, tenant_id: str = None):
-    """
-    Generate a PDF report using Playwright and email it to the user.
-
-    This task:
-    1. Creates a GeneratedReport record for audit trail
-    2. Uses PdfGenerator to render the frontend page and convert to PDF
-    3. Saves the PDF as a Document (part of DMS)
-    4. Emails the PDF to the user
-    5. Updates the GeneratedReport record with status
-
-    Args:
-        user_id: ID of requesting user (for audit trail)
-        user_email: Email address to send report to
-        report_type: One of "spc", "capa", "quality_report", etc.
-        params: Dict of parameters specific to report type
-        tenant_id: Tenant UUID string for RLS context
-
-    Returns:
-        dict with status, report_id, and info
-    """
-    from django.core.mail import EmailMessage
-    from django.core.files.base import ContentFile
-    from django.utils import timezone
-    from django.db import transaction
-    from Tracker.models import User, Documents, GeneratedReport
-    from Tracker.services.pdf_generator import PdfGenerator
-
-    logger.info(f"Starting PDF generation: {report_type} for user {user_id}")
-
-    # Get user (to extract tenant if not provided)
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        logger.error(f"User {user_id} not found")
-        return {'status': 'error', 'message': 'User not found'}
-
-    # Resolve tenant context
-    if not tenant_id:
-        tenant_id = getattr(user, 'tenant_id', None)
-
-    # Run with tenant context for RLS enforcement
-    with tenant_context(tenant_id):
-        # Create GeneratedReport record (audit trail)
-        report = GeneratedReport.objects.create(
-            report_type=report_type,
-            generated_by=user,
-            parameters=params,
-            status=GeneratedReport.ReportStatus.PENDING
-        )
-
-        try:
-            # Generate PDF
-            generator = PdfGenerator()
-            pdf_bytes = generator.generate(report_type, params)
-            filename = generator.get_filename(report_type, params)
-            title = generator.get_title(report_type)
-
-            logger.info(f"Generated PDF: {filename} ({len(pdf_bytes)} bytes)")
-
-            # Create Document record in DMS
-            with transaction.atomic():
-                document = Documents.objects.create(
-                    file_name=filename,
-                    classification='INTERNAL',  # Use ClassificationLevel enum value
-                    uploaded_by=user,
-                    status='RELEASED',  # Generated reports are auto-released
-                )
-                # Save the file to the document
-                document.file.save(filename, ContentFile(pdf_bytes))
-                document.save()
-
-                # Update GeneratedReport with document reference
-                report.mark_completed(document)
-
-            logger.info(f"Saved document {document.id} for report {report.id}")
-
-            # Email the PDF to user
-            email = EmailMessage(
-                subject=f"Your {title} is Ready",
-                body=f"Please find your requested {title.lower()} attached.\n\n"
-                     f"Report Type: {report_type}\n"
-                     f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}\n\n"
-                     f"This report has been saved to your documents for future reference.",
-                to=[user_email]
-            )
-            email.attach(filename, pdf_bytes, "application/pdf")
-            email.send()
-
-            # Update report with email info
-            report.mark_emailed(user_email)
-
-            logger.info(f"Successfully emailed {report_type} report to {user_email}")
-
-            return {
-                'status': 'success',
-                'report_id': report.id,
-                'document_id': document.id,
-                'filename': filename,
-                'file_size': len(pdf_bytes),
-                'emailed_to': user_email
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to generate PDF report: {e}")
-            report.mark_failed(str(e))
-            return {
-                'status': 'error',
-                'report_id': report.id,
-                'message': str(e)
-            }
+# Import tasks from Tracker.reports.tasks so Celery's autodiscover picks
+# them up when it loads Tracker.tasks. The task is registered under its
+# real dotted path (Tracker.reports.tasks.generate_and_email_report);
+# this import is only here to trigger that registration.
+from Tracker.reports.tasks import generate_and_email_report  # noqa: E402, F401

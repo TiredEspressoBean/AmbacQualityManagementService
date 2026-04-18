@@ -156,6 +156,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
         latest_per_equipment = qs.latest_per_equipment() if hasattr(qs, 'latest_per_equipment') else qs
 
         # Count equipment with calibration records
+        # tenant-safe: qs is tenant-scoped via self.get_queryset()
         total_equipment = Equipments.objects.filter(
             calibration_records__in=qs
         ).distinct().count()

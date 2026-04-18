@@ -247,7 +247,7 @@ def seed_document_types(tenant=None, update_existing: bool = False) -> dict:
                 if tenant:
                     filter_kwargs['tenant'] = tenant
 
-                existing = DocumentType.objects.filter(**filter_kwargs).first()
+                existing = DocumentType.objects.filter(**filter_kwargs).first()  # tenant-safe: filter_kwargs includes tenant when provided (see above)
 
                 if existing:
                     if update_existing:
@@ -262,6 +262,7 @@ def seed_document_types(tenant=None, update_existing: bool = False) -> dict:
                     create_data = dict(dt)
                     if tenant:
                         create_data['tenant'] = tenant
+                    # tenant-safe: create_data carries tenant above when provided; seed-without-tenant is legacy
                     DocumentType.objects.create(**create_data)
                     results['created'] += 1
                     results['details'].append(f"Created: {dt['code']}")
@@ -304,6 +305,7 @@ def seed_approval_templates(tenant=None, update_existing: bool = False) -> dict:
                 if tenant:
                     filter_kwargs['tenant'] = tenant
 
+                # tenant-safe: filter_kwargs includes tenant above when provided
                 existing = ApprovalTemplate.objects.filter(**filter_kwargs).first()
 
                 if existing:

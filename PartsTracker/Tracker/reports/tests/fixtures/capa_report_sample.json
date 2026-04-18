@@ -1,0 +1,107 @@
+{
+  "capa_number": "CAPA-CA-2026-007",
+  "capa_type": "CORRECTIVE",
+  "severity": "MAJOR",
+  "status": "PENDING_VERIFICATION",
+  "initiated_date": "2026-03-12",
+  "due_date": "2026-04-30",
+  "completed_date": null,
+  "initiated_by": "Jane Alvarez",
+  "assigned_to": "Marcus Chen",
+
+  "problem_statement": "Recurring dimensional non-conformance on fuel injector barrel OD at flange location (datum B). Over a 3-week period (2026-02-24 through 2026-03-11), 7 of 62 parts produced on CNC-02 measured outside the specified 10.00 ±0.05 mm tolerance band, with OD values ranging from 10.07 mm to 10.21 mm. Two batches shipped to preliminary inspection before detection; both were quarantined and returned. Customer was notified per quality agreement clause 4.3.",
+
+  "immediate_action": "All suspect parts from CNC-02 runs WO-2026-0101 through WO-2026-0112 quarantined immediately (62 units held). CNC-02 taken offline pending root cause investigation. Incoming and in-process inspection frequency doubled on affected part number. Alternate supplier parts sourced to meet delivery schedule. Customer notified 2026-03-12.",
+
+  "rca": {
+    "method": "FIVE_WHYS",
+    "problem_description": "Fuel injector barrel OD at flange location repeatedly falls above the upper specification limit of 10.05 mm on CNC-02, despite the same program passing on CNC-01.",
+    "root_cause_summary": "CNC-02 tool offset compensation was not updated after the end-of-life insert change on 2026-02-20. The maintenance log entry was made but was not linked to the active offset table, so the operator continued using a stale offset that placed the cut 0.12–0.18 mm below the programmed depth, leaving material on the OD.",
+    "conducted_by": "Marcus Chen",
+    "conducted_date": "2026-03-15",
+    "five_whys": {
+      "whys": [
+        {
+          "question": "Why were OD dimensions out of tolerance on CNC-02?",
+          "answer": "The cutting insert was worn beyond its rated life, producing undersized cuts that left excess material on the OD."
+        },
+        {
+          "question": "Why was the worn insert not replaced before it caused out-of-tolerance parts?",
+          "answer": "The tool life counter was reset after the maintenance event on 2026-02-20, but the tool offset table was not updated to reflect the new insert geometry."
+        },
+        {
+          "question": "Why was the tool offset table not updated when the insert was changed?",
+          "answer": "The maintenance procedure (MP-CNC-011 Rev C) does not include a mandatory step to verify and update the offset table after an insert change; it only requires logging the change in the maintenance system."
+        }
+      ],
+      "identified_root_cause": "Maintenance procedure MP-CNC-011 Rev C lacks a mandatory tool offset verification and update step following insert replacement, creating a gap between the physical machine state and the programmed cut parameters."
+    },
+    "fishbone": null
+  },
+
+  "tasks": [
+    {
+      "task_number": "CAPA-CA-2026-007-T001",
+      "task_type": "CONTAINMENT",
+      "description": "Quarantine all parts from CNC-02 runs WO-2026-0101 through WO-2026-0112 and conduct 100% CMM inspection to sort conforming from non-conforming units.",
+      "owner": "Jane Alvarez",
+      "due_date": "2026-03-14",
+      "completed_date": "2026-03-14",
+      "status": "COMPLETED"
+    },
+    {
+      "task_number": "CAPA-CA-2026-007-T002",
+      "task_type": "CONTAINMENT",
+      "description": "Take CNC-02 offline and verify tool offset table against current insert geometry before resuming production. Document offset readings before and after correction.",
+      "owner": "Marcus Chen",
+      "due_date": "2026-03-16",
+      "completed_date": null,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "task_number": "CAPA-CA-2026-007-T003",
+      "task_type": "CORRECTIVE",
+      "description": "Revise maintenance procedure MP-CNC-011 to add a mandatory tool offset verification and update step immediately following any insert change. Include a sign-off block requiring operator and QC technician signatures before machine restart.",
+      "owner": "Marcus Chen",
+      "due_date": "2026-04-05",
+      "completed_date": "2026-04-03",
+      "status": "COMPLETED"
+    },
+    {
+      "task_number": "CAPA-CA-2026-007-T004",
+      "task_type": "CORRECTIVE",
+      "description": "Conduct refresher training for all CNC operators and maintenance technicians on the revised MP-CNC-011. Record training completion in the training management system.",
+      "owner": "Jane Alvarez",
+      "due_date": "2026-04-15",
+      "completed_date": null,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "task_number": "CAPA-CA-2026-007-T005",
+      "task_type": "PREVENTIVE",
+      "description": "Implement automated tool offset audit: configure the CNC controller to log offset table values at each job start and compare against the last maintenance-verified baseline. Alert quality if deviation exceeds 0.02 mm. Roll out to CNC-01 through CNC-04.",
+      "owner": "Marcus Chen",
+      "due_date": "2026-04-30",
+      "completed_date": null,
+      "status": "NOT_STARTED"
+    }
+  ],
+
+  "verification": {
+    "verification_method": "Production monitoring: 30-part sample from each CNC machine (CNC-01 through CNC-04) inspected at 100% on CMM immediately following the next scheduled insert change after implementation of revised MP-CNC-011. Monitoring period: 4 weeks post-training (2026-04-05 through 2026-04-30).",
+    "verification_criteria": "Zero OD non-conformances on any CNC machine during the 4-week monitoring period following implementation of the revised maintenance procedure and completion of operator training.",
+    "verification_date": "2026-04-14",
+    "verified_by": "Diana Reyes",
+    "effectiveness_result": "CONFIRMED",
+    "verification_notes": "30-part sample from each of CNC-01 through CNC-04 post-insert-change inspection completed 2026-04-14. All 120 parts measured within tolerance (range 9.98–10.04 mm vs spec 10.00 ±0.05 mm). No deviations observed. Tool offset audit log active and functioning. CAPA recommended for closure."
+  },
+
+  "approval": {
+    "approval_required": true,
+    "approval_status": "APPROVED",
+    "approved_by": "Robert Kim",
+    "approved_at": "2026-03-18T10:30:00"
+  },
+
+  "tenant_name": "Ambac International"
+}

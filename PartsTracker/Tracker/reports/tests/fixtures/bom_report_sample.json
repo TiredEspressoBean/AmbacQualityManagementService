@@ -1,0 +1,86 @@
+{
+  "parent_part_number": "FI-4402-001",
+  "parent_part_name": "Fuel Injector Assembly — High Pressure",
+  "revision": "C",
+  "bom_type": "ASSEMBLY",
+  "status": "RELEASED",
+  "effective_date": "2026-01-15",
+
+  "lines": [
+    {
+      "find_number": "10",
+      "component_part_number": "FI-4402-101",
+      "component_name": "Injector Body, Stainless Steel",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "316L SS, Passivated per ASTM A380"
+    },
+    {
+      "find_number": "20",
+      "component_part_number": "FI-4402-102",
+      "component_name": "Needle Valve Assembly",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "Pre-assembled sub-assy; do not disassemble"
+    },
+    {
+      "find_number": "30",
+      "component_part_number": "FI-4402-103",
+      "component_name": "Nozzle Tip, 5-Hole",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "Orifice diameter 0.18 mm ±0.005 mm"
+    },
+    {
+      "find_number": "40",
+      "component_part_number": "HW-ORNG-012-V",
+      "component_name": "O-Ring, Viton, 12mm ID",
+      "quantity": "3",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "70 Shore A; replace at each service interval"
+    },
+    {
+      "find_number": "50",
+      "component_part_number": "FI-4402-104",
+      "component_name": "Return Spring, Conical",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "Spring rate 12.5 N/mm; 17-7 PH stainless"
+    },
+    {
+      "find_number": "60",
+      "component_part_number": "HW-SCREW-M4-12",
+      "component_name": "Cap Screw, M4 x 12, Class 10.9",
+      "quantity": "4",
+      "unit_of_measure": "EA",
+      "is_optional": false,
+      "notes": "Torque 4.5 N·m; apply Loctite 243"
+    },
+    {
+      "find_number": "70",
+      "component_part_number": "FI-4402-110",
+      "component_name": "Protective Shipping Cap, Nozzle",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": true,
+      "notes": "Install for shipment only; remove before installation"
+    },
+    {
+      "find_number": "80",
+      "component_part_number": "LB-FI-4402-C",
+      "component_name": "Identification Label, P/N + Rev",
+      "quantity": "1",
+      "unit_of_measure": "EA",
+      "is_optional": true,
+      "notes": "Laser-etched on body preferred; label acceptable for reman units"
+    }
+  ],
+
+  "total_line_count": 8,
+  "tenant_name": "Ambac International"
+}

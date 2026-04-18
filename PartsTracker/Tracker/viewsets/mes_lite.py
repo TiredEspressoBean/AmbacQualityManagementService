@@ -23,6 +23,8 @@ from Tracker.models import (
     Equipments, EquipmentType,
     # Core models
     Documents,
+    # Milestone models
+    MilestoneTemplate, Milestone,
 )
 from Tracker.serializers.mes_lite import (
     OrdersSerializer, CustomerOrderSerializer, PartsSerializer, PartSelectSerializer, CustomerPartsSerializer,
@@ -71,7 +73,7 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
-        return qs
+        return qs.select_related('current_milestone__template')
 
     @extend_schema(
         request=inline_serializer(
@@ -477,6 +479,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         qr_ct = ContentType.objects.get_for_model(QualityReports)
 
         # Part-level documents
+        # tenant-safe: part/step/qr ids sourced from tenant-scoped objects; RLS enforced
         part_docs = Documents.objects.filter(
             content_type=part_ct,
             object_id=str(part.id)
@@ -484,6 +487,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
         # Step-level documents
         step_ids = [str(step.id) for step, _ in ordered_steps]
+        # tenant-safe: step_ids sourced from tenant-scoped ordered_steps
         step_docs = Documents.objects.filter(
             content_type=step_ct,
             object_id__in=step_ids
@@ -491,6 +495,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
         # QR-level documents
         qr_ids = [str(qr.id) for qrs in qr_map.values() for qr in qrs]
+        # tenant-safe: qr_ids sourced from tenant-scoped qr_map
         qr_docs = Documents.objects.filter(
             content_type=qr_ct,
             object_id__in=qr_ids
@@ -722,7 +727,7 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         # TenantScopedMixin.get_queryset() handles tenant scoping and for_user() filtering
         # (including archived filtering based on ?include_archived param)
         qs = super().get_queryset()
-        return qs.select_related('customer', 'company')
+        return qs.select_related('customer', 'company', 'current_milestone__template')
 
     def get_filter_backends(self):
         # disable filters for specific actions
@@ -858,6 +863,113 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
             return Response(OrdersSerializer(order, context={'request': request}).data)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="SetMilestoneInput",
+            fields={"milestone_id": serializers.UUIDField(allow_null=True)}
+        ),
+        responses={200: OrdersSerializer}
+    )
+    @action(detail=True, methods=['patch'], url_path='set-milestone')
+    def set_milestone(self, request, pk=None):
+        """
+        Set the current business milestone for an order.
+
+        Accepts {"milestone_id": "<uuid>"} or {"milestone_id": null} to clear.
+        If the order has a HubSpot link with a mapped stage, this also triggers
+        a push to HubSpot.
+        """
+        from Tracker.models import Milestone
+
+        order = self.get_object()
+        milestone_id = request.data.get('milestone_id')
+
+        if milestone_id is None:
+            order.current_milestone = None
+            order.save(update_fields=['current_milestone'])
+            return Response(OrdersSerializer(order, context={'request': request}).data)
+
+        try:
+            milestone = Milestone.objects.get(
+                id=milestone_id,
+                tenant=request.user.tenant,
+            )
+        except Milestone.DoesNotExist:
+            return Response(
+                {"detail": "Milestone not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        order.current_milestone = milestone
+        order.save(update_fields=['current_milestone'])
+
+        # If this order has a HubSpot link, update the link's stage
+        # to the mapped stage (reverse direction) and trigger push
+        hubspot_link = getattr(order, 'hubspot_link', None)
+        if hubspot_link:
+            from integrations.models.links.hubspot import HubSpotPipelineStage
+            mapped_stage = HubSpotPipelineStage.objects.filter(
+                integration=hubspot_link.integration,
+                mapped_milestone=milestone,
+            ).first()
+            if mapped_stage:
+                hubspot_link.current_stage = mapped_stage
+                hubspot_link.save()  # triggers signal -> push to HubSpot
+
+        return Response(OrdersSerializer(order, context={'request': request}).data)
+
+
+# ===== MILESTONE VIEWSETS =====
+
+class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD for milestone templates. Admin-only."""
+    from Tracker.serializers.mes_lite import MilestoneTemplateSerializer, MilestoneTemplateListSerializer
+
+    queryset = MilestoneTemplate.objects.all()
+    serializer_class = MilestoneTemplateSerializer
+    pagination_class = None
+
+    def get_serializer_class(self):
+        from Tracker.serializers.mes_lite import MilestoneTemplateSerializer
+        # Always use full serializer (with nested milestones) since pagination is off
+        # and the milestones editor needs the full data
+        return MilestoneTemplateSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return MilestoneTemplate.objects.none()
+        qs = super().get_queryset()
+        return qs.prefetch_related('milestones')
+
+    def perform_create(self, serializer):
+        serializer.save(tenant=self.request.user.tenant)
+
+
+class MilestoneViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD for milestones within templates. Admin-only."""
+    from Tracker.serializers.mes_lite import MilestoneSerializer
+
+    queryset = Milestone.objects.all()
+    serializer_class = MilestoneSerializer
+    pagination_class = None
+
+    def get_serializer_class(self):
+        from Tracker.serializers.mes_lite import MilestoneSerializer
+        return MilestoneSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Milestone.objects.none()
+        qs = super().get_queryset()
+        # Optionally filter by template
+        template_id = self.request.query_params.get('template')
+        if template_id:
+            qs = qs.filter(template_id=template_id)
+        return qs.select_related('template')
+
+    def perform_create(self, serializer):
+        serializer.save(tenant=self.request.user.tenant)
 
 
 # ===== WORK ORDER VIEWSETS =====
@@ -1112,6 +1224,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         # Get attachment counts
         step_ct = ContentType.objects.get_for_model(Steps)
+        # tenant-safe: step_ids sourced from tenant-scoped work_order
         attachment_counts = Documents.objects.filter(
             content_type=step_ct,
             object_id__in=[str(s) for s in step_ids]

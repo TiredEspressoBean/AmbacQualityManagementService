@@ -123,15 +123,20 @@ class OrderFilter(TenantFilterMixin, django_filters.FilterSet):
     def filter_active_pipeline(self, queryset, name, value):
         """
         Filter to show only actionable orders:
-        - Local orders (no hubspot_deal_id) are always included
-        - HubSpot orders are only included if their current gate starts with 'Gate'
-          (indicating they're active in the pipeline, not lost/dropped)
+        - Orders with no milestone set are always included (local orders)
+        - Orders with a milestone are included only if the milestone is active
+          (is_active=True, meaning in-progress, not closed/tabled/completed)
+
+        Uses native Milestone.is_active flag. Falls back to legacy HubSpot filter
+        for orders that only have current_hubspot_gate set (transition period).
         """
         if value:
             return queryset.filter(
-                Q(hubspot_deal_id__isnull=True) |
-                Q(hubspot_deal_id='') |
-                Q(current_hubspot_gate__stage_name__startswith='Gate')
+                Q(current_milestone__isnull=True, hubspot_deal_id__isnull=True) |
+                Q(current_milestone__isnull=True, hubspot_deal_id='') |
+                Q(current_milestone__is_active=True) |
+                # Legacy fallback: orders with HubSpot gate but no milestone yet
+                Q(current_milestone__isnull=True, current_hubspot_gate__stage_name__startswith='Gate')
             )
         return queryset
 

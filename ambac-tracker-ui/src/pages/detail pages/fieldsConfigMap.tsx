@@ -206,8 +206,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     customer_note: { label: 'Customer Note' },
                     estimated_completion: { label: 'Estimated Completion' },
                     original_completion_date: { label: 'Original Completion Date' },
-                    current_hubspot_gate: { label: 'Current HubSpot Gate' },
-                    last_synced_hubspot_stage: { label: 'Last Synced HubSpot Stage' },
+                    current_milestone: { label: 'Current Milestone' },
                     archived: { label: 'Archived' },
                 },
                 customRenderers: {
@@ -229,8 +228,8 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         fields: ['estimated_completion', 'original_completion_date'],
                     },
                     {
-                        title: 'Integration & System',
-                        fields: ['current_hubspot_gate', 'last_synced_hubspot_stage', 'archived'],
+                        title: 'Status & System',
+                        fields: ['current_milestone', 'archived'],
                         auditLog: true,
                     },
                 ],
@@ -690,7 +689,6 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     id: { label: 'Company ID' },
                     name: { label: 'Company Name' },
                     description: { label: 'Description' },
-                    hubspot_api_id: { label: 'HubSpot API ID' },
                     created_at: { label: 'Created At' },
                     updated_at: { label: 'Last Updated' },
                     archived: { label: 'Archived' },
@@ -704,10 +702,6 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     {
                         title: 'Company Information',
                         fields: ['id', 'name', 'description'],
-                    },
-                    {
-                        title: 'Integration',
-                        fields: ['hubspot_api_id'],
                     },
                     createSystemInfoSection(['archived', 'created_at', 'updated_at']),
                 ],

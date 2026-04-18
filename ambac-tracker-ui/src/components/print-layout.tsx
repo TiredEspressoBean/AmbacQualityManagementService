@@ -1,3 +1,37 @@
+/**
+ * PrintLayout - Wrapper for all Playwright-rendered print pages (documents).
+ *
+ * HOW TO CREATE A NEW PRINT PAGE:
+ * ================================
+ * 1. Create a new component (e.g., CocPrintPage.tsx)
+ * 2. Wrap content in <PrintLayout title="..." subtitle="...">
+ * 3. Content automatically gets the data-print-ready attribute (Playwright waits for this)
+ * 4. Fetch all data via existing API hooks - page must be self-contained
+ * 5. Add route in router.tsx
+ * 6. Add matching config in pdf_generator.py REPORT_CONFIG
+ *
+ * AVAILABLE CSS CLASSES:
+ * - .page-break-before  — force page break before element
+ * - .page-break-after   — force page break after element
+ * - .no-break           — prevent page break inside element
+ * - Cards and grid children automatically avoid page breaks
+ *
+ * FOR LABELS (do NOT use PrintLayout):
+ * - Use a bare div with data-print-ready attribute
+ * - Set page size via @page CSS in the component, or use config page override
+ * - For sheet layout (e.g., 30-up Avery 5160), use CSS grid on Letter @page
+ * - For individual labels (thermal printers), set exact page dimensions in config
+ *
+ * FOR DOCUMENTS (use PrintLayout):
+ * - Always use PrintLayout for consistent header/timestamp
+ * - Use .no-break on table rows and card components
+ * - For chart-heavy pages, set needs_scroll: true and a chart-specific
+ *   wait_selector in REPORT_CONFIG (e.g., ".recharts-surface")
+ *
+ * DARK MODE:
+ * - PrintLayout auto-forces light mode - no action needed
+ * - All CSS variables are overridden for print readability
+ */
 import { useEffect, type ReactNode } from "react";
 
 interface PrintLayoutProps {

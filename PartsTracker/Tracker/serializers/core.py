@@ -129,7 +129,8 @@ class CompanySerializer(serializers.ModelSerializer, SecureModelMixin):
 
     class Meta:
         model = Companies
-        fields = ('id', 'name', 'description', 'hubspot_api_id', 'user_count', 'created_at', 'updated_at', 'archived')
+        fields = ('id', 'name', 'description',
+                  'user_count', 'created_at', 'updated_at', 'archived')
         read_only_fields = ('created_at', 'updated_at')
 
     @extend_schema_field(serializers.IntegerField())
@@ -307,7 +308,8 @@ class CustomAllAuthPasswordResetForm(AllAuthPasswordResetForm):
             # Custom URL pointing to your frontend
             custom_url = f"{frontend_url}/reset-password/{uid}/{temp_key}/"
 
-            context = {'current_site': current_site, 'user': user, 'site_name': "AMBAC",
+            context = {'current_site': current_site, 'user': user,
+                       'site_name': getattr(settings, 'SITE_NAME', 'UQMES'),
                        'password_reset_url': custom_url,
                        'request': request, 'token': temp_key, 'uid': uid, }
             if (allauth_account_settings.AUTHENTICATION_METHOD != allauth_account_settings.AuthenticationMethod.EMAIL):

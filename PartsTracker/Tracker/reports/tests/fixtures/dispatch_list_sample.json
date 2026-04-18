@@ -1,0 +1,98 @@
+{
+  "generated_date": "2026-04-15",
+  "tenant_name": "Precision Aerospace Components, Inc.",
+  "total_open_wos": 8,
+  "overdue_count": 2,
+  "groups": [
+    {
+      "step_name": "Assembly",
+      "wo_count": 3,
+      "items": [
+        {
+          "wo_number": "WO-2026-0041",
+          "part_name": "Landing Gear Actuator",
+          "qty_remaining": 4,
+          "due_date": "2026-04-10",
+          "days_until_due": -5,
+          "priority": "Urgent",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "wo_number": "WO-2026-0047",
+          "part_name": "Hydraulic Manifold Block",
+          "qty_remaining": 2,
+          "due_date": "2026-04-16",
+          "days_until_due": 1,
+          "priority": "High",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "wo_number": "WO-2026-0052",
+          "part_name": "Fuel Valve Body",
+          "qty_remaining": 6,
+          "due_date": "2026-04-25",
+          "days_until_due": 10,
+          "priority": "Normal",
+          "status": "PENDING"
+        }
+      ]
+    },
+    {
+      "step_name": "CNC Milling",
+      "wo_count": 3,
+      "items": [
+        {
+          "wo_number": "WO-2026-0038",
+          "part_name": "Turbine Blade Blank",
+          "qty_remaining": 12,
+          "due_date": "2026-04-13",
+          "days_until_due": -2,
+          "priority": "Urgent",
+          "status": "IN_PROGRESS"
+        },
+        {
+          "wo_number": "WO-2026-0055",
+          "part_name": "Compressor Housing",
+          "qty_remaining": 3,
+          "due_date": "2026-04-18",
+          "days_until_due": 3,
+          "priority": "High",
+          "status": "WAITING_FOR_OPERATOR"
+        },
+        {
+          "wo_number": "WO-2026-0061",
+          "part_name": "Nose Rib Bracket",
+          "qty_remaining": 8,
+          "due_date": "2026-05-02",
+          "days_until_due": 17,
+          "priority": "Normal",
+          "status": "IN_PROGRESS"
+        }
+      ]
+    },
+    {
+      "step_name": "Inspection",
+      "wo_count": 2,
+      "items": [
+        {
+          "wo_number": "WO-2026-0049",
+          "part_name": "Valve Seat Insert",
+          "qty_remaining": 5,
+          "due_date": "2026-04-22",
+          "days_until_due": 7,
+          "priority": "Normal",
+          "status": "AWAITING_QA"
+        },
+        {
+          "wo_number": "WO-2026-0058",
+          "part_name": "Bearing Housing",
+          "qty_remaining": 1,
+          "due_date": null,
+          "days_until_due": null,
+          "priority": "Low",
+          "status": "ON_HOLD"
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install system dependencies
+# fonts-noto-core: Noto Sans + Noto Serif + Noto Sans Mono for Typst reports.
+# Typst scans /usr/share/fonts automatically, so no extra configuration needed.
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
@@ -19,11 +21,18 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     cron \
+    fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Vendor Typst Universe packages (cetz, cetz-plot, diagraph, oxifmt).
+# Placed at the default package cache path so Typst resolves
+# `@preview/<pkg>:<version>` imports without network access — required
+# for on-prem-behind-firewall deployments.
+COPY typst_packages /root/.cache/typst/packages/
 
 # Copy project files
 COPY . .

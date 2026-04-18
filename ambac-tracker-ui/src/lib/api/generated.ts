@@ -2070,6 +2070,148 @@ export type ImportSummary = {
   updated: number;
   errors: number;
 };
+export type IntegrationConfig = {
+  id: string;
+  tenant: string;
+  provider: IntegrationProviderEnum;
+  provider_display: string;
+  display_name?: /**
+   * Optional custom label (e.g. 'Production HubSpot')
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  is_enabled?: /**
+   * Disabled until credentials are entered and verified
+   */
+  boolean | undefined;
+  sync_status: IntegrationSyncStatusEnum;
+  api_url?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  config?: unknown | undefined;
+  last_synced_at: string | null;
+  last_sync_error: string | null;
+  /**
+   * Last sync result: created, updated, errors, duration
+   */
+  last_sync_stats: unknown;
+  capabilities: Array<string>;
+  created_at: string;
+  updated_at: string;
+};
+export type IntegrationProviderEnum =
+  /**
+   * * `hubspot` - HubSpot CRM
+   * `salesforce` - Salesforce CRM
+   * `quickbooks` - QuickBooks Online
+   * `xero` - Xero
+   *
+   * @enum hubspot, salesforce, quickbooks, xero
+   */
+  "hubspot" | "salesforce" | "quickbooks" | "xero";
+export type IntegrationSyncStatusEnum =
+  /**
+   * * `IDLE` - Idle
+   * `SYNCING` - Syncing
+   * `ERROR` - Error
+   *
+   * @enum IDLE, SYNCING, ERROR
+   */
+  "IDLE" | "SYNCING" | "ERROR";
+export type IntegrationConfigList = {
+  id: string;
+  provider: IntegrationProviderEnum;
+  provider_display: string;
+  display_name?: /**
+   * Optional custom label (e.g. 'Production HubSpot')
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  is_enabled?: /**
+   * Disabled until credentials are entered and verified
+   */
+  boolean | undefined;
+  sync_status?: IntegrationSyncStatusEnum | undefined;
+  has_credentials: boolean;
+  last_synced_at?: (string | null) | undefined;
+  last_sync_error?: (string | null) | undefined;
+  last_sync_stats?: /**
+   * Last sync result: created, updated, errors, duration
+   */
+  unknown | undefined;
+  capabilities: Array<string>;
+};
+export type IntegrationConfigRequest = {
+  provider: IntegrationProviderEnum;
+  display_name?: /**
+   * Optional custom label (e.g. 'Production HubSpot')
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  is_enabled?: /**
+   * Disabled until credentials are entered and verified
+   */
+  boolean | undefined;
+  api_key?: /**
+   * @maxLength 500
+   */
+  string | undefined;
+  oauth_refresh_token?: /**
+   * @maxLength 500
+   */
+  string | undefined;
+  webhook_secret?: /**
+   * @maxLength 500
+   */
+  string | undefined;
+  api_url?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  config?: unknown | undefined;
+};
+export type IntegrationSyncLog = {
+  id: string;
+  integration: string;
+  sync_type: SyncTypeEnum;
+  sync_type_display: string;
+  status: IntegrationSyncLogStatusEnum;
+  status_display: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number;
+  records_processed: number;
+  records_created: number;
+  records_updated: number;
+  error_message: string | null;
+  /**
+   * Provider-specific details (e.g. pipeline stages synced, contacts created)
+   */
+  details: unknown;
+};
+export type SyncTypeEnum =
+  /**
+   * * `FULL` - Full Sync
+   * `INCREMENTAL` - Incremental Sync
+   * `SINGLE` - Single Record Sync
+   * `PUSH` - Outbound Push
+   *
+   * @enum FULL, INCREMENTAL, SINGLE, PUSH
+   */
+  "FULL" | "INCREMENTAL" | "SINGLE" | "PUSH";
+export type IntegrationSyncLogStatusEnum =
+  /**
+   * * `RUNNING` - Running
+   * `SUCCESS` - Success
+   * `FAILED` - Failed
+   *
+   * @enum RUNNING, SUCCESS, FAILED
+   */
+  "RUNNING" | "SUCCESS" | "FAILED";
 export type MaterialLot = {
   id: string;
   /**
@@ -2304,6 +2446,47 @@ export type MeasurementResultRequest = {
     | undefined;
   archived?: boolean | undefined;
 };
+export type MilestoneTemplate = {
+  id: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  description?: string | undefined;
+  is_default?: /**
+   * Default template for new orders in this tenant
+   */
+  boolean | undefined;
+  milestones: Array<Milestone>;
+  created_at: string;
+  updated_at: string;
+};
+export type Milestone = {
+  id: string;
+  template: string;
+  /**
+   * @maxLength 100
+   */
+  name: string;
+  customer_display_name?: /**
+   * Customer-facing name (e.g., 'Design Review' instead of 'Gate Two - Design Review'). Falls back to name if blank.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  display_name: string;
+  display_order?: /**
+   * @default 0
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  description?: string | undefined;
+  is_active?: /**
+   * Whether this milestone counts as 'active/in progress' for filtering. Set to False for terminal milestones like 'Closed' or 'Cancelled'.
+   */
+  boolean | undefined;
+};
 export type NotificationPreference = {
   id: number;
   notification_type: NotificationTypeEnum;
@@ -2474,6 +2657,7 @@ export type Orders = {
   original_completion_date: string | null;
   order_status: OrdersStatusEnum;
   current_hubspot_gate?: (string | null) | undefined;
+  current_milestone?: (string | null) | undefined;
   parts_summary: {};
   process_stages: Array<unknown>;
   gate_info: {};
@@ -2508,6 +2692,7 @@ export type OrdersRequest = {
   estimated_completion?: (string | null) | undefined;
   order_status: OrdersStatusEnum;
   current_hubspot_gate?: (string | null) | undefined;
+  current_milestone?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
 export type PaginatedApprovalRequestList = {
@@ -3276,6 +3461,77 @@ export type PaginatedHeatMapAnnotationsList = {
     (string | null)
     | undefined;
   results: Array<HeatMapAnnotations>;
+};
+export type PaginatedHubSpotPipelineStageList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<HubSpotPipelineStage>;
+};
+export type HubSpotPipelineStage = {
+  id: string;
+  stage_name: string;
+  api_id: string;
+  pipeline_id: string | null;
+  display_order: number;
+  /**
+   * Include in customer-facing pipeline progress tracking
+   */
+  include_in_progress: boolean;
+  customer_display_name: string;
+  mapped_milestone: string | null;
+  last_synced_at: string | null;
+};
+export type PaginatedIntegrationConfigListList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<IntegrationConfigList>;
+};
+export type PaginatedIntegrationSyncLogList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<IntegrationSyncLog>;
 };
 export type PaginatedMaterialLotList = {
   /**
@@ -4944,7 +5200,7 @@ export type TenantLLMProvider = {
     * `openai` - OpenAI
     * `anthropic` - Anthropic
      */
-  provider: ProviderEnum;
+  provider: TenantLLMProviderProviderEnum;
   provider_display: string;
   is_default?: /**
    * Use this provider as the default for AI features
@@ -4971,7 +5227,7 @@ export type TenantLLMProvider = {
   created_at: string;
   updated_at: string;
 };
-export type ProviderEnum =
+export type TenantLLMProviderProviderEnum =
   /**
    * * `ollama` - Ollama (Local/Self-hosted)
    * `openai` - OpenAI
@@ -6207,6 +6463,36 @@ export type PatchedHeatMapAnnotationsRequest = Partial<{
   quality_reports: Array<string>;
   archived: boolean;
 }>;
+export type PatchedIntegrationConfigRequest = Partial<{
+  provider: IntegrationProviderEnum;
+  /**
+   * Optional custom label (e.g. 'Production HubSpot')
+   *
+   * @maxLength 100
+   */
+  display_name: string;
+  /**
+   * Disabled until credentials are entered and verified
+   */
+  is_enabled: boolean;
+  /**
+   * @maxLength 500
+   */
+  api_key: string;
+  /**
+   * @maxLength 500
+   */
+  oauth_refresh_token: string;
+  /**
+   * @maxLength 500
+   */
+  webhook_secret: string;
+  /**
+   * @maxLength 200
+   */
+  api_url: string;
+  config: unknown;
+}>;
 export type PatchedMaterialLotRequest = Partial<{
   /**
    * @minLength 1
@@ -6298,6 +6584,7 @@ export type PatchedOrdersRequest = Partial<{
   estimated_completion: string | null;
   order_status: OrdersStatusEnum;
   current_hubspot_gate: string | null;
+  current_milestone: string | null;
   archived: boolean;
 }>;
 export type PatchedPartsRequest = Partial<{
@@ -6812,7 +7099,7 @@ export type PatchedTenantLLMProviderRequest = Partial<{
     * `openai` - OpenAI
     * `anthropic` - Anthropic
      */
-  provider: ProviderEnum;
+  provider: TenantLLMProviderProviderEnum;
   /**
    * Use this provider as the default for AI features
    */
@@ -7951,7 +8238,7 @@ export type TenantLLMProviderRequest = {
     * `openai` - OpenAI
     * `anthropic` - Anthropic
      */
-  provider: ProviderEnum;
+  provider: TenantLLMProviderProviderEnum;
   is_default?: /**
    * Use this provider as the default for AI features
    */
@@ -10527,6 +10814,77 @@ const PatchedMeasurementDefinitionRequest = z
   })
   .partial()
   .passthrough();
+const Milestone = z
+  .object({
+    id: z.string().uuid(),
+    template: z.string().uuid(),
+    name: z.string().max(100),
+    customer_display_name: z.string().max(100).optional(),
+    display_name: z.string(),
+    display_order: z
+      .number()
+      .int()
+      .gte(-2147483648)
+      .lte(2147483647)
+      .optional()
+      .default(0),
+    description: z.string().optional(),
+    is_active: z.boolean().optional(),
+  })
+  .passthrough();
+const MilestoneTemplate = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().max(100),
+    description: z.string().optional(),
+    is_default: z.boolean().optional(),
+    milestones: z.array(Milestone),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const MilestoneTemplateRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    description: z.string().optional(),
+    is_default: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedMilestoneTemplateRequest = z
+  .object({
+    name: z.string().min(1).max(100),
+    description: z.string(),
+    is_default: z.boolean(),
+  })
+  .partial()
+  .passthrough();
+const MilestoneRequest = z
+  .object({
+    template: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    customer_display_name: z.string().max(100).optional(),
+    display_order: z
+      .number()
+      .int()
+      .gte(-2147483648)
+      .lte(2147483647)
+      .optional()
+      .default(0),
+    description: z.string().optional(),
+    is_active: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedMilestoneRequest = z
+  .object({
+    template: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    customer_display_name: z.string().max(100),
+    display_order: z.number().int().gte(-2147483648).lte(2147483647).default(0),
+    description: z.string(),
+    is_active: z.boolean(),
+  })
+  .partial()
+  .passthrough();
 const NotificationTypeEnum = z.enum([
   "WEEKLY_REPORT",
   "CAPA_REMINDER",
@@ -10635,6 +10993,7 @@ const Orders = z
     original_completion_date: z.string().datetime({ offset: true }).nullable(),
     order_status: OrdersStatusEnum,
     current_hubspot_gate: z.string().uuid().nullish(),
+    current_milestone: z.string().uuid().nullish(),
     parts_summary: z.object({}).partial().passthrough().nullable(),
     process_stages: z.array(z.unknown()),
     gate_info: z.object({}).partial().passthrough().nullable(),
@@ -10663,6 +11022,7 @@ const OrdersRequest = z
     estimated_completion: z.string().nullish(),
     order_status: OrdersStatusEnum,
     current_hubspot_gate: z.string().uuid().nullish(),
+    current_milestone: z.string().uuid().nullish(),
     archived: z.boolean().optional(),
   })
   .passthrough();
@@ -10675,6 +11035,7 @@ const PatchedOrdersRequest = z
     estimated_completion: z.string().nullable(),
     order_status: OrdersStatusEnum,
     current_hubspot_gate: z.string().uuid().nullable(),
+    current_milestone: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial()
@@ -10721,6 +11082,10 @@ const BulkAddPartsInputRequest = z
   .passthrough();
 const BulkRemovePartsInputRequest = z
   .object({ ids: z.array(z.string().uuid()) })
+  .passthrough();
+const PatchedSetMilestoneInputRequest = z
+  .object({ milestone_id: z.string().uuid().nullable() })
+  .partial()
   .passthrough();
 const StepDistributionResponse = z
   .object({ id: z.string().uuid(), count: z.number().int(), name: z.string() })
@@ -12110,11 +12475,11 @@ const PatchedTenantGroupRequest = z
   .partial()
   .passthrough();
 const RemoveMemberResponse = z.object({ status: z.string() }).passthrough();
-const ProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
+const TenantLLMProviderProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
 const TenantLLMProvider = z
   .object({
     id: z.string().uuid(),
-    provider: ProviderEnum,
+    provider: TenantLLMProviderProviderEnum,
     provider_display: z.string(),
     is_default: z.boolean().optional(),
     is_enabled: z.boolean().optional(),
@@ -12136,7 +12501,7 @@ const PaginatedTenantLLMProviderList = z
   .passthrough();
 const TenantLLMProviderRequest = z
   .object({
-    provider: ProviderEnum,
+    provider: TenantLLMProviderProviderEnum,
     is_default: z.boolean().optional(),
     is_enabled: z.boolean().optional(),
     model_name: z.string().min(1).max(100),
@@ -12146,7 +12511,7 @@ const TenantLLMProviderRequest = z
   .passthrough();
 const PatchedTenantLLMProviderRequest = z
   .object({
-    provider: ProviderEnum,
+    provider: TenantLLMProviderProviderEnum,
     is_default: z.boolean(),
     is_enabled: z.boolean(),
     model_name: z.string().min(1).max(100),
@@ -13175,6 +13540,172 @@ const RepeatDefectsResponse = z
     total_repeat_count: z.number().int(),
   })
   .passthrough();
+const HubSpotPipelineStage = z
+  .object({
+    id: z.string().uuid(),
+    stage_name: z.string(),
+    api_id: z.string(),
+    pipeline_id: z.string().nullable(),
+    display_order: z.number().int(),
+    include_in_progress: z.boolean(),
+    customer_display_name: z.string(),
+    mapped_milestone: z.string().uuid().nullable(),
+    last_synced_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .passthrough();
+const PaginatedHubSpotPipelineStageList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(HubSpotPipelineStage),
+  })
+  .passthrough();
+const SyncTypeEnum = z.enum(["FULL", "INCREMENTAL", "SINGLE", "PUSH"]);
+const IntegrationSyncLogStatusEnum = z.enum(["RUNNING", "SUCCESS", "FAILED"]);
+const IntegrationSyncLog = z
+  .object({
+    id: z.string().uuid(),
+    integration: z.string().uuid(),
+    sync_type: SyncTypeEnum,
+    sync_type_display: z.string(),
+    status: IntegrationSyncLogStatusEnum,
+    status_display: z.string(),
+    started_at: z.string().datetime({ offset: true }),
+    completed_at: z.string().datetime({ offset: true }).nullable(),
+    duration_seconds: z.number(),
+    records_processed: z.number().int(),
+    records_created: z.number().int(),
+    records_updated: z.number().int(),
+    error_message: z.string().nullable(),
+    details: z.unknown(),
+  })
+  .passthrough();
+const PaginatedIntegrationSyncLogList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(IntegrationSyncLog),
+  })
+  .passthrough();
+const IntegrationProviderEnum = z.enum([
+  "hubspot",
+  "salesforce",
+  "quickbooks",
+  "xero",
+]);
+const IntegrationSyncStatusEnum = z.enum(["IDLE", "SYNCING", "ERROR"]);
+const IntegrationConfigList = z
+  .object({
+    id: z.string().uuid(),
+    provider: IntegrationProviderEnum,
+    provider_display: z.string(),
+    display_name: z.string().max(100).optional(),
+    is_enabled: z.boolean().optional(),
+    sync_status: IntegrationSyncStatusEnum.optional(),
+    has_credentials: z.boolean(),
+    last_synced_at: z.string().datetime({ offset: true }).nullish(),
+    last_sync_error: z.string().nullish(),
+    last_sync_stats: z.unknown().optional(),
+    capabilities: z.array(z.string()),
+  })
+  .passthrough();
+const PaginatedIntegrationConfigListList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(IntegrationConfigList),
+  })
+  .passthrough();
+const IntegrationConfigRequest = z
+  .object({
+    provider: IntegrationProviderEnum,
+    display_name: z.string().max(100).optional(),
+    is_enabled: z.boolean().optional(),
+    api_key: z.string().max(500).optional(),
+    oauth_refresh_token: z.string().max(500).optional(),
+    webhook_secret: z.string().max(500).optional(),
+    api_url: z.string().max(200).url().optional(),
+    config: z.unknown().optional(),
+  })
+  .passthrough();
+const IntegrationConfig = z
+  .object({
+    id: z.string().uuid(),
+    tenant: z.string().uuid(),
+    provider: IntegrationProviderEnum,
+    provider_display: z.string(),
+    display_name: z.string().max(100).optional(),
+    is_enabled: z.boolean().optional(),
+    sync_status: IntegrationSyncStatusEnum,
+    api_url: z.string().max(200).url().optional(),
+    config: z.unknown().optional(),
+    last_synced_at: z.string().datetime({ offset: true }).nullable(),
+    last_sync_error: z.string().nullable(),
+    last_sync_stats: z.unknown(),
+    capabilities: z.array(z.string()),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const PatchedIntegrationConfigRequest = z
+  .object({
+    provider: IntegrationProviderEnum,
+    display_name: z.string().max(100),
+    is_enabled: z.boolean(),
+    api_key: z.string().max(500),
+    oauth_refresh_token: z.string().max(500),
+    webhook_secret: z.string().max(500),
+    api_url: z.string().max(200).url(),
+    config: z.unknown(),
+  })
+  .partial()
+  .passthrough();
+const IntegrationHealth = z
+  .object({
+    status: z.string(),
+    is_enabled: z.boolean(),
+    sync_status: z.string(),
+    last_synced_at: z.string().datetime({ offset: true }).nullable(),
+    last_sync_error: z.string().nullable(),
+    last_sync_stats: z.object({}).partial().passthrough().nullable(),
+    consecutive_failures: z.number().int(),
+  })
+  .passthrough();
+const TestConnectionResult = z
+  .object({ success: z.boolean(), message: z.string() })
+  .passthrough();
+const TriggerSyncResult = z.object({ status: z.string() }).passthrough();
+const IntegrationCatalogItem = z
+  .object({
+    provider: z.string(),
+    name: z.string(),
+    category: z.string(),
+    description: z.string(),
+    long_description: z.string(),
+    icon: z.string(),
+    capabilities: z.array(z.string()),
+    auth_type: z.string(),
+    auth_label: z.string(),
+    auth_instructions: z.string(),
+    auth_docs_url: z.string(),
+    data_flows: z.array(z.object({}).partial().passthrough()),
+    sync_details: z.object({}).partial().passthrough(),
+    requirements: z.array(z.string()),
+    creates: z.array(z.string()),
+    limitations: z.array(z.string()),
+    status: z.string(),
+    config_id: z.string().nullable(),
+    is_enabled: z.boolean(),
+    display_name: z.string(),
+    sync_status: z.string().nullable(),
+    last_synced_at: z.string().nullable(),
+    last_sync_error: z.string().nullable(),
+    last_sync_stats: z.object({}).partial().passthrough().nullable(),
+  })
+  .passthrough();
 const PermissionListResponse = z
   .object({ permissions: z.array(z.object({}).partial().passthrough()) })
   .passthrough();
@@ -14086,6 +14617,12 @@ export const schemas = {
   PaginatedMeasurementDefinitionList,
   MeasurementDefinitionRequest,
   PatchedMeasurementDefinitionRequest,
+  Milestone,
+  MilestoneTemplate,
+  MilestoneTemplateRequest,
+  PatchedMilestoneTemplateRequest,
+  MilestoneRequest,
+  PatchedMilestoneRequest,
   NotificationTypeEnum,
   ChannelTypeEnum,
   NotificationTaskStatusEnum,
@@ -14110,6 +14647,7 @@ export const schemas = {
   PartsStatusEnum,
   BulkAddPartsInputRequest,
   BulkRemovePartsInputRequest,
+  PatchedSetMilestoneInputRequest,
   StepDistributionResponse,
   PaginatedStepDistributionResponseList,
   api_Orders_import_create_Body,
@@ -14227,7 +14765,7 @@ export const schemas = {
   TenantGroupDetail,
   PatchedTenantGroupRequest,
   RemoveMemberResponse,
-  ProviderEnum,
+  TenantLLMProviderProviderEnum,
   TenantLLMProvider,
   PaginatedTenantLLMProviderList,
   TenantLLMProviderRequest,
@@ -14336,6 +14874,23 @@ export const schemas = {
   OpenDispositionsResponse,
   QualityRatesResponse,
   RepeatDefectsResponse,
+  HubSpotPipelineStage,
+  PaginatedHubSpotPipelineStageList,
+  SyncTypeEnum,
+  IntegrationSyncLogStatusEnum,
+  IntegrationSyncLog,
+  PaginatedIntegrationSyncLogList,
+  IntegrationProviderEnum,
+  IntegrationSyncStatusEnum,
+  IntegrationConfigList,
+  PaginatedIntegrationConfigListList,
+  IntegrationConfigRequest,
+  IntegrationConfig,
+  PatchedIntegrationConfigRequest,
+  IntegrationHealth,
+  TestConnectionResult,
+  TriggerSyncResult,
+  IntegrationCatalogItem,
   PermissionListResponse,
   PresetListResponse,
   ReportTypeEnum,
@@ -21474,6 +22029,46 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
   },
   {
     method: "get",
+    path: "/api/hubspot-pipeline-stages/",
+    alias: "api_hubspot_pipeline_stages_list",
+    description: `Read-only pipeline stages for HubSpot integrations.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedHubSpotPipelineStageList,
+  },
+  {
+    method: "get",
+    path: "/api/hubspot-pipeline-stages/:id/",
+    alias: "api_hubspot_pipeline_stages_retrieve",
+    description: `Read-only pipeline stages for HubSpot integrations.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: HubSpotPipelineStage,
+  },
+  {
+    method: "get",
     path: "/api/HubspotGates/",
     alias: "api_HubspotGates_list",
     description: `ViewSet for managing HubSpot gate/milestone data`,
@@ -21591,6 +22186,260 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/integration-sync-logs/",
+    alias: "api_integration_sync_logs_list",
+    description: `Read-only sync log history.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedIntegrationSyncLogList,
+  },
+  {
+    method: "get",
+    path: "/api/integration-sync-logs/:id/",
+    alias: "api_integration_sync_logs_retrieve",
+    description: `Read-only sync log history.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: IntegrationSyncLog,
+  },
+  {
+    method: "get",
+    path: "/api/integrations/",
+    alias: "api_integrations_list",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedIntegrationConfigListList,
+  },
+  {
+    method: "post",
+    path: "/api/integrations/",
+    alias: "api_integrations_create",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: IntegrationConfigRequest,
+      },
+    ],
+    response: IntegrationConfig,
+  },
+  {
+    method: "get",
+    path: "/api/integrations/:id/",
+    alias: "api_integrations_retrieve",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: IntegrationConfig,
+  },
+  {
+    method: "put",
+    path: "/api/integrations/:id/",
+    alias: "api_integrations_update",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: IntegrationConfigRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: IntegrationConfig,
+  },
+  {
+    method: "patch",
+    path: "/api/integrations/:id/",
+    alias: "api_integrations_partial_update",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedIntegrationConfigRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: IntegrationConfig,
+  },
+  {
+    method: "delete",
+    path: "/api/integrations/:id/",
+    alias: "api_integrations_destroy",
+    description: `CRUD for integration management.
+Scoped to the request user&#x27;s tenant.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/integrations/:id/health/",
+    alias: "api_integrations_health_retrieve",
+    description: `Get health status for this integration.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: IntegrationHealth,
+  },
+  {
+    method: "get",
+    path: "/api/integrations/:id/sync_logs/",
+    alias: "api_integrations_sync_logs_list",
+    description: `Get sync history for this integration.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(IntegrationSyncLog),
+  },
+  {
+    method: "post",
+    path: "/api/integrations/:id/test_connection/",
+    alias: "api_integrations_test_connection_create",
+    description: `Test that the integration&#x27;s credentials work.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: IntegrationConfigRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TestConnectionResult,
+  },
+  {
+    method: "post",
+    path: "/api/integrations/:id/trigger_sync/",
+    alias: "api_integrations_trigger_sync_create",
+    description: `Manually trigger a sync for this integration.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: IntegrationConfigRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({ status: z.string() }).passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/integrations/catalog/",
+    alias: "api_integrations_catalog_list",
+    description: `Returns all available integrations merged with their configuration status
+for the current tenant.
+
+Each item includes:
+- Adapter manifest (name, description, icon, auth_type, capabilities)
+- Configuration status (not_configured, configured, connected, error)
+- IntegrationConfig data if configured (id, is_enabled, sync_status, last_synced_at, etc.)
+
+Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(IntegrationCatalogItem),
   },
   {
     method: "get",
@@ -22128,6 +22977,206 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Milestones/",
+    alias: "api_Milestones_list",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(Milestone),
+  },
+  {
+    method: "post",
+    path: "/api/Milestones/",
+    alias: "api_Milestones_create",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MilestoneRequest,
+      },
+    ],
+    response: Milestone,
+  },
+  {
+    method: "get",
+    path: "/api/Milestones/:id/",
+    alias: "api_Milestones_retrieve",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Milestone,
+  },
+  {
+    method: "put",
+    path: "/api/Milestones/:id/",
+    alias: "api_Milestones_update",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MilestoneRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Milestone,
+  },
+  {
+    method: "patch",
+    path: "/api/Milestones/:id/",
+    alias: "api_Milestones_partial_update",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedMilestoneRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Milestone,
+  },
+  {
+    method: "delete",
+    path: "/api/Milestones/:id/",
+    alias: "api_Milestones_destroy",
+    description: `CRUD for milestones within templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/MilestoneTemplates/",
+    alias: "api_MilestoneTemplates_list",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(MilestoneTemplate),
+  },
+  {
+    method: "post",
+    path: "/api/MilestoneTemplates/",
+    alias: "api_MilestoneTemplates_create",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MilestoneTemplateRequest,
+      },
+    ],
+    response: MilestoneTemplate,
+  },
+  {
+    method: "get",
+    path: "/api/MilestoneTemplates/:id/",
+    alias: "api_MilestoneTemplates_retrieve",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MilestoneTemplate,
+  },
+  {
+    method: "put",
+    path: "/api/MilestoneTemplates/:id/",
+    alias: "api_MilestoneTemplates_update",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MilestoneTemplateRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MilestoneTemplate,
+  },
+  {
+    method: "patch",
+    path: "/api/MilestoneTemplates/:id/",
+    alias: "api_MilestoneTemplates_partial_update",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedMilestoneTemplateRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MilestoneTemplate,
+  },
+  {
+    method: "delete",
+    path: "/api/MilestoneTemplates/:id/",
+    alias: "api_MilestoneTemplates_destroy",
+    description: `CRUD for milestone templates. Admin-only.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/NotificationPreferences/",
     alias: "api_NotificationPreferences_list",
     description: `List user&#x27;s notification preferences`,
@@ -22558,6 +23607,33 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "patch",
+    path: "/api/Orders/:id/set-milestone/",
+    alias: "api_Orders_set_milestone_partial_update",
+    description: `Set the current business milestone for an order.
+
+Accepts {&quot;milestone_id&quot;: &quot;&lt;uuid&gt;&quot;} or {&quot;milestone_id&quot;: null} to clear.
+If the order has a HubSpot link with a mapped stage, this also triggers
+a push to HubSpot.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ milestone_id: z.string().uuid().nullable() })
+          .partial()
+          .passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Orders,
   },
   {
     method: "get",

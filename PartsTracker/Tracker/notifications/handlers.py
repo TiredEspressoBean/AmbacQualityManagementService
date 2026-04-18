@@ -41,6 +41,7 @@ def build_weekly_report_context(task) -> Optional[Dict[str, Any]]:
         OrdersStatus.ON_HOLD
     ]
 
+    # tenant-safe: customer is a specific user; orders are scoped to that user's account
     active_orders = Orders.objects.filter(
         customer=customer,
         archived=False,

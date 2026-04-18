@@ -1,0 +1,25 @@
+{
+  "certificate_number": "CAL-2026-000831",
+
+  "calibration_date": "2026-04-10",
+  "due_date": "2027-04-10",
+  "result": "PASS",
+  "calibration_type": "SCHEDULED",
+  "performed_by": "Precision Metrology Services LLC",
+  "external_lab": "Precision Metrology Services LLC — NVLAP Lab Code 200305-0",
+  "standards_used": "Gauge blocks: Mitutoyo Grade 0 set, NIST-traceable cert #2025-GBK-1174, issued 2025-11-03.\nMicrometer standards: 0–1\" pin gauges, SN 48821, traceable to NIST via A2LA accredited lab, cert #PMS-2025-00449.\nTemperature: Fluke 1524 reference thermometer, NIST-traceable cert #FLK-2025-3310.",
+
+  "as_found_in_tolerance": true,
+  "adjustments_made": false,
+
+  "notes": "Instrument found in excellent condition. All measurements within specification on first pass. No cleaning or adjustment required. Instrument may remain in service without restriction until next scheduled calibration.",
+
+  "equipment_name": "Outside Micrometer 0–1\"",
+  "equipment_serial": "SN-MIC-2019-0047",
+  "equipment_type": "Micrometer",
+  "equipment_manufacturer": "Mitutoyo",
+  "equipment_model": "103-137-10",
+  "equipment_location": "QA Lab — Shelf 3B",
+
+  "tenant_name": "Ambac International"
+}

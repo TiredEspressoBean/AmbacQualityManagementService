@@ -112,7 +112,8 @@ class SPCBaselineFreezeSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate_measurement_definition_id(self, value):
-        if not MeasurementDefinition.objects.filter(id=value).exists():
+        user = self.context['request'].user
+        if not MeasurementDefinition.objects.for_user(user).filter(id=value).exists():
             raise serializers.ValidationError("Measurement definition not found")
         return value
 

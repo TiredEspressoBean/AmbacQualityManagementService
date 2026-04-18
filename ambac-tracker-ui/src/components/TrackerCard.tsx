@@ -27,7 +27,7 @@ type OrderStage = {
     is_completed: boolean
 }
 
-type HubSpotGate = {
+type MilestoneStage = {
     name: string
     full_name: string
     is_current: boolean
@@ -41,7 +41,7 @@ type GateInfo = {
     current_position?: number
     total_gates?: number
     progress_percent?: number
-    gates: HubSpotGate[]
+    gates: MilestoneStage[]
 }
 
 type NoteEntry = {
@@ -167,7 +167,7 @@ export function ExpandableOrderTracker({
                     </div>
                 )}
 
-                {/* HubSpot Gate Progress (collapsed view) */}
+                {/* Milestone Progress (collapsed view) */}
                 {gateInfo && gateInfo.is_in_progress && !open && (
                     <div className="pt-3 border-t">
                         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
@@ -203,7 +203,7 @@ export function ExpandableOrderTracker({
                         </div>
                     )}
 
-                    {/* HubSpot Gates (expanded) */}
+                    {/* Milestone Stages (expanded) */}
                     {gateInfo && gateInfo.gates && gateInfo.gates.length > 0 && (
                         <div>
                             <h4 className="text-xs font-medium text-muted-foreground mb-2">Pipeline Stages</h4>

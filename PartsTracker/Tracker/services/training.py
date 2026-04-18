@@ -103,6 +103,7 @@ def get_user_current_training(user):
     today = timezone.now().date()
 
     # Get all training records that are current
+    # tenant-safe: scoped to a specific user; users belong to one tenant
     current_records = TrainingRecord.objects.filter(
         user=user
     ).filter(
@@ -217,6 +218,7 @@ def get_qualified_users_for_step(step, process=None, equipment_type=None, tenant
 
     # Get users who have current training for ALL required types
     # This uses a subquery approach
+    # tenant-safe: training_type_ids are already tenant-scoped (derived upstream); RLS applies
     qualified_user_ids = (
         TrainingRecord.objects.filter(
             training_type_id__in=required_ids

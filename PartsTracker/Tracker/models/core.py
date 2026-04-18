@@ -624,6 +624,7 @@ class SecureQuerySet(models.QuerySet):
 
         def get_accessible_order_ids():
             from Tracker.models import Orders
+            # tenant-safe: runs inside tenant-scoped request context with RLS enforced; customer/viewers scoping is user-identity-based
             return Orders.objects.filter(
                 Q(customer=user) | Q(viewers=user)
             ).values_list('id', flat=True)
@@ -656,14 +657,17 @@ class SecureQuerySet(models.QuerySet):
             part_ct = ContentType.objects.get_for_model(Parts)
             parttype_ct = ContentType.objects.get_for_model(PartTypes)
 
+            # tenant-safe: filtering by accessible_order_ids (already derived from RLS-scoped query)
             accessible_workorder_ids = WorkOrder.objects.filter(
                 related_order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
 
+            # tenant-safe: filtering by accessible_order_ids
             accessible_part_ids = Parts.objects.filter(
                 order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
 
+            # tenant-safe: filtering by accessible_order_ids
             accessible_parttype_ids = PartTypes.objects.filter(
                 parts__order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
@@ -877,6 +881,7 @@ class SecureManager(models.Manager):
         # Get customer's accessible order IDs (used by multiple filters)
         def get_accessible_order_ids():
             from Tracker.models import Orders
+            # tenant-safe: runs inside tenant-scoped request context with RLS enforced
             return Orders.objects.filter(
                 Q(customer=user) | Q(viewers=user)
             ).values_list('id', flat=True)
@@ -912,15 +917,18 @@ class SecureManager(models.Manager):
             parttype_ct = ContentType.objects.get_for_model(PartTypes)
 
             # Get IDs of accessible related objects
+            # tenant-safe: filtering by accessible_order_ids (already derived from RLS-scoped query)
             accessible_workorder_ids = WorkOrder.objects.filter(
                 related_order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
 
+            # tenant-safe: filtering by accessible_order_ids
             accessible_part_ids = Parts.objects.filter(
                 order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
 
             # Part types from their orders
+            # tenant-safe: filtering by accessible_order_ids
             accessible_parttype_ids = PartTypes.objects.filter(
                 parts__order_id__in=accessible_order_ids
             ).values_list('id', flat=True)

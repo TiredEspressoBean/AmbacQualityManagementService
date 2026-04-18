@@ -325,6 +325,7 @@ class PermissionService:
         from Tracker.models import PermissionChangeLog
 
         try:
+            # tenant-safe: audit log scoped to self.user; tenant is derived from user by the save() hook
             PermissionChangeLog.objects.create(
                 changed_by=self.user,
                 group_name=group_name,

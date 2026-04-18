@@ -1,0 +1,78 @@
+{
+  "submission_date": "2026-04-15",
+  "tenant_name": "Ambac International",
+  "part_number": "INJ-2500-A",
+  "total_count": 7,
+  "items": [
+    {
+      "gage_id": "SN-BOR-2020-0055",
+      "name": "Bore Gauge 2\"–6\"",
+      "equipment_type": "Bore Gauge",
+      "manufacturer": "Mitutoyo",
+      "model": "511-753",
+      "cal_cert_number": "PMS-2026-0088",
+      "cal_date": "2026-01-15",
+      "standards_used": "NIST-traceable ring gauges, cert #RG-2026-0412"
+    },
+    {
+      "gage_id": "SN-CAL-2020-0112",
+      "name": "Caliper — Vernier 12\"",
+      "equipment_type": "Caliper",
+      "manufacturer": "Mitutoyo",
+      "model": "530-122",
+      "cal_cert_number": "PMS-2026-0091",
+      "cal_date": "2026-02-03",
+      "standards_used": "Gauge blocks Grade 0, NIST-traceable cert #2026-GBK-0219"
+    },
+    {
+      "gage_id": "SN-CMM-2017-0003",
+      "name": "CMM — Brown & Sharpe Micro",
+      "equipment_type": "CMM",
+      "manufacturer": "Hexagon",
+      "model": "MicroHite DCC 454",
+      "cal_cert_number": "HEX-2026-0041",
+      "cal_date": "2026-01-08",
+      "standards_used": "Artifact ball bar, NIST-traceable cert #HEX-ART-2025-112"
+    },
+    {
+      "gage_id": "SN-DPG-2023-0007",
+      "name": "Digital Pressure Gauge 0–3000 PSI",
+      "equipment_type": "Pressure Gauge",
+      "manufacturer": "Omega",
+      "model": "DPG409-3KG",
+      "cal_cert_number": null,
+      "cal_date": null,
+      "standards_used": null
+    },
+    {
+      "gage_id": "SN-HGT-2021-0088",
+      "name": "Height Gauge — Digital 24\"",
+      "equipment_type": "Height Gauge",
+      "manufacturer": "Fowler",
+      "model": "54-175-024",
+      "cal_cert_number": "PMS-2026-0095",
+      "cal_date": "2026-02-20",
+      "standards_used": "Gauge blocks Grade 0, NIST-traceable cert #2026-GBK-0219"
+    },
+    {
+      "gage_id": "SN-MIC-2019-0047",
+      "name": "Micrometer — Outside 0\"–1\"",
+      "equipment_type": "Micrometer",
+      "manufacturer": "Starrett",
+      "model": "226MRL",
+      "cal_cert_number": "PMS-2026-0076",
+      "cal_date": "2025-11-14",
+      "standards_used": "Gauge blocks Grade 0, NIST-traceable cert #2025-GBK-1174"
+    },
+    {
+      "gage_id": "SN-TRQ-2022-0031",
+      "name": "Torque Wrench 10–150 ft-lb",
+      "equipment_type": "Torque Wrench",
+      "manufacturer": "CDI",
+      "model": "2503MFRPH",
+      "cal_cert_number": "TRQ-CAL-2026-0022",
+      "cal_date": "2026-01-10",
+      "standards_used": "Torque transducer, NIST-traceable cert #CDI-2025-4420"
+    }
+  ]
+}

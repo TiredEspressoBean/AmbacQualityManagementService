@@ -11,9 +11,9 @@ export function useDeleteWorkOrder() {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
-        mutationKey: ["part-types", "delete"],
+        mutationKey: ["workorder", "delete"],
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["step"] });
+            queryClient.invalidateQueries({ queryKey: ["workorders"] });
         },
     });
 }

@@ -5,10 +5,10 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMatchRoute, useNavigate } from '@tanstack/react-router';
+import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Send, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Send, ChevronDown, Eye, EyeOff, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 import { useRetrieveOrder } from '@/hooks/useRetrieveOrder';
 import { useUpdateOrder } from '@/hooks/useUpdateOrder';
 import { useCreateOrder } from '@/hooks/useCreateOrder';
-import { useListHubspotGates } from '@/hooks/useListHubspotGates';
+import { useListMilestones } from '@/hooks/useListMilestones';
 import { useRetrieveCustomers } from '@/hooks/useRetrieveCustomers';
 import { useRetrieveCompanies } from '@/hooks/useRetrieveCompanies';
 import { api, schemas } from '@/lib/api/generated';
@@ -57,7 +57,9 @@ const formSchema = schemas.OrdersRequest.pick({
     customer: true,
     order_status: true,
     company: true,
+    // TODO: Remove current_hubspot_gate after Phase 5 cleanup
     current_hubspot_gate: true,
+    current_milestone: true,
 }).extend({
     // Form uses Date object, converted to string on submit
     estimated_completion: z.date().optional(),
@@ -97,7 +99,7 @@ export default function OrderFormPage() {
         enabled: !!orderId,
     });
 
-    const { data: hubspotGates = [] } = useListHubspotGates({});
+    const { data: milestones = [] } = useListMilestones();
     const { data: customers = [] } = useRetrieveCustomers({
         search: customerSearch,
     });
@@ -135,6 +137,7 @@ export default function OrderFormPage() {
             estimated_completion: undefined,
             order_status: ORDER_STATUS[0],
             current_hubspot_gate: undefined,
+            current_milestone: undefined,
             company: undefined,
             archived: false,
         },
@@ -149,17 +152,19 @@ export default function OrderFormPage() {
                 estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
                 current_hubspot_gate: order.current_hubspot_gate ?? undefined,
+                current_milestone: (order as any).current_milestone ?? undefined,
                 company: order.company ?? undefined,
                 archived: order.archived || false,
             });
         }
-    }, [isEditing, order, form, hubspotGates.length]);
+    }, [isEditing, order, form, milestones.length]);
 
     function onSubmit(values: FormValues) {
         const submitData = {
             ...values,
             estimated_completion: values.estimated_completion ? format(values.estimated_completion, "yyyy-MM-dd") : undefined,
-            current_hubspot_gate: values.current_hubspot_gate || undefined,
+            current_hubspot_gate: values.current_hubspot_gate || undefined, // TODO: Remove after Phase 5
+            current_milestone: values.current_milestone || undefined,
         };
 
         if (isEditing && orderId) {
@@ -442,41 +447,49 @@ export default function OrderFormPage() {
                         )}
                     />
 
+                    {/* Milestone dropdown — only show if milestones exist for this tenant */}
+                    {(milestones as any[]).length > 0 && (
                     <FormField
                         control={form.control}
-                        name="current_hubspot_gate"
+                        name="current_milestone"
                         render={({ field }) => {
                             const stringValue = field.value !== null && field.value !== undefined ? String(field.value) : "null";
                             return (
                                 <FormItem>
-                                    <FormLabel>Current HubSpot Gate</FormLabel>
+                                    <div className="flex items-center gap-2">
+                                        <FormLabel>Current Milestone</FormLabel>
+                                        <Link to="/editor/milestones" className="text-muted-foreground hover:text-foreground" title="Manage milestones">
+                                            <Settings className="h-3.5 w-3.5" />
+                                        </Link>
+                                    </div>
                                     <Select
-                                        key={`hubspot-gate-${stringValue}`}
-                                        onValueChange={(value) => field.onChange(value === "null" ? null : Number(value))}
+                                        key={`milestone-${stringValue}`}
+                                        onValueChange={(value) => field.onChange(value === "null" ? null : value)}
                                         defaultValue={stringValue}
                                     >
                                         <FormControl>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select HubSpot gate" />
+                                                <SelectValue placeholder="Select milestone" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="null">No gate selected</SelectItem>
-                                            {hubspotGates.map((gate) => (
-                                                <SelectItem key={gate.id} value={String(gate.id)}>
-                                                    {gate.stage_name}
+                                            <SelectItem value="null">No milestone</SelectItem>
+                                            {(milestones as any[]).map((milestone: any) => (
+                                                <SelectItem key={milestone.id} value={String(milestone.id)}>
+                                                    {milestone.display_name || milestone.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                     <FormDescription>
-                                        Current HubSpot pipeline gate
+                                        Business process milestone for this order
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             );
                         }}
                     />
+                    )}
 
                     <FormField
                         control={form.control}

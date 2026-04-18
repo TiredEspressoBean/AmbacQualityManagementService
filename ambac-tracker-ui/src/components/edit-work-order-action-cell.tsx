@@ -83,7 +83,7 @@ export function EditWorkOrderActionsCell({workOrderId}: Props) {
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                         This action is permanent and cannot be undone.
-                        The part will be removed from active tracking.
+                        The work order will be removed from active tracking.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

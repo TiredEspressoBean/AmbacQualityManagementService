@@ -1,0 +1,24 @@
+{
+  "disposition_number": "DISP-2026-000051",
+  "current_state": "IN_PROGRESS",
+  "severity": "MINOR",
+  "disposition_type": "USE_AS_IS",
+  "created_at": "2026-04-08T09:15:00",
+
+  "part_erp_id": "WO-2026-0198-HSG0007",
+  "part_type_name": "Pump Housing Cover",
+  "work_order_erp_id": "WO-2026-0198",
+  "step_name": "Final Visual Inspection",
+
+  "description": "Part HSG-2026-0007 exhibits a cosmetic surface scratch (approx. 18 mm long, depth < 0.01 mm) on the non-mating, non-functional exterior face (surface C per drawing AM-PHC-009 Rev D). The scratch does not intersect any sealing surface, fastener boss, or functional datum. Specification requires Ra ≤ 1.6 μm on surface C; measured Ra at scratch location is 1.9 μm over a 2 mm evaluation length. All other dimensions and surface finishes are within tolerance. Quantity affected: 1 unit.",
+
+  "resolution_notes": "Engineering review (ref. ENG-DEV-2026-0041) confirms the scratch on surface C of part HSG-2026-0007 has no effect on form, fit, or function:\n\n1. Form: Scratch is 18 mm long and less than 0.01 mm deep. It does not alter the part envelope or any mating interface.\n2. Fit: Surface C is a non-mating exterior face. No gasket, O-ring, or mating part contacts this surface in the assembly.\n3. Function: The pump housing cover primary function is to seal the internal cavity. All sealing surfaces (surfaces A, B, D) are unaffected and within specification. Structural analysis (FEA per AM-PHC-009 Rev D note 7) shows surface C is non-load-bearing under operating conditions.\n\nConclusion: Use-as-is is authorized. No customer notification required per Quality Agreement QA-CUST-004 clause 3.1 (cosmetic deviations below 0.05 mm depth are buyer-discretionary). Customer approval obtained as a precautionary measure due to contractual clause 5.8.",
+  "assigned_to": "Marcus Chen",
+
+  "requires_customer_approval": true,
+  "customer_approval_received": true,
+  "customer_approval_reference": "EMAIL-CUST-2026-0412-REF-88241",
+  "customer_approval_date": "2026-04-11",
+
+  "tenant_name": "Ambac International"
+}

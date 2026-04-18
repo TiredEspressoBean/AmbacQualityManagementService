@@ -76,6 +76,10 @@ from .mes_lite import (
     EquipmentViewSet,
     EquipmentTypeViewSet,
     EquipmentSelectViewSet,
+
+    # Milestone ViewSets
+    MilestoneTemplateViewSet,
+    MilestoneViewSet,
 )
 
 from .qms import (
@@ -133,8 +137,8 @@ from .dms import (
     ChatSessionViewSet,
 )
 
-# Reports ViewSet (PDF generation)
-from .reports import (
+# Reports ViewSet (PDF generation) - lives in Tracker.reports subpackage
+from Tracker.reports.viewsets import (
     ReportViewSet,
     GeneratedReportSerializer,
 )
@@ -234,8 +238,12 @@ __all__ = [
     # Core - Scope (graph traversal)
     'ScopeView',
 
-    # Integrations - HubSpot
+    # Integrations - HubSpot (legacy)
     'HubspotGatesViewSet',
+
+    # Milestones
+    'MilestoneTemplateViewSet',
+    'MilestoneViewSet',
 
     # MES Lite - Orders
     'TrackerOrderViewSet',

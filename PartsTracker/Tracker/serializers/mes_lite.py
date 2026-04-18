@@ -13,6 +13,8 @@ from Tracker.models import (
     QualityReports, MeasurementResult, QuarantineDisposition, EquipmentUsage,
     # Core models
     ExternalAPIOrderIdentifier, User, Companies, Documents,
+    # Milestone models
+    Milestone, MilestoneTemplate,
 )
 
 from .core import SecureModelMixin, BulkOperationsMixin, UserSelectSerializer, CompanySerializer
@@ -51,14 +53,20 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
     # Write fields
     customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), allow_null=True, required=False)
     company = serializers.PrimaryKeyRelatedField(queryset=Companies.objects.all(), allow_null=True, required=False)
+    # TODO: Remove current_hubspot_gate after Phase 5 cleanup (replaced by current_milestone)
     current_hubspot_gate = serializers.PrimaryKeyRelatedField(queryset=ExternalAPIOrderIdentifier.objects.all(),
                                                               allow_null=True, required=False)
+    current_milestone = serializers.PrimaryKeyRelatedField(
+        queryset=Milestone.objects.all(), allow_null=True, required=False
+    )
 
     class Meta:
         model = Orders
         fields = (
         'id', 'order_number', 'name', 'customer_note', 'latest_note', 'notes_timeline', 'customer', 'customer_info', 'company', 'company_info',
-        'estimated_completion', 'original_completion_date', 'order_status', 'current_hubspot_gate', 'parts_summary',
+        'estimated_completion', 'original_completion_date', 'order_status',
+        'current_hubspot_gate',  # TODO: Remove after Phase 5 cleanup
+        'current_milestone', 'parts_summary',
         'process_stages', 'gate_info', 'customer_first_name', 'customer_last_name', 'company_name', 'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'order_number', 'created_at', 'updated_at', 'parts_summary', 'process_stages', 'gate_info', 'customer_info', 'company_info',
@@ -104,7 +112,7 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_gate_info(self, obj):
-        """Get HubSpot gate progress information"""
+        """Get milestone/gate progress information. Reads from current_milestone, falls back to legacy HubSpot."""
         return obj.get_gate_info()
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -127,6 +135,7 @@ class TrackerPageOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Orders
+        # TODO: Remove hubspot fields from exclude after Phase 5 cleanup (fields will be dropped from model)
         exclude = ['hubspot_deal_id', 'last_synced_hubspot_stage', 'current_hubspot_gate']
 
     @extend_schema_field(serializers.ListField())
@@ -203,7 +212,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_gate_info(self, obj):
-        """Get HubSpot gate progress information"""
+        """Get milestone/gate progress information. Reads from current_milestone, falls back to legacy HubSpot."""
         return obj.get_gate_info()
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -1154,7 +1163,8 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
             if node_id and node_id > 0:
                 # Update existing step
                 incoming_step_ids.add(node_id)
-                step = Steps.objects.get(id=node_id)
+                user = self.context['request'].user
+                step = Steps.objects.for_user(user).get(id=node_id)
 
                 for attr, value in node.items():
                     setattr(step, attr, value)
@@ -1200,6 +1210,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
         steps_to_unlink = set(existing_process_steps.keys()) - incoming_step_ids
         if steps_to_unlink:
             # Check for execution history before unlinking
+            # tenant-safe: steps_to_unlink derived from tenant-scoped process instance
             protected = StepExecution.objects.filter(
                 step_id__in=steps_to_unlink
             ).values_list('step_id', flat=True).distinct()
@@ -1293,6 +1304,52 @@ class EquipmentSelectSerializer(serializers.ModelSerializer):
 
 
 # Note: ExternalAPIOrderIdentifier serializer moved to integrations/hubspot_serializers.py
+
+
+# ===== MILESTONE SERIALIZERS =====
+
+class MilestoneSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Single milestone within a template."""
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Milestone
+        fields = [
+            'id', 'template', 'name', 'customer_display_name', 'display_name',
+            'display_order', 'description', 'is_active',
+        ]
+        read_only_fields = ['id', 'display_name']
+
+    @extend_schema_field(serializers.CharField())
+    def get_display_name(self, obj):
+        return obj.get_display_name()
+
+
+class MilestoneTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Milestone template with nested milestones."""
+    milestones = MilestoneSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MilestoneTemplate
+        fields = [
+            'id', 'name', 'description', 'is_default', 'milestones',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class MilestoneTemplateListSerializer(serializers.ModelSerializer, SecureModelMixin):
+    """Lightweight template serializer for list views (no nested milestones)."""
+    milestone_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MilestoneTemplate
+        fields = ['id', 'name', 'description', 'is_default', 'milestone_count']
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_milestone_count(self, obj):
+        return obj.milestones.count()
+
 
 # ===== BULK OPERATION SERIALIZERS =====
 
@@ -1402,8 +1459,9 @@ class WorkOrderUploadSerializer(serializers.Serializer):
     def validate_related_order_erp_id(self, value):
         if not value:
             return None
+        user = self.context['request'].user
         try:
-            return Orders.objects.get(ERP_id=value)
+            return Orders.objects.for_user(user).get(ERP_id=value)
         except Orders.DoesNotExist:
             return None
 

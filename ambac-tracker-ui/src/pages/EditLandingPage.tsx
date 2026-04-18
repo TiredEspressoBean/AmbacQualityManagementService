@@ -94,6 +94,26 @@ const editors = [
         description: "Configure approval workflows for documents and CAPAs",
         path: "/editor/approvalTemplates",
     },
+    {
+        name: "Documents",
+        description: "Manage controlled documents (SOPs, work instructions, drawings, etc.)",
+        path: "/editor/documents",
+    },
+    {
+        name: "Audit Log",
+        description: "View system audit trail and change history",
+        path: "/editor/history",
+    },
+    {
+        name: "Cores",
+        description: "Manage remanufacturing core inventory and tracking",
+        path: "/editor/cores",
+    },
+    {
+        name: "Order Milestones",
+        description: "Define the business stages orders pass through",
+        path: "/editor/milestones",
+    },
 ];
 
 export default function EditLandingPage() {

@@ -100,6 +100,10 @@ from .mes_lite import (
     StepEdge,
     EdgeType,
 
+    # Milestone models (business process tracking)
+    MilestoneTemplate,
+    Milestone,
+
     # Order models
     OrderViewer,
     Orders,
@@ -111,7 +115,6 @@ from .mes_lite import (
     OrdersStatus,
     WorkOrderStatus,
     WorkOrderPriority,
-    APQPStage,
     ProcessStatus,
 
     # Step execution (workflow tracking)
@@ -310,6 +313,8 @@ __all__ = [
     'ProcessStep',
     'StepEdge',
     'EdgeType',
+    'MilestoneTemplate',
+    'Milestone',
     'OrderViewer',
     'Orders',
     'WorkOrder',
@@ -317,7 +322,6 @@ __all__ = [
     'PartsStatus',
     'OrdersStatus',
     'WorkOrderStatus',
-    'APQPStage',
     'ProcessStatus',
     'StepExecution',
     'RequirementType',

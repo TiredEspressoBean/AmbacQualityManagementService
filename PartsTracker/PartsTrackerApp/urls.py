@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.urls import path
+from django.urls import include, path
 from django.urls.conf import include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
@@ -29,7 +29,6 @@ from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet,
 from Tracker.api_views import get_csrf_token, get_user_api_token
 from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
-from Tracker.hubspot_view import hubspot_webhook
 from Tracker.views import OrderUpdateView, OrderCreateView, ErrorFormView
 from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
@@ -130,7 +129,7 @@ urlpatterns += [
 urlpatterns += [
     path("chat/", chat_ai_view.as_view(), name="chat_ai_view"),
 
-    path("webhooks/hubspot/", hubspot_webhook, name="hubspot_webhook"),
+    path("", include("integrations.urls")),
 ]
 
 # API starts here with Auth
@@ -178,7 +177,8 @@ router.register(r'Orders', OrdersViewSet, basename="Orders")
 router.register(r'ErrorReports', QualityReportViewSet, basename="ErrorReports")
 router.register(r"Employees-Options", EmployeeSelectViewSet, basename="Employees-Options")
 router.register(r"Equipment-Options", EquipmentSelectViewSet, basename="Equipment-Options")
-router.register(r"HubspotGates", HubspotGatesViewSet, basename="HubspotGates")
+router.register(r"MilestoneTemplates", MilestoneTemplateViewSet, basename="MilestoneTemplates")
+router.register(r"Milestones", MilestoneViewSet, basename="Milestones")
 router.register(r"Customers", CustomerViewSet, basename="Customers")
 router.register(r"Companies", CompanyViewSet, basename="Companies")
 router.register(r"Steps", StepsViewSet, basename="Steps")

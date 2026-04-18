@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Max Headroom CRT Effect Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; color: #0ff; font-family: 'Courier New', monospace; overflow: hidden; }
+
+  .container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .preview {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  .controls {
+    width: 280px;
+    padding: 16px;
+    background: #111;
+    border-left: 1px solid #333;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .controls h2 {
+    font-size: 14px;
+    color: #0ff;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .control-group label {
+    font-size: 11px;
+    color: #888;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .control-group label span { color: #0ff; }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: #0ff;
+  }
+
+  button {
+    background: #0ff;
+    color: #000;
+    border: none;
+    padding: 8px 12px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  button:hover { background: #0aa; }
+
+  .hidden { display: none !important; }
+
+  #startScreen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    background: #000;
+    z-index: 10;
+  }
+
+  #startScreen h1 {
+    font-size: 28px;
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff;
+    animation: flicker 3s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.6; }
+    97% { opacity: 1; }
+    98% { opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <h1>MAX HEADROOM CRT DEMO</h1>
+  <button id="startBtn">START WEBCAM</button>
+  <p id="status" style="color:#888;font-size:12px;margin-top:8px;"></p>
+</div>
+
+<div class="container" id="app" style="display:none;">
+  <div class="preview">
+    <canvas id="output"></canvas>
+  </div>
+  <div class="controls">
+    <h2>CRT EFFECTS</h2>
+
+    <div class="control-group">
+      <label>Scan Lines <span id="scanVal">0.35</span></label>
+      <input type="range" id="scanLines" min="0" max="1" step="0.01" value="0.35">
+    </div>
+
+    <div class="control-group">
+      <label>Scan Line Width <span id="scanWidthVal">2</span></label>
+      <input type="range" id="scanLineWidth" min="1" max="6" step="1" value="2">
+    </div>
+
+    <div class="control-group">
+      <label>Chromatic Aberration <span id="chromaVal">3</span></label>
+      <input type="range" id="chromatic" min="0" max="12" step="1" value="3">
+    </div>
+
+    <div class="control-group">
+      <label>Phosphor Glow <span id="glowVal">0.3</span></label>
+      <input type="range" id="glow" min="0" max="1" step="0.01" value="0.3">
+    </div>
+
+    <div class="control-group">
+      <label>Color Banding (Posterize) <span id="posterizeVal">8</span></label>
+      <input type="range" id="posterize" min="2" max="32" step="1" value="8">
+    </div>
+
+    <div class="control-group">
+      <label>Brightness <span id="brightnessVal">1.2</span></label>
+      <input type="range" id="brightness" min="0.5" max="2.5" step="0.1" value="1.2">
+    </div>
+
+    <div class="control-group">
+      <label>Contrast <span id="contrastVal">1.4</span></label>
+      <input type="range" id="contrast" min="0.5" max="3" step="0.1" value="1.4">
+    </div>
+
+    <div class="control-group">
+      <label>Saturation <span id="saturationVal">1.3</span></label>
+      <input type="range" id="saturation" min="0" max="3" step="0.1" value="1.3">
+    </div>
+
+    <h2>GLITCH</h2>
+
+    <div class="control-group">
+      <label>Horizontal Tear <span id="tearVal">0.3</span></label>
+      <input type="range" id="tear" min="0" max="1" step="0.01" value="0.3">
+    </div>
+
+    <div class="control-group">
+      <label>Frame Stutter <span id="stutterVal">0.05</span></label>
+      <input type="range" id="stutter" min="0" max="0.3" step="0.01" value="0.05">
+    </div>
+
+    <div class="control-group">
+      <label>Noise <span id="noiseVal">0.08</span></label>
+      <input type="range" id="noise" min="0" max="0.4" step="0.01" value="0.08">
+    </div>
+
+    <div class="control-group">
+      <label>Flicker <span id="flickerVal">0.03</span></label>
+      <input type="range" id="flicker" min="0" max="0.15" step="0.01" value="0.03">
+    </div>
+
+    <h2>SCREEN</h2>
+
+    <div class="control-group">
+      <label>Resolution <span id="resVal">320</span></label>
+      <input type="range" id="resolution" min="120" max="640" step="20" value="320">
+    </div>
+
+    <div class="control-group">
+      <label>CRT Curvature <span id="curveVal">0.4</span></label>
+      <input type="range" id="curvature" min="0" max="1" step="0.05" value="0.4">
+    </div>
+
+    <div class="control-group">
+      <label>Vignette <span id="vignetteVal">0.4</span></label>
+      <input type="range" id="vignette" min="0" max="1" step="0.05" value="0.4">
+    </div>
+
+    <h2>COLOR</h2>
+
+    <div class="control-group">
+      <label>Tint</label>
+      <select id="tint" style="background:#222;color:#0ff;border:1px solid #333;padding:4px;font-family:monospace;">
+        <option value="none">None</option>
+        <option value="cyan">Cyan (Max Headroom)</option>
+        <option value="amber">Amber (Terminal)</option>
+        <option value="green">Green (Phosphor)</option>
+        <option value="blue">Blue (CRT)</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label>Tint Strength <span id="tintStrVal">0.15</span></label>
+      <input type="range" id="tintStrength" min="0" max="0.6" step="0.01" value="0.15">
+    </div>
+
+    <h2>PRESETS</h2>
+    <button id="presetSubtle">Subtle CRT</button>
+    <button id="presetMaxHeadroom">Max Headroom</button>
+    <button id="presetVHS">VHS Tape</button>
+    <button id="presetDestroyed">Destroyed Signal</button>
+    <button id="presetClean">Clean (No Effects)</button>
+
+    <h2>EXPORT</h2>
+    <button id="exportScreenshot">Screenshot (PNG)</button>
+    <button id="exportSettings">Export Settings (JSON)</button>
+    <button id="importSettings">Import Settings (JSON)</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+  </div>
+</div>
+
+<video id="webcam" class="hidden" autoplay playsinline></video>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Settings object
+const settings = {
+  scanLines: 0.35, scanLineWidth: 2, chromatic: 3, glow: 0.3,
+  posterize: 8, brightness: 1.2, contrast: 1.4, saturation: 1.3,
+  tear: 0.3, stutter: 0.05, noise: 0.08, flicker: 0.03,
+  resolution: 320, curvature: 0.4, vignette: 0.4,
+  tint: 'none', tintStrength: 0.15
+};
+
+// Bind sliders
+for (const key of Object.keys(settings)) {
+  const el = $(key);
+  if (!el) continue;
+  el.addEventListener('input', () => {
+    settings[key] = el.type === 'range' ? parseFloat(el.value) : el.value;
+    const valEl = $(key + 'Val');
+    if (valEl) valEl.textContent = el.value;
+  });
+}
+
+// Presets
+const presets = {
+  presetSubtle: {
+    scanLines: 0.15, scanLineWidth: 1, chromatic: 1, glow: 0.1,
+    posterize: 32, brightness: 1.1, contrast: 1.1, saturation: 1.0,
+    tear: 0.05, stutter: 0.01, noise: 0.03, flicker: 0.01,
+    resolution: 480, curvature: 0.2, vignette: 0.2, tint: 'none', tintStrength: 0.05
+  },
+  presetMaxHeadroom: {
+    scanLines: 0.4, scanLineWidth: 2, chromatic: 4, glow: 0.4,
+    posterize: 6, brightness: 1.4, contrast: 1.6, saturation: 1.5,
+    tear: 0.35, stutter: 0.06, noise: 0.1, flicker: 0.04,
+    resolution: 280, curvature: 0.5, vignette: 0.5, tint: 'cyan', tintStrength: 0.2
+  },
+  presetVHS: {
+    scanLines: 0.2, scanLineWidth: 3, chromatic: 6, glow: 0.15,
+    posterize: 24, brightness: 1.0, contrast: 1.2, saturation: 0.8,
+    tear: 0.6, stutter: 0.03, noise: 0.15, flicker: 0.02,
+    resolution: 360, curvature: 0.1, vignette: 0.3, tint: 'none', tintStrength: 0.1
+  },
+  presetDestroyed: {
+    scanLines: 0.6, scanLineWidth: 3, chromatic: 10, glow: 0.5,
+    posterize: 4, brightness: 1.6, contrast: 2.0, saturation: 2.0,
+    tear: 0.8, stutter: 0.15, noise: 0.25, flicker: 0.1,
+    resolution: 160, curvature: 0.7, vignette: 0.6, tint: 'cyan', tintStrength: 0.3
+  },
+  presetClean: {
+    scanLines: 0, scanLineWidth: 1, chromatic: 0, glow: 0,
+    posterize: 32, brightness: 1.0, contrast: 1.0, saturation: 1.0,
+    tear: 0, stutter: 0, noise: 0, flicker: 0,
+    resolution: 640, curvature: 0, vignette: 0, tint: 'none', tintStrength: 0
+  }
+};
+
+for (const [id, preset] of Object.entries(presets)) {
+  $(id).addEventListener('click', () => {
+    Object.assign(settings, preset);
+    for (const [key, val] of Object.entries(preset)) {
+      const el = $(key);
+      if (!el) continue;
+      el.value = val;
+      const valEl = $(key + 'Val');
+      if (valEl) valEl.textContent = val;
+    }
+  });
+}
+
+// Main
+const video = $('webcam');
+const canvas = $('output');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+let lastFrame = null;
+let frameCount = 0;
+
+const status = $('status');
+
+$('startBtn').addEventListener('click', async () => {
+  $('startBtn').textContent = 'REQUESTING CAMERA...';
+  status.textContent = 'Step 1: Checking browser support...';
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.textContent = 'ERROR: getUserMedia not available. Need HTTPS or localhost.';
+    return;
+  }
+
+  status.textContent = 'Step 2: Requesting camera permission (check for browser prompt)...';
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  } catch (e) {
+    status.textContent = 'ERROR getting camera: ' + e.name + ' - ' + e.message;
+    $('startBtn').textContent = 'START WEBCAM';
+    return;
+  }
+
+  status.textContent = 'Step 3: Got stream, attaching to video element...';
+  video.srcObject = stream;
+
+  status.textContent = 'Step 4: Waiting for video metadata...';
+  video.onloadedmetadata = () => {
+    status.textContent = 'Step 5: Metadata loaded (' + video.videoWidth + 'x' + video.videoHeight + '), playing...';
+    video.play().then(() => {
+      status.textContent = 'Step 6: Playing! Switching to canvas view...';
+      $('startScreen').style.display = 'none';
+      $('app').style.display = 'flex';
+      requestAnimationFrame(render);
+    }).catch(e => {
+      status.textContent = 'ERROR playing video: ' + e.name + ' - ' + e.message;
+    });
+  };
+
+  // Fallback if onloadedmetadata never fires
+  setTimeout(() => {
+    if (!$('startScreen').classList.contains('hidden')) {
+      status.textContent = 'TIMEOUT: Metadata never loaded. videoWidth=' + video.videoWidth + ' readyState=' + video.readyState;
+    }
+  }, 5000);
+});
+
+function render() {
+  frameCount++;
+
+  if (!video.videoWidth || !video.videoHeight) {
+    requestAnimationFrame(render);
+    return;
+  }
+
+  const res = Math.round(settings.resolution);
+  const aspect = video.videoWidth / video.videoHeight;
+  const w = Math.max(1, Math.floor(res));
+  const h = Math.max(1, Math.floor(res / aspect));
+
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+    lastFrame = null;
+  }
+
+  // Stutter: randomly freeze frame
+  if (Math.random() < settings.stutter && lastFrame) {
+    ctx.putImageData(lastFrame, 0, 0);
+  } else {
+    ctx.drawImage(video, 0, 0, w, h);
+  }
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  const orig = new Uint8ClampedArray(data);
+
+  // Flicker - global brightness variation
+  const flickerAmount = 1 + (Math.random() - 0.5) * settings.flicker * 2;
+
+  // Tint colors
+  const tints = {
+    none: [1, 1, 1],
+    cyan: [0.7, 1, 1],
+    amber: [1, 0.85, 0.5],
+    green: [0.6, 1, 0.6],
+    blue: [0.7, 0.8, 1]
+  };
+  const tintColor = tints[settings.tint] || tints.none;
+  const ts = settings.tintStrength;
+
+  // Horizontal tear offset
+  let tearY = -1;
+  let tearOffset = 0;
+  if (Math.random() < settings.tear * 0.3) {
+    tearY = Math.floor(Math.random() * h);
+    tearOffset = Math.floor((Math.random() - 0.5) * w * 0.15);
+  }
+
+  // Process pixels
+  for (let y = 0; y < h; y++) {
+    // Scan line darkening
+    const scanDark = (y % (settings.scanLineWidth * 2) < settings.scanLineWidth)
+      ? 1.0 - settings.scanLines
+      : 1.0;
+
+    // Vignette
+    const vy = (y / h - 0.5) * 2;
+
+    for (let x = 0; x < w; x++) {
+      let px = x;
+
+      // Apply horizontal tear
+      if (tearY >= 0 && y >= tearY && y < tearY + 8) {
+        px = (x + tearOffset + w) % w;
+      }
+
+      const i = (y * w + px) * 4;
+
+      // Chromatic aberration - shift R right, B left (read from original buffer)
+      const ca = settings.chromatic;
+      const rpx = px + ca;
+      const bpx = px - ca;
+
+      let r = (rpx >= 0 && rpx < w) ? orig[(y * w + rpx) * 4] : orig[i];
+      let g = orig[i + 1];
+      let b = (bpx >= 0 && bpx < w) ? orig[(y * w + bpx) * 4 + 2] : orig[i + 2];
+
+      // Brightness & contrast (clamp immediately to prevent channel blowout)
+      r = Math.min(255, Math.max(0, ((r / 255 - 0.5) * settings.contrast + 0.5) * settings.brightness * 255));
+      g = Math.min(255, Math.max(0, ((g / 255 - 0.5) * settings.contrast + 0.5) * settings.brightness * 255));
+      b = Math.min(255, Math.max(0, ((b / 255 - 0.5) * settings.contrast + 0.5) * settings.brightness * 255));
+
+      // Saturation
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      r = Math.min(255, Math.max(0, gray + (r - gray) * settings.saturation));
+      g = Math.min(255, Math.max(0, gray + (g - gray) * settings.saturation));
+      b = Math.min(255, Math.max(0, gray + (b - gray) * settings.saturation));
+
+      // Posterize
+      const levels = settings.posterize;
+      r = Math.round(r / 255 * levels) / levels * 255;
+      g = Math.round(g / 255 * levels) / levels * 255;
+      b = Math.round(b / 255 * levels) / levels * 255;
+
+      // Tint
+      r = r * (1 - ts + ts * tintColor[0]);
+      g = g * (1 - ts + ts * tintColor[1]);
+      b = b * (1 - ts + ts * tintColor[2]);
+
+      // Scan lines
+      r *= scanDark;
+      g *= scanDark;
+      b *= scanDark;
+
+      // Flicker
+      r *= flickerAmount;
+      g *= flickerAmount;
+      b *= flickerAmount;
+
+      // Noise
+      if (settings.noise > 0) {
+        const n = (Math.random() - 0.5) * settings.noise * 255;
+        r += n;
+        g += n;
+        b += n;
+      }
+
+      // Phosphor glow (brighten toward white slightly)
+      const glowAmt = settings.glow * 0.3;
+      r = r * (1 - glowAmt) + 255 * glowAmt * (r / 255);
+      g = g * (1 - glowAmt) + 255 * glowAmt * (g / 255);
+      b = b * (1 - glowAmt) + 255 * glowAmt * (b / 255);
+
+      // Vignette
+      const vx = (x / w - 0.5) * 2;
+      const vDist = Math.sqrt(vx * vx + vy * vy) / 1.414;
+      const vFactor = 1 - vDist * settings.vignette;
+
+      // CRT curvature darkening at edges
+      const cFactor = 1 - (vx * vx + vy * vy) * settings.curvature * 0.3;
+
+      const finalFactor = vFactor * cFactor;
+
+      const oi = (y * w + x) * 4;
+      data[oi] = Math.max(0, Math.min(255, r * finalFactor));
+      data[oi + 1] = Math.max(0, Math.min(255, g * finalFactor));
+      data[oi + 2] = Math.max(0, Math.min(255, b * finalFactor));
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Save frame for stutter effect
+  lastFrame = ctx.getImageData(0, 0, w, h);
+
+  requestAnimationFrame(render);
+}
+
+// Export screenshot
+$('exportScreenshot').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'max-headroom-' + Date.now() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+// Export settings JSON
+$('exportSettings').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.download = 'crt-settings-' + Date.now() + '.json';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+
+// Import settings JSON
+$('importSettings').addEventListener('click', () => {
+  $('importFile').click();
+});
+
+$('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      Object.assign(settings, imported);
+      // Update all UI controls to match
+      for (const [key, val] of Object.entries(imported)) {
+        const el = $(key);
+        if (!el) continue;
+        el.value = val;
+        const valEl = $(key + 'Val');
+        if (valEl) valEl.textContent = val;
+      }
+    } catch (err) {
+      alert('Invalid settings file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+</script>
+</body>
+</html>

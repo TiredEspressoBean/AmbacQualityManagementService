@@ -10269,6 +10269,334 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/MilestoneTemplates/:
+    get:
+      operationId: api_MilestoneTemplates_list
+      description: CRUD for milestone templates. Admin-only.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MilestoneTemplate'
+          description: ''
+    post:
+      operationId: api_MilestoneTemplates_create
+      description: CRUD for milestone templates. Admin-only.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneTemplate'
+          description: ''
+  /api/MilestoneTemplates/{id}/:
+    get:
+      operationId: api_MilestoneTemplates_retrieve
+      description: CRUD for milestone templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneTemplate'
+          description: ''
+    put:
+      operationId: api_MilestoneTemplates_update
+      description: CRUD for milestone templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MilestoneTemplateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneTemplate'
+          description: ''
+    patch:
+      operationId: api_MilestoneTemplates_partial_update
+      description: CRUD for milestone templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneTemplateRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneTemplate'
+          description: ''
+    delete:
+      operationId: api_MilestoneTemplates_destroy
+      description: CRUD for milestone templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/Milestones/:
+    get:
+      operationId: api_Milestones_list
+      description: CRUD for milestones within templates. Admin-only.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Milestone'
+          description: ''
+    post:
+      operationId: api_Milestones_create
+      description: CRUD for milestones within templates. Admin-only.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+          description: ''
+  /api/Milestones/{id}/:
+    get:
+      operationId: api_Milestones_retrieve
+      description: CRUD for milestones within templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+          description: ''
+    put:
+      operationId: api_Milestones_update
+      description: CRUD for milestones within templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MilestoneRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+          description: ''
+    patch:
+      operationId: api_Milestones_partial_update
+      description: CRUD for milestones within templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMilestoneRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+          description: ''
+    delete:
+      operationId: api_Milestones_destroy
+      description: CRUD for milestones within templates. Admin-only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/NotificationPreferences/:
     get:
       operationId: api_NotificationPreferences_list
@@ -10913,6 +11241,46 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/Orders/{id}/set-milestone/:
+    patch:
+      operationId: api_Orders_set_milestone_partial_update
+      description: |-
+        Set the current business milestone for an order.
+
+        Accepts {"milestone_id": "<uuid>"} or {"milestone_id": null} to clear.
+        If the order has a HubSpot link with a mapped stage, this also triggers
+        a push to HubSpot.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSetMilestoneInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSetMilestoneInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSetMilestoneInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Orders'
           description: ''
   /api/Orders/{id}/step-distribution/:
     get:
@@ -22811,6 +23179,472 @@ paths:
               schema:
                 $ref: '#/components/schemas/RepeatDefectsResponse'
           description: ''
+  /api/hubspot-pipeline-stages/:
+    get:
+      operationId: api_hubspot_pipeline_stages_list
+      description: Read-only pipeline stages for HubSpot integrations.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedHubSpotPipelineStageList'
+          description: ''
+  /api/hubspot-pipeline-stages/{id}/:
+    get:
+      operationId: api_hubspot_pipeline_stages_retrieve
+      description: Read-only pipeline stages for HubSpot integrations.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this hub spot pipeline stage.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubSpotPipelineStage'
+          description: ''
+  /api/integration-sync-logs/:
+    get:
+      operationId: api_integration_sync_logs_list
+      description: Read-only sync log history.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIntegrationSyncLogList'
+          description: ''
+  /api/integration-sync-logs/{id}/:
+    get:
+      operationId: api_integration_sync_logs_retrieve
+      description: Read-only sync log history.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration sync log.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationSyncLog'
+          description: ''
+  /api/integrations/:
+    get:
+      operationId: api_integrations_list
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIntegrationConfigListList'
+          description: ''
+    post:
+      operationId: api_integrations_create
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConfig'
+          description: ''
+  /api/integrations/{id}/:
+    get:
+      operationId: api_integrations_retrieve
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConfig'
+          description: ''
+    put:
+      operationId: api_integrations_update
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConfig'
+          description: ''
+    patch:
+      operationId: api_integrations_partial_update
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedIntegrationConfigRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConfig'
+          description: ''
+    delete:
+      operationId: api_integrations_destroy
+      description: |-
+        CRUD for integration management.
+        Scoped to the request user's tenant.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/integrations/{id}/health/:
+    get:
+      operationId: api_integrations_health_retrieve
+      description: Get health status for this integration.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationHealth'
+          description: ''
+  /api/integrations/{id}/sync_logs/:
+    get:
+      operationId: api_integrations_sync_logs_list
+      description: Get sync history for this integration.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntegrationSyncLog'
+          description: ''
+  /api/integrations/{id}/test_connection/:
+    post:
+      operationId: api_integrations_test_connection_create
+      description: Test that the integration's credentials work.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestConnectionResult'
+          description: ''
+  /api/integrations/{id}/trigger_sync/:
+    post:
+      operationId: api_integrations_trigger_sync_create
+      description: Manually trigger a sync for this integration.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this integration config.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfigRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerSyncResult'
+          description: ''
+  /api/integrations/catalog/:
+    get:
+      operationId: api_integrations_catalog_list
+      description: |-
+        Returns all available integrations merged with their configuration status
+        for the current tenant.
+
+        Each item includes:
+        - Adapter manifest (name, description, icon, auth_type, capabilities)
+        - Configuration status (not_configured, configured, connected, error)
+        - IntegrationConfig data if configured (id, is_enabled, sync_status, last_synced_at, etc.)
+
+        Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IntegrationCatalogItem'
+          description: ''
   /api/orders/{order_id}/parts/:
     get:
       operationId: api_orders_parts_list
@@ -29611,6 +30445,54 @@ components:
       - defect_types
       - severities
       - total_count
+    HubSpotPipelineStage:
+      type: object
+      description: Pipeline stages for a HubSpot integration.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        stage_name:
+          type: string
+          readOnly: true
+        api_id:
+          type: string
+          readOnly: true
+        pipeline_id:
+          type: string
+          readOnly: true
+          nullable: true
+        display_order:
+          type: integer
+          readOnly: true
+        include_in_progress:
+          type: boolean
+          readOnly: true
+          description: Include in customer-facing pipeline progress tracking
+        customer_display_name:
+          type: string
+          readOnly: true
+        mapped_milestone:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - api_id
+      - customer_display_name
+      - display_order
+      - id
+      - include_in_progress
+      - last_synced_at
+      - mapped_milestone
+      - pipeline_id
+      - stage_name
     HybridSearchRequestRequest:
       type: object
       properties:
@@ -29753,6 +30635,386 @@ components:
             additionalProperties: {}
       required:
       - data
+    IntegrationCatalogItem:
+      type: object
+      properties:
+        provider:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        long_description:
+          type: string
+        icon:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        auth_type:
+          type: string
+        auth_label:
+          type: string
+        auth_instructions:
+          type: string
+        auth_docs_url:
+          type: string
+        data_flows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        sync_details:
+          type: object
+          additionalProperties: {}
+        requirements:
+          type: array
+          items:
+            type: string
+        creates:
+          type: array
+          items:
+            type: string
+        limitations:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        config_id:
+          type: string
+          nullable: true
+        is_enabled:
+          type: boolean
+        display_name:
+          type: string
+        sync_status:
+          type: string
+          nullable: true
+        last_synced_at:
+          type: string
+          nullable: true
+        last_sync_error:
+          type: string
+          nullable: true
+        last_sync_stats:
+          type: object
+          additionalProperties: {}
+          nullable: true
+      required:
+      - auth_docs_url
+      - auth_instructions
+      - auth_label
+      - auth_type
+      - capabilities
+      - category
+      - config_id
+      - creates
+      - data_flows
+      - description
+      - display_name
+      - icon
+      - is_enabled
+      - last_sync_error
+      - last_sync_stats
+      - last_synced_at
+      - limitations
+      - long_description
+      - name
+      - provider
+      - requirements
+      - status
+      - sync_details
+      - sync_status
+    IntegrationConfig:
+      type: object
+      description: |-
+        Admin serializer for managing integrations.
+        Credentials are write-only (never returned in responses).
+        Capabilities and provider display name are computed from the adapter.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          $ref: '#/components/schemas/IntegrationProviderEnum'
+        provider_display:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          description: Optional custom label (e.g. 'Production HubSpot')
+          maxLength: 100
+        is_enabled:
+          type: boolean
+          description: Disabled until credentials are entered and verified
+        sync_status:
+          allOf:
+          - $ref: '#/components/schemas/IntegrationSyncStatusEnum'
+          readOnly: true
+        api_url:
+          type: string
+          format: uri
+          maxLength: 200
+        config: {}
+        last_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_sync_error:
+          type: string
+          readOnly: true
+          nullable: true
+        last_sync_stats:
+          readOnly: true
+          description: 'Last sync result: created, updated, errors, duration'
+        capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - capabilities
+      - created_at
+      - id
+      - last_sync_error
+      - last_sync_stats
+      - last_synced_at
+      - provider
+      - provider_display
+      - sync_status
+      - tenant
+      - updated_at
+    IntegrationConfigList:
+      type: object
+      description: Lightweight serializer for listing integrations (no credentials).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        provider:
+          $ref: '#/components/schemas/IntegrationProviderEnum'
+        provider_display:
+          type: string
+          readOnly: true
+        display_name:
+          type: string
+          description: Optional custom label (e.g. 'Production HubSpot')
+          maxLength: 100
+        is_enabled:
+          type: boolean
+          description: Disabled until credentials are entered and verified
+        sync_status:
+          $ref: '#/components/schemas/IntegrationSyncStatusEnum'
+        has_credentials:
+          type: boolean
+          readOnly: true
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_error:
+          type: string
+          nullable: true
+        last_sync_stats:
+          description: 'Last sync result: created, updated, errors, duration'
+        capabilities:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - capabilities
+      - has_credentials
+      - id
+      - provider
+      - provider_display
+    IntegrationConfigRequest:
+      type: object
+      description: |-
+        Admin serializer for managing integrations.
+        Credentials are write-only (never returned in responses).
+        Capabilities and provider display name are computed from the adapter.
+      properties:
+        provider:
+          $ref: '#/components/schemas/IntegrationProviderEnum'
+        display_name:
+          type: string
+          description: Optional custom label (e.g. 'Production HubSpot')
+          maxLength: 100
+        is_enabled:
+          type: boolean
+          description: Disabled until credentials are entered and verified
+        api_key:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        oauth_refresh_token:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        webhook_secret:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        api_url:
+          type: string
+          format: uri
+          maxLength: 200
+        config: {}
+      required:
+      - provider
+    IntegrationHealth:
+      type: object
+      properties:
+        status:
+          type: string
+        is_enabled:
+          type: boolean
+        sync_status:
+          type: string
+        last_synced_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_error:
+          type: string
+          nullable: true
+        last_sync_stats:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        consecutive_failures:
+          type: integer
+      required:
+      - consecutive_failures
+      - is_enabled
+      - last_sync_error
+      - last_sync_stats
+      - last_synced_at
+      - status
+      - sync_status
+    IntegrationProviderEnum:
+      enum:
+      - hubspot
+      - salesforce
+      - quickbooks
+      - xero
+      type: string
+      description: |-
+        * `hubspot` - HubSpot CRM
+        * `salesforce` - Salesforce CRM
+        * `quickbooks` - QuickBooks Online
+        * `xero` - Xero
+    IntegrationSyncLog:
+      type: object
+      description: Sync log history.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        integration:
+          type: string
+          format: uuid
+          readOnly: true
+        sync_type:
+          allOf:
+          - $ref: '#/components/schemas/SyncTypeEnum'
+          readOnly: true
+        sync_type_display:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/IntegrationSyncLogStatusEnum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        duration_seconds:
+          type: number
+          format: double
+          readOnly: true
+        records_processed:
+          type: integer
+          readOnly: true
+        records_created:
+          type: integer
+          readOnly: true
+        records_updated:
+          type: integer
+          readOnly: true
+        error_message:
+          type: string
+          readOnly: true
+          nullable: true
+        details:
+          readOnly: true
+          description: Provider-specific details (e.g. pipeline stages synced, contacts
+            created)
+      required:
+      - completed_at
+      - details
+      - duration_seconds
+      - error_message
+      - id
+      - integration
+      - records_created
+      - records_processed
+      - records_updated
+      - started_at
+      - status
+      - status_display
+      - sync_type
+      - sync_type_display
+    IntegrationSyncLogStatusEnum:
+      enum:
+      - RUNNING
+      - SUCCESS
+      - FAILED
+      type: string
+      description: |-
+        * `RUNNING` - Running
+        * `SUCCESS` - Success
+        * `FAILED` - Failed
+    IntegrationSyncStatusEnum:
+      enum:
+      - IDLE
+      - SYNCING
+      - ERROR
+      type: string
+      description: |-
+        * `IDLE` - Idle
+        * `SYNCING` - Syncing
+        * `ERROR` - Error
     IntervalTypeEnum:
       enum:
       - FIXED
@@ -30351,6 +31613,124 @@ components:
           type: boolean
       required:
       - definition
+    Milestone:
+      type: object
+      description: Single milestone within a template.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        template:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+        customer_display_name:
+          type: string
+          description: Customer-facing name (e.g., 'Design Review' instead of 'Gate
+            Two - Design Review'). Falls back to name if blank.
+          maxLength: 100
+        display_name:
+          type: string
+          readOnly: true
+        display_order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          default: 0
+        description:
+          type: string
+        is_active:
+          type: boolean
+          description: Whether this milestone counts as 'active/in progress' for filtering.
+            Set to False for terminal milestones like 'Closed' or 'Cancelled'.
+      required:
+      - display_name
+      - id
+      - name
+      - template
+    MilestoneRequest:
+      type: object
+      description: Single milestone within a template.
+      properties:
+        template:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        customer_display_name:
+          type: string
+          description: Customer-facing name (e.g., 'Design Review' instead of 'Gate
+            Two - Design Review'). Falls back to name if blank.
+          maxLength: 100
+        display_order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          default: 0
+        description:
+          type: string
+        is_active:
+          type: boolean
+          description: Whether this milestone counts as 'active/in progress' for filtering.
+            Set to False for terminal milestones like 'Closed' or 'Cancelled'.
+      required:
+      - name
+      - template
+    MilestoneTemplate:
+      type: object
+      description: Milestone template with nested milestones.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_default:
+          type: boolean
+          description: Default template for new orders in this tenant
+        milestones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Milestone'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - milestones
+      - name
+      - updated_at
+    MilestoneTemplateRequest:
+      type: object
+      description: Milestone template with nested milestones.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        is_default:
+          type: boolean
+          description: Default template for new orders in this tenant
+      required:
+      - name
     ModeEnum:
       enum:
       - saas
@@ -30679,6 +32059,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        current_milestone:
+          type: string
+          format: uuid
+          nullable: true
         parts_summary:
           type: object
           additionalProperties: {}
@@ -30758,6 +32142,10 @@ components:
         order_status:
           $ref: '#/components/schemas/OrdersStatusEnum'
         current_hubspot_gate:
+          type: string
+          format: uuid
+          nullable: true
+        current_milestone:
           type: string
           format: uuid
           nullable: true
@@ -31449,6 +32837,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HeatMapAnnotations'
+    PaginatedHubSpotPipelineStageList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/HubSpotPipelineStage'
+    PaginatedIntegrationConfigListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationConfigList'
+    PaginatedIntegrationSyncLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationSyncLog'
     PaginatedMaterialLotList:
       type: object
       required:
@@ -33736,6 +35193,39 @@ components:
             format: uuid
         archived:
           type: boolean
+    PatchedIntegrationConfigRequest:
+      type: object
+      description: |-
+        Admin serializer for managing integrations.
+        Credentials are write-only (never returned in responses).
+        Capabilities and provider display name are computed from the adapter.
+      properties:
+        provider:
+          $ref: '#/components/schemas/IntegrationProviderEnum'
+        display_name:
+          type: string
+          description: Optional custom label (e.g. 'Production HubSpot')
+          maxLength: 100
+        is_enabled:
+          type: boolean
+          description: Disabled until credentials are entered and verified
+        api_key:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        oauth_refresh_token:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        webhook_secret:
+          type: string
+          writeOnly: true
+          maxLength: 500
+        api_url:
+          type: string
+          format: uri
+          maxLength: 200
+        config: {}
     PatchedMaterialLotRequest:
       type: object
       description: Material lot serializer with full details
@@ -33826,6 +35316,46 @@ components:
           $ref: '#/components/schemas/TypeEnum'
         archived:
           type: boolean
+    PatchedMilestoneRequest:
+      type: object
+      description: Single milestone within a template.
+      properties:
+        template:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        customer_display_name:
+          type: string
+          description: Customer-facing name (e.g., 'Design Review' instead of 'Gate
+            Two - Design Review'). Falls back to name if blank.
+          maxLength: 100
+        display_order:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          default: 0
+        description:
+          type: string
+        is_active:
+          type: boolean
+          description: Whether this milestone counts as 'active/in progress' for filtering.
+            Set to False for terminal milestones like 'Closed' or 'Cancelled'.
+    PatchedMilestoneTemplateRequest:
+      type: object
+      description: Milestone template with nested milestones.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+        is_default:
+          type: boolean
+          description: Default template for new orders in this tenant
     PatchedNotificationPreferenceRequest:
       type: object
       description: |-
@@ -33873,6 +35403,10 @@ components:
         order_status:
           $ref: '#/components/schemas/OrdersStatusEnum'
         current_hubspot_gate:
+          type: string
+          format: uuid
+          nullable: true
+        current_milestone:
           type: string
           format: uuid
           nullable: true
@@ -34510,6 +36044,13 @@ components:
           type: string
         archived:
           type: boolean
+    PatchedSetMilestoneInputRequest:
+      type: object
+      properties:
+        milestone_id:
+          type: string
+          format: uuid
+          nullable: true
     PatchedShiftRequest:
       type: object
       description: Shift definition serializer
@@ -34763,7 +36304,7 @@ components:
       properties:
         provider:
           allOf:
-          - $ref: '#/components/schemas/ProviderEnum'
+          - $ref: '#/components/schemas/TenantLLMProviderProviderEnum'
           description: |-
             LLM provider type
 
@@ -35696,16 +37237,6 @@ components:
         * `PROCESSING` - Processing
         * `COMPLETED` - Completed
         * `FAILED` - Failed
-    ProviderEnum:
-      enum:
-      - ollama
-      - openai
-      - anthropic
-      type: string
-      description: |-
-        * `ollama` - Ollama (Local/Self-hosted)
-        * `openai` - OpenAI
-        * `anthropic` - Anthropic
     QADocumentsResponse:
       type: object
       properties:
@@ -38946,6 +40477,18 @@ components:
       - success
       - tenant_id
       - tenant_name
+    SyncTypeEnum:
+      enum:
+      - FULL
+      - INCREMENTAL
+      - SINGLE
+      - PUSH
+      type: string
+      description: |-
+        * `FULL` - Full Sync
+        * `INCREMENTAL` - Incremental Sync
+        * `SINGLE` - Single Record Sync
+        * `PUSH` - Outbound Push
     TaskTypeEnum:
       enum:
       - CONTAINMENT
@@ -39303,7 +40846,7 @@ components:
           readOnly: true
         provider:
           allOf:
-          - $ref: '#/components/schemas/ProviderEnum'
+          - $ref: '#/components/schemas/TenantLLMProviderProviderEnum'
           description: |-
             LLM provider type
 
@@ -39352,6 +40895,16 @@ components:
       - provider
       - provider_display
       - updated_at
+    TenantLLMProviderProviderEnum:
+      enum:
+      - ollama
+      - openai
+      - anthropic
+      type: string
+      description: |-
+        * `ollama` - Ollama (Local/Self-hosted)
+        * `openai` - OpenAI
+        * `anthropic` - Anthropic
     TenantLLMProviderRequest:
       type: object
       description: |-
@@ -39362,7 +40915,7 @@ components:
       properties:
         provider:
           allOf:
-          - $ref: '#/components/schemas/ProviderEnum'
+          - $ref: '#/components/schemas/TenantLLMProviderProviderEnum'
           description: |-
             LLM provider type
 
@@ -39615,6 +41168,16 @@ components:
         * `AWAITING_PICKUP` - Awaiting Customer Pickup
         * `CORE_BANKED` - Core Banked
         * `RMA_CLOSED` - RMA Closed
+    TestConnectionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
     TestSendResponse:
       type: object
       properties:
@@ -40484,6 +42047,13 @@ components:
         * `IN_PROGRESS` - IN_PROGRESS
         * `PENDING` - PENDING
         * `SKIPPED` - SKIPPED
+    TriggerSyncResult:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
     TypeEnum:
       enum:
       - NUMERIC

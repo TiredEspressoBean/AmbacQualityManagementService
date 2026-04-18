@@ -91,8 +91,7 @@ const settingsCards: SettingsCard[] = [
         description: "Connect external services and APIs",
         icon: Link2,
         href: "/settings/integrations",
-        badge: "Coming Soon",
-        disabled: true,
+        requiresAdmin: true,
     },
 ];
 

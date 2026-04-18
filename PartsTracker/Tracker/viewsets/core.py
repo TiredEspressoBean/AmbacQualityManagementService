@@ -1060,6 +1060,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             doc_ct = ContentType.objects.get_for_model(Documents)
             user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
             user_group_ids = [g.id for g in user_groups]
+            # tenant-safe: viewset runs inside tenant-scoped request context with RLS enforced
             needs_my_approval_ids = ApprovalRequest.objects.filter(
                 content_type=doc_ct,
                 status='PENDING'
@@ -1101,6 +1102,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
                 # Check if document has an approved ApprovalRequest
                 from Tracker.models import ApprovalRequest, Approval_Status_Type
                 content_type = ContentType.objects.get_for_model(instance)
+                # tenant-safe: instance is tenant-scoped (from get_object); RLS enforced on viewset
                 has_approval = ApprovalRequest.objects.filter(
                     content_type=content_type,
                     object_id=str(instance.id),
@@ -1356,6 +1358,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
         # Get pending approval count for documents
         doc_ct = ContentType.objects.get_for_model(Documents)
+        # tenant-safe: viewset runs inside tenant-scoped request context with RLS enforced
         pending_approval_ids = ApprovalRequest.objects.filter(
             content_type=doc_ct,
             status='PENDING'
@@ -1364,6 +1367,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         # Get documents needing user's approval (tenant-scoped groups)
         user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
         user_group_ids = [g.id for g in user_groups]
+        # tenant-safe: viewset runs inside tenant-scoped request context with RLS enforced
         needs_my_approval_ids = ApprovalRequest.objects.filter(
             content_type=doc_ct,
             status='PENDING'

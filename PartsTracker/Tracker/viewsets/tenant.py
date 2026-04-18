@@ -1325,6 +1325,7 @@ class UserTenantsView(APIView):
 
             # Additional tenants via group memberships
             from Tracker.models import TenantGroupMembership
+            # tenant-safe: intentionally cross-tenant — enumerates every tenant this user belongs to
             memberships = TenantGroupMembership.objects.filter(
                 user=user
             ).select_related('tenant')

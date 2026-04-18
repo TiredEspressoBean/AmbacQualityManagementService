@@ -1,0 +1,75 @@
+{
+  "generated_date": "2026-04-14",
+  "tenant_name": "Ambac International",
+  "total_equipment": 6,
+  "overdue_count": 2,
+  "due_soon_count": 2,
+  "items": [
+    {
+      "equipment_name": "Outside Micrometer 0–1\"",
+      "equipment_serial": "SN-MIC-2019-0047",
+      "equipment_type": "Micrometer",
+      "location": "QA Lab — Shelf 3B",
+      "last_cal_date": "2025-03-01",
+      "due_date": "2026-03-01",
+      "days_until_due": -44,
+      "status": "OVERDUE",
+      "last_result": "PASS"
+    },
+    {
+      "equipment_name": "Vernier Caliper 12\"",
+      "equipment_serial": "SN-CAL-2020-0112",
+      "equipment_type": "Caliper",
+      "location": "Machine Shop — Tool Crib",
+      "last_cal_date": "2025-03-15",
+      "due_date": "2026-03-15",
+      "days_until_due": -30,
+      "status": "OVERDUE",
+      "last_result": "PASS"
+    },
+    {
+      "equipment_name": "CMM — Brown & Sharpe Micro",
+      "equipment_serial": "SN-CMM-2017-0003",
+      "equipment_type": "CMM",
+      "location": "Metrology Room",
+      "last_cal_date": "2025-10-01",
+      "due_date": "2026-04-25",
+      "days_until_due": 11,
+      "status": "DUE_SOON",
+      "last_result": "PASS"
+    },
+    {
+      "equipment_name": "Digital Height Gauge 24\"",
+      "equipment_serial": "SN-HGT-2021-0088",
+      "equipment_type": "Height Gauge",
+      "location": "QA Lab — Bench 1",
+      "last_cal_date": "2025-10-20",
+      "due_date": "2026-04-20",
+      "days_until_due": 6,
+      "status": "DUE_SOON",
+      "last_result": "LIMITED"
+    },
+    {
+      "equipment_name": "Torque Wrench 10–150 ft-lb",
+      "equipment_serial": "SN-TRQ-2022-0031",
+      "equipment_type": "Torque Wrench",
+      "location": "Assembly Floor — Station 4",
+      "last_cal_date": "2026-01-10",
+      "due_date": "2026-07-10",
+      "days_until_due": 87,
+      "status": "CURRENT",
+      "last_result": "PASS"
+    },
+    {
+      "equipment_name": "Surface Plate 24\" x 36\"",
+      "equipment_serial": "SN-SPL-2015-0002",
+      "equipment_type": "Surface Plate",
+      "location": "Metrology Room",
+      "last_cal_date": "2026-02-05",
+      "due_date": "2027-02-05",
+      "days_until_due": 297,
+      "status": "CURRENT",
+      "last_result": "PASS"
+    }
+  ]
+}

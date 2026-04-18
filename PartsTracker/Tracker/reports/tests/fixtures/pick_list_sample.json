@@ -1,0 +1,77 @@
+{
+  "wo_number": "WO-2026-0412",
+  "part_number": "TCA-8800-001",
+  "part_name": "Turbocharger Center Housing Assembly",
+  "qty_to_produce": 50,
+  "due_date": "2026-05-15",
+
+  "items": [
+    {
+      "find_number": "10",
+      "component_part_number": "TCA-8800-101",
+      "component_name": "Center Housing, Cast Iron",
+      "qty_per_assembly": "1",
+      "qty_required": "50",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "20",
+      "component_part_number": "TCA-8800-102",
+      "component_name": "Thrust Bearing, Full Floating",
+      "qty_per_assembly": "1",
+      "qty_required": "50",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "30",
+      "component_part_number": "TCA-8800-103",
+      "component_name": "Journal Bearing Set (2-piece)",
+      "qty_per_assembly": "2",
+      "qty_required": "100",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "40",
+      "component_part_number": "HW-SNAP-RNG-028",
+      "component_name": "Snap Ring, 28mm, Internal",
+      "qty_per_assembly": "4",
+      "qty_required": "200",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "50",
+      "component_part_number": "TCA-8800-104",
+      "component_name": "Oil Slinger, Compressor Side",
+      "qty_per_assembly": "1",
+      "qty_required": "50",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "60",
+      "component_part_number": "SEAL-PTFE-018-T",
+      "component_name": "PTFE Piston Ring Seal, 18mm",
+      "qty_per_assembly": "2",
+      "qty_required": "100",
+      "unit_of_measure": "EA",
+      "is_optional": false
+    },
+    {
+      "find_number": "70",
+      "component_part_number": "TCA-8800-110",
+      "component_name": "Protective End Cap Kit (Shipping)",
+      "qty_per_assembly": "1",
+      "qty_required": "50",
+      "unit_of_measure": "EA",
+      "is_optional": true
+    }
+  ],
+
+  "total_line_count": 7,
+  "tenant_name": "Ambac International",
+  "generated_date": "2026-04-15"
+}

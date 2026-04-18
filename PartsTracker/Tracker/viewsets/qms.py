@@ -1368,7 +1368,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
         if fpi_scope == 'per_equipment' and 'equipment' in lookup:
             create_data['equipment'] = lookup['equipment']
 
-        fpi = FPIRecord.objects.create(**create_data)
+        fpi = FPIRecord.objects.create(**create_data)  # tenant-safe: create_data['tenant'] set above
         serializer = self.get_serializer(fpi)
 
         return Response({

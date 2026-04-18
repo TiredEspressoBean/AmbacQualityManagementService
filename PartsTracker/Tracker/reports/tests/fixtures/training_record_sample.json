@@ -1,0 +1,61 @@
+{
+  "employee_name": "Maria Vasquez",
+  "employee_email": "m.vasquez@ambac-mfg.example.com",
+  "employee_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "records": [
+    {
+      "topic": "Lockout/Tagout (LOTO) — OSHA 29 CFR 1910.147",
+      "completed_date": "2025-03-10",
+      "expires_date": "2026-03-10",
+      "trainer": "James Hollowell",
+      "status": "CURRENT",
+      "notes": "Written assessment score: 94%. Practical demonstration observed."
+    },
+    {
+      "topic": "Forklift Operation — Toyota 8FGU25",
+      "completed_date": "2024-11-05",
+      "expires_date": "2025-11-05",
+      "trainer": "James Hollowell",
+      "status": "CURRENT",
+      "notes": "Certified per OSHA 29 CFR 1910.178. Practical evaluation passed."
+    },
+    {
+      "topic": "ISO 9001:2015 Awareness",
+      "completed_date": "2023-06-14",
+      "expires_date": null,
+      "trainer": "Renata Kowalski",
+      "status": "CURRENT",
+      "notes": "Online course + quiz, score 88%. No expiry — evergreen QMS requirement."
+    },
+    {
+      "topic": "Blueprint Reading & GD&T Fundamentals",
+      "completed_date": "2023-01-20",
+      "expires_date": null,
+      "trainer": "Derek Sung",
+      "status": "CURRENT",
+      "notes": "Completed 16-hour instructor-led course. Final exam score: 91%."
+    },
+    {
+      "topic": "SPC Fundamentals — Control Charts & Cpk",
+      "completed_date": "2024-02-27",
+      "expires_date": "2025-02-27",
+      "trainer": "Renata Kowalski",
+      "status": "EXPIRED",
+      "notes": "Certification lapsed. Renewal scheduled for Q2 2026."
+    },
+    {
+      "topic": "Hazardous Materials Handling — GHS/SDS",
+      "completed_date": "2022-09-08",
+      "expires_date": "2024-09-08",
+      "trainer": "James Hollowell",
+      "status": "EXPIRED",
+      "notes": "Annual recertification overdue. Flag for immediate renewal."
+    }
+  ],
+  "total_count": 6,
+  "current_count": 2,
+  "expired_count": 2,
+  "no_expiry_count": 2,
+  "tenant_name": "Ambac Manufacturing LLC",
+  "generated_date": "2026-04-14"
+}

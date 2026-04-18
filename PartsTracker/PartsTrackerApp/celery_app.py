@@ -8,6 +8,7 @@ app = Celery('PartsTracker')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+
 # Celery Beat Schedule - periodic tasks
 app.conf.beat_schedule = {
     # Dispatch pending notifications every 5 minutes

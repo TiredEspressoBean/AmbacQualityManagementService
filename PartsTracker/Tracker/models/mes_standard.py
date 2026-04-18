@@ -21,7 +21,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models, transaction
 from django.db.models import Q, CheckConstraint, Index
 
-from .core import SecureModel, User, Companies
+from .core import SecureModel, SecureManager, SecureQuerySet, User, Companies
 
 
 # =============================================================================
@@ -93,8 +93,12 @@ class EquipmentStatus(models.TextChoices):
     RETIRED = 'RETIRED', 'Retired'
 
 
-class EquipmentQuerySet(models.QuerySet):
-    """Custom queryset for Equipment with calibration-aware filtering."""
+class EquipmentQuerySet(SecureQuerySet):
+    """Custom queryset for Equipment with calibration-aware filtering.
+
+    Inherits tenant scoping, soft-delete, versioning, and export-control
+    chaining from SecureQuerySet.
+    """
 
     def requiring_calibration(self):
         """Equipment that requires calibration tracking."""
@@ -140,8 +144,11 @@ class EquipmentQuerySet(models.QuerySet):
         ).filter(_latest_due__lte=cutoff, _latest_due__gte=today)
 
 
-class EquipmentManager(models.Manager):
-    """Manager using EquipmentQuerySet."""
+class EquipmentManager(SecureManager):
+    """Manager using EquipmentQuerySet.
+
+    Inherits .for_user(), .for_tenant(), .active(), etc. from SecureManager.
+    """
 
     def get_queryset(self):
         return EquipmentQuerySet(self.model, using=self._db)

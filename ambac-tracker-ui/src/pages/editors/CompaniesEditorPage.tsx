@@ -58,7 +58,6 @@ export function CompaniesEditorPage() {
             columns={[
                 { header: "Name", renderCell: (company: any) => company.name, priority: 1 },
                 { header: "Description", renderCell: (company: any) => company.description, priority: 5 },
-                { header: "HubSpot API ID", renderCell: (company: any) => company.hubspot_api_id, priority: 4 },
             ]}
             renderActions={(company) => <EditCompanyActionsCell companyId={company.id} />}
             onCreate={() => navigate({ to: "/CompaniesForm/create" })}

@@ -6,6 +6,7 @@ from django.utils.html import strip_tags
 from django.utils import timezone
 
 from PartsTrackerApp import settings
+from Tracker.utils.tenant_context import tenant_context, get_tenant_for_object
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,11 @@ def resend_sampling_notification(sampling_trigger_id):
     """Manually resend notification for a specific trigger"""
     try:
         from .models import SamplingTriggerState
+        # Initial lookup to resolve tenant; subsequent work runs under RLS context.
         trigger = SamplingTriggerState.objects.get(id=sampling_trigger_id)
-        send_sampling_trigger_email(trigger)
+        tenant_id = get_tenant_for_object(trigger)
+        with tenant_context(tenant_id):
+            send_sampling_trigger_email(trigger)
         return True
     except Exception as e:
         logger.error(f"Failed to resend sampling notification {sampling_trigger_id}: {e}")

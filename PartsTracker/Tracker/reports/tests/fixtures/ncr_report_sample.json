@@ -1,0 +1,64 @@
+{
+  "disposition_number": "DISP-2026-000047",
+  "current_state": "IN_PROGRESS",
+  "severity": "MAJOR",
+  "disposition_type": "REWORK",
+  "created_at": "2026-04-10T14:22:00",
+
+  "part_erp_id": "WO-2026-0123-INJ0042",
+  "part_type_name": "Fuel Injector Barrel",
+  "work_order_erp_id": "WO-2026-0123",
+  "step_name": "CMM Inspection",
+
+  "description": "Part INJ-2026-0042 failed dimensional inspection at final CMM step. Outer diameter at flange location measured 10.21 mm, exceeding upper specification limit of 10.05 mm by 0.16 mm. Root cause is suspected tool wear on CNC-02 following a 120-part production run without insert rotation.",
+
+  "quality_reports": [
+    {
+      "report_number": "QR-2026-000312",
+      "status": "FAIL",
+      "detected_by": "Jane Alvarez",
+      "detected_at": "2026-04-10T13:45:00",
+      "description": "Post-finish CMM inspection detected out-of-tolerance OD at flange location.",
+      "defects": [
+        {
+          "error_name": "Dimensional — OD out of tolerance",
+          "count": 1,
+          "location": "OD at flange (datum B)",
+          "severity": "MAJOR",
+          "notes": "Measured 10.21 mm vs spec 10.00 ±0.05 mm"
+        },
+        {
+          "error_name": "Surface finish below spec",
+          "count": 1,
+          "location": "OD finish region",
+          "severity": "MINOR",
+          "notes": "Ra 1.1 μm measured vs spec ≤ 0.8 μm"
+        }
+      ]
+    }
+  ],
+
+  "containment_action": "Quarantined part INJ-2026-0042 immediately. Halted CNC-02 for setup review. Re-inspected previous 5 parts from the same run; 2 additional parts found to be within spec but trending toward USL. Those parts flagged for engineering review.",
+  "containment_completed_by": "Jane Alvarez",
+  "containment_completed_at": "2026-04-10T15:00:00",
+
+  "rework_attempt_at_step": 1,
+  "resolution_notes": "Engineering decision: rework permitted on INJ-2026-0042 via finish grind operation to bring OD back within tolerance. Replace CNC-02 insert before resuming production. No customer notification required — this is an internal rework within manufacturing process tolerance.",
+  "assigned_to": "Marcus Chen",
+
+  "requires_customer_approval": false,
+  "customer_approval_received": false,
+  "customer_approval_reference": "",
+  "customer_approval_date": null,
+
+  "scrap_verified": false,
+  "scrap_verification_method": "",
+  "scrap_verified_by": null,
+  "scrap_verified_at": null,
+
+  "resolution_completed": false,
+  "resolution_completed_by": null,
+  "resolution_completed_at": null,
+
+  "tenant_name": "Ambac International"
+}

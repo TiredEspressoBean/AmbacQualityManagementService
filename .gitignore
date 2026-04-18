@@ -96,3 +96,6 @@ pytestdebug.log
 .venv_test/
 /.claude/
 /site/
+
+# ---- Local report generation outputs ----
+/PartsTracker/*.pdf
