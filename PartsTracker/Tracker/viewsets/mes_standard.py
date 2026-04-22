@@ -320,6 +320,31 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         bom.save()
         return Response(BOMSerializer(bom, context={'request': request}).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name="CreateBOMRevisionInput",
+            fields={'change_description': serializers.CharField()},
+        ),
+        responses={201: BOMSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """POST a new revision of this BOM. Returns 201 with the new version."""
+        from Tracker.services.mes.bom import create_new_bom_version
+        bom = self.get_object()
+        try:
+            new_version = create_new_bom_version(
+                bom,
+                user=request.user,
+                change_description=request.data.get('change_description', ''),
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            BOMSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class BOMLineViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """BOM line item management"""

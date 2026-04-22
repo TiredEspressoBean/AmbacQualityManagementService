@@ -20,7 +20,16 @@ from .core import SecureModelMixin, UserSelectSerializer
 # ===== DOCUMENT TYPE SERIALIZERS =====
 
 class DocumentTypeSerializer(SecureModelMixin, serializers.ModelSerializer):
-    """Serializer for document types with DMS compliance settings"""
+    """Serializer for document types with DMS compliance settings.
+
+    DocumentType is a VERSIONED controlled-document record (DMS
+    compliance: IATF 7.5.3, AS9100D 7.5.3.2). Any content edit
+    (requires_approval toggle, retention policy change, approval
+    template link, rename) routes through `create_new_version` so the
+    change creates an auditable new version rather than silently
+    overwriting the current one. Archiving goes through a plain save
+    because it's a soft-delete, not a content change.
+    """
     approval_template_name = serializers.CharField(
         source='approval_template.template_name', read_only=True, allow_null=True
     )
@@ -30,8 +39,22 @@ class DocumentTypeSerializer(SecureModelMixin, serializers.ModelSerializer):
         fields = ('id', 'name', 'code', 'description', 'requires_approval',
                   'approval_template', 'approval_template_name',
                   'default_review_period_days', 'default_retention_days',
-                  'created_at', 'updated_at', 'archived')
-        read_only_fields = ('created_at', 'updated_at')
+                  'created_at', 'updated_at', 'archived', 'version')
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 # ===== DOCUMENT SERIALIZERS =====
@@ -232,7 +255,16 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
     """
-    Serializer for 3D model files.
+    Serializer for 3D model files with versioning support.
+
+    Content edits (name, part_type, step, file) create a new version via
+    `create_new_version`.  Archive-only updates go through a plain save.
+
+    Processing-state fields (processing_status, processing_error,
+    processed_at, face_count, vertex_count, final_size_bytes,
+    original_filename, original_format, original_size_bytes, file_type)
+    are operational — updated in-place by Celery workers and excluded from
+    versioning triggers.
 
     Includes processing status for async conversion workflow:
     - pending: Uploaded, waiting for processing
@@ -240,6 +272,16 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
     - completed: Ready for viewing
     - failed: Processing error (see processing_error field)
     """
+
+    # Fields whose edits are operational / Celery-managed and should NOT
+    # trigger a new version.  Archive toggle is also excluded.
+    _NON_VERSIONING_FIELDS = frozenset({
+        'archived',
+        'processing_status', 'processing_error', 'processed_at',
+        'face_count', 'vertex_count', 'final_size_bytes',
+        'original_filename', 'original_format', 'original_size_bytes',
+        'file_type',
+    })
     part_type_display = serializers.CharField(source='part_type.__str__', read_only=True)
     step_display = serializers.CharField(source='step.__str__', read_only=True)
     annotation_count = serializers.SerializerMethodField()
@@ -284,13 +326,16 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
             # Original file info
             'original_filename', 'original_format', 'original_size_bytes',
             # Timestamps
-            'created_at', 'updated_at', 'archived', 'deleted_at'
+            'created_at', 'updated_at', 'archived', 'deleted_at',
+            # Versioning
+            'version', 'is_current_version', 'previous_version',
         ]
         read_only_fields = [
             'uploaded_at', 'file_type', 'created_at', 'updated_at', 'deleted_at',
             'processing_status', 'processing_error', 'processed_at',
             'original_filename', 'original_format', 'original_size_bytes',
             'face_count', 'vertex_count', 'final_size_bytes',
+            'version', 'is_current_version', 'previous_version',
         ]
 
     @extend_schema_field(serializers.IntegerField())
@@ -316,6 +361,16 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
             'final_size': obj.final_size_bytes,
             'compression_ratio': obj.compression_ratio,
         }
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive and operational-state updates through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 # ===== HEATMAP ANNOTATION SERIALIZERS =====

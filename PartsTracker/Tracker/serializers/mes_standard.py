@@ -24,7 +24,12 @@ from .core import SecureModelMixin, UserSelectSerializer
 # ===== WORK CENTER SERIALIZERS =====
 
 class WorkCenterSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Work center serializer with equipment list"""
+    """Work center serializer with equipment list.
+
+    WorkCenter is a versioned configuration record. Content edits
+    (name, code, description, capacity, cost center) route through
+    `create_new_version`. Archiving goes through a plain save.
+    """
     equipment_names = serializers.SerializerMethodField()
 
     class Meta:
@@ -32,13 +37,25 @@ class WorkCenterSerializer(serializers.ModelSerializer, SecureModelMixin):
         fields = (
             'id', 'name', 'code', 'description', 'capacity_units',
             'default_efficiency', 'equipment', 'equipment_names', 'cost_center',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version',
         )
-        read_only_fields = ('created_at', 'updated_at', 'equipment_names')
+        read_only_fields = ('created_at', 'updated_at', 'equipment_names', 'version')
+
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_equipment_names(self, obj):
         return [eq.name for eq in obj.equipment.all()]
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class WorkCenterSelectSerializer(serializers.ModelSerializer):
@@ -51,15 +68,35 @@ class WorkCenterSelectSerializer(serializers.ModelSerializer):
 # ===== SHIFT SERIALIZERS =====
 
 class ShiftSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Shift definition serializer"""
+    """Shift definition serializer.
+
+    Shift is a versioned configuration record. Content edits (name,
+    code, start/end time, days of week) route through
+    `create_new_version`. Archiving and active-flag toggles go through
+    a plain save.
+    """
+
     class Meta:
         model = Shift
         fields = (
             'id', 'name', 'code', 'start_time', 'end_time',
             'days_of_week', 'is_active',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version',
         )
-        read_only_fields = ('created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    # is_active is a scheduling on/off toggle, not a structural content change.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'is_active'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive and active-flag changes through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 # ===== SCHEDULE SLOT SERIALIZERS =====
@@ -122,7 +159,16 @@ class DowntimeEventSerializer(serializers.ModelSerializer, SecureModelMixin):
 # ===== MATERIAL LOT SERIALIZERS =====
 
 class MaterialLotSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Material lot serializer with full details"""
+    """Material lot serializer with hybrid versioning routing.
+
+    Spec/content field edits (supplier, material_type, expiration_date,
+    manufacture_date, supplier_lot_number, material_description, storage_location,
+    certificate_of_conformance, unit_of_measure, lot_number, received_date)
+    route through ``create_new_version``.
+
+    Operational field edits (quantity_remaining, status, archived) use a plain
+    save so every consumption event does not mint a new version row.
+    """
     material_type_name = serializers.CharField(source='material_type.name', read_only=True, allow_null=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
@@ -139,11 +185,32 @@ class MaterialLotSerializer(serializers.ModelSerializer, SecureModelMixin):
             'status', 'manufacture_date', 'expiration_date',
             'certificate_of_conformance', 'storage_location',
             'child_lot_count',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'quantity_remaining',
-            'parent_lot_number', 'child_lot_count', 'received_by'
+            'parent_lot_number', 'child_lot_count', 'received_by',
+            'version',
+        )
+
+    # Fields that do NOT trigger a new version — purely operational state.
+    # Any edit whose keys are a subset of this set goes through a plain save.
+    # If even one key falls outside this set the whole update routes through
+    # create_new_version.
+    _NON_VERSIONING_FIELDS = frozenset({
+        'archived',
+        'quantity_remaining',
+        'status',
+    })
+
+    def update(self, instance, validated_data):
+        """Route spec edits through ``create_new_version``; let operational
+        edits (quantity_remaining, status, archived) through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
         )
 
     @extend_schema_field(serializers.IntegerField())
@@ -246,7 +313,12 @@ class BOMLineSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 
 class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Bill of Materials serializer"""
+    """Bill of Materials serializer.
+
+    PATCH semantics: DRAFT BOMs are edited in place via super().update().
+    RELEASED and OBSOLETE BOMs are immutable via PATCH — callers must POST
+    to /api/boms/{id}/revisions/ to start a new DRAFT.
+    """
     part_type_name = serializers.CharField(source='part_type.name', read_only=True)
     lines = BOMLineSerializer(many=True, read_only=True)
     line_count = serializers.SerializerMethodField()
@@ -258,13 +330,24 @@ class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
             'status', 'description', 'effective_date', 'obsolete_date',
             'approved_by', 'approved_at',
             'lines', 'line_count',
+            'version',
             'created_at', 'updated_at', 'archived'
         )
-        read_only_fields = ('created_at', 'updated_at', 'approved_by', 'approved_at', 'effective_date', 'obsolete_date')
+        read_only_fields = (
+            'created_at', 'updated_at', 'approved_by', 'approved_at',
+            'effective_date', 'obsolete_date', 'version',
+        )
 
     @extend_schema_field(serializers.IntegerField())
     def get_line_count(self, obj):
         return obj.lines.count()
+
+    def update(self, instance, validated_data):
+        if instance.status != 'DRAFT':
+            raise serializers.ValidationError(
+                "POST to /api/boms/{id}/revisions/ to create a new version."
+            )
+        return super().update(instance, validated_data)
 
 
 class BOMListSerializer(serializers.ModelSerializer):

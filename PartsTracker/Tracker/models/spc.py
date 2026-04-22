@@ -41,6 +41,8 @@ class SPCBaseline(SecureModel):
     - Store all control limit values for different chart types
     """
 
+    _is_versioned = True  # AIAG PPAP #11 — SPC baseline
+
     # === Core Relationship ===
     measurement_definition = models.ForeignKey(
         "MeasurementDefinition",
@@ -173,16 +175,27 @@ class SPCBaseline(SecureModel):
         return f"{self.measurement_definition.label} - {self.get_chart_type_display()} ({self.frozen_at.strftime('%Y-%m-%d') if self.frozen_at else 'new'})"
 
     def save(self, *args, **kwargs):
-        # If setting to ACTIVE, supersede any existing active baseline for same measurement
-        if self.status == BaselineStatus.ACTIVE and not self.pk:
+        # On insert of a new ACTIVE baseline, supersede any existing ACTIVE
+        # baseline for the same measurement. `_state.adding` is the
+        # canonical "new row" check — `not self.pk` is wrong here because
+        # SecureModel's id has `default=uuid7`, so pk is assigned at
+        # instantiation, not at save.
+        if self._state.adding and self.status == BaselineStatus.ACTIVE:
             SPCBaseline.objects.filter(
                 measurement_definition=self.measurement_definition,
-                status=BaselineStatus.ACTIVE
+                status=BaselineStatus.ACTIVE,
             ).update(
                 status=BaselineStatus.SUPERSEDED,
-                superseded_at=timezone.now()
+                superseded_at=timezone.now(),
             )
         super().save(*args, **kwargs)
+
+    def create_new_version(self, **_):
+        raise NotImplementedError(
+            "SPCBaseline versioning uses the domain supersession mechanism "
+            "(superseded_by / superseded_at / status). "
+            "Use services.mes.spc_baseline.freeze_spc_baseline instead."
+        )
 
     @classmethod
     def get_active(cls, measurement_definition_id):

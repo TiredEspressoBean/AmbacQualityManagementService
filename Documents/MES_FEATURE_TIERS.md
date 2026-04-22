@@ -41,7 +41,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Release authorization
 - [x] Status change audit with e-sig
 - [x] Auto-complete on quantity
-- [~] Due date tracking with overdue alerts
+- [x] Due date tracking with overdue alerts - *Hourly beat emits WORK_ORDER_OVERDUE; admin configures NotificationRule to route it*
 - [x] Priority/sequencing - *priority field, lower number = higher priority*
 - [~] Labor hours tracking - *TimeEntry model, needs UI*
 
@@ -50,13 +50,13 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] WO cloning
 - [ ] Work order templates
 - [ ] Waiting for material status
-- [~] Hold escalation - *Escalation flag exists, no auto-timer*
+- [x] Hold escalation - *WorkOrderHold aggregate + hourly beat scanner emits WORK_ORDER_HELD_TOO_LONG; threshold hard-coded 48h, per-tenant config deferred*
 - [ ] Partial completion / short close
 - [ ] Closure checklist - *Configurable checklist before WO close*
-- [ ] WO splitting (simple quantity)
-- [ ] WO splitting at operation
-- [ ] WO splitting for rework - *AS9100 (8.7), IATF 16949 (8.7.1.4)*
-- [ ] Parent-child WO hierarchy - *Track original → splits/rework as a tree*
+- [x] WO splitting (simple quantity) - *split_work_order QUANTITY mode*
+- [x] WO splitting at operation - *split_work_order OPERATION mode*
+- [x] WO splitting for rework - *split_work_order REWORK mode with target_process_id; AS9100 (8.7), IATF 16949 (8.7.1.4)*
+- [x] Parent-child WO hierarchy - *parent_workorder FK + split_reason/split_at/split_by; undo_split preserves audit trail*
 - [ ] Yield tracking - *Good parts vs started quantity with yield loss categorization*
 
 ### 🟡 Pro (+1 = 30 total)
@@ -339,7 +339,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] QA approval log
 - [ ] Full genealogy
 - [~] Material lot tracking - *MaterialLot + MaterialUsage models exist*
-- [~] BOM explosion per WO - *BOM/BOMLine models exist, no qty × BOM endpoint*
+- [x] BOM explosion per WO - *BOM report (Typst) renders WO BOM; BOM/BOMLine models power it*
 - [ ] Material availability check - *Before WO release, verify materials available*
 - [ ] Material reservation - *Reserve specific lots for WOs to prevent double-allocation*
 - [ ] Incoming material inspection - *Inspect received lots before releasing to production*
@@ -375,7 +375,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] Schedule vs actual comparison
 
 **Dispatch:**
-- [ ] Daily dispatch list per work center
+- [x] Daily dispatch list per work center - *dispatch_list Typst report*
 - [ ] Operator work queue ("what's assigned to me")
 - [ ] Claim/unclaim work
 
@@ -452,6 +452,8 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [ ] Labor efficiency - *Actual hours vs standard hours per WO, per operator*
 - [x] PDF WO traveler - *Traveler endpoint + PDF service via Playwright*
 - [ ] Schedule vs actual - *Compare planned schedule to actual execution*
+
+**PDF Report Library (Typst):** BOM, CAPA, NCR, Deviation Request, Pick List, Dispatch List, Checking Aids, Calibration Certificate, Calibration Due, Training Record — all rendering end-to-end.
 
 ---
 
@@ -685,7 +687,7 @@ Depends on the Supplier Quality Management module (Section 35) — supplier appr
 - [x] 11. Initial Process Studies (Cpk) - *Full SPC capability*
 - [~] 12. Qualified Lab Documentation - *Document storage*
 - [ ] 13. Appearance Approval Report
-- [~] 16. Checking Aids - *Equipment model*
+- [x] 16. Checking Aids - *Equipment model + checking_aids Typst report*
 - [ ] 17. Customer-Specific Requirements
 - [ ] 18. Part Submission Warrant (PSW)
 - [ ] PPAP Submission Tracker

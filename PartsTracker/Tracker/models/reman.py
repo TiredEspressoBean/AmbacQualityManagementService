@@ -171,40 +171,24 @@ class Core(SecureModel):
         return f"Core {self.core_number} ({self.core_type.name})"
 
     def start_disassembly(self, user):
-        """Mark core as being disassembled."""
-        from django.utils import timezone
-        if self.status != 'RECEIVED':
-            raise ValueError(f"Cannot start disassembly - core is {self.status}")
-        self.status = 'IN_DISASSEMBLY'
-        self.disassembly_started_at = timezone.now()
-        self.save()
+        """Thin wrapper — delegates to `services.reman.core.start_core_disassembly`."""
+        from Tracker.services.reman.core import start_core_disassembly
+        return start_core_disassembly(self, user)
 
     def complete_disassembly(self, user):
-        """Mark disassembly as complete."""
-        from django.utils import timezone
-        if self.status != 'IN_DISASSEMBLY':
-            raise ValueError(f"Cannot complete disassembly - core is {self.status}")
-        self.status = 'DISASSEMBLED'
-        self.disassembly_completed_at = timezone.now()
-        self.disassembled_by = user
-        self.save()
+        """Thin wrapper — delegates to `services.reman.core.complete_core_disassembly`."""
+        from Tracker.services.reman.core import complete_core_disassembly
+        return complete_core_disassembly(self, user)
 
     def scrap(self, reason=""):
-        """Mark core as scrapped (not suitable for disassembly)."""
-        self.status = 'SCRAPPED'
-        self.condition_grade = 'SCRAP'
-        if reason:
-            self.condition_notes = f"{self.condition_notes}\nScrapped: {reason}".strip()
-        self.save()
+        """Thin wrapper — delegates to `services.reman.core.scrap_core`."""
+        from Tracker.services.reman.core import scrap_core
+        return scrap_core(self, reason)
 
     def issue_credit(self):
-        """Mark core credit as issued."""
-        from django.utils import timezone
-        if not self.core_credit_value:
-            raise ValueError("No credit value set for this core")
-        self.core_credit_issued = True
-        self.core_credit_issued_at = timezone.now()
-        self.save()
+        """Thin wrapper — delegates to `services.reman.core.issue_core_credit`."""
+        from Tracker.services.reman.core import issue_core_credit
+        return issue_core_credit(self)
 
     @property
     def harvested_component_count(self):
@@ -313,57 +297,16 @@ class HarvestedComponent(SecureModel):
         return f"{self.component_type.name} from Core {self.core.core_number}{status}"
 
     def scrap(self, user, reason=""):
-        """Mark this component as scrapped."""
-        from django.utils import timezone
-        self.is_scrapped = True
-        self.scrap_reason = reason
-        self.scrapped_at = timezone.now()
-        self.scrapped_by = user
-        self.condition_grade = 'SCRAP'
-        self.save()
+        """Thin wrapper — delegates to `services.reman.harvested_component.scrap_component`."""
+        from Tracker.services.reman.harvested_component import scrap_component
+        return scrap_component(self, user, reason=reason)
 
     def accept_to_inventory(self, user, erp_id=None, transfer_life=True):
-        """
-        Accept this component into inventory by creating a Parts record.
-
-        Args:
-            user: User performing the action
-            erp_id: Optional custom ERP ID for the part
-            transfer_life: If True, transfer life tracking from Core to new Part
-
-        Returns the created Parts instance.
-        """
-        if self.is_scrapped:
-            raise ValueError("Cannot accept scrapped component to inventory")
-        if self.component_part:
-            raise ValueError("Component already accepted to inventory")
-
-        # Import here to avoid circular import
-        from .mes_lite import Parts, PartsStatus
-
-        # Generate ERP ID if not provided
-        if not erp_id:
-            # Use first 8 chars of UUID for uniqueness
-            short_id = str(self.pk).replace('-', '')[:8].upper()
-            erp_id = f"HC-{self.core.core_number}-{self.component_type.ID_prefix or 'P'}{short_id}"
-
-        # Create the part
-        part = Parts.objects.create(
-            tenant=self.tenant,
-            ERP_id=erp_id,
-            part_type=self.component_type,
-            part_status=PartsStatus.PENDING,
-            # Note: step, work_order to be assigned when component enters production
+        """Thin wrapper — delegates to `services.reman.harvested_component.accept_component_to_inventory`."""
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+        return accept_component_to_inventory(
+            self, user, erp_id=erp_id, transfer_life=transfer_life
         )
-
-        self.component_part = part
-        self.save()
-
-        # Transfer life tracking from Core to new Part
-        if transfer_life:
-            self._transfer_life_tracking(part)
-
-        return part
 
     def _transfer_life_tracking(self, part):
         """
@@ -408,6 +351,9 @@ class DisassemblyBOMLine(SecureModel):
     - Tracking fallout rates by component type
     - Planning component inventory based on expected core volume
     """
+
+    _is_versioned = True  # engineering judgment — reman yield spec
+
     # The core type being disassembled
     core_type = models.ForeignKey(
         'Tracker.PartTypes',
@@ -449,7 +395,13 @@ class DisassemblyBOMLine(SecureModel):
         verbose_name = 'Disassembly BOM Line'
         verbose_name_plural = 'Disassembly BOM Lines'
         ordering = ['core_type', 'line_number']
-        unique_together = ['core_type', 'component_type']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['core_type', 'component_type'],
+                condition=models.Q(is_current_version=True),
+                name='disassemblybomline_coretype_component_uniq',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.core_type.name} yields {self.expected_qty}x {self.component_type.name}"

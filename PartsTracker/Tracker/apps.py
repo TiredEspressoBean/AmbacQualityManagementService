@@ -53,6 +53,7 @@ class TrackerConfig(AppConfig):
 
     def ready(self):
         import Tracker.signals  # Import signals when app starts
+        import Tracker.checks  # Register system checks
 
         # Connect post_migrate signal for all default data setup
         post_migrate.connect(setup_defaults, sender=self)

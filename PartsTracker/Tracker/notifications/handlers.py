@@ -193,6 +193,60 @@ def build_approval_decision_context(task) -> Optional[Dict[str, Any]]:
     }
 
 
+def build_step_failure_context(task) -> Optional[Dict[str, Any]]:
+    """Build context for step-failure notifications.
+
+    The NotificationTask's related_object is the failed Part (set by the
+    dispatcher from scope_obj). Reading the Part lazily lets the template
+    show current state if the user takes a while to read the email.
+    """
+    part = task.related_object
+    if part is None:
+        return None
+
+    work_order = part.work_order
+    step = part.step
+
+    # Latest FAIL quality report on this part, for optional notes
+    from Tracker.models import QualityReports
+    latest_fail = (
+        QualityReports.objects
+        .filter(part=part, status='FAIL')
+        .order_by('-created_at')
+        .first()
+    )
+    notes = getattr(latest_fail, 'notes', None) if latest_fail else None
+
+    return {
+        'recipient': task.recipient,
+        'part_id': str(part.id),
+        'part_erp_id': part.ERP_id,
+        'part_status': part.get_part_status_display(),
+        'step_name': step.name if step else '(unassigned)',
+        'work_order_erp_id': work_order.ERP_id if work_order else None,
+        'quality_report_notes': notes,
+        'frontend_url': get_frontend_url(),
+    }
+
+
+def validate_step_failure_send(task) -> bool:
+    """Only send if the related part still exists and is still in a
+    failure state. If the part has already been reworked/scrapped cleanly,
+    skip the notification."""
+    part = task.related_object
+    if part is None:
+        task.status = 'CANCELLED'
+        task.save()
+        return False
+    # Still notify for QUARANTINED, REWORK_NEEDED, SCRAPPED — all are
+    # failure-adjacent states worth alerting on.
+    if part.part_status not in ('QUARANTINED', 'REWORK_NEEDED', 'SCRAPPED'):
+        task.status = 'CANCELLED'
+        task.save()
+        return False
+    return True
+
+
 def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
     """Build context for approval escalation notifications."""
     approval_request = task.related_object
@@ -446,6 +500,20 @@ NOTIFICATION_HANDLERS = {
                 'title': f"Approval {ctx['status']}: {ctx['content_title']}",
                 'message': f"Your request has been {ctx['status'].lower()}",
                 'link': '/inbox',
+            }),
+        }
+    ),
+
+    'STEP_FAILURE': NotificationHandler(
+        context_builder=build_step_failure_context,
+        send_validator=validate_step_failure_send,
+        senders={
+            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/step_failure'),
+            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
+                'type': 'danger',
+                'title': f"Part Failed: {ctx['part_erp_id']}",
+                'message': f"at {ctx['step_name']}",
+                'link': f"/parts/{ctx['part_id']}",
             }),
         }
     ),

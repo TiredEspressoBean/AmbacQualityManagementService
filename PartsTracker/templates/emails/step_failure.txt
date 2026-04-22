@@ -1,0 +1,19 @@
+PART FAILURE
+
+Hi {{ recipient.first_name|default:"there" }},
+
+A part has failed quality inspection at a process step.
+
+=====================================
+Part: {{ part_erp_id }}
+Step: {{ step_name }}
+Work Order: {{ work_order_erp_id|default:"(none)" }}
+Status: {{ part_status }}
+{% if quality_report_notes %}Notes: {{ quality_report_notes }}
+{% endif %}=====================================
+
+Review the part:
+{{ frontend_url }}/parts/{{ part_id }}
+
+This is an automated message from {{ brand_name|default:"uqmes" }}.
+Please do not reply to this email.

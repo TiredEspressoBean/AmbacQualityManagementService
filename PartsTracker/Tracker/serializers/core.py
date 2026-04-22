@@ -125,18 +125,39 @@ class EmployeeSelectSerializer(serializers.ModelSerializer):
 
 
 class CompanySerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Company serializer with secure filtering"""
+    """Company serializer with secure filtering.
+
+    Companies is a VERSIONED controlled record. Any content edit
+    (name, description, hubspot_api_id) routes through
+    `create_new_version` so supplier qualification status changes
+    create an auditable new version. Archiving goes through a plain
+    save because it is a soft-delete, not a content change.
+    """
     user_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Companies
-        fields = ('id', 'name', 'description',
-                  'user_count', 'created_at', 'updated_at', 'archived')
-        read_only_fields = ('created_at', 'updated_at')
+        fields = ('id', 'name', 'description', 'hubspot_api_id',
+                  'user_count', 'created_at', 'updated_at', 'archived', 'version')
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     @extend_schema_field(serializers.IntegerField())
     def get_user_count(self, obj):
         return obj.users.filter(is_active=True).count()
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -466,7 +487,13 @@ class BulkRestoreSerializer(serializers.Serializer, BulkOperationsMixin):
 # ===== APPROVAL WORKFLOW SERIALIZERS =====
 
 class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Approval template serializer"""
+    """Approval template serializer.
+
+    ApprovalTemplate is a VERSIONED controlled record. Any content edit
+    routes through `create_new_version` so configuration changes create an
+    auditable new version. Archiving goes through a plain save because it
+    is a soft-delete, not a content change.
+    """
     approval_type_display = serializers.CharField(source='get_approval_type_display', read_only=True)
     approval_flow_type_display = serializers.CharField(source='get_approval_flow_type_display', read_only=True)
     approval_sequence_display = serializers.CharField(source='get_approval_sequence_display', read_only=True)
@@ -488,9 +515,13 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
             'allow_self_approval',
             'default_due_days', 'escalation_days', 'escalate_to', 'escalate_to_info',
             'deactivated_at',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version',
         )
-        read_only_fields = ('created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     @extend_schema_field(serializers.ListField())
     def get_default_groups_info(self, obj):
@@ -505,6 +536,16 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
         if obj.escalate_to:
             return UserSelectSerializer(obj.escalate_to).data
         return None
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class ApprovalResponseSerializer(serializers.ModelSerializer, SecureModelMixin):

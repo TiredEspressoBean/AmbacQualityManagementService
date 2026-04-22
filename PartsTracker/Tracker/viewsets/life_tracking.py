@@ -46,6 +46,56 @@ class LifeLimitDefinitionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         definitions = self.get_queryset()
         return Response(LifeLimitDefinitionSelectSerializer(definitions, many=True).data)
 
+    @extend_schema(
+        description=(
+            "Create a new revision of a LifeLimitDefinition. "
+            "Returns the new version with incremented version number. "
+            "PartTypeLifeLimit children are copied to the new version."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["change_description"],
+                "properties": {
+                    "change_description": {
+                        "type": "string",
+                        "description": "Human narrative of what changed and why (AS9100D §8.3)."
+                    },
+                },
+            }
+        },
+        responses={201: LifeLimitDefinitionSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """Create a new version of this life limit definition.
+
+        PATCH routes content edits through create_new_version via the
+        serializer's update() method. This endpoint is the explicit
+        "create a new revision" path when callers want full control.
+        Returns 201 with the new version.
+        """
+        from Tracker.services.life_tracking.life_limit_definition import (
+            create_new_life_limit_definition_version,
+        )
+
+        definition = self.get_object()
+        change_description = request.data.get('change_description', '')
+
+        try:
+            new_version = create_new_life_limit_definition_version(
+                definition,
+                user=request.user,
+                change_description=change_description,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            LifeLimitDefinitionSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class PartTypeLifeLimitViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """

@@ -26,12 +26,30 @@ from .core import SecureModelMixin
 # ===== QUALITY AND ERROR SERIALIZERS =====
 
 class QualityErrorsListSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Quality errors list serializer"""
+    """Quality errors list serializer.
+
+    QualityErrorsList is a versioned defect-catalog entry. Any content edit
+    (name, example text, part-type link, annotation flag) routes through
+    `create_new_version` so changes are auditable. Archiving goes through
+    a plain save because it is a soft-delete, not a content change.
+    """
     part_type_name = serializers.CharField(source="part_type.name", read_only=True)
 
     class Meta:
         model = QualityErrorsList
-        fields = ["id", "error_name", "error_example", "part_type", "part_type_name", "requires_3d_annotation", "archived"]
+        fields = ["id", "error_name", "error_example", "part_type", "part_type_name",
+                  "requires_3d_annotation", "archived", "version"]
+        read_only_fields = ("version",)
+
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class ErrorTypeSerializer(serializers.ModelSerializer):
@@ -46,17 +64,42 @@ class ErrorTypeSerializer(serializers.ModelSerializer):
 # ===== MEASUREMENT SERIALIZERS =====
 
 class MeasurementDefinitionSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Measurement definition serializer"""
+    """Measurement definition serializer with versioning support.
+
+    Content edits (label, type, unit, nominal, tolerances, required,
+    spc_enabled) create a new version via `create_new_version`.
+    Archive-only updates go through a plain save.
+    """
     step_name = serializers.SerializerMethodField()
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     class Meta:
         model = MeasurementDefinition
-        fields = ["id", "label", "step_name", "unit", "nominal", "upper_tol", "lower_tol", "required", "type", "step", "archived"]
-        read_only_fields = ["id", "step"]
+        fields = [
+            "id", "label", "step_name", "unit", "nominal",
+            "upper_tol", "lower_tol", "required", "type", "step",
+            "spc_enabled", "archived",
+            "version", "is_current_version", "previous_version",
+        ]
+        read_only_fields = ["id", "step", "version", "is_current_version",
+                            "previous_version"]
 
     @extend_schema_field(serializers.CharField())
     def get_step_name(self, obj) -> str | None:
         return obj.step.name if obj.step else None
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin):
@@ -182,6 +225,8 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
     def create(self, validated_data):
+        from Tracker.services.qms.quality_report import record_quality_report_side_effects
+
         measurements_data = validated_data.pop("measurements", [])
         report = super().create(validated_data)
 
@@ -191,6 +236,7 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
                                              value_pass_fail=m.get('value_pass_fail'),
                                              created_by=self.context["request"].user)
 
+        record_quality_report_side_effects(report)
         return report
 
 
@@ -244,7 +290,7 @@ class SamplingRuleSetSerializer(serializers.ModelSerializer, SecureModelMixin):
                   'created_by', 'created_at', 'modified_by', 'updated_at', 'part_type_name', 'process_name', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'rules', 'part_type_info', 'process_info', 'step_info',
-            'part_type_name', 'process_name')
+            'part_type_name', 'process_name', 'version')
 
     @extend_schema_field(serializers.ListField())
     def get_rules(self, obj):
@@ -653,6 +699,8 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
     severity_display = serializers.SerializerMethodField()
     containment_completed_by_name = serializers.SerializerMethodField()
     scrap_verified_by_name = serializers.SerializerMethodField()
+    work_order_id = serializers.UUIDField(source='part.work_order_id', read_only=True, allow_null=True)
+    work_order_erp_id = serializers.SerializerMethodField()
 
     class Meta:
         model = QuarantineDisposition
@@ -675,6 +723,8 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
             # Relationships
             'part', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
+            # WO denormalization (for frontend exception → WO linking)
+            'work_order_id', 'work_order_erp_id',
             # Computed
             'assignee_name', 'choices_data', 'annotation_status',
             'can_be_completed', 'completion_blockers',
@@ -685,7 +735,13 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
             'disposition_number', 'assignee_name', 'choices_data', 'step_info', 'rework_limit_exceeded',
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
+            'work_order_id', 'work_order_erp_id',
         )
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_work_order_erp_id(self, obj):
+        wo = getattr(obj.part, 'work_order', None) if obj.part_id else None
+        return wo.ERP_id if wo else None
 
     @extend_schema_field(serializers.CharField())
     def get_assignee_name(self, obj):
@@ -920,75 +976,54 @@ class RcaRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
         read_only_fields = ('root_cause_verified_at', 'created_at', 'updated_at', 'self_verified')
 
+    # Fishbone cause fields that arrive as strings and get split into lists.
+    _FISHBONE_CAUSE_FIELDS = (
+        'man_causes', 'machine_causes', 'material_causes',
+        'method_causes', 'measurement_causes', 'environment_causes',
+    )
+
+    def _normalize_fishbone_causes(self, fishbone_data):
+        """Input shape: cause fields arrive as newline/comma-separated strings.
+        Storage shape: JSONField lists. Split here so the service receives
+        already-normalized data."""
+        if not fishbone_data:
+            return fishbone_data
+        for field in self._FISHBONE_CAUSE_FIELDS:
+            causes_str = fishbone_data.get(field)
+            if causes_str:
+                fishbone_data[field] = [
+                    c.strip()
+                    for c in causes_str.replace('\n', ',').split(',')
+                    if c.strip()
+                ]
+            else:
+                fishbone_data[field] = []
+        return fishbone_data
+
     def create(self, validated_data):
+        from Tracker.services.qms.rca import create_rca_record
         five_whys_data = validated_data.pop('five_whys_data', None)
-        fishbone_data = validated_data.pop('fishbone_data', None)
-
-        # Create the RCA record
-        rca_record = super().create(validated_data)
-
-        # Create FiveWhys if data provided and method is FIVE_WHYS
-        if five_whys_data and rca_record.rca_method == 'FIVE_WHYS':
-            FiveWhys.objects.create(rca_record=rca_record, **five_whys_data)
-
-        # Create Fishbone if data provided and method is FISHBONE
-        if fishbone_data and rca_record.rca_method == 'FISHBONE':
-            # Convert string causes to lists for JSON fields
-            for field in ['man_causes', 'machine_causes', 'material_causes',
-                          'method_causes', 'measurement_causes', 'environment_causes']:
-                if field in fishbone_data and fishbone_data[field]:
-                    # Split by newlines or commas for multi-item input
-                    causes_str = fishbone_data[field]
-                    if causes_str:
-                        fishbone_data[field] = [c.strip() for c in causes_str.replace('\n', ',').split(',') if c.strip()]
-                    else:
-                        fishbone_data[field] = []
-                else:
-                    fishbone_data[field] = []
-            Fishbone.objects.create(rca_record=rca_record, **fishbone_data)
-
-        return rca_record
+        fishbone_data = self._normalize_fishbone_causes(
+            validated_data.pop('fishbone_data', None)
+        )
+        return create_rca_record(
+            validated_data,
+            five_whys_data=five_whys_data,
+            fishbone_data=fishbone_data,
+        )
 
     def update(self, instance, validated_data):
+        from Tracker.services.qms.rca import update_rca_record
         five_whys_data = validated_data.pop('five_whys_data', None)
-        fishbone_data = validated_data.pop('fishbone_data', None)
-
-        # Update the RCA record
-        instance = super().update(instance, validated_data)
-
-        # Update or create FiveWhys if data provided and method is FIVE_WHYS
-        if five_whys_data and instance.rca_method == 'FIVE_WHYS':
-            try:
-                five_whys = instance.five_whys
-                for key, value in five_whys_data.items():
-                    setattr(five_whys, key, value)
-                five_whys.save()
-            except FiveWhys.DoesNotExist:
-                FiveWhys.objects.create(rca_record=instance, **five_whys_data)
-
-        # Update or create Fishbone if data provided and method is FISHBONE
-        if fishbone_data and instance.rca_method == 'FISHBONE':
-            # Convert string causes to lists for JSON fields
-            for field in ['man_causes', 'machine_causes', 'material_causes',
-                          'method_causes', 'measurement_causes', 'environment_causes']:
-                if field in fishbone_data and fishbone_data[field]:
-                    causes_str = fishbone_data[field]
-                    if causes_str:
-                        fishbone_data[field] = [c.strip() for c in causes_str.replace('\n', ',').split(',') if c.strip()]
-                    else:
-                        fishbone_data[field] = []
-                else:
-                    fishbone_data[field] = []
-
-            try:
-                fishbone = instance.fishbone
-                for key, value in fishbone_data.items():
-                    setattr(fishbone, key, value)
-                fishbone.save()
-            except Fishbone.DoesNotExist:
-                Fishbone.objects.create(rca_record=instance, **fishbone_data)
-
-        return instance
+        fishbone_data = self._normalize_fishbone_causes(
+            validated_data.pop('fishbone_data', None)
+        )
+        return update_rca_record(
+            instance,
+            validated_data,
+            five_whys_data=five_whys_data,
+            fishbone_data=fishbone_data,
+        )
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_capa_info(self, obj):
@@ -1180,6 +1215,7 @@ class CAPASerializer(serializers.ModelSerializer, SecureModelMixin):
     completion_percentage = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
     blocking_items = serializers.SerializerMethodField()
+    work_order_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = CAPA
@@ -1198,14 +1234,31 @@ class CAPASerializer(serializers.ModelSerializer, SecureModelMixin):
             'quality_reports', 'dispositions',
             'tasks', 'rca_records', 'verifications',
             'completion_percentage', 'is_overdue', 'blocking_items',
+            'work_order_ids',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'capa_number', 'status', 'status_display', 'completed_date',
             'approval_required', 'approved_by', 'approved_at', 'approval_status_display',
-            'completion_percentage', 'is_overdue', 'blocking_items',
+            'completion_percentage', 'is_overdue', 'blocking_items', 'work_order_ids',
             'created_at', 'updated_at', 'archived'
         )
+
+    @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
+    def get_work_order_ids(self, obj):
+        """Collect all WO ids linked via capa.work_order, capa.part, dispositions.part, quality_reports.part."""
+        wo_ids: set = set()
+        if obj.work_order_id:
+            wo_ids.add(obj.work_order_id)
+        if obj.part_id and getattr(obj.part, 'work_order_id', None):
+            wo_ids.add(obj.part.work_order_id)
+        for d in obj.dispositions.all():
+            if d.part_id and getattr(d.part, 'work_order_id', None):
+                wo_ids.add(d.part.work_order_id)
+        for qr in obj.quality_reports.all():
+            if qr.part_id and getattr(qr.part, 'work_order_id', None):
+                wo_ids.add(qr.part.work_order_id)
+        return list(wo_ids)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_initiated_by_info(self, obj):

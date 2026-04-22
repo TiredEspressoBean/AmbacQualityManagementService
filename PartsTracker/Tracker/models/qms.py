@@ -33,6 +33,8 @@ class QualityErrorsList(SecureModel):
     Each entry includes a name and a textual example to help inspectors identify and classify errors accurately.
     """
 
+    _is_versioned = True  # engineering judgment — defect catalog audit
+
     documents = GenericRelation('Tracker.Documents')
     """Reference photos, acceptance criteria visuals, or documentation for this error type."""
 
@@ -259,91 +261,10 @@ class QualityReports(SecureModel):
         )
 
     def save(self, *args, **kwargs):
-        """Enhanced save with report number generation and sampling integration"""
-        from Tracker.models import PartsStatus, SamplingTriggerManager, SamplingAnalytics, SamplingAuditLog
-        from Tracker.sampling import SamplingFallbackApplier
-
-        is_new = self.pk is None
-
-        # Auto-generate report number on creation
+        """Auto-generate report_number on creation, then persist."""
         if not self.report_number:
             self.report_number = self.generate_report_number(self.tenant)
-
         super().save(*args, **kwargs)
-
-        if is_new:
-            # Link to sampling audit log if this was a sampled part
-            self._link_sampling_audit_log()
-
-            # Update sampling trigger state
-            if self.status in {"PASS", "FAIL"}:
-                SamplingTriggerManager(self.part, self.status).update_state()
-
-            # Trigger fallback if failure
-            if self.status == "FAIL":
-                self._trigger_sampling_fallback()
-
-                # Auto-quarantine part on FAIL
-                if self.part:
-                    self.part.part_status = PartsStatus.QUARANTINED
-                    self.part.save(update_fields=['part_status'])
-
-            # Update sampling analytics
-            self._update_sampling_analytics()
-
-    def _link_sampling_audit_log(self):
-        """Link quality report to the sampling decision that triggered it"""
-        from Tracker.models import SamplingAuditLog
-
-        if self.part and self.part.requires_sampling:
-            # Find the most recent sampling audit log for this part
-            audit_log = SamplingAuditLog.objects.filter(part=self.part, sampling_decision=True).order_by(
-                '-timestamp').first()
-
-            if audit_log:
-                self.sampling_audit_log = audit_log
-                self.save(update_fields=['sampling_audit_log'])
-
-    def _trigger_sampling_fallback(self):
-        """Trigger fallback sampling for remaining parts"""
-        from Tracker.sampling import SamplingFallbackApplier
-
-        if self.part and self.part.sampling_ruleset:
-            # Use the new method instead
-            trigger_state = self.part.sampling_ruleset.create_fallback_trigger(triggering_part=self.part,
-                                                                               quality_report=self)
-            return trigger_state
-
-        # Fallback to original method
-        fallback_applier = SamplingFallbackApplier(self.part)
-        fallback_applier.apply()
-
-    def _update_sampling_analytics(self):
-        """Update sampling analytics based on quality report results"""
-        from Tracker.models import SamplingAnalytics
-
-        if not self.part or not self.part.sampling_ruleset:
-            return
-
-        analytics, created = SamplingAnalytics.objects.get_or_create(ruleset=self.part.sampling_ruleset,
-                                                                     work_order=self.part.work_order,
-                                                                     defaults={'parts_sampled': 0,
-                                                                               'parts_total': self.part.work_order.quantity,
-                                                                               'defects_found': 0,
-                                                                               'actual_sampling_rate': 0.0,
-                                                                               'target_sampling_rate': 0.0,
-                                                                               'variance': 0.0})
-
-        # Update counters
-        analytics.parts_sampled += 1
-        if self.status == "FAIL":
-            analytics.defects_found += 1
-
-        # Recalculate rates
-        analytics.actual_sampling_rate = (analytics.parts_sampled / analytics.parts_total * 100)
-        analytics.variance = abs(analytics.actual_sampling_rate - analytics.target_sampling_rate)
-
-        analytics.save()
 
     def clean(self):
         """Validate that sampled parts have sampling requirements"""
@@ -578,8 +499,10 @@ class QuarantineDisposition(SecureModel):
         old_disposition_type = None
         old_state = None
 
-        # Track changes for status updates
-        if self.pk:
+        # Track changes for status updates. Use `_state.adding`, not
+        # `self.pk` — SecureModel assigns pks at instantiation, so
+        # `if self.pk:` is always True and fires on insert too.
+        if not self._state.adding:
             try:
                 old_instance = QuarantineDisposition.objects.get(pk=self.pk)
                 old_disposition_type = old_instance.disposition_type
@@ -632,25 +555,9 @@ class QuarantineDisposition(SecureModel):
         )
 
     def complete_resolution(self, completed_by_user):
-        """Mark resolution as completed and close disposition if appropriate.
-
-        Raises:
-            ValueError: If disposition cannot be completed (missing annotations, etc.)
-        """
-        blockers = self.get_completion_blockers()
-        if blockers:
-            raise ValueError(f"Cannot complete disposition: {'; '.join(blockers)}")
-
-        self.resolution_completed = True
-        self.resolution_completed_by = completed_by_user
-        self.resolution_completed_at = timezone.now()
-
-        # Auto-close if currently in progress
-        if self.current_state == 'IN_PROGRESS':
-            self.current_state = 'CLOSED'
-
-        self.save()
-        return self
+        """Thin wrapper — delegates to `services.qms.disposition.complete_disposition_resolution`."""
+        from Tracker.services.qms.disposition import complete_disposition_resolution
+        return complete_disposition_resolution(self, completed_by_user)
 
     def _update_part_status(self):
         """Update part status based on disposition type and state"""
@@ -1043,130 +950,20 @@ class CAPA(SecureModel):
         return today > self.due_date
 
     def request_approval(self, user):
-        """
-        Request management approval for CAPA (typically for Critical/Major severity).
-
-        This method manually requests approval. For automatic approval triggering,
-        see the post_save signal handler for CAPA in signals.py.
-
-        Args:
-            user: The user requesting approval
-
-        Returns:
-            ApprovalRequest: The created approval request
-
-        Raises:
-            ValueError: If approval already pending/approved or template not found
-        """
-        from .core import ApprovalRequest, ApprovalTemplate
-
-        if self.approval_status == 'APPROVED':
-            raise ValueError("CAPA is already approved")
-        if self.approval_status == 'PENDING':
-            raise ValueError("CAPA approval is already pending")
-
-        # Get the CAPA_APPROVAL template (filtered by tenant)
-        try:
-            template = ApprovalTemplate.objects.get(
-                approval_type='CAPA_APPROVAL',
-                tenant=self.tenant
-            )
-        except ApprovalTemplate.DoesNotExist:
-            raise ValueError("CAPA_APPROVAL template not found. Please configure approval templates.")
-
-        # Create approval request from template
-        approval_request = ApprovalRequest.create_from_template(
-            content_object=self,
-            template=template,
-            requested_by=user,
-            reason=f"CAPA Approval: {self.capa_number} - {self.get_severity_display()}"
-        )
-
-        # Update CAPA approval fields
-        self.approval_required = True
-        self.approval_status = 'PENDING'
-        self.save(update_fields=['approval_required', 'approval_status'])
-
-        return approval_request
+        """Thin wrapper — delegates to `services.qms.capa.request_capa_approval`."""
+        from Tracker.services.qms.capa import request_capa_approval
+        return request_capa_approval(self, user)
 
     def transition_to(self, new_status, user, notes=None):
+        """Thin wrapper — delegates to `services.qms.capa.transition_capa`.
+
+        Kept as a method for backward compat with existing callers (tests
+        + a handful of model.transition_to(...) usages). Business logic
+        lives in the service module; this stays thin per the Phase 3
+        "save is storage, services are behavior" discipline.
         """
-        Transition CAPA to a new status with validation.
-
-        Valid transitions:
-        - OPEN -> IN_PROGRESS, CANCELLED
-        - IN_PROGRESS -> PENDING_VERIFICATION, CANCELLED
-        - PENDING_VERIFICATION -> CLOSED, IN_PROGRESS (reopen), CANCELLED
-        - CLOSED -> (no transitions, terminal state)
-        - CANCELLED -> (no transitions, terminal state)
-
-        Args:
-            new_status: Target status (CapaStatus value)
-            user: User performing the transition
-            notes: Optional notes/reason for the transition
-
-        Raises:
-            ValueError: If transition is not allowed or requirements not met
-        """
-        from django.utils import timezone
-
-        # Normalize new_status to enum value (accept string or enum)
-        if isinstance(new_status, str):
-            # Try to get enum by name (e.g., 'IN_PROGRESS') or value (e.g., 'in_progress')
-            try:
-                new_status = CapaStatus[new_status]
-            except KeyError:
-                new_status = CapaStatus(new_status.lower())
-
-        # Define allowed transitions
-        allowed_transitions = {
-            CapaStatus.OPEN: [CapaStatus.IN_PROGRESS, CapaStatus.CANCELLED],
-            CapaStatus.IN_PROGRESS: [CapaStatus.PENDING_VERIFICATION, CapaStatus.CANCELLED],
-            CapaStatus.PENDING_VERIFICATION: [CapaStatus.CLOSED, CapaStatus.IN_PROGRESS, CapaStatus.CANCELLED],
-            CapaStatus.CLOSED: [],
-            CapaStatus.CANCELLED: [],
-        }
-
-        current = CapaStatus(self.status) if isinstance(self.status, str) else self.status
-        allowed = allowed_transitions.get(current, [])
-
-        if new_status not in allowed:
-            raise ValueError(
-                f"Cannot transition from {current.value} to {new_status.value}. "
-                f"Allowed transitions: {[s.value for s in allowed]}"
-            )
-
-        # Validate requirements for specific transitions
-        if new_status == CapaStatus.PENDING_VERIFICATION:
-            if not self.rca_complete():
-                raise ValueError("Cannot move to PENDING_VERIFICATION: RCA not completed")
-
-        if new_status == CapaStatus.CLOSED:
-            blockers = self.get_blocking_items()
-            if blockers:
-                raise ValueError(
-                    f"Cannot close CAPA: {', '.join(blockers)}"
-                )
-
-        # Perform the transition
-        self.status = new_status.value
-
-        # Set completed_date when closing
-        if new_status == CapaStatus.CLOSED:
-            self.completed_date = timezone.now().date()
-
-        self.save()
-
-        # Record the transition with user and notes
-        CapaStatusTransition.objects.create(
-            capa=self,
-            from_status=current.value,
-            to_status=new_status.value,
-            transitioned_by=user,
-            notes=notes or '',
-        )
-
-        return self
+        from Tracker.services.qms.capa import transition_capa
+        return transition_capa(self, new_status, user, notes=notes)
 
 
 class CapaStatusTransition(SecureModel):
@@ -1298,70 +1095,15 @@ class CapaTasks(SecureModel):
         super().save(*args, **kwargs)
 
     def mark_completed(self, user, notes, signature_data=None, password=None):
-        """Complete task with validation
-
-        Behavior depends on completion_mode:
-        - SINGLE_OWNER: Task completed directly
-        - ANY_ASSIGNEE: Any one assignee can complete
-        - ALL_ASSIGNEES: All assignees must complete
-
-        If requires_signature is True, signature_data and password are required.
-        """
-        from django.utils import timezone
-
-        # Validate signature requirement
-        if self.requires_signature:
-            if not signature_data:
-                raise ValueError("Signature is required for this task")
-            if not password:
-                raise ValueError("Password is required for identity verification")
-            # Verify password
-            if not user.check_password(password):
-                raise ValueError("Invalid password")
-
-        if self.completion_mode == CapaTaskCompletionMode.SINGLE_OWNER:
-            self.status = CapaTaskStatus.COMPLETED
-            self.completed_date = timezone.now().date()
-            self.completed_by = user
-            self.completion_notes = notes
-            if self.requires_signature:
-                self.completion_signature = signature_data
-            self.save()
-        else:
-            # Multi-assignee modes use CapaTaskAssignee rows
-            assignee, _ = CapaTaskAssignee.objects.get_or_create(task=self, user=user)  # tenant-safe: task=self (tenant-scoped CapaTask)
-            assignee.status = CapaTaskStatus.COMPLETED
-            assignee.completed_at = timezone.now()
-            assignee.completion_notes = notes
-            assignee.save()
-
-            # Re-evaluate task completion
-            assignees = self.assignees.all()
-
-            if self.completion_mode == CapaTaskCompletionMode.ANY_ASSIGNEE:
-                if assignees.filter(status=CapaTaskStatus.COMPLETED).exists():
-                    self.status = CapaTaskStatus.COMPLETED
-                    self.completed_date = timezone.now().date()
-                    self.completed_by = user
-                    if self.requires_signature:
-                        self.completion_signature = signature_data
-            elif self.completion_mode == CapaTaskCompletionMode.ALL_ASSIGNEES:
-                total = assignees.count()
-                completed = assignees.filter(status=CapaTaskStatus.COMPLETED).count()
-                if total > 0 and completed == total:
-                    self.status = CapaTaskStatus.COMPLETED
-                    self.completed_date = timezone.now().date()
-                    self.completed_by = user
-                    if self.requires_signature:
-                        self.completion_signature = signature_data
-
-            if self.status == CapaTaskStatus.COMPLETED:
-                self.save()
-
-        # Check if CAPA can move to next stage
-        if self.capa.all_tasks_completed() and self.capa.rca_complete():
-            # Trigger notification
-            pass
+        """Thin wrapper — delegates to `services.qms.capa.complete_capa_task`."""
+        from Tracker.services.qms.capa import complete_capa_task
+        return complete_capa_task(
+            self,
+            user,
+            notes,
+            signature_data=signature_data,
+            password=password,
+        )
 
     def check_overdue(self):
         """Determine if task is overdue
@@ -1455,64 +1197,14 @@ class RcaRecord(SecureModel):
         return f"RCA for {self.capa.capa_number} - {self.get_rca_method_display()}"
 
     def validate_completeness(self):
-        """Check if RCA is complete enough to proceed
-
-        Returns: (is_complete: bool, issues: list)
-        """
-        issues = []
-
-        if not self.problem_description:
-            issues.append("Problem description is required")
-
-        if not self.root_cause_summary:
-            issues.append("Root cause summary is required")
-
-        if not self.conducted_by or not self.conducted_date:
-            issues.append("Conductor and date are required")
-
-        if self.rca_method == RcaMethod.FIVE_WHYS:
-            if hasattr(self, 'five_whys'):
-                whys_answered = sum([
-                    bool(self.five_whys.why_1_answer),
-                    bool(self.five_whys.why_2_answer),
-                    bool(self.five_whys.why_3_answer),
-                ])
-                if whys_answered < 3:
-                    issues.append("At least 3 'why' levels must be answered")
-
-        if self.rca_method == RcaMethod.FISHBONE:
-            if hasattr(self, 'fishbone'):
-                categories_filled = sum([
-                    bool(self.fishbone.man_causes),
-                    bool(self.fishbone.machine_causes),
-                    bool(self.fishbone.material_causes),
-                    bool(self.fishbone.method_causes),
-                    bool(self.fishbone.measurement_causes),
-                    bool(self.fishbone.environment_causes),
-                ])
-                if categories_filled < 3:
-                    issues.append("At least 3 fishbone categories must have causes")
-
-        return (len(issues) == 0, issues)
+        """Thin wrapper — delegates to `services.qms.rca.validate_rca_completeness`."""
+        from Tracker.services.qms.rca import validate_rca_completeness
+        return validate_rca_completeness(self)
 
     def verify_root_cause(self, user, verification_notes=None):
-        """Verify the root cause analysis"""
-        from django.utils import timezone
-        from django.core.exceptions import ValidationError
-
-        # Self-verification check
-        is_self_verification = (user == self.conducted_by)
-        if is_self_verification:
-            if not self.capa.allow_self_verification:
-                raise ValidationError("Self-verification of RCA is not permitted for this CAPA")
-            if not verification_notes or len(verification_notes.strip()) < 10:
-                raise ValidationError("Justification required for RCA self-verification (minimum 10 characters)")
-
-        self.root_cause_verification_status = RootCauseVerificationStatus.VERIFIED
-        self.root_cause_verified_by = user
-        self.root_cause_verified_at = timezone.now()
-        self.self_verified = is_self_verification
-        self.save()
+        """Thin wrapper — delegates to `services.qms.rca.verify_root_cause`."""
+        from Tracker.services.qms.rca import verify_root_cause
+        return verify_root_cause(self, user, verification_notes=verification_notes)
 
 
 class FiveWhys(SecureModel):
@@ -1628,70 +1320,9 @@ class CapaVerification(SecureModel):
         return f"Verification for {self.capa.capa_number} - {self.get_effectiveness_result_display()}"
 
     def verify_effectiveness(self, user, confirmed, notes):
-        """Complete verification process"""
-        from django.utils import timezone
-        from django.core.exceptions import ValidationError
-
-        # Self-verification check
-        is_self_verification = (user == self.capa.initiated_by or user == self.capa.assigned_to)
-        if is_self_verification:
-            if not self.capa.allow_self_verification:
-                raise ValidationError("Self-verification is not permitted for this CAPA")
-            if not notes or len(notes.strip()) < 10:
-                raise ValidationError("Justification required for self-verification (minimum 10 characters)")
-
-        self.verified_by = user
-        self.verification_date = timezone.now().date()
-        self.effectiveness_result = EffectivenessResult.CONFIRMED if confirmed else EffectivenessResult.NOT_EFFECTIVE
-        self.effectiveness_decided_at = timezone.now()
-        self.verification_notes = notes
-        self.self_verified = is_self_verification
-        self.save()
-
-        old_status = self.capa.status
-
-        if self.effectiveness_result == EffectivenessResult.CONFIRMED:
-            # Close the CAPA when effectiveness is confirmed
-            self.capa.status = CapaStatus.CLOSED
-            self.capa.completed_date = timezone.now().date()
-            self.capa.save(update_fields=['status', 'completed_date'])
-
-            # Log the transition
-            CapaStatusTransition.objects.create(
-                capa=self.capa,
-                from_status=old_status,
-                to_status=CapaStatus.CLOSED,
-                transitioned_by=user,
-                notes=f"Effectiveness verified: {notes}" if notes else "Effectiveness verified",
-            )
-        else:
-            # Mark RCA for review and move CAPA back to IN_PROGRESS
-            rca = self.capa.rca_records.first()
-            if rca:
-                rca.rca_review_status = RcaReviewStatus.REQUIRED
-                rca.save()
-
-            self.capa.status = CapaStatus.IN_PROGRESS
-            self.capa.save()
-
-            # Log the transition
-            CapaStatusTransition.objects.create(
-                capa=self.capa,
-                from_status=old_status,
-                to_status=CapaStatus.IN_PROGRESS,
-                transitioned_by=user,
-                notes=f"Effectiveness not confirmed, reopened for review: {notes}" if notes else "Effectiveness not confirmed, reopened for review",
-            )
-
-            # Create follow-up task (task_number auto-generated by CapaTasks.save())
-            CapaTasks.objects.create(
-                capa=self.capa,
-                tenant=self.capa.tenant,  # Ensure tenant is set for proper sequence generation
-                task_type=CapaTaskType.CORRECTIVE,
-                description=f"Review and update RCA due to failed verification: {notes}",
-                assigned_to=self.capa.assigned_to,
-                due_date=timezone.now().date() + timezone.timedelta(days=30)
-            )
+        """Thin wrapper — delegates to `services.qms.capa.verify_capa_effectiveness`."""
+        from Tracker.services.qms.capa import verify_capa_effectiveness
+        return verify_capa_effectiveness(self, user, confirmed, notes)
 
 
 
@@ -1755,6 +1386,8 @@ class ThreeDModel(SecureModel):
         2. Celery task converts/optimizes to GLB
         3. Status updated to 'COMPLETED' or 'FAILED'
     """
+
+    _is_versioned = True  # engineering judgment — product definition
 
     documents = GenericRelation('Tracker.Documents')
     """Related documents (2D drawings, revision notes, source CAD files, etc.)"""
@@ -1986,23 +1619,19 @@ class GeneratedReport(SecureModel):
         return f"{self.report_type} report by {user_name} at {self.generated_at}"
 
     def mark_completed(self, document):
-        """Mark report as successfully generated with associated document"""
-        self.document = document
-        self.status = self.ReportStatus.COMPLETED
-        self.save(update_fields=['document', 'status'])
+        """Thin wrapper — delegates to `services.qms.generated_report.mark_report_completed`."""
+        from Tracker.services.qms.generated_report import mark_report_completed
+        return mark_report_completed(self, document)
 
     def mark_failed(self, error_message: str):
-        """Mark report generation as failed"""
-        self.status = self.ReportStatus.FAILED
-        self.error_message = error_message
-        self.save(update_fields=['status', 'error_message'])
+        """Thin wrapper — delegates to `services.qms.generated_report.mark_report_failed`."""
+        from Tracker.services.qms.generated_report import mark_report_failed
+        return mark_report_failed(self, error_message)
 
     def mark_emailed(self, email_address: str):
-        """Record that the report was emailed"""
-        from django.utils import timezone
-        self.emailed_to = email_address
-        self.emailed_at = timezone.now()
-        self.save(update_fields=['emailed_to', 'emailed_at'])
+        """Thin wrapper — delegates to `services.qms.generated_report.mark_report_emailed`."""
+        from Tracker.services.qms.generated_report import mark_report_emailed
+        return mark_report_emailed(self, email_address)
 
 
 # ===== TRAINING & CALIBRATION =====
@@ -2013,6 +1642,8 @@ class TrainingType(SecureModel):
 
     Examples: 'Blueprint Reading', 'CMM Operation', 'Soldering IPC-A-610'
     """
+
+    _is_versioned = True  # engineering judgment — training curriculum spec
 
     documents = GenericRelation('Tracker.Documents')
     """Linked training materials, SOPs, or work instructions."""
@@ -2590,30 +2221,19 @@ class FPIRecord(SecureModel):
         return f"FPI for WO-{self.work_order.ERP_id} @ {self.step.name}"
 
     def pass_inspection(self, user, notes=''):
-        """Mark FPI as passed."""
-        self.status = FPIStatus.PASSED
-        self.result = FPIResult.PASS
-        self.inspected_by = user
-        self.inspected_at = timezone.now()
-        self.save()
+        """Thin wrapper — delegates to `services.qms.fpi.pass_fpi`."""
+        from Tracker.services.qms.fpi import pass_fpi
+        return pass_fpi(self, user, notes=notes)
 
     def fail_inspection(self, user, notes=''):
-        """Mark FPI as failed."""
-        self.status = FPIStatus.FAILED
-        self.result = FPIResult.FAIL
-        self.inspected_by = user
-        self.inspected_at = timezone.now()
-        self.save()
+        """Thin wrapper — delegates to `services.qms.fpi.fail_fpi`."""
+        from Tracker.services.qms.fpi import fail_fpi
+        return fail_fpi(self, user, notes=notes)
 
     def waive(self, user, reason):
-        """Waive the FPI requirement."""
-        if not reason or len(reason.strip()) < 10:
-            raise ValueError("Waive reason must be at least 10 characters")
-        self.status = FPIStatus.WAIVED
-        self.waived = True
-        self.waived_by = user
-        self.waive_reason = reason
-        self.save()
+        """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`."""
+        from Tracker.services.qms.fpi import waive_fpi
+        return waive_fpi(self, user, reason)
 
 
 class BlockType(models.TextChoices):
@@ -2719,43 +2339,19 @@ class StepOverride(SecureModel):
         return f"Override for {self.step_execution}: {self.get_block_type_display()}"
 
     def approve(self, user, expiry_hours=None):
-        """Approve the override request."""
-        from datetime import timedelta
-
-        self.approved_by = user
-        self.approved_at = timezone.now()
-        self.status = OverrideStatus.APPROVED
-
-        # Set expiry based on step configuration or parameter
-        if expiry_hours:
-            self.expires_at = timezone.now() + timedelta(hours=expiry_hours)
-        elif hasattr(self.step_execution.step, 'override_expiry_hours'):
-            hours = self.step_execution.step.override_expiry_hours
-            self.expires_at = timezone.now() + timedelta(hours=hours)
-
-        self.save()
+        """Thin wrapper — delegates to `services.mes.step_override.approve_step_override`."""
+        from Tracker.services.mes.step_override import approve_step_override
+        return approve_step_override(self, user, expiry_hours=expiry_hours)
 
     def reject(self, user, reason=''):
-        """Reject the override request."""
-        self.approved_by = user
-        self.approved_at = timezone.now()
-        self.status = OverrideStatus.REJECTED
-        if reason:
-            self.reason = f"{self.reason}\n\n[REJECTED]: {reason}"
-        self.save()
+        """Thin wrapper — delegates to `services.mes.step_override.reject_step_override`."""
+        from Tracker.services.mes.step_override import reject_step_override
+        return reject_step_override(self, user, reason=reason)
 
     def mark_used(self):
-        """Mark the override as used."""
-        if self.status != OverrideStatus.APPROVED:
-            raise ValueError("Only approved overrides can be used")
-        if self.expires_at and timezone.now() > self.expires_at:
-            self.status = OverrideStatus.EXPIRED
-            self.save()
-            raise ValueError("Override has expired")
-
-        self.used = True
-        self.used_at = timezone.now()
-        self.save()
+        """Thin wrapper — delegates to `services.mes.step_override.mark_override_used`."""
+        from Tracker.services.mes.step_override import mark_override_used
+        return mark_override_used(self)
 
     @property
     def is_valid(self):
@@ -3130,20 +2726,14 @@ class StepRollback(SecureModel):
         return f"Rollback {self.part} from {self.from_step} to {self.to_step}"
 
     def approve(self, user):
-        """Approve this rollback request."""
-        from django.utils import timezone
-        self.status = RollbackStatus.APPROVED
-        self.approved_by = user
-        self.approved_at = timezone.now()
-        self.save(update_fields=['status', 'approved_by', 'approved_at'])
+        """Thin wrapper — delegates to `services.mes.step_rollback.approve_step_rollback`."""
+        from Tracker.services.mes.step_rollback import approve_step_rollback
+        return approve_step_rollback(self, user)
 
     def reject(self, user):
-        """Reject this rollback request."""
-        from django.utils import timezone
-        self.status = RollbackStatus.REJECTED
-        self.approved_by = user
-        self.approved_at = timezone.now()
-        self.save(update_fields=['status', 'approved_by', 'approved_at'])
+        """Thin wrapper — delegates to `services.mes.step_rollback.reject_step_rollback`."""
+        from Tracker.services.mes.step_rollback import reject_step_rollback
+        return reject_step_rollback(self, user)
 
 
 # =============================================================================

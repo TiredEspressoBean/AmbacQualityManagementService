@@ -18,7 +18,7 @@ from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
     # MES Lite models
-    Orders, Parts, PartsStatus, WorkOrder, Steps, PartTypes, Processes,
+    Orders, Parts, PartsStatus, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
     StepExecution, ProcessStatus,
     # MES Standard models
     Equipments, EquipmentType,
@@ -194,12 +194,15 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     ]
 )
 class PartsByOrderView(ListAPIView):
+    # Class-level queryset for drf-spectacular introspection; real
+    # filtering in get_queryset.
+    queryset = Parts.all_tenants.none()
     serializer_class = PartsSerializer
     pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Parts.objects.none()
+            return Parts.all_tenants.none()
 
         order_id = self.kwargs["order_id"]
         # Use SecureManager for user filtering
@@ -370,6 +373,90 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         queryset = self.filter_queryset(self.get_queryset()).select_related('part_type')
         serializer = PartSelectSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PartsBulkIncrementInput",
+            fields={"ids": serializers.ListField(child=serializers.UUIDField())},
+        ),
+        responses={200: inline_serializer(
+            name="BulkResultResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+        description="Advance each listed part one step. Per-id errors captured.",
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_increment")
+    def bulk_increment(self, request):
+        from Tracker.services.mes.parts import bulk_increment as svc
+        ids = request.data.get("ids") or []
+        if not isinstance(ids, list):
+            return Response({"detail": "ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        results = svc(tenant_id=self.tenant.id if self.tenant else None,
+                      part_ids=ids, operator=request.user)
+        return Response({"results": [r.to_dict() for r in results]})
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PartsBulkRollbackInput",
+            fields={
+                "ids": serializers.ListField(child=serializers.UUIDField()),
+                "reason": serializers.CharField(required=False, allow_blank=True),
+                "override_id": serializers.UUIDField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="BulkRollbackResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_rollback")
+    def bulk_rollback(self, request):
+        from Tracker.services.mes.parts import bulk_rollback as svc
+        ids = request.data.get("ids") or []
+        if not isinstance(ids, list):
+            return Response({"detail": "ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        results = svc(
+            tenant_id=self.tenant.id if self.tenant else None,
+            part_ids=ids,
+            operator=request.user,
+            reason=request.data.get("reason", "") or "",
+            override_id=request.data.get("override_id"),
+        )
+        return Response({"results": [r.to_dict() for r in results]})
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PartsBulkSetStatusInput",
+            fields={
+                "ids": serializers.ListField(child=serializers.UUIDField()),
+                "status": serializers.ChoiceField(choices=PartsStatus.choices),
+                "reason": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="BulkSetStatusResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_set_status")
+    def bulk_set_status(self, request):
+        from Tracker.services.mes.parts import bulk_set_status as svc
+        ids = request.data.get("ids") or []
+        new_status = request.data.get("status")
+        if not isinstance(ids, list) or not new_status:
+            return Response({"detail": "ids (list) and status are required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            results = svc(
+                tenant_id=self.tenant.id if self.tenant else None,
+                part_ids=ids,
+                new_status=new_status,
+                operator=request.user,
+                reason=request.data.get("reason"),
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"results": [r.to_dict() for r in results]})
 
     @extend_schema(
         responses={200: PartTravelerResponseSerializer},
@@ -946,6 +1033,49 @@ class MilestoneTemplateViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant)
 
+    @extend_schema(
+        description=(
+            "Create a new revision of a MilestoneTemplate. "
+            "Returns the new version with incremented version number. "
+            "Milestone children are copied to the new version."
+        ),
+        request=inline_serializer(
+            name="CreateMilestoneTemplateRevisionInput",
+            fields={'change_description': serializers.CharField()},
+        ),
+        responses={201: None},
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """Create a new version of this milestone template.
+
+        PATCH routes content edits through create_new_version via the
+        serializer's update() method. This endpoint is the explicit
+        "create a new revision" path when callers want full control.
+        Returns 201 with the new version.
+        """
+        from Tracker.services.mes.milestone_template import (
+            create_new_milestone_template_version,
+        )
+        from Tracker.serializers.mes_lite import MilestoneTemplateSerializer
+
+        template = self.get_object()
+        change_description = request.data.get('change_description', '')
+
+        try:
+            new_version = create_new_milestone_template_version(
+                template,
+                user=request.user,
+                change_description=change_description,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            MilestoneTemplateSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class MilestoneViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD for milestones within templates. Admin-only."""
@@ -1010,10 +1140,33 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         # Optimize for list view - select related order, customer, company to avoid N+1
         if self.action == 'list':
+            from django.db.models import Count, Q, Exists, OuterRef, Prefetch
+            from Tracker.models import WorkOrderHold
+            completed_statuses = (
+                PartsStatus.COMPLETED, PartsStatus.SHIPPED, PartsStatus.IN_STOCK,
+                PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED, PartsStatus.RMA_CLOSED,
+            )
+            batch_parts = Parts.unscoped.filter(
+                work_order=OuterRef('pk'),
+                part_type__processes__is_batch_process=True,
+            )
+            open_holds = WorkOrderHold.objects.filter(
+                cleared_at__isnull=True, is_voided=False,
+            ).select_related('placed_by')
             qs = qs.select_related(
                 'related_order',
                 'related_order__customer',
-                'related_order__company'
+                'related_order__company',
+            ).prefetch_related(
+                Prefetch('holds', queryset=open_holds, to_attr='_open_holds_cache'),
+            ).annotate(
+                _completed_parts_count=Count(
+                    'parts',
+                    filter=Q(parts__part_status__in=completed_statuses),
+                    distinct=True,
+                ),
+                _is_batch_work_order=Exists(batch_parts),
+                _child_count=Count('child_workorders', distinct=True),
             )
 
         return qs
@@ -1298,6 +1451,193 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             'step_history': step_history
         })
 
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderSplitInput",
+            fields={
+                "reason": serializers.CharField(),
+                "new_erp_id": serializers.CharField(),
+                "part_ids": serializers.ListField(child=serializers.UUIDField(), required=False),
+                "quantity": serializers.IntegerField(required=False),
+                "target_process_id": serializers.UUIDField(required=False, allow_null=True),
+                "notes": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="WorkOrderSplitResponse",
+            fields={
+                "child_work_order_id": serializers.UUIDField(),
+                "child_erp_id": serializers.CharField(),
+            },
+        )},
+    )
+    @action(detail=True, methods=["post"], url_path="split")
+    def split(self, request, pk=None):
+        from Tracker.services.mes.work_order import split_work_order as svc
+        parent = self.get_object()
+        try:
+            child = svc(
+                parent_wo=parent,
+                reason=request.data.get("reason"),
+                actor=request.user,
+                new_erp_id=request.data.get("new_erp_id"),
+                part_ids=request.data.get("part_ids"),
+                quantity=request.data.get("quantity"),
+                target_process_id=request.data.get("target_process_id"),
+                notes=request.data.get("notes", "") or "",
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "child_work_order_id": str(child.id),
+            "child_erp_id": child.ERP_id,
+        })
+
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["post"], url_path="undo_split")
+    def undo_split(self, request, pk=None):
+        from Tracker.services.mes.work_order import undo_split as svc
+        child = self.get_object()
+        try:
+            parent = svc(child, actor=request.user)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "parent_work_order_id": str(parent.id),
+            "parent_erp_id": parent.ERP_id,
+        })
+
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderPlaceOnHoldInput",
+            fields={
+                "reason": serializers.CharField(),
+                "notes": serializers.CharField(required=False, allow_blank=True),
+                "expected_clear_at": serializers.DateTimeField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: dict},
+    )
+    @action(detail=True, methods=["post"], url_path="place_on_hold")
+    def place_on_hold(self, request, pk=None):
+        from Tracker.services.mes.work_order import place_on_hold as svc
+        wo = self.get_object()
+        try:
+            hold = svc(
+                wo,
+                reason=request.data.get("reason"),
+                placed_by=request.user,
+                notes=request.data.get("notes", "") or "",
+                expected_clear_at=request.data.get("expected_clear_at"),
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"id": str(hold.id), "placed_at": hold.placed_at, "reason": hold.reason})
+
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["post"], url_path="clear_hold")
+    def clear_hold(self, request, pk=None):
+        from Tracker.services.mes.work_order import clear_hold as svc
+        wo = self.get_object()
+        hold = svc(wo, cleared_by=request.user)
+        if hold is None:
+            return Response({"detail": "No open hold"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"id": str(hold.id), "cleared_at": hold.cleared_at})
+
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderBulkPlaceOnHoldInput",
+            fields={
+                "ids": serializers.ListField(child=serializers.UUIDField()),
+                "reason": serializers.CharField(),
+                "notes": serializers.CharField(required=False, allow_blank=True),
+                "expected_clear_at": serializers.DateTimeField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="WorkOrderBulkPlaceOnHoldResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_place_on_hold")
+    def bulk_place_on_hold(self, request):
+        from Tracker.services.mes.work_order import bulk_place_on_hold as svc
+        ids = request.data.get("ids") or []
+        reason = request.data.get("reason")
+        if not isinstance(ids, list) or not reason:
+            return Response({"detail": "ids (list) and reason are required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            results = svc(
+                tenant_id=self.tenant.id if self.tenant else None,
+                work_order_ids=ids,
+                reason=reason,
+                placed_by=request.user,
+                notes=request.data.get("notes", "") or "",
+                expected_clear_at=request.data.get("expected_clear_at"),
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"results": [r.to_dict() for r in results]})
+
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderBulkClearHoldInput",
+            fields={"ids": serializers.ListField(child=serializers.UUIDField())},
+        ),
+        responses={200: inline_serializer(
+            name="WorkOrderBulkClearHoldResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_clear_hold")
+    def bulk_clear_hold(self, request):
+        from Tracker.services.mes.work_order import bulk_clear_hold as svc
+        ids = request.data.get("ids") or []
+        if not isinstance(ids, list):
+            return Response({"detail": "ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        results = svc(
+            tenant_id=self.tenant.id if self.tenant else None,
+            work_order_ids=ids,
+            cleared_by=request.user,
+        )
+        return Response({"results": [r.to_dict() for r in results]})
+
+    @extend_schema(
+        request=inline_serializer(
+            name="WorkOrderBulkTransitionInput",
+            fields={
+                "ids": serializers.ListField(child=serializers.UUIDField()),
+                "status": serializers.ChoiceField(choices=WorkOrderStatus.choices),
+                "notes": serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="WorkOrderBulkTransitionResponse",
+            fields={"results": serializers.ListField(child=serializers.DictField())},
+        )},
+        description="Transition multiple work orders. Per-id errors captured.",
+    )
+    @action(detail=False, methods=["post"], url_path="bulk_transition")
+    def bulk_transition(self, request):
+        from Tracker.services.mes.work_order import bulk_transition as svc
+        ids = request.data.get("ids") or []
+        new_status = request.data.get("status")
+        if not isinstance(ids, list) or not new_status:
+            return Response({"detail": "ids (list) and status are required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            results = svc(
+                tenant_id=self.tenant.id if self.tenant else None,
+                work_order_ids=ids,
+                new_status=new_status,
+                actor=request.user,
+                notes=request.data.get("notes"),
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"results": [r.to_dict() for r in results]})
+
 
 # ===== STEPS & PROCESS VIEWSETS =====
 
@@ -1367,6 +1707,47 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
         from ..serializers.qms import StepWithResolvedRulesSerializer
         serializer = StepWithResolvedRulesSerializer(step, context={'request': request})
         return Response(serializer.data)
+
+    @extend_schema(
+        request=inline_serializer(
+            name='CreateStepRevisionInput',
+            fields={'change_description': serializers.CharField()},
+        ),
+        responses={201: StepsSerializer},
+        description=(
+            "Create a new revision of a Step. "
+            "All child rows (StepMeasurementRequirement, StepRequirement, and "
+            "step-owned TrainingRequirement) are copied to the new version. "
+            "Returns the new version with incremented version number."
+        ),
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """Create a new version of this step.
+
+        PATCH routes content edits through create_new_version via the
+        serializer's update() method. This endpoint is the explicit
+        "create a new revision" path when callers want full control.
+        Returns 201 with the new version.
+        """
+        from Tracker.services.mes.steps import create_new_step_version
+
+        step = self.get_object()
+        change_description = request.data.get('change_description', '')
+
+        try:
+            new_version = create_new_step_version(
+                step,
+                user=request.user,
+                change_description=change_description,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            StepsSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # ===== STEP EXECUTION VIEWSET =====
@@ -1659,6 +2040,53 @@ class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs.select_related("part_type").prefetch_related("process_steps__step")
+
+    @extend_schema(
+        description=(
+            "Create a new revision of an APPROVED or DEPRECATED process. "
+            "Returns the new DRAFT with incremented version. Children "
+            "(ProcessStep, StepEdge, current Documents) are copied."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["change_description"],
+                "properties": {
+                    "change_description": {
+                        "type": "string",
+                        "description": "Human narrative of what changed and why (ISO 9001 4.4)."
+                    },
+                },
+            }
+        },
+        responses={201: ProcessesSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """Create a new version of this process.
+
+        PATCH on an APPROVED process is blocked by the serializer's
+        editability gate; this endpoint is the explicit "create a new
+        revision" path. Returns 201 with the new DRAFT.
+        """
+        from Tracker.services.mes.processes import create_new_process_version
+
+        process = self.get_object()
+        change_description = request.data.get('change_description', '')
+
+        try:
+            new_version = create_new_process_version(
+                process,
+                user=request.user,
+                change_description=change_description,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ProcessesSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 @extend_schema(parameters=[

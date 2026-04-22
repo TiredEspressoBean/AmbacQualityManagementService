@@ -11,6 +11,7 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import SPCBaseline, ChartType, BaselineStatus, MeasurementDefinition
+from Tracker.services.mes.spc_baseline import freeze_spc_baseline
 
 
 class SPCBaselineSerializer(serializers.ModelSerializer):
@@ -59,7 +60,7 @@ class SPCBaselineSerializer(serializers.ModelSerializer):
             # Audit
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'frozen_at', 'superseded_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'version', 'frozen_at', 'superseded_at', 'created_at', 'updated_at']
 
 
 class SPCBaselineListSerializer(serializers.ModelSerializer):
@@ -140,30 +141,4 @@ class SPCBaselineFreezeSerializer(serializers.Serializer):
     def create(self, validated_data):
         """Create a new baseline (automatically supersedes existing active baseline)."""
         user = self.context['request'].user
-
-        baseline = SPCBaseline.objects.create(
-            measurement_definition_id=validated_data['measurement_definition_id'],
-            chart_type=validated_data['chart_type'],
-            subgroup_size=validated_data['subgroup_size'],
-            # X-bar limits
-            xbar_ucl=validated_data.get('xbar_ucl'),
-            xbar_cl=validated_data.get('xbar_cl'),
-            xbar_lcl=validated_data.get('xbar_lcl'),
-            range_ucl=validated_data.get('range_ucl'),
-            range_cl=validated_data.get('range_cl'),
-            range_lcl=validated_data.get('range_lcl'),
-            # I-MR limits
-            individual_ucl=validated_data.get('individual_ucl'),
-            individual_cl=validated_data.get('individual_cl'),
-            individual_lcl=validated_data.get('individual_lcl'),
-            mr_ucl=validated_data.get('mr_ucl'),
-            mr_cl=validated_data.get('mr_cl'),
-            # Metadata
-            sample_count=validated_data.get('sample_count', 0),
-            notes=validated_data.get('notes', ''),
-            # Tracking
-            frozen_by=user,
-            status=BaselineStatus.ACTIVE,
-        )
-
-        return baseline
+        return freeze_spc_baseline(validated_data, user=user)

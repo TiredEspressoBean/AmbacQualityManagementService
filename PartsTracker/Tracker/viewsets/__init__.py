@@ -196,8 +196,15 @@ from .life_tracking import (
     LifeTrackingViewSet,
 )
 
+from .notifications import (
+    NotificationRuleViewSet,
+    NotificationEventTypeCatalogView,
+)
+
 
 __all__ = [
+    'NotificationRuleViewSet',
+    'NotificationEventTypeCatalogView',
     # Base - Tenant Scoping
     'TenantAwareMixin',
     'TenantScopedMixin',

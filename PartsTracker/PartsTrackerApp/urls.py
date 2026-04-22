@@ -295,8 +295,12 @@ router.register(r'TrainingRequirements', TrainingRequirementViewSet, basename='T
 # ===== CALIBRATION VIEWSETS =====
 router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')
 
+# ===== NOTIFICATION RULES =====
+router.register(r'NotificationRules', NotificationRuleViewSet, basename='NotificationRules')
+
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),
     path('api/', include(router.urls)),  # ✅ Adds /api/TrackerOrders/
-    path("api/orders/<uuid:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list")
+    path("api/orders/<uuid:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list"),
+    path("api/NotificationEventTypes/", NotificationEventTypeCatalogView.as_view(), name="notification-event-types"),
 ]

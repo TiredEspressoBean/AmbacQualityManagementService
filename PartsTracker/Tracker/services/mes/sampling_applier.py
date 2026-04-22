@@ -1,3 +1,11 @@
+"""
+Sampling rule evaluation. Given a Part, resolves which ruleset applies
+(primary or fallback trigger), picks a matching rule, logs the decision.
+Re-evaluation of remaining parts in a work order also lives here.
+"""
+from __future__ import annotations
+
+
 class SamplingFallbackApplier:
     """
     Queryset-based sampling system for clarity and auditability.

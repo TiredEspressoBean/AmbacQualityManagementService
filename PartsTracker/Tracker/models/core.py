@@ -462,6 +462,31 @@ class SecureQuerySet(models.QuerySet):
         .for_secure_access(user)   - Apply all security filters
     """
 
+    def bulk_create(self, objs, *args, **kwargs):
+        """Auto-inject tenant from the ContextVar on any obj in the batch
+        that doesn't already have one. bulk_create bypasses `save()` so
+        the SecureModel save-side auto-inject doesn't fire — handle it
+        here. Callers who want a different tenant for a subset of rows
+        can set `obj.tenant_id` explicitly before calling bulk_create.
+        """
+        from Tracker.utils.tenant_context import current_tenant_var
+        tenant_id = current_tenant_var.get()
+        if tenant_id is not None and any(
+            f.name == 'tenant' for f in self.model._meta.get_fields()
+        ):
+            for obj in objs:
+                if obj.tenant_id is None:
+                    obj.tenant_id = tenant_id
+        return super().bulk_create(objs, *args, **kwargs)
+
+    def for_tenant(self, tenant):
+        """Explicit tenant filter. Chainable off any manager (`unscoped`,
+        `all_tenants`, or the auto-scoped `objects`). Useful for management
+        commands and cross-tenant admin paths that know which tenant they
+        want. Accepts a Tenant instance or a tenant id.
+        """
+        return self.filter(tenant=tenant)
+
     # =========================================================================
     # Export Control Filtering (ITAR/EAR/Classification)
     # =========================================================================
@@ -777,6 +802,19 @@ class SecureQuerySet(models.QuerySet):
         """Get only current versions"""
         return self.filter(is_current_version=True)
 
+    def effective(self):
+        """Rows currently in force.
+
+        Default: the latest version in each chain (`is_current_version=True`).
+        Composites with an approval lifecycle (Processes, Steps, BOM, etc.)
+        override on their own queryset to compose the status gate
+        (e.g. `is_current_version=True AND status=APPROVED`).
+
+        Consumers that want "the right version to use right now" should
+        call `Model.objects.effective()` rather than manually filtering.
+        """
+        return self.current_versions()
+
     def all_versions(self):
         """Get all versions (current and old)"""
         return self
@@ -808,12 +846,6 @@ class SecureManager(models.Manager):
     explicit `unscoped` / `all_tenants` escape-hatch managers.
     """
 
-    # Define which models support customer filtering (Upgrade #4: Model Registration)
-    RELATIONSHIP_FILTERABLE_MODELS = {
-        'orders', 'parts', 'workorder', 'qualityreports',
-        'documents', 'docchunk', 'user', 'companies'
-    }
-
     def get_queryset(self):
         from Tracker.utils.tenant_context import current_tenant_var
 
@@ -834,166 +866,13 @@ class SecureManager(models.Manager):
             )
         return qs.filter(tenant_id=tenant_id)
 
-    # User-based filtering
+    # User-based filtering delegates to queryset so the same logic is
+    # available in chains (e.g. `Model.unscoped.for_tenant(t).for_user(u)`).
     def for_user(self, user, include_archived=False):
-        """
-        Apply user-based filtering for data scoping.
+        return self.get_queryset().for_user(user, include_archived=include_archived)
 
-        Data scoping logic:
-        - Superuser: all data (optionally filtered by _current_tenant)
-        - has view_{model} + full_tenant_access: all records of that type in tenant
-        - has view_{model} only: filter by Order relationships (customer/viewers)
-        - no view_{model} permission: no access
-
-        The `full_tenant_access` permission grants visibility to all tenant data.
-        Without it, users only see data related to their orders (via Order.customer
-        and Order.viewers). This allows the same user to have different visibility
-        in different tenants based on their group membership.
-
-        Args:
-            user: The user to filter for
-            include_archived: If True, include soft-deleted records
-        """
-        # Start with archived filtering
-        if include_archived:
-            queryset = self.get_queryset()
-        else:
-            queryset = self.active()
-
-        model_name = self.model._meta.model_name
-
-        # Superuser bypasses all checks (but still apply security filters)
-        if user.is_superuser:
-            tenant = getattr(user, '_current_tenant', None)
-            if tenant:
-                queryset = queryset.filter(tenant=tenant)
-            return self._apply_security_filters(queryset, user, model_name)
-
-        # Staff get read-only access to any tenant (for support)
-        # They bypass relationship-based filtering but still get security filters
-        if user.is_staff:
-            tenant = getattr(user, '_current_tenant', None)
-            if tenant:
-                queryset = queryset.filter(tenant=tenant)
-            return self._apply_security_filters(queryset, user, model_name)
-
-        # Check for view permission on this model
-        # Django permissions are named view_{model_name} without trailing 's'
-        view_perm = f'view_{model_name}'
-        if not user.has_tenant_perm(view_perm):
-            # No permission to view this model at all
-            return queryset.none()
-
-        # User can view this model - check if they have full tenant access
-        if user.has_tenant_perm('full_tenant_access'):
-            return self._apply_security_filters(queryset, user, model_name)
-
-        # Has view permission but not full access - filter by Order relationships
-        return self._filter_by_relationship(queryset, user, model_name)
-
-    def _apply_security_filters(self, queryset, user, model_name):
-        """Apply export control and classification filters."""
-        queryset = queryset.for_export_control(user)
-        if model_name in ['documents', 'docchunk']:
-            queryset = queryset.for_classification(user)
-        return queryset
-
-    def _filter_by_relationship(self, queryset, user, model_name):
-        """
-        Filter queryset to records related to user's orders.
-
-        Used for users without broad view permissions. Access is derived from
-        Order.customer and Order.viewers - the source of truth for object-level
-        access. Child models derive access via FK joins to Order.
-        """
-        from django.db.models import Q
-        from django.contrib.contenttypes.models import ContentType
-
-        # Models that support relationship-based filtering
-        if model_name not in self.RELATIONSHIP_FILTERABLE_MODELS:
-            return queryset.none()
-
-        # Get customer's accessible order IDs (used by multiple filters)
-        def get_accessible_order_ids():
-            from Tracker.models import Orders
-            # tenant-safe: runs inside tenant-scoped request context with RLS enforced
-            return Orders.objects.filter(
-                Q(customer=user) | Q(viewers=user)
-            ).values_list('id', flat=True)
-
-        if model_name == 'orders':
-            return queryset.filter(Q(customer=user) | Q(viewers=user)).distinct()
-
-        elif model_name == 'parts':
-            return queryset.filter(
-                Q(order__customer=user) | Q(order__viewers=user)
-            ).select_related('order').distinct()
-
-        elif model_name == 'workorder':
-            return queryset.filter(
-                Q(related_order__customer=user) | Q(related_order__viewers=user)
-            ).select_related('related_order').distinct()
-
-        elif model_name == 'qualityreports':
-            return queryset.filter(
-                Q(part__order__customer=user) | Q(part__order__viewers=user)
-            ).select_related('part__order').distinct()
-
-        elif model_name == 'documents':
-            # Customer sees PUBLIC docs attached to objects they can access
-            from Tracker.models import Orders, WorkOrder, Parts, PartTypes
-
-            accessible_order_ids = get_accessible_order_ids()
-
-            # Get content types for linkable objects
-            order_ct = ContentType.objects.get_for_model(Orders)
-            workorder_ct = ContentType.objects.get_for_model(WorkOrder)
-            part_ct = ContentType.objects.get_for_model(Parts)
-            parttype_ct = ContentType.objects.get_for_model(PartTypes)
-
-            # Get IDs of accessible related objects
-            # tenant-safe: filtering by accessible_order_ids (already derived from RLS-scoped query)
-            accessible_workorder_ids = WorkOrder.objects.filter(
-                related_order_id__in=accessible_order_ids
-            ).values_list('id', flat=True)
-
-            # tenant-safe: filtering by accessible_order_ids
-            accessible_part_ids = Parts.objects.filter(
-                order_id__in=accessible_order_ids
-            ).values_list('id', flat=True)
-
-            # Part types from their orders
-            # tenant-safe: filtering by accessible_order_ids
-            accessible_parttype_ids = PartTypes.objects.filter(
-                parts__order_id__in=accessible_order_ids
-            ).values_list('id', flat=True)
-
-            # Filter: PUBLIC classification AND attached to accessible object
-            return queryset.filter(
-                classification='PUBLIC'
-            ).filter(
-                Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
-                Q(content_type=workorder_ct, object_id__in=[str(id) for id in accessible_workorder_ids]) |
-                Q(content_type=part_ct, object_id__in=[str(id) for id in accessible_part_ids]) |
-                Q(content_type=parttype_ct, object_id__in=[str(id) for id in accessible_parttype_ids])
-            ).distinct()
-
-        elif model_name == 'docchunk':
-            # DocChunks follow the same logic via their parent document
-            from Tracker.models import Documents
-            accessible_doc_ids = Documents.objects.for_user(user).values_list('id', flat=True)
-            return queryset.filter(doc_id__in=accessible_doc_ids).select_related('doc')
-
-        elif model_name == 'user':
-            return queryset.filter(id=user.id)
-
-        elif model_name == 'companies':
-            if hasattr(user, 'parent_company') and user.parent_company:
-                return queryset.filter(id=user.parent_company.id)
-            return queryset.none()
-
-        return queryset.none()
-
+    def for_tenant(self, tenant):
+        return self.get_queryset().for_tenant(tenant)
 
     # Convenience methods that delegate to queryset
     def active(self):
@@ -1007,6 +886,11 @@ class SecureManager(models.Manager):
     def current_versions(self):
         """Get only current versions"""
         return self.get_queryset().current_versions()
+
+    def effective(self):
+        """Rows currently in force. Delegates to queryset; composites
+        override on their queryset to compose an approval-status gate."""
+        return self.get_queryset().effective()
 
     def active_current(self):
         """Get active objects that are current versions"""
@@ -1053,6 +937,24 @@ class SecureModel(models.Model):
         - created_at: Set to UTC now on creation. Can be overridden for data imports.
         - updated_at: Automatically updated to UTC now on every save.
         - deleted_at: Set to UTC now on soft delete.
+
+    PK gotcha — READ BEFORE WRITING `save()` OVERRIDES:
+        `id` has `default=uuid7`, which Django calls at Python-instantiation
+        time. That means `self.pk` is ALWAYS populated before save — even
+        on a brand-new unsaved row. The common Django idioms for detecting
+        an insert are WRONG for SecureModel subclasses:
+
+            if not self.pk:          # always False — never fires
+            if self.pk is None:      # always False — never fires
+            if self.pk:              # always True — fires on insert too
+
+        Use `self._state.adding` instead:
+
+            if self._state.adding:   # True only on insert — correct
+
+        This was a source of latent bugs in several `save()` overrides.
+        If you're deciding whether a row is new, `_state.adding` is the
+        only correct check.
     """
 
     # Primary key - UUIDv7 for time-ordered, globally unique IDs
@@ -1120,6 +1022,30 @@ class SecureModel(models.Model):
             models.Index(fields=['tenant', 'created_at']),
         ]
 
+    def save(self, *args, **kwargs):
+        """Auto-inject tenant from the ContextVar on initial save if the
+        caller didn't supply one.
+
+        Covers every creation path that goes through save() — `.objects.create()`,
+        direct `Model(...).save()`, `get_or_create` / `update_or_create` on the
+        create branch. bulk_create bypasses save(); that path is handled in
+        SecureQuerySet.bulk_create.
+
+        Guarded by `_state.adding` so re-saves don't clobber an intentionally
+        assigned tenant (e.g., a management command that explicitly set
+        `obj.tenant = other_tenant` then saved).
+
+        Explicit `tenant=` (or `tenant_id=`) at construction always wins —
+        this only fills in the gap when neither was provided and a tenant
+        ContextVar is active.
+        """
+        if self._state.adding and self.tenant_id is None:
+            from Tracker.utils.tenant_context import current_tenant_var
+            tenant_id = current_tenant_var.get()
+            if tenant_id is not None:
+                self.tenant_id = tenant_id
+        super().save(*args, **kwargs)
+
     def delete(self, using=None, keep_parents=False):
         """Soft delete - django-auditlog will automatically log this"""
         if self.archived:
@@ -1180,42 +1106,152 @@ class SecureModel(models.Model):
             "Permanent deletion requires retention policy system with legal hold support."
         )
 
-    def create_new_version(self, **field_updates):
-        """Create a new version of this object"""
-        if not self.is_current_version:
-            raise ValueError("Can only create new versions from current version")
+    # Fields that must not be copied forward when versioning — the new
+    # version is a fresh row that gets its own id/timestamps/soft-delete
+    # state, and we rewrite version / previous_version / is_current_version
+    # ourselves below.
+    _VERSIONING_EXCLUDE_FIELDS = (
+        'id',
+        'created_at',
+        'archived',
+        'deleted_at',
+        'version',
+        'previous_version',
+        'is_current_version',
+    )
 
-        # Mark current version as not current
-        self.is_current_version = False
-        self.save()
+    # Opt-in versioning flag. Default False: SecureModel subclasses are
+    # NOT versioned and calling `create_new_version` raises. The ~22
+    # controlled-document / spec models per VERSIONING_ARCHITECTURE.md
+    # set `_is_versioned = True` on their class to opt in. Composites
+    # that override `create_new_version` (Processes, BOM, etc.) also set
+    # the flag so their `super().create_new_version(...)` call doesn't
+    # hit the gate.
+    _is_versioned: bool = False
 
-        # Create new version
-        new_data = {}
-        for field in self._meta.fields:
-            if field.name not in ['id', 'created_at', 'version', 'previous_version', 'is_current_version']:
-                new_data[field.name] = getattr(self, field.name)
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Create a new version of this row and return it.
 
-        # Apply updates
-        new_data.update(field_updates)
-        new_data.update({'version': self.version + 1, 'previous_version': self, 'is_current_version': True, })
+        Atomic: the old row's `is_current_version` flip and the new row's
+        insert happen in one transaction, with a `SELECT FOR UPDATE` lock
+        on the old row to block write-skew under concurrent calls.
 
-        new_version = self.__class__.objects.create(**new_data)
+        Fires the `revision_created` signal on success so downstream
+        consumers (webhooks, analytics, training-requirement auto-creation,
+        AI change-summary generation, etc.) can subscribe without
+        monkey-patching composite service functions.
+
+        Args:
+            user: User triggering the revision (may be None for system/
+                management-command calls). Forwarded to the signal only;
+                not stored on the model row by default.
+            change_description: Human narrative of what changed and why.
+                Enforcement as "required" lives at the composite service
+                layer (ISO/IATF audit expectation). Base allows None for
+                legacy/internal callers.
+            **field_updates: Field overrides for the new version. Anything
+                not overridden is copied forward from the source row.
+
+        Raises:
+            ValueError: source is not the current version, or is archived.
+            NotImplementedError: the model is not versioned (the class did
+                not set `_is_versioned = True`). This is the default for
+                SecureModel subclasses — only controlled-document / spec
+                models opt in.
+        """
+        from django.db import transaction
+        from Tracker.signals_versioning import revision_created
+
+        if not type(self)._is_versioned:
+            raise NotImplementedError(
+                f"{type(self).__name__} is not a versioned model. "
+                f"SecureModel's `create_new_version` requires opt-in via "
+                f"`_is_versioned = True` on the class. This row records "
+                f"transactional or operational data, not a controlled "
+                f"specification — edit in place and rely on django-auditlog "
+                f"for change history."
+            )
+
+        with transaction.atomic():
+            # Re-read with a row lock to prevent two concurrent callers
+            # from both observing is_current_version=True and both
+            # creating a new v2.
+            locked = type(self).all_tenants.select_for_update().get(pk=self.pk)
+
+            if not locked.is_current_version:
+                raise ValueError("Can only create new versions from the current version")
+            if locked.archived:
+                raise ValueError("Cannot create a new version from an archived record")
+
+            locked.is_current_version = False
+            locked.save(update_fields=['is_current_version', 'updated_at'])
+
+            new_data = {}
+            for field in self._meta.fields:
+                if field.name in self._VERSIONING_EXCLUDE_FIELDS:
+                    continue
+                new_data[field.name] = getattr(locked, field.name)
+
+            new_data.update(field_updates)
+            new_data.update({
+                'version': locked.version + 1,
+                'previous_version': locked,
+                'is_current_version': True,
+            })
+
+            # If the model has a `change_description` concrete field
+            # (e.g. Processes), write the caller's narrative there for
+            # audit persistence. Check `field_updates` (caller's explicit
+            # overrides), not `new_data` (which contains the scalar copy
+            # from the old row — would overwrite with the old row's
+            # stale change_description otherwise).
+            if (
+                change_description is not None
+                and 'change_description' not in field_updates
+                and any(f.name == 'change_description' for f in self._meta.fields)
+            ):
+                new_data['change_description'] = change_description
+
+            # Sync our in-memory copy so the caller's `self` reflects the
+            # now-historical state.
+            self.is_current_version = False
+
+            new_version = type(self).objects.create(**new_data)
+
+        # Emitted outside the transaction so handlers observe committed
+        # state. Use send_robust so one misbehaving receiver can't abort
+        # the version operation post-hoc.
+        revision_created.send_robust(
+            sender=type(new_version),
+            old_version=locked,
+            new_version=new_version,
+            user=user,
+            change_description=change_description,
+        )
         return new_version
 
     def get_version_history(self):
-        """Get all versions in chronological order"""
-        # Find the root version
+        """Return every version of this row in chronological order.
+
+        Cycle-safe via a `seen` set — a corrupted `previous_version` loop
+        won't hang. Still O(N) queries; refactor to a recursive CTE if
+        chains grow long enough to matter.
+        """
+        seen = set()
+
         root = self
-        while root.previous_version:
+        while root.previous_version and root.previous_version.pk not in seen:
+            seen.add(root.pk)
             root = root.previous_version
 
-        # Build version chain
+        seen = {root.pk}
         versions = [root]
         current = root
         while True:
-            next_version = self.__class__.objects.filter(previous_version=current).first()
-            if not next_version:
+            next_version = type(self).all_tenants.filter(previous_version=current).first()
+            if not next_version or next_version.pk in seen:
                 break
+            seen.add(next_version.pk)
             versions.append(next_version)
             current = next_version
 
@@ -1290,6 +1326,8 @@ class Companies(SecureModel):
 
     Stores identifying information and external CRM reference data.
     """
+
+    _is_versioned = True  # engineering judgment — supplier qualification
 
     documents = GenericRelation('Tracker.Documents')
     """Documents attached to this company (agreements, NDAs, certifications, approved vendor docs, etc.)"""
@@ -1553,14 +1591,14 @@ class User(AbstractUser):
         super().save(*args, **kwargs)
 
     def deactivate(self, reason=""):
-        """Deactivate user account"""
-        self.is_active = False
-        self.save()
+        """Thin wrapper — delegates to `services.core.user.deactivate_user`."""
+        from Tracker.services.core.user import deactivate_user
+        return deactivate_user(self)
 
     def reactivate(self):
-        """Reactivate user account"""
-        self.is_active = True
-        self.save()
+        """Thin wrapper — delegates to `services.core.user.reactivate_user`."""
+        from Tracker.services.core.user import reactivate_user
+        return reactivate_user(self)
 
     # =========================================================================
     # Tenant-Scoped Group Methods
@@ -1629,131 +1667,28 @@ class User(AbstractUser):
         ).exists()
 
     def add_to_tenant_group(self, group_or_name, tenant=None, granted_by=None):
-        """
-        Add user to a TenantGroup within the specified tenant.
-
-        Args:
-            group_or_name: TenantGroup instance or group name string
-            tenant: Tenant instance. Defaults to user's resolved tenant if not specified.
-            granted_by: User who granted the membership (for audit trail)
-
-        Returns:
-            UserRole instance (created or existing)
-
-        Raises:
-            ValueError: If tenant cannot be resolved
-            TenantGroup.DoesNotExist: If group_name doesn't exist in tenant
-        """
-        from Tracker.models import TenantGroup, UserRole  # Late import to avoid circular reference
-        tenant = self._resolve_tenant(tenant)
-        if not tenant:
-            raise ValueError("Tenant must be specified for group membership")
-
-        if isinstance(group_or_name, str):
-            group = TenantGroup.objects.get(name=group_or_name, tenant=tenant)
-        else:
-            group = group_or_name
-
-        role, _ = UserRole.objects.get_or_create(
-            user=self,
-            group=group,
-            defaults={'granted_by': granted_by}
-        )
-        # Clear cached group names if present
-        if hasattr(self, '_cached_tenant_group_names'):
-            delattr(self, '_cached_tenant_group_names')
-        self.clear_permission_cache(tenant)
-        return role
+        """Thin wrapper — delegates to `services.core.user.add_user_to_tenant_group`."""
+        from Tracker.services.core.user import add_user_to_tenant_group
+        return add_user_to_tenant_group(self, group_or_name, tenant=tenant, granted_by=granted_by)
 
     def remove_from_tenant_group(self, group_or_name, tenant=None):
-        """
-        Remove user from a TenantGroup within the specified tenant.
-
-        Args:
-            group_or_name: TenantGroup instance or group name string
-            tenant: Tenant instance. Defaults to user's resolved tenant if not specified.
-
-        Returns:
-            Number of role assignments deleted (0 or 1)
-        """
-        from Tracker.models import UserRole  # Late import to avoid circular reference
-        tenant = self._resolve_tenant(tenant)
-        if not tenant:
-            return 0
-
-        if isinstance(group_or_name, str):
-            filter_kwargs = {'user': self, 'group__name': group_or_name, 'group__tenant': tenant}
-        else:
-            filter_kwargs = {'user': self, 'group': group_or_name}
-
-        deleted_count, _ = UserRole.objects.filter(**filter_kwargs).delete()
-        # Clear cached group names if present
-        if hasattr(self, '_cached_tenant_group_names'):
-            delattr(self, '_cached_tenant_group_names')
-        self.clear_permission_cache(tenant)
-        return deleted_count
+        """Thin wrapper — delegates to `services.core.user.remove_user_from_tenant_group`."""
+        from Tracker.services.core.user import remove_user_from_tenant_group
+        return remove_user_from_tenant_group(self, group_or_name, tenant=tenant)
 
     # =========================================================================
     # Convenience Methods (using Groups constants)
     # =========================================================================
 
     def grant_group(self, group_name, tenant=None, granted_by=None):
-        """
-        Add user to a TenantGroup, creating the group if it doesn't exist.
-
-        This is the preferred method - uses group name constants and auto-creates groups.
-
-        Args:
-            group_name: Group name string (use Groups.PRODUCTION_OPERATOR, etc.)
-            tenant: Tenant instance. Defaults to user's resolved tenant if not specified.
-            granted_by: User who granted the membership (for audit trail)
-
-        Returns:
-            Tuple of (UserRole, created_boolean)
-
-        Example:
-            from Tracker.groups import Groups
-            user.grant_group(Groups.PRODUCTION_OPERATOR, tenant)
-        """
-        from Tracker.models import TenantGroup, UserRole
-
-        tenant = self._resolve_tenant(tenant)
-        if not tenant:
-            raise ValueError("Tenant must be specified for group membership")
-
-        group, _ = TenantGroup.objects.get_or_create(
-            name=group_name,
-            tenant=tenant,
-            defaults={'description': f'Auto-created group: {group_name}', 'is_custom': True}
-        )
-
-        role, created = UserRole.objects.get_or_create(
-            user=self,
-            group=group,
-            defaults={'granted_by': granted_by}
-        )
-
-        # Clear cached group names if present
-        if hasattr(self, '_cached_tenant_group_names'):
-            delattr(self, '_cached_tenant_group_names')
-        self.clear_permission_cache(tenant)
-
-        return role, created
+        """Thin wrapper — delegates to `services.core.user.grant_group_to_user`."""
+        from Tracker.services.core.user import grant_group_to_user
+        return grant_group_to_user(self, group_name, tenant=tenant, granted_by=granted_by)
 
     def revoke_group(self, group_name, tenant=None):
-        """
-        Remove user from a group in a tenant.
-
-        Alias for remove_from_tenant_group() with consistent naming.
-
-        Args:
-            group_name: Group name string
-            tenant: Tenant instance. Defaults to self.tenant if not specified.
-
-        Returns:
-            Number of memberships deleted (0 or 1)
-        """
-        return self.remove_from_tenant_group(group_name, tenant)
+        """Thin wrapper — delegates to `services.core.user.revoke_group_from_user`."""
+        from Tracker.services.core.user import revoke_group_from_user
+        return revoke_group_from_user(self, group_name, tenant)
 
     def has_group(self, group_names, tenant=None):
         """
@@ -1949,16 +1884,9 @@ class User(AbstractUser):
         return all(perm in user_perms for perm in perms)
 
     def clear_permission_cache(self, tenant=None):
-        """
-        Clear cached permissions for this user.
-
-        Call this when user's roles or group permissions change.
-        """
-        from django.core.cache import cache
-
-        tenant = tenant or self.tenant
-        if tenant:
-            cache.delete(f'user_{self.id}_tenant_{tenant.id}_perms')
+        """Thin wrapper — delegates to `services.core.user.clear_user_permission_cache`."""
+        from Tracker.services.core.user import clear_user_permission_cache
+        return clear_user_permission_cache(self, tenant)
 
     @classmethod
     def create_tenant_user(cls, username, tenant, group=None, email=None, password=None, **kwargs):
@@ -2137,7 +2065,7 @@ class TenantGroupMembership(models.Model):
         ).exists()
 
 
-class NotificationTask(models.Model):
+class NotificationTask(SecureModel):
     """
     Unified notification task supporting both recurring (fixed interval)
     and escalating (deadline-based) notifications.
@@ -2147,15 +2075,28 @@ class NotificationTask(models.Model):
     Examples:
     - Weekly order reports: interval_type='FIXED', day_of_week=4, time='15:00', interval_weeks=1
     - CAPA reminders: interval_type='DEADLINE_BASED', deadline=due_date, escalation_tiers=[...]
+
+    Tenant-scoped: every notification belongs to a tenant (resolved from
+    the recipient's tenant at creation time via ContextVar auto-inject).
     """
 
-    # Notification types (hardcoded for now, can move to separate table later if needed)
+    # Keep the existing integer primary key — overriding SecureModel's
+    # UUIDField default. Converting to UUID would invalidate the existing
+    # notification_task table without any benefit (no external FKs).
+    id = models.BigAutoField(primary_key=True)
+
+    # Notification types. Event-driven types (STEP_FAILURE, etc.) are
+    # added here and must match a key in
+    # Tracker.notifications.handlers.NOTIFICATION_HANDLERS plus an entry
+    # in NotificationRule's NotificationEventType if they are fired via
+    # the rule-based dispatcher.
     NOTIFICATION_TYPES = [
         ('WEEKLY_REPORT', 'Weekly Order Report'),
         ('CAPA_REMINDER', 'CAPA Reminder'),
         ('APPROVAL_REQUEST', 'Approval Request'),
         ('APPROVAL_DECISION', 'Approval Decision'),
         ('APPROVAL_ESCALATION', 'Approval Escalation'),
+        ('STEP_FAILURE', 'Part failed at step'),
     ]
 
     # Interval types
@@ -2210,9 +2151,20 @@ class NotificationTask(models.Model):
     related_object_id = models.CharField(max_length=36, null=True, blank=True)
     related_object = GenericForeignKey('related_content_type', 'related_object_id')
 
-    # Timestamps - stored as UTC
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-    updated_at = models.DateTimeField(auto_now=True)
+    # Set for tasks produced by the rule-based dispatcher
+    # (`services.core.notification.notify`). Provides provenance and the
+    # key for per-(rule, recipient) cooldown lookups. Null for legacy
+    # tasks created by approval / weekly-report / CAPA flows.
+    # Forward reference because NotificationRule lives in
+    # Tracker.models.notifications, which imports from this module.
+    source_rule = models.ForeignKey(
+        'Tracker.NotificationRule',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='notification_tasks',
+    )
+
+    # created_at / updated_at inherited from SecureModel.
 
     class Meta:
         verbose_name = 'Notification Task'
@@ -2221,6 +2173,8 @@ class NotificationTask(models.Model):
             models.Index(fields=['recipient', 'notification_type', 'channel_type']),
             models.Index(fields=['status', 'next_send_at']),
             models.Index(fields=['related_content_type', 'related_object_id']),
+            # Explicit because NotificationTask.Meta overrides SecureModel.Meta.indexes.
+            models.Index(fields=['tenant', 'created_at']),
         ]
         ordering = ['next_send_at']
 
@@ -2228,41 +2182,9 @@ class NotificationTask(models.Model):
         return f"{self.get_notification_type_display()} to {self.recipient.email} via {self.channel_type}"
 
     def calculate_next_send(self):
-        """
-        Calculate when this notification should be sent next.
-        Returns a datetime object.
-        """
-        from datetime import timedelta
-
-        base_time = self.last_sent_at or self.created_at
-
-        if self.interval_type == 'FIXED':
-            # Fixed interval with specific day/time
-            if self.last_sent_at:
-                # Add interval_weeks to last send
-                next_date = self.last_sent_at.date() + timedelta(weeks=self.interval_weeks)
-            else:
-                # First occurrence - find next target day
-                now = timezone.now()
-                days_ahead = (self.day_of_week - now.weekday()) % 7
-                if days_ahead == 0 and now.time() > self.time:
-                    days_ahead = 7
-                next_date = (now + timedelta(days=days_ahead)).date()
-
-            # Combine date with time
-            from datetime import datetime
-            import pytz
-            next_dt = datetime.combine(next_date, self.time)
-            # Make timezone aware in UTC
-            return timezone.make_aware(next_dt, pytz.UTC)
-
-        elif self.interval_type == 'DEADLINE_BASED':
-            # Deadline-based: use escalation tiers
-            interval_days = self._get_current_interval()
-            return base_time + timedelta(days=interval_days)
-
-        else:
-            raise ValueError(f"Unknown interval_type: {self.interval_type}")
+        """Thin wrapper — delegates to `services.core.notification.calculate_next_send`."""
+        from Tracker.services.core.notification import calculate_next_send
+        return calculate_next_send(self)
 
     def _get_current_interval(self):
         """Get the interval (in days) until next send based on escalation tier."""
@@ -2293,31 +2215,14 @@ class NotificationTask(models.Model):
         return self.escalation_tiers[-1] if self.escalation_tiers else None
 
     def should_send(self):
-        """Check if this notification should be sent now."""
-        if self.status != 'PENDING':
-            return False
-
-        if timezone.now() < self.next_send_at:
-            return False
-
-        return True
+        """Thin wrapper — delegates to `services.core.notification.should_send_notification`."""
+        from Tracker.services.core.notification import should_send_notification
+        return should_send_notification(self)
 
     def mark_sent(self, success=True, sent_at=None):
-        """Update state after send attempt."""
-        self.attempt_count += 1
-        self.last_sent_at = sent_at or self.next_send_at
-
-        if success:
-            self.status = 'SENT'
-
-            # Check if we should continue sending
-            if self.max_attempts is None or self.attempt_count < self.max_attempts:
-                self.status = 'PENDING'
-                self.next_send_at = self.calculate_next_send()
-        else:
-            self.status = 'FAILED'
-
-        self.save()
+        """Thin wrapper — delegates to `services.core.notification.mark_notification_sent`."""
+        from Tracker.services.core.notification import mark_notification_sent
+        return mark_notification_sent(self, success=success, sent_at=sent_at)
 
 
 class Approval_Type(models.TextChoices):
@@ -2597,66 +2502,30 @@ class ApprovalRequest(SecureModel):
 
     def add_approver(self, user, is_required=True, sequence_order=None,
                      assignment_source=None, assigned_by=None):
-        """
-        Add an approver with full audit trail.
-
-        Args:
-            user: User to add as approver
-            is_required: True for required, False for optional
-            sequence_order: Order for sequential approvals (None for parallel)
-            assignment_source: How user was assigned (defaults based on context)
-            assigned_by: User who made this assignment (None for auto-assignments)
-        """
-        if assignment_source is None:
-            assignment_source = ApproverAssignmentSource.MANUAL
-
-        return ApproverAssignment.objects.get_or_create(
-            approval_request=self,
-            user=user,
-            defaults={
-                'is_required': is_required,
-                'sequence_order': sequence_order,
-                'assignment_source': assignment_source,
-                'assigned_by': assigned_by,
-            }
+        """Thin wrapper — delegates to `services.core.approval.add_approver`."""
+        from Tracker.services.core.approval import add_approver
+        return add_approver(
+            self, user,
+            is_required=is_required,
+            sequence_order=sequence_order,
+            assignment_source=assignment_source,
+            assigned_by=assigned_by,
         )
 
     def remove_approver(self, user):
-        """Remove an approver from this request."""
-        return ApproverAssignment.objects.filter(
-            approval_request=self,
-            user=user
-        ).delete()
+        """Thin wrapper — delegates to `services.core.approval.remove_approver`."""
+        from Tracker.services.core.approval import remove_approver
+        return remove_approver(self, user)
 
     def set_approvers(self, users, is_required=True, assignment_source=None, assigned_by=None):
-        """
-        Replace all approvers of a given type with new list.
-
-        Args:
-            users: Iterable of Users
-            is_required: True for required approvers, False for optional
-            assignment_source: How users were assigned
-            assigned_by: User who made this assignment
-        """
-        if assignment_source is None:
-            assignment_source = ApproverAssignmentSource.MANUAL
-
-        # Remove existing approvers of this type
-        ApproverAssignment.objects.filter(
-            approval_request=self,
-            is_required=is_required
-        ).delete()
-
-        # Add new approvers
-        for i, user in enumerate(users):
-            ApproverAssignment.objects.create(
-                approval_request=self,
-                user=user,
-                is_required=is_required,
-                sequence_order=i if self.sequence_type == SequenceTypes.SEQUENTIAL else None,
-                assignment_source=assignment_source,
-                assigned_by=assigned_by,
-            )
+        """Thin wrapper — delegates to `services.core.approval.set_approvers`."""
+        from Tracker.services.core.approval import set_approvers
+        return set_approvers(
+            self, users,
+            is_required=is_required,
+            assignment_source=assignment_source,
+            assigned_by=assigned_by,
+        )
 
     @classmethod
     def generate_approval_number(cls, tenant=None):
@@ -2680,159 +2549,24 @@ class ApprovalRequest(SecureModel):
 
     @classmethod
     def create_from_template(cls, content_object, template, requested_by, reason=None):
-        """Create approval request from template with auto-assignment"""
-        from datetime import timedelta
-        from django.utils import timezone
-
-        # Get tenant from content_object or requested_by
-        tenant = getattr(content_object, 'tenant', None) or getattr(requested_by, 'tenant', None)
-
-        approval = cls.objects.create(
-            approval_number=cls.generate_approval_number(tenant),
-            tenant=tenant,
-            content_object=content_object,
-            approval_type=template.approval_type,
-            requested_by=requested_by,
-            reason=reason,
-            flow_type=template.approval_flow_type,
-            sequence_type=template.approval_sequence,
-            threshold=template.default_threshold if template.approval_flow_type == ApprovalFlows.THRESHOLD else None,
-            delegation_policy=template.delegation_policy,
-            escalation_day=timezone.now().date() + timedelta(days=template.escalation_days) if template.escalation_days else None,
-            escalate_to=template.escalate_to,
-            due_date=timezone.now() + timedelta(days=template.default_due_days)
-        )
-
-        # Assign approvers from template with audit trail
-        approval.set_approvers(
-            template.default_approvers.all(),
-            is_required=True,
-            assignment_source=ApproverAssignmentSource.TEMPLATE_DEFAULT
-        )
-
-        # Assign groups from template
-        for group in template.default_groups.all():
-            GroupApproverAssignment.objects.create(
-                approval_request=approval,
-                group=group,
-                assignment_source=ApproverAssignmentSource.TEMPLATE_GROUP
-            )
-
-        # Auto-assign by role (via TenantGroup/UserRole)
-        if template.auto_assign_by_role:
-            role_users = User.objects.filter(
-                user_roles__group__name=template.auto_assign_by_role,
-                user_roles__group__tenant=tenant
-            )
-            for user in role_users:
-                approval.add_approver(
-                    user,
-                    is_required=True,
-                    assignment_source=ApproverAssignmentSource.TEMPLATE_GROUP
-                )
-
-        # Notify approvers now that approval is fully configured
-        # Note: We do this manually here rather than via signal because signals fire
-        # before M2M relationships are established, causing approvers to be empty
-        approval.notify_approvers()
-
-        return approval
+        """Thin wrapper — delegates to `services.core.approval.create_approval_from_template`."""
+        from Tracker.services.core.approval import create_approval_from_template
+        return create_approval_from_template(content_object, template, requested_by, reason=reason)
 
     def check_approval_status(self):
-        """Determine if approval is complete
-
-        Returns: (status: str, pending_approvers: list[User])
-        """
-        responses = self.responses.all()
-
-        # Any rejection kills the request
-        if responses.filter(decision=ApprovalDecision.REJECTED).exists():
-            return (Approval_Status_Type.REJECTED, [])
-
-        approvals = responses.filter(decision=ApprovalDecision.APPROVED)
-
-        # SEQUENTIAL: Approvers must approve in order
-        if self.sequence_type == SequenceTypes.SEQUENTIAL:
-            return self._check_sequential_status(approvals)
-
-        # ANY: one approval is enough
-        if self.flow_type == ApprovalFlows.ANY:
-            if approvals.exists():
-                return (Approval_Status_Type.APPROVED, [])
-            return (Approval_Status_Type.PENDING, list(self.get_pending_approvers()))
-
-        # THRESHOLD: N approvals required
-        if self.flow_type == ApprovalFlows.THRESHOLD:
-            threshold = self.threshold or 0
-            if threshold > 0 and approvals.count() >= threshold:
-                return (Approval_Status_Type.APPROVED, [])
-            return (Approval_Status_Type.PENDING, list(self.get_pending_approvers()))
-
-        # Default: ALL_REQUIRED (parallel)
-        approved_by = set(approvals.values_list('approver_id', flat=True))
-        required = set(self.required_approvers.values_list('id', flat=True))
-        pending_ids = required - approved_by
-
-        if not pending_ids:
-            return (Approval_Status_Type.APPROVED, [])
-
-        pending = User.objects.filter(id__in=pending_ids)
-        return (Approval_Status_Type.PENDING, list(pending))
-
-    def _check_sequential_status(self, approvals):
-        """Check status for sequential approval flow.
-
-        In sequential mode, approvers must approve in order (by sequence_order).
-        Only the next pending approver can submit a response.
-        """
-        # Get ordered list of required approver assignments
-        assignments = self.approver_assignments.filter(
-            is_required=True
-        ).order_by('sequence_order', 'assigned_at')
-
-        approved_by = set(approvals.values_list('approver_id', flat=True))
-
-        # Find first approver who hasn't approved
-        for assignment in assignments:
-            if assignment.user_id not in approved_by:
-                # This is the next pending approver
-                return (Approval_Status_Type.PENDING, [assignment.user])
-
-        # All approved
-        return (Approval_Status_Type.APPROVED, [])
+        """Thin wrapper — delegates to `services.core.approval.check_approval_status`."""
+        from Tracker.services.core.approval import check_approval_status
+        return check_approval_status(self)
 
     def update_status(self):
-        """Update approval status and cascade to content object"""
-        from django.utils import timezone
-
-        new_status, pending = self.check_approval_status()
-
-        if new_status != self.status:
-            self.status = new_status
-
-            if new_status in [Approval_Status_Type.APPROVED, Approval_Status_Type.REJECTED]:
-                self.completed_at = timezone.now()
-
-            self.save()
-
-            # Cascade to content object
-            self.trigger_content_object_update(new_status)
+        """Thin wrapper — delegates to `services.core.approval.update_approval_status`."""
+        from Tracker.services.core.approval import update_approval_status
+        return update_approval_status(self)
 
     def trigger_content_object_update(self, status):
-        """Update the object being approved based on approval outcome"""
-        from django.utils import timezone
-        obj = self.content_object
-
-        if not obj:
-            return
-
-        # Document approval
-        if hasattr(obj, 'status') and hasattr(obj, 'approved_by'):
-            if status == Approval_Status_Type.APPROVED:
-                obj.status = 'APPROVED'
-                obj.approved_by = self.get_primary_approver()
-                obj.approved_at = timezone.now()
-                obj.save()
+        """Thin wrapper — delegates to `services.core.approval.trigger_content_object_update`."""
+        from Tracker.services.core.approval import trigger_content_object_update
+        return trigger_content_object_update(self, status)
 
     def get_primary_approver(self):
         """Get first approver who approved"""
@@ -2893,7 +2627,10 @@ class ApprovalRequest(SecureModel):
 
     def save(self, *args, **kwargs):
         """Track status changes for signal detection."""
-        if self.pk:
+        # Only fetch the old row on update. Use `_state.adding`, not
+        # `self.pk` — SecureModel assigns pks at instantiation, so
+        # `if self.pk:` is always True and fires on insert too.
+        if not self._state.adding:
             try:
                 old = ApprovalRequest.objects.get(pk=self.pk)
                 self._old_status = old.status
@@ -2902,55 +2639,19 @@ class ApprovalRequest(SecureModel):
         super().save(*args, **kwargs)
 
     def notify_approvers(self):
-        """Send notifications to all pending approvers"""
-        from django.contrib.contenttypes.models import ContentType
-        from django.utils import timezone
-
-        for approver in self.get_pending_approvers():
-            NotificationTask.objects.create(
-                notification_type='APPROVAL_REQUEST',
-                recipient=approver,
-                channel_type='EMAIL',
-                interval_type='FIXED',
-                related_content_type=ContentType.objects.get_for_model(self),
-                related_object_id=self.id,
-                next_send_at=timezone.now()
-            )
+        """Thin wrapper — delegates to `services.core.approval.notify_approvers`."""
+        from Tracker.services.core.approval import notify_approvers
+        return notify_approvers(self)
 
     def notify_status_change(self, new_status):
-        """Notify requester of approval decision"""
-        from django.contrib.contenttypes.models import ContentType
-        from django.utils import timezone
-
-        NotificationTask.objects.create(
-            notification_type='APPROVAL_DECISION',
-            recipient=self.requested_by,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            related_content_type=ContentType.objects.get_for_model(self),
-            related_object_id=self.id,
-            next_send_at=timezone.now()
-        )
+        """Thin wrapper — delegates to `services.core.approval.notify_status_change`."""
+        from Tracker.services.core.approval import notify_status_change
+        return notify_status_change(self, new_status)
 
     def escalate(self):
-        """Escalate overdue approval using snapshot configuration.
-
-        Called by scheduled task for overdue approvals.
-        Creates escalation notification for escalate_to user.
-        """
-        from django.contrib.contenttypes.models import ContentType
-        from django.utils import timezone
-
-        if self.escalate_to:
-            NotificationTask.objects.create(
-                notification_type='APPROVAL_ESCALATION',
-                recipient=self.escalate_to,
-                channel_type='EMAIL',
-                interval_type='FIXED',
-                related_content_type=ContentType.objects.get_for_model(self),
-                related_object_id=self.id,
-                next_send_at=timezone.now()
-            )
+        """Thin wrapper — delegates to `services.core.approval.escalate_approval`."""
+        from Tracker.services.core.approval import escalate_approval
+        return escalate_approval(self)
 
 
 class ApprovalDecision(models.TextChoices):
@@ -2998,102 +2699,26 @@ class ApprovalResponse(SecureModel):
 
     @classmethod
     def submit_response(cls, approval_request, approver, decision, comments=None, signature_data=None, signature_meaning=None, password=None, ip_address=None):
-        """Record approval decision with signature capture and identity verification"""
-        from django.core.exceptions import PermissionDenied, ValidationError
-        from django.utils import timezone
-
-        # Validate authorization
-        if not approval_request.can_approve(approver):
-            raise PermissionDenied("You are not authorized to approve this request")
-
-        # Check for duplicate response
-        if cls.objects.filter(approval_request=approval_request, approver=approver).exists():
-            raise ValidationError("You have already responded to this approval")
-
-        # Self-approval check
-        is_self_approval = (approval_request.requested_by == approver)
-        if is_self_approval:
-            template = approval_request.get_template()
-            if not template or not template.allow_self_approval:
-                raise ValidationError("Self-approval is not permitted for this approval type")
-            if not comments or len(comments.strip()) < 10:
-                raise ValidationError("Justification required for self-approval (minimum 10 characters)")
-
-        # Identity verification: Re-authenticate password
-        verification_method = VerificationMethod.NONE
-        verified_at = None
-        if password:
-            if not approver.check_password(password):
-                raise ValidationError("Password incorrect. Identity verification failed.")
-            verification_method = VerificationMethod.PASSWORD
-            verified_at = timezone.now()
-
-        # Record response
-        response = cls.objects.create(
-            approval_request=approval_request,
-            approver=approver,
-            decision=decision,
+        """Thin wrapper — delegates to `services.core.approval.submit_approval_response`."""
+        from Tracker.services.core.approval import submit_approval_response
+        return submit_approval_response(
+            approval_request, approver, decision,
             comments=comments,
             signature_data=signature_data,
             signature_meaning=signature_meaning,
-            verified_at=verified_at,
-            verification_method=verification_method,
+            password=password,
             ip_address=ip_address,
-            self_approved=is_self_approval
         )
 
-        # Update parent status
-        approval_request.update_status()
-
-        return response
-
     def delegate_to(self, delegatee, reason):
-        """Delegate approval to another user with full audit trail"""
-        from django.core.exceptions import ValidationError
-
-        if self.approval_request.delegation_policy == ApprovalDelegation.DISABLED:
-            raise ValidationError("Delegation not allowed for this approval type")
-
-        self.decision = ApprovalDecision.DELEGATED
-        self.delegated_to = delegatee
-        self.comments = reason
-        self.save()
-
-        # Update approval request assignments with audit trail
-        request = self.approval_request
-
-        # Find original assignment
-        try:
-            original_assignment = ApproverAssignment.objects.get(
-                approval_request=request,
-                user=self.approver
-            )
-
-            # Create new assignment for delegatee, linking to original
-            ApproverAssignment.objects.create(
-                approval_request=request,
-                user=delegatee,
-                is_required=original_assignment.is_required,
-                sequence_order=original_assignment.sequence_order,
-                assignment_source=ApproverAssignmentSource.DELEGATION,
-                assigned_by=self.approver,
-                delegated_from=original_assignment
-            )
-
-            # Mark original as no longer active by removing (keeps history via delegated_from)
-            original_assignment.delete()
-
-        except ApproverAssignment.DoesNotExist:
-            # Fallback: create assignment without linking
-            request.add_approver(
-                delegatee,
-                is_required=True,
-                assignment_source=ApproverAssignmentSource.DELEGATION,
-                assigned_by=self.approver
-            )
+        """Thin wrapper — delegates to `services.core.approval.delegate_approval`."""
+        from Tracker.services.core.approval import delegate_approval
+        return delegate_approval(self, delegatee, reason)
 
 
 class ApprovalTemplate(SecureModel):
+
+    _is_versioned = True  # MIL-HDBK-61A (CCB process definition)
 
     template_name = models.CharField(max_length=100)
     approval_type = models.CharField(max_length=50, choices=Approval_Type.choices)
@@ -3126,12 +2751,27 @@ class ApprovalTemplate(SecureModel):
             ("manage_approval_workflow", "Can manage approval workflows"),
         ]
         constraints = [
-            models.UniqueConstraint(fields=['tenant', 'template_name'], name='approvaltemplate_tenant_name_uniq'),
-            models.UniqueConstraint(fields=['tenant', 'approval_type'], name='approvaltemplate_tenant_type_uniq'),
+            models.UniqueConstraint(
+                fields=['tenant', 'template_name'],
+                condition=models.Q(is_current_version=True),
+                name='approvaltemplate_tenant_name_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['tenant', 'approval_type'],
+                condition=models.Q(is_current_version=True),
+                name='approvaltemplate_tenant_type_uniq',
+            ),
         ]
 
     def __str__(self):
         return f"{self.template_name} ({self.get_approval_type_display()})"
+
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.core.approval_template.create_new_approval_template_version`."""
+        from Tracker.services.core.approval_template import create_new_approval_template_version
+        return create_new_approval_template_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
 
 # ===== DOCUMENT MANAGEMENT =====
 
@@ -3147,6 +2787,9 @@ class DocumentType(SecureModel):
     - default_review_period_days: How often documents of this type should be reviewed
     - default_retention_days: How long documents must be retained (compliance)
     """
+
+    _is_versioned = True  # IATF 7.5.3, AS9100D 7.5.3.2 — document type definition
+
     name = models.CharField(max_length=100, help_text="Display name (e.g., 'Standard Operating Procedure')")
     code = models.CharField(max_length=20, help_text="Short code for ID prefix (e.g., 'SOP', 'WI', 'DWG')")
     description = models.TextField(blank=True, help_text="Description of this document type")
@@ -3181,9 +2824,21 @@ class DocumentType(SecureModel):
         ordering = ['name']
         verbose_name = 'Document Type'
         verbose_name_plural = 'Document Types'
+        # Partial — only the current version of a name/code combo is
+        # enforced unique. Historical versions may share the same
+        # tenant+name pair because `create_new_version` inserts a new
+        # row with copied identifiers.
         constraints = [
-            models.UniqueConstraint(fields=['tenant', 'name'], name='documenttype_tenant_name_uniq'),
-            models.UniqueConstraint(fields=['tenant', 'code'], name='documenttype_tenant_code_uniq'),
+            models.UniqueConstraint(
+                fields=['tenant', 'name'],
+                condition=models.Q(is_current_version=True),
+                name='documenttype_tenant_name_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['tenant', 'code'],
+                condition=models.Q(is_current_version=True),
+                name='documenttype_tenant_code_uniq',
+            ),
         ]
 
     def __str__(self):
@@ -3216,6 +2871,8 @@ class Documents(SecureModel):
         Files are stored under a directory tree like:
         parts_docs/part_<part_id>/<YYYY-MM-DD>/<file_name>.<ext>
     """
+
+    _is_versioned = True  # IATF 7.5.3, AS9100D 7.5.3.2 — controlled document
 
     classification = models.CharField(max_length=20, choices=ClassificationLevel.choices,
                                       default=ClassificationLevel.INTERNAL,
@@ -3385,72 +3042,18 @@ class Documents(SecureModel):
         return "no_access"
 
     def auto_detect_properties(self, file=None):
-        from mimetypes import guess_type
-        file = file or self.file
-        if not file:
-            return {}
-        properties = {}
-        mime_type, _ = guess_type(file.name)
-        properties['is_image'] = mime_type and mime_type.startswith("image/")
-        if not self.file_name:
-            properties['file_name'] = file.name
-        return properties
+        from Tracker.services.core.documents import auto_detect_document_properties
+        return auto_detect_document_properties(self, file)
 
     def embed_async(self):
-        """Dispatch embedding task immediately and return the AsyncResult.
-
-        Callers that invoke this from inside a transaction (e.g. the
-        post_save signal handler) must wrap with `transaction.on_commit` at
-        the call site to avoid orphan tasks on rollback. Management commands
-        and other out-of-transaction callers can call this directly.
-
-        Phase-3 target: move to Tracker/services/documents/.
-        """
-        from Tracker.tasks import embed_document_async
-        return embed_document_async.delay(self.id)
+        """Dispatch embedding task and return AsyncResult. Wrap in transaction.on_commit when called inside a transaction."""
+        from Tracker.services.core.documents import embed_document_async
+        return embed_document_async(self)
 
     def embed_inline(self) -> bool:
-        """
-        Minimal, synchronous embedding for small text files and PDFs.
-        Returns True if chunks were embedded, False if skipped.
-
-        Note: Consider using embed_async() instead to avoid blocking requests.
-        """
-        import os
-        from django.conf import settings
-        from django.db import transaction
-        from Tracker.ai_embed import embed_texts, chunk_text
-        from Tracker.models.dms import DocChunk
-
-        if not settings.AI_EMBED_ENABLED:
-            return False
-
-        if not self.file or not os.path.exists(self.file.path):
-            return False
-        if os.path.getsize(self.file.path) > settings.AI_EMBED_MAX_FILE_BYTES:
-            return False
-
-        # Extract text based on file type
-        text = self._extract_text_from_file()
-        if not text or not text.strip():
-            return False
-
-        chunks = chunk_text(text, max_chars=settings.AI_EMBED_CHUNK_CHARS, max_chunks=settings.AI_EMBED_MAX_CHUNKS)
-        if not chunks:
-            return False
-
-        vecs = embed_texts(chunks)
-        # (optional) sanity check on dimensions:
-        assert len(vecs[0]) == settings.AI_EMBED_DIM
-
-        rows = [DocChunk(doc=self, preview_text=t[:300], full_text=t, span_meta={"i": i}, embedding=v) for i, (t, v) in
-                enumerate(zip(chunks, vecs))]
-        with transaction.atomic():
-            DocChunk.objects.filter(doc=self).delete()
-            DocChunk.objects.bulk_create(rows, batch_size=50)
-            self.ai_readable = True
-            self.save(update_fields=["ai_readable"])
-        return True
+        """Synchronously embed document text. Returns True if chunks were written, False if skipped."""
+        from Tracker.services.core.documents import embed_document_inline
+        return embed_document_inline(self)
 
     def _extract_text_from_file(self) -> str:
         """
@@ -3508,72 +3111,9 @@ class Documents(SecureModel):
             return ""
 
     def log_access(self, user, request=None, action_type='view'):
-        """
-        Log document access for compliance auditing.
-
-        Args:
-            user: The user accessing the document
-            request: Optional HTTP request for IP extraction
-            action_type: 'view' (metadata) or 'download' (file retrieval)
-
-        Logs to both django-auditlog (for UI) and compliance logger (for SIEM).
-        """
-        from auditlog.models import LogEntry
-        from django.contrib.contenttypes.models import ContentType
-        from django.utils import timezone
-        import json
-        import logging
-
-        compliance_logger = logging.getLogger('compliance.access_control')
-
-        # Extract remote address
-        remote_addr = None
-        if request:
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            if x_forwarded_for:
-                remote_addr = x_forwarded_for.split(',')[0].strip()
-            else:
-                remote_addr = request.META.get('REMOTE_ADDR')
-
-        # Build access record with export control context
-        access_data = {
-            'action_type': f'document_{action_type}',
-            'file_name': self.file_name,
-            'classification': self.classification,
-            'itar_controlled': getattr(self, 'itar_controlled', False),
-            'eccn': getattr(self, 'eccn', ''),
-            'is_image': self.is_image,
-        }
-
-        # Create auditlog entry
-        # Note: object_id is omitted because UUIDs don't fit in bigint; object_pk (string) is sufficient
-        LogEntry.objects.create(
-            content_type=ContentType.objects.get_for_model(self),
-            object_pk=str(self.pk),
-            object_repr=str(self),
-            action=LogEntry.Action.ACCESS,
-            changes=access_data,
-            actor=user,
-            timestamp=timezone.now(),
-            remote_addr=remote_addr
-        )
-
-        # Log to compliance logger for SIEM integration
-        compliance_logger.info({
-            'event_type': 'ACCESS_GRANTED',
-            'timestamp': timezone.now().isoformat(),
-            'action': action_type,
-            'user_id': str(user.id),
-            'user_email': user.email,
-            'user_us_person': getattr(user, 'us_person', False),
-            'user_citizenship': getattr(user, 'citizenship', 'UNKNOWN'),
-            'document_id': str(self.id),
-            'document_name': self.file_name,
-            'classification': self.classification,
-            'itar_controlled': getattr(self, 'itar_controlled', False),
-            'eccn': getattr(self, 'eccn', ''),
-            'remote_addr': remote_addr,
-        })
+        """Log document access to auditlog and compliance SIEM logger."""
+        from Tracker.services.core.documents import log_document_access
+        log_document_access(self, user, request, action_type)
 
     # =========================================================================
     # DMS COMPLIANCE PROPERTIES
@@ -3628,93 +3168,19 @@ class Documents(SecureModel):
                 self.retention_until = effective_date + timedelta(days=self.document_type.default_retention_days)
 
     def release(self, user, effective_date=None):
-        """
-        Release an approved document, setting it to RELEASED status and calculating compliance dates.
-
-        Args:
-            user: User performing the release
-            effective_date: When the document becomes effective (defaults to today)
-
-        Raises:
-            ValueError: If document is not in APPROVED status
-        """
-        if self.status != 'APPROVED':
-            raise ValueError(f"Cannot release document with status {self.status}. Must be approved.")
-
-        self.status = 'RELEASED'
-        self.calculate_compliance_dates(effective_date)
-        self.save()
+        """Delegate to release_document service."""
+        from Tracker.services.core.documents import release_document
+        release_document(self, user, effective_date)
 
     def mark_obsolete(self, user):
-        """
-        Mark document as obsolete.
-
-        Args:
-            user: User marking the document obsolete
-        """
-        from datetime import date
-
-        if self.status not in ('APPROVED', 'RELEASED'):
-            raise ValueError(f"Cannot obsolete document with status {self.status}.")
-
-        self.status = 'OBSOLETE'
-        self.obsolete_date = date.today()
-        self.save()
+        """Delegate to mark_document_obsolete service."""
+        from Tracker.services.core.documents import mark_document_obsolete
+        mark_document_obsolete(self, user)
 
     def submit_for_approval(self, user):
-        """
-        Submit document for approval workflow.
-
-        Uses the document_type's approval_template if configured, otherwise
-        falls back to the default DOCUMENT_RELEASE template.
-
-        Args:
-            user: The user submitting the document for approval
-
-        Returns:
-            ApprovalRequest: The created approval request
-
-        Raises:
-            ValueError: If document is not in DRAFT status, approval not required,
-                        or template not found
-        """
-        if self.status != 'DRAFT':
-            raise ValueError(f"Cannot submit document with status {self.status}. Must be draft.")
-
-        # Check if this document type requires approval
-        if self.document_type and not self.document_type.requires_approval:
-            raise ValueError(
-                f"Document type '{self.document_type.name}' does not require approval. "
-                "Use release() directly or update the document type settings."
-            )
-
-        # Get approval template: prefer document_type's template, fallback to DOCUMENT_RELEASE
-        template = None
-        if self.document_type and self.document_type.approval_template:
-            template = self.document_type.approval_template
-        else:
-            try:
-                # Filter by tenant to avoid MultipleObjectsReturned
-                template = ApprovalTemplate.objects.get(
-                    approval_type='DOCUMENT_RELEASE',
-                    tenant=self.tenant
-                )
-            except ApprovalTemplate.DoesNotExist:
-                raise ValueError("DOCUMENT_RELEASE approval template not found. Please configure approval templates.")
-
-        # Create approval request from template
-        approval_request = ApprovalRequest.create_from_template(
-            content_object=self,
-            template=template,
-            requested_by=user,
-            reason=f"Document Release: {self.file_name}"
-        )
-
-        # Update document status
-        self.status = 'UNDER_REVIEW'
-        self.save(update_fields=['status'])
-
-        return approval_request
+        """Delegate to submit_document_for_approval service."""
+        from Tracker.services.core.documents import submit_document_for_approval
+        return submit_document_for_approval(self, user)
 
     @staticmethod
     def extract_text_from_file(file_path: str) -> str:

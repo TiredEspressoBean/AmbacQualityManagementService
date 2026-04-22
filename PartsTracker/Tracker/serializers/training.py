@@ -10,16 +10,29 @@ class TrainingTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
     """
     Serializer for TrainingType model.
 
-    Represents a type of training or qualification that personnel can hold.
+    TrainingType is a versioned curriculum-spec entry. Any content edit
+    (name, description, validity period) routes through `create_new_version`
+    so changes are auditable. Archiving goes through a plain save because
+    it is a soft-delete, not a content change.
     """
 
     class Meta:
         model = TrainingType
         fields = [
             'id', 'name', 'description', 'validity_period_days',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version'
         ]
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'version')
+
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class TrainingRecordSerializer(serializers.ModelSerializer, SecureModelMixin):

@@ -108,6 +108,9 @@ from .mes_lite import (
     OrderViewer,
     Orders,
     WorkOrder,
+    WorkOrderHold,
+    WorkOrderHoldReason,
+    WorkOrderSplitReason,
     Parts,
 
     # Status and type enums
@@ -262,6 +265,12 @@ from .spc import (
     BaselineStatus,
 )
 
+# Event-driven notification rules
+from .notifications import (
+    NotificationRule,
+    NotificationEventType,
+)
+
 # DMS models - AI/LLM document intelligence (optional module)
 from .dms import (
     DocChunk,
@@ -318,6 +327,9 @@ __all__ = [
     'OrderViewer',
     'Orders',
     'WorkOrder',
+    'WorkOrderHold',
+    'WorkOrderHoldReason',
+    'WorkOrderSplitReason',
     'Parts',
     'PartsStatus',
     'OrdersStatus',
@@ -431,4 +443,8 @@ __all__ = [
     # DMS (Optional AI/LLM Module - Document Intelligence)
     'DocChunk',
     'ChatSession',
+
+    # Event-driven notifications
+    'NotificationRule',
+    'NotificationEventType',
 ]

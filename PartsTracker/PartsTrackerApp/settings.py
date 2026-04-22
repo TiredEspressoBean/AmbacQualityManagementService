@@ -267,8 +267,8 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # default gate
-        "Tracker.permissions.TenantAccessPermission",  # enforce tenant access for API auth
-        'rest_framework.permissions.DjangoModelPermissions',
+        "Tracker.permissions.TenantAccessPermission",  # user can access current tenant
+        "Tracker.permissions.TenantModelPermissions",  # tenant-scoped model perms
     ],
     "EXCEPTION_HANDLER": "Tracker.exceptions.custom_exception_handler",
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -289,6 +289,16 @@ SPECTACULAR_SETTINGS = {
     "SKIP_READ_ONLY_FIELDS": True,
     "SKIP_WRITE_ONLY_FIELDS": True,
     "COMPONENT_SPLIT_REQUEST": True,
+
+    # Use Django's canonical `_default_manager` attribute for model
+    # introspection — resolves to whatever each class's `Meta.default_manager_name`
+    # designates. On SecureModel subclasses that's `unscoped` (no tenant
+    # raising); on plain Models it's `objects` (Django default). Spectacular's
+    # own default is the hard-coded string 'objects', which trips our
+    # SecureManager's tenant-context guard at schema-generation time.
+    "DEFAULT_QUERY_MANAGER": "_default_manager",
+
+
     "ENUM_NAME_OVERRIDES": {
         # Status enums - resolve collision between different 'status' fields
         "CapaStatusEnum": "Tracker.models.qms.CapaStatus.choices",
@@ -580,6 +590,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "Tracker.tasks.check_capa_reminders",
         "schedule": crontab(hour=8, minute=0),
         "options": {"expires": 3600},
+    },
+    # Hourly scan for stale WO holds + overdue WOs (emits notification events)
+    "scan-work-order-holds-and-overdue": {
+        "task": "Tracker.tasks.scan_work_order_holds_and_overdue",
+        "schedule": crontab(minute=15),
+        "options": {"expires": 1800},
     },
     # Integration sync
     "sync-integrations-hourly": {

@@ -15,10 +15,9 @@ Contains full traceability and compliance features:
 - DowntimeEvent: Equipment downtime logging
 """
 
-from decimal import Decimal
 
 from django.contrib.contenttypes.fields import GenericRelation
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Q, CheckConstraint, Index
 
 from .core import SecureModel, SecureManager, SecureQuerySet, User, Companies
@@ -40,6 +39,8 @@ class EquipmentType(SecureModel):
     equipment of this type. Measurement equipment (CMMs, calipers, gauges)
     should have this enabled; production equipment (CNC, cleaning tanks) should not.
     """
+
+    _is_versioned = True  # MIL-STD-31000 — tooling/inspection equipment
 
     name = models.CharField(max_length=50)
     """The unique name for this equipment type (e.g., 'Laser Welder')."""
@@ -176,6 +177,8 @@ class Equipments(SecureModel):
     Calibration tracking is driven by the equipment_type.requires_calibration flag,
     which can be overridden per-equipment via _requires_calibration_override.
     """
+
+    _is_versioned = True  # MIL-STD-31000, AIAG PPAP #16 — equipment asset records
 
     documents = GenericRelation('Tracker.Documents')
     """Documents attached to this equipment (calibration certificates, maintenance logs, manuals, etc.)"""
@@ -359,6 +362,9 @@ class SamplingRuleSet(SecureModel):
     Supports fallback rulesets (triggered after consecutive failures) and
     rule versioning through the supersedes relationship.
     """
+
+    _is_versioned = True  # ISO 9001 4.4, AIAG PPAP #7
+
     part_type = models.ForeignKey('Tracker.PartTypes', on_delete=models.CASCADE)
     process = models.ForeignKey(
         'Tracker.Processes',
@@ -412,16 +418,25 @@ class SamplingRuleSet(SecureModel):
     def __str__(self):
         return f"{self.name} (v{self.version})"
 
-    def supersede_with(self, *, name, rules, created_by):
-        return SamplingRuleSet.create_with_rules(
-            part_type=self.part_type,
-            process=self.process,
-            step=self.step,
-            name=name,
-            rules=rules,
-            supersedes=self,
-            created_by=created_by,
+    def create_new_version(self, **_):
+        raise NotImplementedError(
+            "SamplingRuleSet versioning uses the supersede_with / active mechanism. "
+            "Use services.mes.sampling_ruleset.supersede_sampling_ruleset instead."
         )
+
+    def supersede_with(self, *, name, rules, created_by):
+        from Tracker.services.mes.sampling_ruleset import supersede_sampling_ruleset
+        return supersede_sampling_ruleset(self, name=name, rules=rules, user=created_by)
+
+    def activate(self, user=None):
+        """Activate this ruleset and deactivate others."""
+        from Tracker.services.mes.sampling_ruleset import activate_sampling_ruleset
+        activate_sampling_ruleset(self, user=user)
+
+    def create_fallback_trigger(self, triggering_part, quality_report):
+        """Create fallback trigger and re-evaluate remaining parts."""
+        from Tracker.services.mes.sampling_ruleset import create_sampling_fallback_trigger
+        return create_sampling_fallback_trigger(self, triggering_part, quality_report)
 
     @classmethod
     def create_with_rules(cls, *, part_type, process, step, name, rules=None, fallback_ruleset=None,
@@ -450,101 +465,6 @@ class SamplingRuleSet(SecureModel):
 
         return ruleset
 
-    def activate(self, user=None):
-        """Activate this ruleset and deactivate others"""
-        # Import here to avoid circular import
-        from .mes_lite import Parts, PartsStatus
-        from Tracker.sampling import SamplingFallbackApplier
-
-        # Deactivate other rulesets for same step/part_type
-        SamplingRuleSet.objects.filter(
-            step=self.step,
-            part_type=self.part_type,
-            active=True,
-            is_fallback=self.is_fallback
-        ).exclude(pk=self.pk).update(active=False)
-
-        # Activate this ruleset
-        self.active = True
-        self.modified_by = user
-        self.save()
-
-        # Re-evaluate sampling for affected active parts
-        self._reevaluate_active_parts(user)
-
-    def _reevaluate_active_parts(self, user=None):
-        """Re-evaluate sampling for parts currently at this step"""
-        from .mes_lite import Parts, PartsStatus
-        from Tracker.sampling import SamplingFallbackApplier
-
-        active_parts = Parts.objects.filter(
-            step=self.step,
-            part_type=self.part_type,
-            part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS]
-        )
-
-        updates = []
-        for part in active_parts:
-            evaluator = SamplingFallbackApplier(part=part)
-            result = evaluator.evaluate()
-
-            part.requires_sampling = result.get("requires_sampling", False)
-            part.sampling_rule = result.get("rule")
-            part.sampling_ruleset = result.get("ruleset")
-            part.sampling_context = result.get("context", {})
-            updates.append(part)
-
-        # Bulk update
-        Parts.objects.bulk_update(
-            updates,
-            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"]
-        )
-
-    def create_fallback_trigger(self, triggering_part, quality_report):
-        """Create fallback trigger and re-evaluate remaining parts"""
-        if not self.fallback_ruleset:
-            return None
-
-        trigger_state = SamplingTriggerState.objects.create(
-            ruleset=self.fallback_ruleset,
-            work_order=triggering_part.work_order,
-            step=self.step,
-            triggered_by=quality_report
-        )
-
-        # Re-evaluate remaining parts with fallback rules
-        self._apply_fallback_to_remaining_parts(triggering_part)
-
-        return trigger_state
-
-    def _apply_fallback_to_remaining_parts(self, triggering_part):
-        """Apply fallback sampling to remaining parts in work order"""
-        from .mes_lite import Parts, PartsStatus
-        from Tracker.sampling import SamplingFallbackApplier
-
-        remaining_parts = Parts.objects.filter(
-            work_order=triggering_part.work_order,
-            step=self.step,
-            part_type=self.part_type,
-            part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
-            id__gt=triggering_part.id
-        )
-
-        updates = []
-        for part in remaining_parts:
-            evaluator = SamplingFallbackApplier(part=part)
-            result = evaluator.evaluate()  # Will use fallback rules
-
-            part.requires_sampling = result.get("requires_sampling", False)
-            part.sampling_rule = result.get("rule")
-            part.sampling_ruleset = result.get("ruleset")
-            part.sampling_context = result.get("context", {})
-            updates.append(part)
-
-        Parts.objects.bulk_update(
-            updates,
-            ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"]
-        )
 
 
 class SamplingRule(SecureModel):
@@ -639,28 +559,9 @@ class SamplingTriggerManager:
         self.work_order = part.work_order
 
     def update_state(self):
-        active_state = SamplingTriggerState.objects.filter(
-            step=self.step,
-            work_order=self.work_order,
-            active=True
-        ).order_by("-triggered_at").first()
-
-        if not active_state:
-            return
-
-        if self.status == "PASS":
-            active_state.success_count += 1
-        else:
-            active_state.fail_count += 1
-
-        active_state.parts_inspected.add(self.part)
-        active_state.save()
-
-        # Auto-deactivate?
-        if active_state.ruleset.fallback_duration:
-            if active_state.success_count >= active_state.ruleset.fallback_duration:
-                active_state.active = False
-                active_state.save()
+        """Thin wrapper — delegates to `services.mes.sampling.update_sampling_trigger_state`."""
+        from Tracker.services.mes.sampling import update_sampling_trigger_state
+        return update_sampling_trigger_state(self.part, self.status)
 
 
 class SamplingAuditLog(SecureModel):
@@ -736,6 +637,9 @@ class WorkCenter(SecureModel):
 
     Work centers are used for capacity planning, scheduling, and cost allocation.
     """
+
+    _is_versioned = True  # engineering judgment — routing master
+
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20)  # Unique per tenant, not globally
     description = models.TextField(blank=True)
@@ -770,7 +674,8 @@ class WorkCenter(SecureModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant', 'code'],
-                name='workcenter_tenant_code_uniq'
+                condition=models.Q(is_current_version=True),
+                name='workcenter_tenant_code_uniq',
             ),
         ]
 
@@ -784,6 +689,9 @@ class Shift(SecureModel):
 
     Used for scheduling and labor tracking.
     """
+
+    _is_versioned = True  # engineering judgment (DCAS labor audits)
+
     name = models.CharField(max_length=50)  # e.g., "Day Shift", "Night Shift"
     code = models.CharField(max_length=10)  # e.g., "DAY", "NGT" - unique per tenant
 
@@ -806,7 +714,8 @@ class Shift(SecureModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant', 'code'],
-                name='shift_tenant_code_uniq'
+                condition=models.Q(is_current_version=True),
+                name='shift_tenant_code_uniq',
             ),
         ]
 
@@ -975,6 +884,9 @@ class MaterialLot(SecureModel):
     Supports lot splitting via parent_lot relationship, enabling full material
     traceability from receipt through consumption.
     """
+
+    _is_versioned = True  # engineering judgment — material lot spec
+
     LOT_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
         ('IN_USE', 'In Use'),
@@ -1059,7 +971,8 @@ class MaterialLot(SecureModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant', 'lot_number'],
-                name='materiallot_tenant_lotnumber_uniq'
+                condition=models.Q(is_current_version=True),
+                name='materiallot_tenant_lotnumber_uniq',
             ),
         ]
 
@@ -1067,71 +980,10 @@ class MaterialLot(SecureModel):
         desc = self.material_type.name if self.material_type else self.material_description
         return f"Lot {self.lot_number} - {desc}"
 
-    @transaction.atomic
     def split(self, quantity, reason=""):
-        """
-        Create a child lot by splitting off a quantity from this lot.
-
-        Uses row-level locking to prevent race conditions when multiple
-        splits happen concurrently.
-
-        Args:
-            quantity: Amount to split off (must be positive and <= quantity_remaining)
-            reason: Optional reason for the split (for audit purposes)
-
-        Returns:
-            The new child MaterialLot
-
-        Raises:
-            ValueError: If quantity is invalid or lot cannot be split
-        """
-        # Re-fetch with row lock to prevent race conditions
-        locked_self = MaterialLot.objects.select_for_update().get(pk=self.pk)
-
-        # Validate positive quantity
-        if quantity <= Decimal('0'):
-            raise ValueError("Quantity must be greater than zero")
-
-        if quantity > locked_self.quantity_remaining:
-            raise ValueError(f"Cannot split {quantity}, only {locked_self.quantity_remaining} remaining")
-
-        # Validate lot status - can only split received or in_use lots
-        if locked_self.status not in ('RECEIVED', 'IN_USE'):
-            raise ValueError(f"Cannot split a {locked_self.status} lot")
-
-        # Generate child lot number atomically
-        child_count = locked_self.child_lots.count()
-        child_lot_number = f"{locked_self.lot_number}-{child_count + 1:02d}"
-
-        child = MaterialLot.objects.create(
-            tenant=locked_self.tenant,
-            lot_number=child_lot_number,
-            parent_lot=locked_self,
-            material_type=locked_self.material_type,
-            material_description=locked_self.material_description,
-            supplier=locked_self.supplier,
-            supplier_lot_number=locked_self.supplier_lot_number,
-            received_date=locked_self.received_date,
-            received_by=locked_self.received_by,
-            quantity=quantity,
-            quantity_remaining=quantity,
-            unit_of_measure=locked_self.unit_of_measure,
-            status='RECEIVED',
-            manufacture_date=locked_self.manufacture_date,
-            expiration_date=locked_self.expiration_date,
-            storage_location=locked_self.storage_location,
-        )
-
-        # Update parent remaining
-        locked_self.quantity_remaining -= quantity
-        if locked_self.quantity_remaining <= 0:
-            locked_self.status = 'CONSUMED'
-        locked_self.save()
-
-        # Refresh self to reflect changes
-        self.refresh_from_db()
-
-        return child
+        """Thin wrapper — delegates to `services.mes.material_lot.split_material_lot`."""
+        from Tracker.services.mes.material_lot import split_material_lot
+        return split_material_lot(self, quantity, reason=reason)
 
 
 class MaterialUsage(SecureModel):
@@ -1219,8 +1071,10 @@ class MaterialUsage(SecureModel):
         return f"{source} -> {self.part}"
 
     def save(self, *args, **kwargs):
-        # Update lot remaining quantity
-        if self.lot and not self.pk:  # Only on create
+        # Update lot remaining quantity — on insert only. Use
+        # `_state.adding`, NOT `not self.pk`. SecureModel assigns pk at
+        # instantiation via uuid7, so `not self.pk` is always False.
+        if self.lot and self._state.adding:
             self.lot.quantity_remaining -= self.qty_consumed
             if self.lot.quantity_remaining <= 0:
                 self.lot.status = 'CONSUMED'
@@ -1340,6 +1194,9 @@ class BOM(SecureModel):
     Defines what components/materials are needed to build a part type.
     Supports both assembly BOMs (building) and disassembly BOMs (for reman).
     """
+
+    _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000
+
     BOM_TYPE_CHOICES = [
         ('ASSEMBLY', 'Assembly'),
         ('DISASSEMBLY', 'Disassembly'),
@@ -1387,6 +1244,11 @@ class BOM(SecureModel):
 
     def __str__(self):
         return f"BOM {self.part_type.name} Rev {self.revision}"
+
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.bom.create_new_bom_version`."""
+        from Tracker.services.mes.bom import create_new_bom_version
+        return create_new_bom_version(self, user=user, change_description=change_description, **field_updates)
 
 
 class BOMLine(SecureModel):
@@ -1522,9 +1384,6 @@ class AssemblyUsage(SecureModel):
         return self.removed_at is None
 
     def remove(self, user, reason=""):
-        """Mark this component as removed from the assembly."""
-        from django.utils import timezone
-        self.removed_at = timezone.now()
-        self.removed_by = user
-        self.removal_reason = reason
-        self.save()
+        """Thin wrapper — delegates to `services.mes.assembly_usage.remove_assembly_usage`."""
+        from Tracker.services.mes.assembly_usage import remove_assembly_usage
+        return remove_assembly_usage(self, user, reason=reason)

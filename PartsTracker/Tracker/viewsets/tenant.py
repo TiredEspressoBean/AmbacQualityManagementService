@@ -29,22 +29,25 @@ User = get_user_model()
 
 
 class TenantInfoSerializer(serializers.Serializer):
-    """Serializer for current tenant information."""
+    """Serializer for current tenant information.
+
+    Public fields (always present): id, name, slug, logo_url, primary_color,
+    secondary_color, default_timezone.
+
+    Auth-gated fields (only populated for authenticated callers with tenant
+    access): tier, status, trial_ends_at. Unauthenticated callers receive
+    null for these.
+    """
     id = serializers.UUIDField(read_only=True)
     name = serializers.CharField(read_only=True)
     slug = serializers.SlugField(read_only=True)
-    tier = serializers.CharField(read_only=True)
-    status = serializers.CharField(read_only=True)
-    is_demo = serializers.BooleanField(read_only=True)
-    trial_ends_at = serializers.DateTimeField(read_only=True, allow_null=True)
     logo_url = serializers.CharField(read_only=True, allow_null=True)
     primary_color = serializers.CharField(read_only=True, allow_null=True)
     secondary_color = serializers.CharField(read_only=True, allow_null=True)
-    contact_email = serializers.EmailField(read_only=True, allow_blank=True, allow_null=True)
-    contact_phone = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
-    website = serializers.URLField(read_only=True, allow_blank=True, allow_null=True)
-    address = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
     default_timezone = serializers.CharField(read_only=True)
+    tier = serializers.CharField(read_only=True, allow_null=True)
+    status = serializers.CharField(read_only=True, allow_null=True)
+    trial_ends_at = serializers.DateTimeField(read_only=True, allow_null=True)
 
 
 class DeploymentInfoSerializer(serializers.Serializer):
@@ -105,18 +108,20 @@ class CurrentTenantView(APIView):
                 'id': str(tenant.id),
                 'name': tenant.name,
                 'slug': tenant.slug,
-                'tier': tenant.tier,
-                'status': tenant.status,
-                'is_demo': tenant.is_demo,
-                'trial_ends_at': tenant.trial_ends_at.isoformat() if tenant.trial_ends_at else None,
                 'logo_url': logo_url,
                 'primary_color': branding.get('primary_color'),
                 'secondary_color': branding.get('secondary_color'),
-                'contact_email': tenant.contact_email or None,
-                'contact_phone': tenant.contact_phone or None,
-                'website': tenant.website or None,
-                'address': tenant.address or None,
                 'default_timezone': tenant.default_timezone,
+                # Auth-gated: only expose plan/status/trial metadata to
+                # authenticated callers. Unauthenticated (pre-login) callers
+                # get branding only to prevent leaking business info via
+                # X-Tenant-ID probing.
+                'tier': tenant.tier if user else None,
+                'status': tenant.status if user else None,
+                'trial_ends_at': (
+                    tenant.trial_ends_at.isoformat()
+                    if user and tenant.trial_ends_at else None
+                ),
             }
 
         # Features based on tier (simplified for now)

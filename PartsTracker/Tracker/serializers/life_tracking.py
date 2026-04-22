@@ -22,9 +22,23 @@ class LifeLimitDefinitionSerializer(serializers.ModelSerializer, SecureModelMixi
         fields = (
             'id', 'name', 'unit', 'unit_label',
             'is_calendar_based', 'soft_limit', 'hard_limit',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version'
         )
-        read_only_fields = ('created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'version')
+
+    # Fields whose edits are metadata/soft-delete only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class LifeLimitDefinitionSelectSerializer(serializers.ModelSerializer):

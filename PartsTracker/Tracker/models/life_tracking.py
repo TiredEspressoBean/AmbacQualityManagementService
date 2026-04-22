@@ -31,6 +31,8 @@ class LifeLimitDefinition(SecureModel):
     - "Shot Count" - soft_limit=400000, hard_limit=500000
     """
 
+    _is_versioned = True  # AS9100D (aero life-limit specs)
+
     name = models.CharField(
         max_length=100,
         help_text="Display name (e.g., 'Flight Cycles', 'Shelf Life')"
@@ -72,12 +74,23 @@ class LifeLimitDefinition(SecureModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant', 'name'],
-                name='life_limit_def_tenant_name_uniq'
+                condition=models.Q(is_current_version=True),
+                name='life_limit_def_tenant_name_uniq',
             ),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.unit_label})"
+
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.life_tracking.life_limit_definition.create_new_life_limit_definition_version`."""
+        from Tracker.services.life_tracking.life_limit_definition import create_new_life_limit_definition_version
+        return create_new_life_limit_definition_version(
+            self,
+            user=user,
+            change_description=change_description,
+            **field_updates,
+        )
 
 
 class PartTypeLifeLimit(SecureModel):
@@ -293,66 +306,25 @@ class LifeTracking(SecureModel):
         )
 
     def increment(self, value):
-        """
-        Add to accumulated value and save.
-
-        Args:
-            value: Amount to add (can be negative for corrections)
-
-        Returns:
-            self for chaining
-        """
-        self.accumulated += Decimal(str(value))
-        self.save(update_fields=['accumulated', 'updated_at', 'cached_status'])
-        return self
+        """Thin wrapper — delegates to `services.life_tracking.life_tracking.increment_life_tracking`."""
+        from Tracker.services.life_tracking.life_tracking import increment_life_tracking
+        return increment_life_tracking(self, value)
 
     def reset(self, user=None, reason=""):
-        """
-        Reset accumulated value to zero (after rebuild/overhaul).
-
-        Records the reset in history for audit purposes.
-        django-auditlog also captures the change automatically.
-
-        Args:
-            user: User performing the reset
-            reason: Reason for reset (e.g., "Complete rebuild")
-
-        Returns:
-            self for chaining
-        """
-        history_entry = {
-            "at": timezone.now().isoformat(),
-            "from_value": float(self.accumulated),
-            "reason": reason,
-            "user_id": str(user.pk) if user else None,
-        }
-        self.reset_history = self.reset_history + [history_entry]  # Append immutably
-        self.accumulated = Decimal('0')
-        self.source = self.Source.RESET
-        self.save()
-        return self
+        """Thin wrapper — delegates to `services.life_tracking.life_tracking.reset_life_tracking`."""
+        from Tracker.services.life_tracking.life_tracking import reset_life_tracking
+        return reset_life_tracking(self, user=user, reason=reason)
 
     def apply_override(self, hard_limit=None, soft_limit=None, reason="", approved_by=None):
-        """
-        Apply per-instance limit override.
-
-        Use when engineering approves extended service for a specific part.
-
-        Args:
-            hard_limit: New hard limit (None to clear)
-            soft_limit: New soft limit (None to clear)
-            reason: Justification for override
-            approved_by: User who approved
-
-        Returns:
-            self for chaining
-        """
-        self.hard_limit_override = hard_limit
-        self.soft_limit_override = soft_limit
-        self.override_reason = reason
-        self.override_approved_by = approved_by
-        self.save()
-        return self
+        """Thin wrapper — delegates to `services.life_tracking.life_tracking.apply_life_override`."""
+        from Tracker.services.life_tracking.life_tracking import apply_life_override
+        return apply_life_override(
+            self,
+            hard_limit=hard_limit,
+            soft_limit=soft_limit,
+            reason=reason,
+            approved_by=approved_by,
+        )
 
     def __str__(self):
         return f"{self.definition.name}: {self.current_value}"

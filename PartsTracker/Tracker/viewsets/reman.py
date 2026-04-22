@@ -85,13 +85,12 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
     def scrap(self, request, pk=None):
         """Scrap a core (not suitable for disassembly)"""
         core = self.get_object()
-        if core.status == 'SCRAPPED':
-            return Response({'detail': 'Core is already scrapped'}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = CoreScrapSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        core.scrap(reason=serializer.validated_data.get('reason', ''))
+        try:
+            core.scrap(reason=serializer.validated_data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CoreSerializer(core, context={'request': request}).data)
 
     @extend_schema(
@@ -145,13 +144,14 @@ class HarvestedComponentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mo
     def scrap(self, request, pk=None):
         """Scrap a harvested component"""
         component = self.get_object()
-        if component.is_scrapped:
-            return Response({'detail': 'Component already scrapped'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = HarvestedComponentScrapSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        component.scrap(user=request.user, reason=serializer.validated_data.get('reason', ''))
+        try:
+            component.scrap(user=request.user, reason=serializer.validated_data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(HarvestedComponentSerializer(component, context={'request': request}).data)
 
     @extend_schema(

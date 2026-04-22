@@ -23,9 +23,10 @@ from django.db import models
 from django.utils import timezone
 
 from PartsTrackerApp import settings
-from Tracker.sampling import SamplingFallbackApplier
+from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
 from .core import SecureModel, User, Companies, ClassificationLevel, ExternalAPIOrderIdentifier
+from .qms import VoidableModel
 
 # Import Standard tier models for backward compatibility within this module
 # These are re-exported from __init__.py for external consumers
@@ -77,6 +78,8 @@ class PartTypes(SecureModel):
     Each new change to a PartType results in version increment and a new database entry.
     Useful for maintaining a historical record of part definitions over time.
     """
+
+    _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000 — part master
 
     documents = GenericRelation('Tracker.Documents')
     """Optional Document related to this type of part"""
@@ -148,6 +151,8 @@ class Processes(SecureModel):
     - APPROVED: Locked, available for work orders
     - DEPRECATED: Still usable by existing work orders, hidden from new ones
     """
+
+    _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000
 
     documents = GenericRelation('Tracker.Documents')
     """Optional Document related to this type of process"""
@@ -230,208 +235,44 @@ class Processes(SecureModel):
         return self.status == ProcessStatus.DRAFT
 
     def approve(self, user=None):
-        """
-        Approve this process for production use.
-
-        Once approved, the process cannot be modified.
-        Use create_new_version() to create an editable new version for changes.
-        """
-        if self.status not in (ProcessStatus.DRAFT, ProcessStatus.PENDING_APPROVAL):
-            raise ValueError("Only draft or pending processes can be approved.")
-
-        if self.process_steps.count() == 0:
-            raise ValueError("Cannot approve process with no steps.")
-
-        self.status = ProcessStatus.APPROVED
-        self.approved_at = timezone.now()
-        self.approved_by = user
-        self.save()
-
-        return self
+        """Thin delegate — see `services.mes.processes.approve_process`."""
+        from Tracker.services.mes.processes import approve_process
+        return approve_process(self, user)
 
     def submit_for_approval(self, user):
-        """
-        Submit this process for formal approval workflow.
-
-        Creates an ApprovalRequest using the PROCESS_APPROVAL template.
-        Transitions DRAFT → PENDING_APPROVAL. Process cannot be edited while pending.
-
-        Args:
-            user: The user submitting the process for approval
-
-        Returns:
-            ApprovalRequest: The created approval request
-
-        Raises:
-            ValueError: If process is not DRAFT or no steps defined or template not found
-        """
-        if self.status != ProcessStatus.DRAFT:
-            raise ValueError("Only draft processes can be submitted for approval.")
-
-        if self.process_steps.count() == 0:
-            raise ValueError("Cannot submit process with no steps for approval.")
-
-        # Get the PROCESS_APPROVAL template (filtered by tenant)
-        from .models.core import ApprovalTemplate, ApprovalRequest
-        try:
-            template = ApprovalTemplate.objects.get(
-                approval_type='PROCESS_APPROVAL',
-                tenant=self.tenant
-            )
-        except ApprovalTemplate.DoesNotExist:
-            raise ValueError("PROCESS_APPROVAL approval template not found. Please configure approval templates.")
-
-        # Create approval request
-        approval_request = ApprovalRequest.create_from_template(
-            content_object=self,
-            template=template,
-            requested_by=user,
-            reason=f"Process Approval: {self.name} (v{self.version})"
-        )
-
-        self.status = ProcessStatus.PENDING_APPROVAL
-        self.save()
-
-        return approval_request
+        """Thin delegate — see `services.mes.processes.submit_process_for_approval`."""
+        from Tracker.services.mes.processes import submit_process_for_approval
+        return submit_process_for_approval(self, user)
 
     def reject_approval(self):
-        """
-        Reject approval and return to DRAFT for editing.
-
-        Called when approval request is rejected.
-        """
-        if self.status != ProcessStatus.PENDING_APPROVAL:
-            raise ValueError("Only pending processes can be rejected.")
-
-        self.status = ProcessStatus.DRAFT
-        self.save()
-
-        return self
+        """Thin delegate — see `services.mes.processes.reject_process_approval`."""
+        from Tracker.services.mes.processes import reject_process_approval
+        return reject_process_approval(self)
 
     def deprecate(self):
+        """Thin delegate — see `services.mes.processes.deprecate_process`."""
+        from Tracker.services.mes.processes import deprecate_process
+        return deprecate_process(self)
+
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.processes.create_new_process_version`.
+
+        Status gating, children copy (ProcessStep, StepEdge, Documents),
+        lifecycle reset, and compliance-required change_description
+        enforcement live in the service.
         """
-        Mark process as deprecated.
-
-        Deprecated processes can still be used by existing work orders,
-        but won't appear in process selection for new work orders.
-        """
-        if self.status not in (ProcessStatus.APPROVED,):
-            raise ValueError("Only approved processes can be deprecated.")
-
-        self.status = ProcessStatus.DEPRECATED
-        self.save()
-
-        return self
-
-    def create_new_version(self, user=None, change_description=None, **field_updates):
-        """
-        Create a new version of this process - LIGHTWEIGHT.
-
-        This is the proper way to modify an APPROVED process:
-        1. Creates new Process with incremented version, linked via previous_version
-        2. Copies ProcessStep records (pointing to same Step nodes)
-        3. Copies StepEdge records (routing structure)
-
-        Steps themselves are NOT copied - they're shared between versions.
-        Only when a step is actually modified does it get a new version.
-
-        Args:
-            user: User creating the new version
-            change_description: What changed (shown to approvers)
-            **field_updates: Additional field overrides for the new process
-
-        Returns:
-            New Process instance in DRAFT status
-        """
-        if not self.is_current_version:
-            raise ValueError("Can only create new versions from current version")
-
-        if self.status not in (ProcessStatus.APPROVED, ProcessStatus.DEPRECATED):
-            raise ValueError("Can only version approved or deprecated processes. Edit drafts directly.")
-
-        # Mark current version as not current
-        self.is_current_version = False
-        self.save()
-
-        # Create new process version
-        new_process = Processes.objects.create(
-            name=self.name,
-            part_type=self.part_type,
-            description=getattr(self, 'description', ''),
-            is_remanufactured=self.is_remanufactured,
-            is_batch_process=self.is_batch_process,
-            status=ProcessStatus.DRAFT,
-            version=self.version + 1,
-            previous_version=self,
-            is_current_version=True,
+        from Tracker.services.mes.processes import create_new_process_version
+        return create_new_process_version(
+            self,
+            user=user,
             change_description=change_description,
-            created_by=user,
             **field_updates,
         )
 
-        # Copy ProcessStep records (lightweight - same Step references)
-        for ps in self.process_steps.all():
-            ProcessStep.objects.create(
-                process=new_process,
-                step=ps.step,  # Same step node - NOT copied
-                order=ps.order,
-                is_entry_point=ps.is_entry_point,
-            )
-
-        # Copy StepEdge records (lightweight - same Step references)
-        for edge in self.step_edges.all():
-            StepEdge.objects.create(
-                process=new_process,
-                from_step=edge.from_step,  # Same step nodes
-                to_step=edge.to_step,
-                edge_type=edge.edge_type,
-                condition_measurement=edge.condition_measurement,
-                condition_operator=edge.condition_operator,
-                condition_value=edge.condition_value,
-            )
-
-        return new_process
-
     def duplicate(self, user=None, name_suffix=" (Copy)"):
-        """
-        Create a standalone copy of this process (no version linkage).
-
-        Use this for creating a new independent process based on an existing one,
-        e.g., copying a process to use as a template for a different part type.
-
-        For modifying approved processes, use create_new_version() instead.
-        """
-        new_process = Processes.objects.create(
-            name=f"{self.name}{name_suffix}",
-            part_type=self.part_type,
-            is_remanufactured=self.is_remanufactured,
-            is_batch_process=self.is_batch_process,
-            status=ProcessStatus.DRAFT,
-            # No previous_version - standalone copy
-        )
-
-        # Copy ProcessStep records (references same steps)
-        for ps in self.process_steps.all():
-            ProcessStep.objects.create(
-                process=new_process,
-                step=ps.step,
-                order=ps.order,
-                is_entry_point=ps.is_entry_point,
-            )
-
-        # Copy StepEdge records
-        for edge in self.step_edges.all():
-            StepEdge.objects.create(
-                process=new_process,
-                from_step=edge.from_step,
-                to_step=edge.to_step,
-                edge_type=edge.edge_type,
-                condition_measurement=edge.condition_measurement,
-                condition_operator=edge.condition_operator,
-                condition_value=edge.condition_value,
-            )
-
-        return new_process
+        """Thin delegate — see `services.mes.processes.duplicate_process`."""
+        from Tracker.services.mes.processes import duplicate_process
+        return duplicate_process(self, user=user, name_suffix=name_suffix)
 
     def get_steps_ordered(self):
         """Get steps in order for this process via ProcessStep junction."""
@@ -471,6 +312,9 @@ class MeasurementDefinition(SecureModel):
 
     Used for quality inspection and SPC (Statistical Process Control).
     """
+
+    _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000 — measurement spec
+
     step = models.ForeignKey(
         "Steps",
         on_delete=models.CASCADE,
@@ -535,6 +379,8 @@ class Steps(SecureModel):
 
     Note: Order and routing are now defined at the process level via ProcessStep and StepEdge.
     """
+
+    _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000
 
     name = models.CharField(max_length=50)
     """Name of the step, e.g., 'Inspection', 'Assembly'."""
@@ -740,110 +586,32 @@ class Steps(SecureModel):
                         fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
                                                             'order')) if fallback_ruleset else []} if fallback_ruleset else None}
 
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.steps.create_new_step_version`."""
+        from Tracker.services.mes.steps import create_new_step_version
+        return create_new_step_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
+
     def apply_sampling_rules_update(self, rules_data, process=None, fallback_rules_data=None, fallback_threshold=None,
                                     fallback_duration=None, user=None):
-        """Apply sampling rules update with proper versioning and activation.
-
-        Args:
-            rules_data: Sampling rules configuration
-            process: Optional Process context for the rules (steps can be in multiple processes)
-            fallback_rules_data: Optional fallback rules
-            fallback_threshold: Threshold for fallback activation
-            fallback_duration: Duration for fallback
-            user: User making the update
-        """
-        from django.db import transaction
-
-        with transaction.atomic():
-            # Archive existing rulesets
-            self.sampling_ruleset.filter(active=True).update(active=False, archived=True)
-
-            # Create fallback ruleset first if provided
-            fallback_ruleset = None
-            if fallback_rules_data:
-                fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=process,
-                                                                     step=self, name=f"Fallback for Step {self.id}",
-                                                                     rules=fallback_rules_data, created_by=user,
-                                                                     origin="serializer-update", active=True,
-                                                                     is_fallback=True)
-
-            # Create main ruleset
-            main_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=process, step=self,
-                                                             name=f"Rules for Step {self.id}", rules=rules_data,
-                                                             fallback_ruleset=fallback_ruleset,
-                                                             fallback_threshold=fallback_threshold,
-                                                             fallback_duration=fallback_duration, created_by=user,
-                                                             origin="serializer-update", active=True, is_fallback=False)
-
-            # Re-evaluate sampling for any active parts at this step
-            active_parts = Parts.objects.filter(step=self,
-                                                part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS])
-
-            if active_parts.exists():
-                self._reevaluate_parts_sampling(list(active_parts))
-
-            return main_ruleset
-
-    def _reevaluate_parts_sampling(self, parts_list):
-        """Re-evaluate sampling for list of parts after rule changes"""
-        updates = []
-        for part in parts_list:
-            evaluator = SamplingFallbackApplier(part=part)
-            result = evaluator.evaluate()
-
-            part.requires_sampling = result.get("requires_sampling", False)
-            part.sampling_rule = result.get("rule")
-            part.sampling_ruleset = result.get("ruleset")
-            part.sampling_context = result.get("context", {})
-            updates.append(part)
-
-        # Bulk update for efficiency
-        Parts.objects.bulk_update(updates,
-                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
+        """Delegate to services.mes.steps.apply_step_sampling_rules_update."""
+        from Tracker.services.mes.steps import apply_step_sampling_rules_update
+        return apply_step_sampling_rules_update(
+            self, rules_data, user=user, process=process,
+            fallback_rules_data=fallback_rules_data,
+            fallback_threshold=fallback_threshold, fallback_duration=fallback_duration,
+        )
 
     def update_sampling_rules(self, rules_data, process=None, fallback_rules_data=None, fallback_threshold=None,
                               fallback_duration=None, user=None):
-        """Update sampling rules for this step.
-
-        Args:
-            rules_data: Sampling rules configuration
-            process: Optional Process context for the rules
-            fallback_rules_data: Optional fallback rules
-            fallback_threshold: Threshold for fallback activation
-            fallback_duration: Duration for fallback
-            user: User making the update
-        """
-        from django.db import transaction
-
-        with transaction.atomic():
-            # Get or create primary ruleset
-            primary_ruleset = SamplingRuleSet.objects.filter(step=self, part_type=self.part_type, active=True,
-                                                             is_fallback=False).first()
-
-            if primary_ruleset:
-                # Supersede existing ruleset
-                new_ruleset = primary_ruleset.supersede_with(name=f"{self.name} Rules v{primary_ruleset.version + 1}",
-                                                             rules=rules_data, created_by=user)
-            else:
-                # Create new ruleset
-                new_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=process,
-                                                                step=self, name=f"{self.name} Rules v1",
-                                                                rules=rules_data, created_by=user)
-
-            # Handle fallback ruleset if provided
-            if fallback_rules_data:
-                fallback_ruleset = SamplingRuleSet.create_with_rules(part_type=self.part_type, process=process,
-                                                                     step=self, name=f"{self.name} Fallback Rules v1",
-                                                                     rules=fallback_rules_data, created_by=user,
-                                                                     is_fallback=True)
-
-                # Link fallback to primary
-                new_ruleset.fallback_ruleset = fallback_ruleset
-                new_ruleset.fallback_threshold = fallback_threshold
-                new_ruleset.fallback_duration = fallback_duration
-                new_ruleset.save()
-
-            return new_ruleset
+        """Delegate to services.mes.steps.update_step_sampling_rules."""
+        from Tracker.services.mes.steps import update_step_sampling_rules
+        return update_step_sampling_rules(
+            self, rules_data, user=user, process=process,
+            fallback_rules_data=fallback_rules_data,
+            fallback_threshold=fallback_threshold, fallback_duration=fallback_duration,
+        )
 
     def can_advance_step(self, work_order, step):
         """Fixed method with proper field references"""
@@ -962,12 +730,9 @@ class Steps(SecureModel):
             "version").last()
 
     def validate_sampling_coverage(self, work_order):
-        """Ensure minimum sampling rate is met"""
-        total_parts = Parts.objects.filter(work_order=work_order, step=self).count()
-        sampled_parts = Parts.objects.filter(work_order=work_order, step=self, requires_sampling=True).count()
-
-        actual_rate = (sampled_parts / total_parts * 100) if total_parts > 0 else 0
-        return actual_rate >= self.min_sampling_rate
+        """Delegate to services.mes.steps.validate_step_sampling_coverage."""
+        from Tracker.services.mes.steps import validate_step_sampling_coverage
+        return validate_step_sampling_coverage(self, work_order)
 
     def get_sampling_coverage_report(self, work_order):
         """Generate sampling coverage report for this step"""
@@ -1618,6 +1383,9 @@ class MilestoneTemplate(SecureModel):
       - "APQP Process": Planning → Design → Process Dev → Validation → Production
       - "Repair Process": Receive → Evaluate → Quote → Repair → Ship
     """
+
+    _is_versioned = True  # engineering judgment
+
     name = models.CharField(max_length=100)
     """Template name (e.g., 'Standard Order Process', 'APQP Process')."""
 
@@ -1642,6 +1410,13 @@ class MilestoneTemplate(SecureModel):
 
     def __str__(self):
         return self.name
+
+    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+        """Thin wrapper — delegates to `services.mes.milestone_template.create_new_milestone_template_version`."""
+        from Tracker.services.mes.milestone_template import create_new_milestone_template_version
+        return create_new_milestone_template_version(
+            self, user=user, change_description=change_description, **field_updates,
+        )
 
 
 class Milestone(SecureModel):
@@ -2158,25 +1933,9 @@ class Orders(SecureModel):
     # =========================================================================
 
     def add_note(self, user, message, visibility='VISIBLE'):
-        """Add a note to the timeline (newest first)."""
-        from django.utils import timezone
-
-        if not message or not message.strip():
-            raise ValueError("Note message cannot be empty")
-
-        user_name = f"{user.first_name} {user.last_name}".strip() if user else "System"
-        if not user_name:
-            user_name = user.username if user else "System"
-
-        header = f"[{timezone.now().isoformat()} | {user_name} | {visibility}]"
-        new_note = f"{header}\n{message.strip()}"
-
-        if self.customer_note:
-            self.customer_note = new_note + "\n---\n" + self.customer_note
-        else:
-            self.customer_note = new_note
-
-        return {'timestamp': timezone.now().isoformat(), 'user': user_name, 'visibility': visibility, 'message': message.strip()}
+        """Thin wrapper — delegates to `services.mes.orders.add_order_note`."""
+        from Tracker.services.mes.orders import add_order_note
+        return add_order_note(self, user, message, visibility=visibility)
 
     def get_latest_note(self, customer_view=False):
         """Get the most recent note."""
@@ -2228,6 +1987,12 @@ class WorkOrderPriority(models.IntegerChoices):
     HIGH = 2, "High"
     NORMAL = 3, "Normal"
     LOW = 4, "Low"
+
+
+class WorkOrderSplitReason(models.TextChoices):
+    QUANTITY = 'QUANTITY', 'Quantity'
+    OPERATION = 'OPERATION', 'Operation'
+    REWORK = 'REWORK', 'Rework'
 
 
 class WorkOrder(SecureModel):
@@ -2282,6 +2047,31 @@ class WorkOrder(SecureModel):
     notes = models.TextField(max_length=500, null=True, blank=True)
     """Optional notes or remarks logged during execution or review."""
 
+    parent_workorder = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='child_workorders',
+        db_index=True,
+    )
+    """Parent WO when this WO was created via a split. PROTECT preserves provenance."""
+
+    split_reason = models.CharField(
+        max_length=16,
+        choices=WorkOrderSplitReason.choices,
+        null=True,
+        blank=True,
+    )
+    split_at = models.DateTimeField(null=True, blank=True)
+    split_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
     class Meta:
         verbose_name = "Work Order"
         verbose_name_plural = "Work Orders"
@@ -2299,7 +2089,10 @@ class WorkOrder(SecureModel):
 
     def save(self, *args, **kwargs):
         """Enhanced save with sampling lifecycle management"""
-        is_new = self.pk is None
+        # `_state.adding` — not `self.pk is None`. SecureModel assigns
+        # uuid7 pks at instantiation. Capture the flag before super().save()
+        # because the save flips it.
+        is_new = self._state.adding
         old_status = None
 
         if not is_new:
@@ -2378,46 +2171,9 @@ class WorkOrder(SecureModel):
         SamplingTriggerState.objects.filter(work_order=self, active=True).update(active=False)
 
     def create_parts_batch(self, part_type, step, quantity=None):
-        """Create parts in batch with sampling evaluation.
-
-        This method is idempotent - it won't create duplicate parts if called
-        multiple times. Parts are identified by their ERP_id which follows the
-        pattern: {work_order.ERP_id}-{part_type.ID_prefix}{sequence_number}
-        """
-        quantity = quantity or self.quantity
-
-        # Check for existing parts to make this idempotent
-        existing_erp_ids = set(
-            Parts.objects.filter(work_order=self)
-            .values_list('ERP_id', flat=True)
-        )
-
-        # Create only parts that don't already exist
-        parts_to_create = []
-        for i in range(quantity):
-            erp_id = f"{self.ERP_id}-{part_type.ID_prefix or 'P'}{i + 1:04d}"
-            if erp_id not in existing_erp_ids:
-                part = Parts(
-                    tenant=self.tenant,  # Inherit tenant from work order
-                    work_order=self,
-                    part_type=part_type,
-                    step=step,
-                    ERP_id=erp_id,
-                    part_status=PartsStatus.PENDING
-                )
-                parts_to_create.append(part)
-
-        # Bulk create only new parts
-        if parts_to_create:
-            Parts.objects.bulk_create(parts_to_create)
-
-        # Get all parts for this work order and part type (existing + new)
-        fresh_parts = list(Parts.objects.filter(work_order=self, part_type=part_type, step=step).order_by('id'))
-
-        # Evaluate sampling for all parts
-        self._bulk_evaluate_sampling(fresh_parts)
-
-        return fresh_parts
+        """Thin wrapper — delegates to `services.mes.work_order.create_parts_batch`."""
+        from Tracker.services.mes.work_order import create_parts_batch
+        return create_parts_batch(self, part_type, step, quantity=quantity)
 
     @classmethod
     def process_csv_date(cls, date_string):
@@ -2515,6 +2271,63 @@ class WorkOrder(SecureModel):
                 results.append({"row": i, "status": "error", "errors": str(e)})
 
         return results
+
+
+class WorkOrderHoldReason(models.TextChoices):
+    MATERIAL = 'MATERIAL', 'Material'
+    QUALITY = 'QUALITY', 'Quality'
+    TOOLING = 'TOOLING', 'Tooling'
+    OPERATOR = 'OPERATOR', 'Operator'
+    CUSTOMER = 'CUSTOMER', 'Customer'
+    OTHER = 'OTHER', 'Other'
+
+
+class WorkOrderHold(SecureModel, VoidableModel):
+    """Tracks a hold placed on a WorkOrder. At most one active (cleared_at IS NULL) per WO."""
+
+    work_order = models.ForeignKey(
+        WorkOrder,
+        on_delete=models.CASCADE,
+        related_name='holds',
+    )
+    reason = models.CharField(max_length=16, choices=WorkOrderHoldReason.choices)
+    notes = models.TextField(blank=True)
+    placed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    placed_at = models.DateTimeField(default=timezone.now)
+    expected_clear_at = models.DateTimeField(null=True, blank=True)
+    cleared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    cleared_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['work_order', 'cleared_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['work_order'],
+                condition=models.Q(cleared_at__isnull=True, is_voided=False),
+                name='workorderhold_one_open_per_wo',
+            ),
+        ]
+
+    def __str__(self):
+        return f"Hold({self.work_order_id}, {self.reason})"
+
+    @property
+    def is_open(self) -> bool:
+        return self.cleared_at is None and not self.is_voided
 
 
 class Parts(SecureModel):
@@ -2773,277 +2586,15 @@ class Parts(SecureModel):
 
         return None
 
-    def _get_operator_for_step(self, step, previous_operator):
-        """
-        Determine operator assignment based on step's revisit_assignment rule.
-        Returns User or None (unassigned, anyone can pick up).
-
-        Rules:
-        - 'any': No assignment, anyone can pick it up
-        - 'same': Assign to same operator as previous visit
-        - 'different': Exclude previous operators (returns None, filtering done at assignment)
-        - 'role': Must be someone with specific role (returns None, filtering done at assignment)
-        """
-        if step.revisit_assignment == 'same':
-            return previous_operator
-        elif step.revisit_assignment == 'different':
-            # Return None - UI/assignment system will filter available operators
-            # Previous operators can be queried from StepExecution
-            return None
-        elif step.revisit_assignment == 'role':
-            # Return None - UI will filter by step.revisit_role
-            return None
-        else:  # 'any'
-            return None
-
     def increment_step(self, operator=None, decision_result=None):
-        """
-        Advance part to next step using workflow engine logic.
-
-        Supports:
-        - Linear flow (legacy order+1)
-        - Decision branching (qa_result, measurement, manual)
-        - Cycle limits with escalation
-        - StepExecution lifecycle tracking
-        - Batch advancement for work orders
-
-        Args:
-            operator: User who performed the transition. If None, logged as system/automated.
-            decision_result: For decision points - 'PASS', 'FAIL', 'DEFAULT', 'ALTERNATE', or measurement value.
-
-        Returns:
-            str: "completed" if terminal/final step reached,
-                 "marked_ready" if waiting for others,
-                 "advanced" if step advanced,
-                 "escalated" if routed to escalation due to cycle limit.
-
-        Raises:
-            ValueError: If step advancement is blocked by validation requirements.
-        """
-        from django.utils import timezone
-        from .qms import StepTransitionLog
-
-        if not self.step or not self.part_type:
-            raise ValueError("Current step or part type is missing.")
-
-        # Get current execution for validation
-        current_execution = StepExecution.get_current_execution(self)
-
-        # Validate advancement is allowed before proceeding
-        if current_execution and self.work_order:
-            can_advance, blockers = self.step.can_advance_from_step(
-                current_execution,
-                self.work_order
-            )
-            if not can_advance:
-                raise ValueError(f"Cannot advance: {', '.join(blockers)}")
-        if current_execution:
-            current_execution.exited_at = timezone.now()
-            current_execution.completed_by = operator
-            current_execution.status = 'COMPLETED'
-            current_execution.decision_result = str(decision_result) if decision_result else ''
-
-        # Determine next step using workflow logic
-        next_step = self.get_next_step(decision_result)
-
-        # Handle terminal/final step
-        if next_step is None:
-            if self.step.is_terminal:
-                # Use terminal_status to set part status
-                # Maps Step.terminal_status values to PartsStatus enum
-                status_map = {
-                    'completed': PartsStatus.COMPLETED,
-                    'shipped': PartsStatus.SHIPPED,
-                    'stock': PartsStatus.IN_STOCK,
-                    'scrapped': PartsStatus.SCRAPPED,
-                    'returned': PartsStatus.CANCELLED,
-                    'awaiting_pickup': PartsStatus.AWAITING_PICKUP,
-                    'core_banked': PartsStatus.CORE_BANKED,
-                    'rma_closed': PartsStatus.RMA_CLOSED,
-                }
-                self.part_status = status_map.get(
-                    self.step.terminal_status,
-                    PartsStatus.COMPLETED
-                )
-            else:
-                # Legacy is_last_step or no next found
-                self.part_status = PartsStatus.COMPLETED
-
-            if current_execution:
-                current_execution.save()
-
-            self.save()
-
-            # Also log to StepTransitionLog for backwards compatibility
-            StepTransitionLog.objects.create(part=self, step=self.step, operator=operator)
-
-            # Cascade: check if WorkOrder should auto-complete
-            self._cascade_work_order_completion()
-
-            return "completed"
-
-        # Check if this was an escalation (cycle limit exceeded)
-        was_escalated = False
-        if self.step.is_decision_point or self.step.max_visits:
-            process = self.work_order.process if self.work_order else None
-            if process:
-                # Check if next_step matches alternate or escalation edge
-                alt_edge = StepEdge.objects.filter(
-                    process=process, from_step=self.step, edge_type=EdgeType.ALTERNATE
-                ).first()
-                esc_edge = StepEdge.objects.filter(
-                    process=process, from_step=self.step, edge_type=EdgeType.ESCALATION
-                ).first()
-                was_escalated = (
-                    (alt_edge and alt_edge.to_step == next_step) or
-                    (esc_edge and esc_edge.to_step == next_step)
-                )
-
-        # Record next_step on current execution before saving
-        if current_execution:
-            current_execution.next_step = next_step
-            current_execution.save()
-
-        # For batch processes, check if we should wait for other parts
-        # Use requires_batch_completion flag instead of is_decision_point
-        if self.work_order and getattr(self.step, 'requires_batch_completion', False):
-            # Mark this part ready
-            self.part_status = PartsStatus.READY_FOR_NEXT_STEP
-            self.save()
-
-            # Check if all parts at this step are ready
-            other_parts_pending = Parts.objects.filter(
-                work_order=self.work_order,
-                part_type=self.part_type,
-                step=self.step
-            ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP)
-
-            if other_parts_pending.exists():
-                return "marked_ready"
-
-            # All parts are ready. Check if step allows advancement.
-            if hasattr(self.step, 'can_advance_step') and not self.step.can_advance_step(
-                work_order=self.work_order, step=self.step
-            ):
-                return "marked_ready"
-
-            # Bulk-advance all parts
-            ready_parts = list(Parts.objects.filter(
-                work_order=self.work_order,
-                part_type=self.part_type,
-                step=self.step,
-                part_status=PartsStatus.READY_FOR_NEXT_STEP
-            ))
-
-            transition_logs = []
-            step_executions = []
-
-            for part in ready_parts:
-                part.step = next_step
-                part.part_status = PartsStatus.IN_PROGRESS
-                evaluator = SamplingFallbackApplier(part=part)
-                result = evaluator.evaluate()
-                part.requires_sampling = result.get("requires_sampling", False)
-                part.sampling_rule = result.get("rule")
-                part.sampling_ruleset = result.get("ruleset")
-                part.sampling_context = result.get("context", {})
-
-                # Queue legacy transition log
-                transition_logs.append(StepTransitionLog(part=part, step=next_step, operator=operator))
-
-                # Queue new StepExecution
-                visit_number = StepExecution.get_visit_count(part, next_step) + 1
-                assigned_operator = part._get_operator_for_step(next_step, operator)
-                step_executions.append(StepExecution(
-                    part=part,
-                    step=next_step,
-                    visit_number=visit_number,
-                    assigned_to=assigned_operator,
-                    status='PENDING'
-                ))
-
-            Parts.objects.bulk_update(ready_parts, [
-                "step", "part_status", "requires_sampling",
-                "sampling_rule", "sampling_ruleset", "sampling_context"
-            ])
-
-            # tenant-safe: transition_logs/step_executions are pre-built in-process from tenant-scoped parts
-            StepTransitionLog.objects.bulk_create(transition_logs)
-            StepExecution.objects.bulk_create(step_executions)
-
-            return "escalated" if was_escalated else "advanced"
-
-        # Individual part advancement (decision points or no work order)
-        visit_number = StepExecution.get_visit_count(self, next_step) + 1
-        assigned_operator = self._get_operator_for_step(next_step, operator)
-
-        StepExecution.objects.create(
-            part=self,
-            step=next_step,
-            visit_number=visit_number,
-            assigned_to=assigned_operator,
-            status='PENDING'
-        )
-
-        # Move to next step first so sampling evaluation sees the new step
-        self.step = next_step
-        self.part_status = PartsStatus.IN_PROGRESS
-
-        # Update sampling for the new step
-        evaluator = SamplingFallbackApplier(part=self)
-        result = evaluator.evaluate()
-        self.requires_sampling = result.get("requires_sampling", False)
-        self.sampling_rule = result.get("rule")
-        self.sampling_ruleset = result.get("ruleset")
-        self.sampling_context = result.get("context", {})
-        self.save()
-
-        # Legacy log
-        StepTransitionLog.objects.create(part=self, step=next_step, operator=operator)
-
-        return "escalated" if was_escalated else "advanced"
+        """Thin delegate — see `services.mes.parts.advance_part_step`."""
+        from Tracker.services.mes.parts import advance_part_step
+        return advance_part_step(self, operator=operator, decision_result=decision_result)
 
     def _cascade_work_order_completion(self):
-        """
-        Check if all parts in work order have reached terminal status.
-        If so, auto-complete the WorkOrder.
-
-        Called after a part reaches a terminal step.
-        """
-        from django.utils import timezone
-
-        wo = self.work_order
-        if not wo:
-            return
-
-        # Terminal statuses for parts
-        terminal_statuses = [
-            PartsStatus.COMPLETED,
-            PartsStatus.SCRAPPED,
-            PartsStatus.CANCELLED,
-        ]
-
-        # Check if any parts are NOT at terminal status
-        non_terminal_parts = wo.parts.exclude(part_status__in=terminal_statuses)
-
-        if non_terminal_parts.exists():
-            # Not all parts done yet
-            return
-
-        # All parts at terminal status - determine WO status
-        all_parts_count = wo.parts.count()
-        completed_count = wo.parts.filter(part_status=PartsStatus.COMPLETED).count()
-        scrapped_count = wo.parts.filter(part_status=PartsStatus.SCRAPPED).count()
-
-        if scrapped_count == all_parts_count:
-            # All parts scrapped - mark as cancelled
-            wo.workorder_status = WorkOrderStatus.CANCELLED
-        else:
-            # At least some parts completed
-            wo.workorder_status = WorkOrderStatus.COMPLETED
-
-        wo.true_completion = timezone.now().date()
-        wo.save(update_fields=['workorder_status', 'true_completion'])
+        """Thin delegate — see `services.mes.parts._cascade_work_order_completion`."""
+        from Tracker.services.mes.parts import _cascade_work_order_completion
+        return _cascade_work_order_completion(self)
 
     @property
     def needs_qa(self):
@@ -3195,146 +2746,9 @@ class Parts(SecureModel):
         return (True, "Rollback allowed", False)
 
     def rollback_step(self, operator, reason=None, override_id=None):
-        """
-        Roll back this part to the previous step in the workflow.
-
-        This is configurable per step via:
-        - undo_window_minutes: Time window during which rollback is allowed
-        - rollback_requires_approval: Whether supervisor approval is required
-
-        Args:
-            operator: User performing the rollback
-            reason: Justification for the rollback (required if no override)
-            override_id: ID of pre-approved StepOverride (optional)
-
-        Returns:
-            dict: {
-                'success': bool,
-                'message': str,
-                'previous_step': Steps instance if successful,
-                'requires_approval': bool (if rollback needs approval)
-            }
-
-        Raises:
-            ValueError: If rollback is not allowed or required data is missing.
-        """
-        from django.utils import timezone
-        from .qms import StepTransitionLog, StepOverride, OverrideStatus, BlockType
-
-        # Check if rollback is allowed
-        can_rollback, message, requires_approval = self.can_rollback_step(operator)
-
-        if not can_rollback:
-            raise ValueError(f"Cannot rollback: {message}")
-
-        # Get current and previous executions
-        current_execution = StepExecution.objects.filter(
-            part=self,
-            step=self.step,
-            status='COMPLETED'
-        ).order_by('-exited_at').first()
-
-        previous_execution = StepExecution.objects.filter(
-            part=self,
-            next_step=self.step,
-            status='COMPLETED'
-        ).order_by('-exited_at').first()
-
-        if not current_execution or not previous_execution:
-            raise ValueError("Cannot determine step execution history for rollback")
-
-        previous_step = previous_execution.step
-
-        # Handle approval workflow
-        if requires_approval:
-            if override_id:
-                # Use provided override
-                try:
-                    override = StepOverride.objects.get(
-                        id=override_id,
-                        step_execution=current_execution,
-                        block_type=BlockType.ROLLBACK,
-                        status=OverrideStatus.APPROVED,
-                        used=False
-                    )
-                    if override.expires_at and override.expires_at < timezone.now():
-                        raise ValueError("Rollback approval has expired")
-
-                    # Mark override as used
-                    override.used = True
-                    override.used_at = timezone.now()
-                    override.save(update_fields=['used', 'used_at'])
-
-                except StepOverride.DoesNotExist:
-                    raise ValueError("Invalid or expired rollback override")
-            else:
-                # Create a pending override request
-                if not reason or len(reason.strip()) < 10:
-                    raise ValueError("Reason required for rollback approval request (minimum 10 characters)")
-
-                override_expiry_hours = getattr(self.step, 'override_expiry_hours', 24)
-                expires_at = timezone.now() + timezone.timedelta(hours=override_expiry_hours)
-
-                StepOverride.objects.create(
-                    step_execution=current_execution,
-                    block_type=BlockType.ROLLBACK,
-                    requested_by=operator,
-                    reason=reason,
-                    status=OverrideStatus.PENDING,
-                    expires_at=expires_at
-                )
-
-                return {
-                    'success': False,
-                    'message': 'Rollback request submitted for approval',
-                    'requires_approval': True,
-                    'previous_step': previous_step
-                }
-
-        # Perform the rollback
-        # 1. Mark current execution as rolled back
-        current_execution.status = 'ROLLED_BACK'
-        current_execution.save(update_fields=['status'])
-
-        # 2. Create new execution for previous step (reopening it)
-        visit_number = StepExecution.get_visit_count(self, previous_step) + 1
-        new_execution = StepExecution.objects.create(
-            part=self,
-            step=previous_step,
-            visit_number=visit_number,
-            assigned_to=operator,  # Assign to person doing rollback
-            status='IN_PROGRESS',
-            started_at=timezone.now()
-        )
-
-        # 3. Update part's current step
-        old_step = self.step
-        self.step = previous_step
-        self.part_status = PartsStatus.IN_PROGRESS
-
-        # 4. Re-evaluate sampling for the restored step
-        evaluator = SamplingFallbackApplier(part=self)
-        result = evaluator.evaluate()
-        self.requires_sampling = result.get("requires_sampling", False)
-        self.sampling_rule = result.get("rule")
-        self.sampling_ruleset = result.get("ruleset")
-        self.sampling_context = result.get("context", {})
-
-        self.save()
-
-        # 5. Log the rollback transition (with negative indication)
-        StepTransitionLog.objects.create(
-            part=self,
-            step=previous_step,
-            operator=operator
-        )
-
-        return {
-            'success': True,
-            'message': f'Rolled back from "{old_step.name}" to "{previous_step.name}"',
-            'previous_step': previous_step,
-            'requires_approval': False
-        }
+        """Thin delegate — see `services.mes.parts.rollback_part_step`."""
+        from Tracker.services.mes.parts import rollback_part_step
+        return rollback_part_step(self, operator, reason=reason, override_id=override_id)
 
     @classmethod
     def get_filtered_queryset(cls, user=None, filters=None):
@@ -3350,7 +2764,10 @@ class Parts(SecureModel):
 
     def save(self, *args, **kwargs):
         """Enhanced save method with sampling evaluation"""
-        is_new = self.pk is None
+        # `_state.adding` — not `self.pk is None`. SecureModel assigns
+        # uuid7 pks at instantiation time, so `self.pk is None` is always
+        # False. Capture BEFORE super().save() because save flips the flag.
+        is_new = self._state.adding
         super().save(*args, **kwargs)
 
         # Evaluate sampling requirements for new parts

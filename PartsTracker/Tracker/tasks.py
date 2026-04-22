@@ -77,90 +77,34 @@ def embed_document_async(self, document_id):
     """
     Asynchronously embed a document using AI/Ollama.
 
-    Extracts text, chunks it, generates embeddings, and stores in DB.
-    Uses RetryableEmbeddingTask for automatic retry with exponential backoff.
-
-    Args:
-        document_id: The ID of the Document to embed
-
-    Returns:
-        dict with status and embedding info
+    Thin Celery wrapper: fetches the document outside tenant scope,
+    then delegates the actual extraction + chunking + embedding to
+    `services.core.documents.embed_document_inline` under a
+    `tenant_context` for RLS enforcement.
     """
-    import os
-    from django.conf import settings
-    from django.db import transaction
-    from Tracker.models import Documents, DocChunk
-    from Tracker.ai_embed import embed_texts, chunk_text
+    from Tracker.models import Documents
+    from Tracker.services.core.documents import embed_document_inline
 
-    # First lookup bypasses RLS to get tenant context
+    # Unscoped lookup so we can find the doc without an active tenant
+    # context; the subsequent block sets one.
     try:
-        doc = Documents.all_objects.get(id=document_id)
+        doc = Documents.unscoped.get(id=document_id)
     except Documents.DoesNotExist:
         logger.error(f"Document {document_id} not found")
         return {'status': 'error', 'message': 'Document not found'}
 
-    # Now run with tenant context for RLS enforcement
     tenant_id = get_tenant_for_object(doc)
     with tenant_context(tenant_id):
-        if not settings.AI_EMBED_ENABLED:
-            return {'status': 'skipped', 'message': 'AI embedding disabled'}
+        try:
+            embedded = embed_document_inline(doc)
+        except Exception as e:  # noqa: BLE001 — surface in task result
+            logger.exception(f"Failed to embed document {document_id}")
+            return {'status': 'error', 'message': str(e)}
 
-        if not doc.file or not os.path.exists(doc.file.path):
-            return {'status': 'skipped', 'message': 'File not found'}
-
-        file_size = os.path.getsize(doc.file.path)
-        if file_size > settings.AI_EMBED_MAX_FILE_BYTES:
-            return {'status': 'skipped', 'message': f'File too large: {file_size} bytes'}
-
-        # Extract text
-        text = doc._extract_text_from_file()
-        if not text or not text.strip():
-            return {'status': 'skipped', 'message': 'No text extracted'}
-
-        # Chunk text
-        chunks = chunk_text(
-            text,
-            max_chars=settings.AI_EMBED_CHUNK_CHARS,
-            max_chunks=settings.AI_EMBED_MAX_CHUNKS
-        )
-        if not chunks:
-            return {'status': 'skipped', 'message': 'No chunks created'}
-
-        logger.info(f"Processing {len(chunks)} chunks for document {document_id}")
-
-        # Generate embeddings - autoretry handles transient failures
-        vecs = embed_texts(chunks)
-
-        # Verify dimensions
-        if vecs and len(vecs[0]) != settings.AI_EMBED_DIM:
-            logger.error(f"Embedding dimension mismatch for document {document_id}")
-            return {'status': 'error', 'message': 'Embedding dimension mismatch'}
-
-        # Store in database
-        rows = [
-            DocChunk(
-                doc=doc,
-                preview_text=t[:300],
-                full_text=t,
-                span_meta={"i": i},
-                embedding=v
-            )
-            for i, (t, v) in enumerate(zip(chunks, vecs))
-        ]
-
-        with transaction.atomic():
-            DocChunk.objects.filter(doc=doc).delete()
-            DocChunk.objects.bulk_create(rows, batch_size=settings.AI_EMBED_BATCH_SIZE)
-            doc.ai_readable = True
-            doc.save(update_fields=["ai_readable"])
-
-        logger.info(f"Successfully embedded {len(chunks)} chunks for document {document_id}")
-        return {
-            'status': 'success',
-            'document_id': document_id,
-            'chunks_processed': len(chunks),
-            'file_size': file_size
-        }
+    return {
+        'status': 'success' if embedded else 'skipped',
+        'document_id': document_id,
+    }
 
 
 # ============================================================================
@@ -189,9 +133,9 @@ def process_3d_model(self, model_id: str):
     from Tracker.models import ThreeDModel, ModelProcessingStatus
     from Tracker.services.model_processor import ModelProcessor, ProcessingConfig
 
-    # Lookup model (bypass RLS for background task)
+    # Unscoped lookup — tenant context is set on the next line.
     try:
-        model = ThreeDModel.all_objects.get(id=model_id)
+        model = ThreeDModel.unscoped.get(id=model_id)
     except ThreeDModel.DoesNotExist:
         logger.error(f"ThreeDModel {model_id} not found")
         return {'status': 'error', 'message': 'Model not found'}
@@ -468,9 +412,11 @@ def send_notification_task(self, notification_id: int):
     from Tracker.models import NotificationTask as NotificationTaskModel
     from Tracker.notifications import get_notification_handler
 
-    # Initial lookup to get tenant context (bypasses RLS)
+    # Initial lookup runs without tenant context (Celery worker). Use
+    # all_tenants to bypass SecureManager auto-scoping; tenant_context is
+    # entered below for the actual send.
     try:
-        task = NotificationTaskModel.objects.get(id=notification_id)
+        task = NotificationTaskModel.all_tenants.get(id=notification_id)
     except NotificationTaskModel.DoesNotExist:
         logger.error(f"NotificationTask {notification_id} not found")
         return {'status': 'error', 'message': 'NotificationTask not found'}
@@ -601,13 +547,14 @@ def dispatch_pending_notifications():
 
     logger.info("Dispatching pending notifications")
 
-    # Find notifications ready to send (cross-tenant query for scheduling)
-    # This is safe because we're just reading IDs and dispatching individual tasks
+    # Cross-tenant scheduler query. SecureManager auto-scopes to a single
+    # tenant via ContextVar; use all_tenants to read IDs across every
+    # tenant. Each dispatched task re-enters tenant_context for its own send.
     now = timezone.now()
-    ready_notifications = NotificationTaskModel.objects.filter(
+    ready_notifications = NotificationTaskModel.all_tenants.filter(
         status='PENDING',
         next_send_at__lte=now
-    ).select_related('recipient').values_list('id', flat=True)
+    ).values_list('id', flat=True)
 
     dispatched_count = 0
     for notification_id in ready_notifications:
@@ -1489,3 +1436,83 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
 # real dotted path (Tracker.reports.tasks.generate_and_email_report);
 # this import is only here to trigger that registration.
 from Tracker.reports.tasks import generate_and_email_report  # noqa: E402, F401
+
+
+# Thresholds. Not tenant-configurable yet — feature-flag when a real tenant asks.
+WORK_ORDER_HOLD_THRESHOLD_HOURS = 48
+WORK_ORDER_OVERDUE_THRESHOLD_HOURS = 0
+
+
+@shared_task
+def scan_work_order_holds_and_overdue():
+    """Hourly scan: emit WORK_ORDER_HELD_TOO_LONG for stale holds and WORK_ORDER_OVERDUE for late WOs.
+
+    Cross-tenant scan; `notify()` requires a per-tenant context so we wrap each
+    emission in `tenant_context()`. Rule-engine cooldown prevents re-firing on
+    every tick.
+    """
+    from datetime import timedelta
+    from django.utils import timezone
+    from Tracker.models import WorkOrder, WorkOrderHold, WorkOrderStatus
+    from Tracker.services.core.notification import notify
+
+    now = timezone.now()
+    hold_cutoff = now - timedelta(hours=WORK_ORDER_HOLD_THRESHOLD_HOURS)
+    overdue_cutoff = now - timedelta(hours=WORK_ORDER_OVERDUE_THRESHOLD_HOURS)
+
+    stale_holds = WorkOrderHold.all_tenants.filter(
+        cleared_at__isnull=True,
+        is_voided=False,
+        placed_at__lte=hold_cutoff,
+    ).select_related('work_order').values(
+        'id', 'tenant_id', 'work_order_id', 'reason', 'placed_at',
+    )
+
+    held_emitted = 0
+    for h in stale_holds:
+        with tenant_context(h['tenant_id']):
+            wo = WorkOrder.objects.filter(id=h['work_order_id']).first()
+            if wo is None:
+                continue
+            notify(
+                event_type='WORK_ORDER_HELD_TOO_LONG',
+                scope_obj=wo,
+                payload={
+                    'work_order_id': str(wo.id),
+                    'hold_id': str(h['id']),
+                    'reason': h['reason'],
+                    'placed_at': h['placed_at'].isoformat() if h['placed_at'] else None,
+                    'hours_open': (now - h['placed_at']).total_seconds() / 3600.0 if h['placed_at'] else None,
+                },
+                related_obj=wo,
+            )
+            held_emitted += 1
+
+    overdue = WorkOrder.all_tenants.filter(
+        expected_completion__lte=overdue_cutoff.date(),
+    ).exclude(
+        workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
+    ).values('id', 'tenant_id', 'expected_completion')
+
+    overdue_emitted = 0
+    for row in overdue:
+        with tenant_context(row['tenant_id']):
+            wo = WorkOrder.objects.filter(id=row['id']).first()
+            if wo is None:
+                continue
+            notify(
+                event_type='WORK_ORDER_OVERDUE',
+                scope_obj=wo,
+                payload={
+                    'work_order_id': str(wo.id),
+                    'expected_completion': row['expected_completion'].isoformat() if row['expected_completion'] else None,
+                },
+                related_obj=wo,
+            )
+            overdue_emitted += 1
+
+    logger.info(
+        "scan_work_order_holds_and_overdue: emitted held=%d overdue=%d",
+        held_emitted, overdue_emitted,
+    )
+    return {'held': held_emitted, 'overdue': overdue_emitted}

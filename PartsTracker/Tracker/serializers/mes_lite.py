@@ -462,12 +462,45 @@ class CustomerPartsSerializer(serializers.ModelSerializer):
 
 # ===== WORK ORDER SERIALIZERS =====
 
+def _serialize_current_hold(wo):
+    """Return {reason, placed_at, placed_by_name, notes, hours_open} or None."""
+    holds = getattr(wo, '_open_holds_cache', None)
+    if holds is None:
+        from Tracker.models import WorkOrderHold
+        holds = list(WorkOrderHold.objects.filter(
+            work_order=wo, cleared_at__isnull=True, is_voided=False,
+        ).select_related('placed_by')[:1])
+    if not holds:
+        return None
+    h = holds[0]
+    from django.utils import timezone
+    hours_open = (timezone.now() - h.placed_at).total_seconds() / 3600.0 if h.placed_at else None
+    placed_by_name = None
+    if h.placed_by:
+        placed_by_name = (f"{h.placed_by.first_name} {h.placed_by.last_name}".strip()
+                          or h.placed_by.username)
+    return {
+        'id': str(h.id),
+        'reason': h.reason,
+        'placed_at': h.placed_at,
+        'placed_by_name': placed_by_name,
+        'notes': h.notes,
+        'expected_clear_at': h.expected_clear_at,
+        'hours_open': round(hours_open, 2) if hours_open is not None else None,
+    }
+
+
 class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Lightweight serializer for work order list views - avoids N+1 queries."""
     related_order_info = serializers.SerializerMethodField()
     parts_count = serializers.SerializerMethodField()
     qa_progress = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
+    completed_parts_count = serializers.SerializerMethodField()
+    is_batch_work_order = serializers.SerializerMethodField()
+    current_hold = serializers.SerializerMethodField()
+    parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
+    child_count = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkOrder
@@ -475,9 +508,40 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
             'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info',
             'process', 'process_info', 'expected_completion', 'true_completion',
             'expected_duration', 'true_duration', 'notes', 'parts_count', 'qa_progress',
+            'completed_parts_count', 'is_batch_work_order', 'current_hold',
+            'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
             'created_at', 'updated_at', 'archived'
         )
-        read_only_fields = ('created_at', 'updated_at', 'related_order_info', 'parts_count', 'qa_progress', 'process_info')
+        read_only_fields = (
+            'created_at', 'updated_at', 'related_order_info', 'parts_count', 'qa_progress', 'process_info',
+            'completed_parts_count', 'is_batch_work_order', 'current_hold',
+            'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
+        )
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_child_count(self, obj):
+        if hasattr(obj, '_child_count'):
+            return obj._child_count
+        return obj.child_workorders.count()
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_current_hold(self, obj):
+        return _serialize_current_hold(obj)
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_completed_parts_count(self, obj):
+        if hasattr(obj, '_completed_parts_count'):
+            return obj._completed_parts_count
+        return obj.parts.filter(part_status__in=(
+            PartsStatus.COMPLETED, PartsStatus.SHIPPED, PartsStatus.IN_STOCK,
+            PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED, PartsStatus.RMA_CLOSED,
+        )).count()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_batch_work_order(self, obj):
+        if hasattr(obj, '_is_batch_work_order'):
+            return obj._is_batch_work_order
+        return obj.parts.filter(part_type__processes__is_batch_process=True).exists()
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_process_info(self, obj):
@@ -554,6 +618,9 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     related_order_detail = serializers.SerializerMethodField()
     is_batch_work_order = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
+    current_hold = serializers.SerializerMethodField()
+    parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
+    child_count = serializers.SerializerMethodField()
 
     related_order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
 
@@ -562,10 +629,23 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         fields = (
         'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
-        'notes', 'parts_summary', 'is_batch_work_order', 'created_at', 'updated_at', 'archived')
+        'notes', 'parts_summary', 'is_batch_work_order', 'current_hold',
+        'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
+        'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
-            'is_batch_work_order', 'process_info')
+            'is_batch_work_order', 'process_info', 'current_hold',
+            'parent_workorder_id', 'split_reason', 'split_at', 'child_count')
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_child_count(self, obj):
+        if hasattr(obj, '_child_count'):
+            return obj._child_count
+        return obj.child_workorders.count()
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_current_hold(self, obj):
+        return _serialize_current_hold(obj)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_process_info(self, obj):
@@ -743,9 +823,16 @@ class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     Steps are now independent entities that can be shared across process versions.
     Ordering and routing are defined in ProcessStep and StepEdge tables.
+
+    Versioning (leaf-style): Steps have no DRAFT/APPROVED status lifecycle, so
+    content edits are routed through `create_new_version` automatically. Only
+    `archived` bypasses versioning (archive-in-place).
     """
     part_type_info = serializers.SerializerMethodField()
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
+
+    # Fields whose edits are metadata-only and should NOT trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     class Meta:
         model = Steps
@@ -764,10 +851,22 @@ class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
             # Workflow engine - cycle control
             'max_visits', 'revisit_assignment', 'revisit_role',
             # Timestamps
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived',
+            # Versioning
+            'version',
         )
         read_only_fields = (
-            'created_at', 'updated_at', 'part_type_info', 'part_type_name'
+            'created_at', 'updated_at', 'part_type_info', 'part_type_name', 'version'
+        )
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let archive
+        toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
         )
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -972,16 +1071,37 @@ class StepEdgeSerializer(serializers.ModelSerializer):
 
 
 class PartTypesSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Part types serializer"""
+    """Part types serializer with versioning support.
+
+    Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
+    version via `create_new_version`.  Archive-only updates go through a
+    plain save.
+    """
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
 
     class Meta:
         model = PartTypes
         fields = [
-            'id', 'tenant', 'external_id', 'created_at', 'updated_at',
+            'id', 'tenant', 'external_id', 'created_at', 'updated_at', 'archived',
             'name', 'ID_prefix', 'ERP_id',
             'itar_controlled', 'eccn', 'usml_category',
+            'version', 'is_current_version', 'previous_version',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'version',
+                            'is_current_version', 'previous_version']
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class PartTypeSerializer(serializers.ModelSerializer):
@@ -1074,59 +1194,8 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
         read_only_fields = ["approved_at", "approved_by", "version", "previous_version", "is_current_version"]
 
     def create(self, validated_data):
-        nodes_data = validated_data.pop("nodes", [])
-        edges_data = validated_data.pop("edges", [])
-
-        process = Processes.objects.create(**validated_data)
-
-        # Create steps and track ID mapping (temp_id -> real_id)
-        temp_id_map = {}  # Maps negative temp IDs to real step IDs
-        for node in nodes_data:
-            node = node.copy()
-            temp_id = node.pop("id", None)
-            order = node.pop("order", None)
-            is_entry_point = node.pop("is_entry_point", False)
-
-            # Create the step node
-            step = Steps.objects.create(
-                part_type=process.part_type,
-                **node
-            )
-
-            # Track ID mapping
-            if temp_id is not None and temp_id <= 0:
-                temp_id_map[temp_id] = step.id
-            temp_id_map[step.id] = step.id  # Real IDs map to themselves
-
-            # Create ProcessStep junction
-            ProcessStep.objects.create(
-                process=process,
-                step=step,
-                order=order or 1,
-                is_entry_point=is_entry_point or (order == 1),
-            )
-
-        # Create edges (resolve temp IDs)
-        for edge in edges_data:
-            from_step_id = edge.get("from_step")
-            to_step_id = edge.get("to_step")
-
-            # Resolve temp IDs
-            real_from_id = temp_id_map.get(from_step_id, from_step_id)
-            real_to_id = temp_id_map.get(to_step_id, to_step_id)
-
-            if real_from_id and real_to_id:
-                StepEdge.objects.create(
-                    process=process,
-                    from_step_id=real_from_id,
-                    to_step_id=real_to_id,
-                    edge_type=edge.get("edge_type", EdgeType.DEFAULT),
-                    condition_measurement_id=edge.get("condition_measurement"),
-                    condition_operator=edge.get("condition_operator", ""),
-                    condition_value=edge.get("condition_value"),
-                )
-
-        return process
+        from Tracker.services.mes.processes import create_process_with_steps
+        return create_process_with_steps(validated_data)
 
     def update(self, instance, validated_data):
         """
@@ -1137,122 +1206,23 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
         - Nodes in DB but not in payload: REMOVE from process (step may be shared)
         - Edges: Replace all (delete and recreate)
         """
-        if not instance.is_editable:
-            raise serializers.ValidationError(
-                "Cannot modify approved process. Use create_new_version() to create an editable copy."
-            )
-
-        nodes_data = validated_data.pop("nodes", [])
-        edges_data = validated_data.pop("edges", [])
-
-        # Update process-level fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-
-        # Track ID mappings
-        temp_id_map = {}  # temp_id -> real_id
-        existing_process_steps = {ps.step_id: ps for ps in instance.process_steps.all()}
-        incoming_step_ids = set()
-
-        for node in nodes_data:
-            node = node.copy()
-            node_id = node.pop("id", None)
-            order = node.pop("order", None)
-            is_entry_point = node.pop("is_entry_point", False)
-
-            if node_id and node_id > 0:
-                # Update existing step
-                incoming_step_ids.add(node_id)
-                user = self.context['request'].user
-                step = Steps.objects.for_user(user).get(id=node_id)
-
-                for attr, value in node.items():
-                    setattr(step, attr, value)
-                step.save()
-
-                # Update ProcessStep order if needed
-                if node_id in existing_process_steps:
-                    ps = existing_process_steps[node_id]
-                    ps.order = order or ps.order
-                    ps.is_entry_point = is_entry_point
-                    ps.save()
-                else:
-                    # Step exists but not linked to this process - add it
-                    ProcessStep.objects.create(
-                        process=instance,
-                        step=step,
-                        order=order or 1,
-                        is_entry_point=is_entry_point,
-                    )
-
-                temp_id_map[node_id] = node_id
-            else:
-                # Create new step (negative or no ID)
-                step = Steps.objects.create(
-                    part_type=instance.part_type,
-                    **node
-                )
-                incoming_step_ids.add(step.id)
-
-                ProcessStep.objects.create(
-                    process=instance,
-                    step=step,
-                    order=order or 1,
-                    is_entry_point=is_entry_point,
-                )
-
-                if node_id is not None:
-                    temp_id_map[node_id] = step.id
-                temp_id_map[step.id] = step.id
-
-        # Remove ProcessStep links for steps no longer in this process
-        # Note: We don't delete the Step itself (it may be shared)
-        steps_to_unlink = set(existing_process_steps.keys()) - incoming_step_ids
-        if steps_to_unlink:
-            # Check for execution history before unlinking
-            # tenant-safe: steps_to_unlink derived from tenant-scoped process instance
-            protected = StepExecution.objects.filter(
-                step_id__in=steps_to_unlink
-            ).values_list('step_id', flat=True).distinct()
-
-            if protected:
-                protected_names = Steps.objects.filter(id__in=protected).values_list('name', flat=True)
-                raise serializers.ValidationError(
-                    f"Cannot remove steps with execution history: {', '.join(protected_names)}."
-                )
-
-            ProcessStep.objects.filter(process=instance, step_id__in=steps_to_unlink).delete()
-
-        # Replace all edges
-        instance.step_edges.all().delete()
-
-        for edge in edges_data:
-            from_step_id = edge.get("from_step")
-            to_step_id = edge.get("to_step")
-
-            # Resolve temp IDs
-            real_from_id = temp_id_map.get(from_step_id, from_step_id)
-            real_to_id = temp_id_map.get(to_step_id, to_step_id)
-
-            if real_from_id and real_to_id:
-                StepEdge.objects.create(
-                    process=instance,
-                    from_step_id=real_from_id,
-                    to_step_id=real_to_id,
-                    edge_type=edge.get("edge_type", EdgeType.DEFAULT),
-                    condition_measurement_id=edge.get("condition_measurement"),
-                    condition_operator=edge.get("condition_operator", ""),
-                    condition_value=edge.get("condition_value"),
-                )
-
-        return instance
+        from Tracker.services.mes.processes import update_process_with_steps
+        user = self.context['request'].user if 'request' in self.context else None
+        try:
+            return update_process_with_steps(instance, validated_data, user=user)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
 
 # ===== EQUIPMENT SERIALIZERS =====
 
 class EquipmentTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Equipment type serializer"""
+    """Equipment type serializer.
+
+    EquipmentType is a versioned configuration record. Content edits
+    (name, description, calibration settings, portability flags) route
+    through `create_new_version`. Archiving goes through a plain save.
+    """
 
     class Meta:
         model = EquipmentType
@@ -1260,12 +1230,31 @@ class EquipmentTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
             'id', 'tenant', 'external_id', 'created_at', 'updated_at',
             'name', 'description', 'requires_calibration',
             'default_calibration_interval_days', 'is_portable', 'track_downtime',
+            'archived', 'version',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'version']
+
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class EquipmentsSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Equipment serializer"""
+    """Equipment serializer.
+
+    Equipments is a versioned asset record. Content edits (name, type,
+    serial number, calibration settings, identity fields) route through
+    `create_new_version`. Archiving and operational status changes go
+    through a plain save.
+    """
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
 
     class Meta:
@@ -1273,9 +1262,23 @@ class EquipmentsSerializer(serializers.ModelSerializer, SecureModelMixin):
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "status", "notes",
-            "created_at", "updated_at", "archived"
+            "created_at", "updated_at", "archived", "version",
         ]
-        read_only_fields = ("created_at", "updated_at")
+        read_only_fields = ("created_at", "updated_at", "version")
+
+    # status is an operational state changed by calibration/maintenance workflows,
+    # not a configuration content change.
+    _NON_VERSIONING_FIELDS = frozenset({'archived', 'status'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive and status changes through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class EquipmentSerializer(serializers.ModelSerializer):
@@ -1334,9 +1337,23 @@ class MilestoneTemplateSerializer(serializers.ModelSerializer, SecureModelMixin)
         model = MilestoneTemplate
         fields = [
             'id', 'name', 'description', 'is_default', 'milestones',
-            'created_at', 'updated_at',
+            'created_at', 'updated_at', 'archived', 'version',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'version']
+
+    # Fields whose edits are metadata/soft-delete only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )
 
 
 class MilestoneTemplateListSerializer(serializers.ModelSerializer, SecureModelMixin):

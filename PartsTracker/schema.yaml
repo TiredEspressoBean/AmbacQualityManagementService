@@ -988,6 +988,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalTemplate'
           description: ''
+  /api/ApprovalTemplates/{id}/revisions/:
+    post:
+      operationId: api_ApprovalTemplates_revisions_create
+      description: Create a new revision of an ApprovalTemplate. Returns the new version
+        with incremented version number. M2M default_approvers and default_groups
+        are copied to the new version.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Approval Template.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - change_description
+              properties:
+                change_description:
+                  type: string
+                  description: Human narrative of what changed and why (ISO 9001 4.4).
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalTemplate'
+          description: ''
   /api/ApprovalTemplates/export-excel/:
     get:
       operationId: api_ApprovalTemplates_export_excel_retrieve
@@ -1691,6 +1728,42 @@ paths:
       - tokenAuth: []
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BOM'
+          description: ''
+  /api/BOMs/{id}/revisions/:
+    post:
+      operationId: api_BOMs_revisions_create
+      description: POST a new revision of this BOM. Returns 201 with the new version.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Bill of Materials.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBOMRevisionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateBOMRevisionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateBOMRevisionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
           content:
             application/json:
               schema:
@@ -10233,6 +10306,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/MilestoneTemplates/{id}/revisions/:
+    post:
+      operationId: api_MilestoneTemplates_revisions_create
+      description: Create a new revision of a MilestoneTemplate. Returns the new version
+        with incremented version number. Milestone children are copied to the new
+        version.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Milestone Template.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneTemplateRevisionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneTemplateRevisionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneTemplateRevisionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          description: No response body
   /api/Milestones/:
     get:
       operationId: api_Milestones_list
@@ -10397,6 +10504,30 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/NotificationEventTypes/:
+    get:
+      operationId: api_NotificationEventTypes_list
+      description: |-
+        Static catalog of event types the rule engine can fire on.
+
+        Consumed by the admin UI to build the event-type dropdown and to
+        render the right scope picker per event (scope_model tells the UI
+        which model list to fetch when the admin picks "scope at a specific
+        object").
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationEventTypeCatalog'
+          description: ''
   /api/NotificationPreferences/:
     get:
       operationId: api_NotificationPreferences_list
@@ -10621,6 +10752,214 @@ paths:
               schema:
                 $ref: '#/components/schemas/AvailableNotificationTypes'
           description: ''
+  /api/NotificationRules/:
+    get:
+      operationId: api_NotificationRules_list
+      description: CRUD for event-driven notification rules.
+      parameters:
+      - in: query
+        name: channel_type
+        schema:
+          type: string
+          enum:
+          - EMAIL
+          - IN_APP
+        description: |-
+          * `EMAIL` - Email
+          * `IN_APP` - In-App Notification
+      - in: query
+        name: event_type
+        schema:
+          type: string
+          enum:
+          - STEP_FAILURE
+          - WORK_ORDER_HELD_TOO_LONG
+          - WORK_ORDER_OVERDUE
+          - WORK_ORDER_STALLED
+        description: |-
+          * `STEP_FAILURE` - Part failed at step
+          * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
+          * `WORK_ORDER_STALLED` - Work order stalled
+          * `WORK_ORDER_OVERDUE` - Work order overdue
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationRuleList'
+          description: ''
+    post:
+      operationId: api_NotificationRules_create
+      description: CRUD for event-driven notification rules.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRule'
+          description: ''
+  /api/NotificationRules/{id}/:
+    get:
+      operationId: api_NotificationRules_retrieve
+      description: CRUD for event-driven notification rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRule'
+          description: ''
+    put:
+      operationId: api_NotificationRules_update
+      description: CRUD for event-driven notification rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRule'
+          description: ''
+    patch:
+      operationId: api_NotificationRules_partial_update
+      description: CRUD for event-driven notification rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRule'
+          description: ''
+    delete:
+      operationId: api_NotificationRules_destroy
+      description: CRUD for event-driven notification rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/Orders/:
     get:
       operationId: api_Orders_list
@@ -12326,6 +12665,132 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartTravelerResponse'
           description: ''
+  /api/Parts/bulk_increment/:
+    post:
+      operationId: api_Parts_bulk_increment_create
+      description: Advance each listed part one step. Per-id errors captured.
+      parameters:
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsBulkIncrementInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsBulkIncrementInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsBulkIncrementInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResultResponse'
+          description: ''
+  /api/Parts/bulk_rollback/:
+    post:
+      operationId: api_Parts_bulk_rollback_create
+      description: |-
+        Parts CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsBulkRollbackInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsBulkRollbackInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsBulkRollbackInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkRollbackResponse'
+          description: ''
+  /api/Parts/bulk_set_status/:
+    post:
+      operationId: api_Parts_bulk_set_status_create
+      description: |-
+        Parts CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkSetStatusResponse'
+          description: ''
   /api/Parts/export/{export_format}/:
     get:
       operationId: api_Parts_export_retrieve
@@ -13019,6 +13484,43 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Processes/{id}/revisions/:
+    post:
+      operationId: api_Processes_revisions_create
+      description: Create a new revision of an APPROVED or DEPRECATED process. Returns
+        the new DRAFT with incremented version. Children (ProcessStep, StepEdge, current
+        Documents) are copied.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - change_description
+              properties:
+                change_description:
+                  type: string
+                  description: Human narrative of what changed and why (ISO 9001 4.4).
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processes'
+          description: ''
   /api/Processes/export-excel/:
     get:
       operationId: api_Processes_export_excel_retrieve
@@ -17450,6 +17952,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/Steps'
           description: ''
+  /api/Steps/{id}/revisions/:
+    post:
+      operationId: api_Steps_revisions_create
+      description: Create a new revision of a Step. All child rows (StepMeasurementRequirement,
+        StepRequirement, and step-owned TrainingRequirement) are copied to the new
+        version. Returns the new version with incremented version number.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step.
+        required: true
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter steps by process's part type UUID
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter steps by process UUID (via ProcessStep)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStepRevisionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateStepRevisionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateStepRevisionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Steps'
+          description: ''
   /api/Steps/{id}/update_sampling_rules/:
     post:
       operationId: api_Steps_update_sampling_rules_create
@@ -21635,6 +22185,82 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/WorkOrders/{id}/clear_hold/:
+    post:
+      operationId: api_WorkOrders_clear_hold_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/WorkOrders/{id}/place_on_hold/:
+    post:
+      operationId: api_WorkOrders_place_on_hold_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderPlaceOnHoldInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderPlaceOnHoldInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderPlaceOnHoldInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkOrders/{id}/qa_documents/:
     get:
       operationId: api_WorkOrders_qa_documents_retrieve
@@ -21683,6 +22309,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrder'
           description: ''
+  /api/WorkOrders/{id}/split/:
+    post:
+      operationId: api_WorkOrders_split_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSplitInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSplitInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderSplitInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderSplitResponse'
+          description: ''
   /api/WorkOrders/{id}/step_history/:
     get:
       operationId: api_WorkOrders_step_history_retrieve
@@ -21706,6 +22375,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderStepHistoryResponse'
+          description: ''
+  /api/WorkOrders/{id}/undo_split/:
+    post:
+      operationId: api_WorkOrders_undo_split_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/WorkOrders/bulk_clear_hold/:
+    post:
+      operationId: api_WorkOrders_bulk_clear_hold_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkClearHoldInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkClearHoldInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkClearHoldInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderBulkClearHoldResponse'
+          description: ''
+  /api/WorkOrders/bulk_place_on_hold/:
+    post:
+      operationId: api_WorkOrders_bulk_place_on_hold_create
+      description: |-
+        Work Orders CRUD with CSV import/export support.
+
+        Import/Export endpoints (auto-configured from model):
+        - GET /import-template/ - Download import template (CSV or Excel)
+        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+        - GET /import-status/{task_id}/ - Check status of background import
+        - GET /export/ - Export filtered data to CSV/Excel
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldResponse'
+          description: ''
+  /api/WorkOrders/bulk_transition/:
+    post:
+      operationId: api_WorkOrders_bulk_transition_create
+      description: Transition multiple work orders. Per-id errors captured.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderBulkTransitionResponse'
           description: ''
   /api/WorkOrders/export/{export_format}/:
     get:
@@ -25564,7 +26363,13 @@ components:
         * `CANCELLED` - Cancelled
     ApprovalTemplate:
       type: object
-      description: Approval template serializer
+      description: |-
+        Approval template serializer.
+
+        ApprovalTemplate is a VERSIONED controlled record. Any content edit
+        routes through `create_new_version` so configuration changes create an
+        auditable new version. Archiving goes through a plain save because it
+        is a soft-delete, not a content change.
       properties:
         id:
           type: string
@@ -25657,6 +26462,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - approval_flow_type_display
       - approval_sequence_display
@@ -25670,9 +26478,16 @@ components:
       - id
       - template_name
       - updated_at
+      - version
     ApprovalTemplateRequest:
       type: object
-      description: Approval template serializer
+      description: |-
+        Approval template serializer.
+
+        ApprovalTemplate is a VERSIONED controlled record. Any content edit
+        routes through `create_new_version` so configuration changes create an
+        auditable new version. Archiving goes through a plain save because it
+        is a soft-delete, not a content change.
       properties:
         template_name:
           type: string
@@ -25968,7 +26783,12 @@ components:
       - last_name
     BOM:
       type: object
-      description: Bill of Materials serializer
+      description: |-
+        Bill of Materials serializer.
+
+        PATCH semantics: DRAFT BOMs are edited in place via super().update().
+        RELEASED and OBSOLETE BOMs are immutable via PATCH — callers must POST
+        to /api/boms/{id}/revisions/ to start a new DRAFT.
       properties:
         id:
           type: string
@@ -26016,6 +26836,9 @@ components:
         line_count:
           type: integer
           readOnly: true
+        version:
+          type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -26039,6 +26862,7 @@ components:
       - part_type_name
       - revision
       - updated_at
+      - version
     BOMLine:
       type: object
       description: BOM line item serializer
@@ -26175,7 +26999,12 @@ components:
       - revision
     BOMRequest:
       type: object
-      description: Bill of Materials serializer
+      description: |-
+        Bill of Materials serializer.
+
+        PATCH semantics: DRAFT BOMs are edited in place via super().update().
+        RELEASED and OBSOLETE BOMs are immutable via PATCH — callers must POST
+        to /api/boms/{id}/revisions/ to start a new DRAFT.
       properties:
         part_type:
           type: string
@@ -26299,6 +27128,36 @@ components:
             format: uuid
       required:
       - ids
+    BulkResultResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+    BulkRollbackResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+    BulkSetStatusResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
     BulkUserActivationInputRequest:
       type: object
       properties:
@@ -26469,6 +27328,12 @@ components:
           type: array
           items: {}
           readOnly: true
+        work_order_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -26509,6 +27374,7 @@ components:
       - updated_at
       - verifications
       - verified_by_info
+      - work_order_ids
     CAPARequest:
       type: object
       description: CAPA main serializer
@@ -27142,16 +28008,6 @@ components:
       - capa
       - verification_criteria
       - verification_method
-    ChannelTypeEnum:
-      enum:
-      - EMAIL
-      - IN_APP
-      - SMS
-      type: string
-      description: |-
-        * `EMAIL` - Email
-        * `IN_APP` - In-App Notification
-        * `SMS` - SMS
     ChartTypeEnum:
       enum:
       - XBAR_R
@@ -27259,7 +28115,14 @@ components:
           minLength: 1
     Company:
       type: object
-      description: Company serializer with secure filtering
+      description: |-
+        Company serializer with secure filtering.
+
+        Companies is a VERSIONED controlled record. Any content edit
+        (name, description, hubspot_api_id) routes through
+        `create_new_version` so supplier qualification status changes
+        create an auditable new version. Archiving goes through a plain
+        save because it is a soft-delete, not a content change.
       properties:
         id:
           type: string
@@ -27270,6 +28133,10 @@ components:
           maxLength: 50
         description:
           type: string
+        hubspot_api_id:
+          type: string
+          nullable: true
+          maxLength: 50
         user_count:
           type: integer
           readOnly: true
@@ -27283,6 +28150,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - description
@@ -27290,9 +28160,17 @@ components:
       - name
       - updated_at
       - user_count
+      - version
     CompanyRequest:
       type: object
-      description: Company serializer with secure filtering
+      description: |-
+        Company serializer with secure filtering.
+
+        Companies is a VERSIONED controlled record. Any content edit
+        (name, description, hubspot_api_id) routes through
+        `create_new_version` so supplier qualification status changes
+        create an auditable new version. Archiving goes through a plain
+        save because it is a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -27301,6 +28179,10 @@ components:
         description:
           type: string
           minLength: 1
+        hubspot_api_id:
+          type: string
+          nullable: true
+          maxLength: 50
         archived:
           type: boolean
       required:
@@ -27656,6 +28538,30 @@ components:
         * `IN_DISASSEMBLY` - In Disassembly
         * `DISASSEMBLED` - Disassembled
         * `SCRAPPED` - Scrapped
+    CreateBOMRevisionInputRequest:
+      type: object
+      properties:
+        change_description:
+          type: string
+          minLength: 1
+      required:
+      - change_description
+    CreateMilestoneTemplateRevisionInputRequest:
+      type: object
+      properties:
+        change_description:
+          type: string
+          minLength: 1
+      required:
+      - change_description
+    CreateStepRevisionInputRequest:
+      type: object
+      properties:
+        change_description:
+          type: string
+          minLength: 1
+      required:
+      - change_description
     CurrentStateEnum:
       enum:
       - OPEN
@@ -27988,7 +28894,13 @@ components:
       - work_order
     DisassemblyBOMLine:
       type: object
-      description: Disassembly BOM line serializer
+      description: |-
+        Disassembly BOM line serializer.
+
+        DisassemblyBOMLine is a VERSIONED controlled record. Any content
+        edit (quantities, fallout rate, notes, line number, FK reassignment)
+        routes through `create_new_version` so reman yield spec changes are
+        auditable. Archiving goes through a plain save.
       properties:
         id:
           type: string
@@ -28040,6 +28952,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - component_type
       - component_type_name
@@ -28049,9 +28964,16 @@ components:
       - expected_usable_qty
       - id
       - updated_at
+      - version
     DisassemblyBOMLineRequest:
       type: object
-      description: Disassembly BOM line serializer
+      description: |-
+        Disassembly BOM line serializer.
+
+        DisassemblyBOMLine is a VERSIONED controlled record. Any content
+        edit (quantities, fallout rate, notes, line number, FK reassignment)
+        routes through `create_new_version` so reman yield spec changes are
+        auditable. Archiving goes through a plain save.
       properties:
         core_type:
           type: string
@@ -28113,7 +29035,16 @@ components:
         * `RETURN_TO_SUPPLIER` - Return to Supplier
     DocumentType:
       type: object
-      description: Serializer for document types with DMS compliance settings
+      description: |-
+        Serializer for document types with DMS compliance settings.
+
+        DocumentType is a VERSIONED controlled-document record (DMS
+        compliance: IATF 7.5.3, AS9100D 7.5.3.2). Any content edit
+        (requires_approval toggle, retention policy change, approval
+        template link, rename) routes through `create_new_version` so the
+        change creates an auditable new version rather than silently
+        overwriting the current one. Archiving goes through a plain save
+        because it's a soft-delete, not a content change.
       properties:
         id:
           type: string
@@ -28167,6 +29098,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - approval_template_name
       - code
@@ -28174,9 +29108,19 @@ components:
       - id
       - name
       - updated_at
+      - version
     DocumentTypeRequest:
       type: object
-      description: Serializer for document types with DMS compliance settings
+      description: |-
+        Serializer for document types with DMS compliance settings.
+
+        DocumentType is a VERSIONED controlled-document record (DMS
+        compliance: IATF 7.5.3, AS9100D 7.5.3.2). Any content edit
+        (requires_approval toggle, retention policy change, approval
+        template link, rename) routes through `create_new_version` so the
+        change creates an auditable new version rather than silently
+        overwriting the current one. Archiving goes through a plain save
+        because it's a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -28740,7 +29684,12 @@ components:
       - embedding
     EquipmentType:
       type: object
-      description: Equipment type serializer
+      description: |-
+        Equipment type serializer.
+
+        EquipmentType is a versioned configuration record. Content edits
+        (name, description, calibration settings, portability flags) route
+        through `create_new_version`. Archiving goes through a plain save.
       properties:
         id:
           type: string
@@ -28782,14 +29731,25 @@ components:
           type: boolean
         track_downtime:
           type: boolean
+        archived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - id
       - name
       - updated_at
+      - version
     EquipmentTypeRequest:
       type: object
-      description: Equipment type serializer
+      description: |-
+        Equipment type serializer.
+
+        EquipmentType is a versioned configuration record. Content edits
+        (name, description, calibration settings, portability flags) route
+        through `create_new_version`. Archiving goes through a plain save.
       properties:
         tenant:
           type: string
@@ -28820,11 +29780,19 @@ components:
           type: boolean
         track_downtime:
           type: boolean
+        archived:
+          type: boolean
       required:
       - name
     Equipments:
       type: object
-      description: Equipment serializer
+      description: |-
+        Equipment serializer.
+
+        Equipments is a versioned asset record. Content edits (name, type,
+        serial number, calibration settings, identity fields) route through
+        `create_new_version`. Archiving and operational status changes go
+        through a plain save.
       properties:
         id:
           type: string
@@ -28866,15 +29834,25 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - equipment_type_name
       - id
       - name
       - updated_at
+      - version
     EquipmentsRequest:
       type: object
-      description: Equipment serializer
+      description: |-
+        Equipment serializer.
+
+        Equipments is a versioned asset record. Content edits (name, type,
+        serial number, calibration settings, identity fields) route through
+        `create_new_version`. Archiving and operational status changes go
+        through a plain save.
       properties:
         name:
           type: string
@@ -28918,6 +29896,18 @@ components:
         * `IN_CALIBRATION` - In Calibration
         * `IN_MAINTENANCE` - In Maintenance
         * `RETIRED` - Retired
+    EventTypeEnum:
+      enum:
+      - STEP_FAILURE
+      - WORK_ORDER_HELD_TOO_LONG
+      - WORK_ORDER_STALLED
+      - WORK_ORDER_OVERDUE
+      type: string
+      description: |-
+        * `STEP_FAILURE` - Part failed at step
+        * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
+        * `WORK_ORDER_STALLED` - Work order stalled
+        * `WORK_ORDER_OVERDUE` - Work order overdue
     ExecuteQueryRequestRequest:
       type: object
       properties:
@@ -30796,7 +31786,16 @@ components:
       - password
     MaterialLot:
       type: object
-      description: Material lot serializer with full details
+      description: |-
+        Material lot serializer with hybrid versioning routing.
+
+        Spec/content field edits (supplier, material_type, expiration_date,
+        manufacture_date, supplier_lot_number, material_description, storage_location,
+        certificate_of_conformance, unit_of_measure, lot_number, received_date)
+        route through ``create_new_version``.
+
+        Operational field edits (quantity_remaining, status, archived) use a plain
+        save so every consumption event does not mint a new version row.
       properties:
         id:
           type: string
@@ -30885,6 +31884,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - child_lot_count
       - created_at
@@ -30899,9 +31901,19 @@ components:
       - supplier_name
       - unit_of_measure
       - updated_at
+      - version
     MaterialLotRequest:
       type: object
-      description: Material lot serializer with full details
+      description: |-
+        Material lot serializer with hybrid versioning routing.
+
+        Spec/content field edits (supplier, material_type, expiration_date,
+        manufacture_date, supplier_lot_number, material_description, storage_location,
+        certificate_of_conformance, unit_of_measure, lot_number, received_date)
+        route through ``create_new_version``.
+
+        Operational field edits (quantity_remaining, status, archived) use a plain
+        save so every consumption event does not mint a new version row.
       properties:
         lot_number:
           type: string
@@ -31098,7 +32110,12 @@ components:
       - value
     MeasurementDefinition:
       type: object
-      description: Measurement definition serializer
+      description: |-
+        Measurement definition serializer with versioning support.
+
+        Content edits (label, type, unit, nominal, tolerances, required,
+        spc_enabled) create a new version via `create_new_version`.
+        Archive-only updates go through a plain save.
       properties:
         id:
           type: string
@@ -31136,17 +32153,40 @@ components:
           type: string
           format: uuid
           readOnly: true
+        spc_enabled:
+          type: boolean
+          description: Enable SPC monitoring for this measurement. When enabled, values
+            are checked against active SPCBaseline control limits.
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
+        is_current_version:
+          type: boolean
+          readOnly: true
+        previous_version:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - id
+      - is_current_version
       - label
+      - previous_version
       - step
       - step_name
       - type
+      - version
     MeasurementDefinitionRequest:
       type: object
-      description: Measurement definition serializer
+      description: |-
+        Measurement definition serializer with versioning support.
+
+        Content edits (label, type, unit, nominal, tolerances, required,
+        spc_enabled) create a new version via `create_new_version`.
+        Archive-only updates go through a plain save.
       properties:
         label:
           type: string
@@ -31174,6 +32214,10 @@ components:
           type: boolean
         type:
           $ref: '#/components/schemas/TypeEnum'
+        spc_enabled:
+          type: boolean
+          description: Enable SPC monitoring for this measurement. When enabled, values
+            are checked against active SPCBaseline control limits.
         archived:
           type: boolean
       required:
@@ -31363,12 +32407,18 @@ components:
           type: string
           format: date-time
           readOnly: true
+        archived:
+          type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - id
       - milestones
       - name
       - updated_at
+      - version
     MilestoneTemplateRequest:
       type: object
       description: Milestone template with nested milestones.
@@ -31382,6 +32432,8 @@ components:
         is_default:
           type: boolean
           description: Default template for new orders in this tenant
+        archived:
+          type: boolean
       required:
       - name
     ModeEnum:
@@ -31433,6 +32485,32 @@ components:
             additionalProperties: {}
       required:
       - data
+    NotificationEventTypeCatalog:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        scope_model:
+          type: string
+          nullable: true
+        scope_label:
+          type: string
+          nullable: true
+        resolver_keys:
+          type: array
+          items:
+            type: string
+      required:
+      - description
+      - key
+      - label
+      - resolver_keys
+      - scope_label
+      - scope_model
     NotificationPreference:
       type: object
       description: |-
@@ -31452,7 +32530,7 @@ components:
           type: string
           readOnly: true
         channel_type:
-          $ref: '#/components/schemas/ChannelTypeEnum'
+          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
         channel_type_display:
           type: string
           readOnly: true
@@ -31516,6 +32594,16 @@ components:
       - status
       - status_display
       - updated_at
+    NotificationPreferenceChannelTypeEnum:
+      enum:
+      - EMAIL
+      - IN_APP
+      - SMS
+      type: string
+      description: |-
+        * `EMAIL` - Email
+        * `IN_APP` - In-App Notification
+        * `SMS` - SMS
     NotificationPreferenceRequest:
       type: object
       description: |-
@@ -31529,7 +32617,7 @@ components:
         notification_type:
           $ref: '#/components/schemas/NotificationTypeEnum'
         channel_type:
-          $ref: '#/components/schemas/ChannelTypeEnum'
+          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
         schedule:
           $ref: '#/components/schemas/NotificationScheduleRequest'
         max_attempts:
@@ -31540,6 +32628,128 @@ components:
           description: Max sends before stopping. Null = infinite
       required:
       - notification_type
+    NotificationRule:
+      type: object
+      description: CRUD for NotificationRule.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          description: Admin-friendly label shown in the rule list.
+          maxLength: 200
+        description:
+          type: string
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        scope_content_type:
+          type: integer
+          nullable: true
+        scope_object_id:
+          type: string
+          nullable: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_resolver_key:
+          type: string
+          description: Name of a registered role resolver (e.g. "step_execution_assignee").
+            Resolver takes the event payload and returns an iterable of Users.
+          maxLength: 64
+        channel_type:
+          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. A recipient will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        available_resolvers:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - available_resolvers
+      - created_at
+      - event_type
+      - id
+      - name
+      - updated_at
+    NotificationRuleChannelTypeEnum:
+      enum:
+      - EMAIL
+      - IN_APP
+      type: string
+      description: |-
+        * `EMAIL` - Email
+        * `IN_APP` - In-App Notification
+    NotificationRuleRequest:
+      type: object
+      description: CRUD for NotificationRule.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Admin-friendly label shown in the rule list.
+          maxLength: 200
+        description:
+          type: string
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        scope_content_type:
+          type: integer
+          nullable: true
+        scope_object_id:
+          type: string
+          nullable: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_resolver_key:
+          type: string
+          description: Name of a registered role resolver (e.g. "step_execution_assignee").
+            Resolver takes the event payload and returns an iterable of Users.
+          maxLength: 64
+        channel_type:
+          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. A recipient will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        is_active:
+          type: boolean
+      required:
+      - event_type
+      - name
     NotificationSchedule:
       type: object
       description: |-
@@ -31633,6 +32843,7 @@ components:
       - APPROVAL_REQUEST
       - APPROVAL_DECISION
       - APPROVAL_ESCALATION
+      - STEP_FAILURE
       type: string
       description: |-
         * `WEEKLY_REPORT` - Weekly Order Report
@@ -31640,6 +32851,7 @@ components:
         * `APPROVAL_REQUEST` - Approval Request
         * `APPROVAL_DECISION` - Approval Decision
         * `APPROVAL_ESCALATION` - Approval Escalation
+        * `STEP_FAILURE` - Part failed at step
     NullEnum:
       enum:
       - null
@@ -32651,6 +33863,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NotificationPreference'
+    PaginatedNotificationRuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationRule'
     PaginatedOrdersList:
       type: object
       required:
@@ -33570,7 +34805,12 @@ components:
       - name
     PartTypes:
       type: object
-      description: Part types serializer
+      description: |-
+        Part types serializer with versioning support.
+
+        Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
+        version via `create_new_version`.  Archive-only updates go through a
+        plain save.
       properties:
         id:
           type: string
@@ -33594,6 +34834,8 @@ components:
           type: string
           format: date-time
           readOnly: true
+        archived:
+          type: boolean
         name:
           type: string
           maxLength: 50
@@ -33616,14 +34858,33 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
+        version:
+          type: integer
+          readOnly: true
+        is_current_version:
+          type: boolean
+          readOnly: true
+        previous_version:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - created_at
       - id
+      - is_current_version
       - name
+      - previous_version
       - updated_at
+      - version
     PartTypesRequest:
       type: object
-      description: Part types serializer
+      description: |-
+        Part types serializer with versioning support.
+
+        Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
+        version via `create_new_version`.  Archive-only updates go through a
+        plain save.
       properties:
         tenant:
           type: string
@@ -33635,6 +34896,8 @@ components:
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
+        archived:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -33785,6 +35048,47 @@ components:
       - total_rework_count
       - updated_at
       - work_order_erp_id
+    PartsBulkIncrementInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - ids
+    PartsBulkRollbackInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        reason:
+          type: string
+        override_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - ids
+    PartsBulkSetStatusInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          $ref: '#/components/schemas/PartsStatusEnum'
+        reason:
+          type: string
+      required:
+      - ids
+      - status
     PartsRequest:
       type: object
       description: Enhanced parts serializer using model methods
@@ -33984,7 +35288,13 @@ components:
           type: boolean
     PatchedApprovalTemplateRequest:
       type: object
-      description: Approval template serializer
+      description: |-
+        Approval template serializer.
+
+        ApprovalTemplate is a VERSIONED controlled record. Any content edit
+        routes through `create_new_version` so configuration changes create an
+        auditable new version. Archiving goes through a plain save because it
+        is a soft-delete, not a content change.
       properties:
         template_name:
           type: string
@@ -34108,7 +35418,12 @@ components:
           type: boolean
     PatchedBOMRequest:
       type: object
-      description: Bill of Materials serializer
+      description: |-
+        Bill of Materials serializer.
+
+        PATCH semantics: DRAFT BOMs are edited in place via super().update().
+        RELEASED and OBSOLETE BOMs are immutable via PATCH — callers must POST
+        to /api/boms/{id}/revisions/ to start a new DRAFT.
       properties:
         part_type:
           type: string
@@ -34317,7 +35632,14 @@ components:
           type: boolean
     PatchedCompanyRequest:
       type: object
-      description: Company serializer with secure filtering
+      description: |-
+        Company serializer with secure filtering.
+
+        Companies is a VERSIONED controlled record. Any content edit
+        (name, description, hubspot_api_id) routes through
+        `create_new_version` so supplier qualification status changes
+        create an auditable new version. Archiving goes through a plain
+        save because it is a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -34326,6 +35648,10 @@ components:
         description:
           type: string
           minLength: 1
+        hubspot_api_id:
+          type: string
+          nullable: true
+          maxLength: 50
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -34391,7 +35717,13 @@ components:
           type: boolean
     PatchedDisassemblyBOMLineRequest:
       type: object
-      description: Disassembly BOM line serializer
+      description: |-
+        Disassembly BOM line serializer.
+
+        DisassemblyBOMLine is a VERSIONED controlled record. Any content
+        edit (quantities, fallout rate, notes, line number, FK reassignment)
+        routes through `create_new_version` so reman yield spec changes are
+        auditable. Archiving goes through a plain save.
       properties:
         core_type:
           type: string
@@ -34423,7 +35755,16 @@ components:
           type: boolean
     PatchedDocumentTypeRequest:
       type: object
-      description: Serializer for document types with DMS compliance settings
+      description: |-
+        Serializer for document types with DMS compliance settings.
+
+        DocumentType is a VERSIONED controlled-document record (DMS
+        compliance: IATF 7.5.3, AS9100D 7.5.3.2). Any content edit
+        (requires_approval toggle, retention policy change, approval
+        template link, rename) routes through `create_new_version` so the
+        change creates an auditable new version rather than silently
+        overwriting the current one. Archiving goes through a plain save
+        because it's a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -34578,7 +35919,12 @@ components:
           type: boolean
     PatchedEquipmentTypeRequest:
       type: object
-      description: Equipment type serializer
+      description: |-
+        Equipment type serializer.
+
+        EquipmentType is a versioned configuration record. Content edits
+        (name, description, calibration settings, portability flags) route
+        through `create_new_version`. Archiving goes through a plain save.
       properties:
         tenant:
           type: string
@@ -34609,9 +35955,17 @@ components:
           type: boolean
         track_downtime:
           type: boolean
+        archived:
+          type: boolean
     PatchedEquipmentsRequest:
       type: object
-      description: Equipment serializer
+      description: |-
+        Equipment serializer.
+
+        Equipments is a versioned asset record. Content edits (name, type,
+        serial number, calibration settings, identity fields) route through
+        `create_new_version`. Archiving and operational status changes go
+        through a plain save.
       properties:
         name:
           type: string
@@ -34842,7 +36196,16 @@ components:
         config: {}
     PatchedMaterialLotRequest:
       type: object
-      description: Material lot serializer with full details
+      description: |-
+        Material lot serializer with hybrid versioning routing.
+
+        Spec/content field edits (supplier, material_type, expiration_date,
+        manufacture_date, supplier_lot_number, material_description, storage_location,
+        certificate_of_conformance, unit_of_measure, lot_number, received_date)
+        route through ``create_new_version``.
+
+        Operational field edits (quantity_remaining, status, archived) use a plain
+        save so every consumption event does not mint a new version row.
       properties:
         lot_number:
           type: string
@@ -34900,7 +36263,12 @@ components:
           type: boolean
     PatchedMeasurementDefinitionRequest:
       type: object
-      description: Measurement definition serializer
+      description: |-
+        Measurement definition serializer with versioning support.
+
+        Content edits (label, type, unit, nominal, tolerances, required,
+        spc_enabled) create a new version via `create_new_version`.
+        Archive-only updates go through a plain save.
       properties:
         label:
           type: string
@@ -34928,6 +36296,10 @@ components:
           type: boolean
         type:
           $ref: '#/components/schemas/TypeEnum'
+        spc_enabled:
+          type: boolean
+          description: Enable SPC monitoring for this measurement. When enabled, values
+            are checked against active SPCBaseline control limits.
         archived:
           type: boolean
     PatchedMilestoneRequest:
@@ -34970,6 +36342,8 @@ components:
         is_default:
           type: boolean
           description: Default template for new orders in this tenant
+        archived:
+          type: boolean
     PatchedNotificationPreferenceRequest:
       type: object
       description: |-
@@ -34983,7 +36357,7 @@ components:
         notification_type:
           $ref: '#/components/schemas/NotificationTypeEnum'
         channel_type:
-          $ref: '#/components/schemas/ChannelTypeEnum'
+          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
         schedule:
           $ref: '#/components/schemas/NotificationScheduleRequest'
         max_attempts:
@@ -34992,6 +36366,50 @@ components:
           minimum: -2147483648
           nullable: true
           description: Max sends before stopping. Null = infinite
+    PatchedNotificationRuleRequest:
+      type: object
+      description: CRUD for NotificationRule.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Admin-friendly label shown in the rule list.
+          maxLength: 200
+        description:
+          type: string
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        scope_content_type:
+          type: integer
+          nullable: true
+        scope_object_id:
+          type: string
+          nullable: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_resolver_key:
+          type: string
+          description: Name of a registered role resolver (e.g. "step_execution_assignee").
+            Resolver takes the event payload and returns an iterable of Users.
+          maxLength: 64
+        channel_type:
+          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. A recipient will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        is_active:
+          type: boolean
     PatchedOrdersRequest:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -35028,7 +36446,12 @@ components:
           type: boolean
     PatchedPartTypesRequest:
       type: object
-      description: Part types serializer
+      description: |-
+        Part types serializer with versioning support.
+
+        Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
+        version via `create_new_version`.  Archive-only updates go through a
+        plain save.
       properties:
         tenant:
           type: string
@@ -35040,6 +36463,8 @@ components:
           nullable: true
           description: External system identifier for integration sync
           maxLength: 255
+        archived:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -35213,7 +36638,13 @@ components:
             review)
     PatchedQualityErrorsListRequest:
       type: object
-      description: Quality errors list serializer
+      description: |-
+        Quality errors list serializer.
+
+        QualityErrorsList is a versioned defect-catalog entry. Any content edit
+        (name, example text, part-type link, annotation flag) routes through
+        `create_new_version` so changes are auditable. Archiving goes through
+        a plain save because it is a soft-delete, not a content change.
       properties:
         error_name:
           type: string
@@ -35585,10 +37016,6 @@ components:
           maxLength: 100
         active:
           type: boolean
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
         is_fallback:
           type: boolean
         fallback_threshold:
@@ -35667,7 +37094,13 @@ components:
           nullable: true
     PatchedShiftRequest:
       type: object
-      description: Shift definition serializer
+      description: |-
+        Shift definition serializer.
+
+        Shift is a versioned configuration record. Content edits (name,
+        code, start/end time, days of week) route through
+        `create_new_version`. Archiving and active-flag toggles go through
+        a plain save.
       properties:
         name:
           type: string
@@ -35828,6 +37261,10 @@ components:
 
         Steps are now independent entities that can be shared across process versions.
         Ordering and routing are defined in ProcessStep and StepEdge tables.
+
+        Versioning (leaf-style): Steps have no DRAFT/APPROVED status lifecycle, so
+        content edits are routed through `create_new_version` automatically. Only
+        `archived` bypasses versioning (archive-in-place).
       properties:
         name:
           type: string
@@ -36038,7 +37475,16 @@ components:
     PatchedThreeDModelRequest:
       type: object
       description: |-
-        Serializer for 3D model files.
+        Serializer for 3D model files with versioning support.
+
+        Content edits (name, part_type, step, file) create a new version via
+        `create_new_version`.  Archive-only updates go through a plain save.
+
+        Processing-state fields (processing_status, processing_error,
+        processed_at, face_count, vertex_count, final_size_bytes,
+        original_filename, original_format, original_size_bytes, file_type)
+        are operational — updated in-place by Celery workers and excluded from
+        versioning triggers.
 
         Includes processing status for async conversion workflow:
         - pending: Uploaded, waiting for processing
@@ -36166,7 +37612,10 @@ components:
       description: |-
         Serializer for TrainingType model.
 
-        Represents a type of training or qualification that personnel can hold.
+        TrainingType is a versioned curriculum-spec entry. Any content edit
+        (name, description, validity period) routes through `create_new_version`
+        so changes are auditable. Archiving goes through a plain save because
+        it is a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -36296,7 +37745,12 @@ components:
           writeOnly: true
     PatchedWorkCenterRequest:
       type: object
-      description: Work center serializer with equipment list
+      description: |-
+        Work center serializer with equipment list.
+
+        WorkCenter is a versioned configuration record. Content edits
+        (name, code, description, capacity, cost center) route through
+        `create_new_version`. Archiving goes through a plain save.
       properties:
         name:
           type: string
@@ -36883,7 +38337,13 @@ components:
       - work_order_documents
     QualityErrorsList:
       type: object
-      description: Quality errors list serializer
+      description: |-
+        Quality errors list serializer.
+
+        QualityErrorsList is a versioned defect-catalog entry. Any content edit
+        (name, example text, part-type link, annotation flag) routes through
+        `create_new_version` so changes are auditable. Archiving goes through
+        a plain save because it is a soft-delete, not a content change.
       properties:
         id:
           type: string
@@ -36905,14 +38365,24 @@ components:
           type: boolean
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - error_example
       - error_name
       - id
       - part_type_name
+      - version
     QualityErrorsListRequest:
       type: object
-      description: Quality errors list serializer
+      description: |-
+        Quality errors list serializer.
+
+        QualityErrorsList is a versioned defect-catalog entry. Any content edit
+        (name, example text, part-type link, annotation flag) routes through
+        `create_new_version` so changes are auditable. Archiving goes through
+        a plain save because it is a soft-delete, not a content change.
       properties:
         error_name:
           type: string
@@ -37273,6 +38743,15 @@ components:
           items:
             type: string
             format: uuid
+        work_order_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        work_order_erp_id:
+          type: string
+          nullable: true
+          readOnly: true
         assignee_name:
           type: string
           readOnly: true
@@ -37310,6 +38789,8 @@ components:
       - scrap_verified_by_name
       - severity_display
       - step_info
+      - work_order_erp_id
+      - work_order_id
     QuarantineDispositionRequest:
       type: object
       properties:
@@ -38489,8 +39970,7 @@ components:
           type: boolean
         version:
           type: integer
-          maximum: 2147483647
-          minimum: 0
+          readOnly: true
         is_fallback:
           type: boolean
         fallback_threshold:
@@ -38570,6 +40050,7 @@ components:
       - step
       - step_info
       - updated_at
+      - version
     SamplingRuleSetRequest:
       type: object
       description: Enhanced sampling ruleset serializer
@@ -38583,10 +40064,6 @@ components:
           maxLength: 100
         active:
           type: boolean
-        version:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
         is_fallback:
           type: boolean
         fallback_threshold:
@@ -38802,7 +40279,13 @@ components:
       - value
     Shift:
       type: object
-      description: Shift definition serializer
+      description: |-
+        Shift definition serializer.
+
+        Shift is a versioned configuration record. Content edits (name,
+        code, start/end time, days of week) route through
+        `create_new_version`. Archiving and active-flag toggles go through
+        a plain save.
       properties:
         id:
           type: string
@@ -38836,6 +40319,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - code
       - created_at
@@ -38844,9 +40330,16 @@ components:
       - name
       - start_time
       - updated_at
+      - version
     ShiftRequest:
       type: object
-      description: Shift definition serializer
+      description: |-
+        Shift definition serializer.
+
+        Shift is a versioned configuration record. Content edits (name,
+        code, start/end time, days of week) route through
+        `create_new_version`. Archiving and active-flag toggles go through
+        a plain save.
       properties:
         name:
           type: string
@@ -38938,6 +40431,16 @@ components:
         * `PURCHASED` - Purchased Core
         * `WARRANTY` - Warranty Return
         * `TRADE_IN` - Trade-In
+    SplitReasonEnum:
+      enum:
+      - QUANTITY
+      - OPERATION
+      - REWORK
+      type: string
+      description: |-
+        * `QUANTITY` - Quantity
+        * `OPERATION` - Operation
+        * `REWORK` - Rework
     Step:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -39856,6 +41359,10 @@ components:
 
         Steps are now independent entities that can be shared across process versions.
         Ordering and routing are defined in ProcessStep and StepEdge tables.
+
+        Versioning (leaf-style): Steps have no DRAFT/APPROVED status lifecycle, so
+        content edits are routed through `create_new_version` automatically. Only
+        `archived` bypasses versioning (archive-in-place).
       properties:
         id:
           type: string
@@ -39945,6 +41452,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - id
@@ -39953,6 +41463,7 @@ components:
       - part_type_info
       - part_type_name
       - updated_at
+      - version
     StepsRequest:
       type: object
       description: |-
@@ -39960,6 +41471,10 @@ components:
 
         Steps are now independent entities that can be shared across process versions.
         Ordering and routing are defined in ProcessStep and StepEdge tables.
+
+        Versioning (leaf-style): Steps have no DRAFT/APPROVED status lifecycle, so
+        content edits are routed through `create_new_version` automatically. Only
+        `archived` bypasses versioning (archive-in-place).
       properties:
         name:
           type: string
@@ -40359,7 +41874,15 @@ components:
       - name
     TenantInfo:
       type: object
-      description: Serializer for current tenant information.
+      description: |-
+        Serializer for current tenant information.
+
+        Public fields (always present): id, name, slug, logo_url, primary_color,
+        secondary_color, default_timezone.
+
+        Auth-gated fields (only populated for authenticated callers with tenant
+        access): tier, status, trial_ends_at. Unauthenticated callers receive
+        null for these.
       properties:
         id:
           type: string
@@ -40372,20 +41895,6 @@ components:
           type: string
           readOnly: true
           pattern: ^[-a-zA-Z0-9_]+$
-        tier:
-          type: string
-          readOnly: true
-        status:
-          type: string
-          readOnly: true
-        is_demo:
-          type: boolean
-          readOnly: true
-        trial_ends_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         logo_url:
           type: string
           readOnly: true
@@ -40398,34 +41907,25 @@ components:
           type: string
           readOnly: true
           nullable: true
-        contact_email:
-          type: string
-          format: email
-          readOnly: true
-          nullable: true
-        contact_phone:
-          type: string
-          readOnly: true
-          nullable: true
-        website:
-          type: string
-          format: uri
-          readOnly: true
-          nullable: true
-        address:
-          type: string
-          readOnly: true
-          nullable: true
         default_timezone:
           type: string
           readOnly: true
+        tier:
+          type: string
+          readOnly: true
+          nullable: true
+        status:
+          type: string
+          readOnly: true
+          nullable: true
+        trial_ends_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
       required:
-      - address
-      - contact_email
-      - contact_phone
       - default_timezone
       - id
-      - is_demo
       - logo_url
       - name
       - primary_color
@@ -40434,7 +41934,6 @@ components:
       - status
       - tier
       - trial_ends_at
-      - website
     TenantLLMProvider:
       type: object
       description: |-
@@ -40794,7 +42293,16 @@ components:
     ThreeDModel:
       type: object
       description: |-
-        Serializer for 3D model files.
+        Serializer for 3D model files with versioning support.
+
+        Content edits (name, part_type, step, file) create a new version via
+        `create_new_version`.  Archive-only updates go through a plain save.
+
+        Processing-state fields (processing_status, processing_error,
+        processed_at, face_count, vertex_count, final_size_bytes,
+        original_filename, original_format, original_size_bytes, file_type)
+        are operational — updated in-place by Celery workers and excluded from
+        versioning triggers.
 
         Includes processing status for async conversion workflow:
         - pending: Uploaded, waiting for processing
@@ -40893,6 +42401,17 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        version:
+          type: integer
+          readOnly: true
+        is_current_version:
+          type: boolean
+          readOnly: true
+        previous_version:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - annotation_count
       - created_at
@@ -40900,6 +42419,7 @@ components:
       - file
       - file_type
       - id
+      - is_current_version
       - is_ready
       - name
       - original_filename
@@ -40907,6 +42427,7 @@ components:
       - original_size_bytes
       - part_type
       - part_type_display
+      - previous_version
       - processed_at
       - processing_error
       - processing_metrics
@@ -40914,10 +42435,20 @@ components:
       - step_display
       - updated_at
       - uploaded_at
+      - version
     ThreeDModelRequest:
       type: object
       description: |-
-        Serializer for 3D model files.
+        Serializer for 3D model files with versioning support.
+
+        Content edits (name, part_type, step, file) create a new version via
+        `create_new_version`.  Archive-only updates go through a plain save.
+
+        Processing-state fields (processing_status, processing_error,
+        processed_at, face_count, vertex_count, final_size_bytes,
+        original_filename, original_format, original_size_bytes, file_type)
+        are operational — updated in-place by Celery workers and excluded from
+        versioning triggers.
 
         Includes processing status for async conversion workflow:
         - pending: Uploaded, waiting for processing
@@ -41353,7 +42884,10 @@ components:
       description: |-
         Serializer for TrainingType model.
 
-        Represents a type of training or qualification that personnel can hold.
+        TrainingType is a versioned curriculum-spec entry. Any content edit
+        (name, description, validity period) routes through `create_new_version`
+        so changes are auditable. Archiving goes through a plain save because
+        it is a soft-delete, not a content change.
       properties:
         id:
           type: string
@@ -41380,17 +42914,24 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - created_at
       - id
       - name
       - updated_at
+      - version
     TrainingTypeRequest:
       type: object
       description: |-
         Serializer for TrainingType model.
 
-        Represents a type of training or qualification that personnel can hold.
+        TrainingType is a versioned curriculum-spec entry. Any content edit
+        (name, description, validity period) routes through `create_new_version`
+        so changes are auditable. Archiving goes through a plain save because
+        it is a soft-delete, not a content change.
       properties:
         name:
           type: string
@@ -42196,7 +43737,12 @@ components:
       - total_active
     WorkCenter:
       type: object
-      description: Work center serializer with equipment list
+      description: |-
+        Work center serializer with equipment list.
+
+        WorkCenter is a versioned configuration record. Content edits
+        (name, code, description, capacity, cost center) route through
+        `create_new_version`. Archiving goes through a plain save.
       properties:
         id:
           type: string
@@ -42242,6 +43788,9 @@ components:
           readOnly: true
         archived:
           type: boolean
+        version:
+          type: integer
+          readOnly: true
       required:
       - code
       - created_at
@@ -42249,9 +43798,15 @@ components:
       - id
       - name
       - updated_at
+      - version
     WorkCenterRequest:
       type: object
-      description: Work center serializer with equipment list
+      description: |-
+        Work center serializer with equipment list.
+
+        WorkCenter is a versioned configuration record. Content edits
+        (name, code, description, capacity, cost center) route through
+        `create_new_version`. Archiving goes through a plain save.
       properties:
         name:
           type: string
@@ -42382,6 +43937,30 @@ components:
         is_batch_work_order:
           type: boolean
           readOnly: true
+        current_hold:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        parent_workorder_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        split_reason:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SplitReasonEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        split_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        child_count:
+          type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -42394,14 +43973,94 @@ components:
           type: boolean
       required:
       - ERP_id
+      - child_count
       - created_at
+      - current_hold
       - id
       - is_batch_work_order
+      - parent_workorder_id
       - parts_summary
       - process_info
       - related_order_detail
       - related_order_info
+      - split_at
+      - split_reason
       - updated_at
+    WorkOrderBulkClearHoldInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - ids
+    WorkOrderBulkClearHoldResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+    WorkOrderBulkPlaceOnHoldInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        reason:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+        expected_clear_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - ids
+      - reason
+    WorkOrderBulkPlaceOnHoldResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+    WorkOrderBulkTransitionInputRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          $ref: '#/components/schemas/WorkOrderStatusEnum'
+        notes:
+          type: string
+      required:
+      - ids
+      - status
+    WorkOrderBulkTransitionResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
     WorkOrderList:
       type: object
       description: Lightweight serializer for work order list views - avoids N+1 queries.
@@ -42474,6 +44133,36 @@ components:
           type: object
           additionalProperties: {}
           readOnly: true
+        completed_parts_count:
+          type: integer
+          readOnly: true
+        is_batch_work_order:
+          type: boolean
+          readOnly: true
+        current_hold:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        parent_workorder_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        split_reason:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/SplitReasonEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        split_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        child_count:
+          type: integer
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -42486,13 +44175,34 @@ components:
           type: boolean
       required:
       - ERP_id
+      - child_count
+      - completed_parts_count
       - created_at
+      - current_hold
       - id
+      - is_batch_work_order
+      - parent_workorder_id
       - parts_count
       - process_info
       - qa_progress
       - related_order_info
+      - split_at
+      - split_reason
       - updated_at
+    WorkOrderPlaceOnHoldInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        notes:
+          type: string
+        expected_clear_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - reason
     WorkOrderRequest:
       type: object
       description: Full work order serializer for detail views
@@ -42549,6 +44259,42 @@ components:
           type: boolean
       required:
       - ERP_id
+    WorkOrderSplitInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        new_erp_id:
+          type: string
+          minLength: 1
+        part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        quantity:
+          type: integer
+        target_process_id:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+      required:
+      - new_erp_id
+      - reason
+    WorkOrderSplitResponse:
+      type: object
+      properties:
+        child_work_order_id:
+          type: string
+          format: uuid
+        child_erp_id:
+          type: string
+      required:
+      - child_erp_id
+      - child_work_order_id
     WorkOrderStatusEnum:
       enum:
       - PENDING

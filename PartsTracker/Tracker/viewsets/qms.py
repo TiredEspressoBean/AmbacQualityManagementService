@@ -196,6 +196,10 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
     - Users can only see and manage their own notification preferences
     - Only authenticated users can access this endpoint
     """
+    # Class-level queryset exists purely so drf-spectacular can introspect
+    # the model without invoking get_queryset() (which requires a tenant
+    # ContextVar under SecureManager). Real filtering happens in get_queryset.
+    queryset = NotificationTask.all_tenants.none()
     serializer_class = NotificationPreferenceSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['notification_type', 'channel_type', 'status']
@@ -209,7 +213,7 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         Excludes system-managed notifications (e.g., CAPA reminders created by signals).
         """
         if getattr(self, 'swagger_fake_view', False):
-            return NotificationTask.objects.none()
+            return NotificationTask.all_tenants.none()
 
         # Users can only see their own notification preferences
         return NotificationTask.objects.filter(recipient=self.request.user,
@@ -697,22 +701,18 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_rca(self, request, pk=None):
         """Approve RCA record"""
-        # Check permission
         if not request.user.has_tenant_perm('review_rca'):
             return Response(
                 {'detail': 'You do not have permission to review RCA records'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        from Tracker.services.qms.rca import approve_rca as approve_rca_service
+
         rca = self.get_object()
-
         try:
-            rca.root_cause_verification_status = 'VERIFIED'
-            rca.root_cause_verified_by = request.user
-            rca.root_cause_verified_at = timezone.now()
-            rca.save(update_fields=['root_cause_verification_status', 'root_cause_verified_by', 'root_cause_verified_at'])
+            approve_rca_service(rca, request.user)
             return Response(RcaRecordSerializer(rca).data)
-
         except Exception as e:
             return Response(
                 {'detail': str(e)},
@@ -1064,27 +1064,15 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """Approve a pending override request."""
-        from Tracker.models import OverrideStatus
+        from Tracker.services.mes.step_override import approve_step_override
+
         override = self.get_object()
-
-        if override.status != OverrideStatus.PENDING:
-            return Response(
-                {"detail": f"Cannot approve override with status '{override.status}'"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Set expiry
         expiry_hours = request.data.get('expiry_hours')
-        if expiry_hours is None:
-            # Use step's default
-            step = override.step_execution.step if override.step_execution else None
-            expiry_hours = getattr(step, 'override_expiry_hours', 24)
 
-        override.status = OverrideStatus.APPROVED
-        override.approved_by = request.user
-        override.approved_at = timezone.now()
-        override.expires_at = timezone.now() + timezone.timedelta(hours=expiry_hours)
-        override.save(update_fields=['status', 'approved_by', 'approved_at', 'expires_at'])
+        try:
+            approve_step_override(override, request.user, expiry_hours=expiry_hours)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             "detail": "Override approved",
@@ -1102,19 +1090,15 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """Reject a pending override request."""
-        from Tracker.models import OverrideStatus
+        from Tracker.services.mes.step_override import reject_step_override
+
         override = self.get_object()
+        reason = request.data.get('reason', '')
 
-        if override.status != OverrideStatus.PENDING:
-            return Response(
-                {"detail": f"Cannot reject override with status '{override.status}'"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        override.status = OverrideStatus.REJECTED
-        override.approved_by = request.user  # Who made the decision
-        override.approved_at = timezone.now()
-        override.save(update_fields=['status', 'approved_by', 'approved_at'])
+        try:
+            reject_step_override(override, request.user, reason=reason)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
             "detail": "Override rejected",

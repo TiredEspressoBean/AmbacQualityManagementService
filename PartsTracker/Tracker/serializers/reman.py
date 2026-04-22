@@ -123,7 +123,13 @@ class HarvestedComponentAcceptSerializer(serializers.Serializer):
 # ===== DISASSEMBLY BOM LINE SERIALIZERS =====
 
 class DisassemblyBOMLineSerializer(serializers.ModelSerializer, SecureModelMixin):
-    """Disassembly BOM line serializer"""
+    """Disassembly BOM line serializer.
+
+    DisassemblyBOMLine is a VERSIONED controlled record. Any content
+    edit (quantities, fallout rate, notes, line number, FK reassignment)
+    routes through `create_new_version` so reman yield spec changes are
+    auditable. Archiving goes through a plain save.
+    """
     core_type_name = serializers.CharField(source='core_type.name', read_only=True)
     component_type_name = serializers.CharField(source='component_type.name', read_only=True)
     expected_usable_qty = serializers.FloatField(read_only=True)
@@ -135,6 +141,20 @@ class DisassemblyBOMLineSerializer(serializers.ModelSerializer, SecureModelMixin
             'component_type', 'component_type_name',
             'expected_qty', 'expected_fallout_rate', 'expected_usable_qty',
             'notes', 'line_number',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'version'
         )
-        read_only_fields = ('created_at', 'updated_at', 'expected_usable_qty')
+        read_only_fields = ('created_at', 'updated_at', 'expected_usable_qty', 'version')
+
+    # Fields whose edits are soft-delete / metadata only and should NOT
+    # trigger a new version.
+    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def update(self, instance, validated_data):
+        """Route content edits through `create_new_version`; let
+        archive toggles through as a plain save."""
+        from Tracker.services.core.versioning import apply_versioned_update
+        return apply_versioned_update(
+            instance, validated_data,
+            non_versioning_fields=self._NON_VERSIONING_FIELDS,
+            default_update=super().update,
+        )

@@ -969,11 +969,13 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
         # Create notification preference if opted in
         if opt_in_notifications:
-            from Tracker.models import NotificationTask
-            NotificationTask.objects.create(recipient=user, notification_type='WEEKLY_REPORT', channel_type='EMAIL',
-                                            interval_type='FIXED', day_of_week=4,  # Friday
-                                            time=timezone.now().time().replace(hour=15, minute=0),  # 3 PM
-                                            interval_weeks=1, next_send_at=timezone.now() + timedelta(days=7))
+            from Tracker.services.core.notification import enqueue_weekly_report
+            enqueue_weekly_report(
+                recipient=user,
+                next_send_at=timezone.now() + timedelta(days=7),
+                day_of_week=4,  # Friday
+                time_of_day=timezone.now().time().replace(hour=15, minute=0),  # 3 PM UTC
+            )
 
         return Response({"detail": "Account activated successfully", "user_id": user.id, "email": user.email},
                         status=status.HTTP_200_OK)
@@ -1561,6 +1563,56 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
         template.deactivated_at = None
         template.save(update_fields=['deactivated_at'])
         return Response({'status': 'Template activated'})
+
+    @extend_schema(
+        description=(
+            "Create a new revision of an ApprovalTemplate. "
+            "Returns the new version with incremented version number. "
+            "M2M default_approvers and default_groups are copied to the new version."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["change_description"],
+                "properties": {
+                    "change_description": {
+                        "type": "string",
+                        "description": "Human narrative of what changed and why (ISO 9001 4.4)."
+                    },
+                },
+            }
+        },
+        responses={201: ApprovalTemplateSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='revisions')
+    def create_revision(self, request, pk=None):
+        """Create a new version of this approval template.
+
+        PATCH routes content edits through create_new_version via the
+        serializer's update() method. This endpoint is the explicit
+        "create a new revision" path when callers want full control.
+        Returns 201 with the new version.
+        """
+        from Tracker.services.core.approval_template import (
+            create_new_approval_template_version,
+        )
+
+        template = self.get_object()
+        change_description = request.data.get('change_description', '')
+
+        try:
+            new_version = create_new_approval_template_version(
+                template,
+                user=request.user,
+                change_description=change_description,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            ApprovalTemplateSerializer(new_version, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 @extend_schema_view(

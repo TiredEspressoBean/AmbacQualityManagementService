@@ -12,8 +12,6 @@ from .models import (
     CAPA, CapaTasks, CapaVerification,
     Tenant,
     WorkOrder, WorkOrderStatus,
-    OrdersStatus,
-    ScheduleSlot,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,53 +139,15 @@ def notify_requester_on_decision(sender, instance, **kwargs):
 
 @receiver(post_save, sender=ApprovalRequest)
 def handle_approval_decision(sender, instance, **kwargs):
-    """Update related content object when approval is approved/rejected"""
+    """Cascade approval outcome to the content object when status changes."""
     old_status = getattr(instance, '_old_status', None)
-
-    # Only process when status actually changed to APPROVED or REJECTED
     if not old_status or old_status == instance.status:
         return
-
     if instance.status not in ['APPROVED', 'REJECTED']:
         return
 
-    # Update the content object based on its type
-    content_object = instance.content_object
-    if not content_object:
-        return
-
-    # Handle Documents approval
-    if hasattr(content_object, 'status') and type(content_object).__name__ == 'Documents':
-        if instance.status == 'APPROVED':
-            content_object.status = 'APPROVED'
-            content_object.approved_by = instance.get_primary_approver()
-            content_object.approved_at = instance.completed_at
-            content_object.save(update_fields=['status', 'approved_by', 'approved_at'])
-        elif instance.status == 'REJECTED':
-            content_object.status = 'DRAFT'
-            content_object.save(update_fields=['status'])
-
-    # Handle CAPA approval
-    elif hasattr(content_object, 'approval_status') and type(content_object).__name__ == 'CAPA':
-        if instance.status == 'APPROVED':
-            content_object.approval_status = 'APPROVED'
-            content_object.approved_by = instance.get_primary_approver()
-            content_object.approved_at = instance.completed_at
-            content_object.save(update_fields=['approval_status', 'approved_by', 'approved_at'])
-        elif instance.status == 'REJECTED':
-            # Set approval status to rejected and allow re-submission
-            content_object.approval_status = 'REJECTED'
-            content_object.approval_required = False  # Reset so they can re-request
-            content_object.save(update_fields=['approval_status', 'approval_required'])
-
-    # Handle Process approval
-    elif type(content_object).__name__ == 'Processes':
-        if instance.status == 'APPROVED':
-            # Use the model's approve method to handle status change
-            content_object.approve(user=instance.get_primary_approver())
-        elif instance.status == 'REJECTED':
-            # Use the model's reject_approval method
-            content_object.reject_approval()
+    from Tracker.services.core.approval import apply_approval_decision_to_content_object
+    apply_approval_decision_to_content_object(instance, instance.status)
 
 
 @receiver(post_save, sender=CAPA)
@@ -217,39 +177,16 @@ def notify_assignment(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=CAPA)
 def trigger_approval_for_critical_capa(sender, instance, created, **kwargs):
-    """Automatically create approval request for Critical/Major CAPAs"""
-    from .models import ApprovalTemplate, CapaSeverity
-
-    # Only trigger on creation and for Critical/Major severity
+    """Auto-create approval request for Critical/Major CAPAs on creation."""
     if not created:
         return
 
+    from .models import CapaSeverity
     if instance.severity not in [CapaSeverity.CRITICAL, CapaSeverity.MAJOR]:
         return
 
-    # Get the CAPA_APPROVAL template (filtered by tenant)
-    try:
-        template = ApprovalTemplate.objects.get(
-            approval_type='CAPA_APPROVAL',
-            tenant=instance.tenant
-        )
-    except ApprovalTemplate.DoesNotExist:
-        # No template configured, skip automatic approval
-        return
-
-    # Create approval request
-    from .models import ApprovalRequest
-    ApprovalRequest.create_from_template(
-        content_object=instance,
-        template=template,
-        requested_by=instance.initiated_by,
-        reason=f"CAPA Approval: {instance.capa_number} - {instance.get_severity_display()}"
-    )
-
-    # Update CAPA to reflect approval is required and pending
-    instance.approval_required = True
-    instance.approval_status = 'PENDING'
-    instance.save(update_fields=['approval_required', 'approval_status'])
+    from Tracker.services.qms.capa import auto_request_capa_approval
+    auto_request_capa_approval(instance)
 
 
 @receiver(post_save, sender=CapaTasks)
@@ -322,12 +259,17 @@ def seed_tenant_defaults(sender, instance, created, **kwargs):
     if created:
         from .groups import GroupSeeder
         from .services.defaults_service import seed_reference_data_for_tenant
+        from .utils.tenant_context import tenant_context
 
-        # Seed groups (with permissions)
-        GroupSeeder.seed_for_tenant(instance)
-
-        # Seed reference data (document types, approval templates)
-        seed_reference_data_for_tenant(instance)
+        # Run seeding inside the new tenant's context. Otherwise the
+        # SecureManager auto-scope compounds filters to `tenant=instance
+        # AND tenant=<caller's_ContextVar>` — either raising
+        # TenantContextRequired (when the caller has no tenant) or
+        # silently returning nothing (when the caller's tenant differs
+        # from the one being created).
+        with tenant_context(instance.id):
+            GroupSeeder.seed_for_tenant(instance)
+            seed_reference_data_for_tenant(instance)
 
 
 # =============================================================================
@@ -370,40 +312,9 @@ def clear_user_permission_cache_on_role_delete(sender, instance, **kwargs):
 
 @receiver(post_save, sender='Tracker.CalibrationRecord')
 def handle_calibration_result(sender, instance, created, **kwargs):
-    """
-    Update equipment status based on calibration result.
-
-    When calibration fails:
-    - Set equipment status to OUT_OF_SERVICE
-    - Log the change
-
-    When calibration passes (and equipment was out of service):
-    - Set equipment status back to IN_SERVICE
-    """
-    from .models.mes_standard import EquipmentStatus
-
-    equipment = instance.equipment
-
-    if instance.result == 'FAIL':
-        # Failed calibration - take equipment out of service
-        if equipment.status != EquipmentStatus.OUT_OF_SERVICE:
-            old_status = equipment.status
-            equipment.status = EquipmentStatus.OUT_OF_SERVICE
-            equipment.save(update_fields=['status'])
-            logger.info(
-                f"Equipment {equipment.name} ({equipment.id}) set to OUT_OF_SERVICE "
-                f"due to failed calibration (was: {old_status})"
-            )
-
-    elif instance.result in ('PASS', 'LIMITED'):
-        # Passed or limited - return to service if it was out due to calibration
-        if equipment.status == EquipmentStatus.OUT_OF_SERVICE:
-            equipment.status = EquipmentStatus.IN_SERVICE
-            equipment.save(update_fields=['status'])
-            logger.info(
-                f"Equipment {equipment.name} ({equipment.id}) returned to IN_SERVICE "
-                f"after {'passing' if instance.result == 'PASS' else 'limited'} calibration"
-            )
+    """Update equipment status based on calibration result."""
+    from Tracker.services.mes.work_order import apply_calibration_result_to_equipment
+    apply_calibration_result_to_equipment(instance)
 
 
 # =============================================================================
@@ -412,62 +323,19 @@ def handle_calibration_result(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=WorkOrder)
 def cascade_order_status_on_workorder_complete(sender, instance, **kwargs):
-    """
-    Cascade Order status when WorkOrder completes.
-
-    When all WorkOrders for an Order reach terminal status (COMPLETED or CANCELLED),
-    auto-update the Order status to COMPLETED.
-    """
-    # Only trigger when WorkOrder reaches COMPLETED or CANCELLED
+    """Cascade Order status when all WorkOrders reach terminal status."""
     if instance.workorder_status not in [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]:
         return
 
-    order = instance.related_order
-    if not order:
-        return
-
-    # Check if any WorkOrders are still in progress
-    incomplete_wos = order.related_orders.exclude(
-        workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]
-    )
-
-    if incomplete_wos.exists():
-        # Not all WOs done yet
-        return
-
-    # All WOs at terminal status - update Order
-    if order.order_status != OrdersStatus.COMPLETED:
-        order.order_status = OrdersStatus.COMPLETED
-        order.save(update_fields=['order_status'])
-        logger.info(
-            f"Order {order.name} ({order.id}) auto-completed: "
-            f"all {order.related_orders.count()} work orders complete"
-        )
+    from Tracker.services.mes.work_order import cascade_order_status
+    cascade_order_status(instance)
 
 
 @receiver(post_save, sender=WorkOrder)
 def cascade_schedule_slots_on_workorder_complete(sender, instance, **kwargs):
-    """
-    Complete all ScheduleSlots when WorkOrder completes.
-
-    When a WorkOrder reaches COMPLETED status, mark all its scheduled slots
-    as completed (if not already).
-    """
-    from django.utils import timezone
-
+    """Mark open ScheduleSlots COMPLETED when a WorkOrder completes."""
     if instance.workorder_status != WorkOrderStatus.COMPLETED:
         return
 
-    # Update any in_progress or scheduled slots to completed
-    updated = ScheduleSlot.objects.filter(
-        work_order=instance,
-        status__in=['SCHEDULED', 'IN_PROGRESS']
-    ).update(
-        status='COMPLETED',
-        actual_end=timezone.now()
-    )
-
-    if updated > 0:
-        logger.info(
-            f"Completed {updated} schedule slot(s) for WorkOrder {instance.ERP_id}"
-        )
+    from Tracker.services.mes.work_order import cascade_schedule_slots
+    cascade_schedule_slots(instance)
