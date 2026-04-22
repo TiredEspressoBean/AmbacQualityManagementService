@@ -87,6 +87,13 @@ const settingsCards: SettingsCard[] = [
         href: "/profile",
     },
     {
+        title: "Notification Rules",
+        description: "Configure who gets notified on events like part failures",
+        icon: Bell,
+        href: "/settings/notification-rules",
+        requiresAdmin: true,
+    },
+    {
         title: "Integrations",
         description: "Connect external services and APIs",
         icon: Link2,

@@ -29,8 +29,10 @@ export const useUpdateWorkOrder = () => {
             }),
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["workorder"],
-                predicate: (query) => query.queryKey[0] === "workorder",
+                predicate: (query) => {
+                    const key = query.queryKey[0];
+                    return key === "workorder" || key === "work-order";
+                },
             });
         },
     });

@@ -353,6 +353,7 @@ export type ApprovalTemplate = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type ApprovalTemplateRequest = {
   /**
@@ -457,6 +458,7 @@ export type BOM = {
   approved_at: string | null;
   lines: Array<BOMLine>;
   line_count: number;
+  version: number;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -666,6 +668,7 @@ export type CAPA = {
   completion_percentage: number;
   is_overdue: boolean;
   blocking_items: Array<unknown>;
+  work_order_ids: Array<string>;
   created_at: string;
   updated_at: string;
   archived: boolean;
@@ -1381,18 +1384,13 @@ export type TenantInfo = {
    * @pattern ^[-a-zA-Z0-9_]+$
    */
   slug: string;
-  tier: string;
-  status: string;
-  is_demo: boolean;
-  trial_ends_at: string | null;
   logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  website: string | null;
-  address: string | null;
   default_timezone: string;
+  tier: string | null;
+  status: string | null;
+  trial_ends_at: string | null;
 };
 export type DeploymentInfo = {
   mode: ModeEnum;
@@ -1734,6 +1732,7 @@ export type Equipments = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type EquipmentsStatusEnum =
   /**
@@ -1871,29 +1870,6 @@ export type FPIRecordResultEnum =
    * @enum PASS, FAIL, CONDITIONAL
    */
   "PASS" | "FAIL" | "CONDITIONAL";
-export type GenerateReportRequest = {
-  /**
-     * Type of report to generate (spc, capa, quality_report, etc.)
-    
-    * `spc` - spc
-    * `capa` - capa
-    * `quality_report` - quality_report
-     */
-  report_type: ReportTypeEnum;
-  /**
-   * Parameters specific to the report type
-   */
-  params: {};
-};
-export type ReportTypeEnum =
-  /**
-   * * `spc` - spc
-   * `capa` - capa
-   * `quality_report` - quality_report
-   *
-   * @enum spc, capa, quality_report
-   */
-  "spc" | "capa" | "quality_report";
 export type GeneratedReport = {
   id: string;
   /**
@@ -2262,6 +2238,7 @@ export type MaterialLot = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type MaterialLotStatusEnum =
   /**
@@ -2347,7 +2324,14 @@ export type MeasurementDefinition = {
   required?: boolean | undefined;
   type: TypeEnum;
   step: string;
+  spc_enabled?: /**
+   * Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits.
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
+  version: number;
+  is_current_version: boolean;
+  previous_version: string | null;
 };
 export type TypeEnum =
   /**
@@ -2387,6 +2371,10 @@ export type MeasurementDefinitionRequest = {
     | undefined;
   required?: boolean | undefined;
   type: TypeEnum;
+  spc_enabled?: /**
+   * Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits.
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type MeasurementDefinitionSPC = {
@@ -2460,6 +2448,8 @@ export type MilestoneTemplate = {
   milestones: Array<Milestone>;
   created_at: string;
   updated_at: string;
+  archived?: boolean | undefined;
+  version: number;
 };
 export type Milestone = {
   id: string;
@@ -2491,7 +2481,7 @@ export type NotificationPreference = {
   id: number;
   notification_type: NotificationTypeEnum;
   notification_type_display: string;
-  channel_type?: ChannelTypeEnum | undefined;
+  channel_type?: NotificationPreferenceChannelTypeEnum | undefined;
   channel_type_display: string;
   status: NotificationTaskStatusEnum;
   status_display: string;
@@ -2523,15 +2513,17 @@ export type NotificationTypeEnum =
    * `APPROVAL_REQUEST` - Approval Request
    * `APPROVAL_DECISION` - Approval Decision
    * `APPROVAL_ESCALATION` - Approval Escalation
+   * `STEP_FAILURE` - Part failed at step
    *
-   * @enum WEEKLY_REPORT, CAPA_REMINDER, APPROVAL_REQUEST, APPROVAL_DECISION, APPROVAL_ESCALATION
+   * @enum WEEKLY_REPORT, CAPA_REMINDER, APPROVAL_REQUEST, APPROVAL_DECISION, APPROVAL_ESCALATION, STEP_FAILURE
    */
   | "WEEKLY_REPORT"
   | "CAPA_REMINDER"
   | "APPROVAL_REQUEST"
   | "APPROVAL_DECISION"
-  | "APPROVAL_ESCALATION";
-export type ChannelTypeEnum =
+  | "APPROVAL_ESCALATION"
+  | "STEP_FAILURE";
+export type NotificationPreferenceChannelTypeEnum =
   /**
    * * `EMAIL` - Email
    * `IN_APP` - In-App Notification
@@ -2592,7 +2584,7 @@ export type IntervalTypeEnum =
   "FIXED" | "DEADLINE_BASED";
 export type NotificationPreferenceRequest = {
   notification_type: NotificationTypeEnum;
-  channel_type?: ChannelTypeEnum | undefined;
+  channel_type?: NotificationPreferenceChannelTypeEnum | undefined;
   schedule?: NotificationScheduleRequest | undefined;
   max_attempts?:
     | /**
@@ -2635,6 +2627,90 @@ export type NotificationScheduleRequest = {
      */
     (Array<Array<number>> | null)
     | undefined;
+};
+export type NotificationRule = {
+  id: string;
+  /**
+   * Admin-friendly label shown in the rule list.
+   *
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_type: EventTypeEnum;
+  scope_content_type?: (number | null) | undefined;
+  scope_object_id?: (string | null) | undefined;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_resolver_key?: /**
+   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  channel_type?: NotificationRuleChannelTypeEnum | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  is_active?: boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  available_resolvers: Array<string>;
+};
+export type EventTypeEnum =
+  /**
+   * * `STEP_FAILURE` - Part failed at step
+   * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
+   * `WORK_ORDER_STALLED` - Work order stalled
+   * `WORK_ORDER_OVERDUE` - Work order overdue
+   *
+   * @enum STEP_FAILURE, WORK_ORDER_HELD_TOO_LONG, WORK_ORDER_STALLED, WORK_ORDER_OVERDUE
+   */
+  | "STEP_FAILURE"
+  | "WORK_ORDER_HELD_TOO_LONG"
+  | "WORK_ORDER_STALLED"
+  | "WORK_ORDER_OVERDUE";
+export type NotificationRuleChannelTypeEnum =
+  /**
+   * * `EMAIL` - Email
+   * `IN_APP` - In-App Notification
+   *
+   * @enum EMAIL, IN_APP
+   */
+  "EMAIL" | "IN_APP";
+export type NotificationRuleRequest = {
+  /**
+   * Admin-friendly label shown in the rule list.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_type: EventTypeEnum;
+  scope_content_type?: (number | null) | undefined;
+  scope_object_id?: (string | null) | undefined;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_resolver_key?: /**
+   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  channel_type?: NotificationRuleChannelTypeEnum | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  is_active?: boolean | undefined;
 };
 export type Orders = {
   id: string;
@@ -3028,6 +3104,7 @@ export type Company = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedCoreListList = {
   /**
@@ -3146,6 +3223,7 @@ export type DisassemblyBOMLine = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedDocumentTypeList = {
   /**
@@ -3216,6 +3294,7 @@ export type DocumentType = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedDocumentsList = {
   /**
@@ -3309,6 +3388,8 @@ export type EquipmentType = {
     | undefined;
   is_portable?: boolean | undefined;
   track_downtime?: boolean | undefined;
+  archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedEquipmentsList = {
   /**
@@ -3637,6 +3718,25 @@ export type PaginatedNotificationPreferenceList = {
     | undefined;
   results: Array<NotificationPreference>;
 };
+export type PaginatedNotificationRuleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<NotificationRule>;
+};
 export type PaginatedOrdersList = {
   /**
    * @example 123
@@ -3754,6 +3854,7 @@ export type PartTypes = {
     | undefined;
   created_at: string;
   updated_at: string;
+  archived?: boolean | undefined;
   /**
    * @maxLength 50
    */
@@ -3786,6 +3887,9 @@ export type PartTypes = {
    * @maxLength 10
    */
   string | undefined;
+  version: number;
+  is_current_version: boolean;
+  previous_version: string | null;
 };
 export type PaginatedPartsList = {
   /**
@@ -4175,6 +4279,7 @@ export type QualityErrorsList = {
   part_type_name: string;
   requires_3d_annotation?: boolean | undefined;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedQualityReportsList = {
   /**
@@ -4333,6 +4438,8 @@ export type QuarantineDisposition = {
   number | undefined;
   rework_limit_exceeded: boolean;
   quality_reports: Array<string>;
+  work_order_id: string | null;
+  work_order_erp_id: string | null;
   assignee_name: string;
   choices_data: {};
   annotation_status: {};
@@ -4562,11 +4669,7 @@ export type SamplingRuleSet = {
    */
   string | undefined;
   active?: boolean | undefined;
-  version?: /**
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
+  version: number;
   is_fallback?: boolean | undefined;
   fallback_threshold?:
     | /**
@@ -4695,6 +4798,7 @@ export type Shift = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedStepDistributionResponseList = {
   /**
@@ -5133,6 +5237,7 @@ export type Steps = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedTenantGroupList = {
   /**
@@ -5416,6 +5521,9 @@ export type ThreeDModel = {
   updated_at: string;
   archived?: boolean | undefined;
   deleted_at: string | null;
+  version: number;
+  is_current_version: boolean;
+  previous_version: string | null;
 };
 export type ProcessingStatusEnum =
   /**
@@ -5596,6 +5704,7 @@ export type TrainingType = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedUserInvitationList = {
   /**
@@ -5826,6 +5935,7 @@ export type WorkCenter = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+  version: number;
 };
 export type PaginatedWorkOrderListList = {
   /**
@@ -5886,6 +5996,12 @@ export type WorkOrderList = {
     | undefined;
   parts_count: number;
   qa_progress: {};
+  completed_parts_count: number;
+  is_batch_work_order: boolean;
+  current_hold: {};
+  parent_workorder_id: string | null;
+  split_reason: SplitReasonEnum | NullEnum | null;
+  split_at: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -5917,6 +6033,15 @@ export type PriorityEnum =
    * @enum 1, 2, 3, 4
    */
   1 | 2 | 3 | 4;
+export type SplitReasonEnum =
+  /**
+   * * `QUANTITY` - Quantity
+   * `OPERATION` - Operation
+   * `REWORK` - Rework
+   *
+   * @enum QUANTITY, OPERATION, REWORK
+   */
+  "QUANTITY" | "OPERATION" | "REWORK";
 export type PartTravelerResponse = {
   part_id: string;
   part_erp_id: string;
@@ -6011,6 +6136,11 @@ export type TravelerAttachment = {
   file_url: string;
   uploaded_at: string;
   classification: string | null;
+};
+export type PartsBulkSetStatusInputRequest = {
+  ids: Array<string>;
+  status: PartsStatusEnum;
+  reason?: string | undefined;
 };
 export type PartsRequest = {
   /**
@@ -6558,11 +6688,15 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
   lower_tol: string | null;
   required: boolean;
   type: TypeEnum;
+  /**
+   * Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits.
+   */
+  spc_enabled: boolean;
   archived: boolean;
 }>;
 export type PatchedNotificationPreferenceRequest = Partial<{
   notification_type: NotificationTypeEnum;
-  channel_type: ChannelTypeEnum;
+  channel_type: NotificationPreferenceChannelTypeEnum;
   schedule: NotificationScheduleRequest;
   /**
    * Max sends before stopping. Null = infinite
@@ -6571,6 +6705,36 @@ export type PatchedNotificationPreferenceRequest = Partial<{
    * @maximum 2147483647
    */
   max_attempts: number | null;
+}>;
+export type PatchedNotificationRuleRequest = Partial<{
+  /**
+   * Admin-friendly label shown in the rule list.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  event_type: EventTypeEnum;
+  scope_content_type: number | null;
+  scope_object_id: string | null;
+  recipient_users: Array<number>;
+  recipient_groups: Array<string>;
+  /**
+   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
+   *
+   * @maxLength 64
+   */
+  recipient_resolver_key: string;
+  channel_type: NotificationRuleChannelTypeEnum;
+  /**
+   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  min_gap_seconds: number;
+  is_active: boolean;
 }>;
 export type PatchedOrdersRequest = Partial<{
   /**
@@ -8430,9 +8594,18 @@ export type WorkOrder = {
     | undefined;
   parts_summary: {};
   is_batch_work_order: boolean;
+  current_hold: {};
+  parent_workorder_id: string | null;
+  split_reason: SplitReasonEnum | NullEnum | null;
+  split_at: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+};
+export type WorkOrderBulkTransitionInputRequest = {
+  ids: Array<string>;
+  status: WorkOrderStatusEnum;
+  notes?: string | undefined;
 };
 export type WorkOrderRequest = {
   /**
@@ -8692,6 +8865,7 @@ const ApprovalTemplate = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedApprovalTemplateList = z
@@ -8931,6 +9105,7 @@ const BOM = z
     approved_at: z.string().datetime({ offset: true }).nullable(),
     lines: z.array(BOMLine),
     line_count: z.number().int(),
+    version: z.number().int(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
@@ -8946,6 +9121,9 @@ const PatchedBOMRequest = z
     archived: z.boolean(),
   })
   .partial()
+  .passthrough();
+const CreateBOMRevisionInputRequest = z
+  .object({ change_description: z.string().min(1) })
   .passthrough();
 const CapaTypeEnum = z.enum([
   "CORRECTIVE",
@@ -9182,6 +9360,7 @@ const CAPA = z
     completion_percentage: z.number(),
     is_overdue: z.boolean(),
     blocking_items: z.array(z.unknown()),
+    work_order_ids: z.array(z.string().uuid()),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean(),
@@ -9434,6 +9613,7 @@ const Company = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedCompanyList = z
@@ -9677,6 +9857,7 @@ const DisassemblyBOMLine = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedDisassemblyBOMLineList = z
@@ -9732,6 +9913,7 @@ const DocumentType = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedDocumentTypeList = z
@@ -9993,6 +10175,7 @@ const Equipments = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedEquipmentsList = z
@@ -10034,6 +10217,8 @@ const EquipmentType = z
       .nullish(),
     is_portable: z.boolean().optional(),
     track_downtime: z.boolean().optional(),
+    archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedEquipmentTypeList = z
@@ -10059,6 +10244,7 @@ const EquipmentTypeRequest = z
       .nullish(),
     is_portable: z.boolean().optional(),
     track_downtime: z.boolean().optional(),
+    archived: z.boolean().optional(),
   })
   .passthrough();
 const PatchedEquipmentTypeRequest = z
@@ -10076,6 +10262,7 @@ const PatchedEquipmentTypeRequest = z
       .nullable(),
     is_portable: z.boolean(),
     track_downtime: z.boolean(),
+    archived: z.boolean(),
   })
   .partial()
   .passthrough();
@@ -10102,6 +10289,7 @@ const QualityErrorsList = z
     part_type_name: z.string(),
     requires_3d_annotation: z.boolean().optional(),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedQualityErrorsListList = z
@@ -10582,45 +10770,6 @@ const HeatMapFacetsResponse = z
     total_count: z.number().int(),
   })
   .passthrough();
-const ExternalAPIOrderIdentifier = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    stage_name: z.string().max(100),
-    API_id: z.string().max(50),
-    pipeline_id: z.string().max(50).nullish(),
-    display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    last_synced_at: z.string().datetime({ offset: true }).nullable(),
-    include_in_progress: z.boolean().optional(),
-    customer_display_name: z.string(),
-  })
-  .passthrough();
-const ExternalAPIOrderIdentifierRequest = z
-  .object({
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    stage_name: z.string().min(1).max(100),
-    API_id: z.string().min(1).max(50),
-    pipeline_id: z.string().max(50).nullish(),
-    display_order: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    include_in_progress: z.boolean().optional(),
-  })
-  .passthrough();
-const PatchedExternalAPIOrderIdentifierRequest = z
-  .object({
-    tenant: z.string().uuid().nullable(),
-    external_id: z.string().max(255).nullable(),
-    stage_name: z.string().min(1).max(100),
-    API_id: z.string().min(1).max(50),
-    pipeline_id: z.string().max(50).nullable(),
-    display_order: z.number().int().gte(-2147483648).lte(2147483647),
-    include_in_progress: z.boolean(),
-  })
-  .partial()
-  .passthrough();
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
   "IN_USE",
@@ -10654,6 +10803,7 @@ const MaterialLot = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedMaterialLotList = z
@@ -10760,7 +10910,11 @@ const MeasurementDefinition = z
     required: z.boolean().optional(),
     type: TypeEnum,
     step: z.string().uuid(),
+    spc_enabled: z.boolean().optional(),
     archived: z.boolean().optional(),
+    version: z.number().int(),
+    is_current_version: z.boolean(),
+    previous_version: z.string().uuid().nullable(),
   })
   .passthrough();
 const PaginatedMeasurementDefinitionList = z
@@ -10789,6 +10943,7 @@ const MeasurementDefinitionRequest = z
       .nullish(),
     required: z.boolean().optional(),
     type: TypeEnum,
+    spc_enabled: z.boolean().optional(),
     archived: z.boolean().optional(),
   })
   .passthrough();
@@ -10810,6 +10965,7 @@ const PatchedMeasurementDefinitionRequest = z
       .nullable(),
     required: z.boolean(),
     type: TypeEnum,
+    spc_enabled: z.boolean(),
     archived: z.boolean(),
   })
   .partial()
@@ -10841,6 +10997,8 @@ const MilestoneTemplate = z
     milestones: z.array(Milestone),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const MilestoneTemplateRequest = z
@@ -10848,6 +11006,7 @@ const MilestoneTemplateRequest = z
     name: z.string().min(1).max(100),
     description: z.string().optional(),
     is_default: z.boolean().optional(),
+    archived: z.boolean().optional(),
   })
   .passthrough();
 const PatchedMilestoneTemplateRequest = z
@@ -10855,8 +11014,12 @@ const PatchedMilestoneTemplateRequest = z
     name: z.string().min(1).max(100),
     description: z.string(),
     is_default: z.boolean(),
+    archived: z.boolean(),
   })
   .partial()
+  .passthrough();
+const CreateMilestoneTemplateRevisionInputRequest = z
+  .object({ change_description: z.string().min(1) })
   .passthrough();
 const MilestoneRequest = z
   .object({
@@ -10885,14 +11048,29 @@ const PatchedMilestoneRequest = z
   })
   .partial()
   .passthrough();
+const NotificationEventTypeCatalog = z
+  .object({
+    key: z.string(),
+    label: z.string(),
+    description: z.string(),
+    scope_model: z.string().nullable(),
+    scope_label: z.string().nullable(),
+    resolver_keys: z.array(z.string()),
+  })
+  .passthrough();
 const NotificationTypeEnum = z.enum([
   "WEEKLY_REPORT",
   "CAPA_REMINDER",
   "APPROVAL_REQUEST",
   "APPROVAL_DECISION",
   "APPROVAL_ESCALATION",
+  "STEP_FAILURE",
 ]);
-const ChannelTypeEnum = z.enum(["EMAIL", "IN_APP", "SMS"]);
+const NotificationPreferenceChannelTypeEnum = z.enum([
+  "EMAIL",
+  "IN_APP",
+  "SMS",
+]);
 const NotificationTaskStatusEnum = z.enum([
   "PENDING",
   "SENT",
@@ -10914,7 +11092,7 @@ const NotificationPreference = z
     id: z.number().int(),
     notification_type: NotificationTypeEnum,
     notification_type_display: z.string(),
-    channel_type: ChannelTypeEnum.optional(),
+    channel_type: NotificationPreferenceChannelTypeEnum.optional(),
     channel_type_display: z.string(),
     status: NotificationTaskStatusEnum,
     status_display: z.string(),
@@ -10949,7 +11127,7 @@ const NotificationScheduleRequest = z
 const NotificationPreferenceRequest = z
   .object({
     notification_type: NotificationTypeEnum,
-    channel_type: ChannelTypeEnum.optional(),
+    channel_type: NotificationPreferenceChannelTypeEnum.optional(),
     schedule: NotificationScheduleRequest.optional(),
     max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
   })
@@ -10957,7 +11135,7 @@ const NotificationPreferenceRequest = z
 const PatchedNotificationPreferenceRequest = z
   .object({
     notification_type: NotificationTypeEnum,
-    channel_type: ChannelTypeEnum,
+    channel_type: NotificationPreferenceChannelTypeEnum,
     schedule: NotificationScheduleRequest,
     max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
   })
@@ -10968,6 +11146,71 @@ const TestSendResponse = z
   .passthrough();
 const AvailableNotificationTypes = z
   .object({ notification_types: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
+const EventTypeEnum = z.enum([
+  "STEP_FAILURE",
+  "WORK_ORDER_HELD_TOO_LONG",
+  "WORK_ORDER_STALLED",
+  "WORK_ORDER_OVERDUE",
+]);
+const NotificationRuleChannelTypeEnum = z.enum(["EMAIL", "IN_APP"]);
+const NotificationRule = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().max(200),
+    description: z.string().optional(),
+    event_type: EventTypeEnum,
+    scope_content_type: z.number().int().nullish(),
+    scope_object_id: z.string().nullish(),
+    recipient_users: z.array(z.number().int()).optional(),
+    recipient_groups: z.array(z.string().uuid()).optional(),
+    recipient_resolver_key: z.string().max(64).optional(),
+    channel_type: NotificationRuleChannelTypeEnum.optional(),
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+    is_active: z.boolean().optional(),
+    created_at: z.string().datetime({ offset: true }),
+    updated_at: z.string().datetime({ offset: true }),
+    available_resolvers: z.array(z.string()),
+  })
+  .passthrough();
+const PaginatedNotificationRuleList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(NotificationRule),
+  })
+  .passthrough();
+const NotificationRuleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().optional(),
+    event_type: EventTypeEnum,
+    scope_content_type: z.number().int().nullish(),
+    scope_object_id: z.string().nullish(),
+    recipient_users: z.array(z.number().int()).optional(),
+    recipient_groups: z.array(z.string().uuid()).optional(),
+    recipient_resolver_key: z.string().max(64).optional(),
+    channel_type: NotificationRuleChannelTypeEnum.optional(),
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+    is_active: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedNotificationRuleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    event_type: EventTypeEnum,
+    scope_content_type: z.number().int().nullable(),
+    scope_object_id: z.string().nullable(),
+    recipient_users: z.array(z.number().int()),
+    recipient_groups: z.array(z.string().uuid()),
+    recipient_resolver_key: z.string().max(64),
+    channel_type: NotificationRuleChannelTypeEnum,
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647),
+    is_active: z.boolean(),
+  })
+  .partial()
   .passthrough();
 const OrdersStatusEnum = z.enum([
   "RFI",
@@ -11149,12 +11392,16 @@ const PartTypes = z
     external_id: z.string().max(255).nullish(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
+    archived: z.boolean().optional(),
     name: z.string().max(50),
     ID_prefix: z.string().max(50).nullish(),
     ERP_id: z.string().max(50).nullish(),
     itar_controlled: z.boolean().optional(),
     eccn: z.string().max(20).optional(),
     usml_category: z.string().max(10).optional(),
+    version: z.number().int(),
+    is_current_version: z.boolean(),
+    previous_version: z.string().uuid().nullable(),
   })
   .passthrough();
 const PaginatedPartTypesList = z
@@ -11169,6 +11416,7 @@ const PartTypesRequest = z
   .object({
     tenant: z.string().uuid().nullish(),
     external_id: z.string().max(255).nullish(),
+    archived: z.boolean().optional(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullish(),
     ERP_id: z.string().max(50).nullish(),
@@ -11181,6 +11429,7 @@ const PatchedPartTypesRequest = z
   .object({
     tenant: z.string().uuid().nullable(),
     external_id: z.string().max(255).nullable(),
+    archived: z.boolean(),
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullable(),
     ERP_id: z.string().max(50).nullable(),
@@ -11379,6 +11628,32 @@ const PartTravelerResponse = z
     part_status: z.string(),
     traveler: z.array(TravelerStepEntry),
   })
+  .passthrough();
+const PartsBulkIncrementInputRequest = z
+  .object({ ids: z.array(z.string().uuid()) })
+  .passthrough();
+const BulkResultResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
+const PartsBulkRollbackInputRequest = z
+  .object({
+    ids: z.array(z.string().uuid()),
+    reason: z.string().optional(),
+    override_id: z.string().uuid().nullish(),
+  })
+  .passthrough();
+const BulkRollbackResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
+const PartsBulkSetStatusInputRequest = z
+  .object({
+    ids: z.array(z.string().uuid()),
+    status: PartsStatusEnum,
+    reason: z.string().optional(),
+  })
+  .passthrough();
+const BulkSetStatusResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
   .passthrough();
 const PartSelect = z
   .object({
@@ -11648,6 +11923,8 @@ const QuarantineDisposition = z
       .optional(),
     rework_limit_exceeded: z.boolean(),
     quality_reports: z.array(z.string().uuid()),
+    work_order_id: z.string().uuid().nullable(),
+    work_order_erp_id: z.string().nullable(),
     assignee_name: z.string(),
     choices_data: z.object({}).partial().passthrough().nullable(),
     annotation_status: z.object({}).partial().passthrough(),
@@ -11808,7 +12085,7 @@ const SamplingRuleSet = z
     name: z.string().max(100),
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
+    version: z.number().int(),
     is_fallback: z.boolean().optional(),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -11841,7 +12118,6 @@ const SamplingRuleSetRequest = z
     name: z.string().min(1).max(100),
     origin: z.string().max(100).optional(),
     active: z.boolean().optional(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
     is_fallback: z.boolean().optional(),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -11858,7 +12134,6 @@ const PatchedSamplingRuleSetRequest = z
     name: z.string().min(1).max(100),
     origin: z.string().max(100),
     active: z.boolean(),
-    version: z.number().int().gte(0).lte(2147483647),
     is_fallback: z.boolean(),
     fallback_threshold: z.number().int().gte(0).lte(2147483647).nullable(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullable(),
@@ -12012,6 +12287,7 @@ const Shift = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedShiftList = z
@@ -12357,6 +12633,7 @@ const Steps = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedStepsList = z
@@ -12413,6 +12690,9 @@ const PatchedStepsRequest = z
     archived: z.boolean(),
   })
   .partial()
+  .passthrough();
+const CreateStepRevisionInputRequest = z
+  .object({ change_description: z.string().min(1) })
   .passthrough();
 const SamplingRuleUpdateRequest = z
   .object({
@@ -12663,6 +12943,9 @@ const ThreeDModel = z
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
     deleted_at: z.string().datetime({ offset: true }).nullable(),
+    version: z.number().int(),
+    is_current_version: z.boolean(),
+    previous_version: z.string().uuid().nullable(),
   })
   .passthrough();
 const PaginatedThreeDModelList = z
@@ -12937,6 +13220,7 @@ const TrainingType = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedTrainingTypeList = z
@@ -13127,6 +13411,7 @@ const WorkCenter = z
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
+    version: z.number().int(),
   })
   .passthrough();
 const PaginatedWorkCenterList = z
@@ -13186,6 +13471,7 @@ const PriorityEnum = z.union([
   z.literal(3),
   z.literal(4),
 ]);
+const SplitReasonEnum = z.enum(["QUANTITY", "OPERATION", "REWORK"]);
 const WorkOrderList = z
   .object({
     id: z.string().uuid(),
@@ -13204,6 +13490,12 @@ const WorkOrderList = z
     notes: z.string().max(500).nullish(),
     parts_count: z.number().int(),
     qa_progress: z.object({}).partial().passthrough(),
+    completed_parts_count: z.number().int(),
+    is_batch_work_order: z.boolean(),
+    current_hold: z.object({}).partial().passthrough().nullable(),
+    parent_workorder_id: z.string().uuid().nullable(),
+    split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
+    split_at: z.string().datetime({ offset: true }).nullable(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
@@ -13252,6 +13544,10 @@ const WorkOrder = z
     notes: z.string().max(500).nullish(),
     parts_summary: z.object({}).partial().passthrough().nullable(),
     is_batch_work_order: z.boolean(),
+    current_hold: z.object({}).partial().passthrough().nullable(),
+    parent_workorder_id: z.string().uuid().nullable(),
+    split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
+    split_at: z.string().datetime({ offset: true }).nullable(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
@@ -13274,6 +13570,13 @@ const PatchedWorkOrderRequest = z
   })
   .partial()
   .passthrough();
+const WorkOrderPlaceOnHoldInputRequest = z
+  .object({
+    reason: z.string().min(1),
+    notes: z.string().optional(),
+    expected_clear_at: z.string().datetime({ offset: true }).nullish(),
+  })
+  .passthrough();
 const QADocumentsResponse = z
   .object({
     work_order_documents: z.array(z.object({}).partial().passthrough()),
@@ -13282,6 +13585,19 @@ const QADocumentsResponse = z
     current_step_id: z.string().uuid().nullable(),
     parts_in_qa: z.number().int(),
   })
+  .passthrough();
+const WorkOrderSplitInputRequest = z
+  .object({
+    reason: z.string().min(1),
+    new_erp_id: z.string().min(1),
+    part_ids: z.array(z.string().uuid()).optional(),
+    quantity: z.number().int().optional(),
+    target_process_id: z.string().uuid().nullish(),
+    notes: z.string().optional(),
+  })
+  .passthrough();
+const WorkOrderSplitResponse = z
+  .object({ child_work_order_id: z.string().uuid(), child_erp_id: z.string() })
   .passthrough();
 const StepSummary = z
   .object({
@@ -13308,6 +13624,33 @@ const WorkOrderStepHistoryResponse = z
     total_parts: z.number().int(),
     step_history: z.array(StepSummary),
   })
+  .passthrough();
+const WorkOrderBulkClearHoldInputRequest = z
+  .object({ ids: z.array(z.string().uuid()) })
+  .passthrough();
+const WorkOrderBulkClearHoldResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
+const WorkOrderBulkPlaceOnHoldInputRequest = z
+  .object({
+    ids: z.array(z.string().uuid()),
+    reason: z.string().min(1),
+    notes: z.string().optional(),
+    expected_clear_at: z.string().datetime({ offset: true }).nullish(),
+  })
+  .passthrough();
+const WorkOrderBulkPlaceOnHoldResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
+  .passthrough();
+const WorkOrderBulkTransitionInputRequest = z
+  .object({
+    ids: z.array(z.string().uuid()),
+    status: WorkOrderStatusEnum,
+    notes: z.string().optional(),
+  })
+  .passthrough();
+const WorkOrderBulkTransitionResponse = z
+  .object({ results: z.array(z.object({}).partial().passthrough()) })
   .passthrough();
 const EmbedQueryRequestRequest = z
   .object({ query: z.string().min(1) })
@@ -13712,11 +14055,10 @@ const PermissionListResponse = z
 const PresetListResponse = z
   .object({ presets: z.array(z.object({}).partial().passthrough()) })
   .passthrough();
-const ReportTypeEnum = z.enum(["spc", "capa", "quality_report"]);
 const GenerateReportRequest = z
   .object({
-    report_type: ReportTypeEnum,
-    params: z.object({}).partial().passthrough(),
+    report_type: z.string().min(1),
+    params: z.object({}).partial().passthrough().optional(),
   })
   .passthrough();
 const GenerateReportResponse = z
@@ -13748,10 +14090,7 @@ const PaginatedGeneratedReportList = z
   })
   .passthrough();
 const ReportTypesResponse = z
-  .object({
-    spc: z.object({}).partial().passthrough(),
-    capa: z.object({}).partial().passthrough(),
-  })
+  .object({ name: z.string(), title: z.string(), template: z.string() })
   .passthrough();
 const ChartTypeEnum = z.enum(["XBAR_R", "XBAR_S", "I_MR"]);
 const BaselineStatusEnum = z.enum(["ACTIVE", "SUPERSEDED"]);
@@ -14107,18 +14446,13 @@ const TenantInfo = z
     id: z.string().uuid(),
     name: z.string(),
     slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
-    tier: z.string(),
-    status: z.string(),
-    is_demo: z.boolean(),
-    trial_ends_at: z.string().datetime({ offset: true }).nullable(),
     logo_url: z.string().nullable(),
     primary_color: z.string().nullable(),
     secondary_color: z.string().nullable(),
-    contact_email: z.string().email().nullable(),
-    contact_phone: z.string().nullable(),
-    website: z.string().url().nullable(),
-    address: z.string().nullable(),
     default_timezone: z.string(),
+    tier: z.string().nullable(),
+    status: z.string().nullable(),
+    trial_ends_at: z.string().datetime({ offset: true }).nullable(),
   })
   .passthrough();
 const ModeEnum = z.enum(["saas", "dedicated"]);
@@ -14458,6 +14792,7 @@ export const schemas = {
   BOMRequest,
   BOM,
   PatchedBOMRequest,
+  CreateBOMRevisionInputRequest,
   CapaTypeEnum,
   SeverityEnum,
   TaskTypeEnum,
@@ -14601,9 +14936,6 @@ export const schemas = {
   DefectTypeFacet,
   SeverityFacet,
   HeatMapFacetsResponse,
-  ExternalAPIOrderIdentifier,
-  ExternalAPIOrderIdentifierRequest,
-  PatchedExternalAPIOrderIdentifierRequest,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -14621,10 +14953,12 @@ export const schemas = {
   MilestoneTemplate,
   MilestoneTemplateRequest,
   PatchedMilestoneTemplateRequest,
+  CreateMilestoneTemplateRevisionInputRequest,
   MilestoneRequest,
   PatchedMilestoneRequest,
+  NotificationEventTypeCatalog,
   NotificationTypeEnum,
-  ChannelTypeEnum,
+  NotificationPreferenceChannelTypeEnum,
   NotificationTaskStatusEnum,
   IntervalTypeEnum,
   NotificationSchedule,
@@ -14635,6 +14969,12 @@ export const schemas = {
   PatchedNotificationPreferenceRequest,
   TestSendResponse,
   AvailableNotificationTypes,
+  EventTypeEnum,
+  NotificationRuleChannelTypeEnum,
+  NotificationRule,
+  PaginatedNotificationRuleList,
+  NotificationRuleRequest,
+  PatchedNotificationRuleRequest,
   OrdersStatusEnum,
   Orders,
   PaginatedOrdersList,
@@ -14679,6 +15019,12 @@ export const schemas = {
   TravelerAttachment,
   TravelerStepEntry,
   PartTravelerResponse,
+  PartsBulkIncrementInputRequest,
+  BulkResultResponse,
+  PartsBulkRollbackInputRequest,
+  BulkRollbackResponse,
+  PartsBulkSetStatusInputRequest,
+  BulkSetStatusResponse,
   PartSelect,
   PaginatedPartSelectList,
   ProcessStatusEnum,
@@ -14757,6 +15103,7 @@ export const schemas = {
   PaginatedStepsList,
   StepsRequest,
   PatchedStepsRequest,
+  CreateStepRevisionInputRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
   TenantGroup,
@@ -14832,14 +15179,24 @@ export const schemas = {
   PatchedWorkCenterRequest,
   WorkOrderStatusEnum,
   PriorityEnum,
+  SplitReasonEnum,
   WorkOrderList,
   PaginatedWorkOrderListList,
   WorkOrderRequest,
   WorkOrder,
   PatchedWorkOrderRequest,
+  WorkOrderPlaceOnHoldInputRequest,
   QADocumentsResponse,
+  WorkOrderSplitInputRequest,
+  WorkOrderSplitResponse,
   StepSummary,
   WorkOrderStepHistoryResponse,
+  WorkOrderBulkClearHoldInputRequest,
+  WorkOrderBulkClearHoldResponse,
+  WorkOrderBulkPlaceOnHoldInputRequest,
+  WorkOrderBulkPlaceOnHoldResponse,
+  WorkOrderBulkTransitionInputRequest,
+  WorkOrderBulkTransitionResponse,
   EmbedQueryRequestRequest,
   EmbedQueryResponse,
   LLMConfigResponse,
@@ -14893,7 +15250,6 @@ export const schemas = {
   IntegrationCatalogItem,
   PermissionListResponse,
   PresetListResponse,
-  ReportTypeEnum,
   GenerateReportRequest,
   GenerateReportResponse,
   GeneratedReportStatusEnum,
@@ -15733,6 +16089,26 @@ identity verification, and delegation support.`,
     response: ApprovalTemplate,
   },
   {
+    method: "post",
+    path: "/api/ApprovalTemplates/:id/revisions/",
+    alias: "api_ApprovalTemplates_revisions_create",
+    description: `Create a new revision of an ApprovalTemplate. Returns the new version with incremented version number. M2M default_approvers and default_groups are copied to the new version.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ change_description: z.string() }).passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ApprovalTemplate,
+  },
+  {
     method: "get",
     path: "/api/ApprovalTemplates/export-excel/",
     alias: "api_ApprovalTemplates_export_excel_retrieve",
@@ -16245,6 +16621,28 @@ identity verification, and delegation support.`,
     description: `Release a BOM for production use`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BOM,
+  },
+  {
+    method: "post",
+    path: "/api/BOMs/:id/revisions/",
+    alias: "api_BOMs_revisions_create",
+    description: `POST a new revision of this BOM. Returns 201 with the new version.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ change_description: z.string().min(1) })
+          .passthrough(),
+      },
       {
         name: "id",
         type: "Path",
@@ -22031,7 +22429,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "get",
     path: "/api/hubspot-pipeline-stages/",
     alias: "api_hubspot_pipeline_stages_list",
-    description: `Read-only pipeline stages for HubSpot integrations.`,
+    description: `Read-only pipeline stages for HubSpot integrations. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22056,7 +22454,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "get",
     path: "/api/hubspot-pipeline-stages/:id/",
     alias: "api_hubspot_pipeline_stages_retrieve",
-    description: `Read-only pipeline stages for HubSpot integrations.`,
+    description: `Read-only pipeline stages for HubSpot integrations. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22069,129 +22467,9 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
   },
   {
     method: "get",
-    path: "/api/HubspotGates/",
-    alias: "api_HubspotGates_list",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.array(ExternalAPIOrderIdentifier),
-  },
-  {
-    method: "post",
-    path: "/api/HubspotGates/",
-    alias: "api_HubspotGates_create",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ExternalAPIOrderIdentifierRequest,
-      },
-    ],
-    response: ExternalAPIOrderIdentifier,
-  },
-  {
-    method: "get",
-    path: "/api/HubspotGates/:id/",
-    alias: "api_HubspotGates_retrieve",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: ExternalAPIOrderIdentifier,
-  },
-  {
-    method: "put",
-    path: "/api/HubspotGates/:id/",
-    alias: "api_HubspotGates_update",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ExternalAPIOrderIdentifierRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: ExternalAPIOrderIdentifier,
-  },
-  {
-    method: "patch",
-    path: "/api/HubspotGates/:id/",
-    alias: "api_HubspotGates_partial_update",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedExternalAPIOrderIdentifierRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: ExternalAPIOrderIdentifier,
-  },
-  {
-    method: "delete",
-    path: "/api/HubspotGates/:id/",
-    alias: "api_HubspotGates_destroy",
-    description: `ViewSet for managing HubSpot gate/milestone data`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/api/HubspotGates/export-excel/",
-    alias: "api_HubspotGates_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "fields",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "filename",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.instanceof(File),
-  },
-  {
-    method: "get",
     path: "/api/integration-sync-logs/",
     alias: "api_integration_sync_logs_list",
-    description: `Read-only sync log history.`,
+    description: `Read-only sync log history. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22216,7 +22494,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "get",
     path: "/api/integration-sync-logs/:id/",
     alias: "api_integration_sync_logs_retrieve",
-    description: `Read-only sync log history.`,
+    description: `Read-only sync log history. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22232,7 +22510,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     path: "/api/integrations/",
     alias: "api_integrations_list",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22258,7 +22536,7 @@ Scoped to the request user&#x27;s tenant.`,
     path: "/api/integrations/",
     alias: "api_integrations_create",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22274,7 +22552,7 @@ Scoped to the request user&#x27;s tenant.`,
     path: "/api/integrations/:id/",
     alias: "api_integrations_retrieve",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22290,7 +22568,7 @@ Scoped to the request user&#x27;s tenant.`,
     path: "/api/integrations/:id/",
     alias: "api_integrations_update",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22311,7 +22589,7 @@ Scoped to the request user&#x27;s tenant.`,
     path: "/api/integrations/:id/",
     alias: "api_integrations_partial_update",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -22332,7 +22610,7 @@ Scoped to the request user&#x27;s tenant.`,
     path: "/api/integrations/:id/",
     alias: "api_integrations_destroy",
     description: `CRUD for integration management.
-Scoped to the request user&#x27;s tenant.`,
+Scoped to the request user&#x27;s tenant. Admin/staff only.`,
     requestFormat: "json",
     parameters: [
       {
@@ -23176,6 +23454,41 @@ Usage:
     response: z.void(),
   },
   {
+    method: "post",
+    path: "/api/MilestoneTemplates/:id/revisions/",
+    alias: "api_MilestoneTemplates_revisions_create",
+    description: `Create a new revision of a MilestoneTemplate. Returns the new version with incremented version number. Milestone children are copied to the new version.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ change_description: z.string().min(1) })
+          .passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/NotificationEventTypes/",
+    alias: "api_NotificationEventTypes_list",
+    description: `Static catalog of event types the rule engine can fire on.
+
+Consumed by the admin UI to build the event-type dropdown and to
+render the right scope picker per event (scope_model tells the UI
+which model list to fetch when the admin picks &quot;scope at a specific
+object&quot;).`,
+    requestFormat: "json",
+    response: z.array(NotificationEventTypeCatalog),
+  },
+  {
     method: "get",
     path: "/api/NotificationPreferences/",
     alias: "api_NotificationPreferences_list",
@@ -23322,6 +23635,143 @@ Usage:
     description: `Get available notification types that users can configure`,
     requestFormat: "json",
     response: AvailableNotificationTypes,
+  },
+  {
+    method: "get",
+    path: "/api/NotificationRules/",
+    alias: "api_NotificationRules_list",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "channel_type",
+        type: "Query",
+        schema: z.enum(["EMAIL", "IN_APP"]).optional(),
+      },
+      {
+        name: "event_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "STEP_FAILURE",
+            "WORK_ORDER_HELD_TOO_LONG",
+            "WORK_ORDER_OVERDUE",
+            "WORK_ORDER_STALLED",
+          ])
+          .optional(),
+      },
+      {
+        name: "is_active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedNotificationRuleList,
+  },
+  {
+    method: "post",
+    path: "/api/NotificationRules/",
+    alias: "api_NotificationRules_create",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationRuleRequest,
+      },
+    ],
+    response: NotificationRule,
+  },
+  {
+    method: "get",
+    path: "/api/NotificationRules/:id/",
+    alias: "api_NotificationRules_retrieve",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NotificationRule,
+  },
+  {
+    method: "put",
+    path: "/api/NotificationRules/:id/",
+    alias: "api_NotificationRules_update",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NotificationRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NotificationRule,
+  },
+  {
+    method: "patch",
+    path: "/api/NotificationRules/:id/",
+    alias: "api_NotificationRules_partial_update",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedNotificationRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NotificationRule,
+  },
+  {
+    method: "delete",
+    path: "/api/NotificationRules/:id/",
+    alias: "api_NotificationRules_destroy",
+    description: `CRUD for event-driven notification rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "get",
@@ -24138,6 +24588,76 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
       },
     ],
     response: PartTravelerResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Parts/bulk_increment/",
+    alias: "api_Parts_bulk_increment_create",
+    description: `Advance each listed part one step. Per-id errors captured.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsBulkIncrementInputRequest,
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: BulkResultResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Parts/bulk_rollback/",
+    alias: "api_Parts_bulk_rollback_create",
+    description: `Parts CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsBulkRollbackInputRequest,
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: BulkRollbackResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Parts/bulk_set_status/",
+    alias: "api_Parts_bulk_set_status_create",
+    description: `Parts CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsBulkSetStatusInputRequest,
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: BulkSetStatusResponse,
   },
   {
     method: "get",
@@ -25434,6 +25954,26 @@ Usage:
     response: z.void(),
   },
   {
+    method: "post",
+    path: "/api/Processes/:id/revisions/",
+    alias: "api_Processes_revisions_create",
+    description: `Create a new revision of an APPROVED or DEPRECATED process. Returns the new DRAFT with incremented version. Children (ProcessStep, StepEdge, current Documents) are copied.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ change_description: z.string() }).passthrough(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Processes,
+  },
+  {
     method: "get",
     path: "/api/Processes/export-excel/",
     alias: "api_Processes_export_excel_retrieve",
@@ -26008,23 +26548,12 @@ Usage:
     method: "post",
     path: "/api/reports/download/",
     alias: "api_reports_download_create",
-    description: `Generate and download a PDF report directly (synchronous).
+    description: `Compile synchronously and return PDF bytes as an attachment.
 
-This endpoint generates the PDF and returns it immediately for download,
-rather than emailing it. Use for on-device saves.
-
-Request body:
-{
-    &quot;report_type&quot;: &quot;spc&quot;,
-    &quot;params&quot;: {
-        &quot;processId&quot;: 1,
-        &quot;stepId&quot;: 101,
-        &quot;measurementId&quot;: 1001,
-        &quot;mode&quot;: &quot;xbar-r&quot;
-    }
-}
-
-Returns: PDF file as binary response`,
+A hard timeout is enforced via concurrent.futures. If the
+compile exceeds SYNC_COMPILE_TIMEOUT_SECONDS, the worker thread
+is abandoned (Python cannot kill threads forcibly) — the request
+returns 504 and memory is reclaimed on gunicorn worker rotation.`,
     requestFormat: "json",
     parameters: [
       {
@@ -26039,24 +26568,8 @@ Returns: PDF file as binary response`,
     method: "post",
     path: "/api/reports/generate/",
     alias: "api_reports_generate_create",
-    description: `Generate and email a PDF report.
-
-Request body:
-{
-    &quot;report_type&quot;: &quot;spc&quot;,
-    &quot;params&quot;: {
-        &quot;process_id&quot;: 1,
-        &quot;step_id&quot;: 101,
-        &quot;measurement_id&quot;: 1001,
-        &quot;mode&quot;: &quot;xbar-r&quot;
-    }
-}
-
-Response:
-{
-    &quot;message&quot;: &quot;Report is being generated. You&#x27;ll receive an email shortly.&quot;,
-    &quot;report_id&quot;: 123
-}`,
+    description: `Queue a Celery task to generate the report and email it to the
+requesting user. Responds 202 immediately.`,
     requestFormat: "json",
     parameters: [
       {
@@ -26071,12 +26584,7 @@ Response:
     method: "get",
     path: "/api/reports/history/",
     alias: "api_reports_history_list",
-    description: `List the current user&#x27;s generated reports.
-
-Query params:
-    report_type: Filter by report type (optional)
-    status: Filter by status (optional)
-    limit: Number of results (default 50)`,
+    description: `List the current user&#x27;s generated reports.`,
     requestFormat: "json",
     parameters: [
       {
@@ -26101,14 +26609,7 @@ Query params:
     method: "get",
     path: "/api/reports/types/",
     alias: "api_reports_types_retrieve",
-    description: `List available report types with their configurations.
-
-Response:
-{
-    &quot;spc&quot;: {&quot;title&quot;: &quot;SPC Report&quot;, &quot;route&quot;: &quot;/spc/print&quot;},
-    &quot;capa&quot;: {&quot;title&quot;: &quot;CAPA Report&quot;, &quot;route&quot;: &quot;/quality/capas/{id}/print&quot;},
-    ...
-}`,
+    description: `Return a list of registered report types.`,
     requestFormat: "json",
     response: ReportTypesResponse,
   },
@@ -28957,6 +29458,38 @@ Usage:
 Returns the active + fallback rulesets for a given step`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: Steps,
+  },
+  {
+    method: "post",
+    path: "/api/Steps/:id/revisions/",
+    alias: "api_Steps_revisions_create",
+    description: `Create a new revision of a Step. All child rows (StepMeasurementRequirement, StepRequirement, and step-owned TrainingRequirement) are copied to the new version. Returns the new version with incremented version number.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ change_description: z.string().min(1) })
+          .passthrough(),
+      },
       {
         name: "id",
         type: "Path",
@@ -31982,6 +32515,53 @@ Import/Export endpoints (auto-configured from model):
     response: z.void(),
   },
   {
+    method: "post",
+    path: "/api/WorkOrders/:id/clear_hold/",
+    alias: "api_WorkOrders_clear_hold_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/place_on_hold/",
+    alias: "api_WorkOrders_place_on_hold_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderPlaceOnHoldInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "get",
     path: "/api/WorkOrders/:id/qa_documents/",
     alias: "api_WorkOrders_qa_documents_retrieve",
@@ -32012,6 +32592,32 @@ Import/Export endpoints (auto-configured from model):
     response: WorkOrder,
   },
   {
+    method: "post",
+    path: "/api/WorkOrders/:id/split/",
+    alias: "api_WorkOrders_split_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderSplitInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderSplitResponse,
+  },
+  {
     method: "get",
     path: "/api/WorkOrders/:id/step_history/",
     alias: "api_WorkOrders_step_history_retrieve",
@@ -32025,6 +32631,84 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderStepHistoryResponse,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/undo_split/",
+    alias: "api_WorkOrders_undo_split_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/bulk_clear_hold/",
+    alias: "api_WorkOrders_bulk_clear_hold_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderBulkClearHoldInputRequest,
+      },
+    ],
+    response: WorkOrderBulkClearHoldResponse,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/bulk_place_on_hold/",
+    alias: "api_WorkOrders_bulk_place_on_hold_create",
+    description: `Work Orders CRUD with CSV import/export support.
+
+Import/Export endpoints (auto-configured from model):
+- GET /import-template/ - Download import template (CSV or Excel)
+- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
+- GET /import-status/{task_id}/ - Check status of background import
+- GET /export/ - Export filtered data to CSV/Excel`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderBulkPlaceOnHoldInputRequest,
+      },
+    ],
+    response: WorkOrderBulkPlaceOnHoldResponse,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/bulk_transition/",
+    alias: "api_WorkOrders_bulk_transition_create",
+    description: `Transition multiple work orders. Per-id errors captured.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderBulkTransitionInputRequest,
+      },
+    ],
+    response: WorkOrderBulkTransitionResponse,
   },
   {
     method: "get",

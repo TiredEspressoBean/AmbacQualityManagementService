@@ -14,6 +14,7 @@ import {
     Gauge,
     GraduationCap,
     History,
+    LayoutDashboard,
     LineChart,
     MapPin,
     Package,
@@ -49,6 +50,7 @@ const portalPages: Page[] = [
 
 // Production - MES / shop floor (staff only, collapsible)
 const productionPages = [
+    { name: "WO Control Center", url: "/workorders", icon: LayoutDashboard },
     { name: "Work Orders", url: "/production/work-orders", icon: Factory },
     { name: "Processes", url: "/editor/processes", icon: Workflow },
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
