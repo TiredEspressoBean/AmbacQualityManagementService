@@ -34,15 +34,25 @@ from Tracker.models import (
     MeasurementDefinition,
     MeasurementResult,
 )
+from Tracker.utils.tenant_context import (
+    set_current_tenant_id,
+    reset_current_tenant,
+)
 
 
 class RemanBaseTestCase(TestCase):
-    """Base test case with common reman setup."""
+    """Base test case with common reman setup.
+
+    Sets the tenant ContextVar for the duration of setUpTestData (so
+    class-level fixtures created via `Model.objects.create(tenant=...)`
+    don't trip SecureManager's tenant-required guard) and re-asserts it
+    per-test via setUp/tearDown so test-body queries auto-scope correctly.
+    """
 
     @classmethod
     def setUpTestData(cls):
-        # Create tenant
         cls.tenant = Tenant.objects.create(name="Reman Shop", slug="reman-shop")
+        cls._class_cv_token = set_current_tenant_id(cls.tenant.id)
 
         # Create users
         cls.receiving_clerk = User.objects.create_user(
@@ -91,6 +101,27 @@ class RemanBaseTestCase(TestCase):
             ID_prefix="BOD",
             tenant=cls.tenant
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        token = getattr(cls, '_class_cv_token', None)
+        if token is not None:
+            reset_current_tenant(token)
+            cls._class_cv_token = None
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        # Re-assert ContextVar for this test's lifetime (a prior test's
+        # tearDown may have reset it).
+        self._test_cv_token = set_current_tenant_id(self.tenant.id)
+
+    def tearDown(self):
+        token = getattr(self, '_test_cv_token', None)
+        if token is not None:
+            reset_current_tenant(token)
+            self._test_cv_token = None
+        super().tearDown()
 
 
 class CoreModelTests(RemanBaseTestCase):

@@ -4,6 +4,7 @@ Verifies all rule types, FPI workflows, measurements, and step advancement gatin
 """
 
 from django.test import TestCase
+from Tracker.tests.base import TenantTestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
@@ -23,15 +24,16 @@ from Tracker.models import (
     # QMS models
     CAPA, CapaType, CapaSeverity,
 )
-from Tracker.sampling import SamplingFallbackApplier
+from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
 User = get_user_model()
 
 
-class SamplingSystemTestCase(TestCase):
+class SamplingSystemTestCase(TenantTestCase):
     """Test all sampling rule types with deterministic queryset behavior"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -277,10 +279,11 @@ class SamplingSystemTestCase(TestCase):
         self.assertEqual(part.part_status, PartsStatus.PENDING)
 
 
-class FPIRecordTestCase(TestCase):
+class FPIRecordTestCase(TenantTestCase):
     """Test First Piece Inspection (FPI) workflow"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -457,10 +460,11 @@ class FPIRecordTestCase(TestCase):
         self.assertEqual(status['status'], 'WAIVED')
 
 
-class StepAdvancementGatingTestCase(TestCase):
+class StepAdvancementGatingTestCase(TenantTestCase):
     """Test step advancement gating with can_advance_from_step()"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -718,10 +722,11 @@ class StepAdvancementGatingTestCase(TestCase):
         self.assertEqual(len(blockers), 0)
 
 
-class StepExecutionMeasurementTestCase(TestCase):
+class StepExecutionMeasurementTestCase(TenantTestCase):
     """Test step execution measurements"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -852,10 +857,11 @@ class StepExecutionMeasurementTestCase(TestCase):
         self.assertEqual(measurements.count(), 2)
 
 
-class RollbackTestCase(TestCase):
+class RollbackTestCase(TenantTestCase):
     """Test step rollback functionality"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1009,10 +1015,11 @@ class RollbackTestCase(TestCase):
             self.assertTrue(requires_approval)
 
 
-class StepOverrideTestCase(TestCase):
+class StepOverrideTestCase(TenantTestCase):
     """Test step override functionality for bypassing blocks"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1196,10 +1203,11 @@ class StepOverrideTestCase(TestCase):
         self.assertEqual(overrides.count(), 2)
 
 
-class StepRollbackModelTestCase(TestCase):
+class StepRollbackModelTestCase(TenantTestCase):
     """Test StepRollback model functionality"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1385,10 +1393,11 @@ class StepRollbackModelTestCase(TestCase):
         self.assertEqual(len(rollback.voided_measurements), 0)
 
 
-class BatchRollbackTestCase(TestCase):
+class BatchRollbackTestCase(TenantTestCase):
     """Test BatchRollback model functionality"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1532,10 +1541,11 @@ class BatchRollbackTestCase(TestCase):
         self.assertEqual(batch_rollback.individual_rollbacks.count(), 3)
 
 
-class RecordEditTestCase(TestCase):
+class RecordEditTestCase(TenantTestCase):
     """Test RecordEdit audit trail functionality"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1689,10 +1699,11 @@ class RecordEditTestCase(TestCase):
         self.assertEqual(edit.new_value, '25.42')
 
 
-class CascadeCompletionTestCase(TestCase):
+class CascadeCompletionTestCase(TenantTestCase):
     """Test automatic cascade completion of WorkOrders and Orders"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -1870,10 +1881,11 @@ class CascadeCompletionTestCase(TestCase):
         self.assertEqual(self.order.order_status, OrdersStatus.COMPLETED)
 
 
-class StepRequirementTestCase(TestCase):
+class StepRequirementTestCase(TenantTestCase):
     """Test StepRequirement model functionality"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -2005,10 +2017,11 @@ class StepRequirementTestCase(TestCase):
         self.assertEqual(req.config['max_days_since_calibration'], 30)
 
 
-class IncrementStepTestCase(TestCase):
+class IncrementStepTestCase(TenantTestCase):
     """Test increment_step() workflow transitions - the core step advancement logic"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -2234,10 +2247,11 @@ class IncrementStepTestCase(TestCase):
         self.assertTrue(self.part.requires_sampling)
 
 
-class DecisionPointTestCase(TestCase):
+class DecisionPointTestCase(TenantTestCase):
     """Test decision point routing in increment_step()"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -2404,10 +2418,11 @@ class DecisionPointTestCase(TestCase):
         self.assertIn('Manual decision required', str(context.exception))
 
 
-class BatchAdvancementTestCase(TestCase):
+class BatchAdvancementTestCase(TenantTestCase):
     """Test batch advancement behavior in increment_step()"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',
@@ -2520,10 +2535,11 @@ class BatchAdvancementTestCase(TestCase):
             self.assertEqual(exec_at_next.status, 'PENDING')
 
 
-class TerminalStatusTestCase(TestCase):
+class TerminalStatusTestCase(TenantTestCase):
     """Test terminal step status mapping in increment_step()"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_operator',
             email='test@example.com',

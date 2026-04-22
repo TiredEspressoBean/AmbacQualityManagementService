@@ -34,10 +34,11 @@ from Tracker.tests.base import TenantTestCase
 User = get_user_model()
 
 
-class NotificationTaskTestCase(TestCase):
+class NotificationTaskTestCase(TenantTestCase):
     """Test NotificationTask model and scheduling logic"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_notification_user',
             email='test@example.com',
@@ -185,10 +186,11 @@ class NotificationTaskTestCase(TestCase):
         self.assertEqual(notification.attempt_count, 1)
 
 
-class DeadlineNotificationTestCase(TestCase):
+class DeadlineNotificationTestCase(TenantTestCase):
     """Test deadline-based notification scheduling (e.g., CAPA reminders)"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_capa_user',
             email='capa@example.com',
@@ -262,10 +264,11 @@ class DeadlineNotificationTestCase(TestCase):
         self.assertEqual(current_interval, 1)  # Daily when overdue
 
 
-class NotificationHandlerTestCase(TestCase):
+class NotificationHandlerTestCase(TenantTestCase):
     """Test notification handler loading and validation"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_handler_user',
             email='handler@example.com',
@@ -331,10 +334,11 @@ class NotificationHandlerTestCase(TestCase):
         self.assertIsInstance(result, bool)
 
 
-class NotificationValidatorTestCase(TestCase):
+class NotificationValidatorTestCase(TenantTestCase):
     """Test notification validators"""
 
     def setUp(self):
+        super().setUp()
         self.active_user = User.objects.create_user(
             username='active_user',
             email='active@example.com',
@@ -567,10 +571,11 @@ class FrontendUrlTestCase(TestCase):
         self.assertEqual(url, 'https://app.example.com')
 
 
-class NotificationQueryTestCase(TestCase):
+class NotificationQueryTestCase(TenantTestCase):
     """Test notification querying"""
 
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='test_query_user',
             email='query@example.com',

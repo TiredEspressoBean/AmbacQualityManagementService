@@ -10,7 +10,7 @@ from Tracker.models import (
     RootCause, FiveWhys, Fishbone, QualityReports, ApprovalRequest,
     CapaStatusTransition, CapaStatus, CapaTaskStatus, EffectivenessResult,
 )
-from Tracker.tests.base import VectorTestCase
+from Tracker.tests.base import TenantTestCase, VectorTestCase
 
 def is_vector_extension_available():
     try:
@@ -23,8 +23,9 @@ def is_vector_extension_available():
 User = get_user_model()
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CAPAModelTestCase(VectorTestCase):
+class CAPAModelTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
@@ -217,8 +218,9 @@ class CAPAModelTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CAPAApprovalTestCase(VectorTestCase):
+class CAPAApprovalTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         from Tracker.models import ApprovalTemplate
 
         self.user = User.objects.create_user(
@@ -302,8 +304,9 @@ class CAPAApprovalTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CapaTasksTestCase(VectorTestCase):
+class CapaTasksTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -400,8 +403,9 @@ class CapaTasksTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class RcaRecordTestCase(VectorTestCase):
+class RcaRecordTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -549,8 +553,9 @@ class RcaRecordTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CapaVerificationTestCase(VectorTestCase):
+class CapaVerificationTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -620,8 +625,9 @@ class CapaVerificationTestCase(VectorTestCase):
 
 
 @skipIf(True, "CAPA API tests disabled - permission/endpoint issues to fix later")
-class CAPAAPITestCase(VectorTestCase):
+class CAPAAPITestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -702,10 +708,11 @@ class CAPAAPITestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CAPASelfVerificationTestCase(VectorTestCase):
+class CAPASelfVerificationTestCase(TenantTestCase):
     """Test CAPA self-verification validation"""
 
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.initiator = User.objects.create_user(
             username='initiator',
             email='initiator@example.com',
@@ -813,10 +820,11 @@ class CAPASelfVerificationTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class RCASelfVerificationTestCase(VectorTestCase):
+class RCASelfVerificationTestCase(TenantTestCase):
     """Test RCA self-verification validation"""
 
     def setUp(self):
+        super().setUp()  # tenant_a + user_a + ContextVar
         self.conductor = User.objects.create_user(
             username='conductor',
             email='conductor@example.com',

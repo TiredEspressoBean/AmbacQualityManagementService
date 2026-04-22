@@ -7,7 +7,7 @@ from Tracker.models import (
     ApprovalTemplate, ApprovalRequest, ApprovalResponse,
     CAPA, Documents, NotificationTask
 )
-from Tracker.tests.base import VectorTestCase
+from Tracker.tests.base import TenantTestCase, VectorTestCase
 
 def is_vector_extension_available():
     try:
@@ -20,8 +20,9 @@ def is_vector_extension_available():
 User = get_user_model()
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ApprovalSignalTestCase(VectorTestCase):
+class ApprovalSignalTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # establishes tenant_a + user_a + ContextVar
         self.requester = User.objects.create_user(
             username='requester',
             email='requester@example.com',
@@ -124,8 +125,9 @@ class ApprovalSignalTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class CAPASignalTestCase(VectorTestCase):
+class CAPASignalTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # establishes tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -252,8 +254,9 @@ class CAPASignalTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class DocumentSignalTestCase(VectorTestCase):
+class DocumentSignalTestCase(TenantTestCase):
     def setUp(self):
+        super().setUp()  # establishes tenant_a + user_a + ContextVar
         self.user = User.objects.create_user(
             username='user',
             email='user@example.com',
@@ -278,27 +281,29 @@ class DocumentSignalTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class SignalIntegrationTestCase(VectorTestCase):
+class SignalIntegrationTestCase(TenantTestCase):
     def setUp(self):
-        from Tracker.models import Tenant
-        self.tenant = Tenant.objects.create(
-            name="Signal Test Tenant",
-            slug="signal-test-tenant",
-            tier="PRO"
-        )
-        self.user = User.objects.create_user(
-            username='user',
-            email='user@example.com',
-            password='testpass',
-            tenant=self.tenant
-        )
+        super().setUp()  # establishes tenant_a + user_a + ContextVar
+        # Use tenant_a provided by TenantTestCase rather than creating a
+        # third tenant. The post_save(Tenant) signal (signals.py:312)
+        # auto-seeds default ApprovalTemplates including DOCUMENT_RELEASE,
+        # so creating a fresh tenant + `update_or_create(DOC_RELEASE)` hits
+        # the (tenant, approval_type) unique constraint under auto-scoping.
+        self.tenant = self.tenant_a
+        self.user = self.user_a
         self.approver = User.objects.create_user(
             username='approver',
             email='approver@example.com',
             password='testpass',
-            tenant=self.tenant
+            tenant=self.tenant,
         )
 
+        # Pass tenant= explicitly so the new row lands with tenant_id set
+        # (otherwise it defaults to NULL and downstream lookups that filter
+        # by tenant fail). The Tenant post_save auto-seed signal *intends*
+        # to create this template but silently fails during setUp because
+        # the ContextVar isn't set when TenantTestCase creates tenant_a —
+        # a Phase 3 fix for defaults_service / the signal handler.
         self.template, _ = ApprovalTemplate.objects.update_or_create(
             approval_type="DOCUMENT_RELEASE",
             tenant=self.tenant,
@@ -306,8 +311,8 @@ class SignalIntegrationTestCase(VectorTestCase):
                 "template_name": "Document Release",
                 "approval_flow_type": "ALL_REQUIRED",
                 "approval_sequence": "PARALLEL",
-                "default_due_days": 5
-            }
+                "default_due_days": 5,
+            },
         )
         self.template.default_approvers.set([self.approver])
 
