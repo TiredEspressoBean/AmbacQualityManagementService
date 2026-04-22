@@ -84,6 +84,7 @@ nul
 
 # ---- Claude Code ----
 .claude/
+CLAUDE.md
 
 # ---- Test Coverage / Reporting ----
 .coverage
