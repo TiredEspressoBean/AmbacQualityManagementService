@@ -29,6 +29,8 @@ Usage:
 from auditlog.models import LogEntry
 from django.core.management.base import BaseCommand
 
+from Tracker.utils.tenant_context import tenant_context
+
 from Tracker.models import (
     # Core models
     Tenant, TenantGroupMembership, NotificationTask,
@@ -186,16 +188,21 @@ class Command(BaseCommand):
 
     def _clear_tenant_data(self):
         """Clear existing dev tenant data in dependency order."""
-        from django.db import connection
-
         self.stdout.write(f"Clearing existing {self.TENANT_SLUG} tenant data...")
 
-        # Get the tenant if it exists
+        # Get the tenant if it exists — Tenant is not SecureModel, safe without context
         try:
             tenant = Tenant.objects.get(slug=self.TENANT_SLUG)
         except Tenant.DoesNotExist:
             self.stdout.write("  No existing dev tenant to clear")
             return
+
+        with tenant_context(tenant.id):
+            self._clear_tenant_data_inner(tenant)
+
+    def _clear_tenant_data_inner(self, tenant):
+        """Inner clear logic, called within an established tenant_context."""
+        from django.db import connection
 
         tenant_id = str(tenant.id)
 
@@ -396,10 +403,15 @@ class Command(BaseCommand):
     def _seed_dev_tenant(self):
         """Seed dev tenant with random Faker data."""
         # Initialize base seeder for shared operations
+        # Tenant.objects is not SecureModel — safe without context
         base = BaseSeeder(self.stdout, self.style, scale=self.scale)
-
-        # Create or get tenant
         tenant = base.create_or_get_tenant(slug=self.TENANT_SLUG, name=self.TENANT_NAME)
+
+        with tenant_context(tenant.id):
+            self._seed_dev_tenant_inner(tenant)
+
+    def _seed_dev_tenant_inner(self, tenant):
+        """Inner seed logic, called within an established tenant_context."""
 
         # Initialize all seeders
         user_seeder = UserSeeder(self.stdout, self.style, tenant=tenant, scale=self.scale)
@@ -617,23 +629,24 @@ class Command(BaseCommand):
             self.stdout.write("  No dev tenant found")
             return
 
-        summary_items = [
-            ("Companies", Companies.objects.filter(tenant=tenant).count()),
-            ("Users", User.objects.filter(tenant=tenant).count()),
-            ("Part Types", PartTypes.objects.filter(tenant=tenant).count()),
-            ("Equipment", Equipments.objects.filter(tenant=tenant).count()),
-            ("Orders", Orders.objects.filter(tenant=tenant).count()),
-            ("Work Orders", WorkOrder.objects.filter(tenant=tenant).count()),
-            ("Parts", Parts.objects.filter(tenant=tenant).count()),
-            ("Cores", Core.objects.filter(tenant=tenant).count()),
-            ("Quality Reports", QualityReports.objects.filter(tenant=tenant).count()),
-            ("CAPAs", CAPA.objects.filter(tenant=tenant).count()),
-            ("Documents", Documents.objects.filter(tenant=tenant).count()),
-            ("Training Records", TrainingRecord.objects.filter(user__tenant=tenant).count()),
-        ]
+        with tenant_context(tenant.id):
+            summary_items = [
+                ("Companies", Companies.objects.filter(tenant=tenant).count()),
+                ("Users", User.objects.filter(tenant=tenant).count()),
+                ("Part Types", PartTypes.objects.filter(tenant=tenant).count()),
+                ("Equipment", Equipments.objects.filter(tenant=tenant).count()),
+                ("Orders", Orders.objects.filter(tenant=tenant).count()),
+                ("Work Orders", WorkOrder.objects.filter(tenant=tenant).count()),
+                ("Parts", Parts.objects.filter(tenant=tenant).count()),
+                ("Cores", Core.objects.filter(tenant=tenant).count()),
+                ("Quality Reports", QualityReports.objects.filter(tenant=tenant).count()),
+                ("CAPAs", CAPA.objects.filter(tenant=tenant).count()),
+                ("Documents", Documents.objects.filter(tenant=tenant).count()),
+                ("Training Records", TrainingRecord.objects.filter(user__tenant=tenant).count()),
+            ]
 
-        for name, count in summary_items:
-            if count > 0:
-                self.stdout.write(f"{name}: {count}")
+            for name, count in summary_items:
+                if count > 0:
+                    self.stdout.write(f"{name}: {count}")
 
         self.stdout.write("=" * 50)

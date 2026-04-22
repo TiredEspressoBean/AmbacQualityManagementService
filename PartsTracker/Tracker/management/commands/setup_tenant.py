@@ -148,9 +148,12 @@ class Command(BaseCommand):
 
             # Report on auto-seeded data
             from Tracker.models import TenantGroup, DocumentType, ApprovalTemplate
+            from Tracker.utils.tenant_context import tenant_context
             groups_count = TenantGroup.objects.filter(tenant=tenant).count()
-            doc_types_count = DocumentType.objects.filter(tenant=tenant).count()
-            templates_count = ApprovalTemplate.objects.filter(tenant=tenant).count()
+            # DocumentType and ApprovalTemplate are SecureModels; require tenant_context
+            with tenant_context(tenant.id):
+                doc_types_count = DocumentType.objects.filter(tenant=tenant).count()
+                templates_count = ApprovalTemplate.objects.filter(tenant=tenant).count()
             self.stdout.write(f'  Seeded {groups_count} groups with permissions')
             self.stdout.write(f'  Seeded {doc_types_count} document types')
             self.stdout.write(f'  Seeded {templates_count} approval templates')

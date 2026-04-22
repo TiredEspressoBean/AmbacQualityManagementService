@@ -56,7 +56,7 @@ class Command(BaseCommand):
             return
 
         # Get documents to embed
-        queryset = Documents.objects.filter(
+        queryset = Documents.all_tenants.filter(
             ai_readable=True,
             archived=False
         )

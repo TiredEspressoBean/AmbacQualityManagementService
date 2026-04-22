@@ -182,10 +182,11 @@ class Command(BaseCommand):
         for name, model in models_to_clear:
             try:
                 # Filter by tenant if model has tenant field
+                mgr = getattr(model, 'all_tenants', model.objects)
                 if hasattr(model, 'tenant'):
-                    qs = model.objects.filter(tenant=tenant)
+                    qs = mgr.filter(tenant=tenant)
                 elif hasattr(model, 'tenant_id'):
-                    qs = model.objects.filter(tenant_id=tenant.id)
+                    qs = mgr.filter(tenant_id=tenant.id)
                 else:
                     # Skip models without tenant field
                     continue

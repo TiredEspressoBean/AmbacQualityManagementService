@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from Tracker.models import User, Orders, OrdersStatus, Steps
+from Tracker.utils.tenant_context import tenant_context
 
 
 class Command(BaseCommand):
@@ -59,44 +60,48 @@ class Command(BaseCommand):
             OrdersStatus.ON_HOLD
         ]
 
+        # User does not inherit SecureModel — safe to query without tenant_context
         customers_with_orders = User.objects.filter(
             customer_orders__archived=False,
             customer_orders__order_status__in=active_statuses
-        ).distinct()
+        ).select_related('tenant').distinct()
 
         sent_count = 0
 
         for customer in customers_with_orders:
-            # Get customer's active orders
-            active_orders = Orders.objects.filter(
-                customer=customer,
-                archived=False,
-                order_status__in=active_statuses
-            ).select_related('company').prefetch_related('parts__step')
-
-            if not active_orders.exists():
+            if not customer.tenant_id:
                 continue
+            with tenant_context(customer.tenant_id):
+                # Get customer's active orders
+                active_orders = Orders.objects.filter(
+                    customer=customer,
+                    archived=False,
+                    order_status__in=active_statuses
+                ).select_related('company').prefetch_related('parts__step')
 
-            # Prepare email data using shared function from tasks
-            from Tracker.tasks import _prepare_order_data
-            email_data = _prepare_order_data(active_orders)
+                if not active_orders.exists():
+                    continue
 
-            if dry_run:
-                self.stdout.write(f"Would send email to: {customer.email}")
-                self.stdout.write(f"Orders: {[order.name for order in active_orders]}")
-                continue
+                # Prepare email data using shared function from tasks
+                from Tracker.tasks import _prepare_order_data
+                email_data = _prepare_order_data(active_orders)
 
-            # Send email using new email notification system
-            try:
-                from Tracker.email_notifications import send_weekly_order_update
-                # Use immediate=True to send synchronously in management command
-                send_weekly_order_update(customer.id, email_data, immediate=True)
-                sent_count += 1
-                self.stdout.write(f"✓ Sent update to {customer.email}")
-            except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f"✗ Failed to send to {customer.email}: {e}")
-                )
+                if dry_run:
+                    self.stdout.write(f"Would send email to: {customer.email}")
+                    self.stdout.write(f"Orders: {[order.name for order in active_orders]}")
+                    continue
+
+                # Send email using new email notification system
+                try:
+                    from Tracker.email_notifications import send_weekly_order_update
+                    # Use immediate=True to send synchronously in management command
+                    send_weekly_order_update(customer.id, email_data, immediate=True)
+                    sent_count += 1
+                    self.stdout.write(f"✓ Sent update to {customer.email}")
+                except Exception as e:
+                    self.stdout.write(
+                        self.style.ERROR(f"✗ Failed to send to {customer.email}: {e}")
+                    )
 
         if dry_run:
             self.stdout.write(f"Dry run complete. Would send {sent_count} emails.")
@@ -132,9 +137,14 @@ class Command(BaseCommand):
     def show_email_preview(self, email):
         """Show full email preview for a specific customer"""
         try:
-            customer = User.objects.get(email=email)
+            # User does not inherit SecureModel — safe without tenant_context
+            customer = User.objects.select_related('tenant').get(email=email)
         except User.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Customer with email {email} not found'))
+            return
+
+        if not customer.tenant_id:
+            self.stdout.write(self.style.ERROR(f'Customer {email} has no tenant'))
             return
 
         # Get customer's active orders
@@ -145,13 +155,14 @@ class Command(BaseCommand):
             OrdersStatus.ON_HOLD
         ]
 
-        active_orders = Orders.objects.filter(
-            customer=customer,
-            archived=False,
-            order_status__in=active_statuses
-        ).select_related('company').prefetch_related('parts__step')
+        with tenant_context(customer.tenant_id):
+            active_orders = list(Orders.objects.filter(
+                customer=customer,
+                archived=False,
+                order_status__in=active_statuses
+            ).select_related('company').prefetch_related('parts__step'))
 
-        if not active_orders.exists():
+        if not active_orders:
             self.stdout.write(f'No active orders found for {email}')
             return
 
@@ -195,9 +206,14 @@ class Command(BaseCommand):
     def send_test_email(self, test_email, customer_id):
         """Send test email using customer data but to a different email address"""
         try:
-            customer = User.objects.get(id=customer_id)
+            # User does not inherit SecureModel — safe without tenant_context
+            customer = User.objects.select_related('tenant').get(id=customer_id)
         except User.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Customer with ID {customer_id} not found'))
+            return
+
+        if not customer.tenant_id:
+            self.stdout.write(self.style.ERROR(f'Customer {customer_id} has no tenant'))
             return
 
         self.stdout.write(f'Using customer data from: {customer.username} (ID: {customer.id})')
@@ -211,13 +227,14 @@ class Command(BaseCommand):
             OrdersStatus.ON_HOLD
         ]
 
-        active_orders = Orders.objects.filter(
-            customer=customer,
-            archived=False,
-            order_status__in=active_statuses
-        ).select_related('company').prefetch_related('parts__step')
+        with tenant_context(customer.tenant_id):
+            active_orders = list(Orders.objects.filter(
+                customer=customer,
+                archived=False,
+                order_status__in=active_statuses
+            ).select_related('company').prefetch_related('parts__step'))
 
-        if not active_orders.exists():
+        if not active_orders:
             self.stdout.write(self.style.WARNING(f'No active orders found for customer {customer.username}'))
             return
 

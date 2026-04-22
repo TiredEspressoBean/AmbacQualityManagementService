@@ -70,7 +70,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             for dt in types_to_process:
                 try:
-                    existing = DocumentType.objects.filter(code=dt["code"]).first()
+                    # DocumentType is SecureModel; use unscoped for cross-tenant admin
+                    existing = DocumentType.unscoped.filter(code=dt["code"]).first()
 
                     if existing:
                         if update:
@@ -89,7 +90,7 @@ class Command(BaseCommand):
                         if dry_run:
                             self.stdout.write(f"  Would create: {dt['code']} - {dt['name']}")
                         else:
-                            DocumentType.objects.create(**dt)
+                            DocumentType.unscoped.create(**dt)
                             self.stdout.write(self.style.SUCCESS(f"  Created: {dt['code']} - {dt['name']}"))
                         created += 1
 
@@ -118,7 +119,8 @@ class Command(BaseCommand):
 
     def _list_types(self):
         """List current document types in the database."""
-        types = DocumentType.objects.all().order_by("code")
+        # Cross-tenant listing uses unscoped manager
+        types = DocumentType.unscoped.all().order_by("code")
 
         if not types.exists():
             self.stdout.write(self.style.WARNING("No document types found in database"))

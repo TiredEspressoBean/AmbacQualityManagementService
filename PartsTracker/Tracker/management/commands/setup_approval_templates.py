@@ -82,7 +82,15 @@ class Command(BaseCommand):
             except Tenant.DoesNotExist:
                 raise CommandError(f"Tenant '{tenant_slug}' not found")
 
-        with transaction.atomic():
+        from Tracker.utils.tenant_context import tenant_context
+
+        # ApprovalTemplate is a SecureModel. When a tenant is provided, wrap all
+        # template queries in tenant_context. Without a tenant, use the unscoped
+        # manager for cross-tenant admin operations.
+        _tmpl = ApprovalTemplate.unscoped if not tenant else ApprovalTemplate.objects
+
+        ctx = tenant_context(tenant.id) if tenant else tenant_context(None)
+        with ctx, transaction.atomic():
             # Ensure required groups exist (TenantGroups if tenant specified)
             if tenant:
                 existing_groups = {g.name: g for g in TenantGroup.objects.filter(tenant=tenant)}
@@ -110,7 +118,7 @@ class Command(BaseCommand):
                     group_names = template_data.pop("default_groups_names", [])
                     description = template_data.pop("description", "")
 
-                    existing = ApprovalTemplate.objects.filter(
+                    existing = _tmpl.filter(
                         approval_type=template_data["approval_type"]
                     ).first()
 
@@ -144,7 +152,7 @@ class Command(BaseCommand):
                             # Add tenant to template if specified
                             if tenant:
                                 template_data['tenant'] = tenant
-                            template = ApprovalTemplate.objects.create(**template_data)
+                            template = _tmpl.create(**template_data)
 
                             # Set groups (TenantGroups if tenant specified)
                             if tenant and group_names:
@@ -188,7 +196,8 @@ class Command(BaseCommand):
 
     def _list_templates(self):
         """List current approval templates in the database."""
-        templates = ApprovalTemplate.objects.all().order_by("approval_type")
+        # Cross-tenant listing uses unscoped manager
+        templates = ApprovalTemplate.unscoped.all().order_by("approval_type")
 
         if not templates.exists():
             self.stdout.write(self.style.WARNING("No approval templates found in database"))

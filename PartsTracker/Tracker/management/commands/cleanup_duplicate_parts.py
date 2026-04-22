@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
         # Find duplicate ERP_ids (using count only since UUIDs don't support Min)
         duplicates = (
-            Parts.objects
+            Parts.all_tenants
             .values('ERP_id')
             .annotate(count=Count('id'))
             .filter(count__gt=1)
@@ -49,7 +49,7 @@ class Command(BaseCommand):
             count = dup['count']
 
             # Get all parts with this ERP_id, ordered by created_at
-            all_parts = list(Parts.objects.filter(ERP_id=erp_id).order_by('created_at'))
+            all_parts = list(Parts.all_tenants.filter(ERP_id=erp_id).order_by('created_at'))
 
             # Keep the first (oldest) one, mark rest for deletion
             keep_part = all_parts[0]
@@ -75,8 +75,8 @@ class Command(BaseCommand):
             return
 
         # Check for related records
-        related_quality_reports = QualityReports.objects.filter(part_id__in=parts_to_delete).count()
-        related_transition_logs = StepTransitionLog.objects.filter(part_id__in=parts_to_delete).count()
+        related_quality_reports = QualityReports.all_tenants.filter(part_id__in=parts_to_delete).count()
+        related_transition_logs = StepTransitionLog.all_tenants.filter(part_id__in=parts_to_delete).count()
 
         if related_quality_reports > 0:
             self.stdout.write(self.style.WARNING(
@@ -97,7 +97,7 @@ class Command(BaseCommand):
 
         for i in range(0, len(parts_to_delete), chunk_size):
             chunk = parts_to_delete[i:i + chunk_size]
-            deleted, _ = Parts.objects.filter(id__in=chunk).delete()
+            deleted, _ = Parts.all_tenants.filter(id__in=chunk).delete()
             deleted_count += deleted
             self.stdout.write(f"  Deleted {deleted_count}/{total_duplicates} parts...")
 

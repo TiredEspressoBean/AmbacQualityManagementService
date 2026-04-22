@@ -304,7 +304,7 @@ class Command(BaseCommand):
                 seeder.weighted_qa_staff = user_seeder.weighted_qa_staff
         else:
             # Load existing data
-            data['companies'] = list(Companies.objects.filter(tenant=tenant))
+            data['companies'] = list(Companies.all_tenants.filter(tenant=tenant))
             data['users'] = self._load_existing_users(tenant)
 
         # =====================================================================
@@ -319,12 +319,12 @@ class Command(BaseCommand):
             data['equipment_types'] = result['equipment_types']
 
             # Collect all steps for training requirements
-            data['steps'] = list(Steps.objects.filter(tenant=tenant))
+            data['steps'] = list(Steps.all_tenants.filter(tenant=tenant))
         else:
-            data['part_types'] = list(PartTypes.objects.filter(tenant=tenant))
-            data['equipment'] = list(Equipments.objects.filter(tenant=tenant))
-            data['equipment_types'] = list(EquipmentType.objects.filter(tenant=tenant))
-            data['steps'] = list(Steps.objects.filter(tenant=tenant))
+            data['part_types'] = list(PartTypes.all_tenants.filter(tenant=tenant))
+            data['equipment'] = list(Equipments.all_tenants.filter(tenant=tenant))
+            data['equipment_types'] = list(EquipmentType.all_tenants.filter(tenant=tenant))
+            data['steps'] = list(Steps.all_tenants.filter(tenant=tenant))
 
         # =====================================================================
         # Phase 3: Orders and Workflow
@@ -339,7 +339,7 @@ class Command(BaseCommand):
             )
             data['orders'] = result['orders']
         else:
-            data['orders'] = list(Orders.objects.filter(tenant=tenant))
+            data['orders'] = list(Orders.all_tenants.filter(tenant=tenant))
 
         # =====================================================================
         # Phase 3.5: Remanufacturing Workflow (Cores, Components)
@@ -367,8 +367,8 @@ class Command(BaseCommand):
                 if comp_type not in data['part_types']:
                     data['part_types'].append(comp_type)
         else:
-            data['cores'] = list(Core.objects.filter(tenant=tenant))
-            data['harvested_components'] = list(HarvestedComponent.objects.filter(tenant=tenant))
+            data['cores'] = list(Core.all_tenants.filter(tenant=tenant))
+            data['harvested_components'] = list(HarvestedComponent.all_tenants.filter(tenant=tenant))
 
         # =====================================================================
         # Phase 3.6: Life Tracking (depends on cores and part types)
@@ -475,7 +475,7 @@ class Command(BaseCommand):
 
         created = 0
         for stage_name, api_id, pipeline_id, order, include_in_progress in hubspot_stages:
-            _, was_created = ExternalAPIOrderIdentifier.objects.get_or_create(
+            _, was_created = ExternalAPIOrderIdentifier.all_tenants.get_or_create(
                 tenant=tenant,
                 API_id=api_id,
                 defaults={
@@ -576,8 +576,9 @@ class Command(BaseCommand):
                     count = model.objects.filter(is_superuser=False).count()
                     model.objects.filter(is_superuser=False).delete()
                 else:
-                    count = model.objects.count()
-                    model.objects.all().delete()
+                    mgr = getattr(model, 'all_tenants', model.objects)
+                    count = mgr.count()
+                    mgr.all().delete()
                 if count > 0:
                     self.stdout.write(f"  Cleared {count} {name}")
             except Exception as e:
@@ -628,24 +629,25 @@ class Command(BaseCommand):
         ]
 
         for name, model in summary_items:
-            count = model.objects.count()
+            mgr = getattr(model, 'all_tenants', model.objects)
+            count = mgr.count()
             if count > 0:
                 self.stdout.write(f"{name}: {count}")
 
         self.stdout.write("\nOrder Status Distribution:")
         for status in OrdersStatus.choices:
-            count = Orders.objects.filter(order_status=status[0]).count()
+            count = Orders.all_tenants.filter(order_status=status[0]).count()
             if count > 0:
                 self.stdout.write(f"  {status[1]}: {count}")
 
         self.stdout.write("\nCAPA Status Distribution:")
         for status in ['OPEN', 'IN_PROGRESS', 'PENDING_VERIFICATION', 'CLOSED']:
-            count = CAPA.objects.filter(status=status).count()
+            count = CAPA.all_tenants.filter(status=status).count()
             if count > 0:
                 self.stdout.write(f"  {status}: {count}")
 
         # Core status distribution
-        cores = Core.objects.all()
+        cores = Core.all_tenants.all()
         if cores.exists():
             self.stdout.write("\nCore Status Distribution:")
             for status, label in Core.CORE_STATUS_CHOICES:
@@ -654,7 +656,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"  {label}: {count}")
 
         # Training status summary
-        current = TrainingRecord.objects.all()
+        current = TrainingRecord.all_tenants.all()
         if current.exists():
             from django.utils import timezone
             from datetime import timedelta
@@ -671,7 +673,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Expired: {expired}")
 
         # Calibration status summary
-        cal_records = CalibrationRecord.objects.all()
+        cal_records = CalibrationRecord.all_tenants.all()
         if cal_records.exists():
             from django.utils import timezone
             from datetime import timedelta

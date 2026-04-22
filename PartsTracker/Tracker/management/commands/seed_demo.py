@@ -31,6 +31,8 @@ from auditlog.models import LogEntry
 from django.core.management.base import BaseCommand
 from django.db import connection
 
+from Tracker.utils.tenant_context import tenant_context
+
 from Tracker.models import (
     # Core models
     Tenant, TenantGroupMembership, UserRole,
@@ -196,6 +198,12 @@ class Command(BaseCommand):
         except Tenant.DoesNotExist:
             self.stdout.write("  No existing demo tenant to clear")
             return
+
+        with tenant_context(tenant.id):
+            self._clear_tenant_data_inner(tenant)
+
+    def _clear_tenant_data_inner(self, tenant):
+        """Inner clear logic, called within an established tenant_context."""
 
         # Helper to safely delete a queryset
         def safe_delete(qs, name):
@@ -454,15 +462,14 @@ class Command(BaseCommand):
         from .seed.demo import DemoScenario
 
         # Initialize base seeder for tenant creation
+        # Tenant.objects is not SecureModel — safe without context
         base = BaseSeeder(self.stdout, self.style, scale=self.scale)
-
-        # Create or get demo tenant
         tenant = base.create_or_get_tenant(slug=self.TENANT_SLUG, name=self.TENANT_NAME)
 
-        # Run demo scenario
-        scenario = DemoScenario(self.stdout, self.style, tenant=tenant, scale=self.scale)
-        scenario.verbose = self.verbose
-        scenario.seed()
+        with tenant_context(tenant.id):
+            scenario = DemoScenario(self.stdout, self.style, tenant=tenant, scale=self.scale)
+            scenario.verbose = self.verbose
+            scenario.seed()
 
     def _show_data_summary(self):
         """Show summary of created demo data."""
@@ -476,58 +483,59 @@ class Command(BaseCommand):
             self.stdout.write("  No demo tenant found")
             return
 
-        # Demo users
-        self.stdout.write("\nDemo Users:")
-        demo_emails = [
-            'admin@demo.ambac.com',
-            'maria.qa@demo.ambac.com',
-            'sarah.qa@demo.ambac.com',
-            'jennifer.mgr@demo.ambac.com',
-            'mike.ops@demo.ambac.com',
-            'dave.wilson@demo.ambac.com',
-            'lisa.docs@demo.ambac.com',
-            'tom.bradley@midwestfleet.com',
-        ]
-        for email in demo_emails:
-            exists = User.objects.filter(email=email).exists()
-            status = "OK" if exists else "MISSING"
-            self.stdout.write(f"  {email}: {status}")
+        with tenant_context(tenant.id):
+            # Demo users (User is not SecureModel, but keep inside context for consistency)
+            self.stdout.write("\nDemo Users:")
+            demo_emails = [
+                'admin@demo.ambac.com',
+                'maria.qa@demo.ambac.com',
+                'sarah.qa@demo.ambac.com',
+                'jennifer.mgr@demo.ambac.com',
+                'mike.ops@demo.ambac.com',
+                'dave.wilson@demo.ambac.com',
+                'lisa.docs@demo.ambac.com',
+                'tom.bradley@midwestfleet.com',
+            ]
+            for email in demo_emails:
+                exists = User.objects.filter(email=email).exists()
+                status = "OK" if exists else "MISSING"
+                self.stdout.write(f"  {email}: {status}")
 
-        # Data counts
-        self.stdout.write("\nData Counts:")
-        summary_items = [
-            ("Companies", Companies.objects.filter(tenant=tenant).count()),
-            ("Users", User.objects.filter(tenant=tenant).count()),
-            ("Part Types", PartTypes.objects.filter(tenant=tenant).count()),
-            ("Equipment", Equipments.objects.filter(tenant=tenant).count()),
-            ("Orders", Orders.objects.filter(tenant=tenant).count()),
-            ("Work Orders", WorkOrder.objects.filter(tenant=tenant).count()),
-            ("Parts", Parts.objects.filter(tenant=tenant).count()),
-            ("Step Executions", StepExecution.objects.filter(tenant=tenant).count()),
-            ("Step Transitions", StepTransitionLog.objects.filter(tenant=tenant).count()),
-            ("Equipment Usage", EquipmentUsage.objects.filter(tenant=tenant).count()),
-            ("Quality Reports", QualityReports.objects.filter(tenant=tenant).count()),
-            ("Dispositions", QuarantineDisposition.objects.filter(part__tenant=tenant).count()),
-            ("CAPAs", CAPA.objects.filter(tenant=tenant).count()),
-            ("Documents", Documents.objects.filter(tenant=tenant).count()),
-            ("Training Records", TrainingRecord.objects.filter(user__tenant=tenant).count()),
-        ]
+            # Data counts
+            self.stdout.write("\nData Counts:")
+            summary_items = [
+                ("Companies", Companies.objects.filter(tenant=tenant).count()),
+                ("Users", User.objects.filter(tenant=tenant).count()),
+                ("Part Types", PartTypes.objects.filter(tenant=tenant).count()),
+                ("Equipment", Equipments.objects.filter(tenant=tenant).count()),
+                ("Orders", Orders.objects.filter(tenant=tenant).count()),
+                ("Work Orders", WorkOrder.objects.filter(tenant=tenant).count()),
+                ("Parts", Parts.objects.filter(tenant=tenant).count()),
+                ("Step Executions", StepExecution.objects.filter(tenant=tenant).count()),
+                ("Step Transitions", StepTransitionLog.objects.filter(tenant=tenant).count()),
+                ("Equipment Usage", EquipmentUsage.objects.filter(tenant=tenant).count()),
+                ("Quality Reports", QualityReports.objects.filter(tenant=tenant).count()),
+                ("Dispositions", QuarantineDisposition.objects.filter(part__tenant=tenant).count()),
+                ("CAPAs", CAPA.objects.filter(tenant=tenant).count()),
+                ("Documents", Documents.objects.filter(tenant=tenant).count()),
+                ("Training Records", TrainingRecord.objects.filter(user__tenant=tenant).count()),
+            ]
 
-        for name, count in summary_items:
-            self.stdout.write(f"  {name}: {count}")
+            for name, count in summary_items:
+                self.stdout.write(f"  {name}: {count}")
 
-        # Check for key demo data
-        self.stdout.write("\nKey Demo Records:")
-        key_orders = ['ORD-2024-0042', 'ORD-2024-0038', 'ORD-2024-0048']
-        for order_num in key_orders:
-            exists = Orders.objects.filter(tenant=tenant, order_number=order_num).exists()
-            status = "OK" if exists else "MISSING"
-            self.stdout.write(f"  {order_num}: {status}")
+            # Check for key demo data
+            self.stdout.write("\nKey Demo Records:")
+            key_orders = ['ORD-2024-0042', 'ORD-2024-0038', 'ORD-2024-0048']
+            for order_num in key_orders:
+                exists = Orders.objects.filter(tenant=tenant, order_number=order_num).exists()
+                status = "OK" if exists else "MISSING"
+                self.stdout.write(f"  {order_num}: {status}")
 
-        key_capas = ['CAPA-2024-003', 'CAPA-2024-004', 'CAPA-2024-005']
-        for capa_num in key_capas:
-            exists = CAPA.objects.filter(tenant=tenant, capa_number=capa_num).exists()
-            status = "OK" if exists else "MISSING"
-            self.stdout.write(f"  {capa_num}: {status}")
+            key_capas = ['CAPA-2024-003', 'CAPA-2024-004', 'CAPA-2024-005']
+            for capa_num in key_capas:
+                exists = CAPA.objects.filter(tenant=tenant, capa_number=capa_num).exists()
+                status = "OK" if exists else "MISSING"
+                self.stdout.write(f"  {capa_num}: {status}")
 
         self.stdout.write("=" * 50)

@@ -25,7 +25,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
 
         # Find WorkOrders without a process
-        workorders_to_update = WorkOrder.objects.filter(
+        workorders_to_update = WorkOrder.all_tenants.filter(
             process__isnull=True,
             archived=False
         ).select_related('related_order').prefetch_related('parts__part_type')
@@ -59,7 +59,7 @@ class Command(BaseCommand):
                 continue
 
             # Find approved process for this part_type
-            process = Processes.objects.filter(
+            process = Processes.all_tenants.filter(
                 part_type=part_type,
                 status__in=['APPROVED', 'DEPRECATED'],
                 archived=False

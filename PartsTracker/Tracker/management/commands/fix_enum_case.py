@@ -120,8 +120,8 @@ class Command(BaseCommand):
         # Get valid enum values (the actual database values, not the labels)
         valid_values = [choice[0] for choice in enum_class.choices]
 
-        # Query all objects
-        queryset = Model.objects.all()
+        # Query all objects (cross-tenant admin backfill)
+        queryset = Model.all_tenants.all()
 
         # Filter by tenant if specified
         if tenant_filter and hasattr(Model, 'tenant'):

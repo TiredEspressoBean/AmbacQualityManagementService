@@ -85,7 +85,7 @@ class Command(BaseCommand):
             benchy_content = f.read()
 
         # Get all part types
-        part_types = PartTypes.objects.all()
+        part_types = PartTypes.all_tenants.all()
         if not part_types.exists():
             self.stdout.write(self.style.WARNING(
                 "No part types found. Run setup_defaults or populate_test_data first."
@@ -98,7 +98,7 @@ class Command(BaseCommand):
 
         for part_type in part_types:
             # Check if model already exists
-            existing = ThreeDModel.objects.filter(
+            existing = ThreeDModel.all_tenants.filter(
                 part_type=part_type,
                 is_current_version=True
             ).first()
@@ -112,7 +112,7 @@ class Command(BaseCommand):
             if existing and force:
                 self.stdout.write(f"  Removing existing model for {part_type.name}...")
                 # Delete annotations first
-                HeatMapAnnotations.objects.filter(model=existing).delete()
+                HeatMapAnnotations.all_tenants.filter(model=existing).delete()
                 existing.delete()
 
             # Create unique filename for this part type
@@ -120,7 +120,7 @@ class Command(BaseCommand):
             dest_filename = f"3DBenchy_{safe_name}.glb"
 
             # Create ThreeDModel record
-            three_d_model = ThreeDModel.objects.create(
+            three_d_model = ThreeDModel.all_tenants.create(
                 name=f"3D Benchy - {part_type.name}",
                 part_type=part_type,
                 file_type="glb",
@@ -149,7 +149,7 @@ class Command(BaseCommand):
     def _create_annotations(self, model, part_type):
         """Create demo annotations for a model."""
         # Get parts of this type
-        parts = list(Parts.objects.filter(part_type=part_type)[:10])
+        parts = list(Parts.all_tenants.filter(part_type=part_type)[:10])
         if not parts:
             self.stdout.write(self.style.WARNING(
                 f"    No parts found for {part_type.name}, skipping annotations"
@@ -157,7 +157,7 @@ class Command(BaseCommand):
             return 0
 
         # Get an operator for created_by
-        operator = User.objects.filter(is_staff=True).first()
+        operator = User.objects.filter(is_staff=True).first()  # User is not SecureModel
         if not operator:
             operator = User.objects.first()
 
@@ -169,7 +169,7 @@ class Command(BaseCommand):
         for ann_data in selected:
             part = random.choice(parts)
 
-            annotation = HeatMapAnnotations.objects.create(
+            annotation = HeatMapAnnotations.all_tenants.create(
                 model=model,
                 part=part,
                 position_x=ann_data['x'],
@@ -183,7 +183,7 @@ class Command(BaseCommand):
             count += 1
 
             # Link to quality reports for this part
-            quality_reports = QualityReports.objects.filter(part=part)[:2]
+            quality_reports = QualityReports.all_tenants.filter(part=part)[:2]
             if quality_reports.exists():
                 annotation.quality_reports.set(quality_reports)
 
