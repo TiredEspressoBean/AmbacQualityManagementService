@@ -137,40 +137,43 @@ class PartIdLabelAdapter(ReportAdapter):
             )
             .get(id=validated_params["id"])
         )
-
-        serial = part.ERP_id or ""
-        part_number = part.part_type.name if part.part_type else "—"
-        work_order_number = part.work_order.ERP_id if part.work_order else None
-
-        # Revision from SecureModel's version field on PartType.
-        # Format as "Rev N" — shop-floor convention.
-        revision: Optional[str] = None
-        if part.part_type and getattr(part.part_type, "version", None):
-            revision = f"Rev {part.part_type.version}"
-
-        # Build the part detail URL for the QR code.
-        # tenant.slug preferred; fall back to "example" if missing.
-        tenant_slug = getattr(tenant, "slug", None) or "example"
-        qr_url = f"https://{tenant_slug}.ambactracker.example/parts/{part.id}"
-
-        # Shorter module_height keeps the barcode compact for the
-        # 4"x2" label — still scannable, fits with room for header + footer.
-        barcode_svg = render_barcode_svg(
-            serial if serial else "UNKNOWN",
-            module_height=6.0,
-        )
-        qr_svg = render_qr_svg(qr_url)
-
-        return PartIdLabelContext(
-            part_number=part_number,
-            revision=revision,
-            serial=serial,
-            work_order_number=work_order_number,
-            barcode_svg=barcode_svg,
-            qr_svg=qr_svg,
-            tenant_name=tenant.name,
-            print_date=date.today(),
-        )
+        return build_part_id_label_context(part, tenant)
 
     def get_filename(self, validated_params) -> str:
         return f"part_label_{validated_params.get('id', 'unknown')}.pdf"
+
+
+def build_part_id_label_context(part, tenant) -> PartIdLabelContext:
+    """Build a PartIdLabelContext for a single Parts instance.
+
+    Shared by PartIdLabelAdapter (single) and PartIdLabelBatchAdapter
+    (multi-page) so label appearance stays in lockstep.
+    Caller is responsible for tenant filtering on the Parts query.
+    """
+    serial = part.ERP_id or ""
+    part_number = part.part_type.name if part.part_type else "—"
+    work_order_number = part.work_order.ERP_id if part.work_order else None
+
+    revision: Optional[str] = None
+    if part.part_type and getattr(part.part_type, "version", None):
+        revision = f"Rev {part.part_type.version}"
+
+    tenant_slug = getattr(tenant, "slug", None) or "example"
+    qr_url = f"https://{tenant_slug}.ambactracker.example/parts/{part.id}"
+
+    barcode_svg = render_barcode_svg(
+        serial if serial else "UNKNOWN",
+        module_height=6.0,
+    )
+    qr_svg = render_qr_svg(qr_url)
+
+    return PartIdLabelContext(
+        part_number=part_number,
+        revision=revision,
+        serial=serial,
+        work_order_number=work_order_number,
+        barcode_svg=barcode_svg,
+        qr_svg=qr_svg,
+        tenant_name=tenant.name,
+        print_date=date.today(),
+    )

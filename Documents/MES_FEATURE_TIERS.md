@@ -213,9 +213,9 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 ## 7. Labels & Scanning
 
 ### 🔵 Standard (8 features)
-- [ ] QR code generation - *Serial string encoding, not URLs*
-- [ ] Code 128 barcode generation
-- [ ] PDF part label endpoint - *Batch mode for multi-label PDF*
+- [x] QR code generation - *render_qr_svg service; part_id_label adapter encodes part detail URL*
+- [x] Code 128 barcode generation - *render_barcode_svg service; used by part_id_label and ncr adapters*
+- [x] PDF part label endpoint - *part_id_label (single) + part_id_label_batch (multi-page PDF; accepts part_ids list or work_order_id)*
 - [ ] Print Label buttons - *On part detail and WO detail pages*
 - [ ] Tablet camera QR scanner - *In-browser camera, scan icon in nav*
 - [ ] Universal serial lookup - *Resolves part, WO, or lot number to route*
