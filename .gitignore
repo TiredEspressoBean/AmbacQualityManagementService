@@ -100,3 +100,9 @@ pytestdebug.log
 
 # ---- Local report generation outputs ----
 /PartsTracker/*.pdf
+
+
+# ---- SSL certs ---- #
+
+certs/
+conf/certs/
