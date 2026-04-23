@@ -395,10 +395,14 @@ services:
              mkdocs build --site-dir /output"
 
   # Build frontend for local development
+  # target: builder stops at the node:20-slim stage so `npm run build`
+  # can run at container-start. Without it, the final image is caddy:alpine
+  # which has no Node toolchain, and the command fails with "npm not found".
   frontend-builder-local:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
+      target: builder
       args:
         - VITE_API_TARGET=
     profiles:
@@ -414,6 +418,7 @@ services:
     build:
       context: ./ambac-tracker-ui
       dockerfile: Dockerfile
+      target: builder
       args:
         - VITE_API_TARGET=${VITE_API_TARGET:-https://${SITE_DOMAIN:-localhost}}
     profiles:
