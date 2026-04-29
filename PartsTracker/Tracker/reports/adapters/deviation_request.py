@@ -100,7 +100,7 @@ class DeviationRequestParamsSerializer(serializers.Serializer):
 
         # tenant-safe: explicit tenant filter
         try:
-            qd = QuarantineDisposition.objects.get(id=value, tenant=tenant)
+            qd = QuarantineDisposition.unscoped.get(id=value, tenant=tenant)
         except QuarantineDisposition.DoesNotExist:
             raise serializers.ValidationError(f"Disposition {value} not found.")
 
@@ -145,7 +145,7 @@ class DeviationRequestAdapter(ReportAdapter):
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         qd = (
-            QuarantineDisposition.objects
+            QuarantineDisposition.unscoped
             .filter(tenant=tenant)
             .select_related(
                 "part__work_order",

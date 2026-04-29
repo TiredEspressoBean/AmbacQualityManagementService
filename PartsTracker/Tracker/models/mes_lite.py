@@ -1402,9 +1402,12 @@ class MilestoneTemplate(SecureModel):
         verbose_name_plural = 'Milestone Templates'
         ordering = ['-is_default', 'name']
         constraints = [
+            # Partial: only enforced for current versions so historical
+            # versions can coexist with the same (tenant, name).
             models.UniqueConstraint(
                 fields=['tenant', 'name'],
-                name='milestone_template_tenant_name_uniq'
+                condition=models.Q(is_current_version=True),
+                name='milestone_template_tenant_name_uniq',
             ),
         ]
 

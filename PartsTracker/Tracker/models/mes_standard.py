@@ -1236,9 +1236,14 @@ class BOM(SecureModel):
         verbose_name_plural = 'Bills of Materials'
         ordering = ['part_type', '-revision']
         constraints = [
+            # Partial: only enforced for current versions so historical
+            # versions can coexist with the same natural key. (Migration 0024
+            # introduced this; 0028 inadvertently reverted to unconditional;
+            # this restores it.)
             models.UniqueConstraint(
                 fields=['tenant', 'part_type', 'revision', 'bom_type'],
-                name='bom_tenant_parttype_rev_type_uniq'
+                condition=models.Q(is_current_version=True),
+                name='bom_tenant_parttype_rev_type_uniq',
             ),
         ]
 

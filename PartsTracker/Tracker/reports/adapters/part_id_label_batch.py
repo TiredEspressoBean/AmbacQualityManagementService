@@ -84,7 +84,7 @@ class PartIdLabelBatchParamsSerializer(serializers.Serializer):
 
         if part_ids:
             found = set(
-                Parts.objects.filter(
+                Parts.unscoped.filter(
                     id__in=part_ids, tenant=tenant,
                 ).values_list("id", flat=True)
             )
@@ -95,7 +95,7 @@ class PartIdLabelBatchParamsSerializer(serializers.Serializer):
                 )
             attrs["_resolved_part_ids"] = list(part_ids)
         else:
-            wo_exists = WorkOrder.objects.filter(
+            wo_exists = WorkOrder.unscoped.filter(
                 id=work_order_id, tenant=tenant,
             ).exists()
             if not wo_exists:
@@ -103,7 +103,7 @@ class PartIdLabelBatchParamsSerializer(serializers.Serializer):
                     f"Work order {work_order_id} not found."
                 )
             resolved = list(
-                Parts.objects.filter(
+                Parts.unscoped.filter(
                     work_order_id=work_order_id, tenant=tenant,
                 ).values_list("id", flat=True)
             )

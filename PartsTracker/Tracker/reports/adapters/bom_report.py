@@ -97,7 +97,7 @@ class BOMReportParamsSerializer(serializers.Serializer):
             raise serializers.ValidationError("No tenant context on user.")
 
         # tenant-safe: explicit tenant filter
-        exists = BOM.objects.filter(id=value, tenant=tenant).exists()
+        exists = BOM.unscoped.filter(id=value, tenant=tenant).exists()
         if not exists:
             raise serializers.ValidationError(f"BOM {value} not found.")
         return value

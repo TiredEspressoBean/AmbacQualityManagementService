@@ -139,7 +139,7 @@ class NcrParamsSerializer(serializers.Serializer):
             raise serializers.ValidationError("No tenant context on user.")
 
         # tenant-safe: explicit tenant filter
-        exists = QuarantineDisposition.objects.filter(
+        exists = QuarantineDisposition.unscoped.filter(
             id=value, tenant=tenant
         ).exists()
         if not exists:
@@ -179,7 +179,7 @@ class NcrAdapter(ReportAdapter):
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         qd = (
-            QuarantineDisposition.objects
+            QuarantineDisposition.unscoped
             .filter(tenant=tenant)
             .select_related(
                 "part__work_order",

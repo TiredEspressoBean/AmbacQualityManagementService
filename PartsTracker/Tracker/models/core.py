@@ -920,6 +920,32 @@ class SecureManager(models.Manager):
             return []
 
 
+class UnscopedSecureManager(models.Manager):
+    """Manager that returns ``SecureQuerySet`` without auto-tenant-filtering.
+
+    Used by ``unscoped`` and ``all_tenants`` so chains like
+    ``Model.unscoped.for_user(user)`` and the archived-default filter in
+    ``TenantScopedMixin.get_queryset`` keep working. Plain
+    ``models.Manager`` would return a vanilla ``QuerySet`` that lacks
+    ``for_user`` / ``active`` / ``for_tenant``.
+    """
+
+    def get_queryset(self):
+        return SecureQuerySet(self.model, using=self._db)
+
+    # Convenience methods mirror SecureManager so callers can chain.
+    def for_user(self, user, include_archived=False):
+        return self.get_queryset().for_user(user, include_archived=include_archived)
+
+    def for_tenant(self, tenant):
+        return self.get_queryset().for_tenant(tenant)
+
+    def active(self):
+        return self.get_queryset().active()
+
+    def deleted(self):
+        return self.get_queryset().deleted()
+
 
 class SecureModel(models.Model):
     """
@@ -1001,12 +1027,12 @@ class SecureModel(models.Model):
     # run outside a request (management commands, data migrations, shell
     # sessions). Use this instead of `objects` when the code path has no
     # tenant ContextVar set and auto-scoping would raise.
-    unscoped = models.Manager()
+    unscoped = UnscopedSecureManager()
 
     # Explicit cross-tenant manager for admin/superuser paths that need
     # to see records across all tenants (e.g., Django admin for support
     # staff). Semantically: "I know what I'm doing, show me everything."
-    all_tenants = models.Manager()
+    all_tenants = UnscopedSecureManager()
 
     class Meta:
         abstract = True

@@ -103,7 +103,7 @@ class CalibrationCertificateParamsSerializer(serializers.Serializer):
             raise serializers.ValidationError("No tenant context on user.")
 
         # tenant-safe: explicit tenant filter
-        exists = CalibrationRecord.objects.filter(
+        exists = CalibrationRecord.unscoped.filter(
             id=value, tenant=tenant
         ).exists()
         if not exists:

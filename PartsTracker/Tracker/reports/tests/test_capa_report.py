@@ -135,7 +135,9 @@ class CapaReportAdapterCrossTenantTests(TestCase):
         )
 
         import datetime
-        cls.capa_in_b = CAPA.objects.create(
+        # unscoped because this is a cross-tenant fixture and there's no
+        # ContextVar set in setUpTestData.
+        cls.capa_in_b = CAPA.unscoped.create(
             tenant=cls.tenant_b,
             capa_number="CAPA-CA-2026-TEST-001",
             capa_type="CORRECTIVE",

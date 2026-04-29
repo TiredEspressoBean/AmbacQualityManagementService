@@ -97,7 +97,7 @@ class PartIdLabelParamsSerializer(serializers.Serializer):
             raise serializers.ValidationError("No tenant context on user.")
 
         # tenant-safe: explicit tenant filter
-        exists = Parts.objects.filter(id=value, tenant=tenant).exists()
+        exists = Parts.unscoped.filter(id=value, tenant=tenant).exists()
         if not exists:
             raise serializers.ValidationError(f"Part {value} not found.")
         return value

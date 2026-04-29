@@ -109,7 +109,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
         )
 
         # USE_AS_IS disposition owned by Tenant B
-        cls.use_as_is_in_b = QuarantineDisposition.objects.create(
+        cls.use_as_is_in_b = QuarantineDisposition.unscoped.create(
             tenant=cls.tenant_b,
             disposition_number="DISP-TEST-B-001",
             disposition_type="USE_AS_IS",
@@ -121,7 +121,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
         )
 
         # REWORK disposition owned by Tenant A (wrong type, right tenant)
-        cls.rework_in_a = QuarantineDisposition.objects.create(
+        cls.rework_in_a = QuarantineDisposition.unscoped.create(
             tenant=cls.tenant_a,
             disposition_number="DISP-TEST-A-REWORK",
             disposition_type="REWORK",

@@ -166,6 +166,11 @@ class Core(SecureModel):
                 name='core_tenant_number_uniq'
             ),
         ]
+        permissions = [
+            ('start_disassembly', 'Can start core disassembly'),
+            ('complete_disassembly', 'Can complete core disassembly'),
+            ('scrap_core', 'Can scrap a core'),
+        ]
 
     def __str__(self):
         return f"Core {self.core_number} ({self.core_type.name})"
@@ -290,6 +295,11 @@ class HarvestedComponent(SecureModel):
             models.Index(fields=['core', 'component_type']),
             models.Index(fields=['condition_grade', 'is_scrapped']),
             models.Index(fields=['component_type', 'is_scrapped']),
+        ]
+        permissions = [
+            ('grade_component', 'Can grade a harvested component'),
+            ('accept_component', 'Can accept a harvested component to inventory'),
+            ('reject_component', 'Can reject a harvested component'),
         ]
 
     def __str__(self):

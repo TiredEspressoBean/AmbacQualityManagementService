@@ -88,7 +88,7 @@ class NcrAdapterCrossTenantTests(TestCase):
         )
 
         # tenant-safe: tests deliberately create cross-tenant rows
-        cls.qd_in_b = QuarantineDisposition.objects.create(
+        cls.qd_in_b = QuarantineDisposition.unscoped.create(
             tenant=cls.tenant_b,
             disposition_number="DISP-TEST-B-0001",
             current_state="OPEN",

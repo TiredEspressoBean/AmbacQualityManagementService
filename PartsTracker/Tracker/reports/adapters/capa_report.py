@@ -164,7 +164,7 @@ class CapaReportParamsSerializer(serializers.Serializer):
             raise serializers.ValidationError("No tenant context on user.")
 
         # tenant-safe: explicit tenant filter
-        exists = CAPA.objects.filter(id=value, tenant=tenant).exists()
+        exists = CAPA.unscoped.filter(id=value, tenant=tenant).exists()
         if not exists:
             raise serializers.ValidationError(f"CAPA {value} not found.")
         return value
@@ -243,7 +243,7 @@ class CapaReportAdapter(ReportAdapter):
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         capa = (
-            CAPA.objects
+            CAPA.unscoped
             .filter(tenant=tenant)
             .select_related(
                 "initiated_by",

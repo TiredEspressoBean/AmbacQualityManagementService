@@ -967,15 +967,20 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         invitation.accepted_user_agent = request.META.get('HTTP_USER_AGENT', '')
         invitation.save()
 
-        # Create notification preference if opted in
-        if opt_in_notifications:
+        # Create notification preference if opted in. The accept-invitation
+        # endpoint is unauthenticated, so middleware doesn't set the tenant
+        # ContextVar — we set it explicitly from the user's tenant for the
+        # SecureManager .create() call.
+        if opt_in_notifications and user.tenant_id:
             from Tracker.services.core.notification import enqueue_weekly_report
-            enqueue_weekly_report(
-                recipient=user,
-                next_send_at=timezone.now() + timedelta(days=7),
-                day_of_week=4,  # Friday
-                time_of_day=timezone.now().time().replace(hour=15, minute=0),  # 3 PM UTC
-            )
+            from Tracker.utils.tenant_context import tenant_context
+            with tenant_context(user.tenant_id):
+                enqueue_weekly_report(
+                    recipient=user,
+                    next_send_at=timezone.now() + timedelta(days=7),
+                    day_of_week=4,  # Friday
+                    time_of_day=timezone.now().time().replace(hour=15, minute=0),  # 3 PM UTC
+                )
 
         return Response({"detail": "Account activated successfully", "user_id": user.id, "email": user.email},
                         status=status.HTTP_200_OK)
