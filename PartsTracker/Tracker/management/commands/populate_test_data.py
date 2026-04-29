@@ -33,7 +33,7 @@ from django.core.management.base import BaseCommand
 
 from Tracker.models import (
     # Core models
-    Tenant, TenantGroupMembership,
+    Tenant,
     Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents, Equipments,
     EquipmentType, WorkOrder, ExternalAPIOrderIdentifier,
     # Process graph models
@@ -455,9 +455,9 @@ class Command(BaseCommand):
 
         # Separate managers and QA staff
         for user in users['employees']:
-            if user.groups.filter(name__in=['Production_Manager', 'Admin']).exists():
+            if user.user_roles.filter(group__name__in=['Production Manager', 'Tenant Admin']).exists():
                 users['managers'].append(user)
-            if user.groups.filter(name__in=['QA_Manager', 'QA_Inspector']).exists():
+            if user.user_roles.filter(group__name__in=['QA Manager', 'QA Inspector']).exists():
                 users['qa_staff'].append(user)
 
         return users
@@ -497,8 +497,6 @@ class Command(BaseCommand):
 
         # Order matters - delete dependent models first
         models_to_clear = [
-            # Tenant group memberships (before users)
-            (TenantGroupMembership, "Tenant group memberships"),
             # Audit/logging
             (LogEntry, "Audit log entries"),
             # Approval workflow

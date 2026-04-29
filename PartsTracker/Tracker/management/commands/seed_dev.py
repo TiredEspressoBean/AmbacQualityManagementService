@@ -33,7 +33,7 @@ from Tracker.utils.tenant_context import tenant_context
 
 from Tracker.models import (
     # Core models
-    Tenant, TenantGroupMembership, NotificationTask,
+    Tenant, NotificationTask,
     Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents, Equipments,
     EquipmentType, WorkOrder, ExternalAPIOrderIdentifier,
     # Process graph models
@@ -359,7 +359,6 @@ class Command(BaseCommand):
             # Notifications (has FK to User)
             (NotificationTask, "Notification tasks", {'recipient__tenant': tenant}),
             # Users and companies last (referenced by many models)
-            (TenantGroupMembership, "Tenant group memberships", {'user__tenant': tenant}),
             (User, "Users", {'tenant': tenant, 'is_superuser': False}),
         ]
 

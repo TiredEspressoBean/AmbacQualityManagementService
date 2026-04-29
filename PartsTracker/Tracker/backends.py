@@ -2,7 +2,7 @@
 Custom authentication backends for tenant-scoped permissions.
 
 This module provides the TenantPermissionBackend which resolves user permissions
-based on their group memberships within the current tenant context.
+based on their UserRole assignments within the current tenant context.
 """
 
 from django.contrib.auth.backends import ModelBackend
@@ -10,10 +10,10 @@ from django.contrib.auth.backends import ModelBackend
 
 class TenantPermissionBackend(ModelBackend):
     """
-    Authentication backend that resolves permissions via TenantGroupMembership.
+    Authentication backend that resolves permissions via UserRole + TenantGroup.
 
     Extends Django's ModelBackend to look up group permissions through the
-    tenant-scoped TenantGroupMembership model instead of User.groups M2M.
+    tenant-scoped UserRole / TenantGroup pair instead of Django's User.groups M2M.
 
     Usage:
         Replace ModelBackend in AUTHENTICATION_BACKENDS in settings.py:
@@ -27,6 +27,7 @@ class TenantPermissionBackend(ModelBackend):
         2. user.tenant (fallback)
 
     Superusers bypass all permission checks (standard Django behavior).
+    SaaS-vendor staff (is_staff=True) get cross-tenant view_* access for support.
     """
 
     def _get_user_permissions(self, user_obj):

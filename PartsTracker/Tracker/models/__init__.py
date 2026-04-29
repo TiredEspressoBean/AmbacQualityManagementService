@@ -83,9 +83,6 @@ from .core import (
 
     # Permission audit logging
     PermissionChangeLog,
-
-    # Tenant-scoped group membership
-    TenantGroupMembership,
 )
 
 # MES Lite - Core Manufacturing operations
@@ -311,7 +308,6 @@ __all__ = [
     'DocumentType',
     'Documents',
     'PermissionChangeLog',
-    'TenantGroupMembership',
 
     # MES Lite (Core Manufacturing)
     'PartTypes',

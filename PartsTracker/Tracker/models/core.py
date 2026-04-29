@@ -381,7 +381,6 @@ class UserRole(models.Model):
     - Different roles in different facilities (operator at Plant A, manager at Plant B)
     - Customer role scoped to specific company (Boeing rep sees only Boeing orders)
 
-    Replaces TenantGroupMembership with more flexible scoping.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
@@ -1606,21 +1605,22 @@ class User(AbstractUser):
 
     def get_tenant_groups(self, tenant=None):
         """
-        Get all groups the user belongs to in the specified tenant.
+        Get all TenantGroups the user belongs to in the specified tenant.
 
         Args:
             tenant: Tenant instance. Defaults to self.tenant if not specified.
 
         Returns:
-            QuerySet of Group objects
+            QuerySet of TenantGroup objects
         """
+        from Tracker.models import TenantGroup  # Late import to avoid circular reference
         tenant = tenant or self.tenant
         if not tenant:
-            return Group.objects.none()
-        return Group.objects.filter(
-            tenant_memberships__user=self,
-            tenant_memberships__tenant=tenant
-        )
+            return TenantGroup.objects.none()
+        return TenantGroup.objects.filter(
+            role_assignments__user=self,
+            tenant=tenant,
+        ).distinct()
 
     def get_tenant_group_names(self, tenant=None):
         """
@@ -1995,74 +1995,6 @@ class UserInvitation(models.Model):
         """Generate a secure random token."""
         import secrets
         return secrets.token_urlsafe(48)
-
-
-class TenantGroupMembership(models.Model):
-    """
-    Tenant-scoped group membership for users.
-
-    This model enables users to have different group memberships in different tenants,
-    while keeping Django's auth.Group table unchanged. A user can be:
-    - Admin in Tenant A
-    - Operator in Tenant B
-    - Manager AND Operator in Tenant C (multiple groups per tenant supported)
-
-    The TenantPermissionBackend uses this table to resolve permissions based on the
-    current tenant context.
-    """
-
-    tenant = models.ForeignKey(
-        'Tenant',
-        on_delete=models.CASCADE,
-        related_name='group_memberships'
-    )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='tenant_group_memberships'
-    )
-    group = models.ForeignKey(
-        Group,
-        on_delete=models.CASCADE,
-        related_name='tenant_memberships'
-    )
-    granted_at = models.DateTimeField(auto_now_add=True)
-    granted_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='group_grants_made'
-    )
-
-    class Meta:
-        unique_together = [('tenant', 'user', 'group')]
-        verbose_name = 'Tenant Group Membership'
-        verbose_name_plural = 'Tenant Group Memberships'
-        indexes = [
-            models.Index(fields=['tenant', 'user']),
-            models.Index(fields=['user', 'group']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} -> {self.group.name} @ {self.tenant.slug}"
-
-    @classmethod
-    def get_user_groups(cls, user, tenant):
-        """Get all groups a user belongs to in a specific tenant."""
-        return Group.objects.filter(
-            tenant_memberships__user=user,
-            tenant_memberships__tenant=tenant
-        )
-
-    @classmethod
-    def user_has_group(cls, user, group_name, tenant):
-        """Check if user has a specific group membership in tenant."""
-        return cls.objects.filter(
-            user=user,
-            group__name=group_name,
-            tenant=tenant
-        ).exists()
 
 
 class NotificationTask(SecureModel):

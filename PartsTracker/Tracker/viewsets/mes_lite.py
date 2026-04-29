@@ -105,8 +105,8 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         from datetime import timedelta
         from django.utils import timezone
         from django.contrib.auth import get_user_model
-        from django.contrib.auth.models import Group
         from Tracker.models.core import UserInvitation
+        from Tracker.services.core.user import add_user_to_tenant_group
         from Tracker.email_notifications import send_invitation_email
         import secrets
 
@@ -145,10 +145,11 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
                 is_staff=False,
                 tenant=request.user.tenant,  # Assign to requesting user's tenant
             )
-            # Add to Customer group within tenant
-            customer_group, _ = Group.objects.get_or_create(name='Customer')
+            # Grant Customer role within tenant
             if request.user.tenant:
-                user.add_to_tenant_group(customer_group, tenant=request.user.tenant, granted_by=request.user)
+                add_user_to_tenant_group(
+                    user, 'Customer', tenant=request.user.tenant, granted_by=request.user
+                )
             user_created = True
 
         # Add as viewer

@@ -265,10 +265,11 @@ class TenantViewSetTestCase(TestCase):
         # Verify tenant created
         self.assertTrue(Tenant.objects.filter(slug='new-tenant').exists())
 
-        # Verify admin user created
+        # Verify admin user created — is_staff is reserved for SaaS-vendor
+        # support staff; customer tenant admins should NOT have it.
         admin = User.objects.filter(email='newadmin@example.com').first()
         self.assertIsNotNone(admin)
-        self.assertTrue(admin.is_staff)
+        self.assertFalse(admin.is_staff)
 
     def test_create_duplicate_slug_fails(self):
         """Creating tenant with duplicate slug fails."""
@@ -357,11 +358,12 @@ class SignupViewTestCase(TestCase):
         self.assertIsNotNone(tenant)
         self.assertEqual(tenant.tier, Tenant.Tier.STARTER)
 
-        # Verify user
+        # Verify user — is_staff is reserved for SaaS-vendor support staff,
+        # so customer admins created via signup should NOT have it.
         user = User.objects.filter(email='admin@acme.com').first()
         self.assertIsNotNone(user)
         self.assertEqual(user.tenant, tenant)
-        self.assertTrue(user.is_staff)
+        self.assertFalse(user.is_staff)
 
     @override_settings(SAAS_MODE=True)
     def test_signup_duplicate_email_fails(self):

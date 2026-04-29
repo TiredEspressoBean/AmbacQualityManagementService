@@ -35,7 +35,7 @@ from Tracker.utils.tenant_context import tenant_context
 
 from Tracker.models import (
     # Core models
-    Tenant, TenantGroupMembership, UserRole,
+    Tenant, UserRole,
     Companies, User, PartTypes, Processes, Steps, Orders, Parts, Documents, Equipments,
     EquipmentType, WorkOrder, ExternalAPIOrderIdentifier,
     # Process graph models
@@ -335,9 +335,6 @@ class Command(BaseCommand):
         # BatchRollback M2M tables (use subquery)
         clear_m2m_table_subquery('Tracker_batchrollback_affected_parts', 'batchrollback_id', 'Tracker_batchrollback')
         clear_m2m_table_subquery('Tracker_batchrollback_individual_rollbacks', 'batchrollback_id', 'Tracker_batchrollback')
-
-        # Tenant group memberships (before users)
-        safe_delete(TenantGroupMembership.objects.filter(user__tenant=tenant), "Tenant group memberships")
 
         # =====================================================================
         # PHASE 2: Clear models in proper dependency order

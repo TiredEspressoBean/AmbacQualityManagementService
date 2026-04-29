@@ -473,9 +473,9 @@ class TenantAccessPermission(BasePermission):
     1. Running in dedicated mode (all users share one tenant)
     2. No tenant context on request (let other permissions handle)
     3. User is not authenticated (let IsAuthenticated handle)
-    4. User is superuser
+    4. User is superuser or SaaS-vendor staff
     5. Tenant is user's home tenant (user.tenant)
-    6. User has TenantGroupMembership (via UserRole) for that tenant
+    6. User has a UserRole in a TenantGroup belonging to that tenant
 
     Add to DEFAULT_PERMISSION_CLASSES or specific viewsets.
     """

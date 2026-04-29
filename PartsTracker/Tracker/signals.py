@@ -25,7 +25,10 @@ def auto_create_disposition(sender, instance, created, **kwargs):
         # Check if disposition already exists for this quality report
         if not instance.dispositions.filter(current_state__in=['OPEN', 'IN_PROGRESS']).exists():
             # Find a QA user to assign to (or use the operator)
-            qa_user = User.objects.filter(groups__name='QA').first()
+            qa_user = User.objects.filter(
+                user_roles__group__name__in=['QA Manager', 'QA Inspector'],
+                user_roles__group__tenant=instance.tenant,
+            ).first()
             assigned_user = qa_user or instance.operators.first() or instance.detected_by
 
             if assigned_user:

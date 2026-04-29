@@ -32,7 +32,6 @@ from Tracker.models import (
     Documents,
     Companies,
     Tenant,
-    TenantGroupMembership,
     TenantGroup,
     UserRole,
 )

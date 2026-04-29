@@ -245,7 +245,7 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
         request = self.context.get('request')
         tenant = getattr(request.user, 'tenant', None) if request else getattr(obj, 'tenant', None)
         if hasattr(obj, 'get_tenant_groups') and tenant:
-            return GroupSerializer(obj.get_tenant_groups(tenant), many=True).data
+            return TenantGroupSerializer(obj.get_tenant_groups(tenant), many=True).data
         return []
 
 

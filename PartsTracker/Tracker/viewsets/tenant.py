@@ -20,7 +20,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings as django_settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -506,7 +505,7 @@ class TenantCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        # Create admin user
+        # Create admin user (is_staff=False — that flag is reserved for SaaS-vendor staff)
         user = User.objects.create_user(
             email=admin_email,
             username=admin_email,
@@ -514,12 +513,11 @@ class TenantCreateSerializer(serializers.ModelSerializer):
             first_name=admin_first_name,
             last_name=admin_last_name,
             tenant=tenant,
-            is_staff=True,
         )
 
-        # Add to Admin group
-        admin_group, _ = Group.objects.get_or_create(name='Admin')
-        user.groups.add(admin_group)
+        # Grant Tenant Admin role
+        from Tracker.services.core.user import add_user_to_tenant_group
+        add_user_to_tenant_group(user, 'Tenant Admin', tenant=tenant)
 
         return tenant
 
@@ -624,7 +622,7 @@ class SignupSerializer(serializers.Serializer):
             is_active=True,
         )
 
-        # Create admin user
+        # Create admin user (is_staff=False — that flag is reserved for SaaS-vendor staff)
         user = User.objects.create_user(
             email=validated_data['email'],
             username=validated_data['email'],
@@ -632,12 +630,11 @@ class SignupSerializer(serializers.Serializer):
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             tenant=tenant,
-            is_staff=True,
         )
 
-        # Add to Admin group
-        admin_group, _ = Group.objects.get_or_create(name='Admin')
-        user.groups.add(admin_group)
+        # Grant Tenant Admin role
+        from Tracker.services.core.user import add_user_to_tenant_group
+        add_user_to_tenant_group(user, 'Tenant Admin', tenant=tenant)
 
         return {
             'tenant': tenant,
@@ -1321,23 +1318,23 @@ class UserTenantsView(APIView):
             tenants = list(Tenant.objects.filter(is_active=True).order_by('name'))
         else:
             # Get all tenants this user belongs to
-            # Users have a tenant FK, but could also have TenantGroupMembership in other tenants
+            # Users have a tenant FK, but could also have UserRole in other tenants
             tenants_set = set()
 
             # Primary tenant
             if user.tenant:
                 tenants_set.add(user.tenant)
 
-            # Additional tenants via group memberships
-            from Tracker.models import TenantGroupMembership
+            # Additional tenants via UserRole
+            from Tracker.models import UserRole
             # tenant-safe: intentionally cross-tenant — enumerates every tenant this user belongs to
-            memberships = TenantGroupMembership.objects.filter(
+            roles = UserRole.objects.filter(
                 user=user
-            ).select_related('tenant')
+            ).select_related('group__tenant')
 
-            for membership in memberships:
-                if membership.tenant:
-                    tenants_set.add(membership.tenant)
+            for role in roles:
+                if role.group and role.group.tenant:
+                    tenants_set.add(role.group.tenant)
 
             tenants = sorted(tenants_set, key=lambda t: t.name)
 
@@ -1467,7 +1464,7 @@ class SwitchTenantView(APIView):
         )}
     )
     def post(self, request):
-        from Tracker.models import Tenant, TenantGroupMembership
+        from Tracker.models import Tenant, UserRole
 
         tenant_id = request.data.get('tenant_id')
         if not tenant_id:
@@ -1482,14 +1479,14 @@ class SwitchTenantView(APIView):
         user = request.user
         has_access = False
 
-        # Superusers and staff can access any tenant (for support)
+        # Superusers and SaaS-vendor staff can access any tenant (for support)
         if user.is_superuser or user.is_staff:
             has_access = True
         elif user.tenant and str(user.tenant.id) == str(tenant_id):
             has_access = True
-        elif TenantGroupMembership.objects.filter(
+        elif UserRole.objects.filter(
             user=user,
-            tenant=tenant
+            group__tenant=tenant
         ).exists():
             has_access = True
 

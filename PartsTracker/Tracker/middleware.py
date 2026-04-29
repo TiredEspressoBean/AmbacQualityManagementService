@@ -255,9 +255,9 @@ class TenantMiddleware:
         Check if user is allowed to access the specified tenant.
 
         Access is granted if:
-        1. User is a superuser (can access any tenant)
+        1. User is a superuser or SaaS-vendor staff (can access any tenant)
         2. Tenant is the user's home tenant (user.tenant)
-        3. User has a TenantGroupMembership for that tenant
+        3. User has a UserRole in a TenantGroup belonging to that tenant
 
         Returns True if access is allowed, False otherwise.
         """

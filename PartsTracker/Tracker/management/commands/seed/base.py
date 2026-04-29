@@ -4,7 +4,6 @@ Base seeder class with shared utilities for all seed modules.
 
 import random
 from datetime import timedelta
-from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from faker import Faker
@@ -12,6 +11,7 @@ from faker import Faker
 from Tracker.models import (
     Tenant, TenantGroup, UserRole, User,
 )
+from Tracker.services.core.user import add_user_to_tenant_group
 
 
 class BaseSeeder:
@@ -87,67 +87,49 @@ class BaseSeeder:
         return tenant
 
     def verify_groups_exist(self):
-        """Verify required groups exist (auto-created via post_migrate signal)."""
+        """Verify required TenantGroups exist for this tenant.
+
+        Tenant groups are auto-seeded by GroupSeeder.seed_for_tenant() on the
+        Tenant post_save signal. If any are missing, the tenant likely wasn't
+        created through normal channels — run `seed_demo` or recreate the tenant.
+        """
         required_groups = [
-            'Admin',
-            'QA_Manager',
-            'QA_Inspector',
-            'Production_Manager',
-            'Production_Operator',
-            'Document_Controller',
+            'Tenant Admin',
+            'QA Manager',
+            'QA Inspector',
+            'Production Manager',
+            'Operator',
+            'Document Controller',
             'Customer',
         ]
 
         missing_groups = []
         for group_name in required_groups:
-            if not Group.objects.filter(name=group_name).exists():
+            if not TenantGroup.objects.filter(name=group_name, tenant=self.tenant).exists():
                 missing_groups.append(group_name)
 
         if missing_groups:
             self.log(
-                f"Missing groups: {', '.join(missing_groups)}. "
-                "Run 'python manage.py setup_defaults' to create them.",
+                f"Missing TenantGroups in tenant {self.tenant.slug}: {', '.join(missing_groups)}. "
+                "Run 'python manage.py seed_demo' or recreate the tenant to trigger GroupSeeder.",
                 warning=True
             )
             return False
         else:
-            self.log(f"  Verified {len(required_groups)} groups exist")
+            self.log(f"  Verified {len(required_groups)} TenantGroups exist")
             return True
 
-    def assign_user_to_group(self, user, group, granted_by=None):
-        """
-        Assign user to a TenantGroup within the tenant context.
-
-        Maps Django Group names to TenantGroup names and creates UserRole.
-        """
-        # Map Django Group names to TenantGroup names
-        group_name_map = {
-            'Admin': 'Tenant Admin',
-            'QA_Manager': 'QA Manager',
-            'QA_Inspector': 'QA Inspector',
-            'Production_Manager': 'Production Manager',
-            'Production_Operator': 'Operator',
-            'Document_Controller': 'Document Controller',
-            'Customer': 'Customer',
-        }
-
-        tenant_group_name = group_name_map.get(group.name, group.name)
-
-        # Find the TenantGroup in this tenant
+    def assign_user_to_group(self, user, group_name, granted_by=None):
+        """Assign user to a TenantGroup by name within the seeder's tenant."""
         try:
-            tenant_group = TenantGroup.objects.get(
-                tenant=self.tenant,
-                name=tenant_group_name
+            add_user_to_tenant_group(
+                user, group_name, tenant=self.tenant, granted_by=granted_by
             )
         except TenantGroup.DoesNotExist:
-            self.log(f"  Warning: TenantGroup '{tenant_group_name}' not found in tenant", warning=True)
-            return
-
-        # Create UserRole if it doesn't exist
-        UserRole.objects.get_or_create(
-            user=user,
-            group=tenant_group
-        )
+            self.log(
+                f"  Warning: TenantGroup '{group_name}' not found in tenant",
+                warning=True,
+            )
 
     # =========================================================================
     # User Activity Weighting (80/20 Rule)

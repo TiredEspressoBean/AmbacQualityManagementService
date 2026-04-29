@@ -3,7 +3,6 @@ User and company seed data generation.
 """
 
 import random
-from django.contrib.auth.models import Group
 
 from Tracker.models import Companies, User
 from .base import BaseSeeder
@@ -77,13 +76,13 @@ class UserSeeder(BaseSeeder):
         ambac_company = companies[0]  # AMBAC Manufacturing - always first
         config = self.config
 
-        # Get groups
-        customer_group = Group.objects.get(name='Customer')
-        production_manager_group = Group.objects.get(name='Production_Manager')
-        production_operator_group = Group.objects.get(name='Production_Operator')
-        qa_manager_group = Group.objects.get(name='QA_Manager')
-        qa_inspector_group = Group.objects.get(name='QA_Inspector')
-        document_controller_group = Group.objects.get(name='Document_Controller')
+        # TenantGroup names (seeded by GroupSeeder.seed_for_tenant() on Tenant post_save)
+        customer_group = 'Customer'
+        production_manager_group = 'Production Manager'
+        production_operator_group = 'Operator'
+        qa_manager_group = 'QA Manager'
+        qa_inspector_group = 'QA Inspector'
+        document_controller_group = 'Document Controller'
 
         # Create customers from external companies (portal users)
         for i in range(config['customers']):
@@ -206,7 +205,7 @@ class UserSeeder(BaseSeeder):
 
     def create_admin_user(self, ambac_company):
         """Create or update the admin user for demos."""
-        admin_group = Group.objects.get(name='Admin')
+        admin_group = 'Tenant Admin'
 
         # Look up by email to match user created by setup_tenant
         admin, created = User.objects.update_or_create(

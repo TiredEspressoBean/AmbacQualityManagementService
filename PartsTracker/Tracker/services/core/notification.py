@@ -174,10 +174,10 @@ def _resolve_recipients(rule, payload: dict):
     recipients: set = set(rule.recipient_users.all())
 
     for group in rule.recipient_groups.all():
-        # TenantGroup → users via TenantGroupMembership
+        # TenantGroup → users via UserRole
         members = User.objects.filter(
-            tenant_group_memberships__group=group.group,
-            tenant_group_memberships__tenant_id=rule.tenant_id,
+            user_roles__group=group,
+            user_roles__group__tenant_id=rule.tenant_id,
         )
         recipients.update(members)
 

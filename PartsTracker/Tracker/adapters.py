@@ -10,7 +10,6 @@ Handles multiple onboarding flows:
 
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
-from django.contrib.auth.models import Group
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,27 +115,14 @@ class TenantAccountAdapter(DefaultAccountAdapter):
 
     def _assign_default_groups(self, request, user, tenant):
         """Assign default group memberships after user creation."""
-        from Tracker.models import TenantGroupMembership
+        from Tracker.services.core.user import add_user_to_tenant_group
 
         if not tenant:
             return
 
         # If they created their own tenant, make them admin
         if getattr(request, '_created_tenant', False):
-            try:
-                admin_group = Group.objects.get(name='Admin')
-                TenantGroupMembership.objects.create(
-                    tenant=tenant,
-                    user=user,
-                    group=admin_group,
-                )
-            except Group.DoesNotExist:
-                pass  # Admin group not set up yet
-
-        # If from invitation, copy groups from invitation (future enhancement)
-        # invitation = ...
-        # for group in invitation.groups.all():
-        #     TenantGroupMembership.objects.create(...)
+            add_user_to_tenant_group(user, 'Tenant Admin', tenant=tenant)
 
 
 class TenantSocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -257,23 +243,15 @@ class TenantSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def _assign_default_groups(self, request, user, tenant, sociallogin):
         """Assign groups after SSO signup."""
-        from Tracker.models import TenantGroupMembership
+        from Tracker.services.core.user import add_user_to_tenant_group
 
         if not tenant:
             return
 
         # If they created their own tenant via SSO, make them admin
         if getattr(request, '_created_tenant', False):
-            try:
-                admin_group = Group.objects.get(name='Admin')
-                TenantGroupMembership.objects.get_or_create(
-                    tenant=tenant,
-                    user=user,
-                    group=admin_group,
-                )
-                logger.info(f"Assigned Admin group to SSO user {user.email}")
-            except Group.DoesNotExist:
-                logger.warning("Admin group not found, skipping group assignment")
+            add_user_to_tenant_group(user, 'Tenant Admin', tenant=tenant)
+            logger.info(f"Assigned Tenant Admin group to SSO user {user.email}")
 
     def populate_user(self, request, sociallogin, data):
         """

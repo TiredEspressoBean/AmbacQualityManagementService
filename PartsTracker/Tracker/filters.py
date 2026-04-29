@@ -118,11 +118,12 @@ class OrderFilter(TenantFilterMixin, django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Apply tenant filtering to ModelChoiceFilter querysets
+        # Apply tenant filtering to ModelChoiceFilter querysets.
+        # Use unscoped because filter_by_tenant handles tenant scoping.
         self.filters['customer'].queryset = self.filter_by_tenant(
-            User.objects.filter(groups__name='Customer')
+            User.objects.filter(user_roles__group__name='Customer')
         )
-        self.filters['company'].queryset = self.filter_by_tenant(Companies.objects.all())
+        self.filters['company'].queryset = self.filter_by_tenant(Companies.unscoped.all())
 
     def filter_active_pipeline(self, queryset, name, value):
         """

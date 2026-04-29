@@ -1604,9 +1604,11 @@ class Orders(SecureModel):
 
         step_counts = queryset.values("step_id").annotate(count=Count("id"))
 
-        # Get step names efficiently
+        # Get step names efficiently. Use unscoped because step_ids are sourced
+        # from self.parts (already tenant-scoped); .objects would require a
+        # ContextVar that may not be set on superuser cross-tenant requests.
         step_id_to_name = {step.id: step.name for step in
-                           Steps.objects.filter(id__in=[s["step_id"] for s in step_counts])}  # tenant-safe: step_ids sourced from self.parts (already tenant-scoped)
+                           Steps.unscoped.filter(id__in=[s["step_id"] for s in step_counts])}
 
         return [{"id": step["step_id"], "name": step_id_to_name.get(step["step_id"], f"Step {step['step_id']}"),
                  "count": step["count"]} for step in step_counts]
