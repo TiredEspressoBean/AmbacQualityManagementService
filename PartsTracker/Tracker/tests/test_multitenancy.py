@@ -17,9 +17,9 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from unittest import skipIf
 
-from Tracker.models import Tenant, Orders, PartTypes, Companies, CAPA, TenantGroupMembership, TenantGroup, UserRole
+from Tracker.models import Tenant, Orders, PartTypes, Companies, CAPA, TenantGroup, UserRole
 from Tracker.middleware import TenantMiddleware
-from Tracker.tests.base import VectorTestCase
+from Tracker.tests.base import VectorTestCase, TenantContextMixin
 
 
 def is_vector_extension_available():
@@ -246,13 +246,15 @@ class TenantMiddlewareTestCase(TestCase):
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
 @override_settings(DEDICATED_MODE=False)
-class TenantScopedViewSetTestCase(VectorTestCase):
+class TenantScopedViewSetTestCase(TenantContextMixin, VectorTestCase):
     """Tests for TenantScopedMixin queryset filtering."""
 
     def setUp(self):
+        super().setUp()
         # Create tenants
         self.tenant_acme = Tenant.objects.create(name="Acme Corp", slug="acme")
         self.tenant_globex = Tenant.objects.create(name="Globex Inc", slug="globex")
+        self.set_tenant_context(self.tenant_acme)
 
         # Create users (us_person=True prevents ITAR warning noise in tests)
         self.user_acme = User.objects.create_user(
@@ -479,13 +481,15 @@ class TenantScopedViewSetTestCase(VectorTestCase):
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
 @override_settings(DEDICATED_MODE=False)
-class TenantDataIsolationTestCase(VectorTestCase):
+class TenantDataIsolationTestCase(TenantContextMixin, VectorTestCase):
     """End-to-end tests for complete data isolation between tenants."""
 
     def setUp(self):
+        super().setUp()
         # Create tenants
         self.tenant_a = Tenant.objects.create(name="Tenant A", slug="tenant-a")
         self.tenant_b = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        self.set_tenant_context(self.tenant_a)
 
         # Create users (us_person=True prevents ITAR warning noise in tests)
         self.user_a = User.objects.create_user(
@@ -602,17 +606,19 @@ class TenantDataIsolationTestCase(VectorTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        # Verify order still exists
-        self.assertTrue(Orders.objects.filter(id=self.order_b.id).exists())
+        # Verify order still exists (use unscoped to bypass tenant filter)
+        self.assertTrue(Orders.unscoped.filter(id=self.order_b.id).exists())
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class TenantSequenceGeneratorTestCase(VectorTestCase):
+class TenantSequenceGeneratorTestCase(TenantContextMixin, VectorTestCase):
     """Tests for tenant-scoped sequence generators (CAPA numbers, etc.)."""
 
     def setUp(self):
+        super().setUp()
         self.tenant_a = Tenant.objects.create(name="Tenant A", slug="tenant-a")
         self.tenant_b = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        self.set_tenant_context(self.tenant_a)
 
         self.user_a = User.objects.create_user(
             username='user_a', email='a@test.com', password='testpass',
@@ -705,7 +711,7 @@ class TenantUserAssociationTestCase(TestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class RLSPolicyTestCase(VectorTestCase):
+class RLSPolicyTestCase(TenantContextMixin, VectorTestCase):
     """
     Tests for Row-Level Security policies.
 
@@ -713,8 +719,10 @@ class RLSPolicyTestCase(VectorTestCase):
     """
 
     def setUp(self):
+        super().setUp()
         self.tenant_a = Tenant.objects.create(name="Tenant A", slug="tenant-a")
         self.tenant_b = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        self.set_tenant_context(self.tenant_a)
 
         # Create test data
         self.company_a = Companies.objects.create(
@@ -767,7 +775,7 @@ class RLSPolicyTestCase(VectorTestCase):
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
 @override_settings(DEDICATED_MODE=False)
-class StaffTenantAccessTestCase(VectorTestCase):
+class StaffTenantAccessTestCase(TenantContextMixin, VectorTestCase):
     """
     Tests for staff user access to all tenants.
 
@@ -782,9 +790,11 @@ class StaffTenantAccessTestCase(VectorTestCase):
     """
 
     def setUp(self):
+        super().setUp()
         # Create tenants
         self.tenant_a = Tenant.objects.create(name="Tenant A", slug="tenant-a")
         self.tenant_b = Tenant.objects.create(name="Tenant B", slug="tenant-b")
+        self.set_tenant_context(self.tenant_a)
 
         # Create a regular user in Tenant A
         self.regular_user = User.objects.create_user(
@@ -963,8 +973,8 @@ class StaffTenantAccessTestCase(VectorTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        # Verify still exists
-        self.assertTrue(Orders.objects.filter(id=self.order_b.id).exists())
+        # Verify still exists (use unscoped to bypass tenant filter)
+        self.assertTrue(Orders.unscoped.filter(id=self.order_b.id).exists())
 
     # =========================================================================
     # SUPERUSER TESTS - Full Access
@@ -1047,6 +1057,6 @@ class StaffTenantAccessTestCase(VectorTestCase):
         from Tracker.backends import TenantPermissionBackend
         backend = TenantPermissionBackend()
 
-        # Regular user should NOT have implicit permissions (needs TenantGroupMembership)
+        # Regular user should NOT have implicit permissions (needs UserRole)
         self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.view_orders'))
         self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.add_orders'))

@@ -27,6 +27,41 @@ class VectorTestCase(TestCase):
                 # Tests will be skipped via @skipIf decorator if extension unavailable
 
 
+class TenantContextMixin:
+    """Mixin for tests that need the tenant ContextVar set for SecureModel queries.
+
+    SecureManager.get_queryset() raises TenantContextRequired when the ContextVar
+    is unset. Tests that create their own tenants in setUp need to set the
+    ContextVar after creation. Use this mixin (alongside VectorTestCase) when
+    you don't want TenantTestCase's full fixture (which creates its own
+    tenants/users).
+
+    Usage:
+        class MyTest(TenantContextMixin, VectorTestCase):
+            def setUp(self):
+                super().setUp()
+                self.tenant = Tenant.objects.create(...)
+                self.set_tenant_context(self.tenant)
+                # ... rest of setUp can now query SecureModels
+    """
+
+    def set_tenant_context(self, tenant):
+        """Set tenant ContextVar for the duration of the test. Idempotent."""
+        from Tracker.utils.tenant_context import set_current_tenant_id, reset_current_tenant
+        prior = getattr(self, '_tenant_cv_token', None)
+        if prior is not None:
+            reset_current_tenant(prior)
+        self._tenant_cv_token = set_current_tenant_id(tenant.id if tenant else None)
+
+    def tearDown(self):
+        from Tracker.utils.tenant_context import reset_current_tenant
+        token = getattr(self, '_tenant_cv_token', None)
+        if token is not None:
+            reset_current_tenant(token)
+            self._tenant_cv_token = None
+        super().tearDown()
+
+
 class TenantTestCase(VectorTestCase):
     """
     Base TestCase for multi-tenancy tests.

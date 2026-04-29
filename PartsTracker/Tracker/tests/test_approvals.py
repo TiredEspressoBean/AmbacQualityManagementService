@@ -7,9 +7,9 @@ from rest_framework import status
 from unittest import skipIf
 from Tracker.models import (
     ApprovalTemplate, ApprovalRequest, ApprovalResponse,
-    Documents, CAPA
+    Documents, CAPA, Tenant,
 )
-from Tracker.tests.base import VectorTestCase
+from Tracker.tests.base import VectorTestCase, TenantContextMixin
 
 def is_vector_extension_available():
     try:
@@ -22,8 +22,11 @@ def is_vector_extension_available():
 User = get_user_model()
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ApprovalTemplateTestCase(VectorTestCase):
+class ApprovalTemplateTestCase(TenantContextMixin, VectorTestCase):
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+        self.set_tenant_context(self.tenant)
         # Create users
         self.qa_manager = User.objects.create_user(
             username='qa_manager',
@@ -82,8 +85,11 @@ class ApprovalTemplateTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ApprovalRequestTestCase(VectorTestCase):
+class ApprovalRequestTestCase(TenantContextMixin, VectorTestCase):
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+        self.set_tenant_context(self.tenant)
         # Create users
         self.requester = User.objects.create_user(
             username='requester',
@@ -305,8 +311,11 @@ class ApprovalRequestTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ApprovalResponseTestCase(VectorTestCase):
+class ApprovalResponseTestCase(TenantContextMixin, VectorTestCase):
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+        self.set_tenant_context(self.tenant)
         self.requester = User.objects.create_user(
             username='requester',
             email='requester@example.com',
@@ -411,16 +420,16 @@ class ApprovalResponseTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class DocumentApprovalIntegrationTestCase(VectorTestCase):
+class DocumentApprovalIntegrationTestCase(TenantContextMixin, VectorTestCase):
     def setUp(self):
-        from Tracker.models import Tenant
-
+        super().setUp()
         # Create tenant for multi-tenancy
         self.tenant = Tenant.objects.create(
             name="Doc Approval Tenant",
             slug="doc-approval-tenant",
             tier="PRO"
         )
+        self.set_tenant_context(self.tenant)
 
         self.user = User.objects.create_user(
             username='docuser',
@@ -539,10 +548,13 @@ class DocumentApprovalIntegrationTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class SelfApprovalValidationTestCase(VectorTestCase):
+class SelfApprovalValidationTestCase(TenantContextMixin, VectorTestCase):
     """Test self-approval validation logic"""
 
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+        self.set_tenant_context(self.tenant)
         self.requester = User.objects.create_user(
             username='requester',
             email='requester@example.com',

@@ -46,6 +46,11 @@ SITE_NAME = os.environ.get('SITE_NAME', 'UQMES')
 # Custom test runner for vector extension support
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
+# Speed up tests: PBKDF2 burns ~1s per User.objects.create_user call. MD5 is fine for tests.
+import sys as _sys
+if 'test' in _sys.argv:
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,.railway.app,.up.railway.app,169.254.131.*').split(',')
 # Application definition
