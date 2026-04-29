@@ -31,18 +31,28 @@ class TenantContextMixin:
     """Mixin for tests that need the tenant ContextVar set for SecureModel queries.
 
     SecureManager.get_queryset() raises TenantContextRequired when the ContextVar
-    is unset. Tests that create their own tenants in setUp need to set the
-    ContextVar after creation. Use this mixin (alongside VectorTestCase) when
-    you don't want TenantTestCase's full fixture (which creates its own
-    tenants/users).
+    is unset. Tests that create their own tenants in setUp / setUpTestData need
+    to set the ContextVar after creation. Use this mixin (alongside
+    VectorTestCase) when you don't want TenantTestCase's full fixture (which
+    creates its own tenants/users).
 
-    Usage:
+    Two usage modes:
+
+    Per-test (setUp):
         class MyTest(TenantContextMixin, VectorTestCase):
             def setUp(self):
                 super().setUp()
                 self.tenant = Tenant.objects.create(...)
                 self.set_tenant_context(self.tenant)
                 # ... rest of setUp can now query SecureModels
+
+    Per-class (setUpTestData) — when fixtures don't change between tests:
+        class MyTest(TenantContextMixin, VectorTestCase):
+            @classmethod
+            def setUpTestData(cls):
+                cls.tenant = Tenant.objects.create(...)
+                cls.set_tenant_context_class(cls.tenant)
+                cls.foo = Foo.objects.create(...)
     """
 
     def set_tenant_context(self, tenant):
@@ -53,6 +63,15 @@ class TenantContextMixin:
             reset_current_tenant(prior)
         self._tenant_cv_token = set_current_tenant_id(tenant.id if tenant else None)
 
+    @classmethod
+    def set_tenant_context_class(cls, tenant):
+        """Set tenant ContextVar at class scope (for use in setUpTestData)."""
+        from Tracker.utils.tenant_context import set_current_tenant_id, reset_current_tenant
+        prior = getattr(cls, '_tenant_cv_token_class', None)
+        if prior is not None:
+            reset_current_tenant(prior)
+        cls._tenant_cv_token_class = set_current_tenant_id(tenant.id if tenant else None)
+
     def tearDown(self):
         from Tracker.utils.tenant_context import reset_current_tenant
         token = getattr(self, '_tenant_cv_token', None)
@@ -60,6 +79,15 @@ class TenantContextMixin:
             reset_current_tenant(token)
             self._tenant_cv_token = None
         super().tearDown()
+
+    @classmethod
+    def tearDownClass(cls):
+        from Tracker.utils.tenant_context import reset_current_tenant
+        token = getattr(cls, '_tenant_cv_token_class', None)
+        if token is not None:
+            reset_current_tenant(token)
+            cls._tenant_cv_token_class = None
+        super().tearDownClass()
 
 
 class TenantTestCase(VectorTestCase):

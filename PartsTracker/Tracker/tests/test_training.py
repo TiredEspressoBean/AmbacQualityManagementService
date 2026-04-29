@@ -25,15 +25,17 @@ from Tracker.services.training import (
     get_required_training,
     get_qualified_users_for_step,
 )
+from Tracker.tests.base import TenantContextMixin
 
 
-class TrainingModuleTestCase(TestCase):
+class TrainingModuleTestCase(TenantContextMixin, TestCase):
     """Base test case with common setup."""
 
     @classmethod
     def setUpTestData(cls):
         # Create tenant
         cls.tenant = Tenant.objects.create(name="Test Tenant", slug="test-tenant")
+        cls.set_tenant_context_class(cls.tenant)
 
         # Create users
         cls.operator = User.objects.create_user(

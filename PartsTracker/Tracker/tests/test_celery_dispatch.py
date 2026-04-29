@@ -24,20 +24,24 @@ from django.db import transaction as db_txn
 from django.test import TransactionTestCase
 from django.utils import timezone
 
-from Tracker.models import CAPA, UserInvitation
-from Tracker.tests.base import VectorTestCase
+from Tracker.models import CAPA, Tenant, UserInvitation
+from Tracker.tests.base import VectorTestCase, TenantContextMixin
 
 User = get_user_model()
 
 
-class CeleryOnCommitDispatchTestCase(VectorTestCase):
+class CeleryOnCommitDispatchTestCase(TenantContextMixin, VectorTestCase):
     """Verify that wrapped dispatches are queued pre-commit and fire after."""
 
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="celery-dispatch")
+        self.set_tenant_context(self.tenant)
         self.user = User.objects.create_user(
             username='dispatch_user',
             email='dispatch@example.com',
             password='testpass',
+            tenant=self.tenant,
         )
 
     @patch('Tracker.tasks.send_capa_assignment_notification.delay')
@@ -72,14 +76,18 @@ class CeleryOnCommitDispatchTestCase(VectorTestCase):
         mock_delay.assert_called_with(capa.id)
 
 
-class CeleryRollbackDispatchTestCase(TransactionTestCase):
+class CeleryRollbackDispatchTestCase(TenantContextMixin, TransactionTestCase):
     """Verify that transaction rollback cancels pending Celery dispatches."""
 
     def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="Test Tenant", slug="celery-rollback")
+        self.set_tenant_context(self.tenant)
         self.user = User.objects.create_user(
             username='rollback_user',
             email='rollback@example.com',
             password='testpass',
+            tenant=self.tenant,
         )
 
     @patch('Tracker.tasks.send_capa_assignment_notification.delay')

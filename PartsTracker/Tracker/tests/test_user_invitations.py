@@ -151,8 +151,9 @@ class UserInvitationTestCase(VectorTestCase):
         self.assertIsNotNone(invitation.accepted_at)
         self.assertIsNotNone(invitation.accepted_ip_address)
 
-        # Check notification preference was created if opted in
-        notification_exists = NotificationTask.objects.filter(
+        # Check notification preference was created if opted in.
+        # Use unscoped because the test isn't running inside a tenant context.
+        notification_exists = NotificationTask.unscoped.filter(
             recipient=self.invited_user,
             notification_type='WEEKLY_REPORT'
         ).exists()

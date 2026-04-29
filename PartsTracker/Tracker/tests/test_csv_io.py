@@ -18,6 +18,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 from rest_framework import status
 
+from Tracker.tests.base import TenantContextMixin
+
 from Tracker.services.csv_utils import (
     detect_encoding,
     decode_file_content,
@@ -235,16 +237,20 @@ class TemplateGeneratorTests(TestCase):
         self.assertTrue(any(f.name == "name" and f.required for f in template.fields))
 
 
-class CsvImportSerializerTests(TestCase):
+class CsvImportSerializerTests(TenantContextMixin, TestCase):
     """Tests for csv_import.py serializers."""
 
     @classmethod
     def setUpTestData(cls):
         """Create test data."""
+        from Tracker.models import Tenant
+        cls.tenant = Tenant.objects.create(name="CSV Test Tenant", slug="csv-test")
+        cls.set_tenant_context_class(cls.tenant)
         cls.user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="testpass123"
+            password="testpass123",
+            tenant=cls.tenant,
         )
 
     def test_get_csv_import_serializer(self):
@@ -467,18 +473,22 @@ class AutomaticIntrospectionTests(TestCase):
         self.assertTrue(issubclass(serializer_class, BaseCSVImportSerializer))
 
 
-class ForeignKeyResolutionTests(TestCase):
+class ForeignKeyResolutionTests(TenantContextMixin, TestCase):
     """Tests for FK resolution in import serializers."""
 
     @classmethod
     def setUpTestData(cls):
         """Create test data with related models."""
-        from Tracker.models import PartTypes, Companies
+        from Tracker.models import PartTypes, Companies, Tenant
+
+        cls.tenant = Tenant.objects.create(name="FK Test Tenant", slug="fk-test")
+        cls.set_tenant_context_class(cls.tenant)
 
         cls.user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
-            password="testpass123"
+            password="testpass123",
+            tenant=cls.tenant,
         )
 
         cls.part_type = PartTypes.objects.create(

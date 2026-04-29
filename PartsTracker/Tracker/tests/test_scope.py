@@ -35,7 +35,7 @@ from Tracker.models import (
     TenantGroup,
     UserRole,
 )
-from Tracker.tests.base import VectorTestCase
+from Tracker.tests.base import VectorTestCase, TenantContextMixin
 
 
 def get_or_create_test_tenant(name="Test Tenant"):
@@ -116,8 +116,24 @@ def is_vector_extension_available():
 User = get_user_model()
 
 
+class _ScopeTenantBase(TenantContextMixin, VectorTestCase):
+    """Shared base for scope tests: creates a tenant and sets the
+    ContextVar at class scope. Subclasses must call super().setUpTestData()
+    at the top of their own setUpTestData to inherit the tenant setup.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.tenant = Tenant.objects.create(
+            name=f"Scope-{cls.__name__}",
+            slug=f"scope-{cls.__name__.lower()}",
+        )
+        cls.set_tenant_context_class(cls.tenant)
+        super().setUpTestData()
+
+
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopeTraversalTestCase(VectorTestCase):
+class ScopeTraversalTestCase(_ScopeTenantBase):
     """Test basic traversal functionality."""
 
     @classmethod
@@ -135,6 +151,7 @@ class ScopeTraversalTestCase(VectorTestCase):
         └── WorkOrder1
             └── Process1 (shared)
         """
+        super().setUpTestData()
         # Create company and user
         cls.company = Companies.objects.create(name="Test Company")
         cls.user = User.objects.create_user(
@@ -296,11 +313,12 @@ class ScopeTraversalTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopeFindTestCase(VectorTestCase):
+class ScopeFindTestCase(_ScopeTenantBase):
     """Test find_in_graph functionality."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company")
         cls.user = User.objects.create_user(
             username="testuser2",
@@ -347,11 +365,12 @@ class ScopeFindTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopeCountTestCase(VectorTestCase):
+class ScopeCountTestCase(_ScopeTenantBase):
     """Test count_descendants functionality."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company 3")
         cls.user = User.objects.create_user(
             username="testuser3",
@@ -383,11 +402,12 @@ class ScopeCountTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopePerformanceTestCase(VectorTestCase):
+class ScopePerformanceTestCase(_ScopeTenantBase):
     """Performance tests to catch slow scope queries."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Perf Test Company")
         cls.user = User.objects.create_user(
             username="perfuser",
@@ -429,11 +449,12 @@ class ScopePerformanceTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class LargeHierarchyTestCase(VectorTestCase):
+class LargeHierarchyTestCase(_ScopeTenantBase):
     """Test with realistic data volume and shared references."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Large Test Company")
         cls.staff_user = User.objects.create_user(
             username="largeuser",
@@ -580,11 +601,12 @@ class LargeHierarchyTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopePermissionTestCase(VectorTestCase):
+class ScopePermissionTestCase(_ScopeTenantBase):
     """Test that scope traversal respects user permissions."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company_a = Companies.objects.create(name="Company A")
         cls.company_b = Companies.objects.create(name="Company B")
 
@@ -735,11 +757,12 @@ class ScopePermissionTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ScopeMergeSubtractTestCase(VectorTestCase):
+class ScopeMergeSubtractTestCase(_ScopeTenantBase):
     """Test merge_scopes and subtract_scope."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company 4")
         cls.user = User.objects.create_user(
             username="testuser4",
@@ -813,11 +836,12 @@ class ScopeMergeSubtractTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class ExplainPathTestCase(VectorTestCase):
+class ExplainPathTestCase(_ScopeTenantBase):
     """Test explain_path functionality."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company 5")
         cls.user = User.objects.create_user(
             username="testuser5",
@@ -887,11 +911,12 @@ class ExplainPathTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class RelatedToTestCase(VectorTestCase):
+class RelatedToTestCase(_ScopeTenantBase):
     """Test related_to functionality with Documents."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company 6")
         cls.user = User.objects.create_user(
             username="testuser6",
@@ -969,11 +994,12 @@ class RelatedToTestCase(VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
-class BatchingPerformanceTestCase(VectorTestCase):
+class BatchingPerformanceTestCase(_ScopeTenantBase):
     """Test that batching reduces query count."""
 
     @classmethod
     def setUpTestData(cls):
+        super().setUpTestData()
         cls.company = Companies.objects.create(name="Test Company 7")
         cls.user = User.objects.create_user(
             username="testuser7",
