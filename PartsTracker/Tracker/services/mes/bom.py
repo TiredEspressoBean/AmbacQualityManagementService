@@ -90,6 +90,7 @@ def create_new_bom_version(
         )
 
         for line in bom.lines.all():
+            # tenant-safe: scoped via bom FK (BOM is tenant-scoped)
             BOMLine.objects.create(
                 bom=new_version,
                 component_type=line.component_type,

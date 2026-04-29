@@ -215,7 +215,8 @@ class NotificationPreferenceViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return NotificationTask.all_tenants.none()
 
-        # Users can only see their own notification preferences
+        # Users can only see their own notification preferences.
+        # tenant-safe: SecureManager auto-scopes via tenant_context (request middleware)
         return NotificationTask.objects.filter(recipient=self.request.user,
                                                # Optionally filter to only user-configurable types
                                                notification_type='WEEKLY_REPORT'

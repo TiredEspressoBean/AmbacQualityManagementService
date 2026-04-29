@@ -245,6 +245,7 @@ def _copy_documents_to_new_process_version(
 
     process_ct = ContentType.objects.get_for_model(Processes)
 
+    # tenant-safe: scoped via the Process content_type/object_id GFK
     source_docs = Documents.objects.filter(
         content_type=process_ct,
         object_id=source.pk,
@@ -271,6 +272,7 @@ def _copy_documents_to_new_process_version(
         }
         clone_data['object_id'] = new_version.pk
         clone_data['status'] = 'DRAFT'  # re-approval required in v2's context
+        # tenant-safe: clone_data carries tenant from source doc + new_version
         Documents.objects.create(**clone_data)
 
 
@@ -453,6 +455,7 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     steps_to_unlink = set(existing_process_steps.keys()) - incoming_step_ids
     if steps_to_unlink:
         protected = list(
+            # tenant-safe: step_ids sourced from existing_process_steps (already tenant-scoped)
             StepExecution.objects.filter(step_id__in=steps_to_unlink)
             .values_list("step_id", flat=True)
             .distinct()

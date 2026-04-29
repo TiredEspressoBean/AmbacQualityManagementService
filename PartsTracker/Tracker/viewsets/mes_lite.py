@@ -1151,6 +1151,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 work_order=OuterRef('pk'),
                 part_type__processes__is_batch_process=True,
             )
+            # tenant-safe: used as a Prefetch on a tenant-scoped parent (WorkOrder)
             open_holds = WorkOrderHold.objects.filter(
                 cleared_at__isnull=True, is_voided=False,
             ).select_related('placed_by')

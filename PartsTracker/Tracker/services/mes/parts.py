@@ -236,6 +236,7 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
             "sampling_rule", "sampling_ruleset", "sampling_context",
         ])
 
+        # tenant-safe: each row's part / step FKs constrain it to the same tenant
         StepTransitionLog.objects.bulk_create(transition_logs)
         StepExecution.objects.bulk_create(step_executions)
 

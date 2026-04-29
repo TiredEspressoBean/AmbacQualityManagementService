@@ -105,6 +105,7 @@ def _enqueue_for_approval_request(
     approval_request,
 ) -> NotificationTask:
     """Shared core for the three approval-flow notification helpers."""
+    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
     return NotificationTask.objects.create(
         notification_type=notification_type,
         recipient=recipient,
@@ -145,6 +146,7 @@ def enqueue_escalation_notification(recipient, approval_request) -> Notification
 
 def enqueue_weekly_report(recipient, *, next_send_at, day_of_week, time_of_day) -> NotificationTask:
     """Queue a recurring WEEKLY_REPORT notification for a customer."""
+    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
     return NotificationTask.objects.create(
         notification_type='WEEKLY_REPORT',
         recipient=recipient,
@@ -205,6 +207,7 @@ def _within_cooldown(rule, recipient, now) -> bool:
     if rule.min_gap_seconds <= 0:
         return False
     cooldown_start = now - timedelta(seconds=rule.min_gap_seconds)
+    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
     return NotificationTask.objects.filter(
         source_rule=rule,
         recipient=recipient,
@@ -250,6 +253,7 @@ def notify(
     payload = payload or {}
     now = timezone.now()
 
+    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
     rules_qs = NotificationRule.objects.filter(
         event_type=event_type,
         is_active=True,
@@ -279,6 +283,7 @@ def notify(
         for recipient in recipients:
             if _within_cooldown(rule, recipient, now):
                 continue
+            # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
             task = NotificationTask.objects.create(
                 notification_type=event_type,
                 recipient=recipient,

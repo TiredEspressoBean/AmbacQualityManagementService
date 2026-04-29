@@ -150,6 +150,7 @@ def complete_capa_task(
     else:
         # Multi-assignee modes use CapaTaskAssignee rows. tenant is
         # auto-filled by SecureModel.save() on the create branch.
+        # tenant-safe: scoped via task FK (CapaTask is tenant-scoped)
         assignee, _ = CapaTaskAssignee.objects.get_or_create(
             task=task,
             user=user,

@@ -138,6 +138,7 @@ def create_new_step_version(
 
         # --- Documents (GenericRelation) ---
         step_ct = ContentType.objects.get_for_model(Steps)
+        # tenant-safe: scoped via the Step content_type/object_id GFK
         source_docs = Documents.objects.filter(
             content_type=step_ct,
             object_id=step.pk,
