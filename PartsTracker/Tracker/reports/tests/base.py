@@ -33,15 +33,22 @@ from Tracker.reports.adapters.base import ReportAdapter
 from Tracker.reports.services.typst_generator import generate_typst_pdf
 
 
-# Typst stamps each PDF with a fresh /CreationDate and /ModDate at
-# compile time. Two consecutive renders that straddle a 1-second
-# boundary differ only in those bytes. Strip both before comparing.
+# Typst stamps each PDF with fresh timestamps in two places — the PDF
+# info dictionary (/CreationDate, /ModDate) and the XMP metadata stream
+# (<xmp:CreateDate>, <xmp:ModifyDate>). Two consecutive renders straddling
+# a 1-second boundary differ only in those bytes. Strip both before
+# comparing.
 _PDF_DATE_RE = re.compile(rb"/(?:CreationDate|ModDate) \(D:\d{14}Z\)")
+_XMP_DATE_RE = re.compile(
+    rb"<xmp:(?:Create|Modify)Date>[^<]*</xmp:(?:Create|Modify)Date>"
+)
 
 
 def _strip_pdf_timestamps(pdf: bytes) -> bytes:
-    """Remove non-deterministic /CreationDate and /ModDate fields."""
-    return _PDF_DATE_RE.sub(b"", pdf)
+    """Remove non-deterministic timestamps from PDF info dict and XMP stream."""
+    pdf = _PDF_DATE_RE.sub(b"", pdf)
+    pdf = _XMP_DATE_RE.sub(b"", pdf)
+    return pdf
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
