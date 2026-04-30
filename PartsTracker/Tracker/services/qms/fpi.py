@@ -16,6 +16,8 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     fpi.result = FPIResult.PASS
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
+    if notes:
+        fpi.notes = notes
     fpi.save()
     return fpi
 
@@ -26,6 +28,8 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '') -> FPIRecord:
     fpi.result = FPIResult.FAIL
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
+    if notes:
+        fpi.notes = notes
     fpi.save()
     return fpi
 

@@ -11,6 +11,8 @@ Three public functions mirror the former model methods:
 """
 from __future__ import annotations
 
+from django.db import transaction
+
 from Tracker.models.mes_standard import SamplingRuleSet, SamplingTriggerState
 
 
@@ -101,9 +103,15 @@ def supersede_sampling_ruleset(
     )
 
 
+@transaction.atomic
 def activate_sampling_ruleset(ruleset: SamplingRuleSet, user=None) -> None:
     """Deactivate peer rulesets for the same step/part_type, activate *ruleset*,
     then re-evaluate sampling for all in-flight parts at that step.
+
+    Wrapped in a transaction so the three-step sequence (peer-deactivate,
+    activate, re-evaluate parts) commits atomically — partial application
+    would leave the system with no active ruleset for the (step, part_type)
+    pair or leave parts evaluated against the wrong ruleset.
     """
     SamplingRuleSet.objects.filter(
         step=ruleset.step,
@@ -125,19 +133,24 @@ def create_sampling_fallback_trigger(
     """Create a SamplingTriggerState for the fallback ruleset and propagate
     fallback sampling to remaining parts in the work order.
 
+    Atomic so the trigger row + the bulk part updates either both land or
+    both roll back — otherwise a trigger could exist with no parts updated,
+    leaving subsequent parts in the WO without their fallback flag.
+
     Returns the created SamplingTriggerState, or None if no fallback_ruleset
     is configured.
     """
     if not ruleset.fallback_ruleset:
         return None
 
-    trigger_state = SamplingTriggerState.objects.create(
-        ruleset=ruleset.fallback_ruleset,
-        work_order=triggering_part.work_order,
-        step=ruleset.step,
-        triggered_by=quality_report,
-    )
+    with transaction.atomic():
+        trigger_state = SamplingTriggerState.objects.create(
+            ruleset=ruleset.fallback_ruleset,
+            work_order=triggering_part.work_order,
+            step=ruleset.step,
+            triggered_by=quality_report,
+        )
 
-    _apply_fallback_to_remaining_parts_for_ruleset(ruleset, triggering_part)
+        _apply_fallback_to_remaining_parts_for_ruleset(ruleset, triggering_part)
 
     return trigger_state

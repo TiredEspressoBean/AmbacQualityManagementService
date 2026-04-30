@@ -2207,6 +2207,10 @@ class FPIRecord(SecureModel):
         blank=True,
         help_text='Reason for waiving FPI requirement'
     )
+    notes = models.TextField(
+        blank=True,
+        help_text='Inspector notes captured at pass / fail time (audit trail)'
+    )
 
     class Meta:
         verbose_name = 'FPI Record'

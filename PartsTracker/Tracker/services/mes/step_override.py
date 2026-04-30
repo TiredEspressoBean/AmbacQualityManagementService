@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 
 from Tracker.models import OverrideStatus, StepOverride
@@ -77,18 +78,30 @@ def reject_step_override(
 def mark_override_used(override: StepOverride) -> StepOverride:
     """Record that an approved override was consumed.
 
-    Raises:
-        ValueError: override is not APPROVED, or is past expiry (flips
-            status to EXPIRED and persists before raising).
-    """
-    if override.status != OverrideStatus.APPROVED:
-        raise ValueError("Only approved overrides can be used")
-    if override.expires_at and timezone.now() > override.expires_at:
-        override.status = OverrideStatus.EXPIRED
-        override.save(update_fields=['status'])
-        raise ValueError("Override has expired")
+    Locks the row with SELECT FOR UPDATE inside a transaction so two
+    concurrent callers can't both pass the status / expiry checks and
+    each think they consumed the override. The first caller commits with
+    used=True; the second reads used=True and raises.
 
-    override.used = True
-    override.used_at = timezone.now()
-    override.save(update_fields=['used', 'used_at'])
+    Raises:
+        ValueError: override is not APPROVED, is already used, or is
+            past expiry (flips status to EXPIRED and persists before
+            raising).
+    """
+    with transaction.atomic():
+        locked = StepOverride.unscoped.select_for_update().get(pk=override.pk)
+        if locked.status != OverrideStatus.APPROVED:
+            raise ValueError("Only approved overrides can be used")
+        if locked.used:
+            raise ValueError("Override has already been used")
+        if locked.expires_at and timezone.now() > locked.expires_at:
+            locked.status = OverrideStatus.EXPIRED
+            locked.save(update_fields=['status'])
+            raise ValueError("Override has expired")
+
+        locked.used = True
+        locked.used_at = timezone.now()
+        locked.save(update_fields=['used', 'used_at'])
+    # Refresh the caller's instance so they see the new state.
+    override.refresh_from_db()
     return override

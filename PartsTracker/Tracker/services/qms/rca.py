@@ -34,7 +34,12 @@ def verify_root_cause(rca: RcaRecord, user, verification_notes: str | None = Non
     Raises:
         ValidationError: self-verification rules violated.
     """
-    is_self_verification = (user == rca.conducted_by)
+    # If conducted_by is NULL (deleted user), `user == None` is False, which
+    # would let the verifier slip past self-verification rules. Require an
+    # explicit, non-null match instead.
+    is_self_verification = (
+        rca.conducted_by_id is not None and user.pk == rca.conducted_by_id
+    )
     if is_self_verification:
         if not rca.capa.allow_self_verification:
             raise ValidationError(
@@ -104,30 +109,30 @@ def update_rca_record(
 ) -> RcaRecord:
     """Update an RcaRecord plus its method-specific child aggregate.
 
-    Child aggregate is get-or-create'd: existing children have their
-    fields assigned and are saved; missing children are created.
+    Wrapped in a transaction so the parent + child writes commit
+    atomically. The child aggregate is upserted via `update_or_create`,
+    which serializes concurrent calls (the second one sees the row the
+    first one created and updates it) instead of leaving the failing
+    side's exception silently caught.
     """
-    for field, value in data.items():
-        setattr(instance, field, value)
-    instance.save()
+    from django.db import transaction
 
-    if five_whys_data and instance.rca_method == 'FIVE_WHYS':
-        try:
-            five_whys = instance.five_whys
-            for key, value in five_whys_data.items():
-                setattr(five_whys, key, value)
-            five_whys.save()
-        except FiveWhys.DoesNotExist:
-            FiveWhys.objects.create(rca_record=instance, **five_whys_data)
+    with transaction.atomic():
+        for field, value in data.items():
+            setattr(instance, field, value)
+        instance.save()
 
-    if fishbone_data and instance.rca_method == 'FISHBONE':
-        try:
-            fishbone = instance.fishbone
-            for key, value in fishbone_data.items():
-                setattr(fishbone, key, value)
-            fishbone.save()
-        except Fishbone.DoesNotExist:
-            Fishbone.objects.create(rca_record=instance, **fishbone_data)
+        if five_whys_data and instance.rca_method == 'FIVE_WHYS':
+            FiveWhys.objects.update_or_create(
+                rca_record=instance,
+                defaults=five_whys_data,
+            )
+
+        if fishbone_data and instance.rca_method == 'FISHBONE':
+            Fishbone.objects.update_or_create(
+                rca_record=instance,
+                defaults=fishbone_data,
+            )
 
     return instance
 
