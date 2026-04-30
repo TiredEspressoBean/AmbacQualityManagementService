@@ -33,6 +33,7 @@ from Tracker.reports.services.registry import (
     get_all_adapters,
 )
 from Tracker.reports.tasks import generate_and_email_report
+from Tracker.utils.tenant_context import tenant_context
 
 logger = logging.getLogger(__name__)
 
@@ -202,12 +203,20 @@ class ReportViewSet(viewsets.GenericViewSet):
 
         generator = PdfGenerator()
 
+        # ContextVars (incl. the tenant-scoping one set by TenantMiddleware)
+        # don't propagate to ThreadPoolExecutor workers automatically. Capture
+        # tenant_id here in the request thread and re-enter tenant_context()
+        # inside the worker so SecureManager queries inside build_context()
+        # have the tenant set.
+        tenant_id = getattr(request.user, "tenant_id", None)
+
+        def _compile():
+            with tenant_context(tenant_id):
+                return generator.generate(report_type, params, request.user)
+
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(
-                    generator.generate,
-                    report_type, params, request.user,
-                )
+                future = pool.submit(_compile)
                 pdf_bytes = future.result(timeout=SYNC_COMPILE_TIMEOUT_SECONDS)
         except UnknownReportError as exc:
             return _error_response(str(exc), status.HTTP_400_BAD_REQUEST)

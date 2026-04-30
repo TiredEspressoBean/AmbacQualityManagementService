@@ -16,10 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { AlertTriangle, CheckCircle, TrendingUp, Activity, FileWarning, Mail, Loader2, Lock, Unlock, HelpCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, TrendingUp, Activity, FileWarning, Loader2, Lock, Unlock, HelpCircle } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { useReportEmail } from "@/hooks/useReportEmail";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { useSpcHierarchy } from "@/hooks/useSpcHierarchy";
 import { useSpcData } from "@/hooks/useSpcData";
 import { useSpcCapability } from "@/hooks/useSpcCapability";
@@ -599,9 +599,6 @@ export default function SpcPage() {
         enabled: selectedMeasurementId !== null,
     });
 
-    // Report email hook
-    const { requestReport, isRequesting } = useReportEmail();
-
     // Initialize selections when hierarchy loads
     useEffect(() => {
         if (processData && processData.length > 0 && selectedProcessId === null) {
@@ -615,17 +612,6 @@ export default function SpcPage() {
             }
         }
     }, [processData, selectedProcessId]);
-
-    const handleEmailReport = () => {
-        if (selectedProcessId && selectedStepId && selectedMeasurementId) {
-            requestReport("spc", {
-                process_id: selectedProcessId,
-                step_id: selectedStepId,
-                measurement_id: selectedMeasurementId,
-                mode: chartMode
-            });
-        }
-    };
 
     const selectedProcess = processData?.find(p => p.id === selectedProcessId);
     const selectedStep = selectedProcess?.steps.find(s => s.id === selectedStepId);
@@ -1303,17 +1289,17 @@ Specification Limits:
                     </Select>
                 </div>
 
-                {/* Email Report Button */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEmailReport}
-                    disabled={isRequesting}
+                <ReportButton
+                    reportType="spc"
+                    label="SPC Report"
                     className="ml-auto"
-                >
-                    <Mail className="h-4 w-4 mr-2" />
-                    {isRequesting ? "Requesting..." : "Email Report"}
-                </Button>
+                    params={selectedMeasurementId ? {
+                        measurement_id: selectedMeasurementId,
+                        days: dateRange,
+                        subgroup_size: subgroupSize,
+                        mode: chartMode,
+                    } : null}
+                />
             </div>
 
             {/* Specification badges with tooltips */}

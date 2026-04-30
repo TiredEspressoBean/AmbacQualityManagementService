@@ -5,9 +5,11 @@ import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 /**
- * Report types supported by the PDF generation system.
+ * Report type — registry key validated server-side against the
+ * Tracker.reports adapter registry. Use useReportTypes() to enumerate
+ * available reports.
  */
-export type ReportType = "spc" | "capa" | "quality_report";
+export type ReportType = string;
 
 /**
  * Parameters for generating a report.
@@ -151,7 +153,7 @@ export function useReportEmail() {
  * @example
  * ```tsx
  * const { data: reportTypes, isLoading } = useReportTypes();
- * // reportTypes = { spc: { title: "SPC Report", route: "/spc/print" }, ... }
+ * // reportTypes = [{ name: "spc", title: "SPC Report", template: "spc.typ" }, ...]
  * ```
  */
 export function useReportTypes() {

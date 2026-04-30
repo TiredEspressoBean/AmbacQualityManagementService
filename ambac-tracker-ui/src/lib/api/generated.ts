@@ -6002,6 +6002,7 @@ export type WorkOrderList = {
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
+  child_count: number;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8598,6 +8599,7 @@ export type WorkOrder = {
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
+  child_count: number;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -13496,6 +13498,7 @@ const WorkOrderList = z
     parent_workorder_id: z.string().uuid().nullable(),
     split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
     split_at: z.string().datetime({ offset: true }).nullable(),
+    child_count: z.number().int(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
@@ -13548,6 +13551,7 @@ const WorkOrder = z
     parent_workorder_id: z.string().uuid().nullable(),
     split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
     split_at: z.string().datetime({ offset: true }).nullable(),
+    child_count: z.number().int(),
     created_at: z.string().datetime({ offset: true }),
     updated_at: z.string().datetime({ offset: true }),
     archived: z.boolean().optional(),
