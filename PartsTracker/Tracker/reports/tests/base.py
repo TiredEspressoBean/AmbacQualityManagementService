@@ -23,6 +23,7 @@ Covered:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -30,6 +31,17 @@ from pydantic import ValidationError
 
 from Tracker.reports.adapters.base import ReportAdapter
 from Tracker.reports.services.typst_generator import generate_typst_pdf
+
+
+# Typst stamps each PDF with a fresh /CreationDate and /ModDate at
+# compile time. Two consecutive renders that straddle a 1-second
+# boundary differ only in those bytes. Strip both before comparing.
+_PDF_DATE_RE = re.compile(rb"/(?:CreationDate|ModDate) \(D:\d{14}Z\)")
+
+
+def _strip_pdf_timestamps(pdf: bytes) -> bytes:
+    """Remove non-deterministic /CreationDate and /ModDate fields."""
+    return _PDF_DATE_RE.sub(b"", pdf)
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -113,11 +125,12 @@ class ReportAdapterTestMixin:
 
     def test_output_is_deterministic(self):
         """
-        Two renders of the same context produce byte-identical PDFs.
+        Two renders of the same context produce byte-identical PDFs
+        once non-deterministic Typst-injected timestamps are stripped.
         Required for regeneration-safe archival.
         """
-        first = self._render_from_fixture()
-        second = self._render_from_fixture()
+        first = _strip_pdf_timestamps(self._render_from_fixture())
+        second = _strip_pdf_timestamps(self._render_from_fixture())
         self.assertEqual(
             first, second,
             f"Template {self.adapter_class.template_path} is not deterministic",
