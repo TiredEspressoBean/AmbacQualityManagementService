@@ -62,6 +62,8 @@ def create_new_bom_version(
             f"revised; DRAFT is edited in place."
         )
 
+    # tenant-safe: previous_version FK constrains to BOMs in the same tenant
+    # as `bom` (versioning chains never cross tenants).
     existing_draft = BOM.all_tenants.filter(
         previous_version=bom,
         status='DRAFT',

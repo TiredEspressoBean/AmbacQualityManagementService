@@ -167,6 +167,8 @@ def create_new_process_version(
             f"can be revised; DRAFT is edited in place."
         )
 
+    # tenant-safe: previous_version FK constrains to processes in the same
+    # tenant as `process` (versioning chains never cross tenants).
     existing_draft = Processes.all_tenants.filter(
         previous_version=process,
         status=ProcessStatus.DRAFT,

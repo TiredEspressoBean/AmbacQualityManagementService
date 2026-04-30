@@ -1460,6 +1460,9 @@ def scan_work_order_holds_and_overdue():
     hold_cutoff = now - timedelta(hours=WORK_ORDER_HOLD_THRESHOLD_HOURS)
     overdue_cutoff = now - timedelta(hours=WORK_ORDER_OVERDUE_THRESHOLD_HOURS)
 
+    # tenant-safe: deliberate cross-tenant sweep; per-row processing
+    # below wraps each hold in tenant_context(h['tenant_id']) before
+    # touching that tenant's data.
     stale_holds = WorkOrderHold.all_tenants.filter(
         cleared_at__isnull=True,
         is_voided=False,

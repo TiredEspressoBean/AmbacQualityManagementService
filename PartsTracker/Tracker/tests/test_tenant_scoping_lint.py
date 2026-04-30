@@ -181,20 +181,27 @@ class TenantScopingLintTests(SimpleTestCase):
 
     def _build_query_regex(self, model_names):
         """
-        Compile a regex that matches `ModelName.objects.METHOD(` *or*
-        `ModelName.all_objects.METHOD(` for any of the given model names.
+        Compile a regex that matches any tenant-scoping-bypass manager
+        followed by a query method, for any of the given model names:
 
-        ``all_objects`` is a SecureModel manager that deliberately bypasses
-        the soft-delete and tenant filters — used to bootstrap tenant
-        context in Celery tasks. Its legitimate uses are always paired
-        with a ``tenant_context(...)`` wrap nearby, so they pass the
-        safety check; misuses surface as failures.
+            ModelName.objects.METHOD(
+            ModelName.all_objects.METHOD(
+            ModelName.unscoped.METHOD(
+            ModelName.all_tenants.METHOD(
+
+        ``unscoped`` and ``all_tenants`` (UnscopedSecureManager) skip the
+        ContextVar guardrail — legitimate uses pair them with an explicit
+        ``tenant=...`` kwarg, an FK in ``FK_SCOPE_FIELD_NAMES``, or a
+        ``# tenant-safe: ...`` comment. ``all_objects`` (older bypass
+        manager on some SecureModels) follows the same convention. Without
+        also linting these, a ``Model.unscoped.filter(name="x")`` slips
+        through and silently spans tenants.
         """
         model_alternation = "|".join(
             re.escape(name) for name in sorted(model_names, key=len, reverse=True)
         )
         method_alternation = "|".join(self.QUERY_METHODS)
-        manager_alternation = r"(?:objects|all_objects)"
+        manager_alternation = r"(?:objects|all_objects|unscoped|all_tenants)"
         pattern = (
             rf"\b({model_alternation})\.{manager_alternation}"
             rf"\.({method_alternation})\("
