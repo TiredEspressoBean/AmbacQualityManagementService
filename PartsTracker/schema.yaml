@@ -34997,8 +34997,13 @@ components:
           type: string
           nullable: true
           readOnly: true
+        step_name:
+          type: string
+          nullable: true
+          readOnly: true
         step_description:
           type: string
+          nullable: true
           readOnly: true
         work_order_erp_id:
           type: string
@@ -35045,6 +35050,7 @@ components:
       - step
       - step_description
       - step_info
+      - step_name
       - total_rework_count
       - updated_at
       - work_order_erp_id

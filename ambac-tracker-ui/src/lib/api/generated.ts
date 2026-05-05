@@ -3933,7 +3933,8 @@ export type Parts = {
   part_type_name: string | null;
   process_name: string | null;
   order_name: string | null;
-  step_description: string;
+  step_name: string | null;
+  step_description: string | null;
   work_order_erp_id: string | null;
   is_from_batch_process: boolean;
   sampling_rule?: (string | null) | undefined;
@@ -11477,7 +11478,8 @@ const Parts = z
     part_type_name: z.string().nullable(),
     process_name: z.string().nullable(),
     order_name: z.string().nullable(),
-    step_description: z.string(),
+    step_name: z.string().nullable(),
+    step_description: z.string().nullable(),
     work_order_erp_id: z.string().nullable(),
     is_from_batch_process: z.boolean(),
     sampling_rule: z.string().uuid().nullish(),

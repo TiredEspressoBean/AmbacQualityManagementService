@@ -313,6 +313,7 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     process = serializers.SerializerMethodField(read_only=True)
     process_name = serializers.SerializerMethodField(read_only=True)
     order_name = serializers.SerializerMethodField()
+    step_name = serializers.SerializerMethodField(read_only=True)
     step_description = serializers.SerializerMethodField(read_only=True)
     work_order_erp_id = serializers.SerializerMethodField()
 
@@ -330,13 +331,13 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
         fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'needs_qa', 'qa_completed',
                   'order', 'part_type', 'part_type_info', 'step', 'step_info', 'work_order', 'quality_info',
                   'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
-                  'step_description', 'work_order_erp_id', 'is_from_batch_process', 'sampling_rule',
+                  'step_name', 'step_description', 'work_order_erp_id', 'is_from_batch_process', 'sampling_rule',
                   'sampling_ruleset', 'sampling_context', 'process', 'total_rework_count', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-            'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process', 'total_rework_count',
-            'step')  # Step changes must go through increment action for validation
+            'step_name', 'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process',
+            'total_rework_count', 'step')  # Step changes must go through increment action for validation
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_quality_info(self, obj):
@@ -410,7 +411,11 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     def get_order_name(self, obj):
         return obj.order.name if obj.order else None
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_step_name(self, obj):
+        return obj.step.name if obj.step else None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_step_description(self, obj):
         return obj.step.description if obj.step else None
 

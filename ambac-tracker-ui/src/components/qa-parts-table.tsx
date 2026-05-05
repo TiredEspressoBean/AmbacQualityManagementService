@@ -140,7 +140,7 @@ export default function QaPartsTable() {
                         <TableRow key={part.id}>
                             <TableCell>{part.ERP_id}</TableCell>
                             <TableCell>{part.part_type_name ?? "—"}</TableCell>
-                            <TableCell>{part.step_description ?? "—"}</TableCell>
+                            <TableCell>{part.step_name ?? "—"}</TableCell>
                             <TableCell>
                                 <StatusBadge status={part.part_status} size="sm" />
                             </TableCell>
