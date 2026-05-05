@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { Input } from "@/components/ui/input";
 import {
     Select,
@@ -351,11 +352,18 @@ export function WorkOrdersControlCenterPage() {
     return (
         <TooltipProvider>
             <div className="space-y-4 p-6 pb-24">
-                <div>
-                    <h1 className="text-2xl font-semibold">Work Orders · Control Center</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Fleet view. Filter, select, act across multiple work orders.
-                    </p>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold">Work Orders · Control Center</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Fleet view. Filter, select, act across multiple work orders.
+                        </p>
+                    </div>
+                    <ReportButton
+                        reportType="dispatch_list"
+                        label="Dispatch List"
+                        params={{}}
+                    />
                 </div>
 
                 {(woError || exError) && (

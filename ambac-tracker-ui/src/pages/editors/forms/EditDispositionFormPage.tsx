@@ -46,6 +46,7 @@ import {
     FileText,
 } from "lucide-react"
 
+import { ReportButton } from "@/components/reports/ReportButton"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
 import { useRetrievePart } from "@/hooks/useRetrievePart"
 import { useRetrieveParts } from "@/hooks/useRetrieveParts"
@@ -334,6 +335,14 @@ export default function EditDispositionFormPage() {
                             </>
                         )}
                     </div>
+                    {mode === "edit" && dispositionId && (
+                        <ReportButton
+                            reportType="ncr"
+                            label="NCR Report"
+                            className="ml-auto"
+                            params={{ id: dispositionId }}
+                        />
+                    )}
                 </div>
             </div>
 

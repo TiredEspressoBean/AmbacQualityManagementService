@@ -22,6 +22,7 @@ import {useRetrieveSteps} from "@/hooks/useRetrieveSteps.ts";
 import {schemas} from "@/lib/api/generated.ts";
 import {useRetrievePart} from "@/hooks/useRetrievePart.ts";
 import {useParams} from "@tanstack/react-router";
+import { ReportButton } from "@/components/reports/ReportButton";
 import {useRetrieveOrder} from "@/hooks/useRetrieveOrder.ts";
 import {useCreatePart} from "@/hooks/useCreatePart.ts";
 import {useUpdatePart} from "@/hooks/useUpdatePart.ts";
@@ -164,13 +165,22 @@ export default function PartFormPage() {
 
     return (<div>
             <Form {...form}>
-                <div className="max-w-3xl mx-auto py-6">
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {mode === "edit" ? "Edit Part" : "Create New Part"}
-                    </h1>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        {mode === "edit" ? `Update details for Part #${partId ?? ""}` : "Fill out the details below to create a new part."}
-                    </p>
+                <div className="max-w-3xl mx-auto py-6 flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {mode === "edit" ? "Edit Part" : "Create New Part"}
+                        </h1>
+                        <p className="text-muted-foreground text-sm mt-1">
+                            {mode === "edit" ? `Update details for Part #${partId ?? ""}` : "Fill out the details below to create a new part."}
+                        </p>
+                    </div>
+                    {mode === "edit" && partId && (
+                        <ReportButton
+                            reportType="part_id_label"
+                            label="Part Label"
+                            params={{ id: partId }}
+                        />
+                    )}
                 </div>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto py-10">
 

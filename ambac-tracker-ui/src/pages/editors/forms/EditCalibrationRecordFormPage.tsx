@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/command";
 import { format } from "date-fns";
 
+import { ReportButton } from "@/components/reports/ReportButton";
 import { useRetrieveCalibrationRecord } from "@/hooks/useRetrieveCalibrationRecord";
 import { useCreateCalibrationRecord } from "@/hooks/useCreateCalibrationRecord";
 import { useUpdateCalibrationRecord } from "@/hooks/useUpdateCalibrationRecord";
@@ -186,9 +187,18 @@ export default function EditCalibrationRecordFormPage() {
 
     return (
         <div className="container mx-auto p-6 max-w-2xl">
-            <h1 className="text-2xl font-bold mb-6">
-                {mode === "edit" ? "Edit Calibration Record" : "New Calibration Record"}
-            </h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold">
+                    {mode === "edit" ? "Edit Calibration Record" : "New Calibration Record"}
+                </h1>
+                {mode === "edit" && recordId && (
+                    <ReportButton
+                        reportType="calibration_certificate"
+                        label="Calibration Cert"
+                        params={{ id: recordId }}
+                    />
+                )}
+            </div>
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

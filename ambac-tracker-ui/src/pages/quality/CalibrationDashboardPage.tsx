@@ -6,6 +6,7 @@ import { useCalibrationsDueSoon } from "@/hooks/useCalibrationsDueSoon"
 import { useCalibrationsOverdue } from "@/hooks/useCalibrationsOverdue"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
+import { ReportButton } from "@/components/reports/ReportButton"
 import { api } from "@/lib/api/generated"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -35,7 +36,14 @@ export function CalibrationDashboardPage() {
 
     return (
         <div className="container mx-auto p-6">
-            <h1 className="text-2xl font-bold mb-6">Calibration Dashboard</h1>
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold">Calibration Dashboard</h1>
+                <ReportButton
+                    reportType="calibration_due"
+                    label="Calibration Due"
+                    params={{}}
+                />
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
                 <Card>

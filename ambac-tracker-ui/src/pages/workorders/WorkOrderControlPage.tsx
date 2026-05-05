@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -1135,6 +1136,11 @@ export function WorkOrderControlPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <ReportButton
+                        reportType="pick_list"
+                        label="Pick List"
+                        params={workOrderId ? { id: workOrderId } : null}
+                    />
                     <Button
                         variant={splitMode ? "default" : "outline"}
                         onClick={() => (splitMode ? exitSplitMode() : enterSplitMode("QUANTITY"))}

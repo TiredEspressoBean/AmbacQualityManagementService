@@ -27,6 +27,7 @@ import { CapaVerificationTab } from "@/pages/quality/tabs/CapaVerificationTab"
 import { CapaApprovalTab } from "@/pages/quality/tabs/CapaApprovalTab"
 import { CapaDocumentsTab } from "@/pages/quality/tabs/CapaDocumentsTab"
 import { CapaHistoryTab } from "@/pages/quality/tabs/CapaHistoryTab"
+import { ReportButton } from "@/components/reports/ReportButton"
 
 // Demo data for ID 0
 const DEMO_CAPA = {
@@ -335,6 +336,11 @@ export function CapaDetailPage() {
                     <p className="text-muted-foreground">{capa?.capa_type_display}</p>
                 </div>
 
+                <ReportButton
+                    reportType="capa_report"
+                    label="CAPA Report"
+                    params={capaId && !isDemo ? { id: capaId } : null}
+                />
             </div>
 
             {/* Summary Card */}
