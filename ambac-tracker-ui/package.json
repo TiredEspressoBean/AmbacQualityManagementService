@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0",
     "check:api": "node scripts/check-api-calls.cjs",
     "preview": "vite preview",
-    "generate-api": "bunx openapi-zod-client ../PartsTracker/schema.yaml -o src/lib/api/generated.ts --export-schemas --export-types --with-docs -t src/lib/api/template.hbs",
+    "generate-api": "bunx openapi-zod-client ../PartsTracker/schema.yaml -o src/lib/api/generated.ts --export-schemas --export-types --with-docs -t src/lib/api/template.hbs && bunx openapi-typescript ../PartsTracker/schema.yaml -o src/lib/api/generated-types.ts",
+    "generate-types": "bunx openapi-typescript ../PartsTracker/schema.yaml -o src/lib/api/generated-types.ts",
     "audit:colors": "grep -rn --include='*.tsx' '#[0-9a-fA-F]' src/ || echo 'No hardcoded colors found'"
   },
   "dependencies": {
@@ -103,6 +104,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^16.5.0",
+    "openapi-typescript": "^7.13.0",
     "openapi-zod-client": "^1.18.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",

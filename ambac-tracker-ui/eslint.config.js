@@ -5,6 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import pluginRouter from '@tanstack/eslint-plugin-router'
+import noTableColumnNameMismatch from './eslint-rules/no-table-column-name-mismatch.js'
 
 export default tseslint.config(
   { ignores: ['dist', 'src/lib/api/generated.ts'] },
@@ -20,9 +21,17 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'local': {
+        rules: {
+          'no-table-column-name-mismatch': noTableColumnNameMismatch,
+        },
+      },
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Catch table-column header/cell mismatches like rendering
+      // step_description in a column titled "Step".
+      'local/no-table-column-name-mismatch': 'warn',
       'react-refresh/only-export-components': 'off', // Disabled - HMR convenience only, too noisy
       // TypeScript flexibility - allow 'any' during rapid development
       '@typescript-eslint/no-explicit-any': 'off',

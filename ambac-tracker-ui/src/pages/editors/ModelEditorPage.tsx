@@ -119,6 +119,28 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     LifeTracking: "LifeTracking",
 };
 
+/**
+ * Build a typed column-definition factory bound to a row type.
+ *
+ * Pair with the strict types from `@/lib/api/types` to get type-checked
+ * `renderCell` callbacks — typos like `p.step_descrption` become compile
+ * errors.
+ *
+ * @example
+ *   import type { Parts } from "@/lib/api/types";
+ *   const col = createColumnHelper<Parts>();
+ *   const columns = [
+ *     col({ header: "ERP ID", renderCell: (p) => p.ERP_id }),
+ *     col({ header: "Step",   renderCell: (p) => p.step_name ?? "—" }),
+ *   ];
+ *
+ * The returned factory just identity-passes the column object; its only
+ * job is to capture the row type at the literal site.
+ */
+export function createColumnHelper<T>() {
+    return (col: ColumnDef<T>): ColumnDef<T> => col;
+}
+
 /** Column definition with priority-based responsive visibility */
 export interface ColumnDef<T> {
     header: string;
@@ -157,6 +179,14 @@ export interface ModelEditorProps<T> {
      * Must match a key in MODEL_API_ENDPOINTS (e.g., "Processes", "WorkOrders", "Parts")
      */
     modelName?: string;
+    /**
+     * List hook signature is shaped so that any TanStack-Query–based
+     * hook (which returns `UseQueryResult<T>` — a discriminated union
+     * with `data: T | undefined`) is structurally assignable. With
+     * `exactOptionalPropertyTypes: true`, the explicit `data: ... |
+     * undefined` matters — `data?:` would NOT accept `data:` from
+     * UseQueryResult.
+     */
     useList: (params: {
         offset: number;
         limit: number;
@@ -164,7 +194,7 @@ export interface ModelEditorProps<T> {
         search?: string;
         filters?: Record<string, string>;
     }) => {
-        data?: { results: T[]; count: number };
+        data: { results: T[]; count: number } | undefined;
         isLoading: boolean;
         error: unknown;
     };
