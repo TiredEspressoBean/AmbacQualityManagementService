@@ -3,9 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { Parts } from "@/lib/api/types";
+import type { Schema } from "@/lib/api/types";
 
-const col = createColumnHelper<Parts>();
+const col = createColumnHelper<Schema<"Parts">>();
 
 // Custom wrapper hook for consistent usage
 function usePartsList({

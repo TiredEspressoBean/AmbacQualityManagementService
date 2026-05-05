@@ -5,9 +5,9 @@ import { EditPartActionsCell } from "@/components/edit-parts-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { Parts } from "@/lib/api/types";
+import type { Schema } from "@/lib/api/types";
 
-const col = createColumnHelper<Parts>();
+const col = createColumnHelper<Schema<"Parts">>();
 
 // Default params that match what usePartsList passes on initial render
 const DEFAULT_LIST_PARAMS = {

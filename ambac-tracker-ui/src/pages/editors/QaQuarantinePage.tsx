@@ -2,9 +2,9 @@ import { useRetrieveParts } from "@/hooks/useRetrieveParts";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { QaQuarantineActionsCell } from "@/components/qa-quarantine-actions-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { Parts } from "@/lib/api/types";
+import type { Schema } from "@/lib/api/types";
 
-const col = createColumnHelper<Parts>();
+const col = createColumnHelper<Schema<"Parts">>();
 
 // Custom wrapper hook for consistent usage
 function usePartsList({
