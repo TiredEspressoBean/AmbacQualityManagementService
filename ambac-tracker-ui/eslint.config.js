@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import pluginRouter from '@tanstack/eslint-plugin-router'
 import noTableColumnNameMismatch from './eslint-rules/no-table-column-name-mismatch.js'
+import noAnyInRenderCell from './eslint-rules/no-any-in-render-cell.js'
 
 export default tseslint.config(
   { ignores: ['dist', 'src/lib/api/generated.ts'] },
@@ -24,6 +25,7 @@ export default tseslint.config(
       'local': {
         rules: {
           'no-table-column-name-mismatch': noTableColumnNameMismatch,
+          'no-any-in-render-cell': noAnyInRenderCell,
         },
       },
     },
@@ -32,6 +34,9 @@ export default tseslint.config(
       // Catch table-column header/cell mismatches like rendering
       // step_description in a column titled "Step".
       'local/no-table-column-name-mismatch': 'warn',
+      // Block `(p: any) =>` in renderCell — forces use of
+      // createColumnHelper<Schema<"X">>() so the row type flows in.
+      'local/no-any-in-render-cell': 'warn',
       'react-refresh/only-export-components': 'off', // Disabled - HMR convenience only, too noisy
       // TypeScript flexibility - allow 'any' during rapid development
       '@typescript-eslint/no-explicit-any': 'off',
