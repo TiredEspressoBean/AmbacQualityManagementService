@@ -1,8 +1,11 @@
 import { useRetrieveParts } from "@/hooks/useRetrieveParts";
 import { useNavigate } from "@tanstack/react-router";
-import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
-import {QaPartActionsCell} from "@/components/qa-parts-actions-cell.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
+import { QaPartActionsCell } from "@/components/qa-parts-actions-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { Parts } from "@/lib/api/types";
+
+const col = createColumnHelper<Parts>();
 
 // Custom wrapper hook for consistent usage
 function usePartsList({
@@ -16,14 +19,11 @@ function usePartsList({
     ordering?: string;
     search?: string;
 }) {
-    // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
-    // This mirrors the Parts.needs_qa model property
-    // Include READY_FOR_NEXT_STEP since parts may need QA before actually advancing
-    return useRetrieveParts({
+    // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet.
+    // Build queries incrementally for exactOptionalPropertyTypes.
+    const queries: Parameters<typeof useRetrieveParts>[0] = {
         offset,
         limit,
-        ordering,
-        search,
         archived: false,
         needs_qa: true,
         status__in: [
@@ -33,7 +33,10 @@ function usePartsList({
             "REWORK_IN_PROGRESS",
             "READY_FOR_NEXT_STEP",
         ],
-    });
+    };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveParts(queries);
 }
 
 export function QaPartsInProcessPage() {
@@ -51,13 +54,13 @@ export function QaPartsInProcessPage() {
                 { label: "ERP ID (Z-A)", value: "-ERP_id" },
             ]}
             columns={[
-                { header: "ERP ID", renderCell: (p: any) => p.ERP_id },
-                { header: "Status", renderCell: (p: any) => <StatusBadge status={p.part_status} size="sm" /> },
-                { header: "WorkOrder", renderCell:(p:any) => p.work_order_erp_id || "-"},
-                { header: "Step", renderCell: (p: any) => p.step_name || p.step_description }, // depending on serialization
-                {header: "Process", renderCell: (p:any) => p.process_name},
-                { header: "Part Type", renderCell: (p: any) => p.part_type_name || p.part_type },
-                { header: "Created At", renderCell: (p: any) => new Date(p.created_at).toLocaleString() },
+                col({ header: "ERP ID", renderCell: (p) => p.ERP_id }),
+                col({ header: "Status", renderCell: (p) => <StatusBadge status={p.part_status} size="sm" /> }),
+                col({ header: "WorkOrder", renderCell: (p) => p.work_order_erp_id ?? "—" }),
+                col({ header: "Step", renderCell: (p) => p.step_name ?? "—" }),
+                col({ header: "Process", renderCell: (p) => p.process_name }),
+                col({ header: "Part Type", renderCell: (p) => p.part_type_name ?? p.part_type }),
+                col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString() }),
             ]}
             renderActions={(part) => <QaPartActionsCell part={part} />}
             onCreate={() => navigate({ to: "/PartForm/create" })}
