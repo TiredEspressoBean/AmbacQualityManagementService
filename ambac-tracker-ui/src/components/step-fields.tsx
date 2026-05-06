@@ -17,7 +17,7 @@ type StepFieldsProps = {
     name: string;
     index: number;
     control: Control<any>;
-    existingStepId?: number;
+    existingStepId?: string;
     existingStepName?: string;
 };
 

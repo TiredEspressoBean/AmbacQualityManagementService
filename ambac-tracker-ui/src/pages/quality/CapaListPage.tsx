@@ -2,15 +2,18 @@ import { useState } from "react";
 import { useListCapas } from "@/hooks/useListCapas";
 import { useNavigate } from "@tanstack/react-router";
 import { asUserInfo } from "@/lib/extended-types";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditCapaActionsCell } from "@/components/edit-capa-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CapaStatsCards } from "@/components/capa-stats-cards";
 import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"CAPA">>();
 
 // Custom wrapper hook with filter support
-function useCapasListWithFilter(needsMyApproval: boolean) {
+function useCapasListWithFilter(_needsMyApproval: boolean) {
     return function useCapasList({
         offset,
         limit,
@@ -21,14 +24,15 @@ function useCapasListWithFilter(needsMyApproval: boolean) {
         limit: number;
         ordering?: string;
         search?: string;
+        filters?: Record<string, string>;
     }) {
-        return useListCapas({
+        const queries: Parameters<typeof useListCapas>[0] = {
             offset,
             limit,
-            ordering,
-            search,
-            needs_my_approval: needsMyApproval ? true : undefined,
-        } as any);
+        };
+        if (ordering !== undefined) queries.ordering = ordering;
+        if (search !== undefined) queries.search = search;
+        return useListCapas(queries);
     };
 }
 
@@ -67,39 +71,39 @@ export function CapaListPage() {
                 { label: "Created (Oldest)", value: "created_at" },
             ]}
             columns={[
-                {
+                col({
                     header: "CAPA #",
-                    renderCell: (capa: any) => (
+                    renderCell: (capa) => (
                         <span className="font-mono font-medium">{capa.capa_number}</span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Type",
-                    renderCell: (capa: any) => capa.capa_type_display,
-                },
-                {
+                    renderCell: (capa) => capa.capa_type_display,
+                }),
+                col({
                     header: "Problem",
-                    renderCell: (capa: any) => (
+                    renderCell: (capa) => (
                         <span className="max-w-[300px] truncate block" title={capa.problem_statement}>
                             {capa.problem_statement}
                         </span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Status",
-                    renderCell: (capa: any) => (
+                    renderCell: (capa) => (
                         <StatusBadge status={capa.status} label={capa.status_display} />
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Severity",
-                    renderCell: (capa: any) => (
+                    renderCell: (capa) => (
                         <StatusBadge status={capa.severity} label={capa.severity_display} />
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Due Date",
-                    renderCell: (capa: any) => {
+                    renderCell: (capa) => {
                         if (!capa.due_date) return <span className="text-muted-foreground">—</span>;
                         const isOverdue = capa.is_overdue;
                         return (
@@ -109,20 +113,20 @@ export function CapaListPage() {
                             </span>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Progress",
-                    renderCell: (capa: any) => (
+                    renderCell: (capa) => (
                         <span>{capa.completion_percentage}%</span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Assigned To",
-                    renderCell: (capa: any) => {
+                    renderCell: (capa) => {
                         const info = asUserInfo(capa.assigned_to_info);
                         return info?.username || info?.email || <span className="text-muted-foreground">Unassigned</span>;
                     },
-                },
+                }),
             ]}
             renderActions={(capa) => <EditCapaActionsCell capaId={capa.id} />}
             onCreate={() => navigate({ to: "/quality/capas/new" })}

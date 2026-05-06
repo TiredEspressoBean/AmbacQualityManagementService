@@ -1,10 +1,10 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type GroupsListQueries = Parameters<typeof api.api_Groups_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Groups_list>[0];
+type GroupsListQueries = NonNullable<operations["api_Groups_list"]["parameters"]["query"]>;
+type GroupsListResponse = components["schemas"]["PaginatedGroupList"];
 
-// Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
   headers?: Record<string, string>;
 };
@@ -12,17 +12,14 @@ type ListHookConfig = {
 export function useRetrieveGroups(
   queries?: GroupsListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_Groups_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<GroupsListResponse, Error>, "queryKey" | "queryFn">
 ) {
-  return useQuery({
+  return useQuery<GroupsListResponse, Error>({
     queryKey: ["groups", queries, config],
-    queryFn: () => api.api_Groups_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_Groups_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<GroupsListResponse>,
     ...options,
   });
 }

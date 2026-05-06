@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
 import { useNavigate, Link } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditDocumentsActionsCell } from "@/components/edit-documents-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"Documents">>();
 
 // Default params that match what useDocumentsList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -20,7 +23,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchDocumentsEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["document", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Documents_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Documents_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "Documents", "Documents"],
@@ -79,9 +82,9 @@ export function DocumentsEditorPage() {
             useList={useDocumentsListWithFilter(needsMyApproval)}
             extraToolbarContent={filterToolbar}
             columns={[
-                {
+                col({
                     header: "File Name",
-                    renderCell: (doc: any) => (
+                    renderCell: (doc) => (
                         <Link
                             to="/documents/$id"
                             params={{ id: String(doc.id) }}
@@ -91,40 +94,40 @@ export function DocumentsEditorPage() {
                         </Link>
                     ),
                     priority: 1,
-                },
-                {
+                }),
+                col({
                     header: "ID",
-                    renderCell: (doc: any) => (
+                    renderCell: (doc) => (
                         <span className="font-mono text-sm">{doc.id}</span>
                     ),
                     priority: 1,
-                },
-                {
+                }),
+                col({
                     header: "Version",
-                    renderCell: (doc: any) => (
+                    renderCell: (doc) => (
                         <span className="font-mono">v{doc.version || 1}</span>
                     ),
                     priority: 2,
-                },
-                {
+                }),
+                col({
                     header: "Status",
-                    renderCell: (doc: any) => (
+                    renderCell: (doc) => (
                         <StatusBadge status={doc.status} label={doc.status_display} />
                     ),
                     priority: 1,
-                },
-                {
+                }),
+                col({
                     header: "Classification",
-                    renderCell: (doc: any) => doc.classification ? (
+                    renderCell: (doc) => doc.classification ? (
                         <StatusBadge status={doc.classification} />
                     ) : (
                         <span className="text-muted-foreground">—</span>
                     ),
                     priority: 2,
-                },
-                {
+                }),
+                col({
                     header: "Uploaded",
-                    renderCell: (doc: any) => (
+                    renderCell: (doc) => (
                         <span className="text-sm">
                             {doc.upload_date
                                 ? new Date(doc.upload_date).toLocaleDateString()
@@ -132,12 +135,12 @@ export function DocumentsEditorPage() {
                         </span>
                     ),
                     priority: 4,
-                },
-                {
+                }),
+                col({
                     header: "Uploaded By",
-                    renderCell: (doc: any) => doc.uploaded_by_info?.full_name || doc.uploaded_by_info?.email || "—",
+                    renderCell: (doc) => doc.uploaded_by_info?.full_name || doc.uploaded_by_info?.email || "—",
                     priority: 5,
-                },
+                }),
             ]}
             renderActions={(document) => <EditDocumentsActionsCell documentId={document.id} />}
             onCreate={() => navigate({ to: "/DocumentForm/create" })}

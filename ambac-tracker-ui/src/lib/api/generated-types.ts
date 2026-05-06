@@ -12222,7 +12222,13 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
-        /** @description Lightweight core serializer for lists */
+        /**
+         * @description Lightweight core serializer for lists.
+         *
+         *     Includes the fields the cores list page renders as columns
+         *     (source/credit/component counts) so the table doesn't show
+         *     blank cells for fields the OpenAPI schema doesn't promise.
+         */
         CoreList: {
             /** Format: uuid */
             readonly id: string;
@@ -12247,6 +12253,16 @@ export interface components {
             condition_grade: components["schemas"]["ConditionGradeEnum"];
             /** Format: date */
             received_date: string;
+            source_type?: components["schemas"]["SourceTypeEnum"];
+            /**
+             * Format: decimal
+             * @description Credit value to be issued for this core
+             */
+            core_credit_value?: string | null;
+            /** @description Whether core credit has been issued to customer */
+            core_credit_issued?: boolean;
+            readonly harvested_component_count: number;
+            readonly usable_component_count: number;
         };
         /** @description Remanufacturing core serializer */
         CoreRequest: {

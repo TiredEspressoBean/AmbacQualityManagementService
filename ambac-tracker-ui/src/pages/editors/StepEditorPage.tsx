@@ -1,9 +1,12 @@
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps.ts";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditStepActionsCell } from "@/components/edit-step-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"Steps">>();
 
 // Default params that match what useStepsList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -16,7 +19,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchStepsEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["steps", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Steps_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Steps_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "Steps", "Steps"],
@@ -57,8 +60,8 @@ export function StepsEditorPage() {
             showDetailsLink={true}
             useList={useStepsList}
             columns={[
-                { header: "Description", renderCell: (step: any) => step.description, priority: 5 },
-                { header: "Part Type", renderCell: (step: any) => step.part_type_name || step.part_type, priority: 2 },
+                col({ header: "Description", renderCell: (step) => step.description, priority: 5 }),
+                col({ header: "Part Type", renderCell: (step) => step.part_type_name || step.part_type, priority: 2 }),
             ]}
             renderActions={(step) => <EditStepActionsCell stepId={step.id} />}
             onCreate={() => navigate({ to: "/StepForm/create" })}

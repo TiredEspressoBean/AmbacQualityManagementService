@@ -1,8 +1,9 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import { api, type PaginatedUserList } from "@/lib/api/generated.ts";
+import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Type for the query parameters (extracted from the Zodios endpoint)
-type UserListQueries = Parameters<typeof api.api_User_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_User_list>[0];
+type UserListQueries = NonNullable<operations["api_User_list"]["parameters"]["query"]>;
+type UserListResponse = components["schemas"]["PaginatedUserList"];
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
@@ -13,13 +14,16 @@ export function useRetrieveUsers(
   queries?: UserListQueries,
   config?: ListHookConfig,
   options?: Omit<
-    UseQueryOptions<PaginatedUserList, Error>,
+    UseQueryOptions<UserListResponse, Error>,
     "queryKey" | "queryFn"
   >
 ) {
-  return useQuery<PaginatedUserList, Error>({
+  return useQuery<UserListResponse, Error>({
     queryKey: ["user", queries, config],
-    queryFn: () => api.api_User_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_User_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<UserListResponse>,
     ...options,
   });
 }

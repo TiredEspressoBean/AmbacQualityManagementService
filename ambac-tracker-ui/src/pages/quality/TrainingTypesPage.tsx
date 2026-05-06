@@ -1,7 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useTrainingTypes } from "@/hooks/useTrainingTypes";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditTrainingTypeActionCell } from "@/components/edit-training-type-action-cell";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"TrainingType">>();
 
 function useTrainingTypesList({
     offset,
@@ -14,14 +17,10 @@ function useTrainingTypesList({
     ordering?: string;
     search?: string;
 }) {
-    return useTrainingTypes({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
-    });
+    const queries: Parameters<typeof useTrainingTypes>[0] = { offset, limit };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useTrainingTypes(queries);
 }
 
 export function TrainingTypesPage() {
@@ -41,23 +40,23 @@ export function TrainingTypesPage() {
                 { label: "Created (Oldest)", value: "created_at" },
             ]}
             columns={[
-                {
+                col({
                     header: "Name",
-                    renderCell: (type: any) => (
+                    renderCell: (type) => (
                         <span className="font-medium">{type.name}</span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Description",
-                    renderCell: (type: any) => (
+                    renderCell: (type) => (
                         <span className="max-w-[300px] truncate block text-muted-foreground" title={type.description}>
                             {type.description || "—"}
                         </span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Validity Period",
-                    renderCell: (type: any) => {
+                    renderCell: (type) => {
                         if (!type.validity_period_days) {
                             return <span className="text-muted-foreground">Never expires</span>;
                         }
@@ -72,7 +71,7 @@ export function TrainingTypesPage() {
 
                         return <span>{parts.join(' ')}</span>;
                     },
-                },
+                }),
             ]}
             renderActions={(type) => <EditTrainingTypeActionCell typeId={type.id} />}
             onCreate={() => navigate({ to: "/TrainingTypeForm/new" })}

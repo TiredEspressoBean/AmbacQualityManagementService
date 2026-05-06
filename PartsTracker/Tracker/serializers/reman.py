@@ -57,15 +57,24 @@ class CoreSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 
 class CoreListSerializer(serializers.ModelSerializer):
-    """Lightweight core serializer for lists"""
+    """Lightweight core serializer for lists.
+
+    Includes the fields the cores list page renders as columns
+    (source/credit/component counts) so the table doesn't show
+    blank cells for fields the OpenAPI schema doesn't promise.
+    """
     core_type_name = serializers.CharField(source='core_type.name', read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
+    harvested_component_count = serializers.IntegerField(read_only=True)
+    usable_component_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Core
         fields = (
             'id', 'core_number', 'core_type', 'core_type_name',
-            'customer_name', 'status', 'condition_grade', 'received_date'
+            'customer_name', 'status', 'condition_grade', 'received_date',
+            'source_type', 'core_credit_value', 'core_credit_issued',
+            'harvested_component_count', 'usable_component_count',
         )
 
 

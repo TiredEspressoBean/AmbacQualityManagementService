@@ -1,9 +1,12 @@
 import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes.ts";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditEquipmentTypeActionsCell } from "@/components/edit-equipment-type-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"EquipmentType">>();
 
 // Default params that match what useEquipmentTypesList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -16,11 +19,11 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchEquipmentTypesEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["equipment-types", DEFAULT_LIST_PARAMS],
-        queryFn: () => api["api_Equipment_types_list"](DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Equipment_types_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "EquipmentTypes", "Equipment-types"],
-        queryFn: () => api["api_Equipment-types_metadata_retrieve"](),
+        queryFn: () => api.api_Equipment_types_metadata_retrieve(),
     });
 };
 
@@ -57,11 +60,11 @@ export function EquipmentTypeEditorPage() {
             showDetailsLink={true}
             useList={useEquipmentTypesList}
             columns={[
-                { header: "ID", renderCell: (equipment: any) => equipment.id, priority: 1 },
-                { header: "Name", renderCell: (equipment: any) => equipment.name, priority: 1 },
-                { header: "Description", renderCell: (equipment: any) => equipment.description || "-", priority: 5 },
-                { header: "Created", renderCell: (equipment: any) => equipment.created_at ? new Date(equipment.created_at).toLocaleDateString() : "-", priority: 4 },
-                { header: "Updated", renderCell: (equipment: any) => equipment.updated_at ? new Date(equipment.updated_at).toLocaleDateString() : "-", priority: 4 },
+                col({ header: "ID", renderCell: (equipment) => equipment.id, priority: 1 }),
+                col({ header: "Name", renderCell: (equipment) => equipment.name, priority: 1 }),
+                col({ header: "Description", renderCell: (equipment) => equipment.description || "-", priority: 5 }),
+                col({ header: "Created", renderCell: (equipment) => equipment.created_at ? new Date(equipment.created_at).toLocaleDateString() : "-", priority: 4 }),
+                col({ header: "Updated", renderCell: (equipment) => equipment.updated_at ? new Date(equipment.updated_at).toLocaleDateString() : "-", priority: 4 }),
             ]}
             renderActions={(equipmentType) => <EditEquipmentTypeActionsCell equipmentTypeId={equipmentType.id} />}
             onCreate={() => navigate({ to: "/EquipmentForm/create" })}

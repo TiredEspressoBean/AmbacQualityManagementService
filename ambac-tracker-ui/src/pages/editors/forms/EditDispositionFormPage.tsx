@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { format } from "date-fns"
 import { useParams, useSearch, useNavigate, Link } from "@tanstack/react-router"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
@@ -54,6 +53,7 @@ import { useQualityReports } from "@/hooks/useQualityReports"
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes"
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
 import { schemas } from "@/lib/api/generated"
+import type { Schema } from "@/lib/api/types"
 import { isFieldRequired } from "@/lib/zod-config"
 
 // Use generated schema - error messages handled by global error map
@@ -77,7 +77,27 @@ const formSchema = schemas.QuarantineDispositionRequest.pick({
     quality_reports: true,
 })
 
-type FormValues = z.infer<typeof formSchema>
+// Use strict OpenAPI request type (zodios passthrough widens fields to unknown)
+type FormValues = Pick<
+    Schema<"QuarantineDispositionRequest">,
+    | "current_state"
+    | "disposition_type"
+    | "severity"
+    | "assigned_to"
+    | "description"
+    | "resolution_notes"
+    | "resolution_completed_by"
+    | "resolution_completed_at"
+    | "containment_action"
+    | "containment_completed_at"
+    | "containment_completed_by"
+    | "requires_customer_approval"
+    | "customer_approval_received"
+    | "customer_approval_reference"
+    | "customer_approval_date"
+    | "part"
+    | "quality_reports"
+>
 
 // Pre-compute required fields for labels
 const required = {
@@ -146,7 +166,7 @@ export default function EditDispositionFormPage() {
     // Fetch employees for dropdowns
     const { data: employeePages, isLoading: employeesLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
         queryKey: ["employee-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam } }),
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
         getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
         initialPageParam: 0,
     })
@@ -182,8 +202,8 @@ export default function EditDispositionFormPage() {
     const [containmentOpen, setContainmentOpen] = useState(false)
 
     // Form setup
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             part: initialPartId ?? null,
             current_state: "OPEN",
@@ -202,7 +222,7 @@ export default function EditDispositionFormPage() {
             customer_approval_reference: "",
             customer_approval_date: undefined,
             quality_reports: initialQualityReportId ? [initialQualityReportId] : [],
-        },
+        } as unknown as FormValues,
     })
 
     // Reset form when disposition data loads in edit mode
@@ -226,7 +246,7 @@ export default function EditDispositionFormPage() {
                 customer_approval_reference: disposition.customer_approval_reference ?? "",
                 customer_approval_date: disposition.customer_approval_date,
                 quality_reports: disposition.quality_reports ?? [],
-            })
+            } as FormValues)
             // Expand containment section for CRITICAL severity
             if (disposition.severity === "CRITICAL") {
                 setContainmentOpen(true)
@@ -267,14 +287,14 @@ export default function EditDispositionFormPage() {
 
         try {
             if (mode === "edit" && dispositionId) {
-                await api.api_QuarantineDispositions_partial_update(values, {
+                await api.api_QuarantineDispositions_partial_update(values as never, {
                     params: { id: dispositionId },
                     headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
                 })
                 toast.success("Disposition updated")
                 queryClient.invalidateQueries({ queryKey: ["disposition", dispositionId] })
             } else {
-                const result = await api.api_QuarantineDispositions_create(values, {
+                const result = await api.api_QuarantineDispositions_create(values as never, {
                     headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
                 })
                 toast.success("Disposition created")
@@ -386,7 +406,7 @@ export default function EditDispositionFormPage() {
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel required={required.current_state}>Current State</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                        <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select state" />
@@ -411,7 +431,7 @@ export default function EditDispositionFormPage() {
                                                 render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel required={required.disposition_type}>Disposition Type</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                        <Select onValueChange={field.onChange} value={(field.value as string | undefined) ?? ""}>
                                                             <FormControl>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select type" />
@@ -438,7 +458,7 @@ export default function EditDispositionFormPage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel required={required.severity}>Severity</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                                         <FormControl>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select severity" />
@@ -653,7 +673,7 @@ export default function EditDispositionFormPage() {
                                                         render={({ field }) => (
                                                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                                                 <FormControl>
-                                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
                                                                 </FormControl>
                                                                 <div className="space-y-1 leading-none">
                                                                     <FormLabel>Requires Approval</FormLabel>
@@ -667,7 +687,7 @@ export default function EditDispositionFormPage() {
                                                         render={({ field }) => (
                                                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                                                 <FormControl>
-                                                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
                                                                 </FormControl>
                                                                 <div className="space-y-1 leading-none">
                                                                     <FormLabel>Approval Received</FormLabel>

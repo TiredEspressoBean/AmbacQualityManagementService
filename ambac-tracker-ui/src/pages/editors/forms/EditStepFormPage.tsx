@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { cn } from "@/lib/utils"
@@ -43,7 +43,15 @@ import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts"
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
 import { schemas } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
+
+type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection"> & {
+    rules: { rule_type: string; value: string | number | null; order: number }[]
+    fallback_rules?: { rule_type: string; value: string | number | null; order: number }[]
+    fallback_threshold?: number
+    fallback_duration?: number
+};
 
 // Local schema for sampling rules (not in generated API schema)
 const samplingRuleSchema = z.object({
@@ -92,32 +100,36 @@ export default function StepFormPage() {
     const updateStep = useUpdateStep()
     const updateSamplingRules = useUpdateStepSamplingRules()
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
+    const form = useForm<FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues>,
+        defaultValues: ({
             name: "",
             description: "",
-            part_type: undefined,
+            part_type: "",
             requires_first_piece_inspection: false,
             rules: [],
             fallback_rules: [],
             fallback_threshold: undefined,
             fallback_duration: undefined,
-        }
+        }) as unknown as FormValues,
     })
 
     useEffect(() => {
         if (mode === "edit" && step) {
+            const stepWithRules = step as typeof step & {
+                active_ruleset?: { rules?: FormValues["rules"]; fallback_threshold?: number; fallback_duration?: number }
+                fallback_ruleset?: { rules?: FormValues["rules"] }
+            }
             form.reset({
                 name: step.name ?? "",
                 description: step.description ?? "",
                 part_type: step.part_type,
                 requires_first_piece_inspection: step.requires_first_piece_inspection ?? false,
-                rules: step.active_ruleset?.rules ?? [],
-                fallback_rules: step.fallback_ruleset?.rules ?? [],
-                fallback_threshold: step.active_ruleset?.fallback_threshold ?? undefined,
-                fallback_duration: step.active_ruleset?.fallback_duration ?? undefined,
-            })
+                rules: stepWithRules.active_ruleset?.rules ?? [],
+                fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
+                fallback_threshold: stepWithRules.active_ruleset?.fallback_threshold ?? undefined,
+                fallback_duration: stepWithRules.active_ruleset?.fallback_duration ?? undefined,
+            } as unknown as FormValues)
             setSelectedPartTypeId(step.part_type)
         }
     }, [mode, step, form])
@@ -141,8 +153,8 @@ export default function StepFormPage() {
             ...stepData
         } = values;
 
-        const normalizedRules = normalizeRules(rules);
-        const normalizedFallbackRules = normalizeRules(fallback_rules ?? []);
+        const normalizedRules = normalizeRules(rules) as never;
+        const normalizedFallbackRules = normalizeRules(fallback_rules ?? []) as never;
 
         if (mode === "edit" && stepId) {
             updateStep.mutate(
@@ -239,7 +251,7 @@ export default function StepFormPage() {
                             <FormItem>
                                 <FormLabel required={required.description}>Description</FormLabel>
                                 <FormControl>
-                                    <Textarea className="resize-none" {...field} />
+                                    <Textarea className="resize-none" {...field} value={field.value ?? ""} />
                                 </FormControl>
                                 <FormDescription>Details about what happens in this step</FormDescription>
                                 <FormMessage/>
@@ -313,7 +325,7 @@ export default function StepFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>
@@ -345,7 +357,6 @@ export default function StepFormPage() {
                             </FormDescription>
                             <MeasurementDefinitionsManager
                                 stepId={stepId}
-                                label="Measurement Definitions"
                             />
                         </div>
                     )}

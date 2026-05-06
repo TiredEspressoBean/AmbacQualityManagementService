@@ -1,10 +1,10 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type SamplingRuleSetsListQueries = Parameters<typeof api.api_Sampling_rule_sets_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Sampling_rule_sets_list>[0];
+type SamplingRuleSetsListQueries = NonNullable<operations["api_Sampling_rule_sets_list"]["parameters"]["query"]>;
+type SamplingRuleSetsListResponse = components["schemas"]["PaginatedSamplingRuleSetList"];
 
-// Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
   headers?: Record<string, string>;
 };
@@ -12,17 +12,14 @@ type ListHookConfig = {
 export function useRetrieveSamplingRulesSets(
   queries?: SamplingRuleSetsListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_Sampling_rule_sets_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<SamplingRuleSetsListResponse, Error>, "queryKey" | "queryFn">
 ) {
-  return useQuery({
+  return useQuery<SamplingRuleSetsListResponse, Error>({
     queryKey: ["sampling-rules-sets", queries, config],
-    queryFn: () => api.api_Sampling_rule_sets_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_Sampling_rule_sets_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<SamplingRuleSetsListResponse>,
     ...options,
   });
 }

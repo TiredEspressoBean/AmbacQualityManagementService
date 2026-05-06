@@ -1,8 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useTrainingRecords } from "@/hooks/useTrainingRecords";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditTrainingRecordActionCell } from "@/components/edit-training-record-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"TrainingRecord">>();
 
 function useTrainingRecordsList({
     offset,
@@ -15,14 +18,10 @@ function useTrainingRecordsList({
     ordering?: string;
     search?: string;
 }) {
-    return useTrainingRecords({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
-    });
+    const queries: Parameters<typeof useTrainingRecords>[0] = { offset, limit };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useTrainingRecords(queries);
 }
 
 export function TrainingRecordsPage() {
@@ -42,33 +41,33 @@ export function TrainingRecordsPage() {
                 { label: "Created (Oldest)", value: "created_at" },
             ]}
             columns={[
-                {
+                col({
                     header: "Trainee",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.user_info?.full_name || record.user_info?.username || "—",
-                },
-                {
+                }),
+                col({
                     header: "Training Type",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.training_type_info?.name || "—",
-                },
-                {
+                }),
+                col({
                     header: "Status",
-                    renderCell: (record: any) => {
+                    renderCell: (record) => {
                         const status = record.status?.toUpperCase() || 'CURRENT';
                         return <StatusBadge status={status} />;
                     },
-                },
-                {
+                }),
+                col({
                     header: "Completed",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.completed_date
                             ? new Date(record.completed_date).toLocaleDateString()
                             : "—",
-                },
-                {
+                }),
+                col({
                     header: "Expires",
-                    renderCell: (record: any) => {
+                    renderCell: (record) => {
                         if (!record.expires_date) return <span className="text-muted-foreground">Never</span>;
                         const isExpired = record.status === 'EXPIRED';
                         return (
@@ -77,12 +76,12 @@ export function TrainingRecordsPage() {
                             </span>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Trainer",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.trainer_info?.full_name || record.trainer_info?.username || <span className="text-muted-foreground">—</span>,
-                },
+                }),
             ]}
             renderActions={(record) => <EditTrainingRecordActionCell recordId={record.id} />}
             onCreate={() => navigate({ to: "/TrainingRecordForm/new" })}

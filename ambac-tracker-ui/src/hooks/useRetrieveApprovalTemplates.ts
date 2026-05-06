@@ -1,10 +1,10 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type ApprovalTemplatesListQueries = Parameters<typeof api.api_ApprovalTemplates_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_ApprovalTemplates_list>[0];
+type ApprovalTemplatesListQueries = NonNullable<operations["api_ApprovalTemplates_list"]["parameters"]["query"]>;
+type ApprovalTemplatesListResponse = components["schemas"]["PaginatedApprovalTemplateList"];
 
-// Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
   headers?: Record<string, string>;
 };
@@ -12,17 +12,14 @@ type ListHookConfig = {
 export function useRetrieveApprovalTemplates(
   queries?: ApprovalTemplatesListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_ApprovalTemplates_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<ApprovalTemplatesListResponse, Error>, "queryKey" | "queryFn">
 ) {
-  return useQuery({
+  return useQuery<ApprovalTemplatesListResponse, Error>({
     queryKey: ["approval-template", queries, config],
-    queryFn: () => api.api_ApprovalTemplates_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_ApprovalTemplates_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<ApprovalTemplatesListResponse>,
     ...options,
   });
 }

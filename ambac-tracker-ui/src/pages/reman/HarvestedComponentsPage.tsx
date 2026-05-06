@@ -1,10 +1,13 @@
 import { useRetrieveHarvestedComponents } from "@/hooks/useRetrieveHarvestedComponents";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"HarvestedComponent">>();
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,11 +28,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchHarvestedComponents = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["harvested-components", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_HarvestedComponents_list(DEFAULT_LIST_PARAMS),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "HarvestedComponents", "HarvestedComponents"],
-        queryFn: () => api.api_HarvestedComponents_metadata_retrieve(),
+        queryFn: () => api.api_HarvestedComponents_list({ queries: DEFAULT_LIST_PARAMS }),
     });
 };
 
@@ -39,9 +38,10 @@ function useComponentsList({
 }: {
     offset: number; limit: number; ordering?: string; search?: string; filters?: Record<string, string>;
 }) {
-    return useRetrieveHarvestedComponents({
-        offset, limit, ordering, search, ...filters,
-    });
+    const queries: Parameters<typeof useRetrieveHarvestedComponents>[0] = { offset, limit, ...filters };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveHarvestedComponents(queries);
 }
 
 // Condition grade color mapping
@@ -104,17 +104,17 @@ export function HarvestedComponentsPage() {
             showDetailsLink={false}
             useList={useComponentsList}
             columns={[
-                {
+                col({
                     header: "Component Type",
                     priority: 1,
-                    renderCell: (component: any) => (
+                    renderCell: (component) => (
                         <span className="font-medium">{component.component_type_name}</span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Source Core",
                     priority: 1,
-                    renderCell: (component: any) => (
+                    renderCell: (component) => (
                         <Link
                             to={`/reman/cores/${component.core}`}
                             className="font-mono text-primary hover:underline"
@@ -122,16 +122,16 @@ export function HarvestedComponentsPage() {
                             {component.core_number}
                         </Link>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Position",
                     priority: 3,
-                    renderCell: (component: any) => component.position || "—",
-                },
-                {
+                    renderCell: (component) => component.position || "—",
+                }),
+                col({
                     header: "Condition",
                     priority: 2,
-                    renderCell: (component: any) => {
+                    renderCell: (component) => {
                         const grade = component.condition_grade;
                         if (!grade) return "—";
                         return (
@@ -140,11 +140,11 @@ export function HarvestedComponentsPage() {
                             </Badge>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Status",
                     priority: 1,
-                    renderCell: (component: any) => {
+                    renderCell: (component) => {
                         if (component.is_scrapped) {
                             return <Badge variant="destructive">Scrapped</Badge>;
                         }
@@ -153,11 +153,11 @@ export function HarvestedComponentsPage() {
                         }
                         return <Badge variant="secondary">Pending</Badge>;
                     },
-                },
-                {
+                }),
+                col({
                     header: "Part ID",
                     priority: 2,
-                    renderCell: (component: any) => {
+                    renderCell: (component) => {
                         if (component.component_part_erp_id) {
                             return (
                                 <Link
@@ -170,20 +170,20 @@ export function HarvestedComponentsPage() {
                         }
                         return "—";
                     },
-                },
-                {
+                }),
+                col({
                     header: "Harvested",
                     priority: 3,
-                    renderCell: (component: any) =>
+                    renderCell: (component) =>
                         component.disassembled_at
                             ? format(new Date(component.disassembled_at), "MMM d, yyyy")
                             : "—",
-                },
-                {
+                }),
+                col({
                     header: "By",
                     priority: 4,
-                    renderCell: (component: any) => component.disassembled_by_name || "—",
-                },
+                    renderCell: (component) => component.disassembled_by_name || "—",
+                }),
             ]}
             renderActions={(component) => <ComponentActionsCell component={component} />}
         />

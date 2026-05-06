@@ -1,11 +1,14 @@
 import { useRetrieveCores } from "@/hooks/useRetrieveCores";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { format } from "date-fns";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"CoreList">>();
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,11 +29,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchCoresEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["cores", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Cores_list(DEFAULT_LIST_PARAMS),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Cores", "Cores"],
-        queryFn: () => api.api_Cores_metadata_retrieve(),
+        queryFn: () => api.api_Cores_list({ queries: DEFAULT_LIST_PARAMS }),
     });
 };
 
@@ -40,9 +39,10 @@ function useCoresList({
 }: {
     offset: number; limit: number; ordering?: string; search?: string; filters?: Record<string, string>;
 }) {
-    return useRetrieveCores({
-        offset, limit, ordering, search, ...filters,
-    });
+    const queries: Parameters<typeof useRetrieveCores>[0] = { offset, limit, ...filters };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveCores(queries);
 }
 
 // Condition grade color mapping
@@ -120,24 +120,24 @@ export function CoresEditorPage() {
             modelName="Cores"
             showDetailsLink={true}
             useList={useCoresList}
-            generateDetailLink={(core: any) => `/reman/cores/${core.id}`}
+            generateDetailLink={(core) => `/reman/cores/${core.id}` as never}
             columns={[
-                {
+                col({
                     header: "Core Number",
                     priority: 1,
-                    renderCell: (core: any) => (
+                    renderCell: (core) => (
                         <span className="font-mono text-sm font-medium">{core.core_number}</span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Type",
                     priority: 1,
-                    renderCell: (core: any) => core.core_type_name || "—",
-                },
-                {
+                    renderCell: (core) => core.core_type_name || "—",
+                }),
+                col({
                     header: "Status",
                     priority: 1,
-                    renderCell: (core: any) => {
+                    renderCell: (core) => {
                         const status = core.status;
                         if (!status) return "—";
                         const labels: Record<string, string> = {
@@ -152,11 +152,11 @@ export function CoresEditorPage() {
                             </Badge>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Condition",
                     priority: 2,
-                    renderCell: (core: any) => {
+                    renderCell: (core) => {
                         const grade = core.condition_grade;
                         if (!grade) return "—";
                         const labels: Record<string, string> = {
@@ -171,37 +171,38 @@ export function CoresEditorPage() {
                             </Badge>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Source",
                     priority: 3,
-                    renderCell: (core: any) => {
+                    renderCell: (core) => {
                         const sourceLabels: Record<string, string> = {
                             'CUSTOMER_RETURN': 'Customer Return',
                             'PURCHASED': 'Purchased',
                             'WARRANTY': 'Warranty',
                             'TRADE_IN': 'Trade-In',
                         };
-                        return sourceLabels[core.source_type] || core.source_type || "—";
+                        const src = core.source_type;
+                        return (src && (sourceLabels[src] ?? src)) || "—";
                     },
-                },
-                {
+                }),
+                col({
                     header: "Customer",
                     priority: 4,
-                    renderCell: (core: any) => core.customer_name || "—",
-                },
-                {
+                    renderCell: (core) => core.customer_name || "—",
+                }),
+                col({
                     header: "Received",
                     priority: 3,
-                    renderCell: (core: any) =>
+                    renderCell: (core) =>
                         core.received_date
                             ? format(new Date(core.received_date), "MMM d, yyyy")
                             : "—",
-                },
-                {
+                }),
+                col({
                     header: "Components",
                     priority: 4,
-                    renderCell: (core: any) => {
+                    renderCell: (core) => {
                         const harvested = core.harvested_component_count ?? 0;
                         const usable = core.usable_component_count ?? 0;
                         if (harvested === 0) return "—";
@@ -211,11 +212,11 @@ export function CoresEditorPage() {
                             </span>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Credit",
                     priority: 5,
-                    renderCell: (core: any) => {
+                    renderCell: (core) => {
                         if (!core.core_credit_value) return "—";
                         return (
                             <span className={core.core_credit_issued ? "text-green-600" : ""}>
@@ -224,7 +225,7 @@ export function CoresEditorPage() {
                             </span>
                         );
                     },
-                },
+                }),
             ]}
             renderActions={(core) => <CoreActionsCell core={core} />}
             onCreate={() => navigate({ to: "/reman/cores/receive" })}

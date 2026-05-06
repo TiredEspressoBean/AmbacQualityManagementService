@@ -1,11 +1,25 @@
-import { useQuery } from "@tanstack/react-query"
-import { api } from "@/lib/api/generated"
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
+import type { components, operations } from "@/lib/api/generated-types";
 
-type ListParams = Parameters<typeof api.api_TrainingTypes_list>[0];
+type TrainingTypesListQueries = NonNullable<operations["api_TrainingTypes_list"]["parameters"]["query"]>;
+type TrainingTypesListResponse = components["schemas"]["PaginatedTrainingTypeList"];
 
-export function useTrainingTypes(options: ListParams = {}) {
-    return useQuery({
-        queryKey: ["training-types", options],
-        queryFn: () => api.api_TrainingTypes_list(options),
-    });
+type ListHookConfig = {
+  headers?: Record<string, string>;
+};
+
+export function useTrainingTypes(
+  queries?: TrainingTypesListQueries,
+  config?: ListHookConfig,
+  options?: Omit<UseQueryOptions<TrainingTypesListResponse, Error>, "queryKey" | "queryFn">
+) {
+  return useQuery<TrainingTypesListResponse, Error>({
+    queryKey: ["training-types", queries, config],
+    queryFn: () =>
+      api.api_TrainingTypes_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<TrainingTypesListResponse>,
+    ...options,
+  });
 }

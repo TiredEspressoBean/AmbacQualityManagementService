@@ -33,9 +33,13 @@ import { useRetrieveParts } from "@/hooks/useRetrieveParts";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell";
 import { schemas } from "@/lib/api/generated";
 import { z } from "zod";
+import type { operations } from "@/lib/api/generated-types";
 
 type WorkOrder = z.infer<typeof schemas.WorkOrder>;
 type Part = z.infer<typeof schemas.Parts>;
+
+type WorkOrdersListQueries = NonNullable<operations["api_WorkOrders_list"]["parameters"]["query"]>;
+type PartsListQueries = NonNullable<operations["api_Parts_list"]["parameters"]["query"]>;
 
 const ITEMS_PER_PAGE = 20;
 
@@ -57,25 +61,29 @@ export default function QaWorkOrdersPage() {
 
     const debouncedSearch = useDebounce(searchTerm, 300);
 
-    // Fetch work orders that have parts requiring QA
-    const { data: workOrdersData, isLoading: isLoadingWorkOrders } = useRetrieveWorkOrders({
+    // Build the work orders queries object incrementally
+    const workOrdersQueries: WorkOrdersListQueries = {
         offset: (currentPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
-        search: debouncedSearch,
-        ordering: sortBy,
-        // Filter for work orders with parts needing QA
-        // status__in: "IN_PROGRESS,PENDING_QA,READY_FOR_QA",
-    });
+    };
+    if (debouncedSearch !== undefined) workOrdersQueries.search = debouncedSearch;
+    if (sortBy !== undefined) workOrdersQueries.ordering = sortBy;
+
+    // Fetch work orders that have parts requiring QA
+    const { data: workOrdersData, isLoading: isLoadingWorkOrders } = useRetrieveWorkOrders(workOrdersQueries);
+
+    // Build the parts queries object incrementally
+    const partsQueries: PartsListQueries = {
+        needs_qa: true,
+        status__in: ["PENDING", "IN_PROGRESS", "AWAITING_QA", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY_FOR_NEXT_STEP"],
+        limit: 100,
+    };
+    if (selectedWorkOrder?.id !== undefined) partsQueries.work_order = selectedWorkOrder.id;
 
     // Fetch parts for the selected work order that need QA
     // Use needs_qa: true to get parts that require sampling AND haven't passed QA yet
     // Include AWAITING_QA (parts flagged for QA) and READY_FOR_NEXT_STEP
-    const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts({
-        work_order: selectedWorkOrder?.id,
-        needs_qa: true,
-        status__in: ["PENDING", "IN_PROGRESS", "AWAITING_QA", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY_FOR_NEXT_STEP"],
-        limit: 100,
-    }, undefined, {
+    const { data: partsData, isLoading: isLoadingParts } = useRetrieveParts(partsQueries, undefined, {
         enabled: !!selectedWorkOrder?.id,
     });
 

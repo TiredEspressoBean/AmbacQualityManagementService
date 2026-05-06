@@ -1,10 +1,13 @@
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments.ts";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditEquipmentActionsCell } from "@/components/edit-equipment-action-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"Equipments">>();
 
 // Default params that match what useEquipmentsList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -17,7 +20,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchEquipmentsEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["equipment", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Equipment_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Equipment_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "Equipments", "Equipment"],
@@ -58,19 +61,19 @@ export function EquipmentEditorPage() {
             showDetailsLink={true}
             useList={useEquipmentsList}
             columns={[
-                { header: "Name", renderCell: (equipment: any) => equipment.name, priority: 1 },
-                { header: "Equipment Type", renderCell: (equipment: any) => equipment.equipment_type_name || "—", priority: 2 },
-                { header: "Serial #", renderCell: (equipment: any) => equipment.serial_number || "—", priority: 2 },
-                { header: "Manufacturer", renderCell: (equipment: any) => equipment.manufacturer || "—", priority: 3 },
-                { header: "Location", renderCell: (equipment: any) => equipment.location || "—", priority: 3 },
-                {
+                col({ header: "Name", renderCell: (equipment) => equipment.name, priority: 1 }),
+                col({ header: "Equipment Type", renderCell: (equipment) => equipment.equipment_type_name || "—", priority: 2 }),
+                col({ header: "Serial #", renderCell: (equipment) => equipment.serial_number || "—", priority: 2 }),
+                col({ header: "Manufacturer", renderCell: (equipment) => equipment.manufacturer || "—", priority: 3 }),
+                col({ header: "Location", renderCell: (equipment) => equipment.location || "—", priority: 3 }),
+                col({
                     header: "Status",
-                    renderCell: (equipment: any) => {
+                    renderCell: (equipment) => {
                         if (!equipment.status) return "—";
                         return <StatusBadge status={equipment.status} />;
                     },
                     priority: 1,
-                },
+                }),
             ]}
             renderActions={(equipment) => <EditEquipmentActionsCell equipmentId={equipment.id} />}
             onCreate={() => navigate({ to: "/EquipmentForm/create" })}

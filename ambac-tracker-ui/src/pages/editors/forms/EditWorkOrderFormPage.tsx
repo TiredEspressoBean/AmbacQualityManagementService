@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
@@ -33,11 +33,12 @@ import { useCreateWorkOrder } from '@/hooks/useCreateWorkOrder'
 import { useUpdateWorkOrder } from '@/hooks/useUpdateWorkOrder'
 import { useRetrieveWorkOrder } from '@/hooks/useRetrieveWorkOrder'
 import { schemas } from '@/lib/api/generated'
+import type { Schema } from '@/lib/api/types'
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader.tsx";
 import { isFieldRequired } from '@/lib/zod-config'
 
 const WORKORDER_STATUS = schemas.WorkOrderStatusEnum.options
-const PRIORITY_OPTIONS = schemas.PriorityEnum.options
+const PRIORITY_OPTIONS = [1, 2, 3, 4] as const
 
 // Use generated schema fields with custom date handling
 const formSchema = schemas.WorkOrderRequest.pick({
@@ -54,7 +55,10 @@ const formSchema = schemas.WorkOrderRequest.pick({
     expected_completion: z.coerce.date(),
 })
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = Omit<Schema<"WorkOrderRequest">, "expected_completion"> & {
+    expected_completion: Date
+    related_order: string
+}
 
 // Pre-compute required fields for labels
 const required = {
@@ -80,16 +84,16 @@ export default function WorkOrderFormPage() {
     const { data: workOrder } = useRetrieveWorkOrder(workOrderId!, { enabled: mode === "edit" && !!workOrderId })
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        resolver: zodResolver(formSchema) as Resolver<FormValues>,
         defaultValues: {
             ERP_id: "",
             workorder_status: undefined,
             priority: undefined,
             notes: "",
-            related_order: undefined,
+            related_order: "",
             process: undefined,
             expected_completion: new Date(),
-        },
+        } as unknown as FormValues,
     })
 
     useEffect(() => {
@@ -99,10 +103,10 @@ export default function WorkOrderFormPage() {
                 workorder_status: workOrder.workorder_status,
                 priority: workOrder.priority ?? undefined,
                 notes: workOrder.notes ?? "",
-                related_order: workOrder.related_order,
+                related_order: workOrder.related_order ?? "",
                 process: workOrder.process ?? undefined,
                 expected_completion: workOrder.expected_completion ? new Date(workOrder.expected_completion) : new Date(),
-            })
+            } as unknown as FormValues)
         }
     }, [mode, workOrder, form])
 
@@ -114,7 +118,7 @@ export default function WorkOrderFormPage() {
             ...values,
             process: values.process || null,
             expected_completion: values.expected_completion?.toISOString(),
-        }
+        } as Schema<"WorkOrderRequest">
 
         if (mode === "edit" && workOrderId) {
             updateWorkOrder.mutate(
@@ -150,7 +154,7 @@ export default function WorkOrderFormPage() {
                         render={({field}) => (
                             <FormItem>
                                 <FormLabel required={required.workorder_status}>Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select status"/>
@@ -176,7 +180,7 @@ export default function WorkOrderFormPage() {
                         render={({field}) => (
                             <FormItem>
                                 <FormLabel required={required.priority}>Priority</FormLabel>
-                                <Select onValueChange={(val) => field.onChange(parseInt(val, 10))} value={field.value?.toString()}>
+                                <Select onValueChange={(val) => field.onChange(parseInt(val, 10))} value={field.value?.toString() ?? ""}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select priority"/>

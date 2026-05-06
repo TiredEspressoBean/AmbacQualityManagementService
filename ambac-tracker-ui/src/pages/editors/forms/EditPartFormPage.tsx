@@ -1,7 +1,7 @@
 "use client"
 import {useEffect, useState} from "react"
 import {toast} from "sonner"
-import {useForm} from "react-hook-form"
+import {useForm, type Resolver} from "react-hook-form"
 import {zodResolver} from "@hookform/resolvers/zod"
 import {z} from "zod"
 import {cn} from "@/lib/utils"
@@ -20,6 +20,7 @@ import {useRetrieveWorkOrders} from "@/hooks/useRetrieveWorkOrders.ts";
 import {useRetrieveProcesses} from "@/hooks/useRetrieveProcesses.ts";
 import {useRetrieveSteps} from "@/hooks/useRetrieveSteps.ts";
 import {schemas} from "@/lib/api/generated.ts";
+import type {Schema} from "@/lib/api/types";
 import {useRetrievePart} from "@/hooks/useRetrievePart.ts";
 import {useParams} from "@tanstack/react-router";
 import { ReportButton } from "@/components/reports/ReportButton";
@@ -44,7 +45,10 @@ const formSchema = schemas.PartsRequest.pick({
     archived: z.boolean().default(false).optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Use strict OpenAPI request type instead of inferring from zodios passthrough schema
+type FormValues = Pick<Schema<"PartsRequest">, "ERP_id" | "part_status" | "order" | "part_type" | "step" | "work_order"> & {
+    archived?: boolean;
+};
 
 const required = {
     ERP_id: isFieldRequired(formSchema.shape.ERP_id),
@@ -74,21 +78,21 @@ export default function PartFormPage() {
         search: workOrderSearch,
     })
 
-    const {data: selectedOrder} = useRetrieveOrder(part?.order ?? 0, {
+    const {data: selectedOrder} = useRetrieveOrder(part?.order ?? "", {
         enabled: !!part?.order,
     });
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             ERP_id: part?.ERP_id ?? "",
             part_status: part?.part_status ?? PART_STATUS[0],
-            order: part?.order ?? undefined,
-            part_type: part?.part_type ?? undefined,
-            step: part?.step ?? undefined,
+            order: part?.order ?? null,
+            part_type: part?.part_type ?? "",
+            step: part?.step ?? "",
             archived: part?.archived ?? false,
-            work_order: part?.work_order ?? undefined,
-        },
+            work_order: part?.work_order ?? null,
+        } as FormValues,
     })
 
     useEffect(() => {
@@ -96,12 +100,12 @@ export default function PartFormPage() {
             form.reset({
                 ERP_id: part.ERP_id ?? "",
                 part_status: part.part_status ?? PART_STATUS[0],
-                order: part.order ?? undefined,
-                part_type: part.part_type ?? undefined,
-                step: part.step ?? undefined,
+                order: part.order ?? null,
+                part_type: part.part_type ?? "",
+                step: part.step ?? "",
                 archived: part.archived ?? false,
-                work_order: part.work_order ?? undefined,
-            });
+                work_order: part.work_order ?? null,
+            } as FormValues);
         }
     }, [mode, part, form]);
 
@@ -116,7 +120,7 @@ export default function PartFormPage() {
 
     const {data: steps} = useRetrieveSteps({
         part_type: selectedPartType,
-        process: selectedProcess || undefined,
+        ...(selectedProcess ? { process: selectedProcess } : {}),
     })
     
     // Auto-select process when editing and we have part data
@@ -141,7 +145,7 @@ export default function PartFormPage() {
     function onSubmit(values: FormValues) {
         if (mode === "edit" && partId) {
             updatePart.mutate({
-                id: partId, data: values,
+                id: partId, data: values as never,
             }, {
                 onSuccess: () => {
                     toast.success("Part updated successfully!");
@@ -151,7 +155,7 @@ export default function PartFormPage() {
                 },
             });
         } else {
-            createPart.mutate(values, {
+            createPart.mutate(values as never, {
                 onSuccess: () => {
                     toast.success("Part created successfully!");
                     form.reset(); // optionally reset the form
@@ -206,7 +210,7 @@ export default function PartFormPage() {
                         name="part_status"
                         render={({field}) => (<FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select the current status of the part"/>
@@ -478,7 +482,7 @@ export default function PartFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>

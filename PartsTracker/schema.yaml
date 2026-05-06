@@ -28409,7 +28409,12 @@ components:
       - usable_component_count
     CoreList:
       type: object
-      description: Lightweight core serializer for lists
+      description: |-
+        Lightweight core serializer for lists.
+
+        Includes the fields the cores list page renders as columns
+        (source/credit/component counts) so the table doesn't show
+        blank cells for fields the OpenAPI schema doesn't promise.
       properties:
         id:
           type: string
@@ -28445,14 +28450,33 @@ components:
         received_date:
           type: string
           format: date
+        source_type:
+          $ref: '#/components/schemas/SourceTypeEnum'
+        core_credit_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+          description: Credit value to be issued for this core
+        core_credit_issued:
+          type: boolean
+          description: Whether core credit has been issued to customer
+        harvested_component_count:
+          type: integer
+          readOnly: true
+        usable_component_count:
+          type: integer
+          readOnly: true
       required:
       - condition_grade
       - core_number
       - core_type
       - core_type_name
       - customer_name
+      - harvested_component_count
       - id
       - received_date
+      - usable_component_count
     CoreRequest:
       type: object
       description: Remanufacturing core serializer

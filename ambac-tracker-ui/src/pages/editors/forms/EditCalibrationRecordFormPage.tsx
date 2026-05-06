@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -47,10 +46,11 @@ import { useCreateCalibrationRecord } from "@/hooks/useCreateCalibrationRecord";
 import { useUpdateCalibrationRecord } from "@/hooks/useUpdateCalibrationRecord";
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
 import { schemas } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
 
 // Get enum options from schemas
-const RESULT_OPTIONS = schemas.ResultEnum.options;
+const RESULT_OPTIONS = schemas.CalibrationRecordResultEnum.options;
 const CALIBRATION_TYPE_OPTIONS = schemas.CalibrationTypeEnum.options;
 
 // Use generated schema
@@ -69,7 +69,21 @@ const formSchema = schemas.CalibrationRecordRequest.pick({
     notes: true,
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = Pick<
+    Schema<"CalibrationRecordRequest">,
+    | "equipment"
+    | "calibration_date"
+    | "due_date"
+    | "result"
+    | "calibration_type"
+    | "performed_by"
+    | "external_lab"
+    | "certificate_number"
+    | "standards_used"
+    | "as_found_in_tolerance"
+    | "adjustments_made"
+    | "notes"
+>;
 
 // Pre-compute required fields
 const required = {
@@ -97,9 +111,9 @@ export default function EditCalibrationRecordFormPage() {
     const equipmentList = equipmentData?.results ?? [];
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            equipment: undefined,
+        resolver: zodResolver(formSchema) as Resolver<FormValues>,
+        defaultValues: ({
+            equipment: "",
             calibration_date: "",
             due_date: "",
             result: "PASS",
@@ -111,14 +125,14 @@ export default function EditCalibrationRecordFormPage() {
             as_found_in_tolerance: null,
             adjustments_made: false,
             notes: "",
-        },
+        }) as FormValues,
     });
 
     // Reset form when record data loads
     useEffect(() => {
         if (mode === "edit" && record) {
             form.reset({
-                equipment: record.equipment ?? undefined,
+                equipment: record.equipment ?? "",
                 calibration_date: record.calibration_date ?? "",
                 due_date: record.due_date ?? "",
                 result: record.result ?? "PASS",
@@ -353,14 +367,14 @@ export default function EditCalibrationRecordFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Result</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select result" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {RESULT_OPTIONS.map((option) => (
+                                            {RESULT_OPTIONS.map((option: string) => (
                                                 <SelectItem key={option} value={option}>
                                                     {option.charAt(0).toUpperCase() + option.slice(1)}
                                                 </SelectItem>
@@ -379,7 +393,7 @@ export default function EditCalibrationRecordFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Calibration Type</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select type" />

@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import {FormProvider, useFieldArray, useForm} from "react-hook-form";
+import {FormProvider, useFieldArray, useForm, type Resolver} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {Button} from "@/components/ui/button";
@@ -60,7 +60,29 @@ const formSchema = schemas.ProcessWithStepsRequest.pick({
     steps: z.array(stepSchema).min(1),
 });
 
-export type FormSchema = z.infer<typeof formSchema>;
+// Explicit form values type. We don't use `z.infer<typeof formSchema>` because
+// zodios passthrough schemas widen to `objectOutputType<...>` which doesn't
+// unify cleanly with react-hook-form's strict generics under
+// `exactOptionalPropertyTypes`.
+type Step = {
+    // Existing step ID (string UUID from API) or temporary negative number for new steps.
+    id?: string | number;
+    name: string;
+    description: string;
+    expected_duration?: number | null;
+    sampling_rules?: { rule_type: string; value?: string | number | null; order?: number }[];
+    fallback_rules?: { rule_type: string; value?: string | number | null; order?: number }[];
+    fallback_threshold?: number | null;
+    fallback_duration?: number | null;
+};
+export type FormSchema = {
+    name: string;
+    is_remanufactured?: boolean;
+    is_batch_process?: boolean;
+    part_type: string;
+    num_steps: number;
+    steps: Step[];
+};
 
 const required = {
     name: isFieldRequired(formSchema.shape.name),
@@ -81,21 +103,22 @@ export default function ProcessFormPage() {
     const debouncedSearch = useDebounce(partTypeSearch, 300);
     const {data: partTypes} = useRetrievePartTypes({search: debouncedSearch});
 
-    const form = useForm<FormSchema>({
-        resolver: zodResolver(formSchema), defaultValues: {
+    const form = useForm<FormSchema, any, FormSchema>({
+        resolver: zodResolver(formSchema) as Resolver<FormSchema, any, FormSchema>,
+        defaultValues: {
             name: "",
             is_remanufactured: false,
-            part_type: undefined,
+            part_type: "",
             num_steps: 5,
             is_batch_process: false,
             steps: Array.from({length: 5}, () => ({
-                name: "", 
-                description: "", 
-                expected_duration: undefined,
+                name: "",
+                description: "",
+                expected_duration: null,
                 sampling_rules: [],
                 fallback_rules: [],
-                fallback_threshold: undefined,
-                fallback_duration: undefined,
+                fallback_threshold: null,
+                fallback_duration: null,
             })),
         },
     });
@@ -178,7 +201,7 @@ export default function ProcessFormPage() {
             }
 
             form.reset({...resetData, steps: []});  // clear steps first
-            replace(formattedSteps);                  // then replace safely
+            replace(formattedSteps as Step[]);        // then replace safely
         }
     }, [mode, processId, isLoading, data, form, replace]);
 
@@ -259,7 +282,7 @@ export default function ProcessFormPage() {
                         render={({field}) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange}/>
+                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}/>
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
                                     <FormLabel>Remanufacturing Process</FormLabel>
@@ -342,7 +365,7 @@ export default function ProcessFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>

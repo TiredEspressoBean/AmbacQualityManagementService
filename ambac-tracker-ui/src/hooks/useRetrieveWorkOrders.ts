@@ -1,8 +1,10 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type WorkOrdersListQueries = Parameters<typeof api.api_WorkOrders_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_WorkOrders_list>[0];
+// Strict types pulled from the OpenAPI spec (no zod passthrough leakage).
+type WorkOrdersListQueries = NonNullable<operations["api_WorkOrders_list"]["parameters"]["query"]>;
+type WorkOrdersListResponse = components["schemas"]["PaginatedWorkOrderListList"];
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
@@ -13,16 +15,16 @@ export function useRetrieveWorkOrders(
   queries?: WorkOrdersListQueries,
   config?: ListHookConfig,
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_WorkOrders_list>>,
-      Error
-    >,
+    UseQueryOptions<WorkOrdersListResponse, Error>,
     "queryKey" | "queryFn"
   >
 ) {
-  return useQuery({
+  return useQuery<WorkOrdersListResponse, Error>({
     queryKey: ["work-order", queries, config],
-    queryFn: () => api.api_WorkOrders_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_WorkOrders_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<WorkOrdersListResponse>,
     ...options,
   });
 }

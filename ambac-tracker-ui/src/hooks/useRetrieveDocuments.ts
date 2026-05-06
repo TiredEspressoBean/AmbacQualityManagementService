@@ -1,8 +1,9 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type DocumentsListQueries = Parameters<typeof api.api_Documents_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_Documents_list>[0];
+type DocumentsListQueries = NonNullable<operations["api_Documents_list"]["parameters"]["query"]>;
+type DocumentsListResponse = components["schemas"]["PaginatedDocumentsList"];
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
@@ -13,16 +14,16 @@ export function useRetrieveDocuments(
   queries?: DocumentsListQueries,
   config?: ListHookConfig,
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_Documents_list>>,
-      Error
-    >,
+    UseQueryOptions<DocumentsListResponse, Error>,
     "queryKey" | "queryFn"
   >
 ) {
-  return useQuery({
+  return useQuery<DocumentsListResponse, Error>({
     queryKey: ["document", queries, config],
-    queryFn: () => api.api_Documents_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_Documents_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<DocumentsListResponse>,
     ...options,
   });
 }

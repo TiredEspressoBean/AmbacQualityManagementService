@@ -1,9 +1,12 @@
 import {useRetrievePartTypes} from "@/hooks/useRetrievePartTypes";
 import { useNavigate } from "@tanstack/react-router";
-import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
+import {ModelEditorPage, createColumnHelper} from "@/pages/editors/ModelEditorPage.tsx";
 import {EditPartTypeActionsCell} from "@/components/edit-part-type-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"PartTypes">>();
 
 // Default params that match what usePartTypesList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -16,7 +19,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchPartTypesEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["part-type", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_PartTypes_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_PartTypes_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "PartTypes", "PartTypes"],
@@ -57,12 +60,12 @@ export function PartTypesEditorPage() {
             showDetailsLink={true}
             useList={usePartTypesList}
             columns={[
-                { header: "Name", renderCell: (p: any) => p.name, priority: 1 },
-                { header: "ID prefix", renderCell: (p: any) => p.ID_prefix, priority: 1 },
-                { header: "Version", renderCell: (p: any) => p.version || "-", priority: 2 },
-                { header: "Updated At", renderCell: (p: any) => new Date(p.updated_at).toLocaleString(), priority: 4 },
-                { header: "Created At", renderCell: (p: any) => new Date(p.created_at).toLocaleString(), priority: 4 },
-                { header: "Previous Version", renderCell: (p: any) => p.previous_version_name || "-", priority: 5 },
+                col({ header: "Name", renderCell: (p) => p.name, priority: 1 }),
+                col({ header: "ID prefix", renderCell: (p) => p.ID_prefix, priority: 1 }),
+                col({ header: "Version", renderCell: (p) => p.version || "-", priority: 2 }),
+                col({ header: "Updated At", renderCell: (p) => new Date(p.updated_at).toLocaleString(), priority: 4 }),
+                col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString(), priority: 4 }),
+                col({ header: "Previous Version", renderCell: (p) => p.previous_version_name || "-", priority: 5 }),
             ]}
             renderActions={(partType) => <EditPartTypeActionsCell partTypeId={partType.id} />}
             onCreate={() => navigate({ to: "/PartTypeForm/create" })}

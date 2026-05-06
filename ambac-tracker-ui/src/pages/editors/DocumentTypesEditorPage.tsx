@@ -1,10 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
 import { EditDocumentTypeActionsCell } from "@/components/edit-document-type-action-cell";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"DocumentType">>();
 
 // Default params that match what useDocumentTypesList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -17,7 +20,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchDocumentTypesEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["document-type", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_DocumentTypes_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_DocumentTypes_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "DocumentTypes", "DocumentTypes"],
@@ -62,16 +65,16 @@ export function DocumentTypesEditorPage() {
                 { label: "Code (Z-A)", value: "-code" },
             ]}
             columns={[
-                { header: "Name", renderCell: (item: any) => item.name },
-                { header: "Code", renderCell: (item: any) => item.code },
-                {
+                col({ header: "Name", renderCell: (item) => item.name }),
+                col({ header: "Code", renderCell: (item) => item.code }),
+                col({
                     header: "Requires Approval",
-                    renderCell: (item: any) => (
+                    renderCell: (item) => (
                         <Badge variant={item.requires_approval ? "default" : "secondary"}>
                             {item.requires_approval ? "Yes" : "No"}
                         </Badge>
                     ),
-                },
+                }),
             ]}
             renderActions={(item) => <EditDocumentTypeActionsCell documentTypeId={item.id} />}
             onCreate={() => navigate({ to: "/DocumentTypeForm/create" })}

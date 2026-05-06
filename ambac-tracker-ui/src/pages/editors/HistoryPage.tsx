@@ -1,5 +1,5 @@
 import { useRetrieveAuditLogEntries } from "@/hooks/useRetrieveAuditLogEntries";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"AuditLog">>();
 
 // Default params for prefetching
 const DEFAULT_LIST_PARAMS = {
@@ -20,7 +23,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchAuditLogEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["logs", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_auditlog_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_auditlog_list({ queries: DEFAULT_LIST_PARAMS }),
     });
 };
 
@@ -38,13 +41,10 @@ function useAuditLogList({
     search?: string;
     filters?: Record<string, string>;
 }) {
-    return useRetrieveAuditLogEntries({
-        offset,
-        limit,
-        ordering,
-        search,
-        ...filters,
-    });
+    const queries: Parameters<typeof useRetrieveAuditLogEntries>[0] = { offset, limit, ...filters };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveAuditLogEntries(queries);
 }
 
 // Map content_type_name to route model names
@@ -157,10 +157,10 @@ export function AuditLogViewerPage() {
                 { label: "User (Z-A)", value: "-actor" },
             ]}
             columns={[
-                {
+                col({
                     header: "Time",
                     priority: 1,
-                    renderCell: (entry: any) => (
+                    renderCell: (entry) => (
                         <div className="flex flex-col">
                             <span className="text-sm">
                                 {formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}
@@ -170,34 +170,34 @@ export function AuditLogViewerPage() {
                             </span>
                         </div>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "User",
                     priority: 1,
-                    renderCell: (entry: any) => (
+                    renderCell: (entry) => (
                         <span className="font-medium">
                             {entry.actor_info?.username || entry.actor || "System"}
                         </span>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Action",
                     priority: 1,
-                    renderCell: (entry: any) => <ActionBadge action={entry.action} />,
-                },
-                {
+                    renderCell: (entry) => <ActionBadge action={entry.action} />,
+                }),
+                col({
                     header: "Object",
                     priority: 2,
-                    renderCell: (entry: any) => <ObjectCell entry={entry} />,
-                },
-                {
+                    renderCell: (entry) => <ObjectCell entry={entry} />,
+                }),
+                col({
                     header: "Changes",
                     priority: 3,
-                    renderCell: (entry: any) =>
+                    renderCell: (entry) =>
                         entry.changes && typeof entry.changes === "object"
-                            ? renderChanges(entry.changes, entry.action)
+                            ? renderChanges(entry.changes as Record<string, unknown>, entry.action)
                             : <span className="text-muted-foreground">—</span>,
-                },
+                }),
             ]}
         />
     );

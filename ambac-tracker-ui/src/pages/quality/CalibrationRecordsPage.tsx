@@ -1,8 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCalibrationRecords } from "@/hooks/useCalibrationRecords";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditCalibrationRecordActionCell } from "@/components/edit-calibration-record-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"CalibrationRecord">>();
 
 function useCalibrationRecordsList({
     offset,
@@ -15,14 +18,10 @@ function useCalibrationRecordsList({
     ordering?: string;
     search?: string;
 }) {
-    return useCalibrationRecords({
-        queries: {
-            offset,
-            limit,
-            ordering,
-            search,
-        },
-    });
+    const queries: Parameters<typeof useCalibrationRecords>[0] = { offset, limit };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useCalibrationRecords(queries);
 }
 
 export function CalibrationRecordsPage() {
@@ -42,9 +41,9 @@ export function CalibrationRecordsPage() {
                 { label: "Created (Oldest)", value: "created_at" },
             ]}
             columns={[
-                {
+                col({
                     header: "Equipment",
-                    renderCell: (record: any) => (
+                    renderCell: (record) => (
                         <div>
                             <div className="font-medium">{record.equipment_info?.name || "—"}</div>
                             {record.equipment_info?.equipment_type && (
@@ -54,33 +53,33 @@ export function CalibrationRecordsPage() {
                             )}
                         </div>
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Result",
-                    renderCell: (record: any) => (
+                    renderCell: (record) => (
                         <StatusBadge
                             status={record.result?.toUpperCase() || 'PASS'}
                             label={record.result_display}
                         />
                     ),
-                },
-                {
+                }),
+                col({
                     header: "Status",
-                    renderCell: (record: any) => {
+                    renderCell: (record) => {
                         const status = record.status?.toUpperCase() || 'CURRENT';
                         return <StatusBadge status={status} />;
                     },
-                },
-                {
+                }),
+                col({
                     header: "Calibration Date",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.calibration_date
                             ? new Date(record.calibration_date).toLocaleDateString()
                             : "—",
-                },
-                {
+                }),
+                col({
                     header: "Due Date",
-                    renderCell: (record: any) => {
+                    renderCell: (record) => {
                         if (!record.due_date) return <span className="text-muted-foreground">—</span>;
                         const isOverdue = record.status === 'OVERDUE';
                         return (
@@ -90,16 +89,16 @@ export function CalibrationRecordsPage() {
                             </span>
                         );
                     },
-                },
-                {
+                }),
+                col({
                     header: "Type",
-                    renderCell: (record: any) => record.calibration_type_display || record.calibration_type || "—",
-                },
-                {
+                    renderCell: (record) => record.calibration_type_display || record.calibration_type || "—",
+                }),
+                col({
                     header: "Certificate #",
-                    renderCell: (record: any) =>
+                    renderCell: (record) =>
                         record.certificate_number || <span className="text-muted-foreground">—</span>,
-                },
+                }),
             ]}
             renderActions={(record) => <EditCalibrationRecordActionCell recordId={record.id} />}
             onCreate={() => navigate({ to: "/CalibrationRecordForm/new" })}

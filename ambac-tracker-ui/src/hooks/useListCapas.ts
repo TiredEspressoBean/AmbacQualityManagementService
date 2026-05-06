@@ -1,10 +1,10 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type CapasListQueries = Parameters<typeof api.api_CAPAs_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_CAPAs_list>[0];
+type CapasListQueries = NonNullable<operations["api_CAPAs_list"]["parameters"]["query"]>;
+type CapasListResponse = components["schemas"]["PaginatedCAPAList"];
 
-// Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
   headers?: Record<string, string>;
 };
@@ -12,17 +12,14 @@ type ListHookConfig = {
 export function useListCapas(
   queries?: CapasListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_CAPAs_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<CapasListResponse, Error>, "queryKey" | "queryFn">
 ) {
-  return useQuery({
+  return useQuery<CapasListResponse, Error>({
     queryKey: ["capas", queries, config],
-    queryFn: () => api.api_CAPAs_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_CAPAs_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<CapasListResponse>,
     ...options,
   });
 }

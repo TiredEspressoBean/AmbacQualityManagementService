@@ -1,10 +1,16 @@
 import {useRetrieveProcesses} from "@/hooks/useRetrieveProcesses";
 import { useNavigate } from "@tanstack/react-router";
-import {ModelEditorPage} from "@/pages/editors/ModelEditorPage.tsx";
+import {ModelEditorPage, createColumnHelper} from "@/pages/editors/ModelEditorPage.tsx";
 import {EditProcessActionsCell} from "@/components/edit-process-action-cell.tsx";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+import type { operations } from "@/lib/api/generated-types";
+
+const col = createColumnHelper<Schema<"Processes">>();
+
+type ProcessesListQueries = NonNullable<operations["api_Processes_list"]["parameters"]["query"]>;
 
 // Default params that match what useProcessList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -17,7 +23,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchProcessEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["process", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Processes_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Processes_list({ queries: DEFAULT_LIST_PARAMS } as never),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "Processes", "Processes"],
@@ -52,14 +58,18 @@ function useProcessList({
     search?: string;
     filters?: Record<string, string>;
 }) {
-
-    return useRetrieveProcesses({
+    // Build the queries object incrementally so optional fields are simply
+    // absent rather than `key: undefined` — `exactOptionalPropertyTypes: true`
+    // rejects the latter when assigning into the strict openapi-typescript
+    // queries shape.
+    const queries: ProcessesListQueries = {
         offset,
         limit,
-        ordering,
-        search,
         ...filters,
-    })
+    };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveProcesses(queries);
 }
 
 export function ProcessEditorPage() {
@@ -71,11 +81,11 @@ export function ProcessEditorPage() {
             showDetailsLink={true}
             useList={useProcessList}
             columns={[
-                { header: "Name", renderCell: (p: any) => p.name, priority: 1 },
-                { header: "Status", renderCell: (p: any) => <ProcessStatusBadge status={p.status || 'DRAFT'} />, priority: 1 },
-                { header: "Updated At", renderCell: (p: any) => new Date(p.updated_at).toLocaleString(), priority: 4 },
-                { header: "Number of Steps", renderCell: (p: any) => p.num_steps, priority: 2 },
-                { header: "Reman Process", renderCell: (p: any) => p.is_remanufactured ? "Yes" : "No", priority: 3 },
+                col({ header: "Name", renderCell: (p) => p.name, priority: 1 }),
+                col({ header: "Status", renderCell: (p) => <ProcessStatusBadge status={p.status || 'DRAFT'} />, priority: 1 }),
+                col({ header: "Updated At", renderCell: (p) => new Date(p.updated_at).toLocaleString(), priority: 4 }),
+                col({ header: "Number of Steps", renderCell: (p) => p.num_steps, priority: 2 }),
+                col({ header: "Reman Process", renderCell: (p) => p.is_remanufactured ? "Yes" : "No", priority: 3 }),
             ]}
             renderActions={(process) => <EditProcessActionsCell processId={process.id} />}
             onCreate={() => navigate({ to: "/ProcessForm/create" })}

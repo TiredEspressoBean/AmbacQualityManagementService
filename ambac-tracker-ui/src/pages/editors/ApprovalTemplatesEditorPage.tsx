@@ -1,10 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { useRetrieveApprovalTemplates } from "@/hooks/useRetrieveApprovalTemplates";
 import { EditApprovalTemplateActionsCell } from "@/components/edit-approval-template-action-cell";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"ApprovalTemplate">>();
 
 // Default params that match what useApprovalTemplatesList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -17,7 +20,7 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchApprovalTemplatesEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["approval-template", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_ApprovalTemplates_list(DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_ApprovalTemplates_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "ApprovalTemplates", "ApprovalTemplates"],
@@ -38,13 +41,14 @@ function useApprovalTemplatesList({
     search?: string;
     filters?: Record<string, string>;
 }) {
-    return useRetrieveApprovalTemplates({
+    const queries: Parameters<typeof useRetrieveApprovalTemplates>[0] = {
         offset,
         limit,
-        ordering,
-        search,
         ...filters,
-    });
+    };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveApprovalTemplates(queries);
 }
 
 export function ApprovalTemplatesEditorPage() {
@@ -62,18 +66,18 @@ export function ApprovalTemplatesEditorPage() {
                 { label: "Type (Z-A)", value: "-approval_type" },
             ]}
             columns={[
-                { header: "Name", renderCell: (item: any) => item.template_name },
-                { header: "Type", renderCell: (item: any) => item.approval_type_display || item.approval_type },
-                { header: "Flow", renderCell: (item: any) => item.approval_flow_type_display || item.approval_flow_type },
-                { header: "Due Days", renderCell: (item: any) => item.default_due_days },
-                {
+                col({ header: "Name", renderCell: (item) => item.template_name }),
+                col({ header: "Type", renderCell: (item) => item.approval_type_display || item.approval_type }),
+                col({ header: "Flow", renderCell: (item) => item.approval_flow_type_display || item.approval_flow_type }),
+                col({ header: "Due Days", renderCell: (item) => item.default_due_days }),
+                col({
                     header: "Status",
-                    renderCell: (item: any) => (
+                    renderCell: (item) => (
                         <Badge variant={item.deactivated_at ? "secondary" : "default"}>
                             {item.deactivated_at ? "Inactive" : "Active"}
                         </Badge>
                     ),
-                },
+                }),
             ]}
             renderActions={(item) => <EditApprovalTemplateActionsCell templateId={item.id} />}
             onCreate={() => navigate({ to: "/ApprovalTemplateForm/create" })}

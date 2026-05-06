@@ -1,9 +1,12 @@
 import { useRetrieveSamplingRulesSets } from "@/hooks/useRetrieveSamplingRulesSets";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditRuleTypeActionsCell } from "@/components/edit-sample-rule-types-action-cell.tsx";
 import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
+import type { Schema } from "@/lib/api/types";
+
+const col = createColumnHelper<Schema<"SamplingRuleSet">>();
 
 // Default params that match what useSamplingRuleList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -16,11 +19,11 @@ const DEFAULT_LIST_PARAMS = {
 export const prefetchSamplingRuleSetsEditor = (queryClient: QueryClient) => {
     queryClient.prefetchQuery({
         queryKey: ["sampling-rules-sets", DEFAULT_LIST_PARAMS],
-        queryFn: () => api["api_Sampling-rule-sets_list"](DEFAULT_LIST_PARAMS),
+        queryFn: () => api.api_Sampling_rule_sets_list({ queries: DEFAULT_LIST_PARAMS }),
     });
     queryClient.prefetchQuery({
         queryKey: ["metadata", "SamplingRuleSets", "Sampling-rule-sets"],
-        queryFn: () => api["api_Sampling-rule-sets_metadata_retrieve"](),
+        queryFn: () => api.api_Sampling_rule_sets_metadata_retrieve(),
     });
 };
 
@@ -38,13 +41,14 @@ function useSamplingRuleList({
     search?: string;
     filters?: Record<string, string>;
 }) {
-    return useRetrieveSamplingRulesSets({
+    const queries: Parameters<typeof useRetrieveSamplingRulesSets>[0] = {
         offset,
         limit,
-        ordering,
-        search,
         ...filters,
-    });
+    };
+    if (ordering !== undefined) queries.ordering = ordering;
+    if (search !== undefined) queries.search = search;
+    return useRetrieveSamplingRulesSets(queries);
 }
 
 export function SamplingRuleSetsEditorPage() {
@@ -57,12 +61,12 @@ export function SamplingRuleSetsEditorPage() {
             showDetailsLink={true}
             useList={useSamplingRuleList}
             columns={[
-                { header: "Rule Set Name", renderCell: (ruleSet: any) => ruleSet.name || ruleSet.code || "-", priority: 1 },
-                { header: "Part Type", renderCell: (ruleSet: any) => ruleSet.part_type_name ?? "-", priority: 2 },
-                { header: "Process", renderCell: (ruleSet: any) => ruleSet.process_name ?? "-", priority: 3 },
-                { header: "Active", renderCell: (ruleSet: any) => ruleSet.active ? "Yes" : "No", priority: 1 },
-                { header: "Version", renderCell: (ruleSet: any) => ruleSet.version ?? "-", priority: 5 },
-                { header: "Created At", renderCell: (ruleSet: any) => new Date(ruleSet.created_at).toLocaleString(), priority: 4 },
+                col({ header: "Rule Set Name", renderCell: (ruleSet) => ruleSet.name || ruleSet.code || "-", priority: 1 }),
+                col({ header: "Part Type", renderCell: (ruleSet) => ruleSet.part_type_name ?? "-", priority: 2 }),
+                col({ header: "Process", renderCell: (ruleSet) => ruleSet.process_name ?? "-", priority: 3 }),
+                col({ header: "Active", renderCell: (ruleSet) => ruleSet.active ? "Yes" : "No", priority: 1 }),
+                col({ header: "Version", renderCell: (ruleSet) => ruleSet.version ?? "-", priority: 5 }),
+                col({ header: "Created At", renderCell: (ruleSet) => new Date(ruleSet.created_at).toLocaleString(), priority: 4 }),
             ]}
             renderActions={(ruleSet) => <EditRuleTypeActionsCell ruleSetId={ruleSet.id} />} // temporary until a dedicated component is created
             onCreate={() => navigate({ to: "/SamplingRuleSetForm/create" })}

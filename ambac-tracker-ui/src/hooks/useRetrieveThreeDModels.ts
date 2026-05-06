@@ -1,8 +1,9 @@
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
+import type { components, operations } from "@/lib/api/generated-types";
 
-// Extract queries type from Zodios endpoint
-type ThreeDModelsListQueries = Parameters<typeof api.api_ThreeDModels_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_ThreeDModels_list>[0];
+type ThreeDModelsListQueries = NonNullable<operations["api_ThreeDModels_list"]["parameters"]["query"]>;
+type ThreeDModelsListResponse = components["schemas"]["PaginatedThreeDModelList"];
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {
@@ -13,16 +14,16 @@ export function useRetrieveThreeDModels(
   queries?: ThreeDModelsListQueries,
   config?: ListHookConfig,
   options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_ThreeDModels_list>>,
-      Error
-    >,
+    UseQueryOptions<ThreeDModelsListResponse, Error>,
     "queryKey" | "queryFn"
   >
 ) {
-  return useQuery({
+  return useQuery<ThreeDModelsListResponse, Error>({
     queryKey: ["threeDModel", queries, config],
-    queryFn: () => api.api_ThreeDModels_list(queries || config ? { queries, ...config } : undefined),
+    queryFn: () =>
+      api.api_ThreeDModels_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+      ) as Promise<ThreeDModelsListResponse>,
     ...options,
   });
 }
