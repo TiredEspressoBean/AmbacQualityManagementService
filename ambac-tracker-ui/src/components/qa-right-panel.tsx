@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMemo, memo } from "react";
 
 type WorkOrder = z.infer<typeof schemas.WorkOrder>;
-type Part = z.infer<typeof schemas.Part>;
+type Part = z.infer<typeof schemas.Parts>;
 
 type Props = {
     workOrder: WorkOrder;

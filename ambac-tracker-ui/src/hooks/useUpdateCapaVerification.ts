@@ -2,7 +2,7 @@ import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
 
-type UpdateCapaVerificationInput = Parameters<typeof api.api_CapaVerifications_partial_update>[1];
+type UpdateCapaVerificationInput = Parameters<typeof api.api_CapaVerifications_partial_update>[0];
 type UpdateCapaVerificationResponse = Awaited<ReturnType<typeof api.api_CapaVerifications_partial_update>>;
 
 export const useUpdateCapaVerification = () => {
@@ -10,7 +10,8 @@ export const useUpdateCapaVerification = () => {
 
     return useMutation<UpdateCapaVerificationResponse, unknown, { id: string; data: UpdateCapaVerificationInput }>({
         mutationFn: ({ id, data }) =>
-            api.api_CapaVerifications_partial_update({ params: { id } }, data, {
+            api.api_CapaVerifications_partial_update(data, {
+                params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

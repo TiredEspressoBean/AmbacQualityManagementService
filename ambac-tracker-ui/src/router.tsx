@@ -1,4 +1,4 @@
-import {createRootRoute, createRoute, createRouter, lazyRouteComponent, ErrorComponent} from "@tanstack/react-router"
+import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent} from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 
 import Layout from "@/components/layout";
@@ -50,7 +50,7 @@ export interface RouterContext {
     queryClient: QueryClient
 }
 
-export const rootRoute = createRootRoute<RouterContext>({
+export const rootRoute = createRootRouteWithContext<RouterContext>()({
     component: () => <Layout/>
 });
 

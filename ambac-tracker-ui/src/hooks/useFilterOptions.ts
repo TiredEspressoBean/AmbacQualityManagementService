@@ -19,7 +19,7 @@ type UseFilterOptionsParams = {
 };
 
 const fetchFilterOptions = (days: number) =>
-    api.api_dashboard_filter_options_retrieve({ days }) as Promise<FilterOptionsResponse>;
+    api.api_dashboard_filter_options_retrieve({ queries: { days } }) as Promise<FilterOptionsResponse>;
 
 export const useFilterOptions = ({ days = 30, enabled = true }: UseFilterOptionsParams = {}) => {
     return useQuery<FilterOptionsResponse>({

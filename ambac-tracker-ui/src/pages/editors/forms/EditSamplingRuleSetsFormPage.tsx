@@ -7,7 +7,7 @@ import { useParams } from "@tanstack/react-router"
 
 import {useEffect, useState} from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 
@@ -60,12 +60,15 @@ export default function SamplingRuleSetsFormPage() {
     const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null)
 
     const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
-    const { data: processes } = useRetrieveProcesses({ search: processSearch, part_type: selectedPartTypeId ?? undefined })
+    const { data: processes } = useRetrieveProcesses({
+        search: processSearch,
+        ...(selectedPartTypeId !== null ? { part_type: selectedPartTypeId } : {}),
+    })
     // Steps filter: use process_memberships__process (junction table) and part_type
     const { data: steps } = useRetrieveSteps({
         search: stepSearch,
-        process_memberships__process: selectedProcessId ?? undefined,
-        part_type: selectedPartTypeId ?? undefined,
+        ...(selectedProcessId !== null ? { process_memberships__process: selectedProcessId } : {}),
+        ...(selectedPartTypeId !== null ? { part_type: selectedPartTypeId } : {}),
     })
 
     const params = useParams({ strict: false })
@@ -80,8 +83,8 @@ export default function SamplingRuleSetsFormPage() {
     const createRuleSet = useCreateSamplingRuleSet()
     const updateRuleSet = useUpdateSamplingRuleSet()
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
     })
 
     useEffect(() => {
@@ -90,21 +93,21 @@ export default function SamplingRuleSetsFormPage() {
                 name: ruleSet.name ?? "",
                 active: ruleSet.active ?? true,
                 part_type: ruleSet.part_type,
-                process: ruleSet.process,
+                process: ruleSet.process ?? "",
                 step: ruleSet.step,
-            })
+            } as FormValues)
             setSelectedPartTypeId(ruleSet.part_type)
-            setSelectedProcessId(ruleSet.process)
+            setSelectedProcessId(ruleSet.process ?? null)
         }
     }, [mode, ruleSet, form])
 
     async function onSubmit(values: FormValues) {
         try {
             if (mode === "edit" && ruleSetId) {
-                await updateRuleSet.mutateAsync({ id: ruleSetId, data: values })
+                await updateRuleSet.mutateAsync({ id: ruleSetId, data: values } as never)
                 toast.success("Rule set updated")
             } else {
-                await createRuleSet.mutateAsync(values)
+                await createRuleSet.mutateAsync(values as never)
                 toast.success("Rule set created")
                 form.reset() // optional: reset after create
             }
@@ -147,7 +150,7 @@ export default function SamplingRuleSetsFormPage() {
                         <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                             <FormControl>
                                 <Checkbox
-                                    checked={field.value}
+                                    checked={field.value ?? false}
                                     onCheckedChange={field.onChange}
                                 />
                             </FormControl>
@@ -191,8 +194,8 @@ export default function SamplingRuleSetsFormPage() {
                                                             value={`${pt.name}__${pt.id}`}
                                                             onSelect={() => {
                                                                 form.setValue("part_type", pt.id)
-                                                                form.setValue("process", undefined)
-                                                                form.setValue("step", undefined)
+                                                                form.setValue("process", "")
+                                                                form.setValue("step", "")
                                                                 setSelectedPartTypeId(pt.id)
                                                                 setSelectedProcessId(null)
                                                                 setPartTypeSearch("")
@@ -246,7 +249,7 @@ export default function SamplingRuleSetsFormPage() {
                                                             value={`${p.name}__${p.id}`}
                                                             onSelect={() => {
                                                                 form.setValue("process", p.id)
-                                                                form.setValue("step", undefined)
+                                                                form.setValue("step", "")
                                                                 setSelectedProcessId(p.id)
                                                                 setProcessSearch("")
                                                             }}

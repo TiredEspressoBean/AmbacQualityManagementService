@@ -100,9 +100,8 @@ export default function OrderFormPage() {
     });
 
     const { data: milestones = [] } = useListMilestones();
-    const { data: customers = [] } = useRetrieveCustomers({
-        search: customerSearch,
-    });
+    // NOTE: api_Customers_list does not support search; all customers loaded, filtered client-side
+    const { data: customers = [] } = useRetrieveCustomers({});
     const { data: companies } = useRetrieveCompanies({
         search: companySearch,
     });
@@ -114,10 +113,10 @@ export default function OrderFormPage() {
     const addNoteMutation = useMutation({
         mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
             if (!orderId) throw new Error("Order ID required");
-            return await api.api_Orders_add_note_create({
-                params: { id: orderId },
-                body: { message, visibility } as any,
-            });
+            return await api.api_Orders_add_note_create(
+                { message, visibility } as any,
+                { params: { id: orderId } }
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["order", orderId] });

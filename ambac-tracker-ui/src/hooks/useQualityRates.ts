@@ -16,7 +16,7 @@ type UseQualityRatesParams = {
 };
 
 const fetchQualityRates = (days: number) =>
-    api.api_dashboard_quality_rates_retrieve({ days }) as Promise<QualityRatesResponse>;
+    api.api_dashboard_quality_rates_retrieve({ queries: { days } }) as Promise<QualityRatesResponse>;
 
 export const useQualityRates = ({ days = 30, enabled = true }: UseQualityRatesParams = {}) => {
     const queryClient = useQueryClient();

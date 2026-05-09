@@ -20,14 +20,16 @@ export function useApprovalRequests(filters: ApprovalRequestsFilters = {}) {
         queryKey: ["approvals", "list", filters],
         queryFn: async () => {
             const response = await api.api_ApprovalRequests_list({
-                approval_type: filters.approval_type,
-                status: filters.status,
-                requested_by: filters.requested_by,
-                overdue: filters.overdue,
-                search: filters.search,
-                ordering: filters.ordering ?? "-requested_at",
-                limit: filters.limit ?? 50,
-                offset: filters.offset ?? 0,
+                queries: {
+                    approval_type: filters.approval_type,
+                    status: filters.status,
+                    requested_by: filters.requested_by,
+                    overdue: filters.overdue,
+                    search: filters.search,
+                    ordering: filters.ordering ?? "-requested_at",
+                    limit: filters.limit ?? 50,
+                    offset: filters.offset ?? 0,
+                },
             });
             return response;
         },
@@ -41,9 +43,11 @@ export function useMySubmittedRequests(userId?: number) {
         queryFn: async () => {
             if (!userId) return { results: [], count: 0 };
             const response = await api.api_ApprovalRequests_list({
-                requested_by: userId,
-                ordering: "-requested_at",
-                limit: 50,
+                queries: {
+                    requested_by: userId,
+                    ordering: "-requested_at",
+                    limit: 50,
+                },
             });
             return response;
         },

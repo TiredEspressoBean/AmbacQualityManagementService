@@ -2,7 +2,7 @@ import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
 
-type CompleteCapaTaskInput = Parameters<typeof api.api_CapaTasks_complete_create>[1];
+type CompleteCapaTaskInput = Parameters<typeof api.api_CapaTasks_complete_create>[0];
 type CompleteCapaTaskResponse = Awaited<ReturnType<typeof api.api_CapaTasks_complete_create>>;
 
 export const useCompleteCapaTask = () => {
@@ -10,7 +10,8 @@ export const useCompleteCapaTask = () => {
 
     return useMutation<CompleteCapaTaskResponse, unknown, { id: string; data: CompleteCapaTaskInput }>({
         mutationFn: ({ id, data }) =>
-            api.api_CapaTasks_complete_create({ params: { id } }, data, {
+            api.api_CapaTasks_complete_create(data, {
+                params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

@@ -77,7 +77,7 @@ export class EphemeralAttachmentAdapter implements AttachmentAdapter {
         type: "document",
         name: attachment.name,
         contentType: attachment.contentType,
-        content: [{ type: "file", name: attachment.name, mimeType: attachment.contentType, data: base64 }],
+        content: [{ type: "file", filename: attachment.name, mimeType: attachment.contentType, data: base64 }],
         status: { type: "complete" },
       };
     }

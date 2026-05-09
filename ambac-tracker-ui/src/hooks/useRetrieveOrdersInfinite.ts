@@ -5,7 +5,7 @@ export function useRetrieveOrdersInfinite(search: string) {
     return useInfiniteQuery({
         queryKey: ["order", search],
         queryFn: ({ pageParam = 0 }) =>
-            api.api_Orders_list({ search, offset: pageParam }),
+            api.api_Orders_list({ queries: { search, offset: pageParam as number } }),
         initialPageParam: 0,
         getNextPageParam: (lastPage, allPages) =>
             (lastPage.next ?? null) ? allPages.length * 20 : undefined,

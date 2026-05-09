@@ -82,9 +82,9 @@ export function DocumentDetailPage() {
                             <h1 className="text-2xl font-bold">{document.file_name}</h1>
                         </div>
                         <div className="flex items-center gap-2">
-                            {document.ID_prefix && (
+                            {document.document_type_info?.code != null && (
                                 <Badge variant="outline" className="font-mono">
-                                    {document.ID_prefix}
+                                    {String(document.document_type_info.code)}
                                 </Badge>
                             )}
                             <Badge variant="outline">
@@ -96,7 +96,7 @@ export function DocumentDetailPage() {
                             />
                             <StatusBadge
                                 status={document.classification?.toUpperCase()}
-                                label={document.classification}
+                                label={document.classification ?? undefined}
                             />
                         </div>
                     </div>

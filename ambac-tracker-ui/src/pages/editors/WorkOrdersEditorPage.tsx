@@ -9,7 +9,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
 
-const col = createColumnHelper<Schema<"WorkOrder">>();
+const col = createColumnHelper<Schema<"WorkOrderList">>();
 
 type WorkOrdersListQueries = NonNullable<operations["api_WorkOrders_list"]["parameters"]["query"]>;
 
@@ -81,12 +81,12 @@ export function WorkOrdersEditorPage() {
                 col({
                     header: "Parts",
                     priority: 2,
-                    renderCell: (workOrder) => workOrder.parts_summary?.total ?? workOrder.parts_count ?? 0,
+                    renderCell: (workOrder) => workOrder.parts_count ?? 0,
                 }),
                 col({
                     header: "Process",
                     priority: 3,
-                    renderCell: (workOrder) => workOrder.process_info?.name || "—",
+                    renderCell: (workOrder) => (workOrder.process_info?.name as string | undefined) || "—",
                 }),
                 col({
                     header: "Expected",
@@ -107,7 +107,7 @@ export function WorkOrdersEditorPage() {
                 col({
                     header: "Related Order",
                     priority: 6,
-                    renderCell: (workOrder) => workOrder.related_order_info?.name || "—",
+                    renderCell: (workOrder) => (workOrder.related_order_info?.name as string | undefined) || "—",
                 }),
             ]}
             renderActions={(workOrder) => <EditWorkOrderActionsCell workOrderId={workOrder.id} />}

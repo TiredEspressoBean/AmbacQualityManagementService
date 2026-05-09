@@ -333,6 +333,9 @@ paths:
           - CAPA_MAJOR
           - DOCUMENT_RELEASE
           - ECO
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
           - PROCESS_APPROVAL
           - TRAINING_CERT
         description: |-
@@ -342,6 +345,9 @@ paths:
           * `ECO` - Engineering Change Order
           * `TRAINING_CERT` - Training Certification
           * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
       - in: query
         name: content_type
         schema:
@@ -24328,6 +24334,726 @@ paths:
               schema:
                 $ref: '#/components/schemas/PresetListResponse'
           description: ''
+  /api/process-change-notices/:
+    get:
+      operationId: api_process_change_notices_list
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - in: query
+        name: order
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CLOSED
+          - DRAFT
+          - RELEASED
+        description: |-
+          * `DRAFT` - Draft
+          * `RELEASED` - Released
+          * `CLOSED` - Closed
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProcessChangeNoticeList'
+          description: ''
+  /api/process-change-notices/{id}/:
+    get:
+      operationId: api_process_change_notices_retrieve
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+    patch:
+      operationId: api_process_change_notices_partial_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeNoticeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeNoticeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeNoticeRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+  /api/process-change-orders/:
+    get:
+      operationId: api_process_change_orders_list
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: migration_disposition
+        schema:
+          type: string
+          enum:
+          - KEEP_ALL
+          - MIGRATE_ALL
+          - MIGRATE_SELECTED
+          - PENDING
+        description: |-
+          * `PENDING` - Pending
+          * `MIGRATE_ALL` - Migrate All
+          * `MIGRATE_SELECTED` - Migrate Selected
+          * `KEEP_ALL` - Keep All
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: request
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CANCELLED
+          - DRAFT
+          - IMPLEMENTED
+          - IN_IMPLEMENTATION
+        description: |-
+          * `DRAFT` - Draft
+          * `APPROVED` - Approved
+          * `IN_IMPLEMENTATION` - In Implementation
+          * `IMPLEMENTED` - Implemented
+          * `CANCELLED` - Cancelled
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProcessChangeOrderList'
+          description: ''
+  /api/process-change-orders/{id}/:
+    get:
+      operationId: api_process_change_orders_retrieve
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+    patch:
+      operationId: api_process_change_orders_partial_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeOrderRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-requests/:
+    get:
+      operationId: api_process_change_requests_list
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - HIGH
+          - LOW
+          - NORMAL
+        description: |-
+          * `LOW` - Low
+          * `NORMAL` - Normal
+          * `HIGH` - High
+          * `CRITICAL` - Critical
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CANCELLED
+          - DRAFT
+          - REJECTED
+          - SUBMITTED
+          - UNDER_REVIEW
+        description: |-
+          * `DRAFT` - Draft
+          * `SUBMITTED` - Submitted
+          * `UNDER_REVIEW` - Under Review
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `CANCELLED` - Cancelled
+      - in: query
+        name: target_process
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProcessChangeRequestList'
+          description: ''
+    post:
+      operationId: api_process_change_requests_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+  /api/process-change-requests/{id}/:
+    get:
+      operationId: api_process_change_requests_retrieve
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+    put:
+      operationId: api_process_change_requests_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+    patch:
+      operationId: api_process_change_requests_partial_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProcessChangeRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+    delete:
+      operationId: api_process_change_requests_destroy
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/process-change-requests/{id}/approve/:
+    post:
+      operationId: api_process_change_requests_approve_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+  /api/process-change-requests/{id}/cancel/:
+    post:
+      operationId: api_process_change_requests_cancel_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+  /api/process-change-requests/{id}/reject/:
+    post:
+      operationId: api_process_change_requests_reject_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+  /api/process-change-requests/{id}/submit/:
+    post:
+      operationId: api_process_change_requests_submit_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeRequest.
+
+        Lifecycle endpoints:
+            POST /api/process-change-requests/{id}/submit/
+            POST /api/process-change-requests/{id}/approve/
+            POST /api/process-change-requests/{id}/reject/   {reason}
+            POST /api/process-change-requests/{id}/cancel/   {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
   /api/reports/download/:
     post:
       operationId: api_reports_download_create
@@ -26043,6 +26769,10 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        content_object_display:
+          type: string
+          nullable: true
+          readOnly: true
         requested_by:
           type: integer
           nullable: true
@@ -26124,6 +26854,9 @@ components:
           type: array
           items: {}
           readOnly: true
+        is_overdue:
+          type: boolean
+          readOnly: true
         requested_at:
           type: string
           format: date-time
@@ -26153,10 +26886,12 @@ components:
       - approver_groups_info
       - archived
       - completed_at
+      - content_object_display
       - content_object_info
       - created_at
       - flow_type_display
       - id
+      - is_overdue
       - optional_approvers_info
       - pending_approvers
       - requested_at
@@ -26555,6 +27290,9 @@ components:
       - ECO
       - TRAINING_CERT
       - PROCESS_APPROVAL
+      - PCR_APPROVAL
+      - PCO_APPROVAL
+      - PCN_RELEASE
       type: string
       description: |-
         * `DOCUMENT_RELEASE` - Document Release
@@ -26563,6 +27301,9 @@ components:
         * `ECO` - Engineering Change Order
         * `TRAINING_CERT` - Training Certification
         * `PROCESS_APPROVAL` - Process Approval
+        * `PCR_APPROVAL` - Process Change Request Approval
+        * `PCO_APPROVAL` - Process Change Order Approval
+        * `PCN_RELEASE` - Process Change Notice Release
     AssemblyRemoveRequest:
       type: object
       description: Serializer for removing a component from assembly
@@ -28008,6 +28749,18 @@ components:
       - capa
       - verification_criteria
       - verification_method
+    ChangeControlPriorityEnum:
+      enum:
+      - LOW
+      - NORMAL
+      - HIGH
+      - CRITICAL
+      type: string
+      description: |-
+        * `LOW` - Low
+        * `NORMAL` - Normal
+        * `HIGH` - High
+        * `CRITICAL` - Critical
     ChartTypeEnum:
       enum:
       - XBAR_R
@@ -28751,6 +29504,14 @@ components:
       - open_ncrs
       - overdue_capas
       - parts_in_quarantine
+    DataOriginEnum:
+      enum:
+      - NATIVE
+      - IMPORTED
+      type: string
+      description: |-
+        * `NATIVE` - Native
+        * `IMPORTED` - Imported
     DecisionEnum:
       enum:
       - APPROVED
@@ -29233,6 +29994,10 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        uploaded_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         content_type:
           type: integer
           nullable: true
@@ -29394,6 +30159,7 @@ components:
       - updated_at
       - upload_date
       - uploaded_by_info
+      - uploaded_by_name
     DocumentsRequest:
       type: object
       description: Enhanced documents serializer using model methods
@@ -32334,6 +33100,18 @@ components:
           type: boolean
       required:
       - definition
+    MigrationDispositionEnum:
+      enum:
+      - PENDING
+      - MIGRATE_ALL
+      - MIGRATE_SELECTED
+      - KEEP_ALL
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `MIGRATE_ALL` - Migrate All
+        * `MIGRATE_SELECTED` - Migrate Selected
+        * `KEEP_ALL` - Keep All
     Milestone:
       type: object
       description: Single milestone within a template.
@@ -34025,6 +34803,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Parts'
+    PaginatedProcessChangeNoticeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessChangeNotice'
+    PaginatedProcessChangeOrderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessChangeOrder'
+    PaginatedProcessChangeRequestList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessChangeRequest'
     PaginatedProcessWithStepsList:
       type: object
       required:
@@ -36553,6 +37400,76 @@ components:
         sampling_context: {}
         archived:
           type: boolean
+    PatchedProcessChangeNoticeRequest:
+      type: object
+      description: Read/write serializer for PCNs.
+      properties:
+        notice_content:
+          type: string
+          minLength: 1
+          description: Distributable description of what changed, when it takes effect,
+            and what affected parties need to do.
+        closure_evidence:
+          type: string
+          description: Effectiveness verification narrative recorded at closure. Phase
+            5 will add structured metrics.
+    PatchedProcessChangeOrderRequest:
+      type: object
+      description: |-
+        Read/write serializer for PCOs.
+
+        Implementation actions (author, approve, implement, cancel) flow
+        through @action endpoints. PATCH is limited to authoring fields
+        while in DRAFT status.
+      properties:
+        implementation_plan:
+          type: string
+          minLength: 1
+          description: How the change will be carried out, who is responsible, what
+            artifacts will be modified.
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+          description: Calendar date the change takes effect.
+        migration_disposition:
+          $ref: '#/components/schemas/MigrationDispositionEnum'
+        migration_reason:
+          type: string
+    PatchedProcessChangeRequestRequest:
+      type: object
+      description: |-
+        Read/write serializer for PCRs.
+
+        Most fields are read-only after creation; lifecycle transitions go
+        through @action endpoints on the viewset rather than PATCH.
+      properties:
+        priority:
+          $ref: '#/components/schemas/ChangeControlPriorityEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        proposed_change:
+          type: string
+          minLength: 1
+          description: What is being proposed.
+        justification:
+          type: string
+          minLength: 1
+          description: Why the change is needed.
+        risk_analysis:
+          type: string
+          minLength: 1
+          description: What could go wrong, and what mitigations apply. Free-text
+            in Phase 1; structured S/P/D scoring is Phase 5 territory.
+        target_process:
+          type: string
+          format: uuid
+        customer_notification_required:
+          type: boolean
+          description: Flag PPAP / customer-flow-down triggers. The actual submission
+            is handled outside this system.
     PatchedProcessWithStepsRequest:
       type: object
       description: |-
@@ -36731,7 +37648,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeasurementResultRequest'
-          writeOnly: true
         sampling_audit_log:
           type: string
           format: uuid
@@ -37824,7 +38740,7 @@ components:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/WorkOrderPriorityEnum'
           description: |-
             Work order priority. Lower number = higher priority for scheduling.
 
@@ -37886,18 +38802,452 @@ components:
             additionalProperties: {}
       required:
       - presets
-    PriorityEnum:
+    ProcessChangeNotice:
+      type: object
+      description: Read/write serializer for PCNs.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Tenant this record belongs to
+        artifact_number:
+          type: string
+          readOnly: true
+          description: Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProcessChangeNoticeStatusEnum'
+          readOnly: true
+        order:
+          type: string
+          format: uuid
+          readOnly: true
+        order_artifact_number:
+          type: string
+          readOnly: true
+        pcr_artifact_number:
+          type: string
+          readOnly: true
+        target_process_name:
+          type: string
+          readOnly: true
+        notice_content:
+          type: string
+          description: Distributable description of what changed, when it takes effect,
+            and what affected parties need to do.
+        released_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        released_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        released_by_username:
+          type: string
+          readOnly: true
+        closure_evidence:
+          type: string
+          description: Effectiveness verification narrative recorded at closure. Phase
+            5 will add structured metrics.
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        closed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        closed_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_open:
+          type: boolean
+          readOnly: true
+        data_origin:
+          allOf:
+          - $ref: '#/components/schemas/DataOriginEnum'
+          readOnly: true
+      required:
+      - artifact_number
+      - closed_at
+      - closed_by
+      - closed_by_username
+      - created_at
+      - created_by
+      - data_origin
+      - id
+      - is_open
+      - notice_content
+      - order
+      - order_artifact_number
+      - pcr_artifact_number
+      - released_at
+      - released_by
+      - released_by_username
+      - status
+      - target_process_name
+      - tenant
+      - updated_at
+    ProcessChangeNoticeStatusEnum:
       enum:
-      - 1
-      - 2
-      - 3
-      - 4
-      type: integer
+      - DRAFT
+      - RELEASED
+      - CLOSED
+      type: string
       description: |-
-        * `1` - Urgent
-        * `2` - High
-        * `3` - Normal
-        * `4` - Low
+        * `DRAFT` - Draft
+        * `RELEASED` - Released
+        * `CLOSED` - Closed
+    ProcessChangeOrder:
+      type: object
+      description: |-
+        Read/write serializer for PCOs.
+
+        Implementation actions (author, approve, implement, cancel) flow
+        through @action endpoints. PATCH is limited to authoring fields
+        while in DRAFT status.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Tenant this record belongs to
+        artifact_number:
+          type: string
+          readOnly: true
+          description: Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProcessChangeOrderStatusEnum'
+          readOnly: true
+        request:
+          type: string
+          format: uuid
+          readOnly: true
+        request_artifact_number:
+          type: string
+          readOnly: true
+        request_title:
+          type: string
+          readOnly: true
+        target_process_name:
+          type: string
+          readOnly: true
+        draft_process_version_id:
+          type: string
+          format: uuid
+          readOnly: true
+        implementation_plan:
+          type: string
+          description: How the change will be carried out, who is responsible, what
+            artifacts will be modified.
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+          description: Calendar date the change takes effect.
+        migration_disposition:
+          $ref: '#/components/schemas/MigrationDispositionEnum'
+        migration_reason:
+          type: string
+        migrated_workorder_ids:
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        approved_by_username:
+          type: string
+          readOnly: true
+        implemented_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        implemented_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        implemented_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_open:
+          type: boolean
+          readOnly: true
+        notice_id:
+          type: string
+          format: uuid
+          readOnly: true
+        data_origin:
+          allOf:
+          - $ref: '#/components/schemas/DataOriginEnum'
+          readOnly: true
+      required:
+      - approved_at
+      - approved_by
+      - approved_by_username
+      - artifact_number
+      - created_at
+      - created_by
+      - data_origin
+      - draft_process_version_id
+      - id
+      - implementation_plan
+      - implemented_at
+      - implemented_by
+      - implemented_by_username
+      - is_open
+      - migrated_workorder_ids
+      - notice_id
+      - request
+      - request_artifact_number
+      - request_title
+      - status
+      - target_process_name
+      - tenant
+      - updated_at
+    ProcessChangeOrderStatusEnum:
+      enum:
+      - DRAFT
+      - APPROVED
+      - IN_IMPLEMENTATION
+      - IMPLEMENTED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `APPROVED` - Approved
+        * `IN_IMPLEMENTATION` - In Implementation
+        * `IMPLEMENTED` - Implemented
+        * `CANCELLED` - Cancelled
+    ProcessChangeRequest:
+      type: object
+      description: |-
+        Read/write serializer for PCRs.
+
+        Most fields are read-only after creation; lifecycle transitions go
+        through @action endpoints on the viewset rather than PATCH.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Tenant this record belongs to
+        artifact_number:
+          type: string
+          readOnly: true
+          description: Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProcessChangeStatusEnum'
+          readOnly: true
+        priority:
+          $ref: '#/components/schemas/ChangeControlPriorityEnum'
+        title:
+          type: string
+          maxLength: 255
+        proposed_change:
+          type: string
+          description: What is being proposed.
+        justification:
+          type: string
+          description: Why the change is needed.
+        risk_analysis:
+          type: string
+          description: What could go wrong, and what mitigations apply. Free-text
+            in Phase 1; structured S/P/D scoring is Phase 5 territory.
+        target_process:
+          type: string
+          format: uuid
+        target_process_name:
+          type: string
+          readOnly: true
+        baseline_version_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The Tracker.Processes.id this PCR was proposed against. Captured
+            at submission.
+        affected_workorders_snapshot:
+          readOnly: true
+        affected_workorders_count:
+          type: integer
+          readOnly: true
+        customer_notification_required:
+          type: boolean
+          description: Flag PPAP / customer-flow-down triggers. The actual submission
+            is handled outside this system.
+        rejected_reason:
+          type: string
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        submitted_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        submitted_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by_username:
+          type: string
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_open:
+          type: boolean
+          readOnly: true
+        order_id:
+          type: string
+          format: uuid
+          readOnly: true
+        data_origin:
+          allOf:
+          - $ref: '#/components/schemas/DataOriginEnum'
+          readOnly: true
+      required:
+      - affected_workorders_count
+      - affected_workorders_snapshot
+      - artifact_number
+      - baseline_version_id
+      - created_at
+      - created_by
+      - created_by_username
+      - data_origin
+      - id
+      - is_open
+      - justification
+      - order_id
+      - proposed_change
+      - rejected_reason
+      - risk_analysis
+      - status
+      - submitted_at
+      - submitted_by
+      - submitted_by_username
+      - target_process
+      - target_process_name
+      - tenant
+      - title
+      - updated_at
+    ProcessChangeRequestRequest:
+      type: object
+      description: |-
+        Read/write serializer for PCRs.
+
+        Most fields are read-only after creation; lifecycle transitions go
+        through @action endpoints on the viewset rather than PATCH.
+      properties:
+        priority:
+          $ref: '#/components/schemas/ChangeControlPriorityEnum'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        proposed_change:
+          type: string
+          minLength: 1
+          description: What is being proposed.
+        justification:
+          type: string
+          minLength: 1
+          description: Why the change is needed.
+        risk_analysis:
+          type: string
+          minLength: 1
+          description: What could go wrong, and what mitigations apply. Free-text
+            in Phase 1; structured S/P/D scoring is Phase 5 territory.
+        target_process:
+          type: string
+          format: uuid
+        customer_notification_required:
+          type: boolean
+          description: Flag PPAP / customer-flow-down triggers. The actual submission
+            is handled outside this system.
+      required:
+      - justification
+      - proposed_change
+      - risk_analysis
+      - target_process
+      - title
+    ProcessChangeStatusEnum:
+      enum:
+      - DRAFT
+      - SUBMITTED
+      - UNDER_REVIEW
+      - APPROVED
+      - REJECTED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `SUBMITTED` - Submitted
+        * `UNDER_REVIEW` - Under Review
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+        * `CANCELLED` - Cancelled
     ProcessSPC:
       type: object
       description: Process with steps for SPC hierarchy.
@@ -38341,18 +39691,15 @@ components:
         work_order_documents:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/Documents'
         current_step_documents:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/Documents'
         part_type_documents:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/Documents'
         current_step_id:
           type: string
           format: uuid
@@ -38520,6 +39867,10 @@ components:
             type: string
             format: uuid
           readOnly: true
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeasurementResult'
         sampling_audit_log:
           type: string
           format: uuid
@@ -38551,6 +39902,10 @@ components:
         part_info:
           type: object
           additionalProperties: {}
+          nullable: true
+          readOnly: true
+        part_display:
+          type: string
           nullable: true
           readOnly: true
         step_info:
@@ -38587,6 +39942,7 @@ components:
       - id
       - machine_info
       - operators_info
+      - part_display
       - part_info
       - report_number
       - status
@@ -38633,7 +39989,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeasurementResultRequest'
-          writeOnly: true
         sampling_audit_log:
           type: string
           format: uuid
@@ -38655,7 +40010,6 @@ components:
         archived:
           type: boolean
       required:
-      - measurements
       - status
     QualityStatusEnum:
       enum:
@@ -41953,9 +43307,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        is_demo:
+          type: boolean
+          readOnly: true
       required:
       - default_timezone
       - id
+      - is_demo
       - logo_url
       - name
       - primary_color
@@ -43904,7 +45262,7 @@ components:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/WorkOrderPriorityEnum'
           description: |-
             Work order priority. Lower number = higher priority for scheduling.
 
@@ -44106,7 +45464,7 @@ components:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/WorkOrderPriorityEnum'
           description: |-
             Work order priority. Lower number = higher priority for scheduling.
 
@@ -44233,6 +45591,18 @@ components:
           nullable: true
       required:
       - reason
+    WorkOrderPriorityEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      type: integer
+      description: |-
+        * `1` - Urgent
+        * `2` - High
+        * `3` - Normal
+        * `4` - Low
     WorkOrderRequest:
       type: object
       description: Full work order serializer for detail views
@@ -44245,7 +45615,7 @@ components:
           $ref: '#/components/schemas/WorkOrderStatusEnum'
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/WorkOrderPriorityEnum'
           description: |-
             Work order priority. Lower number = higher priority for scheduling.
 

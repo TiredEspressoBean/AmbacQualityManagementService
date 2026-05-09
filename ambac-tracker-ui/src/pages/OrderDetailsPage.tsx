@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import {
     CheckCircle, Clock, Circle, ArrowLeft, Edit, UserPlus,
     Calendar, Building2, User, FileText, Package,
@@ -116,7 +116,7 @@ function PartTypeGroup({
                                 Specifications & Drawings
                             </p>
                             <div className="flex flex-wrap gap-2">
-                                {typeDocuments.map((doc: { id: string; file_url: string; file_name?: string }) => (
+                                {typeDocuments.map((doc) => (
                                     <a
                                         key={doc.id}
                                         href={doc.file_url}
@@ -156,7 +156,7 @@ export function OrderDetailsPage() {
     const { orderNumber } = useParams({ from: "/orders/$orderNumber" });
     const navigate = useNavigate();
     const loadRef = useRef<HTMLDivElement>(null);
-    const queryClient = useQueryClient();
+
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
     const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
     const [notesExpanded, setNotesExpanded] = useState(false);
@@ -168,10 +168,10 @@ export function OrderDetailsPage() {
     // Mutation for adding notes
     const addNoteMutation = useMutation({
         mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
-            return await api.api_orders_add_note_create({
-                params: { id: orderNumber },
-                body: { message, visibility } as any,
-            });
+            return await api.api_Orders_add_note_create(
+                { message, visibility } as any,
+                { params: { id: orderNumber } }
+            );
         },
         onSuccess: () => {
             setNewNote("");
@@ -223,8 +223,6 @@ export function OrderDetailsPage() {
     });
 
     const allParts = partsData?.pages.flatMap(page => page.results) || [];
-    const totalPartsCount = partsData?.pages[0]?.count ?? 0;
-
     // Group parts by part type (with ID for document lookup)
     const partsByType = useMemo(() => {
         const groups: Record<string, { parts: typeof allParts; partTypeId: string | null }> = {};
@@ -239,31 +237,6 @@ export function OrderDetailsPage() {
             groups[typeName].parts.push(part);
         });
         return groups;
-    }, [allParts]);
-
-    // Derived statistics
-    const partStats = useMemo(() => {
-        if (allParts.length === 0) return null;
-
-        const stats = {
-            total: allParts.length,
-            completed: 0,
-            inProgress: 0,
-            pending: 0,
-            withIssues: 0,
-            reworkCount: 0,
-        };
-
-        allParts.forEach(part => {
-            if (part.part_status === "COMPLETED") stats.completed++;
-            else if (part.part_status === "IN_PROGRESS") stats.inProgress++;
-            else if (part.part_status === "PENDING") stats.pending++;
-
-            if (part.has_error || part.quality_info?.has_errors) stats.withIssues++;
-            if (part.total_rework_count > 0) stats.reworkCount += part.total_rework_count;
-        });
-
-        return stats;
     }, [allParts]);
 
     useEffect(() => {
@@ -688,7 +661,7 @@ export function OrderDetailsPage() {
                                 </p>
                             ) : (
                                 <div className="space-y-2">
-                                    {documents.map((doc: { id: string; file_url: string; file_name?: string }) => (
+                                    {documents.map((doc) => (
                                         <a
                                             key={doc.id}
                                             href={doc.file_url}

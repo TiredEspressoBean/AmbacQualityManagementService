@@ -14,7 +14,7 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
     const contentTypes = Array.isArray(contentTypesRaw) ? contentTypesRaw : contentTypesRaw?.results || [];
 
     const contentTypeId = contentTypes.find(
-        (ct) => ct.model?.toLowerCase() === modelType.toLowerCase()
+        (ct: { model?: string; id?: number }) => ct.model?.toLowerCase() === modelType.toLowerCase()
     )?.id;
 
     const { data, isLoading, error } = useRetrieveAuditLogEntries({

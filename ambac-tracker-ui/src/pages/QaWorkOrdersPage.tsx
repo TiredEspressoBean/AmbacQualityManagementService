@@ -97,11 +97,6 @@ export default function QaWorkOrdersPage() {
         setDrawerOpen(true);
     };
 
-    const handleCloseDrawer = () => {
-        setDrawerOpen(false);
-        setSelectedWorkOrder(null);
-    };
-
     const renderWorkOrdersTable = () => (
         <div className="space-y-4">
             <div className="flex gap-4 items-center">

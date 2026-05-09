@@ -39,7 +39,7 @@ export type InProcessActionsResponse = {
 export const useInProcessActions = (limit = 10, enabled = true) => {
     return useQuery<InProcessActionsResponse>({
         queryKey: ["in-process-actions", limit],
-        queryFn: () => api.api_dashboard_in_process_actions_retrieve({ limit }) as Promise<InProcessActionsResponse>,
+        queryFn: () => api.api_dashboard_in_process_actions_retrieve({ queries: { limit } }) as Promise<InProcessActionsResponse>,
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable items
     });
@@ -62,7 +62,7 @@ export type FailedInspectionsResponse = {
 export const useFailedInspections = (limit = 10, days = 14, enabled = true) => {
     return useQuery<FailedInspectionsResponse>({
         queryKey: ["failed-inspections", limit, days],
-        queryFn: () => api.api_dashboard_failed_inspections_retrieve({ limit, days }) as Promise<FailedInspectionsResponse>,
+        queryFn: () => api.api_dashboard_failed_inspections_retrieve({ queries: { limit, days } }) as Promise<FailedInspectionsResponse>,
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - recent failures
     });
@@ -72,6 +72,7 @@ export const useFailedInspections = (limit = 10, days = 14, enabled = true) => {
 export type OpenDisposition = {
     id: string;
     part: string;
+    part_id: string | null;
     disposition: string;
     reason: string;
     assignee: string;
@@ -86,7 +87,7 @@ export type OpenDispositionsResponse = {
 export const useOpenDispositions = (limit = 10, enabled = true) => {
     return useQuery<OpenDispositionsResponse>({
         queryKey: ["open-dispositions", limit],
-        queryFn: () => api.api_dashboard_open_dispositions_retrieve({ limit }) as Promise<OpenDispositionsResponse>,
+        queryFn: () => api.api_dashboard_open_dispositions_retrieve({ queries: { limit } }) as Promise<OpenDispositionsResponse>,
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable items
     });

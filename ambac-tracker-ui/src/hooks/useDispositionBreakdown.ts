@@ -19,7 +19,7 @@ type UseDispositionBreakdownParams = {
 };
 
 const fetchDispositionBreakdown = (days: number) =>
-    api.api_dashboard_disposition_breakdown_retrieve({ days }) as Promise<DispositionBreakdownResponse>;
+    api.api_dashboard_disposition_breakdown_retrieve({ queries: { days } }) as Promise<DispositionBreakdownResponse>;
 
 export const useDispositionBreakdown = ({ days = 30, enabled = true }: UseDispositionBreakdownParams = {}) => {
     const queryClient = useQueryClient();

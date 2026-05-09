@@ -22,8 +22,6 @@ const getDetailComponentsForModel = (modelType: string) => {
 const ModelDetailPageWrapper = () => {
     const { model, id } = useParams({ from: '/details/$model/$id' });
     const modelType = model;
-    // Convert ID to number for API calls (URL params are strings)
-    const numericId = id ? Number(id) : undefined;
 
     const fieldsConfig = getFieldsConfigForModel(modelType);
     const componentOverrides = getDetailComponentsForModel(modelType);
@@ -33,9 +31,9 @@ const ModelDetailPageWrapper = () => {
         isLoading,
         error,
     } = useQuery({
-        queryKey: [modelType, numericId],
-        queryFn: () => fieldsConfig.fetcher(numericId),
-        enabled: !!model && numericId !== undefined && !isNaN(numericId),
+        queryKey: [modelType, id],
+        queryFn: () => fieldsConfig.fetcher(id),
+        enabled: !!model && !!id,
     });
 
     if (isLoading) return <div className="p-6">Loading...</div>;

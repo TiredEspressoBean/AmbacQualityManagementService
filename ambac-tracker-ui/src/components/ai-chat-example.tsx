@@ -7,7 +7,7 @@ import {useMemo, useRef, useState, useCallback, useEffect} from "react";
 import {Client} from "@langchain/langgraph-sdk";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {useAuthUser} from "@/hooks/useAuthUser";
-import {api} from "@/lib/api/generated";
+import {api, type ChatSession} from "@/lib/api/generated";
 import {getCookie} from "@/lib/utils";
 import {EphemeralAttachmentAdapter} from "@/lib/attachmentAdapter";
 import {ChatHistorySidebar} from "@/components/chat-history-sidebar";
@@ -216,7 +216,7 @@ export function AiChatExample() {
                 // Get fresh sessions data from cache to avoid stale closure
                 const freshSessionsData = queryClient.getQueryData(CHAT_SESSIONS_QUERY_KEY);
                 const freshSessions = freshSessionsData?.results ?? [];
-                const session = freshSessions.find((s) => s.langgraph_thread_id === externalId);
+                const session = freshSessions.find((s: ChatSession) => s.langgraph_thread_id === externalId);
                 sessionIdRef.current = session?.id ?? null;
 
                 const result = {

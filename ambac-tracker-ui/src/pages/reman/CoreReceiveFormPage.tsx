@@ -55,7 +55,8 @@ export function CoreReceiveFormPage() {
     const partTypes = partTypesData?.results ?? [];
 
     // Fetch customers for dropdown
-    const { data: customersData } = useRetrieveCustomers({ limit: 100 });
+    // NOTE: api_Customers_list does not support limit or search; all customers returned
+    const { data: customersData } = useRetrieveCustomers({});
     const customers = customersData?.results ?? [];
 
     const form = useForm<FormData>({

@@ -14,7 +14,7 @@ import { useUpdatePart } from "@/hooks/useUpdatePart"; // adjust path as needed
 
 export function ArchivePartDialog({ partId }: { partId: string }) {
     const [open, setOpen] = React.useState(false);
-    const { mutateAsync: updatePart } = useUpdatePart({ query: { archived: false } });
+    const { mutateAsync: updatePart } = useUpdatePart();
 
     const form = useForm({
         defaultValues: {},

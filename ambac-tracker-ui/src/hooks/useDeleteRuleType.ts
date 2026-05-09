@@ -7,7 +7,7 @@ export function useDeleteRuleType() {
 
     return useMutation({
         mutationFn: (id: string) =>
-            api.api_Sampling_rule_types_destroy(undefined, {
+            api.api_Sampling_rule_sets_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),

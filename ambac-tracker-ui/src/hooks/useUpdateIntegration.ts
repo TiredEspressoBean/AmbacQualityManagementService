@@ -21,7 +21,7 @@ export const useUpdateIntegration = () => {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
-        onSuccess: (_data, variables) => {
+        onSuccess: (_data, _variables) => {
             queryClient.invalidateQueries({ queryKey: ["integrations-catalog"] });
             queryClient.invalidateQueries({ queryKey: ["integration"] });
         },

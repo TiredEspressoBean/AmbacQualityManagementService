@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api, type PaginatedUserSelectList, type PaginatedEquipmentsList, type PaginatedMeasurementDefinitionList } from "@/lib/api/generated";
@@ -76,7 +76,29 @@ const formSchema = z.object({
     ),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Manually typed to avoid Control<z.infer<...>> vs Control<FormValues> TS2719 clash across two
+// react-hook-form module copies. Uses the same shape as z.infer<formSchema> but declared
+// explicitly so the three-generic useForm pin resolves to a single concrete type.
+type FormValues = {
+    part: string;
+    operator: number[];
+    machine: string;
+    description?: string;
+    status: "PENDING" | "PASS" | "FAIL";
+    sampling_rule?: string;
+    step: string;
+    file?: File;
+    classification?: "INTERNAL" | "EXTERNAL" | "QUALITY";
+    detected_by?: number;
+    verified_by?: number;
+    is_first_piece: boolean;
+    errors?: number[];
+    measurements: Array<{
+        definition: string;
+        value_numeric?: number | null;
+        value_pass_fail?: "PASS" | "FAIL" | "NA" | null;
+    }>;
+};
 
 const required = {
     operator: isFieldRequired(formSchema.shape.operator),
@@ -142,8 +164,8 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const operators = operatorPages?.pages.flatMap((p) => p.results) ?? [];
     const machines = machinePages?.pages.flatMap((p) => p.results) ?? [];
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             part: part?.id,
             operator: [],
@@ -153,7 +175,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
             step: stepId,
             sampling_rule: part?.sampling_rule,
             measurements: [],
-            classification: "internal",
+            classification: "INTERNAL",
             is_first_piece: false,
         },
     });
@@ -486,7 +508,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                                         key={errorType.id}
                                                         onSelect={() => {
                                                             const updated = isSelected
-                                                                ? (field.value?.filter((id) => id !== errorType.id) ?? [])
+                                                                ? (field.value?.filter((id: string) => id !== errorType.id) ?? [])
                                                                 : [...(field.value ?? []), errorType.id];
                                                             field.onChange(updated);
                                                         }}

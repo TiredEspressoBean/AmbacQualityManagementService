@@ -10152,6 +10152,325 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/process-change-notices/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeNotice.
+         *
+         *     PCNs are created indirectly via PCO implementation — direct POST
+         *     is disallowed. Lifecycle endpoints:
+         *
+         *         POST /api/process-change-notices/{id}/release/  (REGULATED)
+         *         POST /api/process-change-notices/{id}/close/    {closure_evidence}
+         */
+        get: operations["api_process_change_notices_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-notices/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeNotice.
+         *
+         *     PCNs are created indirectly via PCO implementation — direct POST
+         *     is disallowed. Lifecycle endpoints:
+         *
+         *         POST /api/process-change-notices/{id}/release/  (REGULATED)
+         *         POST /api/process-change-notices/{id}/close/    {closure_evidence}
+         */
+        get: operations["api_process_change_notices_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeNotice.
+         *
+         *     PCNs are created indirectly via PCO implementation — direct POST
+         *     is disallowed. Lifecycle endpoints:
+         *
+         *         POST /api/process-change-notices/{id}/release/  (REGULATED)
+         *         POST /api/process-change-notices/{id}/close/    {closure_evidence}
+         */
+        patch: operations["api_process_change_notices_partial_update"];
+        trace?: never;
+    };
+    "/api/process-change-orders/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeOrder.
+         *
+         *     POs are created indirectly via PCR approval — the POST endpoint
+         *     is disallowed; PCO comes into existence as a side-effect of
+         *     approving its parent PCR.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+         *         POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+         *         POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+         *         POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+         *         POST /api/process-change-orders/{id}/cancel/    {reason?}
+         */
+        get: operations["api_process_change_orders_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-orders/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeOrder.
+         *
+         *     POs are created indirectly via PCR approval — the POST endpoint
+         *     is disallowed; PCO comes into existence as a side-effect of
+         *     approving its parent PCR.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+         *         POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+         *         POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+         *         POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+         *         POST /api/process-change-orders/{id}/cancel/    {reason?}
+         */
+        get: operations["api_process_change_orders_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeOrder.
+         *
+         *     POs are created indirectly via PCR approval — the POST endpoint
+         *     is disallowed; PCO comes into existence as a side-effect of
+         *     approving its parent PCR.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+         *         POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+         *         POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+         *         POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+         *         POST /api/process-change-orders/{id}/cancel/    {reason?}
+         */
+        patch: operations["api_process_change_orders_partial_update"];
+        trace?: never;
+    };
+    "/api/process-change-requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        get: operations["api_process_change_requests_list"];
+        put?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        post: operations["api_process_change_requests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        get: operations["api_process_change_requests_retrieve"];
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        put: operations["api_process_change_requests_update"];
+        post?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        delete: operations["api_process_change_requests_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        patch: operations["api_process_change_requests_partial_update"];
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        post: operations["api_process_change_requests_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        post: operations["api_process_change_requests_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        post: operations["api_process_change_requests_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description CRUD + lifecycle actions for ProcessChangeRequest.
+         *
+         *     Lifecycle endpoints:
+         *         POST /api/process-change-requests/{id}/submit/
+         *         POST /api/process-change-requests/{id}/approve/
+         *         POST /api/process-change-requests/{id}/reject/   {reason}
+         *         POST /api/process-change-requests/{id}/cancel/   {reason?}
+         */
+        post: operations["api_process_change_requests_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/download/": {
         parameters: {
             query?: never;
@@ -11125,6 +11444,7 @@ export interface components {
             readonly content_object_info: {
                 [key: string]: unknown;
             } | null;
+            readonly content_object_display: string | null;
             requested_by?: number | null;
             readonly requested_by_info: {
                 [key: string]: unknown;
@@ -11155,6 +11475,7 @@ export interface components {
             readonly approver_groups_info: unknown[];
             readonly responses: components["schemas"]["ApprovalResponse"][];
             readonly pending_approvers: unknown[];
+            readonly is_overdue: boolean;
             /** Format: date-time */
             readonly requested_at: string;
             /** Format: date-time */
@@ -11345,9 +11666,12 @@ export interface components {
          *     * `ECO` - Engineering Change Order
          *     * `TRAINING_CERT` - Training Certification
          *     * `PROCESS_APPROVAL` - Process Approval
+         *     * `PCR_APPROVAL` - Process Change Request Approval
+         *     * `PCO_APPROVAL` - Process Change Order Approval
+         *     * `PCN_RELEASE` - Process Change Notice Release
          * @enum {string}
          */
-        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL";
+        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE";
         /** @description Serializer for removing a component from assembly */
         AssemblyRemoveRequest: {
             /** @default  */
@@ -12021,6 +12345,14 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description * `LOW` - Low
+         *     * `NORMAL` - Normal
+         *     * `HIGH` - High
+         *     * `CRITICAL` - Critical
+         * @enum {string}
+         */
+        ChangeControlPriorityEnum: "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+        /**
          * @description * `XBAR_R` - X̄-R
          *     * `XBAR_S` - X̄-S
          *     * `I_MR` - I-MR
@@ -12402,6 +12734,12 @@ export interface components {
             current_fpy: number | null;
         };
         /**
+         * @description * `NATIVE` - Native
+         *     * `IMPORTED` - Imported
+         * @enum {string}
+         */
+        DataOriginEnum: "NATIVE" | "IMPORTED";
+        /**
          * @description * `APPROVED` - Approved
          *     * `REJECTED` - Rejected
          *     * `DELEGATED` - Delegated
@@ -12671,6 +13009,7 @@ export interface components {
             readonly uploaded_by_info: {
                 [key: string]: unknown;
             } | null;
+            readonly uploaded_by_name: string | null;
             /** @description Model of the object this document relates to */
             content_type?: number | null;
             /** @description ID of the object this document relates to (CharField for UUID compatibility) */
@@ -14093,6 +14432,14 @@ export interface components {
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
         };
+        /**
+         * @description * `PENDING` - Pending
+         *     * `MIGRATE_ALL` - Migrate All
+         *     * `MIGRATE_SELECTED` - Migrate Selected
+         *     * `KEEP_ALL` - Keep All
+         * @enum {string}
+         */
+        MigrationDispositionEnum: "PENDING" | "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
         /** @description Single milestone within a template. */
         Milestone: {
             /** Format: uuid */
@@ -15048,6 +15395,51 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Parts"][];
+        };
+        PaginatedProcessChangeNoticeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProcessChangeNotice"][];
+        };
+        PaginatedProcessChangeOrderList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProcessChangeOrder"][];
+        };
+        PaginatedProcessChangeRequestList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProcessChangeRequest"][];
         };
         PaginatedProcessWithStepsList: {
             /** @example 123 */
@@ -16479,6 +16871,51 @@ export interface components {
             sampling_context?: unknown;
             archived?: boolean;
         };
+        /** @description Read/write serializer for PCNs. */
+        PatchedProcessChangeNoticeRequest: {
+            /** @description Distributable description of what changed, when it takes effect, and what affected parties need to do. */
+            notice_content?: string;
+            /** @description Effectiveness verification narrative recorded at closure. Phase 5 will add structured metrics. */
+            closure_evidence?: string;
+        };
+        /**
+         * @description Read/write serializer for PCOs.
+         *
+         *     Implementation actions (author, approve, implement, cancel) flow
+         *     through @action endpoints. PATCH is limited to authoring fields
+         *     while in DRAFT status.
+         */
+        PatchedProcessChangeOrderRequest: {
+            /** @description How the change will be carried out, who is responsible, what artifacts will be modified. */
+            implementation_plan?: string;
+            /**
+             * Format: date
+             * @description Calendar date the change takes effect.
+             */
+            effective_date?: string | null;
+            migration_disposition?: components["schemas"]["MigrationDispositionEnum"];
+            migration_reason?: string;
+        };
+        /**
+         * @description Read/write serializer for PCRs.
+         *
+         *     Most fields are read-only after creation; lifecycle transitions go
+         *     through @action endpoints on the viewset rather than PATCH.
+         */
+        PatchedProcessChangeRequestRequest: {
+            priority?: components["schemas"]["ChangeControlPriorityEnum"];
+            title?: string;
+            /** @description What is being proposed. */
+            proposed_change?: string;
+            /** @description Why the change is needed. */
+            justification?: string;
+            /** @description What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory. */
+            risk_analysis?: string;
+            /** Format: uuid */
+            target_process?: string;
+            /** @description Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system. */
+            customer_notification_required?: boolean;
+        };
         /**
          * @description Process with steps serializer for creation/updates.
          *
@@ -17278,7 +17715,7 @@ export interface components {
              *     * `3` - Normal
              *     * `4` - Low
              */
-            priority?: components["schemas"]["PriorityEnum"];
+            priority?: components["schemas"]["WorkOrderPriorityEnum"];
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
@@ -17303,14 +17740,195 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** @description Read/write serializer for PCNs. */
+        ProcessChangeNotice: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Tenant this record belongs to
+             */
+            readonly tenant: string | null;
+            /** @description Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence. */
+            readonly artifact_number: string;
+            readonly status: components["schemas"]["ProcessChangeNoticeStatusEnum"];
+            /** Format: uuid */
+            readonly order: string;
+            readonly order_artifact_number: string;
+            readonly pcr_artifact_number: string;
+            readonly target_process_name: string;
+            /** @description Distributable description of what changed, when it takes effect, and what affected parties need to do. */
+            notice_content: string;
+            /** Format: date-time */
+            readonly released_at: string | null;
+            readonly released_by: number | null;
+            readonly released_by_username: string;
+            /** @description Effectiveness verification narrative recorded at closure. Phase 5 will add structured metrics. */
+            closure_evidence?: string;
+            /** Format: date-time */
+            readonly closed_at: string | null;
+            readonly closed_by: number | null;
+            readonly closed_by_username: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly is_open: boolean;
+            readonly data_origin: components["schemas"]["DataOriginEnum"];
+        };
         /**
-         * @description * `1` - Urgent
-         *     * `2` - High
-         *     * `3` - Normal
-         *     * `4` - Low
-         * @enum {integer}
+         * @description * `DRAFT` - Draft
+         *     * `RELEASED` - Released
+         *     * `CLOSED` - Closed
+         * @enum {string}
          */
-        PriorityEnum: 1 | 2 | 3 | 4;
+        ProcessChangeNoticeStatusEnum: "DRAFT" | "RELEASED" | "CLOSED";
+        /**
+         * @description Read/write serializer for PCOs.
+         *
+         *     Implementation actions (author, approve, implement, cancel) flow
+         *     through @action endpoints. PATCH is limited to authoring fields
+         *     while in DRAFT status.
+         */
+        ProcessChangeOrder: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Tenant this record belongs to
+             */
+            readonly tenant: string | null;
+            /** @description Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence. */
+            readonly artifact_number: string;
+            readonly status: components["schemas"]["ProcessChangeOrderStatusEnum"];
+            /** Format: uuid */
+            readonly request: string;
+            readonly request_artifact_number: string;
+            readonly request_title: string;
+            readonly target_process_name: string;
+            /** Format: uuid */
+            readonly draft_process_version_id: string;
+            /** @description How the change will be carried out, who is responsible, what artifacts will be modified. */
+            implementation_plan: string;
+            /**
+             * Format: date
+             * @description Calendar date the change takes effect.
+             */
+            effective_date?: string | null;
+            migration_disposition?: components["schemas"]["MigrationDispositionEnum"];
+            migration_reason?: string;
+            readonly migrated_workorder_ids: unknown;
+            /** Format: date-time */
+            readonly approved_at: string | null;
+            readonly approved_by: number | null;
+            readonly approved_by_username: string;
+            /** Format: date-time */
+            readonly implemented_at: string | null;
+            readonly implemented_by: number | null;
+            readonly implemented_by_username: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly is_open: boolean;
+            /** Format: uuid */
+            readonly notice_id: string;
+            readonly data_origin: components["schemas"]["DataOriginEnum"];
+        };
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `APPROVED` - Approved
+         *     * `IN_IMPLEMENTATION` - In Implementation
+         *     * `IMPLEMENTED` - Implemented
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        ProcessChangeOrderStatusEnum: "DRAFT" | "APPROVED" | "IN_IMPLEMENTATION" | "IMPLEMENTED" | "CANCELLED";
+        /**
+         * @description Read/write serializer for PCRs.
+         *
+         *     Most fields are read-only after creation; lifecycle transitions go
+         *     through @action endpoints on the viewset rather than PATCH.
+         */
+        ProcessChangeRequest: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Tenant this record belongs to
+             */
+            readonly tenant: string | null;
+            /** @description Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence. */
+            readonly artifact_number: string;
+            readonly status: components["schemas"]["ProcessChangeStatusEnum"];
+            priority?: components["schemas"]["ChangeControlPriorityEnum"];
+            title: string;
+            /** @description What is being proposed. */
+            proposed_change: string;
+            /** @description Why the change is needed. */
+            justification: string;
+            /** @description What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory. */
+            risk_analysis: string;
+            /** Format: uuid */
+            target_process: string;
+            readonly target_process_name: string;
+            /**
+             * Format: uuid
+             * @description The Tracker.Processes.id this PCR was proposed against. Captured at submission.
+             */
+            readonly baseline_version_id: string | null;
+            readonly affected_workorders_snapshot: unknown;
+            readonly affected_workorders_count: number;
+            /** @description Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system. */
+            customer_notification_required?: boolean;
+            readonly rejected_reason: string;
+            /** Format: date-time */
+            readonly submitted_at: string | null;
+            readonly submitted_by: number | null;
+            readonly submitted_by_username: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly created_by: number | null;
+            readonly created_by_username: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly is_open: boolean;
+            /** Format: uuid */
+            readonly order_id: string;
+            readonly data_origin: components["schemas"]["DataOriginEnum"];
+        };
+        /**
+         * @description Read/write serializer for PCRs.
+         *
+         *     Most fields are read-only after creation; lifecycle transitions go
+         *     through @action endpoints on the viewset rather than PATCH.
+         */
+        ProcessChangeRequestRequest: {
+            priority?: components["schemas"]["ChangeControlPriorityEnum"];
+            title: string;
+            /** @description What is being proposed. */
+            proposed_change: string;
+            /** @description Why the change is needed. */
+            justification: string;
+            /** @description What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory. */
+            risk_analysis: string;
+            /** Format: uuid */
+            target_process: string;
+            /** @description Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system. */
+            customer_notification_required?: boolean;
+        };
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `SUBMITTED` - Submitted
+         *     * `UNDER_REVIEW` - Under Review
+         *     * `APPROVED` - Approved
+         *     * `REJECTED` - Rejected
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        ProcessChangeStatusEnum: "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "CANCELLED";
         /** @description Process with steps for SPC hierarchy. */
         ProcessSPC: {
             /** Format: uuid */
@@ -17553,15 +18171,9 @@ export interface components {
          */
         ProcessingStatusEnum: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
         QADocumentsResponse: {
-            work_order_documents: {
-                [key: string]: unknown;
-            }[];
-            current_step_documents: {
-                [key: string]: unknown;
-            }[];
-            part_type_documents: {
-                [key: string]: unknown;
-            }[];
+            work_order_documents: components["schemas"]["Documents"][];
+            current_step_documents: components["schemas"]["Documents"][];
+            part_type_documents: components["schemas"]["Documents"][];
             /** Format: uuid */
             current_step_id: string | null;
             parts_in_qa: number;
@@ -17642,6 +18254,7 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
             readonly errors: string[];
+            measurements?: components["schemas"]["MeasurementResult"][];
             /**
              * Format: uuid
              * @description Links to the sampling decision that triggered this inspection
@@ -17662,6 +18275,7 @@ export interface components {
             readonly part_info: {
                 [key: string]: unknown;
             } | null;
+            readonly part_display: string | null;
             readonly step_info: {
                 [key: string]: unknown;
             } | null;
@@ -17690,7 +18304,7 @@ export interface components {
             description?: string | null;
             /** Format: uuid */
             file?: string | null;
-            measurements: components["schemas"]["MeasurementResultRequest"][];
+            measurements?: components["schemas"]["MeasurementResultRequest"][];
             /**
              * Format: uuid
              * @description Links to the sampling decision that triggered this inspection
@@ -19397,6 +20011,7 @@ export interface components {
             readonly status: string | null;
             /** Format: date-time */
             readonly trial_ends_at: string | null;
+            readonly is_demo: boolean;
         };
         /**
          * @description Serializer for TenantLLMProvider.
@@ -20350,7 +20965,7 @@ export interface components {
              *     * `3` - Normal
              *     * `4` - Low
              */
-            priority?: components["schemas"]["PriorityEnum"];
+            priority?: components["schemas"]["WorkOrderPriorityEnum"];
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
@@ -20435,7 +21050,7 @@ export interface components {
              *     * `3` - Normal
              *     * `4` - Low
              */
-            priority?: components["schemas"]["PriorityEnum"];
+            priority?: components["schemas"]["WorkOrderPriorityEnum"];
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
@@ -20481,6 +21096,14 @@ export interface components {
             /** Format: date-time */
             expected_clear_at?: string | null;
         };
+        /**
+         * @description * `1` - Urgent
+         *     * `2` - High
+         *     * `3` - Normal
+         *     * `4` - Low
+         * @enum {integer}
+         */
+        WorkOrderPriorityEnum: 1 | 2 | 3 | 4;
         /** @description Full work order serializer for detail views */
         WorkOrderRequest: {
             ERP_id: string;
@@ -20493,7 +21116,7 @@ export interface components {
              *     * `3` - Normal
              *     * `4` - Low
              */
-            priority?: components["schemas"]["PriorityEnum"];
+            priority?: components["schemas"]["WorkOrderPriorityEnum"];
             quantity?: number;
             /** Format: uuid */
             related_order?: string | null;
@@ -20814,8 +21437,11 @@ export interface operations {
                  *     * `ECO` - Engineering Change Order
                  *     * `TRAINING_CERT` - Training Certification
                  *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
                  */
-                approval_type?: "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PROCESS_APPROVAL" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -37879,6 +38505,460 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PresetListResponse"];
+                };
+            };
+        };
+    };
+    api_process_change_notices_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                order?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `DRAFT` - Draft
+                 *     * `RELEASED` - Released
+                 *     * `CLOSED` - Closed
+                 */
+                status?: "CLOSED" | "DRAFT" | "RELEASED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProcessChangeNoticeList"];
+                };
+            };
+        };
+    };
+    api_process_change_notices_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Notice. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeNotice"];
+                };
+            };
+        };
+    };
+    api_process_change_notices_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Notice. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProcessChangeNoticeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProcessChangeNoticeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProcessChangeNoticeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeNotice"];
+                };
+            };
+        };
+    };
+    api_process_change_orders_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `MIGRATE_ALL` - Migrate All
+                 *     * `MIGRATE_SELECTED` - Migrate Selected
+                 *     * `KEEP_ALL` - Keep All
+                 */
+                migration_disposition?: "KEEP_ALL" | "MIGRATE_ALL" | "MIGRATE_SELECTED" | "PENDING";
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                request?: string;
+                /**
+                 * @description * `DRAFT` - Draft
+                 *     * `APPROVED` - Approved
+                 *     * `IN_IMPLEMENTATION` - In Implementation
+                 *     * `IMPLEMENTED` - Implemented
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "APPROVED" | "CANCELLED" | "DRAFT" | "IMPLEMENTED" | "IN_IMPLEMENTATION";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProcessChangeOrderList"];
+                };
+            };
+        };
+    };
+    api_process_change_orders_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeOrder"];
+                };
+            };
+        };
+    };
+    api_process_change_orders_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProcessChangeOrderRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProcessChangeOrderRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProcessChangeOrderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeOrder"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `LOW` - Low
+                 *     * `NORMAL` - Normal
+                 *     * `HIGH` - High
+                 *     * `CRITICAL` - Critical
+                 */
+                priority?: "CRITICAL" | "HIGH" | "LOW" | "NORMAL";
+                /**
+                 * @description * `DRAFT` - Draft
+                 *     * `SUBMITTED` - Submitted
+                 *     * `UNDER_REVIEW` - Under Review
+                 *     * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "APPROVED" | "CANCELLED" | "DRAFT" | "REJECTED" | "SUBMITTED" | "UNDER_REVIEW";
+                target_process?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProcessChangeRequestList"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_process_change_requests_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+        };
+    };
+    api_process_change_requests_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessChangeRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessChangeRequestRequest"];
+                "multipart/form-data": components["schemas"]["ProcessChangeRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
                 };
             };
         };

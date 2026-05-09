@@ -262,7 +262,7 @@ const DEMO_CAPA = {
 export function CapaDetailPage() {
     const { id } = useParams({ from: "/quality/capas/$id" })
     const capaId = id
-    const isDemo = capaId === 0
+    const isDemo = capaId === "0"
 
     const { data: fetchedCapa, isLoading, error } = useRetrieveCapa(capaId)
 

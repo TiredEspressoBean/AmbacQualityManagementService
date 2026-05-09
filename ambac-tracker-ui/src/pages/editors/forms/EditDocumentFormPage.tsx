@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -183,7 +183,7 @@ export default function DocumentFormPage() {
         'equipment', 'companies',  // Core
         'errortype', 'qualityreports', 'quarantinedisposition', 'capa', 'threedmodel',  // QMS
     ];
-    const contentTypeOptions = contentTypesData.filter(ct => {
+    const contentTypeOptions = contentTypesData.filter((ct: { app_label?: string; model?: string; id?: number }) => {
         const appLabelMatch = ct.app_label?.toLowerCase() === 'tracker';
         const modelMatch = validDocumentModels.includes(ct.model?.toLowerCase());
         return appLabelMatch && modelMatch;
@@ -192,8 +192,8 @@ export default function DocumentFormPage() {
     // Document types
     const documentTypes = documentTypesData?.results || [];
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(createFormSchema(mode)),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(createFormSchema(mode)) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             file: undefined,
             classification: "",
@@ -201,7 +201,7 @@ export default function DocumentFormPage() {
             content_type: undefined,
             object_id: undefined,
             ai_readable: false,
-        },
+        } as FormValues,
     });
 
     useEffect(() => {
@@ -220,7 +220,7 @@ export default function DocumentFormPage() {
     }, [mode, document, form]);
 
     const selectedContentType = form.watch("content_type");
-    const selectedContentTypeModel = contentTypeOptions.find(ct => ct.id === selectedContentType)?.model;
+    const selectedContentTypeModel = contentTypeOptions.find((ct: { id?: number; model?: string }) => ct.id === selectedContentType)?.model;
 
     // Object search queries - MES models
     const { data: parts } = useRetrieveParts({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parts" });
@@ -569,7 +569,7 @@ export default function DocumentFormPage() {
                         control={form.control}
                         name="content_type"
                         render={({ field }) => {
-                            const selected = contentTypeOptions.find((opt) => opt.id === field.value);
+                            const selected = contentTypeOptions.find((opt: { id?: number; model?: string }) => opt.id === field.value);
                             return (
                                 <FormItem>
                                     <FormLabel>Link To (Optional)</FormLabel>
@@ -612,7 +612,7 @@ export default function DocumentFormPage() {
                                                             />
                                                             None (standalone document)
                                                         </CommandItem>
-                                                        {contentTypeOptions.map((opt) => (
+                                                        {contentTypeOptions.map((opt: { id?: number; model?: string }) => (
                                                             <CommandItem
                                                                 key={opt.id}
                                                                 value={getContentTypeLabel(opt.model)}
@@ -685,7 +685,7 @@ export default function DocumentFormPage() {
                                                                     key={obj.id}
                                                                     value={obj.id.toString()}
                                                                     onSelect={() => {
-                                                                        form.setValue("object_id", obj.id);
+                                                                        form.setValue("object_id", String(obj.id));
                                                                         setRawObjectSearch("");
                                                                     }}
                                                                 >
@@ -718,7 +718,7 @@ export default function DocumentFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>

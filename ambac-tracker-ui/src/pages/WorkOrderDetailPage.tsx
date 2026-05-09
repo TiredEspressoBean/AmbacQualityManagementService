@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
 import { useRetrieveParts } from "@/hooks/useRetrieveParts";
@@ -27,7 +27,6 @@ const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
 
 export function WorkOrderDetailPage() {
     const { workOrderId } = useParams({ from: "/workorder/$workOrderId" });
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedPart, setSelectedPart] = useState<any | null>(null);
 

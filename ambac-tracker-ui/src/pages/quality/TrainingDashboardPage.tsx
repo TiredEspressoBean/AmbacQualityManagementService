@@ -113,7 +113,8 @@ export function TrainingDashboardPage() {
                             <div className="text-sm text-muted-foreground">Configure training categories</div>
                         </Link>
                         <Link
-                            to="/TrainingRecordForm/new"
+                            to="/TrainingRecordForm/$id"
+                            params={{ id: "new" }}
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <div className="font-medium">Record New Training</div>

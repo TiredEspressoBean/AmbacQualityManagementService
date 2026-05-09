@@ -66,7 +66,7 @@ export const createModelConfig = (config: {
     }>;
 }): FieldsConfig => {
     const {
-        _modelType,
+        modelType: _modelType,
         fields,
         customRenderers = {},
         sections,
@@ -823,7 +823,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                 },
                 customRenderers: {
                     created_at: commonRenderers.datetime,
-                    status_display: (value, data) => {
+                    status_display: (value: string, data: Record<string, unknown>) => {
                         const status = data?.status || value;
                         const statusColors: Record<string, string> = {
                             PASS: '🟢 Pass',
@@ -952,7 +952,6 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
 
         case 'auditlog':
             return {
-                title: 'Audit Log Entry',
                 fields: {
                     action: { label: 'Action' },
                     timestamp: { label: 'Timestamp' },
@@ -1096,7 +1095,6 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
         default:
             // Return a minimal config for unknown models instead of throwing
             return {
-                title: `Unknown: ${modelType}`,
                 fields: {},
                 fetcher: () => Promise.resolve({ id: 'unknown', error: `No detail view available for "${modelType}"` }),
                 sections: {

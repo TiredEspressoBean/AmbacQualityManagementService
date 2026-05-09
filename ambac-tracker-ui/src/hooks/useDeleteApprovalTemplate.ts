@@ -5,7 +5,7 @@ export function useDeleteApprovalTemplate() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => api.api_ApprovalTemplates_destroy({ params: { id } }),
+        mutationFn: (id: string) => api.api_ApprovalTemplates_destroy(undefined, { params: { id } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["approvalTemplates"] });
         },

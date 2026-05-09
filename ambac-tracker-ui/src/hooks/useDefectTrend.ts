@@ -28,7 +28,7 @@ type UseDefectTrendParams = {
 export const useDefectTrend = ({ days = 30, enabled = true }: UseDefectTrendParams = {}) => {
     return useQuery<DefectTrendResponse>({
         queryKey: ["defect-trend", days],
-        queryFn: () => api.api_dashboard_defect_trend_retrieve({ days }) as Promise<DefectTrendResponse>,
+        queryFn: () => api.api_dashboard_defect_trend_retrieve({ queries: { days } }) as Promise<DefectTrendResponse>,
         enabled,
         refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - trend data
     });

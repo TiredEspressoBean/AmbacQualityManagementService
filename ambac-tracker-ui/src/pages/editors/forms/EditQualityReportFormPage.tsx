@@ -1,9 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import type { Schema } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -43,7 +44,14 @@ const formSchema = schemas.QualityReportsRequest.pick({
     measurements: z.array(z.any()).optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+// Strict request type from openapi-typescript, plus form-only fields.
+// Surfaces upstream API renames as compile errors.
+type FormValues = Pick<
+    Schema<"QualityReportsRequest">,
+    "step" | "part" | "machine" | "status" | "description" | "detected_by" | "verified_by" | "is_first_piece" | "archived"
+> & {
+    measurements?: unknown[];
+};
 
 // Pre-compute required fields for labels
 const required = {
@@ -71,7 +79,7 @@ export default function EditQualityReportFormPage() {
     // Fetch employees for dropdowns
     const { data: employeePages } = useInfiniteQuery<PaginatedUserSelectList, Error>({
         queryKey: ["employee-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam } }),
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
         getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
         initialPageParam: 0,
     });
@@ -101,20 +109,17 @@ export default function EditQualityReportFormPage() {
         `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(verifiedBySearch.toLowerCase())
     );
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
-            part: undefined,
-            step: undefined,
-            machine: undefined,
+            part: "",
+            step: "",
             status: "PENDING",
             description: "",
-            detected_by: undefined,
-            verified_by: undefined,
             is_first_piece: false,
             archived: false,
             measurements: [],
-        },
+        } as FormValues,
     });
 
     // Reset form when quality report data loads in edit mode
@@ -146,7 +151,7 @@ export default function EditQualityReportFormPage() {
 
         if (mode === "edit" && qualityReportId) {
             updateQualityReport.mutate(
-                { id: qualityReportId, data: submitData },
+                { id: qualityReportId, data: submitData as never },
                 {
                     onSuccess: () => {
                         toast.success("Quality Report updated successfully!");
@@ -158,7 +163,7 @@ export default function EditQualityReportFormPage() {
                 }
             );
         } else {
-            createQualityReport.mutate(submitData, {
+            createQualityReport.mutate(submitData as never, {
                 onSuccess: () => {
                     toast.success("Quality Report created successfully!");
                     form.reset();
@@ -292,7 +297,7 @@ export default function EditQualityReportFormPage() {
                                                     className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
                                                 >
                                                     {selectedStep
-                                                        ? `${selectedStep.name}${selectedStep.process_name ? ` (${selectedStep.process_name})` : ""}`
+                                                        ? selectedStep.name
                                                         : "Select a step"
                                                     }
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -321,7 +326,7 @@ export default function EditQualityReportFormPage() {
                                                                 <Check
                                                                     className={cn("mr-2 h-4 w-4", s.id === field.value ? "opacity-100" : "opacity-0")}
                                                                 />
-                                                                {s.name} {s.process_name && `(${s.process_name})`}
+                                                                {s.name}
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
@@ -560,7 +565,7 @@ export default function EditQualityReportFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>
@@ -583,7 +588,7 @@ export default function EditQualityReportFormPage() {
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
                                     <Checkbox
-                                        checked={field.value}
+                                        checked={field.value ?? false}
                                         onCheckedChange={field.onChange}
                                     />
                                 </FormControl>

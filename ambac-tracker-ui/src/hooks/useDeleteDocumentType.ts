@@ -5,7 +5,7 @@ export function useDeleteDocumentType() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => api.api_DocumentTypes_destroy({ params: { id } }),
+        mutationFn: (id: string) => api.api_DocumentTypes_destroy(undefined, { params: { id } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["documentTypes"] });
         },

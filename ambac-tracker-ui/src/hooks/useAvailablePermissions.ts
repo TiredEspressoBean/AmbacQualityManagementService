@@ -16,7 +16,7 @@ export type PermissionGroup = {
 export function useAvailablePermissions(options?: { grouped?: boolean; enabled?: boolean }) {
     return useQuery({
         queryKey: ["permissions", options?.grouped],
-        queryFn: () => api.api_permissions_retrieve({ grouped: options?.grouped }),
+        queryFn: () => api.api_permissions_retrieve({ queries: { grouped: options?.grouped } }),
         enabled: options?.enabled ?? true,
     });
 }

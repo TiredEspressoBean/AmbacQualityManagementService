@@ -835,7 +835,7 @@ export function WorkOrderControlPage() {
     // childCount requires either a `parent_workorder` filter on the list
     // endpoint or a `child_count`/`child_ids` field on the detail serializer.
     // Chip is hidden until one ships.
-    const childCount = 0;
+    const childCount: number = 0;
 
     const splitMutation = useSplitWorkOrder();
     const undoSplitMutation = useUndoSplitWorkOrder();

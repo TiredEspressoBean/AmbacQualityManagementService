@@ -38,9 +38,7 @@ export function SchemaAuditPage() {
             }
 
             const orderingFields = metadata.ordering_fields || [];
-            const filterFields = metadata.filterset_fields || [];
             const searchFields = metadata.search_fields || [];
-            const filters = metadata.filters || {};
 
             // Check for models with no sorting
             if (orderingFields.length === 0) {
@@ -59,24 +57,6 @@ export function SchemaAuditPage() {
                     message: "No search fields configured",
                 });
             }
-
-            // Check for choice filters not being used (high value filters)
-            const unusedChoiceFilters = Object.entries(filters)
-                .filter(([_, info]: [string, any]) =>
-                    info.type === 'choice' && info.choices?.length > 0
-                )
-                .map(([name, info]: [string, any]) => ({
-                    name,
-                    choices: info.choices.map((c: any) => c.label).join(", ")
-                }));
-
-            // This is actually info, not a problem - choice filters ARE available
-            // The issue would be if the UI isn't rendering them, but ModelEditorPage does this automatically
-
-            // Check for foreignkey filters (potential for dropdowns)
-            const fkFilters = Object.entries(filters)
-                .filter(([_, info]: [string, any]) => info.type === 'foreignkey')
-                .map(([name]) => name);
 
             if (modelIssues.length > 0) {
                 issues.push(...modelIssues);

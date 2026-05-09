@@ -196,7 +196,7 @@ export default function ProcessFlowPage() {
           break;
 
         case 'part-journey': {
-          const journeySteps = DEMO_PART_JOURNEY.filter((j) => j.stepId === step.id);
+          const journeySteps = DEMO_PART_JOURNEY.filter((j) => j.stepId === Number(step.id));
           overlayData.visitedInJourney = journeySteps.length > 0;
           overlayData.journeyVisits = journeySteps;
           overlayData.highlighted = journeySteps.length > 0;

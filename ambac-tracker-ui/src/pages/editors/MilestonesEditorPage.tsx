@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,7 +112,7 @@ function MilestoneRow({
 export function MilestonesEditorPage() {
     const queryClient = useQueryClient();
     const { data: templates, isLoading } = useListMilestoneTemplates();
-    const [saving, setSaving] = useState(false);
+    const [, setSaving] = useState(false);
 
     // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
     const rawData = templates as any;

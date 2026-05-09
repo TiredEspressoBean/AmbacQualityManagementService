@@ -195,7 +195,7 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                                 return (
                                     <li key={id}>
                                         <Link
-                                            to="/quality/reports/$id"
+                                            to="/editor/qualityReports/edit/$id"
                                             params={{ id: String(id) }}
                                             className="text-primary hover:underline"
                                         >
@@ -222,7 +222,7 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                                 return (
                                     <li key={id}>
                                         <Link
-                                            to="/quality/dispositions/$id"
+                                            to="/dispositions/edit/$id"
                                             params={{ id: String(id) }}
                                             className="text-primary hover:underline"
                                         >

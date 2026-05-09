@@ -5,7 +5,7 @@ export function useSubmitDocumentForApproval(documentId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: () => api.api_Documents_submit_for_approval_create({ params: { id: documentId } }),
+        mutationFn: () => api.api_Documents_submit_for_approval_create({} as any, { params: { id: documentId } }),
         onSuccess: () => {
             // Invalidate document and approval queries
             queryClient.invalidateQueries({ queryKey: ["document", documentId] });

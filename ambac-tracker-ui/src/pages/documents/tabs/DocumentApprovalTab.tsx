@@ -50,7 +50,7 @@ function isUserAnApprover(
 
 function hasUserResponded(userId: number | undefined, responses: ApprovalResponse[]): boolean {
     if (!userId || !responses) return false;
-    return responses.some(r => r.approver === userId);
+    return responses.some(r => r.approver === String(userId));
 }
 
 export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {

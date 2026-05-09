@@ -72,6 +72,7 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     file_url = serializers.SerializerMethodField()
     uploaded_by_info = serializers.SerializerMethodField()
+    uploaded_by_name = serializers.SerializerMethodField()
     content_type_info = serializers.SerializerMethodField()
     access_info = serializers.SerializerMethodField()
     auto_properties = serializers.SerializerMethodField()
@@ -88,7 +89,7 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
     class Meta:
         model = Documents
         fields = ('id', 'classification', 'ai_readable', 'is_image', 'file_name', 'file', 'file_url', 'upload_date',
-                  'uploaded_by', 'uploaded_by_info', 'content_type', 'object_id', 'content_type_info', 'version',
+                  'uploaded_by', 'uploaded_by_info', 'uploaded_by_name', 'content_type', 'object_id', 'content_type_info', 'version',
                   'access_info', 'auto_properties',
                   'status', 'status_display', 'approved_by', 'approved_by_info', 'approved_at',
                   'document_type', 'document_type_code', 'document_type_info', 'change_justification',
@@ -100,8 +101,8 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
                   'itar_controlled', 'eccn', 'export_control_reason',
                   'created_at', 'updated_at')
         read_only_fields = (
-            'upload_date', 'created_at', 'updated_at', 'archived', 'file_url', 'uploaded_by_info', 'content_type_info',
-            'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
+            'upload_date', 'created_at', 'updated_at', 'archived', 'file_url', 'uploaded_by_info', 'uploaded_by_name',
+            'content_type_info', 'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
             'previous_version', 'is_current_version',
             # DMS Compliance - these are calculated on release, not editable
             'effective_date', 'review_date', 'obsolete_date', 'retention_until',
@@ -119,6 +120,10 @@ class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
         if obj.uploaded_by:
             return UserSelectSerializer(obj.uploaded_by).data
         return None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_uploaded_by_name(self, obj) -> str | None:
+        return obj.uploaded_by.display_name if obj.uploaded_by else None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_content_type_info(self, obj):

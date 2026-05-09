@@ -177,7 +177,6 @@ function KeyboardControls({ enabled, controlsRef }: { enabled: boolean; controls
 function PartModel({
     url,
     onClick,
-    _onError,
     onBoundsCalculated,
     neutralColor,
     heatmapEnabled,
@@ -428,7 +427,7 @@ export function ThreeDModelViewer({
     heatmapRadius = 0.5,
     heatmapIntensity = 1.0
 }: ThreeDModelViewerProps) {
-    const orbitControlsRef = useRef<any>();
+    const orbitControlsRef = useRef<any>(null);
     const [loadError, setLoadError] = useState<Error | null>(null);
     const isDraggingRef = useRef(false);
 

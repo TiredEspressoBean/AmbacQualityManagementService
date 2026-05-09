@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import type { Schema } from "@/lib/api/types";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ const formSchema = schemas.TrainingRecordRequest.pick({
     notes: true,
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = Pick<Schema<"TrainingRecordRequest">, "user" | "training_type" | "completed_date" | "expires_date" | "trainer" | "notes">;
 
 // Pre-compute required fields
 const required = {
@@ -89,8 +89,8 @@ export default function EditTrainingRecordFormPage() {
     );
     const users = usersData?.results ?? [];
 
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             user: undefined,
             training_type: undefined,
@@ -98,7 +98,7 @@ export default function EditTrainingRecordFormPage() {
             expires_date: null,
             trainer: null,
             notes: "",
-        },
+        } as FormValues,
     });
 
     // Reset form when record data loads
@@ -111,7 +111,7 @@ export default function EditTrainingRecordFormPage() {
                 expires_date: record.expires_date ?? null,
                 trainer: record.trainer ?? null,
                 notes: record.notes ?? "",
-            });
+            } as FormValues);
         }
     }, [mode, record, form]);
 
@@ -130,7 +130,7 @@ export default function EditTrainingRecordFormPage() {
 
         if (mode === "edit" && recordId) {
             updateRecord.mutate(
-                { params: { id: recordId }, ...submitData },
+                { id: recordId, data: submitData },
                 {
                     onSuccess: () => {
                         toast.success("Training record updated successfully!");
@@ -143,7 +143,7 @@ export default function EditTrainingRecordFormPage() {
                 }
             );
         } else {
-            createRecord.mutate(submitData, {
+            createRecord.mutate(submitData as never, {
                 onSuccess: () => {
                     toast.success("Training record created successfully!");
                     navigate({ to: "/quality/training/records" });
@@ -187,7 +187,7 @@ export default function EditTrainingRecordFormPage() {
                                                 )}
                                             >
                                                 {field.value
-                                                    ? users.find((u: any) => u.id === field.value)?.username ||
+                                                    ? users.find((u) => u.id === field.value)?.username ||
                                                       `User ${field.value}`
                                                     : "Select trainee"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -204,7 +204,7 @@ export default function EditTrainingRecordFormPage() {
                                             <CommandList>
                                                 <CommandEmpty>No users found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {users.map((user: any) => (
+                                                    {users.map((user) => (
                                                         <CommandItem
                                                             key={user.id}
                                                             value={user.username}
@@ -254,7 +254,7 @@ export default function EditTrainingRecordFormPage() {
                                                 )}
                                             >
                                                 {field.value
-                                                    ? trainingTypes.find((t: any) => t.id === field.value)?.name ||
+                                                    ? trainingTypes.find((t) => t.id === field.value)?.name ||
                                                       "Select type"
                                                     : "Select training type"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -271,7 +271,7 @@ export default function EditTrainingRecordFormPage() {
                                             <CommandList>
                                                 <CommandEmpty>No training types found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {trainingTypes.map((type: any) => (
+                                                    {trainingTypes.map((type) => (
                                                         <CommandItem
                                                             key={type.id}
                                                             value={type.name}
@@ -393,7 +393,7 @@ export default function EditTrainingRecordFormPage() {
                                                 )}
                                             >
                                                 {field.value
-                                                    ? users.find((u: any) => u.id === field.value)?.username ||
+                                                    ? users.find((u) => u.id === field.value)?.username ||
                                                       `User ${field.value}`
                                                     : "Select trainer (optional)"}
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -425,7 +425,7 @@ export default function EditTrainingRecordFormPage() {
                                                         />
                                                         No trainer
                                                     </CommandItem>
-                                                    {users.map((user: any) => (
+                                                    {users.map((user) => (
                                                         <CommandItem
                                                             key={user.id}
                                                             value={user.username}

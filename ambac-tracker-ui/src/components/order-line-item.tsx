@@ -234,7 +234,7 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                                     Part Documents
                                 </p>
                                 <div className="space-y-1">
-                                    {partDocuments.map((doc: { id: string; file_url: string; file_name?: string }) => (
+                                    {partDocuments.map((doc) => (
                                         <a
                                             key={doc.id}
                                             href={doc.file_url}

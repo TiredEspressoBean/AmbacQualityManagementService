@@ -88,7 +88,7 @@ export function PartAnnotator({
 
     // Fetch existing annotations for the provided quality reports
     const { data: existingAnnotationsData } = useRetrieveHeatMapAnnotations({
-        quality_reports__in: qualityReportIds.join(','),
+        // NOTE: quality_reports__in filter not exposed by api_HeatMapAnnotation_list (backend gap)
         part: partId,
         model: modelId,
         limit: 1000,

@@ -58,7 +58,7 @@ export function AnnotatorPage() {
     // Fetch 3D model for the part type
     const { data: modelsData, isLoading: isLoadingModel } = useRetrieveThreeDModels({
         part_type: partData?.part_type,
-        archived: false,
+        // archived filter not supported by api_ThreeDModels_list
         limit: 1,
     }, undefined, {
         enabled: !!partData?.part_type,

@@ -29,7 +29,11 @@
 
     /* Linting */
     "strict": true,
-    "exactOptionalPropertyTypes": true,
+    // Disabled: this flag distinguishes `key?: T` (absent allowed) from
+    // `key: T | undefined` (must set undefined). It bites hardest on FFI
+    // shapes (TanStack Router route literals, recharts, assistant-ui) and
+    // hardly catches real bugs. Most React + TanStack codebases leave it off.
+    "exactOptionalPropertyTypes": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

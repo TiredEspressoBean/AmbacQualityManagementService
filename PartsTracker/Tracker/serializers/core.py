@@ -625,12 +625,14 @@ class ApprovalRequestSerializer(serializers.ModelSerializer, SecureModelMixin):
     responses = ApprovalResponseSerializer(many=True, read_only=True)
     pending_approvers = serializers.SerializerMethodField()
     content_object_info = serializers.SerializerMethodField()
+    content_object_display = serializers.SerializerMethodField()
+    is_overdue = serializers.SerializerMethodField()
 
     class Meta:
         model = ApprovalRequest
         fields = (
             'id', 'approval_number', 'content_type', 'object_id',
-            'content_object_info', 'requested_by', 'requested_by_info',
+            'content_object_info', 'content_object_display', 'requested_by', 'requested_by_info',
             'reason', 'notes', 'status', 'status_display',
             'approval_type', 'approval_type_display',
             'flow_type', 'flow_type_display', 'sequence_type', 'threshold',
@@ -641,6 +643,7 @@ class ApprovalRequestSerializer(serializers.ModelSerializer, SecureModelMixin):
             'required_approvers_info', 'optional_approvers_info',
             'approver_groups', 'approver_groups_info',
             'responses', 'pending_approvers',
+            'is_overdue',
             'requested_at', 'completed_at', 'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -693,3 +696,15 @@ class ApprovalRequestSerializer(serializers.ModelSerializer, SecureModelMixin):
                 'str': str(obj.content_object)
             }
         return None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_content_object_display(self, obj):
+        """Human-readable string for the linked content object."""
+        if obj.content_object:
+            return str(obj.content_object)
+        return None
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_overdue(self, obj):
+        """Whether this approval request is past its due date."""
+        return obj.is_overdue()

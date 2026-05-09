@@ -46,12 +46,14 @@ export const useDefectRecords = (filters: DefectRecordsFilters = {}, enabled = t
     return useQuery<DefectRecordsResponse>({
         queryKey: ["defect-records", filters],
         queryFn: () => api.api_dashboard_defect_records_retrieve({
-            days: filters.days,
-            defect_type: filters.defect_type ?? undefined,
-            process: filters.process ?? undefined,
-            part_type: filters.part_type ?? undefined,
-            limit: filters.limit,
-            offset: filters.offset,
+            queries: {
+                days: filters.days,
+                defect_type: filters.defect_type ?? undefined,
+                process: filters.process ?? undefined,
+                part_type: filters.part_type ?? undefined,
+                limit: filters.limit,
+                offset: filters.offset,
+            },
         }) as Promise<DefectRecordsResponse>,
         enabled,
         placeholderData: (previousData) => previousData,

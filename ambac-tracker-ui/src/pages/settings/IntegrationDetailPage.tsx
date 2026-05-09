@@ -8,7 +8,7 @@ import { useTestIntegrationConnection } from "@/hooks/useTestIntegrationConnecti
 import { useTriggerIntegrationSync } from "@/hooks/useTriggerIntegrationSync";
 import { useIntegrationSyncLogs } from "@/hooks/useIntegrationSyncLogs";
 import {
-    ArrowLeft, Link2, CheckCircle, AlertCircle, Circle, Loader2,
+    ArrowLeft, Link2, CheckCircle, AlertCircle, Loader2,
     Zap, RefreshCw, Trash2, Power, PowerOff, ArrowDownToLine,
     ArrowUpFromLine, ExternalLink, Info, Shield, Settings
 } from "lucide-react";

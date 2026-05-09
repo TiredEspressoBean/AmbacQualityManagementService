@@ -169,7 +169,7 @@ export default function EditCalibrationRecordFormPage() {
 
         if (mode === "edit" && recordId) {
             updateRecord.mutate(
-                { params: { id: recordId }, ...submitData },
+                { id: recordId, data: submitData },
                 {
                     onSuccess: () => {
                         toast.success("Calibration record updated successfully!");

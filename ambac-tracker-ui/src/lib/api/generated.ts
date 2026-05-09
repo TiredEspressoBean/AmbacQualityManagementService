@@ -83,6 +83,7 @@ export type ApprovalRequest = {
     (string | null)
     | undefined;
   content_object_info: {};
+  content_object_display: string | null;
   requested_by?: (number | null) | undefined;
   requested_by_info: {};
   reason?: (string | null) | undefined;
@@ -117,6 +118,7 @@ export type ApprovalRequest = {
   approver_groups_info: Array<unknown>;
   responses: Array<ApprovalResponse>;
   pending_approvers: Array<unknown>;
+  is_overdue: boolean;
   requested_at: string;
   completed_at: string | null;
   created_at: string;
@@ -142,15 +144,21 @@ export type ApprovalTypeEnum =
    * `ECO` - Engineering Change Order
    * `TRAINING_CERT` - Training Certification
    * `PROCESS_APPROVAL` - Process Approval
+   * `PCR_APPROVAL` - Process Change Request Approval
+   * `PCO_APPROVAL` - Process Change Order Approval
+   * `PCN_RELEASE` - Process Change Notice Release
    *
-   * @enum DOCUMENT_RELEASE, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL
+   * @enum DOCUMENT_RELEASE, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE
    */
   | "DOCUMENT_RELEASE"
   | "CAPA_CRITICAL"
   | "CAPA_MAJOR"
   | "ECO"
   | "TRAINING_CERT"
-  | "PROCESS_APPROVAL";
+  | "PROCESS_APPROVAL"
+  | "PCR_APPROVAL"
+  | "PCO_APPROVAL"
+  | "PCN_RELEASE";
 export type ApprovalFlowTypeEnum =
   /**
    * * `ALL_REQUIRED` - All Required
@@ -1308,6 +1316,21 @@ export type CoreList = {
      */
   condition_grade: ConditionGradeEnum;
   received_date: string;
+  source_type?: SourceTypeEnum | undefined;
+  core_credit_value?:
+    | /**
+     * Credit value to be issued for this core
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
+  core_credit_issued?: /**
+   * Whether core credit has been issued to customer
+   */
+  boolean | undefined;
+  harvested_component_count: number;
+  usable_component_count: number;
 };
 export type CoreRequest = {
   /**
@@ -1391,6 +1414,7 @@ export type TenantInfo = {
   tier: string | null;
   status: string | null;
   trial_ends_at: string | null;
+  is_demo: boolean;
 };
 export type DeploymentInfo = {
   mode: ModeEnum;
@@ -1445,6 +1469,7 @@ export type Documents = {
   upload_date: string;
   uploaded_by?: (number | null) | undefined;
   uploaded_by_info: {};
+  uploaded_by_name: string | null;
   content_type?:
     | /**
      * Model of the object this document relates to
@@ -3944,6 +3969,257 @@ export type Parts = {
   total_rework_count: number;
   archived?: boolean | undefined;
 };
+export type PaginatedProcessChangeNoticeList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ProcessChangeNotice>;
+};
+export type ProcessChangeNotice = {
+  id: string;
+  /**
+   * Tenant this record belongs to
+   */
+  tenant: string | null;
+  /**
+   * Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+   */
+  artifact_number: string;
+  status: ProcessChangeNoticeStatusEnum;
+  order: string;
+  order_artifact_number: string;
+  pcr_artifact_number: string;
+  target_process_name: string;
+  /**
+   * Distributable description of what changed, when it takes effect, and what affected parties need to do.
+   */
+  notice_content: string;
+  released_at: string | null;
+  released_by: number | null;
+  released_by_username: string;
+  closure_evidence?: /**
+   * Effectiveness verification narrative recorded at closure. Phase 5 will add structured metrics.
+   */
+  string | undefined;
+  closed_at: string | null;
+  closed_by: number | null;
+  closed_by_username: string;
+  created_at: string;
+  created_by: number | null;
+  updated_at: string;
+  is_open: boolean;
+  data_origin: DataOriginEnum;
+};
+export type ProcessChangeNoticeStatusEnum =
+  /**
+   * * `DRAFT` - Draft
+   * `RELEASED` - Released
+   * `CLOSED` - Closed
+   *
+   * @enum DRAFT, RELEASED, CLOSED
+   */
+  "DRAFT" | "RELEASED" | "CLOSED";
+export type DataOriginEnum =
+  /**
+   * * `NATIVE` - Native
+   * `IMPORTED` - Imported
+   *
+   * @enum NATIVE, IMPORTED
+   */
+  "NATIVE" | "IMPORTED";
+export type PaginatedProcessChangeOrderList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ProcessChangeOrder>;
+};
+export type ProcessChangeOrder = {
+  id: string;
+  /**
+   * Tenant this record belongs to
+   */
+  tenant: string | null;
+  /**
+   * Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+   */
+  artifact_number: string;
+  status: ProcessChangeOrderStatusEnum;
+  request: string;
+  request_artifact_number: string;
+  request_title: string;
+  target_process_name: string;
+  draft_process_version_id: string;
+  /**
+   * How the change will be carried out, who is responsible, what artifacts will be modified.
+   */
+  implementation_plan: string;
+  effective_date?:
+    | /**
+     * Calendar date the change takes effect.
+     */
+    (string | null)
+    | undefined;
+  migration_disposition?: MigrationDispositionEnum | undefined;
+  migration_reason?: string | undefined;
+  migrated_workorder_ids: unknown;
+  approved_at: string | null;
+  approved_by: number | null;
+  approved_by_username: string;
+  implemented_at: string | null;
+  implemented_by: number | null;
+  implemented_by_username: string;
+  created_at: string;
+  created_by: number | null;
+  updated_at: string;
+  is_open: boolean;
+  notice_id: string;
+  data_origin: DataOriginEnum;
+};
+export type ProcessChangeOrderStatusEnum =
+  /**
+   * * `DRAFT` - Draft
+   * `APPROVED` - Approved
+   * `IN_IMPLEMENTATION` - In Implementation
+   * `IMPLEMENTED` - Implemented
+   * `CANCELLED` - Cancelled
+   *
+   * @enum DRAFT, APPROVED, IN_IMPLEMENTATION, IMPLEMENTED, CANCELLED
+   */
+  "DRAFT" | "APPROVED" | "IN_IMPLEMENTATION" | "IMPLEMENTED" | "CANCELLED";
+export type MigrationDispositionEnum =
+  /**
+   * * `PENDING` - Pending
+   * `MIGRATE_ALL` - Migrate All
+   * `MIGRATE_SELECTED` - Migrate Selected
+   * `KEEP_ALL` - Keep All
+   *
+   * @enum PENDING, MIGRATE_ALL, MIGRATE_SELECTED, KEEP_ALL
+   */
+  "PENDING" | "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
+export type PaginatedProcessChangeRequestList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ProcessChangeRequest>;
+};
+export type ProcessChangeRequest = {
+  id: string;
+  /**
+   * Tenant this record belongs to
+   */
+  tenant: string | null;
+  /**
+   * Per-tenant identifier, e.g. PCR-2026-0001. Generated via ArtifactSequence.
+   */
+  artifact_number: string;
+  status: ProcessChangeStatusEnum;
+  priority?: ChangeControlPriorityEnum | undefined;
+  /**
+   * @maxLength 255
+   */
+  title: string;
+  /**
+   * What is being proposed.
+   */
+  proposed_change: string;
+  /**
+   * Why the change is needed.
+   */
+  justification: string;
+  /**
+   * What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory.
+   */
+  risk_analysis: string;
+  target_process: string;
+  target_process_name: string;
+  /**
+   * The Tracker.Processes.id this PCR was proposed against. Captured at submission.
+   */
+  baseline_version_id: string | null;
+  affected_workorders_snapshot: unknown;
+  affected_workorders_count: number;
+  customer_notification_required?: /**
+   * Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system.
+   */
+  boolean | undefined;
+  rejected_reason: string;
+  submitted_at: string | null;
+  submitted_by: number | null;
+  submitted_by_username: string;
+  created_at: string;
+  created_by: number | null;
+  created_by_username: string;
+  updated_at: string;
+  is_open: boolean;
+  order_id: string;
+  data_origin: DataOriginEnum;
+};
+export type ProcessChangeStatusEnum =
+  /**
+   * * `DRAFT` - Draft
+   * `SUBMITTED` - Submitted
+   * `UNDER_REVIEW` - Under Review
+   * `APPROVED` - Approved
+   * `REJECTED` - Rejected
+   * `CANCELLED` - Cancelled
+   *
+   * @enum DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, CANCELLED
+   */
+  | "DRAFT"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED";
+export type ChangeControlPriorityEnum =
+  /**
+   * * `LOW` - Low
+   * `NORMAL` - Normal
+   * `HIGH` - High
+   * `CRITICAL` - Critical
+   *
+   * @enum LOW, NORMAL, HIGH, CRITICAL
+   */
+  "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
 export type PaginatedProcessWithStepsList = {
   /**
    * @example 123
@@ -4329,6 +4605,7 @@ export type QualityReports = {
   file?: (string | null) | undefined;
   created_at: string;
   errors: Array<string>;
+  measurements?: Array<MeasurementResult> | undefined;
   sampling_audit_log?:
     | /**
      * Links to the sampling decision that triggered this inspection
@@ -4354,6 +4631,7 @@ export type QualityReports = {
    */
   boolean | undefined;
   part_info: {};
+  part_display: string | null;
   step_info: {};
   machine_info: {};
   operators_info: Array<unknown>;
@@ -5975,7 +6253,7 @@ export type WorkOrderList = {
      * @minimum -2147483648
      * @maximum 2147483647
      */
-  PriorityEnum | undefined;
+  WorkOrderPriorityEnum | undefined;
   quantity?: /**
    * @minimum -2147483648
    * @maximum 2147483647
@@ -6025,7 +6303,7 @@ export type WorkOrderStatusEnum =
   | "ON_HOLD"
   | "CANCELLED"
   | "WAITING_FOR_OPERATOR";
-export type PriorityEnum =
+export type WorkOrderPriorityEnum =
   /**
    * * `1` - Urgent
    * `2` - High
@@ -6769,6 +7047,51 @@ export type PatchedPartsRequest = Partial<{
   sampling_context: unknown;
   archived: boolean;
 }>;
+export type PatchedProcessChangeOrderRequest = Partial<{
+  /**
+   * How the change will be carried out, who is responsible, what artifacts will be modified.
+   *
+   * @minLength 1
+   */
+  implementation_plan: string;
+  /**
+   * Calendar date the change takes effect.
+   */
+  effective_date: string | null;
+  migration_disposition: MigrationDispositionEnum;
+  migration_reason: string;
+}>;
+export type PatchedProcessChangeRequestRequest = Partial<{
+  priority: ChangeControlPriorityEnum;
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  title: string;
+  /**
+   * What is being proposed.
+   *
+   * @minLength 1
+   */
+  proposed_change: string;
+  /**
+   * Why the change is needed.
+   *
+   * @minLength 1
+   */
+  justification: string;
+  /**
+   * What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory.
+   *
+   * @minLength 1
+   */
+  risk_analysis: string;
+  target_process: string;
+  /**
+   * Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system.
+   */
+  customer_notification_required: boolean;
+}>;
 export type PatchedProcessWithStepsRequest = Partial<{
   /**
    * @minLength 1
@@ -7392,7 +7715,7 @@ export type PatchedWorkOrderRequest = Partial<{
      * @minimum -2147483648
      * @maximum 2147483647
      */
-  priority: PriorityEnum;
+  priority: WorkOrderPriorityEnum;
   /**
    * @minimum -2147483648
    * @maximum 2147483647
@@ -7410,6 +7733,37 @@ export type PatchedWorkOrderRequest = Partial<{
   notes: string | null;
   archived: boolean;
 }>;
+export type ProcessChangeRequestRequest = {
+  priority?: ChangeControlPriorityEnum | undefined;
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  title: string;
+  /**
+   * What is being proposed.
+   *
+   * @minLength 1
+   */
+  proposed_change: string;
+  /**
+   * Why the change is needed.
+   *
+   * @minLength 1
+   */
+  justification: string;
+  /**
+   * What could go wrong, and what mitigations apply. Free-text in Phase 1; structured S/P/D scoring is Phase 5 territory.
+   *
+   * @minLength 1
+   */
+  risk_analysis: string;
+  target_process: string;
+  customer_notification_required?: /**
+   * Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system.
+   */
+  boolean | undefined;
+};
 export type ProcessSPC = {
   id: string;
   /**
@@ -7507,6 +7861,13 @@ export type ProcessesRequest = {
     (string | null)
     | undefined;
 };
+export type QADocumentsResponse = {
+  work_order_documents: Array<Documents>;
+  current_step_documents: Array<Documents>;
+  part_type_documents: Array<Documents>;
+  current_step_id: string | null;
+  parts_in_qa: number;
+};
 export type QualityReportsRequest = {
   step?: (string | null) | undefined;
   part?: (string | null) | undefined;
@@ -7528,7 +7889,7 @@ export type QualityReportsRequest = {
     (string | null)
     | undefined;
   file?: (string | null) | undefined;
-  measurements: Array<MeasurementResultRequest>;
+  measurements?: Array<MeasurementResultRequest> | undefined;
   sampling_audit_log?:
     | /**
      * Links to the sampling decision that triggered this inspection
@@ -8573,7 +8934,7 @@ export type WorkOrder = {
      * @minimum -2147483648
      * @maximum 2147483647
      */
-  PriorityEnum | undefined;
+  WorkOrderPriorityEnum | undefined;
   quantity?: /**
    * @minimum -2147483648
    * @maximum 2147483647
@@ -8628,7 +8989,7 @@ export type WorkOrderRequest = {
      * @minimum -2147483648
      * @maximum 2147483647
      */
-  PriorityEnum | undefined;
+  WorkOrderPriorityEnum | undefined;
   quantity?: /**
    * @minimum -2147483648
    * @maximum 2147483647
@@ -8669,6 +9030,9 @@ const ApprovalTypeEnum = z.enum([
   "ECO",
   "TRAINING_CERT",
   "PROCESS_APPROVAL",
+  "PCR_APPROVAL",
+  "PCO_APPROVAL",
+  "PCN_RELEASE",
 ]);
 const ApprovalFlowTypeEnum = z.enum(["ALL_REQUIRED", "THRESHOLD", "ANY"]);
 const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
@@ -8706,6 +9070,7 @@ const ApprovalRequest = z
     content_type: z.number().int().nullish(),
     object_id: z.string().max(36).nullish(),
     content_object_info: z.object({}).partial().passthrough().nullable(),
+    content_object_display: z.string().nullable(),
     requested_by: z.number().int().nullish(),
     requested_by_info: z.object({}).partial().passthrough().nullable(),
     reason: z.string().nullish(),
@@ -8729,6 +9094,7 @@ const ApprovalRequest = z
     approver_groups_info: z.array(z.unknown()),
     responses: z.array(ApprovalResponse),
     pending_approvers: z.array(z.unknown()),
+    is_overdue: z.boolean(),
     requested_at: z.string().datetime({ offset: true }),
     completed_at: z.string().datetime({ offset: true }).nullable(),
     created_at: z.string().datetime({ offset: true }),
@@ -9651,6 +10017,12 @@ const CoreStatusEnum = z.enum([
   "SCRAPPED",
 ]);
 const ConditionGradeEnum = z.enum(["A", "B", "C", "SCRAP"]);
+const SourceTypeEnum = z.enum([
+  "CUSTOMER_RETURN",
+  "PURCHASED",
+  "WARRANTY",
+  "TRADE_IN",
+]);
 const CoreList = z
   .object({
     id: z.string().uuid(),
@@ -9661,6 +10033,14 @@ const CoreList = z
     status: CoreStatusEnum.optional(),
     condition_grade: ConditionGradeEnum,
     received_date: z.string(),
+    source_type: SourceTypeEnum.optional(),
+    core_credit_value: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+      .nullish(),
+    core_credit_issued: z.boolean().optional(),
+    harvested_component_count: z.number().int(),
+    usable_component_count: z.number().int(),
   })
   .passthrough();
 const PaginatedCoreListList = z
@@ -9671,12 +10051,6 @@ const PaginatedCoreListList = z
     results: z.array(CoreList),
   })
   .passthrough();
-const SourceTypeEnum = z.enum([
-  "CUSTOMER_RETURN",
-  "PURCHASED",
-  "WARRANTY",
-  "TRADE_IN",
-]);
 const CoreRequest = z
   .object({
     core_number: z.string().min(1).max(100),
@@ -9989,6 +10363,7 @@ const Documents = z
     upload_date: z.string(),
     uploaded_by: z.number().int().nullish(),
     uploaded_by_info: z.object({}).partial().passthrough().nullable(),
+    uploaded_by_name: z.string().nullable(),
     content_type: z.number().int().nullish(),
     object_id: z.string().max(36).nullish(),
     content_type_info: z.object({}).partial().passthrough().nullable(),
@@ -10323,6 +10698,21 @@ const PatchedQualityErrorsListRequest = z
   .partial()
   .passthrough();
 const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
+const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
+const BlankEnum = z.unknown();
+const MeasurementResult = z
+  .object({
+    report: z.string(),
+    definition: z.string().uuid(),
+    value_numeric: z.number().nullish(),
+    value_pass_fail: z
+      .union([ValuePassFailEnum, BlankEnum, NullEnum])
+      .nullish(),
+    is_within_spec: z.boolean(),
+    created_by: z.number().int(),
+    archived: z.boolean().optional(),
+  })
+  .passthrough();
 const QualityReports = z
   .object({
     id: z.string().uuid(),
@@ -10338,6 +10728,7 @@ const QualityReports = z
     file: z.string().uuid().nullish(),
     created_at: z.string().datetime({ offset: true }),
     errors: z.array(z.string().uuid()),
+    measurements: z.array(MeasurementResult).optional(),
     sampling_audit_log: z.string().uuid().nullish(),
     detected_by: z.number().int().nullish(),
     detected_by_info: z.object({}).partial().passthrough().nullable(),
@@ -10345,6 +10736,7 @@ const QualityReports = z
     verified_by_info: z.object({}).partial().passthrough().nullable(),
     is_first_piece: z.boolean().optional(),
     part_info: z.object({}).partial().passthrough().nullable(),
+    part_display: z.string().nullable(),
     step_info: z.object({}).partial().passthrough().nullable(),
     machine_info: z.object({}).partial().passthrough().nullable(),
     operators_info: z.array(z.unknown()),
@@ -10361,8 +10753,6 @@ const PaginatedQualityReportsList = z
     results: z.array(QualityReports),
   })
   .passthrough();
-const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
-const BlankEnum = z.unknown();
 const MeasurementResultRequest = z
   .object({
     definition: z.string().uuid(),
@@ -10383,7 +10773,7 @@ const QualityReportsRequest = z
     status: QualityReportStatusEnum,
     description: z.string().max(300).nullish(),
     file: z.string().uuid().nullish(),
-    measurements: z.array(MeasurementResultRequest),
+    measurements: z.array(MeasurementResultRequest).optional(),
     sampling_audit_log: z.string().uuid().nullish(),
     detected_by: z.number().int().nullish(),
     verified_by: z.number().int().nullish(),
@@ -13469,7 +13859,7 @@ const WorkOrderStatusEnum = z.enum([
   "CANCELLED",
   "WAITING_FOR_OPERATOR",
 ]);
-const PriorityEnum = z.union([
+const WorkOrderPriorityEnum = z.union([
   z.literal(1),
   z.literal(2),
   z.literal(3),
@@ -13481,7 +13871,7 @@ const WorkOrderList = z
     id: z.string().uuid(),
     ERP_id: z.string().max(50),
     workorder_status: WorkOrderStatusEnum.optional(),
-    priority: PriorityEnum.optional(),
+    priority: WorkOrderPriorityEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     related_order: z.string().uuid().nullish(),
     related_order_info: z.object({}).partial().passthrough().nullable(),
@@ -13518,7 +13908,7 @@ const WorkOrderRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
     workorder_status: WorkOrderStatusEnum.optional(),
-    priority: PriorityEnum.optional(),
+    priority: WorkOrderPriorityEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     related_order: z.string().uuid().nullish(),
     process: z.string().uuid().nullish(),
@@ -13535,7 +13925,7 @@ const WorkOrder = z
     id: z.string().uuid(),
     ERP_id: z.string().max(50),
     workorder_status: WorkOrderStatusEnum.optional(),
-    priority: PriorityEnum.optional(),
+    priority: WorkOrderPriorityEnum.optional(),
     quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
     related_order: z.string().uuid().nullish(),
     related_order_info: z.object({}).partial().passthrough().nullable(),
@@ -13563,7 +13953,7 @@ const PatchedWorkOrderRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
     workorder_status: WorkOrderStatusEnum,
-    priority: PriorityEnum,
+    priority: WorkOrderPriorityEnum,
     quantity: z.number().int().gte(-2147483648).lte(2147483647),
     related_order: z.string().uuid().nullable(),
     process: z.string().uuid().nullable(),
@@ -13585,9 +13975,9 @@ const WorkOrderPlaceOnHoldInputRequest = z
   .passthrough();
 const QADocumentsResponse = z
   .object({
-    work_order_documents: z.array(z.object({}).partial().passthrough()),
-    current_step_documents: z.array(z.object({}).partial().passthrough()),
-    part_type_documents: z.array(z.object({}).partial().passthrough()),
+    work_order_documents: z.array(Documents),
+    current_step_documents: z.array(Documents),
+    part_type_documents: z.array(Documents),
     current_step_id: z.string().uuid().nullable(),
     parts_in_qa: z.number().int(),
   })
@@ -14061,6 +14451,175 @@ const PermissionListResponse = z
 const PresetListResponse = z
   .object({ presets: z.array(z.object({}).partial().passthrough()) })
   .passthrough();
+const ProcessChangeNoticeStatusEnum = z.enum(["DRAFT", "RELEASED", "CLOSED"]);
+const DataOriginEnum = z.enum(["NATIVE", "IMPORTED"]);
+const ProcessChangeNotice = z
+  .object({
+    id: z.string().uuid(),
+    tenant: z.string().uuid().nullable(),
+    artifact_number: z.string(),
+    status: ProcessChangeNoticeStatusEnum,
+    order: z.string().uuid(),
+    order_artifact_number: z.string(),
+    pcr_artifact_number: z.string(),
+    target_process_name: z.string(),
+    notice_content: z.string(),
+    released_at: z.string().datetime({ offset: true }).nullable(),
+    released_by: z.number().int().nullable(),
+    released_by_username: z.string(),
+    closure_evidence: z.string().optional(),
+    closed_at: z.string().datetime({ offset: true }).nullable(),
+    closed_by: z.number().int().nullable(),
+    closed_by_username: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    created_by: z.number().int().nullable(),
+    updated_at: z.string().datetime({ offset: true }),
+    is_open: z.boolean(),
+    data_origin: DataOriginEnum,
+  })
+  .passthrough();
+const PaginatedProcessChangeNoticeList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(ProcessChangeNotice),
+  })
+  .passthrough();
+const PatchedProcessChangeNoticeRequest = z
+  .object({ notice_content: z.string().min(1), closure_evidence: z.string() })
+  .partial()
+  .passthrough();
+const ProcessChangeOrderStatusEnum = z.enum([
+  "DRAFT",
+  "APPROVED",
+  "IN_IMPLEMENTATION",
+  "IMPLEMENTED",
+  "CANCELLED",
+]);
+const MigrationDispositionEnum = z.enum([
+  "PENDING",
+  "MIGRATE_ALL",
+  "MIGRATE_SELECTED",
+  "KEEP_ALL",
+]);
+const ProcessChangeOrder = z
+  .object({
+    id: z.string().uuid(),
+    tenant: z.string().uuid().nullable(),
+    artifact_number: z.string(),
+    status: ProcessChangeOrderStatusEnum,
+    request: z.string().uuid(),
+    request_artifact_number: z.string(),
+    request_title: z.string(),
+    target_process_name: z.string(),
+    draft_process_version_id: z.string().uuid(),
+    implementation_plan: z.string(),
+    effective_date: z.string().nullish(),
+    migration_disposition: MigrationDispositionEnum.optional(),
+    migration_reason: z.string().optional(),
+    migrated_workorder_ids: z.unknown(),
+    approved_at: z.string().datetime({ offset: true }).nullable(),
+    approved_by: z.number().int().nullable(),
+    approved_by_username: z.string(),
+    implemented_at: z.string().datetime({ offset: true }).nullable(),
+    implemented_by: z.number().int().nullable(),
+    implemented_by_username: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    created_by: z.number().int().nullable(),
+    updated_at: z.string().datetime({ offset: true }),
+    is_open: z.boolean(),
+    notice_id: z.string().uuid(),
+    data_origin: DataOriginEnum,
+  })
+  .passthrough();
+const PaginatedProcessChangeOrderList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(ProcessChangeOrder),
+  })
+  .passthrough();
+const PatchedProcessChangeOrderRequest = z
+  .object({
+    implementation_plan: z.string().min(1),
+    effective_date: z.string().nullable(),
+    migration_disposition: MigrationDispositionEnum,
+    migration_reason: z.string(),
+  })
+  .partial()
+  .passthrough();
+const ProcessChangeStatusEnum = z.enum([
+  "DRAFT",
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+]);
+const ChangeControlPriorityEnum = z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]);
+const ProcessChangeRequest = z
+  .object({
+    id: z.string().uuid(),
+    tenant: z.string().uuid().nullable(),
+    artifact_number: z.string(),
+    status: ProcessChangeStatusEnum,
+    priority: ChangeControlPriorityEnum.optional(),
+    title: z.string().max(255),
+    proposed_change: z.string(),
+    justification: z.string(),
+    risk_analysis: z.string(),
+    target_process: z.string().uuid(),
+    target_process_name: z.string(),
+    baseline_version_id: z.string().uuid().nullable(),
+    affected_workorders_snapshot: z.unknown(),
+    affected_workorders_count: z.number().int(),
+    customer_notification_required: z.boolean().optional(),
+    rejected_reason: z.string(),
+    submitted_at: z.string().datetime({ offset: true }).nullable(),
+    submitted_by: z.number().int().nullable(),
+    submitted_by_username: z.string(),
+    created_at: z.string().datetime({ offset: true }),
+    created_by: z.number().int().nullable(),
+    created_by_username: z.string(),
+    updated_at: z.string().datetime({ offset: true }),
+    is_open: z.boolean(),
+    order_id: z.string().uuid(),
+    data_origin: DataOriginEnum,
+  })
+  .passthrough();
+const PaginatedProcessChangeRequestList = z
+  .object({
+    count: z.number().int(),
+    next: z.string().url().nullish(),
+    previous: z.string().url().nullish(),
+    results: z.array(ProcessChangeRequest),
+  })
+  .passthrough();
+const ProcessChangeRequestRequest = z
+  .object({
+    priority: ChangeControlPriorityEnum.optional(),
+    title: z.string().min(1).max(255),
+    proposed_change: z.string().min(1),
+    justification: z.string().min(1),
+    risk_analysis: z.string().min(1),
+    target_process: z.string().uuid(),
+    customer_notification_required: z.boolean().optional(),
+  })
+  .passthrough();
+const PatchedProcessChangeRequestRequest = z
+  .object({
+    priority: ChangeControlPriorityEnum,
+    title: z.string().min(1).max(255),
+    proposed_change: z.string().min(1),
+    justification: z.string().min(1),
+    risk_analysis: z.string().min(1),
+    target_process: z.string().uuid(),
+    customer_notification_required: z.boolean(),
+  })
+  .partial()
+  .passthrough();
 const GenerateReportRequest = z
   .object({
     report_type: z.string().min(1),
@@ -14459,6 +15018,7 @@ const TenantInfo = z
     tier: z.string().nullable(),
     status: z.string().nullable(),
     trial_ends_at: z.string().datetime({ offset: true }).nullable(),
+    is_demo: z.boolean(),
   })
   .passthrough();
 const ModeEnum = z.enum(["saas", "dedicated"]);
@@ -14697,19 +15257,6 @@ const FiveWhysNested = z
   })
   .partial()
   .passthrough();
-const MeasurementResult = z
-  .object({
-    report: z.string(),
-    definition: z.string().uuid(),
-    value_numeric: z.number().nullish(),
-    value_pass_fail: z
-      .union([ValuePassFailEnum, BlankEnum, NullEnum])
-      .nullish(),
-    is_within_spec: z.boolean(),
-    created_by: z.number().int(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
 const ProcessStepRequest = z
   .object({
     step_id: z.string().uuid(),
@@ -14844,9 +15391,9 @@ export const schemas = {
   PatchedCompanyRequest,
   CoreStatusEnum,
   ConditionGradeEnum,
+  SourceTypeEnum,
   CoreList,
   PaginatedCoreListList,
-  SourceTypeEnum,
   CoreRequest,
   Core,
   PatchedCoreRequest,
@@ -14892,10 +15439,11 @@ export const schemas = {
   QualityErrorsListRequest,
   PatchedQualityErrorsListRequest,
   QualityReportStatusEnum,
-  QualityReports,
-  PaginatedQualityReportsList,
   ValuePassFailEnum,
   BlankEnum,
+  MeasurementResult,
+  QualityReports,
+  PaginatedQualityReportsList,
   MeasurementResultRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
@@ -15184,7 +15732,7 @@ export const schemas = {
   WorkCenterSelect,
   PatchedWorkCenterRequest,
   WorkOrderStatusEnum,
-  PriorityEnum,
+  WorkOrderPriorityEnum,
   SplitReasonEnum,
   WorkOrderList,
   PaginatedWorkOrderListList,
@@ -15256,6 +15804,22 @@ export const schemas = {
   IntegrationCatalogItem,
   PermissionListResponse,
   PresetListResponse,
+  ProcessChangeNoticeStatusEnum,
+  DataOriginEnum,
+  ProcessChangeNotice,
+  PaginatedProcessChangeNoticeList,
+  PatchedProcessChangeNoticeRequest,
+  ProcessChangeOrderStatusEnum,
+  MigrationDispositionEnum,
+  ProcessChangeOrder,
+  PaginatedProcessChangeOrderList,
+  PatchedProcessChangeOrderRequest,
+  ProcessChangeStatusEnum,
+  ChangeControlPriorityEnum,
+  ProcessChangeRequest,
+  PaginatedProcessChangeRequestList,
+  ProcessChangeRequestRequest,
+  PatchedProcessChangeRequestRequest,
   GenerateReportRequest,
   GenerateReportResponse,
   GeneratedReportStatusEnum,
@@ -15312,7 +15876,6 @@ export const schemas = {
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
-  MeasurementResult,
   ProcessStepRequest,
   RootCauseRequest,
   StepEdgeRequest,
@@ -15677,6 +16240,9 @@ POST: Executes the query.`,
             "CAPA_MAJOR",
             "DOCUMENT_RELEASE",
             "ECO",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
             "PROCESS_APPROVAL",
             "TRAINING_CERT",
           ])
@@ -25278,6 +25844,486 @@ Used by frontend permission picker UI.`,
     description: `List available group presets.`,
     requestFormat: "json",
     response: PresetListResponse,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-notices/",
+    alias: "api_process_change_notices_list",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["CLOSED", "DRAFT", "RELEASED"]).optional(),
+      },
+    ],
+    response: PaginatedProcessChangeNoticeList,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-notices/:id/",
+    alias: "api_process_change_notices_retrieve",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
+    method: "patch",
+    path: "/api/process-change-notices/:id/",
+    alias: "api_process_change_notices_partial_update",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedProcessChangeNoticeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-orders/",
+    alias: "api_process_change_orders_list",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "migration_disposition",
+        type: "Query",
+        schema: z
+          .enum(["KEEP_ALL", "MIGRATE_ALL", "MIGRATE_SELECTED", "PENDING"])
+          .optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "request",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CANCELLED",
+            "DRAFT",
+            "IMPLEMENTED",
+            "IN_IMPLEMENTATION",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedProcessChangeOrderList,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-orders/:id/",
+    alias: "api_process_change_orders_retrieve",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "patch",
+    path: "/api/process-change-orders/:id/",
+    alias: "api_process_change_orders_partial_update",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-requests/",
+    alias: "api_process_change_requests_list",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "priority",
+        type: "Query",
+        schema: z.enum(["CRITICAL", "HIGH", "LOW", "NORMAL"]).optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CANCELLED",
+            "DRAFT",
+            "REJECTED",
+            "SUBMITTED",
+            "UNDER_REVIEW",
+          ])
+          .optional(),
+      },
+      {
+        name: "target_process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedProcessChangeRequestList,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/",
+    alias: "api_process_change_requests_create",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "get",
+    path: "/api/process-change-requests/:id/",
+    alias: "api_process_change_requests_retrieve",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "put",
+    path: "/api/process-change-requests/:id/",
+    alias: "api_process_change_requests_update",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "patch",
+    path: "/api/process-change-requests/:id/",
+    alias: "api_process_change_requests_partial_update",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "delete",
+    path: "/api/process-change-requests/:id/",
+    alias: "api_process_change_requests_destroy",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/:id/approve/",
+    alias: "api_process_change_requests_approve_create",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/:id/cancel/",
+    alias: "api_process_change_requests_cancel_create",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/:id/reject/",
+    alias: "api_process_change_requests_reject_create",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/:id/submit/",
+    alias: "api_process_change_requests_submit_create",
+    description: `CRUD + lifecycle actions for ProcessChangeRequest.
+
+Lifecycle endpoints:
+    POST /api/process-change-requests/{id}/submit/
+    POST /api/process-change-requests/{id}/approve/
+    POST /api/process-change-requests/{id}/reject/   {reason}
+    POST /api/process-change-requests/{id}/cancel/   {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
   },
   {
     method: "get",

@@ -22,7 +22,7 @@ type UseRepeatDefectsParams = {
 };
 
 const fetchRepeatDefects = (days: number, minOccurrences: number, limit: number) =>
-    api.api_dashboard_repeat_defects_retrieve({ days, min_occurrences: minOccurrences, limit }) as Promise<RepeatDefectsResponse>;
+    api.api_dashboard_repeat_defects_retrieve({ queries: { days, min_occurrences: minOccurrences, limit } }) as Promise<RepeatDefectsResponse>;
 
 export const useRepeatDefects = ({
     days = 30,

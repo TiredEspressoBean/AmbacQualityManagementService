@@ -6,7 +6,7 @@ export function useDeleteTenantGroup() {
 
     return useMutation({
         mutationFn: (groupId: string) =>
-            api.api_TenantGroups_destroy({ params: { id: groupId } }),
+            api.api_TenantGroups_destroy(undefined, { params: { id: groupId } }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tenantGroups"] });
         },

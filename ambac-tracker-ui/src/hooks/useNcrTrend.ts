@@ -27,7 +27,7 @@ type UseNcrTrendParams = {
 };
 
 const fetchNcrTrend = (days: number) =>
-    api.api_dashboard_ncr_trend_retrieve({ days }) as Promise<NcrTrendResponse>;
+    api.api_dashboard_ncr_trend_retrieve({ queries: { days } }) as Promise<NcrTrendResponse>;
 
 export const useNcrTrend = ({ days = 30, enabled = true }: UseNcrTrendParams = {}) => {
     const queryClient = useQueryClient();

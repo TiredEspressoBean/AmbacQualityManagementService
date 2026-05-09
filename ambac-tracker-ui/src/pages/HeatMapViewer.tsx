@@ -620,8 +620,10 @@ function HeatMapViewerContent({
     // Step 3b: Fetch work orders for the filter (based on part type)
     const { data: workOrdersData } = useQuery({
         queryKey: ["workorders-for-heatmap", resolvedPartTypeId],
-        queryFn: () => api.api_WorkOrder_list({
-            queries: { part_type: resolvedPartTypeId, limit: 100 }
+        queryFn: () => api.api_WorkOrders_list({
+            // NOTE: api_WorkOrders_list does not expose a part_type filter; results are
+            // unfiltered here — backend widening needed to support part_type query param.
+            queries: { limit: 100 }
         }),
         enabled: !!resolvedPartTypeId,
     });
@@ -1124,7 +1126,7 @@ function HeatMapViewerContent({
                                     </SelectTrigger>
                                     <SelectContent container={containerRef.current}>
                                         <SelectItem value="all">All Work Orders</SelectItem>
-                                        {availableWorkOrders.map((wo) => (
+                                        {availableWorkOrders.map((wo: { id: number | string; ERP_id?: string }) => (
                                             <SelectItem key={wo.id} value={wo.id.toString()}>
                                                 {wo.ERP_id || `WO-${wo.id}`}
                                             </SelectItem>

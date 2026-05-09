@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useParams } from "@tanstack/react-router";
@@ -58,6 +58,8 @@ const samplingRuleFormSchema = schemas.SamplingRuleRequest.pick({
 });
 
 export type SamplingRuleFormValues = z.infer<typeof samplingRuleFormSchema>;
+// Alias so useForm generics can be pinned
+type FormValues = SamplingRuleFormValues;
 
 const required = {
     ruleset: isFieldRequired(samplingRuleFormSchema.shape.ruleset),
@@ -79,14 +81,14 @@ export default function SamplingRuleFormPage() {
     const debouncedQuery = useDebounce(rulesetQuery, 300);
     const { data: ruleSets = { results: [] } } = useRetrieveSamplingRulesSets({ search: debouncedQuery });
 
-    const form = useForm<SamplingRuleFormValues>({
-        resolver: zodResolver(samplingRuleFormSchema),
+    const form = useForm<FormValues, any, FormValues>({
+        resolver: zodResolver(samplingRuleFormSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
             ruleset: undefined,
             rule_type: undefined,
             value: 1,
             order: undefined,
-        },
+        } as FormValues,
     });
 
     useEffect(() => {
@@ -96,7 +98,7 @@ export default function SamplingRuleFormPage() {
                 rule_type: rule.rule_type,
                 value: rule.value ?? 1,
                 order: rule.order ?? undefined,
-            });
+            } as FormValues);
         }
     }, [mode, rule, form]);
 
@@ -115,7 +117,7 @@ export default function SamplingRuleFormPage() {
 
         if (mode === "edit" && ruleId) {
             updateSamplingRule.mutate(
-                { id: ruleId, data: payload },
+                { id: ruleId, data: payload } as never,
                 {
                     onSuccess: () => toast.success("Sampling Rule updated successfully!"),
                     onError: (error) => {
@@ -125,7 +127,7 @@ export default function SamplingRuleFormPage() {
                 }
             );
         } else {
-            createSamplingRule.mutate(payload, {
+            createSamplingRule.mutate(payload as never, {
                 onSuccess: () => {
                     toast.success("Sampling Rule created successfully!");
                     form.reset();

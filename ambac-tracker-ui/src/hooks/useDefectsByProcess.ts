@@ -19,7 +19,7 @@ type UseDefectsByProcessParams = {
 };
 
 const fetchDefectsByProcess = (days: number, limit: number) =>
-    api.api_dashboard_defects_by_process_retrieve({ days, limit }) as Promise<DefectsByProcessResponse>;
+    api.api_dashboard_defects_by_process_retrieve({ queries: { days, limit } }) as Promise<DefectsByProcessResponse>;
 
 export const useDefectsByProcess = ({ days = 30, limit = 10, enabled = true }: UseDefectsByProcessParams = {}) => {
     const queryClient = useQueryClient();

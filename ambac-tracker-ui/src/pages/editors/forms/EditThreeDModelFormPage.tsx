@@ -82,11 +82,11 @@ export default function ThreeDModelFormPage() {
 
     // Fetch the specific part type and step if they exist on the model
     const { data: selectedPartTypeData } = useRetrievePartType(
-        { params: { id: model?.part_type ?? 0 } },
+        { params: { id: model?.part_type ?? "" } },
         { enabled: !!model?.part_type }
     );
     const { data: selectedStepData } = useRetrieveStep(
-        { params: { id: model?.step ?? 0 } },
+        { params: { id: model?.step ?? "" } },
         { enabled: !!model?.step }
     );
 
@@ -124,7 +124,7 @@ export default function ThreeDModelFormPage() {
     const { data: stepsData } = useRetrieveSteps({
         limit: 1000,
         search: stepSearch,
-        process__part_type: selectedPartType || undefined
+        process_memberships__process__part_type: selectedPartType || undefined
     });
 
     // Reset form when model data loads
@@ -354,7 +354,7 @@ export default function ThreeDModelFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {partTypesData?.results?.map((partType: { id: string | number }) => (
+                                                        {partTypesData?.results?.map((partType) => (
                                                             <CommandItem
                                                                 key={partType.id}
                                                                 value={partType.id.toString()}
@@ -445,7 +445,7 @@ export default function ThreeDModelFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {stepsData?.results?.map((step: { id: string | number }) => (
+                                                        {stepsData?.results?.map((step) => (
                                                             <CommandItem
                                                                 key={step.id}
                                                                 value={step.id.toString()}

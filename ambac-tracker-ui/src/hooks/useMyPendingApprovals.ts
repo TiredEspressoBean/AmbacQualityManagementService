@@ -15,6 +15,7 @@ export interface PendingApproval {
         id: string;
         str?: string;
     };
+    content_object_display?: string | null;
     requested_by: string;
     requested_by_info?: {
         id: string;
@@ -23,6 +24,7 @@ export interface PendingApproval {
     };
     requested_at: string;
     due_date: string | null;
+    is_overdue?: boolean;
     reason?: string;
     notes?: string;
 }

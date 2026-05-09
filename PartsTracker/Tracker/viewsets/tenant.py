@@ -47,6 +47,7 @@ class TenantInfoSerializer(serializers.Serializer):
     tier = serializers.CharField(read_only=True, allow_null=True)
     status = serializers.CharField(read_only=True, allow_null=True)
     trial_ends_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    is_demo = serializers.BooleanField(read_only=True)
 
 
 class DeploymentInfoSerializer(serializers.Serializer):

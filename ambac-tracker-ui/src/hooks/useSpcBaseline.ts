@@ -97,8 +97,8 @@ export const useSupersedeSpcBaseline = () => {
     return useMutation({
         mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
             const response = await api.api_spc_baselines_supersede_create(
-                { params: { id } },
                 { reason },
+                { params: { id } },
             );
             return response;
         },

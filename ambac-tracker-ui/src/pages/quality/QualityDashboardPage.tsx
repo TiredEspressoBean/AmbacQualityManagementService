@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShieldCheck, ClipboardList, AlertTriangle, CheckCircle2, Loader2, FileSignature } from "lucide-react"
 import { useCapaStats } from "@/hooks/useCapaStats"
-import { useMyCapaTasks } from "@/hooks/useMyCapaTasks"
-import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals"
+import { useMyCapaTasks, type CapaTask } from "@/hooks/useMyCapaTasks"
+import { useMyPendingApprovals, type PendingApproval } from "@/hooks/useMyPendingApprovals"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { api } from "@/lib/api/generated"
@@ -17,11 +17,11 @@ export const prefetchQualityDashboard = (queryClient: QueryClient) => {
     });
     queryClient.prefetchQuery({
         queryKey: ["capa-my-tasks"],
-        queryFn: () => api.api_CAPAs_my_tasks_list(),
+        queryFn: () => api.api_CapaTasks_my_tasks_list(),
     });
     queryClient.prefetchQuery({
         queryKey: ["approvals", "my-pending"],
-        queryFn: () => api.api_approvals_my_pending_list(),
+        queryFn: () => api.api_ApprovalRequests_my_pending_list(),
     });
 };
 
@@ -30,8 +30,8 @@ export function QualityDashboardPage() {
     const { data: myTasksData, isLoading: tasksLoading } = useMyCapaTasks()
     const { data: approvalsData, isLoading: approvalsLoading } = useMyPendingApprovals()
 
-    const myTasks = myTasksData?.results ?? []
-    const pendingApprovals = approvalsData?.results ?? []
+    const myTasks = myTasksData ?? []
+    const pendingApprovals = approvalsData ?? []
 
     // Calculate open CAPAs (open + in_progress)
     const openCapas = (stats?.by_status?.OPEN ?? 0) + (stats?.by_status?.IN_PROGRESS ?? 0)
@@ -144,7 +144,7 @@ export function QualityDashboardPage() {
                             <p className="text-sm text-muted-foreground">No approvals pending</p>
                         ) : (
                             <div className="space-y-2">
-                                {pendingApprovals.slice(0, 5).map((approval) => (
+                                {pendingApprovals.slice(0, 5).map((approval: PendingApproval) => (
                                     <Link
                                         key={approval.id}
                                         to="/quality/capas/$id"
@@ -192,7 +192,7 @@ export function QualityDashboardPage() {
                             <p className="text-sm text-muted-foreground">No tasks assigned</p>
                         ) : (
                             <div className="space-y-2">
-                                {myTasks.slice(0, 5).map((task) => (
+                                {myTasks.slice(0, 5).map((task: CapaTask) => (
                                     <Link
                                         key={task.id}
                                         to="/quality/capas/$id"
@@ -200,7 +200,7 @@ export function QualityDashboardPage() {
                                         className="block p-2 rounded-lg border hover:bg-accent transition-colors"
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="font-medium text-sm truncate">{task.title}</span>
+                                            <span className="font-medium text-sm truncate">{task.description}</span>
                                             <Badge variant={task.status === 'PENDING' ? 'secondary' : 'outline'} className="ml-2">
                                                 {task.status}
                                             </Badge>

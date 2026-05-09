@@ -548,8 +548,7 @@ function InboxItemCard({ item }: { item: InboxItem }) {
                 id: item.numericId,
                 data: {
                     completion_notes: data.notes,
-                    signature_data: data.signature_data,
-                    password: data.password,
+                    // signature_data and password not in CapaTasksRequest (backend gap)
                 }
             },
             {

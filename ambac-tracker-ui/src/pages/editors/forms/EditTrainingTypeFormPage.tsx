@@ -82,7 +82,7 @@ export default function EditTrainingTypeFormPage() {
 
         if (mode === "edit" && typeId) {
             updateType.mutate(
-                { params: { id: typeId }, ...submitData },
+                { id: typeId, data: submitData },
                 {
                     onSuccess: () => {
                         toast.success("Training type updated successfully!");

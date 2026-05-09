@@ -6,9 +6,8 @@ export function useInviteToOrder() {
     return useMutation({
         mutationFn: ({ orderId, email }: { orderId: string; email: string }) =>
             api.api_TrackerOrders_invite_create(
-                { params: { id: orderId } },
                 { email },
-                { headers: { "X-CSRFToken": getCookie("csrftoken") } }
+                { params: { id: orderId }, headers: { "X-CSRFToken": getCookie("csrftoken") } }
             ),
         mutationKey: ["order", "invite"],
     });

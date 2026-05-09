@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { useDocumentStats } from "@/hooks/useDocumentStats"
 import { useRecentDocuments } from "@/hooks/useRecentDocuments"
-import { useDocumentsPendingApproval } from "@/hooks/useDocumentsPendingApproval"
+import { useDocumentsPendingApproval, type PendingDocumentApproval } from "@/hooks/useDocumentsPendingApproval"
 
 export function DocumentsDashboardPage() {
     const { data: stats, isLoading: statsLoading } = useDocumentStats()
@@ -154,7 +154,7 @@ export function DocumentsDashboardPage() {
                             <p className="text-sm text-muted-foreground">No approvals pending</p>
                         ) : (
                             <div className="space-y-2">
-                                {pendingApprovals.slice(0, 5).map((approval) => (
+                                {pendingApprovals.slice(0, 5).map((approval: PendingDocumentApproval) => (
                                     <Link
                                         key={approval.id}
                                         to="/documents/$id"

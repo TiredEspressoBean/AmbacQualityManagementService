@@ -5,7 +5,7 @@ import { FileIcon } from "lucide-react";
 import {z} from "zod";
 import type {schemas} from "@/lib/api/generated.ts"; // or any icon
 
-type Document = z.infer<typeof schemas.Document>;
+type Document = z.infer<typeof schemas.Documents>;
 
 type Props = {
     documents: Document[];

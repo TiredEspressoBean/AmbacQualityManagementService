@@ -69,7 +69,7 @@ export function useDeleteChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.api_ChatSessions_destroy(undefined, { id, ...csrfHeaders() }),
+    mutationFn: (id: string) => api.api_ChatSessions_destroy(undefined, { params: { id: Number(id) }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
     },

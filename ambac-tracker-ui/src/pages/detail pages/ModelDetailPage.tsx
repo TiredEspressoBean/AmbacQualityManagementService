@@ -1,16 +1,14 @@
 import React, { useState, useMemo } from "react";
-import {
-    Card, CardHeader, CardTitle, CardContent, CardDescription,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
+import type { components } from "@/lib/api/generated-types";
+type ApiDocument = components["schemas"]["Documents"];
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { useQueries } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import DocumentsSection from "@/pages/detail pages/DocumentsSection";
 import AuditTrailComponent from "@/pages/detail pages/AuditTrail";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -56,7 +54,7 @@ export type FieldsConfig = {
         RendererSidebarComponent?: React.FC<{
             modelType: string;
             modelData: any;
-            documents?: Document[];
+            documents?: ApiDocument[];
             loading?: boolean;
         }>;
         DocumentsSectionComponent?: React.FC<any>;
@@ -77,7 +75,7 @@ type ModelDetailPageProps = {
     RendererSidebarComponent?: FieldsConfig["subcomponents"]["RendererSidebarComponent"];
 };
 
-type DocumentWithSource = Document & {
+type DocumentWithSource = ApiDocument & {
     sourceModel?: string;
     sourceLabel?: string;
 };
@@ -99,7 +97,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
     const {
         data: contentTypesData,
         isLoading: isLoadingContentTypes,
-        error: contentTypeError,
+        error: _contentTypeError,
     } = useRetrieveContentTypes({});
 
     // Normalize content types (handles both array and paginated formats)
@@ -107,14 +105,13 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
 
     // Get content type for main model
     const mainContentTypeId = contentTypes.find(
-        (ct) => ct.model?.toLowerCase() === modelType.toLowerCase()
+        (ct: { model?: string; id?: number }) => ct.model?.toLowerCase() === modelType.toLowerCase()
     )?.id;
 
     // Get main model documents
     const {
         data: mainDocuments,
         isLoading: isLoadingMainDocs,
-        error: mainDocumentError,
     } = useRetrieveDocuments(
         {
             object_id: modelData.id,
@@ -134,7 +131,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                 : modelData[relatedModel.fieldName];
 
             const relatedContentTypeId = contentTypes.find(
-                (ct) => ct.model?.toLowerCase() === relatedModel.modelType.toLowerCase()
+                (ct: { model?: string; id?: number }) => ct.model?.toLowerCase() === relatedModel.modelType.toLowerCase()
             )?.id;
 
             return {
@@ -171,7 +168,6 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
     ];
 
     const isLoadingDocs = isLoadingMainDocs || relatedDocumentQueries.some(q => q.isLoading);
-    const documentError = mainDocumentError || relatedDocumentQueries.find(q => q.error)?.error;
 
     const renderField = (field: string, value: any) => {
         const customRenderer = fieldsConfig.customRenderers?.[field];
@@ -186,106 +182,6 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
         }
 
         return String(value);
-    };
-
-    // Enhanced DocumentsSection that shows source - renders docs directly without nested Card
-    const EnhancedDocumentsSection = ({ documents, isLoading, onDocumentSelect, selectedDocument }) => {
-        // Group documents by source
-        const groupedDocuments = documents.reduce((acc, doc) => {
-            const source = doc.sourceLabel || 'Unknown';
-            if (!acc[source]) acc[source] = [];
-            acc[source].push(doc);
-            return acc;
-        }, {});
-
-        if (isLoading) {
-            return (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Documents</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Loading documents...</p>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        if (documents.length === 0) {
-            return (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Documents</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground italic">No documents found</p>
-                    </CardContent>
-                </Card>
-            );
-        }
-
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">Documents</CardTitle>
-                    <CardDescription>
-                        Files associated with this record and related items
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {Object.entries(groupedDocuments).map(([source, docs]: [string, DocumentWithSource[]]) => (
-                        <div key={source}>
-                            <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className="text-xs">
-                                    {source}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                    {docs.length} document{docs.length !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-                            <div className="space-y-2">
-                                {docs.map((doc) => {
-                                    const isSelected = selectedDocument?.id === doc.id;
-                                    return (
-                                        <div
-                                            key={doc.id}
-                                            className={`flex items-start gap-3 text-sm p-2 rounded-md transition-colors cursor-pointer ${
-                                                isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
-                                            }`}
-                                            onClick={() => onDocumentSelect?.(doc)}
-                                        >
-                                            <div className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0">📄</div>
-                                            <div className="space-y-0.5 flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className={`font-medium truncate ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                                                        {doc.file_name}
-                                                    </span>
-                                                    <a
-                                                        href={doc.file}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-primary hover:text-primary/80 text-xs underline flex-shrink-0"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        (open)
-                                                    </a>
-                                                </div>
-                                                <div className="text-muted-foreground text-xs">
-                                                    Uploaded by {doc.uploaded_by_name || "Unknown"} on{" "}
-                                                    {doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : "—"}
-                                                    {doc.version && <> • v{doc.version}</>}
-                                                    {doc.classification && <> • {doc.classification}</>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-        );
     };
 
     const AuditComponent = fieldsConfig.subcomponents?.AuditTrailComponent || AuditTrailComponent;

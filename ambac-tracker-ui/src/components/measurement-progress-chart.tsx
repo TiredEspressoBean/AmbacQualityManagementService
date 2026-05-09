@@ -18,9 +18,10 @@ export function MeasurementProgressChart({ workOrder }: Props) {
         enabled: !!workOrder.id
     });
 
-    // Get measurement definitions for the work order's process steps
+    // Get measurement definitions for the work order's process steps.
+    // NOTE: api_MeasurementDefinitions_list does not expose a process filter; fetch all
+    // and let the component filter client-side once backend adds step__process support.
     const { data: measurementDefs, isLoading: loadingDefs } = useMeasurementDefinitions({
-        step__process: workOrder.related_order_info?.process_id,
         limit: 100
     }, undefined, {
         enabled: !!workOrder.related_order_info?.process_id
@@ -58,15 +59,15 @@ export function MeasurementProgressChart({ workOrder }: Props) {
     // Process measurement data for visualization
     const measurementStats = definitions.map(def => {
         const relatedReports = reports.filter(report =>
-            report.measurements?.some((m: { definition?: string; [key: string]: any }) => m.definition === def.id)
+            report.measurements?.some((m) => m.definition === def.id)
         );
 
         const measurements = relatedReports.flatMap(report =>
-            report.measurements?.filter((m: { definition?: string; [key: string]: any }) => m.definition === def.id) || []
+            report.measurements?.filter((m) => m.definition === def.id) || []
         );
 
         const totalMeasurements = measurements.length;
-        const passCount = measurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) => {
+        const passCount = measurements.filter((m) => {
             if (def.type === "PASS_FAIL") {
                 return m.value_pass_fail === "PASS";
             } else if (def.type === "NUMERIC") {
@@ -84,13 +85,13 @@ export function MeasurementProgressChart({ workOrder }: Props) {
         const olderMeasurements = measurements.slice(0, Math.floor(measurements.length / 2));
 
         const recentPassRate = recentMeasurements.length > 0
-            ? (recentMeasurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) =>
+            ? (recentMeasurements.filter((m) =>
                 def.type === "PASS_FAIL" ? m.value_pass_fail === "PASS" : m.is_within_spec === true
             ).length / recentMeasurements.length) * 100
             : 0;
 
         const olderPassRate = olderMeasurements.length > 0
-            ? (olderMeasurements.filter((m: { value_pass_fail?: string; is_within_spec?: boolean; [key: string]: any }) =>
+            ? (olderMeasurements.filter((m) =>
                 def.type === "PASS_FAIL" ? m.value_pass_fail === "PASS" : m.is_within_spec === true
             ).length / olderMeasurements.length) * 100
             : 0;

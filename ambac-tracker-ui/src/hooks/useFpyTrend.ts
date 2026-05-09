@@ -24,7 +24,7 @@ type UseFpyTrendParams = {
 };
 
 const fetchFpyTrend = (days: number) =>
-    api.api_dashboard_fpy_trend_retrieve({ days }) as Promise<FpyTrendResponse>;
+    api.api_dashboard_fpy_trend_retrieve({ queries: { days } }) as Promise<FpyTrendResponse>;
 
 export const useFpyTrend = ({ days = 30, enabled = true }: UseFpyTrendParams = {}) => {
     const queryClient = useQueryClient();

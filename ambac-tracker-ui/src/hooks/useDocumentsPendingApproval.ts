@@ -28,12 +28,12 @@ export function useDocumentsPendingApproval() {
         queryKey: ["documents", "pending-approval"],
         queryFn: async () => {
             // Get all pending approvals and filter to documents
-            const response = await api.api_ApprovalRequests_my_pending_retrieve() as any;
+            const response = await api.api_ApprovalRequests_my_pending_list() as any;
             const results = response?.results || response || [];
 
             // Filter to only document approvals
             return results.filter((approval: PendingDocumentApproval) =>
-                approval.content_type === documentsContentTypeId
+                approval.content_type === String(documentsContentTypeId)
             );
         },
         enabled: !ctLoading && !!documentsContentTypeId,

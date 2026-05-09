@@ -116,10 +116,11 @@ class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin)
 
 class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Quality reports serializer"""
-    measurements = MeasurementResultSerializer(many=True, write_only=True)
+    measurements = MeasurementResultSerializer(many=True, required=False)
 
     # Display fields for related models
     part_info = serializers.SerializerMethodField()
+    part_display = serializers.SerializerMethodField()
     step_info = serializers.SerializerMethodField()
     machine_info = serializers.SerializerMethodField()
     operators_info = serializers.SerializerMethodField()
@@ -135,7 +136,7 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
                   "status_display", "description", "file", "created_at", "errors", "measurements", "sampling_audit_log",
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
-                  "part_info", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
+                  "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
         read_only_fields = ("report_number", "created_at")
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -147,6 +148,16 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
                 'status': obj.part.part_status,
                 'part_type_name': obj.part.part_type.name if obj.part.part_type else None,
             }
+        return None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_part_display(self, obj):
+        """Return a friendly part identifier: ERP ID and part type name."""
+        if obj.part:
+            part_type = obj.part.part_type.name if obj.part.part_type else None
+            if part_type:
+                return f"{obj.part.ERP_id} ({part_type})"
+            return obj.part.ERP_id
         return None
 
     @extend_schema_field(serializers.DictField(allow_null=True))

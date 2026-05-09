@@ -65,7 +65,7 @@ export function PartTypesEditorPage() {
                 col({ header: "Version", renderCell: (p) => p.version || "-", priority: 2 }),
                 col({ header: "Updated At", renderCell: (p) => new Date(p.updated_at).toLocaleString(), priority: 4 }),
                 col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString(), priority: 4 }),
-                col({ header: "Previous Version", renderCell: (p) => p.previous_version_name || "-", priority: 5 }),
+                col({ header: "Previous Version", renderCell: (p) => p.previous_version || "-", priority: 5 }),
             ]}
             renderActions={(partType) => <EditPartTypeActionsCell partTypeId={partType.id} />}
             onCreate={() => navigate({ to: "/PartTypeForm/create" })}

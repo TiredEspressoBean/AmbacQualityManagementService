@@ -1206,9 +1206,9 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             200: inline_serializer(
                 name='QADocumentsResponse',
                 fields={
-                    'work_order_documents': serializers.ListSerializer(child=serializers.DictField()),
-                    'current_step_documents': serializers.ListSerializer(child=serializers.DictField()),
-                    'part_type_documents': serializers.ListSerializer(child=serializers.DictField()),
+                    'work_order_documents': DocumentsSerializer(many=True),
+                    'current_step_documents': DocumentsSerializer(many=True),
+                    'part_type_documents': DocumentsSerializer(many=True),
                     'current_step_id': serializers.UUIDField(allow_null=True),
                     'parts_in_qa': serializers.IntegerField(),
                 }

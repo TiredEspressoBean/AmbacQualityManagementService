@@ -42,7 +42,7 @@ export function NotificationPreferencesCard() {
     const [time, setTime] = useState("15:00");
     const [intervalWeeks, setIntervalWeeks] = useState("1");
 
-    const weeklyReport = preferences?.results.find((p) => p.notification_type === "weekly_report");
+    const weeklyReport = preferences?.results.find((p) => p.notification_type === "WEEKLY_REPORT");
 
     const handleOpen = () => {
         if (weeklyReport) {
@@ -69,7 +69,7 @@ export function NotificationPreferencesCard() {
                 toast.success("Updated notification preference");
             } else {
                 await createPreference.mutateAsync({
-                    notification_type: "WEEKLY_REPORT", channel_type: "email", schedule: scheduleData,
+                    notification_type: "WEEKLY_REPORT", channel_type: "EMAIL", schedule: scheduleData,
                 });
                 toast.success("Created notification preference");
             }
