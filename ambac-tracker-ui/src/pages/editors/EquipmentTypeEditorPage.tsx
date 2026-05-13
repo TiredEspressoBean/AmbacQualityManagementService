@@ -1,8 +1,7 @@
-import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes.ts";
+import { useRetrieveEquipmentTypes, equipmentTypesOptions, equipmentTypesMetadataOptions } from "@/hooks/useRetrieveEquipmentTypes.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditEquipmentTypeActionsCell } from "@/components/edit-equipment-type-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchEquipmentTypesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["equipment-types", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Equipment_types_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "EquipmentTypes", "Equipment-types"],
-        queryFn: () => api.api_Equipment_types_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(equipmentTypesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(equipmentTypesMetadataOptions());
 };
 
 // Matches Django filter fields exactly

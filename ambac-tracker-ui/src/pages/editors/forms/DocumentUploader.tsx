@@ -67,7 +67,7 @@ export function DocumentUploader({
 
         // backend now fills file_name automatically from the file if omitted
 
-        uploadDocument(formData, {
+        uploadDocument(formData as never, {
             onSuccess: () => {
                 form.reset();
                 setFileInputKey(Date.now()); // reset file input

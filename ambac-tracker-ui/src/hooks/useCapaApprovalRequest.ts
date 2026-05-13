@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api, type DecisionEnum } from "@/lib/api/generated";
 import { useContentTypeMapping } from "./useContentTypes";
 
@@ -71,6 +71,27 @@ interface PaginatedResponse {
     results: ApprovalRequest[];
 }
 
+export const capaApprovalRequestOptions = (capaId: string | undefined, capaContentTypeId: number | undefined) => queryOptions({
+    queryKey: ["approvals", "capa", capaId, capaContentTypeId] as const,
+    queryFn: async () => {
+        if (!capaContentTypeId) {
+            throw new Error("CAPA content type not found");
+        }
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- local ApprovalRequest interface has narrower types than the generated schema (e.g. number vs string); runtime shape is correct
+        const response = await api.api_ApprovalRequests_list({
+            queries: {
+                content_type: capaContentTypeId,
+                object_id: capaId!,
+                ordering: '-requested_at',
+                limit: 10,
+            }
+        }) as unknown as PaginatedResponse;
+
+        // Return the most recent approval request (usually pending or the last completed)
+        return response.results;
+    },
+});
+
 /**
  * Hook to fetch the approval request(s) for a specific CAPA.
  * Returns the most recent pending or completed approval request.
@@ -80,23 +101,7 @@ export function useCapaApprovalRequest(capaId: string | undefined) {
     const capaContentTypeId = getContentTypeId('capa');
 
     return useQuery({
-        queryKey: ["approvals", "capa", capaId, capaContentTypeId],
-        queryFn: async () => {
-            if (!capaContentTypeId) {
-                throw new Error("CAPA content type not found");
-            }
-            const response = await api.api_ApprovalRequests_list({
-                queries: {
-                    content_type: capaContentTypeId,
-                    object_id: capaId!,
-                    ordering: '-requested_at',
-                    limit: 10,
-                }
-            }) as PaginatedResponse;
-
-            // Return the most recent approval request (usually pending or the last completed)
-            return response.results;
-        },
+        ...capaApprovalRequestOptions(capaId, capaContentTypeId),
         enabled: capaId !== undefined && !!capaContentTypeId && !contentTypesLoading,
     });
 }

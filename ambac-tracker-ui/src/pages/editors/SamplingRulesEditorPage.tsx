@@ -1,8 +1,7 @@
-import { useRetrieveSamplingRules } from "@/hooks/useRetrieveSamplingRules";
+import { useRetrieveSamplingRules, samplingRulesOptions, samplingRulesMetadataOptions } from "@/hooks/useRetrieveSamplingRules";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditSamplingRuleActionsCell } from "@/components/edit-sample-rule-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchSamplingRulesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["sampling-rules", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Sampling_rules_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "SamplingRules", "Sampling-rules"],
-        queryFn: () => api.api_Sampling_rules_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(samplingRulesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(samplingRulesMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage
@@ -61,8 +54,8 @@ export function SamplingRulesEditorPage() {
             showDetailsLink={true}
             useList={useSamplingRuleList}
             columns={[
-                col({ header: "Rule Type", renderCell: (rule) => rule.ruletype_name || rule.rule_type?.code || "-", priority: 2 }),
-                col({ header: "Ruleset", renderCell: (rule) => rule.ruleset_name || `#${rule.ruleset?.id}`, priority: 3 }),
+                col({ header: "Rule Type", renderCell: (rule) => rule.ruletype_name || rule.rule_type || "-", priority: 2 }),
+                col({ header: "Ruleset", renderCell: (rule) => rule.ruleset_name || (rule.ruleset ? `#${rule.ruleset}` : "-"), priority: 3 }),
                 col({ header: "Order", renderCell: (rule) => rule.order ?? "-", priority: 2 }),
                 col({ header: "Value", renderCell: (rule) => rule.value ?? "-", priority: 2 }),
                 col({ header: "Created At", renderCell: (rule) => new Date(rule.created_at).toLocaleString(), priority: 4 }),

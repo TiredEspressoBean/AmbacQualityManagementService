@@ -18,6 +18,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useChatSessions, useDeleteChatSession, useArchiveChatSession } from "@/hooks/useChatSessions";
+import type { ChatSession } from "@/lib/api/generated";
 
 interface ChatHistorySidebarProps extends React.ComponentProps<typeof Sidebar> {
   currentThreadId: string | null;
@@ -74,7 +75,7 @@ export const ChatHistorySidebar: FC<ChatHistorySidebarProps> = ({
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {activeSessions.map((session: { id: number; langgraph_thread_id: string }) => (
+              {activeSessions.map((session: ChatSession) => (
                 <ChatSessionItem
                   key={session.id}
                   session={session}
@@ -94,12 +95,7 @@ export const ChatHistorySidebar: FC<ChatHistorySidebarProps> = ({
 };
 
 interface ChatSessionItemProps {
-  session: {
-    id: number;
-    title: string;
-    langgraph_thread_id: string;
-    updated_at: string;
-  };
+  session: ChatSession;
   isActive: boolean;
   onSelect: () => void;
   onArchive: () => void;

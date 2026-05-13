@@ -34,16 +34,19 @@ import { useApprovalRequests } from "@/hooks/useApprovalRequests"
 import { useAuthUser } from "@/hooks/useAuthUser"
 import { schemas } from "@/lib/api/generated"
 import { api } from "@/lib/api/generated"
+import { queryOptions } from "@tanstack/react-query"
 import type { QueryClient } from "@tanstack/react-query"
+
+export const approvalsHistoryOptions = () => queryOptions({
+    queryKey: ["approvals", "list", { ordering: "-requested_at", limit: 50, offset: 0 }] as const,
+    queryFn: () => api.api_ApprovalRequests_list({
+        queries: { ordering: "-requested_at", limit: 50 }
+    }),
+});
 
 // Prefetch function for route loader
 export const prefetchApprovalsHistory = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["approvals", "list", { ordering: "-requested_at", limit: 50, offset: 0 }],
-        queryFn: () => api.api_ApprovalRequests_list({
-            queries: { ordering: "-requested_at", limit: 50 }
-        }),
-    });
+    queryClient.prefetchQuery(approvalsHistoryOptions());
 };
 
 // Helper to get the detail link for an approval based on its type
@@ -267,7 +270,7 @@ export function ApprovalsHistoryPage() {
                                                         to={getApprovalDetailLink(approval)}
                                                         className="font-medium hover:underline"
                                                     >
-                                                        {approval.content_object_info?.str || `#${approval.object_id}`}
+                                                        {(approval.content_object_info?.str as string | undefined) || `#${approval.object_id}`}
                                                     </Link>
                                                     {approval.approval_number && (
                                                         <div className="text-xs text-muted-foreground">
@@ -282,8 +285,8 @@ export function ApprovalsHistoryPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="text-sm">
-                                                        {approval.requested_by_info?.full_name ||
-                                                            approval.requested_by_info?.username ||
+                                                        {(approval.requested_by_info?.full_name as string | undefined) ||
+                                                            (approval.requested_by_info?.username as string | undefined) ||
                                                             "Unknown"}
                                                     </div>
                                                 </TableCell>

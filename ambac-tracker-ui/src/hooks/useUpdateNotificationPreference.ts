@@ -1,14 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type UpdateNotificationPreferenceInput = Parameters<typeof api.api_NotificationPreferences_partial_update>[0];
-type UpdateNotificationPreferenceConfig = Parameters<typeof api.api_NotificationPreferences_partial_update>[1];
-type UpdateNotificationPreferenceParams = UpdateNotificationPreferenceConfig["params"];
-type UpdateNotificationPreferenceResponse = Awaited<ReturnType<typeof api.api_NotificationPreferences_partial_update>>;
+type UpdateNotificationPreferenceInput = Schema<"PatchedNotificationPreferenceRequest">;
+type UpdateNotificationPreferenceResponse = Schema<"NotificationPreference">;
 
 type UpdateNotificationPreferenceVariables = {
-  id: UpdateNotificationPreferenceParams["id"];
+  id: number;
   data: UpdateNotificationPreferenceInput;
 };
 
@@ -17,10 +16,10 @@ export const useUpdateNotificationPreference = () => {
 
   return useMutation<UpdateNotificationPreferenceResponse, unknown, UpdateNotificationPreferenceVariables>({
     mutationFn: ({ id, data }) =>
-      api.api_NotificationPreferences_partial_update(data, {
+      api.api_NotificationPreferences_partial_update(data as never, {
         params: { id },
         headers: { "X-CSRFToken": getCookie("csrftoken") },
-      }),
+      }) as Promise<UpdateNotificationPreferenceResponse>,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["NotificationPreferences"],

@@ -1,19 +1,19 @@
 import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type CreateStepsInput = Parameters<typeof api.api_Steps_create>[0];
-
-type CreatePartResponse = Awaited<ReturnType<typeof api.api_Steps_create>>;
+type CreateStepInput = Schema<"StepsRequest">;
+type CreateStepResponse = Schema<"Steps">;
 
 export const useCreateStep = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<CreatePartResponse, unknown, CreateStepsInput>({
+    return useMutation<CreateStepResponse, unknown, CreateStepInput>({
         mutationFn: (data) =>
-            api.api_Steps_create(data, {
+            api.api_Steps_create(data as never, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<CreateStepResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["step"] });
         },

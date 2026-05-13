@@ -1,16 +1,20 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 type EffectivePermissionsResponse = Awaited<ReturnType<typeof api.api_users_me_effective_permissions_retrieve>>;
 
 export type { EffectivePermissionsResponse };
 
+export const myPermissionsOptions = () => queryOptions({
+    queryKey: ["myPermissions"] as const,
+    queryFn: () => api.api_users_me_effective_permissions_retrieve(),
+});
+
 export function useMyPermissions(
-    options?: Omit<UseQueryOptions<EffectivePermissionsResponse, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof myPermissionsOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["myPermissions"],
-        queryFn: () => api.api_users_me_effective_permissions_retrieve(),
+        ...myPermissionsOptions(),
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
         retry: 1,
         ...options,

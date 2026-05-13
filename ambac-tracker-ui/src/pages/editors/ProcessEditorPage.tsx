@@ -1,9 +1,8 @@
-import {useRetrieveProcesses} from "@/hooks/useRetrieveProcesses";
+import { useRetrieveProcesses, processesOptions, processesMetadataOptions } from "@/hooks/useRetrieveProcesses";
 import { useNavigate } from "@tanstack/react-router";
 import {ModelEditorPage, createColumnHelper} from "@/pages/editors/ModelEditorPage.tsx";
 import {EditProcessActionsCell} from "@/components/edit-process-action-cell.tsx";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
@@ -21,14 +20,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchProcessEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["process", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Processes_list({ queries: DEFAULT_LIST_PARAMS } as never),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Processes", "Processes"],
-        queryFn: () => api.api_Processes_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(processesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(processesMetadataOptions());
 };
 
 function ProcessStatusBadge({ status }: { status: string }) {

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 export type FpyDataPoint = {
@@ -26,6 +26,13 @@ type UseFpyTrendParams = {
 const fetchFpyTrend = (days: number) =>
     api.api_dashboard_fpy_trend_retrieve({ queries: { days } }) as Promise<FpyTrendResponse>;
 
+export const fpyTrendOptions = (days: number) => queryOptions({
+    queryKey: ["fpy-trend", days] as const,
+    queryFn: () => fetchFpyTrend(days),
+    placeholderData: (previousData) => previousData, // Keep showing old data while fetching
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - trend data
+});
+
 export const useFpyTrend = ({ days = 30, enabled = true }: UseFpyTrendParams = {}) => {
     const queryClient = useQueryClient();
 
@@ -33,18 +40,9 @@ export const useFpyTrend = ({ days = 30, enabled = true }: UseFpyTrendParams = {
     useEffect(() => {
         const rangesToPrefetch = [30, 60, 90].filter(d => d !== days);
         rangesToPrefetch.forEach(d => {
-            queryClient.prefetchQuery({
-                queryKey: ["fpy-trend", d],
-                queryFn: () => fetchFpyTrend(d),
-            });
+            queryClient.prefetchQuery(fpyTrendOptions(d));
         });
-    }, []); // Only on mount
+    }, [days, queryClient]); // Re-prefetch when days changes so adjacent ranges stay warm
 
-    return useQuery<FpyTrendResponse>({
-        queryKey: ["fpy-trend", days],
-        queryFn: () => fetchFpyTrend(days),
-        enabled,
-        placeholderData: (previousData) => previousData, // Keep showing old data while fetching
-        refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - trend data
-    });
+    return useQuery({ ...fpyTrendOptions(days), enabled });
 };

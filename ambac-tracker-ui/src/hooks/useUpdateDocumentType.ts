@@ -1,15 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-// Infer types from the API
-type UpdateDocumentTypeInput = Parameters<typeof api.api_DocumentTypes_partial_update>[0];
-type UpdateDocumentTypeConfig = Parameters<typeof api.api_DocumentTypes_partial_update>[1];
-type UpdateDocumentTypeParams = UpdateDocumentTypeConfig["params"];
-type UpdateDocumentTypeResponse = Awaited<ReturnType<typeof api.api_DocumentTypes_partial_update>>;
+type UpdateDocumentTypeInput = Schema<"PatchedDocumentTypeRequest">;
+type UpdateDocumentTypeResponse = Schema<"DocumentType">;
 
 type UpdateDocumentTypeVariables = {
-    id: UpdateDocumentTypeParams["id"];
+    id: string;
     data: UpdateDocumentTypeInput;
 };
 
@@ -18,10 +16,10 @@ export function useUpdateDocumentType() {
 
     return useMutation<UpdateDocumentTypeResponse, unknown, UpdateDocumentTypeVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_DocumentTypes_partial_update(data, {
+            api.api_DocumentTypes_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateDocumentTypeResponse>,
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ["documentTypes"] });
             queryClient.invalidateQueries({ queryKey: ["documentType", variables.id] });

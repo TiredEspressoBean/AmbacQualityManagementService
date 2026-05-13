@@ -1,10 +1,9 @@
-import { useRetrieveAuditLogEntries } from "@/hooks/useRetrieveAuditLogEntries";
+import { useRetrieveAuditLogEntries, auditLogOptions } from "@/hooks/useRetrieveAuditLogEntries";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
@@ -21,10 +20,7 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchAuditLogEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["logs", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_auditlog_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
+    queryClient.prefetchQuery(auditLogOptions(DEFAULT_LIST_PARAMS));
 };
 
 // Custom wrapper hook that properly passes filters

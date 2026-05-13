@@ -10,7 +10,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { useUpdatePart } from "@/hooks/useUpdatePart"; // adjust path as needed
+import { useUpdatePart } from "@/hooks/parts"; // adjust path as needed
 
 export function ArchivePartDialog({ partId }: { partId: string }) {
     const [open, setOpen] = React.useState(false);
@@ -22,6 +22,7 @@ export function ArchivePartDialog({ partId }: { partId: string }) {
             try {
                 await updatePart({
                     id: partId,
+                    // eslint-disable-next-line local/no-as-any -- PatchedPartsRequest has many required fields; only patching archived flag
                     data: { archived: true } as any,
                 });
                 toast.success("Part archived");

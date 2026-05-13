@@ -6,9 +6,9 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {api, schemas, type PaginatedUserSelectList} from "@/lib/api/generated";
 import {isFieldRequired} from "@/lib/zod-config";
-import {useInfiniteQuery} from "@tanstack/react-query";
+import {useInfiniteQuery, infiniteQueryOptions} from "@tanstack/react-query";
 import {useQualityReports} from "@/hooks/useQualityReports";
-import {useRetrieveParts} from "@/hooks/useRetrieveParts";
+import {useRetrieveParts} from "@/hooks/parts";
 import {cn, getCookie} from "@/lib/utils";
 import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
 import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from "@/components/ui/command";
@@ -78,6 +78,14 @@ const severityLabels: Record<string, string> = {
     MINOR: "Minor - Cosmetic Only",
 };
 
+const employeeOptionsInfiniteOptions = () =>
+    infiniteQueryOptions<PaginatedUserSelectList, Error>({
+        queryKey: ["employee-options"],
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
+        initialPageParam: 0,
+    });
+
 export default function PartDispositionForm({part, disposition, onClose}: { part: any; disposition?: any; onClose?: () => void }) {
     const [assignedToPopoverOpen, setAssignedToPopoverOpen] = React.useState(false);
     const [completedByPopoverOpen, setCompletedByPopoverOpen] = React.useState(false);
@@ -92,12 +100,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
     // Collapsible state for containment section - expanded by default for critical
     const [containmentOpen, setContainmentOpen] = React.useState(disposition?.severity === "CRITICAL");
 
-    const {data: employeePages, isLoading: employeesLoading} = useInfiniteQuery<PaginatedUserSelectList, Error>({
-        queryKey: ["employee-options"],
-        queryFn: ({pageParam = 0}) => api.api_Employees_Options_list({queries: {offset: pageParam}}),
-        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
-        initialPageParam: 0,
-    });
+    const {data: employeePages, isLoading: employeesLoading} = useInfiniteQuery(employeeOptionsInfiniteOptions());
 
     const employees = employeePages?.pages.flatMap((p) => p.results) ?? [];
 
@@ -274,7 +277,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 name="disposition_type"
                 render={({field}) => (<FormItem>
                         <FormLabel required={required.disposition_type}>Disposition Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value as string | undefined}>
                             <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select disposition type"/>
@@ -695,7 +698,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                                 mode="single"
-                                selected={field.value}
+                                selected={field.value ? new Date(field.value) : undefined}
                                 onSelect={field.onChange}
                                 initialFocus
                             />

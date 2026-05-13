@@ -7,6 +7,9 @@ import pluginQuery from '@tanstack/eslint-plugin-query'
 import pluginRouter from '@tanstack/eslint-plugin-router'
 import noTableColumnNameMismatch from './eslint-rules/no-table-column-name-mismatch.js'
 import noAnyInRenderCell from './eslint-rules/no-any-in-render-cell.js'
+import noAsAny from './eslint-rules/no-as-any.js'
+import noDoubleCastViaUnknown from './eslint-rules/no-double-cast-via-unknown.js'
+import noInlineQueryKey from './eslint-rules/no-inline-query-key.js'
 
 export default tseslint.config(
   { ignores: ['dist', 'src/lib/api/generated.ts'] },
@@ -26,6 +29,9 @@ export default tseslint.config(
         rules: {
           'no-table-column-name-mismatch': noTableColumnNameMismatch,
           'no-any-in-render-cell': noAnyInRenderCell,
+          'no-as-any': noAsAny,
+          'no-double-cast-via-unknown': noDoubleCastViaUnknown,
+          'no-inline-query-key': noInlineQueryKey,
         },
       },
     },
@@ -37,6 +43,16 @@ export default tseslint.config(
       // Block `(p: any) =>` in renderCell — forces use of
       // createColumnHelper<Schema<"X">>() so the row type flows in.
       'local/no-any-in-render-cell': 'warn',
+      // Flag `as any` casts. Use `as never`/`as unknown`/a specific type,
+      // or annotate with `// eslint-disable-next-line local/no-as-any -- <reason>`.
+      'local/no-as-any': 'warn',
+      // Flag `as unknown as T` double casts — these bypass type checking.
+      // Single `as unknown` (with a type guard after) stays allowed.
+      'local/no-double-cast-via-unknown': 'warn',
+      // Forbid inline queryKey in useQuery/prefetchQuery/etc. Force the
+      // queryOptions() factory pattern so prefetch + runtime hook share
+      // one (key, fn, type) triple and cannot drift in shape.
+      'local/no-inline-query-key': 'warn',
       'react-refresh/only-export-components': 'off', // Disabled - HMR convenience only, too noisy
       // TypeScript flexibility - allow 'any' during rapid development
       '@typescript-eslint/no-explicit-any': 'off',

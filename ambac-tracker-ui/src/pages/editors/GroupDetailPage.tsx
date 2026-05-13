@@ -5,6 +5,7 @@ import {
     useTenantGroupMembers,
     useAddTenantGroupMember,
     useRemoveTenantGroupMember,
+    type TenantGroupMember,
 } from "@/hooks/useTenantGroupMembers";
 import {
     useAddTenantGroupPermissions,
@@ -54,22 +55,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Member type from /api/TenantGroups/:id/members/
-type GroupMember = {
-    id: string;
-    user: number;
-    user_email: string;
-    user_name: string;
-    group: string;
-    group_name: string;
-    company?: string | null;
-    company_name?: string | null;
-    facility?: string | null;
-    facility_name?: string | null;
-    granted_at: string;
-    granted_by?: number | null;
-    granted_by_name?: string | null;
-};
+// Member shape is owned by useTenantGroupMembers (TenantGroupMember). Alias to keep
+// the rest of this file's identifier stable.
+type GroupMember = TenantGroupMember;
 
 type GroupPermission = {
     codename: string;
@@ -106,7 +94,8 @@ export function GroupDetailPage() {
     const availableUsers = usersData?.results || [];
 
     const { data: permissionsData } = useAvailablePermissions();
-    const allPermissions: Permission[] = (permissionsData as any)?.permissions || [];
+    // eslint-disable-next-line local/no-as-any -- useAvailablePermissions returns an untyped response; `.permissions` is the runtime field name
+    const allPermissions: Permission[] = useMemo(() => (permissionsData as any)?.permissions ?? [], [permissionsData]);
 
     const addMemberMutation = useAddTenantGroupMember(groupId);
     const removeMemberMutation = useRemoveTenantGroupMember(groupId);
@@ -209,7 +198,7 @@ export function GroupDetailPage() {
             toast.success(`Added ${selectedUsersToAdd.length} user(s) to ${group.name}`);
             setSelectedUsersToAdd([]);
             setShowAddUsersDialog(false);
-        } catch (err) {
+        } catch {
             toast.error("Failed to add users");
         }
     };
@@ -223,7 +212,7 @@ export function GroupDetailPage() {
             }
             toast.success(`Removed ${selectedUsersToRemove.length} user(s) from ${group.name}`);
             setSelectedUsersToRemove([]);
-        } catch (err) {
+        } catch {
             toast.error("Failed to remove users");
         }
     };
@@ -248,7 +237,7 @@ export function GroupDetailPage() {
         try {
             await addPermissionsMutation.mutateAsync([codename]);
             toast.success("Permission granted");
-        } catch (err) {
+        } catch {
             toast.error("Failed to grant permission");
         }
     };
@@ -260,7 +249,7 @@ export function GroupDetailPage() {
                 .filter((c) => c !== codename);
             await setPermissionsMutation.mutateAsync(newPerms);
             toast.success("Permission revoked");
-        } catch (err) {
+        } catch {
             toast.error("Failed to revoke permission");
         }
     };

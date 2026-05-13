@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -122,39 +122,49 @@ const defaultFormValues: FormValues = {
 // Hooks
 // ---------------------------------------------------------------------------
 
+const notificationRulesOptions = () => queryOptions({
+    queryKey: ["notificationRules"] as const,
+    queryFn: () => api.api_NotificationRules_list({}),
+});
+
+const notificationEventTypesOptions = () => queryOptions({
+    queryKey: ["notificationEventTypes"] as const,
+    queryFn: () => api.api_NotificationEventTypes_list() as Promise<EventCatalogEntry[]>,
+});
+
+const employeeOptionsOptions = () => queryOptions({
+    queryKey: ["employeeOptions"] as const,
+    queryFn: () => api.api_Employees_Options_list({}),
+});
+
+const tenantGroupOptionsOptions = () => queryOptions({
+    queryKey: ["tenantGroupOptions"] as const,
+    queryFn: () => api.api_TenantGroups_list({}),
+});
+
+const stepOptionsOptions = () => queryOptions({
+    queryKey: ["stepOptions"] as const,
+    queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }),
+});
+
 function useNotificationRules() {
-    return useQuery({
-        queryKey: ["notificationRules"],
-        queryFn: () => api.api_NotificationRules_list({}),
-    });
+    return useQuery(notificationRulesOptions());
 }
 
 function useEventCatalog() {
-    return useQuery<EventCatalogEntry[]>({
-        queryKey: ["notificationEventTypes"],
-        queryFn: () => api.api_NotificationEventTypes_list(),
-    });
+    return useQuery(notificationEventTypesOptions());
 }
 
 function useEmployeeOptions() {
-    return useQuery({
-        queryKey: ["employeeOptions"],
-        queryFn: () => api.api_Employees_Options_list({}),
-    });
+    return useQuery(employeeOptionsOptions());
 }
 
 function useTenantGroupOptions() {
-    return useQuery({
-        queryKey: ["tenantGroupOptions"],
-        queryFn: () => api.api_TenantGroups_list({}),
-    });
+    return useQuery(tenantGroupOptionsOptions());
 }
 
 function useStepOptions() {
-    return useQuery({
-        queryKey: ["stepOptions"],
-        queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }),
-    });
+    return useQuery(stepOptionsOptions());
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +387,7 @@ function RuleDialog({
     const { data: groupsResp } = useTenantGroupOptions();
     const { data: stepsResp } = useStepOptions();
 
-    const employeeList = employees ?? [];
+    const employeeList = employees?.results ?? [];
     const groupList = (groupsResp?.results ?? []) as Array<{ id: string; name: string }>;
     const stepList = (stepsResp?.results ?? []) as Array<{ id: string; name: string }>;
 

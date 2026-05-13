@@ -9039,95 +9039,87 @@ const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
 const DelegationPolicyEnum = z.enum(["OPTIONAL", "DISABLED"]);
 const DecisionEnum = z.enum(["APPROVED", "REJECTED", "DELEGATED"]);
 const VerificationMethodEnum = z.enum(["PASSWORD", "SSO", "NONE"]);
-const ApprovalResponse = z
-  .object({
-    id: z.string().uuid(),
-    approval_request: z.string().uuid(),
-    approver: z.number().int(),
-    approver_info: z.object({}).partial().passthrough().nullable(),
-    decision: DecisionEnum,
-    decision_display: z.string(),
-    decision_date: z.string().datetime({ offset: true }),
-    comments: z.string().nullish(),
-    signature_data: z.string().nullish(),
-    signature_meaning: z.string().max(200).nullish(),
-    verified_at: z.string().datetime({ offset: true }).nullable(),
-    verification_method: VerificationMethodEnum.optional(),
-    verification_method_display: z.string(),
-    delegated_to: z.number().int().nullish(),
-    delegated_to_info: z.object({}).partial().passthrough().nullable(),
-    ip_address: z.string().nullable(),
-    self_approved: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const ApprovalRequest = z
-  .object({
-    id: z.string().uuid(),
-    approval_number: z.string(),
-    content_type: z.number().int().nullish(),
-    object_id: z.string().max(36).nullish(),
-    content_object_info: z.object({}).partial().passthrough().nullable(),
-    content_object_display: z.string().nullable(),
-    requested_by: z.number().int().nullish(),
-    requested_by_info: z.object({}).partial().passthrough().nullable(),
-    reason: z.string().nullish(),
-    notes: z.string().nullish(),
-    status: ApprovalStatusEnum.optional(),
-    status_display: z.string(),
-    approval_type: ApprovalTypeEnum,
-    approval_type_display: z.string(),
-    flow_type: ApprovalFlowTypeEnum.optional(),
-    flow_type_display: z.string(),
-    sequence_type: ApprovalSequenceEnum.optional(),
-    threshold: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-    delegation_policy: DelegationPolicyEnum.optional(),
-    escalation_day: z.string().nullish(),
-    escalate_to: z.number().int().nullish(),
-    due_date: z.string().datetime({ offset: true }).nullish(),
-    approver_assignments_info: z.array(z.unknown()),
-    required_approvers_info: z.array(z.unknown()),
-    optional_approvers_info: z.array(z.unknown()),
-    approver_groups: z.array(z.string().uuid()),
-    approver_groups_info: z.array(z.unknown()),
-    responses: z.array(ApprovalResponse),
-    pending_approvers: z.array(z.unknown()),
-    is_overdue: z.boolean(),
-    requested_at: z.string().datetime({ offset: true }),
-    completed_at: z.string().datetime({ offset: true }).nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean(),
-  })
-  .passthrough();
-const PaginatedApprovalRequestList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ApprovalRequest),
-  })
-  .passthrough();
-const ApprovalRequestRequest = z
-  .object({
-    content_type: z.number().int().nullish(),
-    object_id: z.string().max(36).nullish(),
-    requested_by: z.number().int().nullish(),
-    reason: z.string().nullish(),
-    notes: z.string().nullish(),
-    status: ApprovalStatusEnum.optional(),
-    approval_type: ApprovalTypeEnum,
-    flow_type: ApprovalFlowTypeEnum.optional(),
-    sequence_type: ApprovalSequenceEnum.optional(),
-    threshold: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-    delegation_policy: DelegationPolicyEnum.optional(),
-    escalation_day: z.string().nullish(),
-    escalate_to: z.number().int().nullish(),
-    due_date: z.string().datetime({ offset: true }).nullish(),
-  })
-  .passthrough();
+const ApprovalResponse = z.object({
+  id: z.string().uuid(),
+  approval_request: z.string().uuid(),
+  approver: z.number().int(),
+  approver_info: z.object({}).partial().passthrough().nullable(),
+  decision: DecisionEnum,
+  decision_display: z.string(),
+  decision_date: z.string().datetime({ offset: true }),
+  comments: z.string().nullish(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullable(),
+  verification_method: VerificationMethodEnum.optional(),
+  verification_method_display: z.string(),
+  delegated_to: z.number().int().nullish(),
+  delegated_to_info: z.object({}).partial().passthrough().nullable(),
+  ip_address: z.string().nullable(),
+  self_approved: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const ApprovalRequest = z.object({
+  id: z.string().uuid(),
+  approval_number: z.string(),
+  content_type: z.number().int().nullish(),
+  object_id: z.string().max(36).nullish(),
+  content_object_info: z.object({}).partial().passthrough().nullable(),
+  content_object_display: z.string().nullable(),
+  requested_by: z.number().int().nullish(),
+  requested_by_info: z.object({}).partial().passthrough().nullable(),
+  reason: z.string().nullish(),
+  notes: z.string().nullish(),
+  status: ApprovalStatusEnum.optional(),
+  status_display: z.string(),
+  approval_type: ApprovalTypeEnum,
+  approval_type_display: z.string(),
+  flow_type: ApprovalFlowTypeEnum.optional(),
+  flow_type_display: z.string(),
+  sequence_type: ApprovalSequenceEnum.optional(),
+  threshold: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  delegation_policy: DelegationPolicyEnum.optional(),
+  escalation_day: z.string().nullish(),
+  escalate_to: z.number().int().nullish(),
+  due_date: z.string().datetime({ offset: true }).nullish(),
+  approver_assignments_info: z.array(z.unknown()),
+  required_approvers_info: z.array(z.unknown()),
+  optional_approvers_info: z.array(z.unknown()),
+  approver_groups: z.array(z.string().uuid()),
+  approver_groups_info: z.array(z.unknown()),
+  responses: z.array(ApprovalResponse),
+  pending_approvers: z.array(z.unknown()),
+  is_overdue: z.boolean(),
+  requested_at: z.string().datetime({ offset: true }),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean(),
+});
+const PaginatedApprovalRequestList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ApprovalRequest),
+});
+const ApprovalRequestRequest = z.object({
+  content_type: z.number().int().nullish(),
+  object_id: z.string().max(36).nullish(),
+  requested_by: z.number().int().nullish(),
+  reason: z.string().nullish(),
+  notes: z.string().nullish(),
+  status: ApprovalStatusEnum.optional(),
+  approval_type: ApprovalTypeEnum,
+  flow_type: ApprovalFlowTypeEnum.optional(),
+  sequence_type: ApprovalSequenceEnum.optional(),
+  threshold: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  delegation_policy: DelegationPolicyEnum.optional(),
+  escalation_day: z.string().nullish(),
+  escalate_to: z.number().int().nullish(),
+  due_date: z.string().datetime({ offset: true }).nullish(),
+});
 const PatchedApprovalRequestRequest = z
   .object({
     content_type: z.number().int().nullable(),
@@ -9145,39 +9137,32 @@ const PatchedApprovalRequestRequest = z
     escalate_to: z.number().int().nullable(),
     due_date: z.string().datetime({ offset: true }).nullable(),
   })
-  .partial()
-  .passthrough();
-const ListMetadataResponse = z
-  .object({
-    search_fields: z.array(z.string()),
-    search_fields_display: z.array(z.string()),
-    ordering_fields: z.array(z.string()),
-    ordering_fields_display: z.array(z.string()),
-    filterset_fields: z.array(z.string()),
-    filters: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const PaginatedApprovalResponseList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ApprovalResponse),
-  })
-  .passthrough();
-const ApprovalResponseRequest = z
-  .object({
-    approval_request: z.string().uuid(),
-    approver: z.number().int(),
-    decision: DecisionEnum,
-    comments: z.string().nullish(),
-    signature_data: z.string().nullish(),
-    signature_meaning: z.string().max(200).nullish(),
-    verification_method: VerificationMethodEnum.optional(),
-    delegated_to: z.number().int().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const ListMetadataResponse = z.object({
+  search_fields: z.array(z.string()),
+  search_fields_display: z.array(z.string()),
+  ordering_fields: z.array(z.string()),
+  ordering_fields_display: z.array(z.string()),
+  filterset_fields: z.array(z.string()),
+  filters: z.object({}).partial().passthrough(),
+});
+const PaginatedApprovalResponseList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ApprovalResponse),
+});
+const ApprovalResponseRequest = z.object({
+  approval_request: z.string().uuid(),
+  approver: z.number().int(),
+  decision: DecisionEnum,
+  comments: z.string().nullish(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  delegated_to: z.number().int().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedApprovalResponseRequest = z
   .object({
     approval_request: z.string().uuid(),
@@ -9190,95 +9175,78 @@ const PatchedApprovalResponseRequest = z
     delegated_to: z.number().int().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const ApprovalTemplate = z
-  .object({
-    id: z.string().uuid(),
-    template_name: z.string().max(100),
-    approval_type: ApprovalTypeEnum,
-    approval_type_display: z.string(),
-    default_groups: z.array(z.string().uuid()).optional(),
-    default_groups_info: z.array(z.unknown()),
-    default_approvers: z.array(z.number().int()).optional(),
-    default_approvers_info: z.array(z.unknown()),
-    default_threshold: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .nullish(),
-    auto_assign_by_role: z.string().max(50).nullish(),
-    approval_flow_type: ApprovalFlowTypeEnum.optional(),
-    approval_flow_type_display: z.string(),
-    delegation_policy: DelegationPolicyEnum.optional(),
-    delegation_policy_display: z.string(),
-    approval_sequence: ApprovalSequenceEnum.optional(),
-    approval_sequence_display: z.string(),
-    allow_self_approval: z.boolean().optional(),
-    default_due_days: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional(),
-    escalation_days: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .nullish(),
-    escalate_to: z.number().int().nullish(),
-    escalate_to_info: z.object({}).partial().passthrough().nullable(),
-    deactivated_at: z.string().datetime({ offset: true }).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedApprovalTemplateList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ApprovalTemplate),
-  })
-  .passthrough();
-const ApprovalTemplateRequest = z
-  .object({
-    template_name: z.string().min(1).max(100),
-    approval_type: ApprovalTypeEnum,
-    default_groups: z.array(z.string().uuid()).optional(),
-    default_approvers: z.array(z.number().int()).optional(),
-    default_threshold: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .nullish(),
-    auto_assign_by_role: z.string().max(50).nullish(),
-    approval_flow_type: ApprovalFlowTypeEnum.optional(),
-    delegation_policy: DelegationPolicyEnum.optional(),
-    approval_sequence: ApprovalSequenceEnum.optional(),
-    allow_self_approval: z.boolean().optional(),
-    default_due_days: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional(),
-    escalation_days: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .nullish(),
-    escalate_to: z.number().int().nullish(),
-    deactivated_at: z.string().datetime({ offset: true }).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const ApprovalTemplate = z.object({
+  id: z.string().uuid(),
+  template_name: z.string().max(100),
+  approval_type: ApprovalTypeEnum,
+  approval_type_display: z.string(),
+  default_groups: z.array(z.string().uuid()).optional(),
+  default_groups_info: z.array(z.unknown()),
+  default_approvers: z.array(z.number().int()).optional(),
+  default_approvers_info: z.array(z.unknown()),
+  default_threshold: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .nullish(),
+  auto_assign_by_role: z.string().max(50).nullish(),
+  approval_flow_type: ApprovalFlowTypeEnum.optional(),
+  approval_flow_type_display: z.string(),
+  delegation_policy: DelegationPolicyEnum.optional(),
+  delegation_policy_display: z.string(),
+  approval_sequence: ApprovalSequenceEnum.optional(),
+  approval_sequence_display: z.string(),
+  allow_self_approval: z.boolean().optional(),
+  default_due_days: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional(),
+  escalation_days: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  escalate_to: z.number().int().nullish(),
+  escalate_to_info: z.object({}).partial().passthrough().nullable(),
+  deactivated_at: z.string().datetime({ offset: true }).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedApprovalTemplateList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ApprovalTemplate),
+});
+const ApprovalTemplateRequest = z.object({
+  template_name: z.string().min(1).max(100),
+  approval_type: ApprovalTypeEnum,
+  default_groups: z.array(z.string().uuid()).optional(),
+  default_approvers: z.array(z.number().int()).optional(),
+  default_threshold: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .nullish(),
+  auto_assign_by_role: z.string().max(50).nullish(),
+  approval_flow_type: ApprovalFlowTypeEnum.optional(),
+  delegation_policy: DelegationPolicyEnum.optional(),
+  approval_sequence: ApprovalSequenceEnum.optional(),
+  allow_self_approval: z.boolean().optional(),
+  default_due_days: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional(),
+  escalation_days: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  escalate_to: z.number().int().nullish(),
+  deactivated_at: z.string().datetime({ offset: true }).nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedApprovalTemplateRequest = z
   .object({
     template_name: z.string().min(1).max(100),
@@ -9307,54 +9275,47 @@ const PatchedApprovalTemplateRequest = z
     deactivated_at: z.string().datetime({ offset: true }).nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const AssemblyUsage = z
-  .object({
-    id: z.string().uuid(),
-    assembly: z.string().uuid(),
-    assembly_erp_id: z.string(),
-    component: z.string().uuid(),
-    component_erp_id: z.string(),
-    quantity: z
-      .string()
-      .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
-      .optional(),
-    bom_line: z.string().uuid().nullish(),
-    installed_at: z.string().datetime({ offset: true }),
-    installed_by: z.number().int(),
-    installed_by_name: z.string(),
-    step: z.string().uuid().nullish(),
-    removed_at: z.string().datetime({ offset: true }).nullable(),
-    removed_by: z.number().int().nullable(),
-    removal_reason: z.string(),
-    is_installed: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedAssemblyUsageList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(AssemblyUsage),
-  })
-  .passthrough();
-const AssemblyUsageRequest = z
-  .object({
-    assembly: z.string().uuid(),
-    component: z.string().uuid(),
-    quantity: z
-      .string()
-      .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
-      .optional(),
-    bom_line: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const AssemblyUsage = z.object({
+  id: z.string().uuid(),
+  assembly: z.string().uuid(),
+  assembly_erp_id: z.string(),
+  component: z.string().uuid(),
+  component_erp_id: z.string(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
+    .optional(),
+  bom_line: z.string().uuid().nullish(),
+  installed_at: z.string().datetime({ offset: true }),
+  installed_by: z.number().int(),
+  installed_by_name: z.string(),
+  step: z.string().uuid().nullish(),
+  removed_at: z.string().datetime({ offset: true }).nullable(),
+  removed_by: z.number().int().nullable(),
+  removal_reason: z.string(),
+  is_installed: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedAssemblyUsageList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(AssemblyUsage),
+});
+const AssemblyUsageRequest = z.object({
+  assembly: z.string().uuid(),
+  component: z.string().uuid(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
+    .optional(),
+  bom_line: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedAssemblyUsageRequest = z
   .object({
     assembly: z.string().uuid(),
@@ -9364,54 +9325,46 @@ const PatchedAssemblyUsageRequest = z
     step: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const AssemblyRemoveRequest = z
   .object({ reason: z.string().default("") })
-  .partial()
-  .passthrough();
-const BOMLine = z
-  .object({
-    id: z.string().uuid(),
-    bom: z.string().uuid(),
-    component_type: z.string().uuid(),
-    component_type_name: z.string(),
-    quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
-    unit_of_measure: z.string().max(20).optional(),
-    find_number: z.string().max(20).optional(),
-    reference_designator: z.string().max(100).optional(),
-    is_optional: z.boolean().optional(),
-    allow_harvested: z.boolean().optional(),
-    notes: z.string().optional(),
-    line_number: z.number().int().gte(0).lte(2147483647).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedBOMLineList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(BOMLine),
-  })
-  .passthrough();
-const BOMLineRequest = z
-  .object({
-    bom: z.string().uuid(),
-    component_type: z.string().uuid(),
-    quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
-    unit_of_measure: z.string().min(1).max(20).optional(),
-    find_number: z.string().max(20).optional(),
-    reference_designator: z.string().max(100).optional(),
-    is_optional: z.boolean().optional(),
-    allow_harvested: z.boolean().optional(),
-    notes: z.string().optional(),
-    line_number: z.number().int().gte(0).lte(2147483647).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const BOMLine = z.object({
+  id: z.string().uuid(),
+  bom: z.string().uuid(),
+  component_type: z.string().uuid(),
+  component_type_name: z.string(),
+  quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
+  unit_of_measure: z.string().max(20).optional(),
+  find_number: z.string().max(20).optional(),
+  reference_designator: z.string().max(100).optional(),
+  is_optional: z.boolean().optional(),
+  allow_harvested: z.boolean().optional(),
+  notes: z.string().optional(),
+  line_number: z.number().int().gte(0).lte(2147483647).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedBOMLineList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(BOMLine),
+});
+const BOMLineRequest = z.object({
+  bom: z.string().uuid(),
+  component_type: z.string().uuid(),
+  quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
+  unit_of_measure: z.string().min(1).max(20).optional(),
+  find_number: z.string().max(20).optional(),
+  reference_designator: z.string().max(100).optional(),
+  is_optional: z.boolean().optional(),
+  allow_harvested: z.boolean().optional(),
+  notes: z.string().optional(),
+  line_number: z.number().int().gte(0).lte(2147483647).optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedBOMLineRequest = z
   .object({
     bom: z.string().uuid(),
@@ -9426,60 +9379,51 @@ const PatchedBOMLineRequest = z
     line_number: z.number().int().gte(0).lte(2147483647),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const BOMTypeEnum = z.enum(["ASSEMBLY", "DISASSEMBLY"]);
 const BOMStatusEnum = z.enum(["DRAFT", "RELEASED", "OBSOLETE"]);
-const BOMList = z
-  .object({
-    id: z.string().uuid(),
-    part_type: z.string().uuid(),
-    part_type_name: z.string(),
-    revision: z.string().max(10),
-    bom_type: BOMTypeEnum.optional(),
-    status: BOMStatusEnum.optional(),
-    line_count: z.number().int(),
-  })
-  .passthrough();
-const PaginatedBOMListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(BOMList),
-  })
-  .passthrough();
-const BOMRequest = z
-  .object({
-    part_type: z.string().uuid(),
-    revision: z.string().min(1).max(10),
-    bom_type: BOMTypeEnum.optional(),
-    status: BOMStatusEnum.optional(),
-    description: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const BOM = z
-  .object({
-    id: z.string().uuid(),
-    part_type: z.string().uuid(),
-    part_type_name: z.string(),
-    revision: z.string().max(10),
-    bom_type: BOMTypeEnum.optional(),
-    status: BOMStatusEnum.optional(),
-    description: z.string().optional(),
-    effective_date: z.string().nullable(),
-    obsolete_date: z.string().nullable(),
-    approved_by: z.number().int().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    lines: z.array(BOMLine),
-    line_count: z.number().int(),
-    version: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const BOMList = z.object({
+  id: z.string().uuid(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  revision: z.string().max(10),
+  bom_type: BOMTypeEnum.optional(),
+  status: BOMStatusEnum.optional(),
+  line_count: z.number().int(),
+});
+const PaginatedBOMListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(BOMList),
+});
+const BOMRequest = z.object({
+  part_type: z.string().uuid(),
+  revision: z.string().min(1).max(10),
+  bom_type: BOMTypeEnum.optional(),
+  status: BOMStatusEnum.optional(),
+  description: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const BOM = z.object({
+  id: z.string().uuid(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  revision: z.string().max(10),
+  bom_type: BOMTypeEnum.optional(),
+  status: BOMStatusEnum.optional(),
+  description: z.string().optional(),
+  effective_date: z.string().nullable(),
+  obsolete_date: z.string().nullable(),
+  approved_by: z.number().int().nullable(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  lines: z.array(BOMLine),
+  line_count: z.number().int(),
+  version: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const PatchedBOMRequest = z
   .object({
     part_type: z.string().uuid(),
@@ -9489,11 +9433,10 @@ const PatchedBOMRequest = z
     description: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const CreateBOMRevisionInputRequest = z
-  .object({ change_description: z.string().min(1) })
-  .passthrough();
+  .partial();
+const CreateBOMRevisionInputRequest = z.object({
+  change_description: z.string().min(1),
+});
 const CapaTypeEnum = z.enum([
   "CORRECTIVE",
   "PREVENTIVE",
@@ -9509,56 +9452,52 @@ const CapaTaskStatusEnum = z.enum([
   "COMPLETED",
   "CANCELLED",
 ]);
-const CapaTaskAssignee = z
-  .object({
-    id: z.string().uuid(),
-    task: z.string().uuid(),
-    task_info: z.object({}).partial().passthrough().nullable(),
-    user: z.number().int(),
-    user_info: z.object({}).partial().passthrough().nullable(),
-    status: CapaTaskStatusEnum.optional(),
-    completed_at: z.string().datetime({ offset: true }).nullable(),
-    completion_notes: z.string().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const CapaTaskAssignee = z.object({
+  id: z.string().uuid(),
+  task: z.string().uuid(),
+  task_info: z.object({}).partial().passthrough().nullable(),
+  user: z.number().int(),
+  user_info: z.object({}).partial().passthrough().nullable(),
+  status: CapaTaskStatusEnum.optional(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  completion_notes: z.string().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const CompletionModeEnum = z.enum([
   "SINGLE_OWNER",
   "ANY_ASSIGNEE",
   "ALL_ASSIGNEES",
 ]);
-const CapaTasks = z
-  .object({
-    id: z.string().uuid(),
-    task_number: z.string(),
-    capa: z.string().uuid(),
-    capa_info: z.object({}).partial().passthrough().nullable(),
-    task_type: TaskTypeEnum,
-    task_type_display: z.string(),
-    description: z.string(),
-    assigned_to: z.number().int().nullish(),
-    assigned_to_info: z.object({}).partial().passthrough().nullable(),
-    assignees: z.array(CapaTaskAssignee),
-    completion_mode: CompletionModeEnum.optional(),
-    completion_mode_display: z.string(),
-    due_date: z.string().nullish(),
-    requires_signature: z.boolean().optional(),
-    status: CapaTaskStatusEnum.optional(),
-    status_display: z.string(),
-    completed_by: z.number().int().nullable(),
-    completed_by_info: z.object({}).partial().passthrough().nullable(),
-    completed_date: z.string().nullable(),
-    completion_notes: z.string().nullish(),
-    completion_signature: z.string().nullable(),
-    is_overdue: z.boolean(),
-    documents_info: z.object({}).partial().passthrough(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const CapaTasks = z.object({
+  id: z.string().uuid(),
+  task_number: z.string(),
+  capa: z.string().uuid(),
+  capa_info: z.object({}).partial().passthrough().nullable(),
+  task_type: TaskTypeEnum,
+  task_type_display: z.string(),
+  description: z.string(),
+  assigned_to: z.number().int().nullish(),
+  assigned_to_info: z.object({}).partial().passthrough().nullable(),
+  assignees: z.array(CapaTaskAssignee),
+  completion_mode: CompletionModeEnum.optional(),
+  completion_mode_display: z.string(),
+  due_date: z.string().nullish(),
+  requires_signature: z.boolean().optional(),
+  status: CapaTaskStatusEnum.optional(),
+  status_display: z.string(),
+  completed_by: z.number().int().nullable(),
+  completed_by_info: z.object({}).partial().passthrough().nullable(),
+  completed_date: z.string().nullable(),
+  completion_notes: z.string().nullish(),
+  completion_signature: z.string().nullable(),
+  is_overdue: z.boolean(),
+  documents_info: z.object({}).partial().passthrough(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const RcaMethodEnum = z.enum(["FIVE_WHYS", "FISHBONE", "FAULT_TREE", "PARETO"]);
 const RcaReviewStatusEnum = z.enum(["NOT_REQUIRED", "REQUIRED", "COMPLETED"]);
 const RootCauseVerificationStatusEnum = z.enum([
@@ -9576,192 +9515,172 @@ const RootCauseCategoryEnum = z.enum([
   "OTHER",
 ]);
 const RoleEnum = z.enum(["PRIMARY", "CONTRIBUTING"]);
-const RootCause = z
-  .object({
-    id: z.string().uuid(),
-    rca_record: z.string().uuid(),
-    rca_record_info: z.object({}).partial().passthrough().nullable(),
-    description: z.string(),
-    category: RootCauseCategoryEnum,
-    category_display: z.string(),
-    role: RoleEnum.optional(),
-    role_display: z.string(),
-    sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const FiveWhys = z
-  .object({
-    id: z.string().uuid(),
-    rca_record: z.string().uuid(),
-    rca_record_info: z.object({}).partial().passthrough().nullable(),
-    why_1_question: z.string().nullish(),
-    why_1_answer: z.string().nullish(),
-    why_2_question: z.string().nullish(),
-    why_2_answer: z.string().nullish(),
-    why_3_question: z.string().nullish(),
-    why_3_answer: z.string().nullish(),
-    why_4_question: z.string().nullish(),
-    why_4_answer: z.string().nullish(),
-    why_5_question: z.string().nullish(),
-    why_5_answer: z.string().nullish(),
-    identified_root_cause: z.string().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const Fishbone = z
-  .object({
-    id: z.string().uuid(),
-    rca_record: z.string().uuid(),
-    rca_record_info: z.object({}).partial().passthrough().nullable(),
-    problem_statement: z.string(),
-    man_causes: z.unknown().optional(),
-    machine_causes: z.unknown().optional(),
-    material_causes: z.unknown().optional(),
-    method_causes: z.unknown().optional(),
-    measurement_causes: z.unknown().optional(),
-    environment_causes: z.unknown().optional(),
-    identified_root_cause: z.string().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const RcaRecord = z
-  .object({
-    id: z.string().uuid(),
-    capa: z.string().uuid(),
-    capa_info: z.object({}).partial().passthrough().nullable(),
-    rca_method: RcaMethodEnum,
-    rca_method_display: z.string(),
-    problem_description: z.string(),
-    root_cause_summary: z.string().nullish(),
-    conducted_by: z.number().int().nullish(),
-    conducted_by_info: z.object({}).partial().passthrough().nullable(),
-    conducted_date: z.string().nullish(),
-    rca_review_status: RcaReviewStatusEnum.optional(),
-    rca_review_status_display: z.string(),
-    root_cause_verification_status: RootCauseVerificationStatusEnum.optional(),
-    root_cause_verification_status_display: z.string(),
-    root_cause_verified_at: z.string().datetime({ offset: true }).nullable(),
-    root_cause_verified_by: z.number().int().nullish(),
-    root_cause_verified_by_info: z
-      .object({})
-      .partial()
-      .passthrough()
-      .nullable(),
-    self_verified: z.boolean(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    dispositions: z.array(z.string().uuid()).optional(),
-    root_causes: z.array(RootCause),
-    five_whys: FiveWhys.nullable(),
-    fishbone: Fishbone.nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const RootCause = z.object({
+  id: z.string().uuid(),
+  rca_record: z.string().uuid(),
+  rca_record_info: z.object({}).partial().passthrough().nullable(),
+  description: z.string(),
+  category: RootCauseCategoryEnum,
+  category_display: z.string(),
+  role: RoleEnum.optional(),
+  role_display: z.string(),
+  sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const FiveWhys = z.object({
+  id: z.string().uuid(),
+  rca_record: z.string().uuid(),
+  rca_record_info: z.object({}).partial().passthrough().nullable(),
+  why_1_question: z.string().nullish(),
+  why_1_answer: z.string().nullish(),
+  why_2_question: z.string().nullish(),
+  why_2_answer: z.string().nullish(),
+  why_3_question: z.string().nullish(),
+  why_3_answer: z.string().nullish(),
+  why_4_question: z.string().nullish(),
+  why_4_answer: z.string().nullish(),
+  why_5_question: z.string().nullish(),
+  why_5_answer: z.string().nullish(),
+  identified_root_cause: z.string().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const Fishbone = z.object({
+  id: z.string().uuid(),
+  rca_record: z.string().uuid(),
+  rca_record_info: z.object({}).partial().passthrough().nullable(),
+  problem_statement: z.string(),
+  man_causes: z.unknown().optional(),
+  machine_causes: z.unknown().optional(),
+  material_causes: z.unknown().optional(),
+  method_causes: z.unknown().optional(),
+  measurement_causes: z.unknown().optional(),
+  environment_causes: z.unknown().optional(),
+  identified_root_cause: z.string().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const RcaRecord = z.object({
+  id: z.string().uuid(),
+  capa: z.string().uuid(),
+  capa_info: z.object({}).partial().passthrough().nullable(),
+  rca_method: RcaMethodEnum,
+  rca_method_display: z.string(),
+  problem_description: z.string(),
+  root_cause_summary: z.string().nullish(),
+  conducted_by: z.number().int().nullish(),
+  conducted_by_info: z.object({}).partial().passthrough().nullable(),
+  conducted_date: z.string().nullish(),
+  rca_review_status: RcaReviewStatusEnum.optional(),
+  rca_review_status_display: z.string(),
+  root_cause_verification_status: RootCauseVerificationStatusEnum.optional(),
+  root_cause_verification_status_display: z.string(),
+  root_cause_verified_at: z.string().datetime({ offset: true }).nullable(),
+  root_cause_verified_by: z.number().int().nullish(),
+  root_cause_verified_by_info: z.object({}).partial().passthrough().nullable(),
+  self_verified: z.boolean(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  dispositions: z.array(z.string().uuid()).optional(),
+  root_causes: z.array(RootCause),
+  five_whys: FiveWhys.nullable(),
+  fishbone: Fishbone.nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const EffectivenessResultEnum = z.enum([
   "CONFIRMED",
   "NOT_EFFECTIVE",
   "INCONCLUSIVE",
 ]);
-const CapaVerification = z
-  .object({
-    id: z.string().uuid(),
-    capa: z.string().uuid(),
-    capa_info: z.object({}).partial().passthrough().nullable(),
-    verification_method: z.string(),
-    verification_criteria: z.string(),
-    verification_date: z.string().nullish(),
-    verified_by: z.number().int().nullish(),
-    verified_by_info: z.object({}).partial().passthrough().nullable(),
-    effectiveness_result: EffectivenessResultEnum.optional(),
-    effectiveness_result_display: z.string(),
-    effectiveness_decided_at: z.string().datetime({ offset: true }).nullable(),
-    verification_notes: z.string().nullish(),
-    self_verified: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const CAPA = z
-  .object({
-    id: z.string().uuid(),
-    capa_number: z.string(),
-    capa_type: CapaTypeEnum,
-    capa_type_display: z.string(),
-    severity: SeverityEnum,
-    severity_display: z.string(),
-    status: z.string(),
-    status_display: z.string(),
-    problem_statement: z.string(),
-    immediate_action: z.string().nullish(),
-    initiated_by: z.number().int().nullish(),
-    initiated_by_info: z.object({}).partial().passthrough().nullable(),
-    initiated_date: z.string(),
-    assigned_to: z.number().int().nullish(),
-    assigned_to_info: z.object({}).partial().passthrough().nullable(),
-    due_date: z.string().nullish(),
-    completed_date: z.string().nullable(),
-    verified_by: z.number().int().nullish(),
-    verified_by_info: z.object({}).partial().passthrough().nullable(),
-    approval_required: z.boolean(),
-    approval_status: ApprovalStatusEnum.optional(),
-    approval_status_display: z.string(),
-    approved_by: z.number().int().nullable(),
-    approved_by_info: z.object({}).partial().passthrough().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    allow_self_verification: z.boolean().optional(),
-    part: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    work_order: z.string().uuid().nullish(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    dispositions: z.array(z.string().uuid()).optional(),
-    tasks: z.array(CapaTasks),
-    rca_records: z.array(RcaRecord),
-    verifications: z.array(CapaVerification),
-    completion_percentage: z.number(),
-    is_overdue: z.boolean(),
-    blocking_items: z.array(z.unknown()),
-    work_order_ids: z.array(z.string().uuid()),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean(),
-  })
-  .passthrough();
-const PaginatedCAPAList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CAPA),
-  })
-  .passthrough();
-const CAPARequest = z
-  .object({
-    capa_type: CapaTypeEnum,
-    severity: SeverityEnum,
-    problem_statement: z.string().min(1),
-    immediate_action: z.string().nullish(),
-    initiated_by: z.number().int().nullish(),
-    assigned_to: z.number().int().nullish(),
-    due_date: z.string().nullish(),
-    verified_by: z.number().int().nullish(),
-    approval_status: ApprovalStatusEnum.optional(),
-    allow_self_verification: z.boolean().optional(),
-    part: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    work_order: z.string().uuid().nullish(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    dispositions: z.array(z.string().uuid()).optional(),
-  })
-  .passthrough();
+const CapaVerification = z.object({
+  id: z.string().uuid(),
+  capa: z.string().uuid(),
+  capa_info: z.object({}).partial().passthrough().nullable(),
+  verification_method: z.string(),
+  verification_criteria: z.string(),
+  verification_date: z.string().nullish(),
+  verified_by: z.number().int().nullish(),
+  verified_by_info: z.object({}).partial().passthrough().nullable(),
+  effectiveness_result: EffectivenessResultEnum.optional(),
+  effectiveness_result_display: z.string(),
+  effectiveness_decided_at: z.string().datetime({ offset: true }).nullable(),
+  verification_notes: z.string().nullish(),
+  self_verified: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const CAPA = z.object({
+  id: z.string().uuid(),
+  capa_number: z.string(),
+  capa_type: CapaTypeEnum,
+  capa_type_display: z.string(),
+  severity: SeverityEnum,
+  severity_display: z.string(),
+  status: z.string(),
+  status_display: z.string(),
+  problem_statement: z.string(),
+  immediate_action: z.string().nullish(),
+  initiated_by: z.number().int().nullish(),
+  initiated_by_info: z.object({}).partial().passthrough().nullable(),
+  initiated_date: z.string(),
+  assigned_to: z.number().int().nullish(),
+  assigned_to_info: z.object({}).partial().passthrough().nullable(),
+  due_date: z.string().nullish(),
+  completed_date: z.string().nullable(),
+  verified_by: z.number().int().nullish(),
+  verified_by_info: z.object({}).partial().passthrough().nullable(),
+  approval_required: z.boolean(),
+  approval_status: ApprovalStatusEnum.optional(),
+  approval_status_display: z.string(),
+  approved_by: z.number().int().nullable(),
+  approved_by_info: z.object({}).partial().passthrough().nullable(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  allow_self_verification: z.boolean().optional(),
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  work_order: z.string().uuid().nullish(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  dispositions: z.array(z.string().uuid()).optional(),
+  tasks: z.array(CapaTasks),
+  rca_records: z.array(RcaRecord),
+  verifications: z.array(CapaVerification),
+  completion_percentage: z.number(),
+  is_overdue: z.boolean(),
+  blocking_items: z.array(z.unknown()),
+  work_order_ids: z.array(z.string().uuid()),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean(),
+});
+const PaginatedCAPAList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CAPA),
+});
+const CAPARequest = z.object({
+  capa_type: CapaTypeEnum,
+  severity: SeverityEnum,
+  problem_statement: z.string().min(1),
+  immediate_action: z.string().nullish(),
+  initiated_by: z.number().int().nullish(),
+  assigned_to: z.number().int().nullish(),
+  due_date: z.string().nullish(),
+  verified_by: z.number().int().nullish(),
+  approval_status: ApprovalStatusEnum.optional(),
+  allow_self_verification: z.boolean().optional(),
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  work_order: z.string().uuid().nullish(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  dispositions: z.array(z.string().uuid()).optional(),
+});
 const PatchedCAPARequest = z
   .object({
     capa_type: CapaTypeEnum,
@@ -9780,8 +9699,7 @@ const PatchedCAPARequest = z
     quality_reports: z.array(z.string().uuid()),
     dispositions: z.array(z.string().uuid()),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const CalibrationRecordResultEnum = z.enum(["PASS", "FAIL", "LIMITED"]);
 const CalibrationTypeEnum = z.enum([
   "SCHEDULED",
@@ -9790,58 +9708,52 @@ const CalibrationTypeEnum = z.enum([
   "AFTER_ADJUSTMENT",
   "VERIFICATION",
 ]);
-const CalibrationRecord = z
-  .object({
-    id: z.string().uuid(),
-    equipment: z.string().uuid(),
-    equipment_info: z.object({}).partial().passthrough().nullable(),
-    calibration_date: z.string(),
-    due_date: z.string(),
-    result: CalibrationRecordResultEnum.optional(),
-    result_display: z.string(),
-    calibration_type: CalibrationTypeEnum.optional(),
-    calibration_type_display: z.string(),
-    performed_by: z.string().max(200).optional(),
-    external_lab: z.string().max(200).optional(),
-    certificate_number: z.string().max(100).optional(),
-    standards_used: z.string().optional(),
-    as_found_in_tolerance: z.boolean().nullish(),
-    adjustments_made: z.boolean().optional(),
-    notes: z.string().optional(),
-    status: z.string(),
-    is_current: z.boolean(),
-    days_until_due: z.number().int(),
-    days_overdue: z.number().int().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedCalibrationRecordList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CalibrationRecord),
-  })
-  .passthrough();
-const CalibrationRecordRequest = z
-  .object({
-    equipment: z.string().uuid(),
-    calibration_date: z.string(),
-    due_date: z.string(),
-    result: CalibrationRecordResultEnum.optional(),
-    calibration_type: CalibrationTypeEnum.optional(),
-    performed_by: z.string().max(200).optional(),
-    external_lab: z.string().max(200).optional(),
-    certificate_number: z.string().max(100).optional(),
-    standards_used: z.string().optional(),
-    as_found_in_tolerance: z.boolean().nullish(),
-    adjustments_made: z.boolean().optional(),
-    notes: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const CalibrationRecord = z.object({
+  id: z.string().uuid(),
+  equipment: z.string().uuid(),
+  equipment_info: z.object({}).partial().passthrough().nullable(),
+  calibration_date: z.string(),
+  due_date: z.string(),
+  result: CalibrationRecordResultEnum.optional(),
+  result_display: z.string(),
+  calibration_type: CalibrationTypeEnum.optional(),
+  calibration_type_display: z.string(),
+  performed_by: z.string().max(200).optional(),
+  external_lab: z.string().max(200).optional(),
+  certificate_number: z.string().max(100).optional(),
+  standards_used: z.string().optional(),
+  as_found_in_tolerance: z.boolean().nullish(),
+  adjustments_made: z.boolean().optional(),
+  notes: z.string().optional(),
+  status: z.string(),
+  is_current: z.boolean(),
+  days_until_due: z.number().int(),
+  days_overdue: z.number().int().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedCalibrationRecordList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CalibrationRecord),
+});
+const CalibrationRecordRequest = z.object({
+  equipment: z.string().uuid(),
+  calibration_date: z.string(),
+  due_date: z.string(),
+  result: CalibrationRecordResultEnum.optional(),
+  calibration_type: CalibrationTypeEnum.optional(),
+  performed_by: z.string().max(200).optional(),
+  external_lab: z.string().max(200).optional(),
+  certificate_number: z.string().max(100).optional(),
+  standards_used: z.string().optional(),
+  as_found_in_tolerance: z.boolean().nullish(),
+  adjustments_made: z.boolean().optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedCalibrationRecordRequest = z
   .object({
     equipment: z.string().uuid(),
@@ -9858,39 +9770,32 @@ const PatchedCalibrationRecordRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const CalibrationStats = z
-  .object({
-    total_equipment: z.number().int(),
-    current_calibrations: z.number().int(),
-    due_soon: z.number().int(),
-    overdue: z.number().int(),
-    compliance_rate: z.number(),
-  })
-  .passthrough();
-const PaginatedCapaTasksList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CapaTasks),
-  })
-  .passthrough();
-const CapaTasksRequest = z
-  .object({
-    capa: z.string().uuid(),
-    task_type: TaskTypeEnum,
-    description: z.string().min(1),
-    assigned_to: z.number().int().nullish(),
-    completion_mode: CompletionModeEnum.optional(),
-    due_date: z.string().nullish(),
-    requires_signature: z.boolean().optional(),
-    status: CapaTaskStatusEnum.optional(),
-    completion_notes: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const CalibrationStats = z.object({
+  total_equipment: z.number().int(),
+  current_calibrations: z.number().int(),
+  due_soon: z.number().int(),
+  overdue: z.number().int(),
+  compliance_rate: z.number(),
+});
+const PaginatedCapaTasksList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CapaTasks),
+});
+const CapaTasksRequest = z.object({
+  capa: z.string().uuid(),
+  task_type: TaskTypeEnum,
+  description: z.string().min(1),
+  assigned_to: z.number().int().nullish(),
+  completion_mode: CompletionModeEnum.optional(),
+  due_date: z.string().nullish(),
+  requires_signature: z.boolean().optional(),
+  status: CapaTaskStatusEnum.optional(),
+  completion_notes: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedCapaTasksRequest = z
   .object({
     capa: z.string().uuid(),
@@ -9904,28 +9809,23 @@ const PatchedCapaTasksRequest = z
     completion_notes: z.string().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const PaginatedCapaVerificationList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CapaVerification),
-  })
-  .passthrough();
-const CapaVerificationRequest = z
-  .object({
-    capa: z.string().uuid(),
-    verification_method: z.string().min(1),
-    verification_criteria: z.string().min(1),
-    verification_date: z.string().nullish(),
-    verified_by: z.number().int().nullish(),
-    effectiveness_result: EffectivenessResultEnum.optional(),
-    verification_notes: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const PaginatedCapaVerificationList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CapaVerification),
+});
+const CapaVerificationRequest = z.object({
+  capa: z.string().uuid(),
+  verification_method: z.string().min(1),
+  verification_criteria: z.string().min(1),
+  verification_date: z.string().nullish(),
+  verified_by: z.number().int().nullish(),
+  effectiveness_result: EffectivenessResultEnum.optional(),
+  verification_notes: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedCapaVerificationRequest = z
   .object({
     capa: z.string().uuid(),
@@ -9937,70 +9837,56 @@ const PatchedCapaVerificationRequest = z
     verification_notes: z.string().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const ChatSession = z
-  .object({
-    id: z.number().int(),
-    langgraph_thread_id: z.string().max(255),
-    title: z.string().max(255).optional(),
-    is_archived: z.boolean().optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedChatSessionList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ChatSession),
-  })
-  .passthrough();
-const ChatSessionRequest = z
-  .object({
-    langgraph_thread_id: z.string().min(1).max(255),
-    title: z.string().min(1).max(255).optional(),
-    is_archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const ChatSession = z.object({
+  id: z.number().int(),
+  langgraph_thread_id: z.string().max(255),
+  title: z.string().max(255).optional(),
+  is_archived: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedChatSessionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ChatSession),
+});
+const ChatSessionRequest = z.object({
+  langgraph_thread_id: z.string().min(1).max(255),
+  title: z.string().min(1).max(255).optional(),
+  is_archived: z.boolean().optional(),
+});
 const PatchedChatSessionRequest = z
   .object({
     langgraph_thread_id: z.string().min(1).max(255),
     title: z.string().min(1).max(255),
     is_archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const Company = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    description: z.string(),
-    hubspot_api_id: z.string().max(50).nullish(),
-    user_count: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedCompanyList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Company),
-  })
-  .passthrough();
-const CompanyRequest = z
-  .object({
-    name: z.string().min(1).max(50),
-    description: z.string().min(1),
-    hubspot_api_id: z.string().max(50).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const Company = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  description: z.string(),
+  hubspot_api_id: z.string().max(50).nullish(),
+  user_count: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedCompanyList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Company),
+});
+const CompanyRequest = z.object({
+  name: z.string().min(1).max(50),
+  description: z.string().min(1),
+  hubspot_api_id: z.string().max(50).nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedCompanyRequest = z
   .object({
     name: z.string().min(1).max(50),
@@ -10008,8 +9894,7 @@ const PatchedCompanyRequest = z
     hubspot_api_id: z.string().max(50).nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const CoreStatusEnum = z.enum([
   "RECEIVED",
   "IN_DISASSEMBLY",
@@ -10023,90 +9908,82 @@ const SourceTypeEnum = z.enum([
   "WARRANTY",
   "TRADE_IN",
 ]);
-const CoreList = z
-  .object({
-    id: z.string().uuid(),
-    core_number: z.string().max(100),
-    core_type: z.string().uuid(),
-    core_type_name: z.string(),
-    customer_name: z.string().nullable(),
-    status: CoreStatusEnum.optional(),
-    condition_grade: ConditionGradeEnum,
-    received_date: z.string(),
-    source_type: SourceTypeEnum.optional(),
-    core_credit_value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
-      .nullish(),
-    core_credit_issued: z.boolean().optional(),
-    harvested_component_count: z.number().int(),
-    usable_component_count: z.number().int(),
-  })
-  .passthrough();
-const PaginatedCoreListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CoreList),
-  })
-  .passthrough();
-const CoreRequest = z
-  .object({
-    core_number: z.string().min(1).max(100),
-    serial_number: z.string().max(100).optional(),
-    core_type: z.string().uuid(),
-    received_date: z.string(),
-    customer: z.string().uuid().nullish(),
-    source_type: SourceTypeEnum.optional(),
-    source_reference: z.string().max(100).optional(),
-    condition_grade: ConditionGradeEnum,
-    condition_notes: z.string().optional(),
-    status: CoreStatusEnum.optional(),
-    core_credit_value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
-      .nullish(),
-    core_credit_issued: z.boolean().optional(),
-    work_order: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const Core = z
-  .object({
-    id: z.string().uuid(),
-    core_number: z.string().max(100),
-    serial_number: z.string().max(100).optional(),
-    core_type: z.string().uuid(),
-    core_type_name: z.string(),
-    received_date: z.string(),
-    received_by: z.number().int(),
-    received_by_name: z.string().nullable(),
-    customer: z.string().uuid().nullish(),
-    customer_name: z.string().nullable(),
-    source_type: SourceTypeEnum.optional(),
-    source_reference: z.string().max(100).optional(),
-    condition_grade: ConditionGradeEnum,
-    condition_notes: z.string().optional(),
-    status: CoreStatusEnum.optional(),
-    disassembly_started_at: z.string().datetime({ offset: true }).nullable(),
-    disassembly_completed_at: z.string().datetime({ offset: true }).nullable(),
-    disassembled_by: z.number().int().nullable(),
-    disassembled_by_name: z.string().nullable(),
-    core_credit_value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
-      .nullish(),
-    core_credit_issued: z.boolean().optional(),
-    core_credit_issued_at: z.string().datetime({ offset: true }).nullable(),
-    work_order: z.string().uuid().nullish(),
-    harvested_component_count: z.number().int(),
-    usable_component_count: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const CoreList = z.object({
+  id: z.string().uuid(),
+  core_number: z.string().max(100),
+  core_type: z.string().uuid(),
+  core_type_name: z.string(),
+  customer_name: z.string().nullable(),
+  status: CoreStatusEnum.optional(),
+  condition_grade: ConditionGradeEnum,
+  received_date: z.string(),
+  source_type: SourceTypeEnum.optional(),
+  core_credit_value: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .nullish(),
+  core_credit_issued: z.boolean().optional(),
+  harvested_component_count: z.number().int(),
+  usable_component_count: z.number().int(),
+});
+const PaginatedCoreListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CoreList),
+});
+const CoreRequest = z.object({
+  core_number: z.string().min(1).max(100),
+  serial_number: z.string().max(100).optional(),
+  core_type: z.string().uuid(),
+  received_date: z.string(),
+  customer: z.string().uuid().nullish(),
+  source_type: SourceTypeEnum.optional(),
+  source_reference: z.string().max(100).optional(),
+  condition_grade: ConditionGradeEnum,
+  condition_notes: z.string().optional(),
+  status: CoreStatusEnum.optional(),
+  core_credit_value: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .nullish(),
+  core_credit_issued: z.boolean().optional(),
+  work_order: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
+const Core = z.object({
+  id: z.string().uuid(),
+  core_number: z.string().max(100),
+  serial_number: z.string().max(100).optional(),
+  core_type: z.string().uuid(),
+  core_type_name: z.string(),
+  received_date: z.string(),
+  received_by: z.number().int(),
+  received_by_name: z.string().nullable(),
+  customer: z.string().uuid().nullish(),
+  customer_name: z.string().nullable(),
+  source_type: SourceTypeEnum.optional(),
+  source_reference: z.string().max(100).optional(),
+  condition_grade: ConditionGradeEnum,
+  condition_notes: z.string().optional(),
+  status: CoreStatusEnum.optional(),
+  disassembly_started_at: z.string().datetime({ offset: true }).nullable(),
+  disassembly_completed_at: z.string().datetime({ offset: true }).nullable(),
+  disassembled_by: z.number().int().nullable(),
+  disassembled_by_name: z.string().nullable(),
+  core_credit_value: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
+    .nullish(),
+  core_credit_issued: z.boolean().optional(),
+  core_credit_issued_at: z.string().datetime({ offset: true }).nullable(),
+  work_order: z.string().uuid().nullish(),
+  harvested_component_count: z.number().int(),
+  usable_component_count: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const PatchedCoreRequest = z
   .object({
     core_number: z.string().min(1).max(100),
@@ -10127,79 +10004,67 @@ const PatchedCoreRequest = z
     work_order: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const HarvestedComponent = z
-  .object({
-    id: z.string().uuid(),
-    core: z.string().uuid(),
-    core_number: z.string(),
-    component_type: z.string().uuid(),
-    component_type_name: z.string(),
-    component_part: z.string().uuid().nullable(),
-    component_part_erp_id: z.string().nullable(),
-    disassembled_at: z.string().datetime({ offset: true }),
-    disassembled_by: z.number().int(),
-    disassembled_by_name: z.string(),
-    condition_grade: ConditionGradeEnum,
-    condition_notes: z.string().optional(),
-    is_scrapped: z.boolean(),
-    scrap_reason: z.string(),
-    scrapped_at: z.string().datetime({ offset: true }).nullable(),
-    scrapped_by: z.number().int().nullable(),
-    scrapped_by_name: z.string().nullable(),
-    position: z.string().max(50).optional(),
-    original_part_number: z.string().max(100).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedHarvestedComponentList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(HarvestedComponent),
-  })
-  .passthrough();
-const CoreScrapRequest = z
-  .object({ reason: z.string().default("") })
-  .partial()
-  .passthrough();
-const UserDetail = z
-  .object({
-    id: z.number().int(),
-    username: z
-      .string()
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-    email: z.string().max(254).email().optional(),
-    is_staff: z.boolean().optional(),
-    is_active: z.boolean().optional(),
-    date_joined: z.string().datetime({ offset: true }),
-    parent_company: Company.nullable(),
-    user_type: z.string(),
-    user_type_display: z.string(),
-  })
-  .passthrough();
-const UserDetailRequest = z
-  .object({
-    username: z
-      .string()
-      .min(1)
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-    email: z.string().max(254).email().optional(),
-    is_staff: z.boolean().optional(),
-    is_active: z.boolean().optional(),
-    parent_company_id: z.string().uuid().optional(),
-  })
-  .passthrough();
+  .partial();
+const HarvestedComponent = z.object({
+  id: z.string().uuid(),
+  core: z.string().uuid(),
+  core_number: z.string(),
+  component_type: z.string().uuid(),
+  component_type_name: z.string(),
+  component_part: z.string().uuid().nullable(),
+  component_part_erp_id: z.string().nullable(),
+  disassembled_at: z.string().datetime({ offset: true }),
+  disassembled_by: z.number().int(),
+  disassembled_by_name: z.string(),
+  condition_grade: ConditionGradeEnum,
+  condition_notes: z.string().optional(),
+  is_scrapped: z.boolean(),
+  scrap_reason: z.string(),
+  scrapped_at: z.string().datetime({ offset: true }).nullable(),
+  scrapped_by: z.number().int().nullable(),
+  scrapped_by_name: z.string().nullable(),
+  position: z.string().max(50).optional(),
+  original_part_number: z.string().max(100).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedHarvestedComponentList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(HarvestedComponent),
+});
+const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
+const UserDetail = z.object({
+  id: z.number().int(),
+  username: z
+    .string()
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  is_staff: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+  date_joined: z.string().datetime({ offset: true }),
+  parent_company: Company.nullable(),
+  user_type: z.string(),
+  user_type_display: z.string(),
+});
+const UserDetailRequest = z.object({
+  username: z
+    .string()
+    .min(1)
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  is_staff: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+  parent_company_id: z.string().uuid().optional(),
+});
 const PatchedUserDetailRequest = z
   .object({
     username: z
@@ -10214,51 +10079,44 @@ const PatchedUserDetailRequest = z
     is_active: z.boolean(),
     parent_company_id: z.string().uuid(),
   })
-  .partial()
-  .passthrough();
-const DisassemblyBOMLine = z
-  .object({
-    id: z.string().uuid(),
-    core_type: z.string().uuid(),
-    core_type_name: z.string(),
-    component_type: z.string().uuid(),
-    component_type_name: z.string(),
-    expected_qty: z.number().int().gte(0).lte(2147483647).optional(),
-    expected_fallout_rate: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
-      .optional(),
-    expected_usable_qty: z.number(),
-    notes: z.string().optional(),
-    line_number: z.number().int().gte(0).lte(2147483647).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedDisassemblyBOMLineList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(DisassemblyBOMLine),
-  })
-  .passthrough();
-const DisassemblyBOMLineRequest = z
-  .object({
-    core_type: z.string().uuid(),
-    component_type: z.string().uuid(),
-    expected_qty: z.number().int().gte(0).lte(2147483647).optional(),
-    expected_fallout_rate: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
-      .optional(),
-    notes: z.string().optional(),
-    line_number: z.number().int().gte(0).lte(2147483647).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const DisassemblyBOMLine = z.object({
+  id: z.string().uuid(),
+  core_type: z.string().uuid(),
+  core_type_name: z.string(),
+  component_type: z.string().uuid(),
+  component_type_name: z.string(),
+  expected_qty: z.number().int().gte(0).lte(2147483647).optional(),
+  expected_fallout_rate: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .optional(),
+  expected_usable_qty: z.number(),
+  notes: z.string().optional(),
+  line_number: z.number().int().gte(0).lte(2147483647).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedDisassemblyBOMLineList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(DisassemblyBOMLine),
+});
+const DisassemblyBOMLineRequest = z.object({
+  core_type: z.string().uuid(),
+  component_type: z.string().uuid(),
+  expected_qty: z.number().int().gte(0).lte(2147483647).optional(),
+  expected_fallout_rate: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .optional(),
+  notes: z.string().optional(),
+  line_number: z.number().int().gte(0).lte(2147483647).optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedDisassemblyBOMLineRequest = z
   .object({
     core_type: z.string().uuid(),
@@ -10269,55 +10127,38 @@ const PatchedDisassemblyBOMLineRequest = z
     line_number: z.number().int().gte(0).lte(2147483647),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const DocumentType = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    code: z.string().max(20),
-    description: z.string().optional(),
-    requires_approval: z.boolean().optional(),
-    approval_template: z.string().uuid().nullish(),
-    approval_template_name: z.string().nullable(),
-    default_review_period_days: z
-      .number()
-      .int()
-      .gte(0)
-      .lte(2147483647)
-      .nullish(),
-    default_retention_days: z.number().int().gte(0).lte(2147483647).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedDocumentTypeList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(DocumentType),
-  })
-  .passthrough();
-const DocumentTypeRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    code: z.string().min(1).max(20),
-    description: z.string().optional(),
-    requires_approval: z.boolean().optional(),
-    approval_template: z.string().uuid().nullish(),
-    default_review_period_days: z
-      .number()
-      .int()
-      .gte(0)
-      .lte(2147483647)
-      .nullish(),
-    default_retention_days: z.number().int().gte(0).lte(2147483647).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const DocumentType = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  code: z.string().max(20),
+  description: z.string().optional(),
+  requires_approval: z.boolean().optional(),
+  approval_template: z.string().uuid().nullish(),
+  approval_template_name: z.string().nullable(),
+  default_review_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  default_retention_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedDocumentTypeList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(DocumentType),
+});
+const DocumentTypeRequest = z.object({
+  name: z.string().min(1).max(100),
+  code: z.string().min(1).max(20),
+  description: z.string().optional(),
+  requires_approval: z.boolean().optional(),
+  approval_template: z.string().uuid().nullish(),
+  default_review_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  default_retention_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedDocumentTypeRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -10334,8 +10175,7 @@ const PatchedDocumentTypeRequest = z
     default_retention_days: z.number().int().gte(0).lte(2147483647).nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const ClassificationEnum = z.enum([
   "PUBLIC",
   "INTERNAL",
@@ -10343,7 +10183,7 @@ const ClassificationEnum = z.enum([
   "RESTRICTED",
   "SECRET",
 ]);
-const NullEnum = z.unknown();
+const NullEnum = z.null();
 const DocumentsStatusEnum = z.enum([
   "DRAFT",
   "UNDER_REVIEW",
@@ -10351,77 +10191,71 @@ const DocumentsStatusEnum = z.enum([
   "RELEASED",
   "OBSOLETE",
 ]);
-const Documents = z
-  .object({
-    id: z.string().uuid(),
-    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
-    ai_readable: z.boolean().optional(),
-    is_image: z.boolean().optional(),
-    file_name: z.string().max(50),
-    file: z.string().url(),
-    file_url: z.string(),
-    upload_date: z.string(),
-    uploaded_by: z.number().int().nullish(),
-    uploaded_by_info: z.object({}).partial().passthrough().nullable(),
-    uploaded_by_name: z.string().nullable(),
-    content_type: z.number().int().nullish(),
-    object_id: z.string().max(36).nullish(),
-    content_type_info: z.object({}).partial().passthrough().nullable(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    access_info: z.object({}).partial().passthrough().nullable(),
-    auto_properties: z.object({}).partial().passthrough().nullable(),
-    status: DocumentsStatusEnum.optional(),
-    status_display: z.string(),
-    approved_by: z.number().int().nullable(),
-    approved_by_info: z.object({}).partial().passthrough().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    document_type: z.string().uuid().nullish(),
-    document_type_info: z.object({}).partial().passthrough().nullable(),
-    change_justification: z.string().optional(),
-    previous_version: z.string().uuid().nullable(),
-    is_current_version: z.boolean(),
-    effective_date: z.string().nullable(),
-    review_date: z.string().nullable(),
-    obsolete_date: z.string().nullable(),
-    retention_until: z.string().nullable(),
-    is_due_for_review: z.boolean(),
-    days_until_review: z.number().int().nullable(),
-    is_past_retention: z.boolean(),
-    itar_controlled: z.boolean().optional(),
-    eccn: z.string().max(20).optional(),
-    export_control_reason: z.string().max(100).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedDocumentsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Documents),
-  })
-  .passthrough();
-const DocumentsRequest = z
-  .object({
-    classification: z.union([ClassificationEnum, NullEnum]).nullish(),
-    ai_readable: z.boolean().optional(),
-    is_image: z.boolean().optional(),
-    file_name: z.string().min(1).max(50),
-    file: z.instanceof(File),
-    uploaded_by: z.number().int().nullish(),
-    content_type: z.number().int().nullish(),
-    object_id: z.string().max(36).nullish(),
-    version: z.number().int().gte(0).lte(2147483647).optional(),
-    status: DocumentsStatusEnum.optional(),
-    document_type: z.string().uuid().nullish(),
-    document_type_code: z.string().min(1).optional(),
-    change_justification: z.string().optional(),
-    itar_controlled: z.boolean().optional(),
-    eccn: z.string().max(20).optional(),
-    export_control_reason: z.string().max(100).optional(),
-  })
-  .passthrough();
+const Documents = z.object({
+  id: z.string().uuid(),
+  classification: z.union([ClassificationEnum, NullEnum]).nullish(),
+  ai_readable: z.boolean().optional(),
+  is_image: z.boolean().optional(),
+  file_name: z.string().max(50),
+  file: z.string().url(),
+  file_url: z.string(),
+  upload_date: z.string(),
+  uploaded_by: z.number().int().nullish(),
+  uploaded_by_info: z.object({}).partial().passthrough().nullable(),
+  uploaded_by_name: z.string().nullable(),
+  content_type: z.number().int().nullish(),
+  object_id: z.string().max(36).nullish(),
+  content_type_info: z.object({}).partial().passthrough().nullable(),
+  version: z.number().int().gte(0).lte(2147483647).optional(),
+  access_info: z.object({}).partial().passthrough().nullable(),
+  auto_properties: z.object({}).partial().passthrough().nullable(),
+  status: DocumentsStatusEnum.optional(),
+  status_display: z.string(),
+  approved_by: z.number().int().nullable(),
+  approved_by_info: z.object({}).partial().passthrough().nullable(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  document_type: z.string().uuid().nullish(),
+  document_type_info: z.object({}).partial().passthrough().nullable(),
+  change_justification: z.string().optional(),
+  previous_version: z.string().uuid().nullable(),
+  is_current_version: z.boolean(),
+  effective_date: z.string().nullable(),
+  review_date: z.string().nullable(),
+  obsolete_date: z.string().nullable(),
+  retention_until: z.string().nullable(),
+  is_due_for_review: z.boolean(),
+  days_until_review: z.number().int().nullable(),
+  is_past_retention: z.boolean(),
+  itar_controlled: z.boolean().optional(),
+  eccn: z.string().max(20).optional(),
+  export_control_reason: z.string().max(100).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedDocumentsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Documents),
+});
+const DocumentsRequest = z.object({
+  classification: z.union([ClassificationEnum, NullEnum]).nullish(),
+  ai_readable: z.boolean().optional(),
+  is_image: z.boolean().optional(),
+  file_name: z.string().min(1).max(50),
+  file: z.instanceof(File),
+  uploaded_by: z.number().int().nullish(),
+  content_type: z.number().int().nullish(),
+  object_id: z.string().max(36).nullish(),
+  version: z.number().int().gte(0).lte(2147483647).optional(),
+  status: DocumentsStatusEnum.optional(),
+  document_type: z.string().uuid().nullish(),
+  document_type_code: z.string().min(1).optional(),
+  change_justification: z.string().optional(),
+  itar_controlled: z.boolean().optional(),
+  eccn: z.string().max(20).optional(),
+  export_control_reason: z.string().max(100).optional(),
+});
 const PatchedDocumentsRequest = z
   .object({
     classification: z.union([ClassificationEnum, NullEnum]).nullable(),
@@ -10441,8 +10275,7 @@ const PatchedDocumentsRequest = z
     eccn: z.string().max(20),
     export_control_reason: z.string().max(100),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const DowntimeCategoryEnum = z.enum([
   "PLANNED",
   "UNPLANNED",
@@ -10454,50 +10287,44 @@ const DowntimeCategoryEnum = z.enum([
   "QUALITY",
   "OTHER",
 ]);
-const DowntimeEvent = z
-  .object({
-    id: z.string().uuid(),
-    equipment: z.string().uuid().nullish(),
-    equipment_name: z.string().nullable(),
-    work_center: z.string().uuid().nullish(),
-    work_center_name: z.string().nullable(),
-    category: DowntimeCategoryEnum,
-    reason: z.string().max(200),
-    description: z.string().optional(),
-    start_time: z.string().datetime({ offset: true }),
-    end_time: z.string().datetime({ offset: true }).nullish(),
-    duration_minutes: z.number().nullable(),
-    work_order: z.string().uuid().nullish(),
-    reported_by: z.number().int(),
-    reported_by_name: z.string().nullable(),
-    resolved_by: z.number().int().nullable(),
-    resolved_by_name: z.string().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedDowntimeEventList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(DowntimeEvent),
-  })
-  .passthrough();
-const DowntimeEventRequest = z
-  .object({
-    equipment: z.string().uuid().nullish(),
-    work_center: z.string().uuid().nullish(),
-    category: DowntimeCategoryEnum,
-    reason: z.string().min(1).max(200),
-    description: z.string().optional(),
-    start_time: z.string().datetime({ offset: true }),
-    end_time: z.string().datetime({ offset: true }).nullish(),
-    work_order: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const DowntimeEvent = z.object({
+  id: z.string().uuid(),
+  equipment: z.string().uuid().nullish(),
+  equipment_name: z.string().nullable(),
+  work_center: z.string().uuid().nullish(),
+  work_center_name: z.string().nullable(),
+  category: DowntimeCategoryEnum,
+  reason: z.string().max(200),
+  description: z.string().optional(),
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }).nullish(),
+  duration_minutes: z.number().nullable(),
+  work_order: z.string().uuid().nullish(),
+  reported_by: z.number().int(),
+  reported_by_name: z.string().nullable(),
+  resolved_by: z.number().int().nullable(),
+  resolved_by_name: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedDowntimeEventList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(DowntimeEvent),
+});
+const DowntimeEventRequest = z.object({
+  equipment: z.string().uuid().nullish(),
+  work_center: z.string().uuid().nullish(),
+  category: DowntimeCategoryEnum,
+  reason: z.string().min(1).max(200),
+  description: z.string().optional(),
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }).nullish(),
+  work_order: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedDowntimeEventRequest = z
   .object({
     equipment: z.string().uuid().nullable(),
@@ -10510,27 +10337,22 @@ const PatchedDowntimeEventRequest = z
     work_order: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const UserSelect = z
-  .object({
-    id: z.number().int(),
-    username: z.string(),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-    email: z.string().max(254).email().optional(),
-    full_name: z.string(),
-    is_active: z.boolean(),
-  })
-  .passthrough();
-const PaginatedUserSelectList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(UserSelect),
-  })
-  .passthrough();
+  .partial();
+const UserSelect = z.object({
+  id: z.number().int(),
+  username: z.string(),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  full_name: z.string(),
+  is_active: z.boolean(),
+});
+const PaginatedUserSelectList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(UserSelect),
+});
 const EquipmentsStatusEnum = z.enum([
   "IN_SERVICE",
   "OUT_OF_SERVICE",
@@ -10538,93 +10360,81 @@ const EquipmentsStatusEnum = z.enum([
   "IN_MAINTENANCE",
   "RETIRED",
 ]);
-const Equipments = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    equipment_type: z.string().uuid().nullish(),
-    equipment_type_name: z.string(),
-    serial_number: z.string().max(100).optional(),
-    manufacturer: z.string().max(100).optional(),
-    model_number: z.string().max(100).optional(),
-    location: z.string().max(100).optional(),
-    status: EquipmentsStatusEnum.optional(),
-    notes: z.string().optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedEquipmentsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Equipments),
-  })
-  .passthrough();
-const EquipmentsRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    equipment_type: z.string().uuid().nullish(),
-    serial_number: z.string().max(100).optional(),
-    manufacturer: z.string().max(100).optional(),
-    model_number: z.string().max(100).optional(),
-    location: z.string().max(100).optional(),
-    status: EquipmentsStatusEnum.optional(),
-    notes: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const EquipmentType = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    name: z.string().max(50),
-    description: z.string().optional(),
-    requires_calibration: z.boolean().optional(),
-    default_calibration_interval_days: z
-      .number()
-      .int()
-      .gte(0)
-      .lte(2147483647)
-      .nullish(),
-    is_portable: z.boolean().optional(),
-    track_downtime: z.boolean().optional(),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedEquipmentTypeList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(EquipmentType),
-  })
-  .passthrough();
-const EquipmentTypeRequest = z
-  .object({
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    name: z.string().min(1).max(50),
-    description: z.string().optional(),
-    requires_calibration: z.boolean().optional(),
-    default_calibration_interval_days: z
-      .number()
-      .int()
-      .gte(0)
-      .lte(2147483647)
-      .nullish(),
-    is_portable: z.boolean().optional(),
-    track_downtime: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const Equipments = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  equipment_type: z.string().uuid().nullish(),
+  equipment_type_name: z.string(),
+  serial_number: z.string().max(100).optional(),
+  manufacturer: z.string().max(100).optional(),
+  model_number: z.string().max(100).optional(),
+  location: z.string().max(100).optional(),
+  status: EquipmentsStatusEnum.optional(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedEquipmentsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Equipments),
+});
+const EquipmentsRequest = z.object({
+  name: z.string().min(1).max(100),
+  equipment_type: z.string().uuid().nullish(),
+  serial_number: z.string().max(100).optional(),
+  manufacturer: z.string().max(100).optional(),
+  model_number: z.string().max(100).optional(),
+  location: z.string().max(100).optional(),
+  status: EquipmentsStatusEnum.optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const EquipmentType = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  name: z.string().max(50),
+  description: z.string().optional(),
+  requires_calibration: z.boolean().optional(),
+  default_calibration_interval_days: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .nullish(),
+  is_portable: z.boolean().optional(),
+  track_downtime: z.boolean().optional(),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedEquipmentTypeList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(EquipmentType),
+});
+const EquipmentTypeRequest = z.object({
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  name: z.string().min(1).max(50),
+  description: z.string().optional(),
+  requires_calibration: z.boolean().optional(),
+  default_calibration_interval_days: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .nullish(),
+  is_portable: z.boolean().optional(),
+  track_downtime: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedEquipmentTypeRequest = z
   .object({
     tenant: z.string().uuid().nullable(),
@@ -10642,8 +10452,7 @@ const PatchedEquipmentTypeRequest = z
     track_downtime: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const PatchedEquipmentsRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -10656,37 +10465,30 @@ const PatchedEquipmentsRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const QualityErrorsList = z
-  .object({
-    id: z.string().uuid(),
-    error_name: z.string().max(50),
-    error_example: z.string(),
-    part_type: z.string().uuid().nullish(),
-    part_type_name: z.string(),
-    requires_3d_annotation: z.boolean().optional(),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedQualityErrorsListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(QualityErrorsList),
-  })
-  .passthrough();
-const QualityErrorsListRequest = z
-  .object({
-    error_name: z.string().min(1).max(50),
-    error_example: z.string().min(1),
-    part_type: z.string().uuid().nullish(),
-    requires_3d_annotation: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const QualityErrorsList = z.object({
+  id: z.string().uuid(),
+  error_name: z.string().max(50),
+  error_example: z.string(),
+  part_type: z.string().uuid().nullish(),
+  part_type_name: z.string(),
+  requires_3d_annotation: z.boolean().optional(),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedQualityErrorsListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(QualityErrorsList),
+});
+const QualityErrorsListRequest = z.object({
+  error_name: z.string().min(1).max(50),
+  error_example: z.string().min(1),
+  part_type: z.string().uuid().nullish(),
+  requires_3d_annotation: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedQualityErrorsListRequest = z
   .object({
     error_name: z.string().min(1).max(50),
@@ -10695,92 +10497,77 @@ const PatchedQualityErrorsListRequest = z
     requires_3d_annotation: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
 const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
 const BlankEnum = z.unknown();
-const MeasurementResult = z
-  .object({
-    report: z.string(),
-    definition: z.string().uuid(),
-    value_numeric: z.number().nullish(),
-    value_pass_fail: z
-      .union([ValuePassFailEnum, BlankEnum, NullEnum])
-      .nullish(),
-    is_within_spec: z.boolean(),
-    created_by: z.number().int(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const QualityReports = z
-  .object({
-    id: z.string().uuid(),
-    report_number: z.string(),
-    step: z.string().uuid().nullish(),
-    part: z.string().uuid().nullish(),
-    machine: z.string().uuid().nullish(),
-    operators: z.array(z.number().int()).optional(),
-    sampling_method: z.string().max(50).optional(),
-    status: QualityReportStatusEnum,
-    status_display: z.string(),
-    description: z.string().max(300).nullish(),
-    file: z.string().uuid().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    errors: z.array(z.string().uuid()),
-    measurements: z.array(MeasurementResult).optional(),
-    sampling_audit_log: z.string().uuid().nullish(),
-    detected_by: z.number().int().nullish(),
-    detected_by_info: z.object({}).partial().passthrough().nullable(),
-    verified_by: z.number().int().nullish(),
-    verified_by_info: z.object({}).partial().passthrough().nullable(),
-    is_first_piece: z.boolean().optional(),
-    part_info: z.object({}).partial().passthrough().nullable(),
-    part_display: z.string().nullable(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    machine_info: z.object({}).partial().passthrough().nullable(),
-    operators_info: z.array(z.unknown()),
-    errors_info: z.array(z.unknown()),
-    file_info: z.object({}).partial().passthrough().nullable(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedQualityReportsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(QualityReports),
-  })
-  .passthrough();
-const MeasurementResultRequest = z
-  .object({
-    definition: z.string().uuid(),
-    value_numeric: z.number().nullish(),
-    value_pass_fail: z
-      .union([ValuePassFailEnum, BlankEnum, NullEnum])
-      .nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const QualityReportsRequest = z
-  .object({
-    step: z.string().uuid().nullish(),
-    part: z.string().uuid().nullish(),
-    machine: z.string().uuid().nullish(),
-    operators: z.array(z.number().int()).optional(),
-    sampling_method: z.string().min(1).max(50).optional(),
-    status: QualityReportStatusEnum,
-    description: z.string().max(300).nullish(),
-    file: z.string().uuid().nullish(),
-    measurements: z.array(MeasurementResultRequest).optional(),
-    sampling_audit_log: z.string().uuid().nullish(),
-    detected_by: z.number().int().nullish(),
-    verified_by: z.number().int().nullish(),
-    is_first_piece: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const MeasurementResult = z.object({
+  report: z.string(),
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
+  is_within_spec: z.boolean(),
+  created_by: z.number().int(),
+  archived: z.boolean().optional(),
+});
+const QualityReports = z.object({
+  id: z.string().uuid(),
+  report_number: z.string(),
+  step: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  machine: z.string().uuid().nullish(),
+  operators: z.array(z.number().int()).optional(),
+  sampling_method: z.string().max(50).optional(),
+  status: QualityReportStatusEnum,
+  status_display: z.string(),
+  description: z.string().max(300).nullish(),
+  file: z.string().uuid().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  errors: z.array(z.string().uuid()),
+  measurements: z.array(MeasurementResult).optional(),
+  sampling_audit_log: z.string().uuid().nullish(),
+  detected_by: z.number().int().nullish(),
+  detected_by_info: z.object({}).partial().passthrough().nullable(),
+  verified_by: z.number().int().nullish(),
+  verified_by_info: z.object({}).partial().passthrough().nullable(),
+  is_first_piece: z.boolean().optional(),
+  part_info: z.object({}).partial().passthrough().nullable(),
+  part_display: z.string().nullable(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  machine_info: z.object({}).partial().passthrough().nullable(),
+  operators_info: z.array(z.unknown()),
+  errors_info: z.array(z.unknown()),
+  file_info: z.object({}).partial().passthrough().nullable(),
+  archived: z.boolean().optional(),
+});
+const PaginatedQualityReportsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(QualityReports),
+});
+const MeasurementResultRequest = z.object({
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
+  archived: z.boolean().optional(),
+});
+const QualityReportsRequest = z.object({
+  step: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  machine: z.string().uuid().nullish(),
+  operators: z.array(z.number().int()).optional(),
+  sampling_method: z.string().min(1).max(50).optional(),
+  status: QualityReportStatusEnum,
+  description: z.string().max(300).nullish(),
+  file: z.string().uuid().nullish(),
+  measurements: z.array(MeasurementResultRequest).optional(),
+  sampling_audit_log: z.string().uuid().nullish(),
+  detected_by: z.number().int().nullish(),
+  verified_by: z.number().int().nullish(),
+  is_first_piece: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedQualityReportsRequest = z
   .object({
     step: z.string().uuid().nullable(),
@@ -10798,8 +10585,7 @@ const PatchedQualityReportsRequest = z
     is_first_piece: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const FPIRecordStatusEnum = z.enum([
   "NOT_REQUIRED",
   "PENDING",
@@ -10808,55 +10594,49 @@ const FPIRecordStatusEnum = z.enum([
   "WAIVED",
 ]);
 const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
-const FPIRecord = z
-  .object({
-    id: z.string().uuid(),
-    work_order: z.string().uuid(),
-    work_order_info: z.object({}).partial().passthrough().nullable(),
-    step: z.string().uuid(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    part_type: z.string().uuid(),
-    part_type_info: z.object({}).partial().passthrough().nullable(),
-    designated_part: z.string().uuid().nullish(),
-    designated_part_info: z.object({}).partial().passthrough().nullable(),
-    equipment: z.string().uuid().nullish(),
-    equipment_info: z.object({}).partial().passthrough().nullable(),
-    shift_date: z.string().nullish(),
-    status: FPIRecordStatusEnum,
-    status_display: z.string(),
-    result: FPIRecordResultEnum,
-    result_display: z.string(),
-    inspected_by: z.number().int().nullable(),
-    inspected_by_info: z.object({}).partial().passthrough().nullable(),
-    inspected_at: z.string().datetime({ offset: true }).nullable(),
-    waived: z.boolean(),
-    waived_by: z.number().int().nullable(),
-    waived_by_info: z.object({}).partial().passthrough().nullable(),
-    waive_reason: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedFPIRecordList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(FPIRecord),
-  })
-  .passthrough();
-const FPIRecordRequest = z
-  .object({
-    work_order: z.string().uuid(),
-    step: z.string().uuid(),
-    part_type: z.string().uuid(),
-    designated_part: z.string().uuid().nullish(),
-    equipment: z.string().uuid().nullish(),
-    shift_date: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const FPIRecord = z.object({
+  id: z.string().uuid(),
+  work_order: z.string().uuid(),
+  work_order_info: z.object({}).partial().passthrough().nullable(),
+  step: z.string().uuid(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  part_type: z.string().uuid(),
+  part_type_info: z.object({}).partial().passthrough().nullable(),
+  designated_part: z.string().uuid().nullish(),
+  designated_part_info: z.object({}).partial().passthrough().nullable(),
+  equipment: z.string().uuid().nullish(),
+  equipment_info: z.object({}).partial().passthrough().nullable(),
+  shift_date: z.string().nullish(),
+  status: FPIRecordStatusEnum,
+  status_display: z.string(),
+  result: FPIRecordResultEnum,
+  result_display: z.string(),
+  inspected_by: z.number().int().nullable(),
+  inspected_by_info: z.object({}).partial().passthrough().nullable(),
+  inspected_at: z.string().datetime({ offset: true }).nullable(),
+  waived: z.boolean(),
+  waived_by: z.number().int().nullable(),
+  waived_by_info: z.object({}).partial().passthrough().nullable(),
+  waive_reason: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedFPIRecordList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(FPIRecord),
+});
+const FPIRecordRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  part_type: z.string().uuid(),
+  designated_part: z.string().uuid().nullish(),
+  equipment: z.string().uuid().nullish(),
+  shift_date: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedFPIRecordRequest = z
   .object({
     work_order: z.string().uuid(),
@@ -10867,8 +10647,7 @@ const PatchedFPIRecordRequest = z
     shift_date: z.string().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const api_FPIRecords_get_or_create_create_Body = z
   .object({
     work_order: z.string().uuid(),
@@ -10876,30 +10655,25 @@ const api_FPIRecords_get_or_create_create_Body = z
     equipment: z.string().uuid(),
     shift_date: z.string(),
   })
-  .partial()
-  .passthrough();
-const PaginatedFishboneList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Fishbone),
-  })
-  .passthrough();
-const FishboneRequest = z
-  .object({
-    rca_record: z.string().uuid(),
-    problem_statement: z.string().min(1),
-    man_causes: z.unknown().optional(),
-    machine_causes: z.unknown().optional(),
-    material_causes: z.unknown().optional(),
-    method_causes: z.unknown().optional(),
-    measurement_causes: z.unknown().optional(),
-    environment_causes: z.unknown().optional(),
-    identified_root_cause: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const PaginatedFishboneList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Fishbone),
+});
+const FishboneRequest = z.object({
+  rca_record: z.string().uuid(),
+  problem_statement: z.string().min(1),
+  man_causes: z.unknown().optional(),
+  machine_causes: z.unknown().optional(),
+  material_causes: z.unknown().optional(),
+  method_causes: z.unknown().optional(),
+  measurement_causes: z.unknown().optional(),
+  environment_causes: z.unknown().optional(),
+  identified_root_cause: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedFishboneRequest = z
   .object({
     rca_record: z.string().uuid(),
@@ -10913,33 +10687,28 @@ const PatchedFishboneRequest = z
     identified_root_cause: z.string().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const PaginatedFiveWhysList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(FiveWhys),
-  })
-  .passthrough();
-const FiveWhysRequest = z
-  .object({
-    rca_record: z.string().uuid(),
-    why_1_question: z.string().nullish(),
-    why_1_answer: z.string().nullish(),
-    why_2_question: z.string().nullish(),
-    why_2_answer: z.string().nullish(),
-    why_3_question: z.string().nullish(),
-    why_3_answer: z.string().nullish(),
-    why_4_question: z.string().nullish(),
-    why_4_answer: z.string().nullish(),
-    why_5_question: z.string().nullish(),
-    why_5_answer: z.string().nullish(),
-    identified_root_cause: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const PaginatedFiveWhysList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(FiveWhys),
+});
+const FiveWhysRequest = z.object({
+  rca_record: z.string().uuid(),
+  why_1_question: z.string().nullish(),
+  why_1_answer: z.string().nullish(),
+  why_2_question: z.string().nullish(),
+  why_2_answer: z.string().nullish(),
+  why_3_question: z.string().nullish(),
+  why_3_answer: z.string().nullish(),
+  why_4_question: z.string().nullish(),
+  why_4_answer: z.string().nullish(),
+  why_5_question: z.string().nullish(),
+  why_5_answer: z.string().nullish(),
+  identified_root_cause: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedFiveWhysRequest = z
   .object({
     rca_record: z.string().uuid(),
@@ -10956,99 +10725,84 @@ const PatchedFiveWhysRequest = z
     identified_root_cause: z.string().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const Group = z
-  .object({
-    id: z.number().int(),
-    name: z.string().max(150),
-    description: z.string().nullable(),
-    user_count: z.number().int(),
-    users: z.array(z.object({}).partial().passthrough()),
-    permissions: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const PaginatedGroupList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Group),
-  })
-  .passthrough();
-const GroupRequest = z
-  .object({ name: z.string().min(1).max(150) })
-  .passthrough();
+  .partial();
+const Group = z.object({
+  id: z.number().int(),
+  name: z.string().max(150),
+  description: z.string().nullable(),
+  user_count: z.number().int(),
+  users: z.array(z.object({}).partial()),
+  permissions: z.array(z.object({}).partial()),
+});
+const PaginatedGroupList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Group),
+});
+const GroupRequest = z.object({ name: z.string().min(1).max(150) });
 const PatchedGroupRequest = z
   .object({ name: z.string().min(1).max(150) })
-  .partial()
-  .passthrough();
-const GroupAddPermissionsInputRequest = z
-  .object({ permission_ids: z.array(z.number().int()) })
-  .passthrough();
-const GroupAddPermissionsResponse = z
-  .object({ detail: z.string(), added_count: z.number().int(), group: Group })
-  .passthrough();
-const GroupAddUsersInputRequest = z
-  .object({ user_ids: z.array(z.number().int()) })
-  .passthrough();
-const GroupAddUsersResponse = z
-  .object({ detail: z.string(), group: Group })
-  .passthrough();
-const GroupRemovePermissionsInputRequest = z
-  .object({ permission_ids: z.array(z.number().int()) })
-  .passthrough();
-const GroupRemovePermissionsResponse = z
-  .object({ detail: z.string(), removed_count: z.number().int(), group: Group })
-  .passthrough();
-const GroupRemoveUsersInputRequest = z
-  .object({ user_ids: z.array(z.number().int()) })
-  .passthrough();
-const GroupRemoveUsersResponse = z
-  .object({ detail: z.string(), group: Group })
-  .passthrough();
-const GroupSetPermissionsInputRequest = z
-  .object({ permission_ids: z.array(z.number().int()) })
-  .passthrough();
-const GroupSetPermissionsResponse = z
-  .object({ detail: z.string(), group: Group })
-  .passthrough();
-const AvailablePermissionResponse = z
-  .object({
-    id: z.number().int(),
-    codename: z.string(),
-    name: z.string(),
-    content_type: z.string(),
-  })
-  .passthrough();
-const AvailableUserResponse = z
-  .object({
-    id: z.number().int(),
-    email: z.string().email(),
-    first_name: z.string(),
-    last_name: z.string(),
-    groups: z.array(z.string()),
-  })
-  .passthrough();
-const PaginatedAvailableUserResponseList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(AvailableUserResponse),
-  })
-  .passthrough();
-const HarvestedComponentRequest = z
-  .object({
-    core: z.string().uuid(),
-    component_type: z.string().uuid(),
-    condition_grade: ConditionGradeEnum,
-    condition_notes: z.string().optional(),
-    position: z.string().max(50).optional(),
-    original_part_number: z.string().max(100).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const GroupAddPermissionsInputRequest = z.object({
+  permission_ids: z.array(z.number().int()),
+});
+const GroupAddPermissionsResponse = z.object({
+  detail: z.string(),
+  added_count: z.number().int(),
+  group: Group,
+});
+const GroupAddUsersInputRequest = z.object({
+  user_ids: z.array(z.number().int()),
+});
+const GroupAddUsersResponse = z.object({ detail: z.string(), group: Group });
+const GroupRemovePermissionsInputRequest = z.object({
+  permission_ids: z.array(z.number().int()),
+});
+const GroupRemovePermissionsResponse = z.object({
+  detail: z.string(),
+  removed_count: z.number().int(),
+  group: Group,
+});
+const GroupRemoveUsersInputRequest = z.object({
+  user_ids: z.array(z.number().int()),
+});
+const GroupRemoveUsersResponse = z.object({ detail: z.string(), group: Group });
+const GroupSetPermissionsInputRequest = z.object({
+  permission_ids: z.array(z.number().int()),
+});
+const GroupSetPermissionsResponse = z.object({
+  detail: z.string(),
+  group: Group,
+});
+const AvailablePermissionResponse = z.object({
+  id: z.number().int(),
+  codename: z.string(),
+  name: z.string(),
+  content_type: z.string(),
+});
+const AvailableUserResponse = z.object({
+  id: z.number().int(),
+  email: z.string().email(),
+  first_name: z.string(),
+  last_name: z.string(),
+  groups: z.array(z.string()),
+});
+const PaginatedAvailableUserResponseList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(AvailableUserResponse),
+});
+const HarvestedComponentRequest = z.object({
+  core: z.string().uuid(),
+  component_type: z.string().uuid(),
+  condition_grade: ConditionGradeEnum,
+  condition_notes: z.string().optional(),
+  position: z.string().max(50).optional(),
+  original_part_number: z.string().max(100).optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedHarvestedComponentRequest = z
   .object({
     core: z.string().uuid(),
@@ -11059,79 +10813,68 @@ const PatchedHarvestedComponentRequest = z
     original_part_number: z.string().max(100),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const HarvestedComponentAcceptRequest = z
   .object({ erp_id: z.string().nullable() })
-  .partial()
-  .passthrough();
-const AcceptToInventoryResponse = z
-  .object({
-    component: HarvestedComponent,
-    part_id: z.string().uuid(),
-    part_erp_id: z.string(),
-  })
-  .passthrough();
+  .partial();
+const AcceptToInventoryResponse = z.object({
+  component: HarvestedComponent,
+  part_id: z.string().uuid(),
+  part_erp_id: z.string(),
+});
 const HarvestedComponentScrapRequest = z
   .object({ reason: z.string().default("") })
-  .partial()
-  .passthrough();
+  .partial();
 const HeatMapAnnotationsSeverityEnum = z.enum([
   "LOW",
   "MEDIUM",
   "HIGH",
   "CRITICAL",
 ]);
-const HeatMapAnnotations = z
-  .object({
-    id: z.string().uuid(),
-    model: z.string().uuid(),
-    model_display: z.string(),
-    part: z.string().uuid(),
-    part_display: z.string(),
-    position_x: z.number(),
-    position_y: z.number(),
-    position_z: z.number(),
-    measurement_value: z.number().nullish(),
-    defect_type: z.string().max(255).nullish(),
-    severity: z
-      .union([HeatMapAnnotationsSeverityEnum, BlankEnum, NullEnum])
-      .nullish(),
-    notes: z.string().optional(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    created_by: z.number().int().nullable(),
-    created_by_display: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-  })
-  .passthrough();
-const PaginatedHeatMapAnnotationsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(HeatMapAnnotations),
-  })
-  .passthrough();
-const HeatMapAnnotationsRequest = z
-  .object({
-    model: z.string().uuid(),
-    part: z.string().uuid(),
-    position_x: z.number(),
-    position_y: z.number(),
-    position_z: z.number(),
-    measurement_value: z.number().nullish(),
-    defect_type: z.string().max(255).nullish(),
-    severity: z
-      .union([HeatMapAnnotationsSeverityEnum, BlankEnum, NullEnum])
-      .nullish(),
-    notes: z.string().optional(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const HeatMapAnnotations = z.object({
+  id: z.string().uuid(),
+  model: z.string().uuid(),
+  model_display: z.string(),
+  part: z.string().uuid(),
+  part_display: z.string(),
+  position_x: z.number(),
+  position_y: z.number(),
+  position_z: z.number(),
+  measurement_value: z.number().nullish(),
+  defect_type: z.string().max(255).nullish(),
+  severity: z
+    .union([HeatMapAnnotationsSeverityEnum, BlankEnum, NullEnum])
+    .nullish(),
+  notes: z.string().optional(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  created_by: z.number().int().nullable(),
+  created_by_display: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  deleted_at: z.string().datetime({ offset: true }).nullable(),
+});
+const PaginatedHeatMapAnnotationsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(HeatMapAnnotations),
+});
+const HeatMapAnnotationsRequest = z.object({
+  model: z.string().uuid(),
+  part: z.string().uuid(),
+  position_x: z.number(),
+  position_y: z.number(),
+  position_z: z.number(),
+  measurement_value: z.number().nullish(),
+  defect_type: z.string().max(255).nullish(),
+  severity: z
+    .union([HeatMapAnnotationsSeverityEnum, BlankEnum, NullEnum])
+    .nullish(),
+  notes: z.string().optional(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedHeatMapAnnotationsRequest = z
   .object({
     model: z.string().uuid(),
@@ -11148,21 +10891,17 @@ const PatchedHeatMapAnnotationsRequest = z
     quality_reports: z.array(z.string().uuid()),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const DefectTypeFacet = z
-  .object({ value: z.string(), count: z.number().int() })
-  .passthrough();
-const SeverityFacet = z
-  .object({ value: z.string(), count: z.number().int() })
-  .passthrough();
-const HeatMapFacetsResponse = z
-  .object({
-    defect_types: z.array(DefectTypeFacet),
-    severities: z.array(SeverityFacet),
-    total_count: z.number().int(),
-  })
-  .passthrough();
+  .partial();
+const DefectTypeFacet = z.object({
+  value: z.string(),
+  count: z.number().int(),
+});
+const SeverityFacet = z.object({ value: z.string(), count: z.number().int() });
+const HeatMapFacetsResponse = z.object({
+  defect_types: z.array(DefectTypeFacet),
+  severities: z.array(SeverityFacet),
+  total_count: z.number().int(),
+});
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
   "IN_USE",
@@ -11170,62 +10909,56 @@ const MaterialLotStatusEnum = z.enum([
   "SCRAPPED",
   "QUARANTINE",
 ]);
-const MaterialLot = z
-  .object({
-    id: z.string().uuid(),
-    lot_number: z.string().max(100),
-    parent_lot: z.string().uuid().nullish(),
-    parent_lot_number: z.string().nullable(),
-    material_type: z.string().uuid().nullish(),
-    material_type_name: z.string().nullable(),
-    material_description: z.string().max(200).optional(),
-    supplier: z.string().uuid().nullish(),
-    supplier_name: z.string().nullable(),
-    supplier_lot_number: z.string().max(100).optional(),
-    received_date: z.string(),
-    received_by: z.number().int(),
-    quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
-    quantity_remaining: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
-    unit_of_measure: z.string().max(20),
-    status: MaterialLotStatusEnum.optional(),
-    manufacture_date: z.string().nullish(),
-    expiration_date: z.string().nullish(),
-    certificate_of_conformance: z.string().url().nullish(),
-    storage_location: z.string().max(100).optional(),
-    child_lot_count: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedMaterialLotList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(MaterialLot),
-  })
-  .passthrough();
-const MaterialLotRequest = z
-  .object({
-    lot_number: z.string().min(1).max(100),
-    parent_lot: z.string().uuid().nullish(),
-    material_type: z.string().uuid().nullish(),
-    material_description: z.string().max(200).optional(),
-    supplier: z.string().uuid().nullish(),
-    supplier_lot_number: z.string().max(100).optional(),
-    received_date: z.string(),
-    quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
-    unit_of_measure: z.string().min(1).max(20),
-    status: MaterialLotStatusEnum.optional(),
-    manufacture_date: z.string().nullish(),
-    expiration_date: z.string().nullish(),
-    certificate_of_conformance: z.instanceof(File).nullish(),
-    storage_location: z.string().max(100).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const MaterialLot = z.object({
+  id: z.string().uuid(),
+  lot_number: z.string().max(100),
+  parent_lot: z.string().uuid().nullish(),
+  parent_lot_number: z.string().nullable(),
+  material_type: z.string().uuid().nullish(),
+  material_type_name: z.string().nullable(),
+  material_description: z.string().max(200).optional(),
+  supplier: z.string().uuid().nullish(),
+  supplier_name: z.string().nullable(),
+  supplier_lot_number: z.string().max(100).optional(),
+  received_date: z.string(),
+  received_by: z.number().int(),
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  quantity_remaining: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  unit_of_measure: z.string().max(20),
+  status: MaterialLotStatusEnum.optional(),
+  manufacture_date: z.string().nullish(),
+  expiration_date: z.string().nullish(),
+  certificate_of_conformance: z.string().url().nullish(),
+  storage_location: z.string().max(100).optional(),
+  child_lot_count: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedMaterialLotList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(MaterialLot),
+});
+const MaterialLotRequest = z.object({
+  lot_number: z.string().min(1).max(100),
+  parent_lot: z.string().uuid().nullish(),
+  material_type: z.string().uuid().nullish(),
+  material_description: z.string().max(200).optional(),
+  supplier: z.string().uuid().nullish(),
+  supplier_lot_number: z.string().max(100).optional(),
+  received_date: z.string(),
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  unit_of_measure: z.string().min(1).max(20),
+  status: MaterialLotStatusEnum.optional(),
+  manufacture_date: z.string().nullish(),
+  expiration_date: z.string().nullish(),
+  certificate_of_conformance: z.instanceof(File).nullish(),
+  storage_location: z.string().max(100).optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedMaterialLotRequest = z
   .object({
     lot_number: z.string().min(1).max(100),
@@ -11244,102 +10977,89 @@ const PatchedMaterialLotRequest = z
     storage_location: z.string().max(100),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const MaterialLotSplitRequest = z
-  .object({
-    quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
-    reason: z.string().optional().default(""),
-  })
-  .passthrough();
-const MaterialUsage = z
-  .object({
-    id: z.string().uuid(),
-    lot: z.string().uuid().nullish(),
-    lot_number: z.string().nullable(),
-    harvested_component: z.string().uuid().nullish(),
-    part: z.string().uuid(),
-    part_erp_id: z.string(),
-    work_order: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    qty_consumed: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
-    consumed_at: z.string().datetime({ offset: true }),
-    consumed_by: z.number().int(),
-    consumed_by_name: z.string(),
-    is_substitute: z.boolean().optional(),
-    substitution_reason: z.string().max(200).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedMaterialUsageList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(MaterialUsage),
-  })
-  .passthrough();
+  .partial();
+const MaterialLotSplitRequest = z.object({
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  reason: z.string().optional().default(""),
+});
+const MaterialUsage = z.object({
+  id: z.string().uuid(),
+  lot: z.string().uuid().nullish(),
+  lot_number: z.string().nullable(),
+  harvested_component: z.string().uuid().nullish(),
+  part: z.string().uuid(),
+  part_erp_id: z.string(),
+  work_order: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  qty_consumed: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  consumed_at: z.string().datetime({ offset: true }),
+  consumed_by: z.number().int(),
+  consumed_by_name: z.string(),
+  is_substitute: z.boolean().optional(),
+  substitution_reason: z.string().max(200).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedMaterialUsageList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(MaterialUsage),
+});
 const TypeEnum = z.enum(["NUMERIC", "PASS_FAIL"]);
-const MeasurementDefinition = z
-  .object({
-    id: z.string().uuid(),
-    label: z.string().max(100),
-    step_name: z.string(),
-    unit: z.string().max(50).optional(),
-    nominal: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    upper_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    lower_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    required: z.boolean().optional(),
-    type: TypeEnum,
-    step: z.string().uuid(),
-    spc_enabled: z.boolean().optional(),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-    is_current_version: z.boolean(),
-    previous_version: z.string().uuid().nullable(),
-  })
-  .passthrough();
-const PaginatedMeasurementDefinitionList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(MeasurementDefinition),
-  })
-  .passthrough();
-const MeasurementDefinitionRequest = z
-  .object({
-    label: z.string().min(1).max(100),
-    unit: z.string().max(50).optional(),
-    nominal: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    upper_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    lower_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    required: z.boolean().optional(),
-    type: TypeEnum,
-    spc_enabled: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const MeasurementDefinition = z.object({
+  id: z.string().uuid(),
+  label: z.string().max(100),
+  step_name: z.string(),
+  unit: z.string().max(50).optional(),
+  nominal: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  upper_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  lower_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  required: z.boolean().optional(),
+  type: TypeEnum,
+  step: z.string().uuid(),
+  spc_enabled: z.boolean().optional(),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+  is_current_version: z.boolean(),
+  previous_version: z.string().uuid().nullable(),
+});
+const PaginatedMeasurementDefinitionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(MeasurementDefinition),
+});
+const MeasurementDefinitionRequest = z.object({
+  label: z.string().min(1).max(100),
+  unit: z.string().max(50).optional(),
+  nominal: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  upper_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  lower_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  required: z.boolean().optional(),
+  type: TypeEnum,
+  spc_enabled: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedMeasurementDefinitionRequest = z
   .object({
     label: z.string().min(1).max(100),
@@ -11361,47 +11081,40 @@ const PatchedMeasurementDefinitionRequest = z
     spc_enabled: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const Milestone = z
-  .object({
-    id: z.string().uuid(),
-    template: z.string().uuid(),
-    name: z.string().max(100),
-    customer_display_name: z.string().max(100).optional(),
-    display_name: z.string(),
-    display_order: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional()
-      .default(0),
-    description: z.string().optional(),
-    is_active: z.boolean().optional(),
-  })
-  .passthrough();
-const MilestoneTemplate = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    description: z.string().optional(),
-    is_default: z.boolean().optional(),
-    milestones: z.array(Milestone),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const MilestoneTemplateRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    description: z.string().optional(),
-    is_default: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const Milestone = z.object({
+  id: z.string().uuid(),
+  template: z.string().uuid(),
+  name: z.string().max(100),
+  customer_display_name: z.string().max(100).optional(),
+  display_name: z.string(),
+  display_order: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional()
+    .default(0),
+  description: z.string().optional(),
+  is_active: z.boolean().optional(),
+});
+const MilestoneTemplate = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().optional(),
+  is_default: z.boolean().optional(),
+  milestones: z.array(Milestone),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const MilestoneTemplateRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  is_default: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedMilestoneTemplateRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -11409,27 +11122,24 @@ const PatchedMilestoneTemplateRequest = z
     is_default: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const CreateMilestoneTemplateRevisionInputRequest = z
-  .object({ change_description: z.string().min(1) })
-  .passthrough();
-const MilestoneRequest = z
-  .object({
-    template: z.string().uuid(),
-    name: z.string().min(1).max(100),
-    customer_display_name: z.string().max(100).optional(),
-    display_order: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional()
-      .default(0),
-    description: z.string().optional(),
-    is_active: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const CreateMilestoneTemplateRevisionInputRequest = z.object({
+  change_description: z.string().min(1),
+});
+const MilestoneRequest = z.object({
+  template: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  customer_display_name: z.string().max(100).optional(),
+  display_order: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional()
+    .default(0),
+  description: z.string().optional(),
+  is_active: z.boolean().optional(),
+});
 const PatchedMilestoneRequest = z
   .object({
     template: z.string().uuid(),
@@ -11439,18 +11149,15 @@ const PatchedMilestoneRequest = z
     description: z.string(),
     is_active: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const NotificationEventTypeCatalog = z
-  .object({
-    key: z.string(),
-    label: z.string(),
-    description: z.string(),
-    scope_model: z.string().nullable(),
-    scope_label: z.string().nullable(),
-    resolver_keys: z.array(z.string()),
-  })
-  .passthrough();
+  .partial();
+const NotificationEventTypeCatalog = z.object({
+  key: z.string(),
+  label: z.string(),
+  description: z.string(),
+  scope_model: z.string().nullable(),
+  scope_label: z.string().nullable(),
+  resolver_keys: z.array(z.string()),
+});
 const NotificationTypeEnum = z.enum([
   "WEEKLY_REPORT",
   "CAPA_REMINDER",
@@ -11471,60 +11178,50 @@ const NotificationTaskStatusEnum = z.enum([
   "CANCELLED",
 ]);
 const IntervalTypeEnum = z.enum(["FIXED", "DEADLINE_BASED"]);
-const NotificationSchedule = z
-  .object({
-    interval_type: IntervalTypeEnum,
-    day_of_week: z.number().int().gte(0).lte(6).nullish(),
-    time: z.string().nullish(),
-    interval_weeks: z.number().int().gte(1).nullish(),
-    escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
-  })
-  .passthrough();
-const NotificationPreference = z
-  .object({
-    id: z.number().int(),
-    notification_type: NotificationTypeEnum,
-    notification_type_display: z.string(),
-    channel_type: NotificationPreferenceChannelTypeEnum.optional(),
-    channel_type_display: z.string(),
-    status: NotificationTaskStatusEnum,
-    status_display: z.string(),
-    schedule: NotificationSchedule.optional(),
-    next_send_at: z.string().datetime({ offset: true }),
-    next_send_at_display: z.string().datetime({ offset: true }).nullable(),
-    last_sent_at: z.string().datetime({ offset: true }).nullable(),
-    last_sent_at_display: z.string().datetime({ offset: true }).nullable(),
-    attempt_count: z.number().int(),
-    max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedNotificationPreferenceList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(NotificationPreference),
-  })
-  .passthrough();
-const NotificationScheduleRequest = z
-  .object({
-    interval_type: IntervalTypeEnum,
-    day_of_week: z.number().int().gte(0).lte(6).nullish(),
-    time: z.string().nullish(),
-    interval_weeks: z.number().int().gte(1).nullish(),
-    escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
-  })
-  .passthrough();
-const NotificationPreferenceRequest = z
-  .object({
-    notification_type: NotificationTypeEnum,
-    channel_type: NotificationPreferenceChannelTypeEnum.optional(),
-    schedule: NotificationScheduleRequest.optional(),
-    max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-  })
-  .passthrough();
+const NotificationSchedule = z.object({
+  interval_type: IntervalTypeEnum,
+  day_of_week: z.number().int().gte(0).lte(6).nullish(),
+  time: z.string().nullish(),
+  interval_weeks: z.number().int().gte(1).nullish(),
+  escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
+});
+const NotificationPreference = z.object({
+  id: z.number().int(),
+  notification_type: NotificationTypeEnum,
+  notification_type_display: z.string(),
+  channel_type: NotificationPreferenceChannelTypeEnum.optional(),
+  channel_type_display: z.string(),
+  status: NotificationTaskStatusEnum,
+  status_display: z.string(),
+  schedule: NotificationSchedule.optional(),
+  next_send_at: z.string().datetime({ offset: true }),
+  next_send_at_display: z.string().datetime({ offset: true }).nullable(),
+  last_sent_at: z.string().datetime({ offset: true }).nullable(),
+  last_sent_at_display: z.string().datetime({ offset: true }).nullable(),
+  attempt_count: z.number().int(),
+  max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedNotificationPreferenceList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(NotificationPreference),
+});
+const NotificationScheduleRequest = z.object({
+  interval_type: IntervalTypeEnum,
+  day_of_week: z.number().int().gte(0).lte(6).nullish(),
+  time: z.string().nullish(),
+  interval_weeks: z.number().int().gte(1).nullish(),
+  escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
+});
+const NotificationPreferenceRequest = z.object({
+  notification_type: NotificationTypeEnum,
+  channel_type: NotificationPreferenceChannelTypeEnum.optional(),
+  schedule: NotificationScheduleRequest.optional(),
+  max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+});
 const PatchedNotificationPreferenceRequest = z
   .object({
     notification_type: NotificationTypeEnum,
@@ -11532,14 +11229,11 @@ const PatchedNotificationPreferenceRequest = z
     schedule: NotificationScheduleRequest,
     max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
   })
-  .partial()
-  .passthrough();
-const TestSendResponse = z
-  .object({ status: z.string(), message: z.string() })
-  .passthrough();
-const AvailableNotificationTypes = z
-  .object({ notification_types: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
+  .partial();
+const TestSendResponse = z.object({ status: z.string(), message: z.string() });
+const AvailableNotificationTypes = z.object({
+  notification_types: z.array(z.object({}).partial().passthrough()),
+});
 const EventTypeEnum = z.enum([
   "STEP_FAILURE",
   "WORK_ORDER_HELD_TOO_LONG",
@@ -11547,48 +11241,42 @@ const EventTypeEnum = z.enum([
   "WORK_ORDER_OVERDUE",
 ]);
 const NotificationRuleChannelTypeEnum = z.enum(["EMAIL", "IN_APP"]);
-const NotificationRule = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(200),
-    description: z.string().optional(),
-    event_type: EventTypeEnum,
-    scope_content_type: z.number().int().nullish(),
-    scope_object_id: z.string().nullish(),
-    recipient_users: z.array(z.number().int()).optional(),
-    recipient_groups: z.array(z.string().uuid()).optional(),
-    recipient_resolver_key: z.string().max(64).optional(),
-    channel_type: NotificationRuleChannelTypeEnum.optional(),
-    min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
-    is_active: z.boolean().optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    available_resolvers: z.array(z.string()),
-  })
-  .passthrough();
-const PaginatedNotificationRuleList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(NotificationRule),
-  })
-  .passthrough();
-const NotificationRuleRequest = z
-  .object({
-    name: z.string().min(1).max(200),
-    description: z.string().optional(),
-    event_type: EventTypeEnum,
-    scope_content_type: z.number().int().nullish(),
-    scope_object_id: z.string().nullish(),
-    recipient_users: z.array(z.number().int()).optional(),
-    recipient_groups: z.array(z.string().uuid()).optional(),
-    recipient_resolver_key: z.string().max(64).optional(),
-    channel_type: NotificationRuleChannelTypeEnum.optional(),
-    min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
-    is_active: z.boolean().optional(),
-  })
-  .passthrough();
+const NotificationRule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  event_type: EventTypeEnum,
+  scope_content_type: z.number().int().nullish(),
+  scope_object_id: z.string().nullish(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_resolver_key: z.string().max(64).optional(),
+  channel_type: NotificationRuleChannelTypeEnum.optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  is_active: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  available_resolvers: z.array(z.string()),
+});
+const PaginatedNotificationRuleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(NotificationRule),
+});
+const NotificationRuleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  event_type: EventTypeEnum,
+  scope_content_type: z.number().int().nullish(),
+  scope_object_id: z.string().nullish(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_resolver_key: z.string().max(64).optional(),
+  channel_type: NotificationRuleChannelTypeEnum.optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  is_active: z.boolean().optional(),
+});
 const PatchedNotificationRuleRequest = z
   .object({
     name: z.string().min(1).max(200),
@@ -11603,8 +11291,7 @@ const PatchedNotificationRuleRequest = z
     min_gap_seconds: z.number().int().gte(0).lte(2147483647),
     is_active: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const OrdersStatusEnum = z.enum([
   "RFI",
   "PENDING",
@@ -11613,55 +11300,49 @@ const OrdersStatusEnum = z.enum([
   "ON_HOLD",
   "CANCELLED",
 ]);
-const Orders = z
-  .object({
-    id: z.string().uuid(),
-    order_number: z.string(),
-    name: z.string().max(200),
-    customer_note: z.string().nullish(),
-    latest_note: z.object({}).partial().passthrough().nullable(),
-    notes_timeline: z.array(z.unknown()),
-    customer: z.number().int().nullish(),
-    customer_info: z.object({}).partial().passthrough().nullable(),
-    company: z.string().uuid().nullish(),
-    company_info: z.object({}).partial().passthrough().nullable(),
-    estimated_completion: z.string().nullish(),
-    original_completion_date: z.string().datetime({ offset: true }).nullable(),
-    order_status: OrdersStatusEnum,
-    current_hubspot_gate: z.string().uuid().nullish(),
-    current_milestone: z.string().uuid().nullish(),
-    parts_summary: z.object({}).partial().passthrough().nullable(),
-    process_stages: z.array(z.unknown()),
-    gate_info: z.object({}).partial().passthrough().nullable(),
-    customer_first_name: z.string().nullable(),
-    customer_last_name: z.string().nullable(),
-    company_name: z.string().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedOrdersList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Orders),
-  })
-  .passthrough();
-const OrdersRequest = z
-  .object({
-    name: z.string().min(1).max(200),
-    customer_note: z.string().nullish(),
-    customer: z.number().int().nullish(),
-    company: z.string().uuid().nullish(),
-    estimated_completion: z.string().nullish(),
-    order_status: OrdersStatusEnum,
-    current_hubspot_gate: z.string().uuid().nullish(),
-    current_milestone: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const Orders = z.object({
+  id: z.string().uuid(),
+  order_number: z.string(),
+  name: z.string().max(200),
+  customer_note: z.string().nullish(),
+  latest_note: z.object({}).partial().passthrough().nullable(),
+  notes_timeline: z.array(z.unknown()),
+  customer: z.number().int().nullish(),
+  customer_info: z.object({}).partial().passthrough().nullable(),
+  company: z.string().uuid().nullish(),
+  company_info: z.object({}).partial().passthrough().nullable(),
+  estimated_completion: z.string().nullish(),
+  original_completion_date: z.string().datetime({ offset: true }).nullable(),
+  order_status: OrdersStatusEnum,
+  current_hubspot_gate: z.string().uuid().nullish(),
+  current_milestone: z.string().uuid().nullish(),
+  parts_summary: z.object({}).partial().passthrough().nullable(),
+  process_stages: z.array(z.unknown()),
+  gate_info: z.object({}).partial().passthrough().nullable(),
+  customer_first_name: z.string().nullable(),
+  customer_last_name: z.string().nullable(),
+  company_name: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedOrdersList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Orders),
+});
+const OrdersRequest = z.object({
+  name: z.string().min(1).max(200),
+  customer_note: z.string().nullish(),
+  customer: z.number().int().nullish(),
+  company: z.string().uuid().nullish(),
+  estimated_completion: z.string().nullish(),
+  order_status: OrdersStatusEnum,
+  current_hubspot_gate: z.string().uuid().nullish(),
+  current_milestone: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedOrdersRequest = z
   .object({
     name: z.string().min(1).max(200),
@@ -11674,21 +11355,17 @@ const PatchedOrdersRequest = z
     current_milestone: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const VisibilityEnum = z.enum(["VISIBLE", "INTERNAL"]);
-const AddNoteInputRequest = z
-  .object({
-    message: z.string().min(1),
-    visibility: VisibilityEnum.optional().default("VISIBLE"),
-  })
-  .passthrough();
-const StepIncrementInputRequest = z
-  .object({ step_id: z.string().uuid() })
-  .passthrough();
-const StepIncrementResponse = z
-  .object({ advanced: z.number().int(), total: z.number().int() })
-  .passthrough();
+const AddNoteInputRequest = z.object({
+  message: z.string().min(1),
+  visibility: VisibilityEnum.optional().default("VISIBLE"),
+});
+const StepIncrementInputRequest = z.object({ step_id: z.string().uuid() });
+const StepIncrementResponse = z.object({
+  advanced: z.number().int(),
+  total: z.number().int(),
+});
 const PartsStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
@@ -11706,118 +11383,97 @@ const PartsStatusEnum = z.enum([
   "CORE_BANKED",
   "RMA_CLOSED",
 ]);
-const BulkAddPartsInputRequest = z
-  .object({
-    part_type: z.string().uuid(),
-    step: z.string().uuid(),
-    quantity: z.number().int(),
-    part_status: PartsStatusEnum.optional().default("PENDING"),
-    work_order: z.string().uuid().optional(),
-    erp_id_start: z.number().int().optional().default(1),
-  })
-  .passthrough();
-const BulkRemovePartsInputRequest = z
-  .object({ ids: z.array(z.string().uuid()) })
-  .passthrough();
+const BulkAddPartsInputRequest = z.object({
+  part_type: z.string().uuid(),
+  step: z.string().uuid(),
+  quantity: z.number().int(),
+  part_status: PartsStatusEnum.optional().default("PENDING"),
+  work_order: z.string().uuid().optional(),
+  erp_id_start: z.number().int().optional().default(1),
+});
+const BulkRemovePartsInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+});
 const PatchedSetMilestoneInputRequest = z
   .object({ milestone_id: z.string().uuid().nullable() })
-  .partial()
-  .passthrough();
-const StepDistributionResponse = z
-  .object({ id: z.string().uuid(), count: z.number().int(), name: z.string() })
-  .passthrough();
-const PaginatedStepDistributionResponseList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(StepDistributionResponse),
-  })
-  .passthrough();
-const api_Orders_import_create_Body = z
-  .object({
-    file: z.instanceof(File),
-    mode: z.enum(["create", "update", "upsert"]).optional(),
-  })
-  .passthrough();
-const ImportQueued = z
-  .object({
-    task_id: z.string(),
-    status: z.string(),
-    total_rows: z.number().int(),
-    message: z.string(),
-  })
-  .passthrough();
-const ImportSummary = z
-  .object({
-    total: z.number().int(),
-    created: z.number().int(),
-    updated: z.number().int(),
-    errors: z.number().int(),
-  })
-  .passthrough();
-const ImportResponse = z
-  .object({
-    summary: ImportSummary,
-    results: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const ImportPreviewResponse = z
-  .object({
-    total_rows: z.number().int(),
-    columns: z.array(z.object({}).partial().passthrough()),
-    sample_data: z.array(z.object({}).partial().passthrough()),
-    model_fields: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const ImportStatusResponse = z
-  .object({
-    task_id: z.string(),
-    status: z.string(),
-    progress: z.object({}).partial().passthrough(),
-    result: z.object({}).partial().passthrough().optional(),
-  })
-  .passthrough();
-const PartTypes = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    name: z.string().max(50),
-    ID_prefix: z.string().max(50).nullish(),
-    ERP_id: z.string().max(50).nullish(),
-    itar_controlled: z.boolean().optional(),
-    eccn: z.string().max(20).optional(),
-    usml_category: z.string().max(10).optional(),
-    version: z.number().int(),
-    is_current_version: z.boolean(),
-    previous_version: z.string().uuid().nullable(),
-  })
-  .passthrough();
-const PaginatedPartTypesList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(PartTypes),
-  })
-  .passthrough();
-const PartTypesRequest = z
-  .object({
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    archived: z.boolean().optional(),
-    name: z.string().min(1).max(50),
-    ID_prefix: z.string().max(50).nullish(),
-    ERP_id: z.string().max(50).nullish(),
-    itar_controlled: z.boolean().optional(),
-    eccn: z.string().max(20).optional(),
-    usml_category: z.string().max(10).optional(),
-  })
-  .passthrough();
+  .partial();
+const StepDistributionResponse = z.object({
+  id: z.string().uuid(),
+  count: z.number().int(),
+  name: z.string(),
+});
+const PaginatedStepDistributionResponseList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepDistributionResponse),
+});
+const api_Orders_import_create_Body = z.object({
+  file: z.instanceof(File),
+  mode: z.enum(["create", "update", "upsert"]).optional(),
+});
+const ImportQueued = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  total_rows: z.number().int(),
+  message: z.string(),
+});
+const ImportSummary = z.object({
+  total: z.number().int(),
+  created: z.number().int(),
+  updated: z.number().int(),
+  errors: z.number().int(),
+});
+const ImportResponse = z.object({
+  summary: ImportSummary,
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const ImportPreviewResponse = z.object({
+  total_rows: z.number().int(),
+  columns: z.array(z.object({}).partial().passthrough()),
+  sample_data: z.array(z.object({}).partial().passthrough()),
+  model_fields: z.array(z.object({}).partial().passthrough()),
+});
+const ImportStatusResponse = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  progress: z.object({}).partial().passthrough(),
+  result: z.object({}).partial().passthrough().optional(),
+});
+const PartTypes = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  name: z.string().max(50),
+  ID_prefix: z.string().max(50).nullish(),
+  ERP_id: z.string().max(50).nullish(),
+  itar_controlled: z.boolean().optional(),
+  eccn: z.string().max(20).optional(),
+  usml_category: z.string().max(10).optional(),
+  version: z.number().int(),
+  is_current_version: z.boolean(),
+  previous_version: z.string().uuid().nullable(),
+});
+const PaginatedPartTypesList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PartTypes),
+});
+const PartTypesRequest = z.object({
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  archived: z.boolean().optional(),
+  name: z.string().min(1).max(50),
+  ID_prefix: z.string().max(50).nullish(),
+  ERP_id: z.string().max(50).nullish(),
+  itar_controlled: z.boolean().optional(),
+  eccn: z.string().max(20).optional(),
+  usml_category: z.string().max(10).optional(),
+});
 const PatchedPartTypesRequest = z
   .object({
     tenant: z.string().uuid().nullable(),
@@ -11830,78 +11486,67 @@ const PatchedPartTypesRequest = z
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
   })
-  .partial()
-  .passthrough();
-const PartTypeSelect = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    ID_prefix: z.string().max(50).nullish(),
-  })
-  .passthrough();
-const PaginatedPartTypeSelectList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(PartTypeSelect),
-  })
-  .passthrough();
-const Parts = z
-  .object({
-    id: z.string().uuid(),
-    ERP_id: z.string().max(50),
-    part_status: PartsStatusEnum.optional(),
-    requires_sampling: z.boolean(),
-    needs_qa: z.boolean(),
-    qa_completed: z.boolean(),
-    order: z.string().uuid().nullish(),
-    part_type: z.string().uuid(),
-    part_type_info: z.object({}).partial().passthrough().nullable(),
-    step: z.string().uuid(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    work_order: z.string().uuid().nullish(),
-    quality_info: z.object({}).partial().passthrough().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    has_error: z.boolean(),
-    part_type_name: z.string().nullable(),
-    process_name: z.string().nullable(),
-    order_name: z.string().nullable(),
-    step_name: z.string().nullable(),
-    step_description: z.string().nullable(),
-    work_order_erp_id: z.string().nullable(),
-    is_from_batch_process: z.boolean(),
-    sampling_rule: z.string().uuid().nullish(),
-    sampling_ruleset: z.string().uuid().nullish(),
-    sampling_context: z.unknown().optional(),
-    process: z.string().uuid().nullable(),
-    total_rework_count: z.number().int(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedPartsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Parts),
-  })
-  .passthrough();
-const PartsRequest = z
-  .object({
-    ERP_id: z.string().min(1).max(50),
-    part_status: PartsStatusEnum.optional(),
-    order: z.string().uuid().nullish(),
-    part_type: z.string().uuid(),
-    step: z.string().uuid(),
-    work_order: z.string().uuid().nullish(),
-    sampling_rule: z.string().uuid().nullish(),
-    sampling_ruleset: z.string().uuid().nullish(),
-    sampling_context: z.unknown().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const PartTypeSelect = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  ID_prefix: z.string().max(50).nullish(),
+});
+const PaginatedPartTypeSelectList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PartTypeSelect),
+});
+const Parts = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string().max(50),
+  part_status: PartsStatusEnum.optional(),
+  requires_sampling: z.boolean(),
+  needs_qa: z.boolean(),
+  qa_completed: z.boolean(),
+  order: z.string().uuid().nullish(),
+  part_type: z.string().uuid(),
+  part_type_info: z.object({}).partial().passthrough().nullable(),
+  step: z.string().uuid(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  work_order: z.string().uuid().nullish(),
+  quality_info: z.object({}).partial().passthrough().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  has_error: z.boolean(),
+  part_type_name: z.string().nullable(),
+  process_name: z.string().nullable(),
+  order_name: z.string().nullable(),
+  step_name: z.string().nullable(),
+  step_description: z.string().nullable(),
+  work_order_erp_id: z.string().nullable(),
+  is_from_batch_process: z.boolean(),
+  sampling_rule: z.string().uuid().nullish(),
+  sampling_ruleset: z.string().uuid().nullish(),
+  sampling_context: z.unknown().optional(),
+  process: z.string().uuid().nullable(),
+  total_rework_count: z.number().int(),
+  archived: z.boolean().optional(),
+});
+const PaginatedPartsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Parts),
+});
+const PartsRequest = z.object({
+  ERP_id: z.string().min(1).max(50),
+  part_status: PartsStatusEnum.optional(),
+  order: z.string().uuid().nullish(),
+  part_type: z.string().uuid(),
+  step: z.string().uuid(),
+  work_order: z.string().uuid().nullish(),
+  sampling_rule: z.string().uuid().nullish(),
+  sampling_ruleset: z.string().uuid().nullish(),
+  sampling_context: z.unknown().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedPartsRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
@@ -11915,157 +11560,128 @@ const PatchedPartsRequest = z
     sampling_context: z.unknown(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
-  .partial()
-  .passthrough();
+  .partial();
 const api_Parts_rollback_create_Body = z
   .object({ reason: z.string(), override_id: z.string().uuid() })
-  .partial()
-  .passthrough();
+  .partial();
 const TravelerStepStatusEnum = z.enum([
   "COMPLETED",
   "IN_PROGRESS",
   "PENDING",
   "SKIPPED",
 ]);
-const TravelerOperator = z
-  .object({
-    id: z.number().int(),
-    name: z.string(),
-    employee_id: z.string().nullable(),
-  })
-  .passthrough();
-const TravelerApproval = z
-  .object({
-    id: z.number().int(),
-    name: z.string(),
-    approved_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const TravelerEquipment = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string(),
-    calibration_due: z.string().nullable(),
-  })
-  .passthrough();
-const TravelerMeasurement = z
-  .object({
-    definition_id: z.string().uuid(),
-    label: z.string(),
-    nominal: z.number().nullable(),
-    upper_tol: z.number().nullable(),
-    lower_tol: z.number().nullable(),
-    actual_value: z.number().nullable(),
-    unit: z.string().nullable(),
-    passed: z.boolean(),
-    recorded_at: z.string().datetime({ offset: true }),
-    recorded_by: z.string().nullable(),
-  })
-  .passthrough();
+const TravelerOperator = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  employee_id: z.string().nullable(),
+});
+const TravelerApproval = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  approved_at: z.string().datetime({ offset: true }),
+});
+const TravelerEquipment = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  calibration_due: z.string().nullable(),
+});
+const TravelerMeasurement = z.object({
+  definition_id: z.string().uuid(),
+  label: z.string(),
+  nominal: z.number().nullable(),
+  upper_tol: z.number().nullable(),
+  lower_tol: z.number().nullable(),
+  actual_value: z.number().nullable(),
+  unit: z.string().nullable(),
+  passed: z.boolean(),
+  recorded_at: z.string().datetime({ offset: true }),
+  recorded_by: z.string().nullable(),
+});
 const QualityStatusEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
-const TravelerDefect = z
-  .object({
-    error_type_id: z.string().uuid().nullable(),
-    error_name: z.string(),
-    severity: z.string().nullable(),
-    disposition: z.string().nullable(),
-  })
-  .passthrough();
-const TravelerMaterial = z
-  .object({
-    material_name: z.string(),
-    lot_number: z.string().nullable(),
-    quantity: z.number(),
-  })
-  .passthrough();
-const TravelerAttachment = z
-  .object({
-    id: z.string().uuid(),
-    file_name: z.string(),
-    file_url: z.string(),
-    uploaded_at: z.string().datetime({ offset: true }),
-    classification: z.string().nullable(),
-  })
-  .passthrough();
-const TravelerStepEntry = z
-  .object({
-    step_id: z.string().uuid(),
-    step_name: z.string(),
-    step_order: z.number().int(),
-    visit_number: z.number().int().optional().default(1),
-    status: TravelerStepStatusEnum,
-    started_at: z.string().datetime({ offset: true }).nullable(),
-    completed_at: z.string().datetime({ offset: true }).nullable(),
-    duration_seconds: z.number().int().nullable(),
-    operator: TravelerOperator.nullable(),
-    approved_by: TravelerApproval.nullable(),
-    equipment_used: z.array(TravelerEquipment),
-    measurements: z.array(TravelerMeasurement),
-    quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
-    defects_found: z.array(TravelerDefect),
-    materials_used: z.array(TravelerMaterial),
-    attachments: z.array(TravelerAttachment),
-  })
-  .passthrough();
-const PartTravelerResponse = z
-  .object({
-    part_id: z.string().uuid(),
-    part_erp_id: z.string(),
-    work_order_id: z.string().uuid().nullable(),
-    process_name: z.string().nullable(),
-    current_step_id: z.string().uuid().nullable(),
-    current_step_name: z.string().nullable(),
-    part_status: z.string(),
-    traveler: z.array(TravelerStepEntry),
-  })
-  .passthrough();
-const PartsBulkIncrementInputRequest = z
-  .object({ ids: z.array(z.string().uuid()) })
-  .passthrough();
-const BulkResultResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const PartsBulkRollbackInputRequest = z
-  .object({
-    ids: z.array(z.string().uuid()),
-    reason: z.string().optional(),
-    override_id: z.string().uuid().nullish(),
-  })
-  .passthrough();
-const BulkRollbackResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const PartsBulkSetStatusInputRequest = z
-  .object({
-    ids: z.array(z.string().uuid()),
-    status: PartsStatusEnum,
-    reason: z.string().optional(),
-  })
-  .passthrough();
-const BulkSetStatusResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const PartSelect = z
-  .object({
-    id: z.string().uuid(),
-    ERP_id: z.string().max(50),
-    part_type: z.string().uuid().nullish(),
-    part_type_name: z.string().nullable(),
-    part_status: PartsStatusEnum.optional(),
-  })
-  .passthrough();
-const PaginatedPartSelectList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(PartSelect),
-  })
-  .passthrough();
+const TravelerDefect = z.object({
+  error_type_id: z.string().uuid().nullable(),
+  error_name: z.string(),
+  severity: z.string().nullable(),
+  disposition: z.string().nullable(),
+});
+const TravelerMaterial = z.object({
+  material_name: z.string(),
+  lot_number: z.string().nullable(),
+  quantity: z.number(),
+});
+const TravelerAttachment = z.object({
+  id: z.string().uuid(),
+  file_name: z.string(),
+  file_url: z.string(),
+  uploaded_at: z.string().datetime({ offset: true }),
+  classification: z.string().nullable(),
+});
+const TravelerStepEntry = z.object({
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  step_order: z.number().int(),
+  visit_number: z.number().int().optional().default(1),
+  status: TravelerStepStatusEnum,
+  started_at: z.string().datetime({ offset: true }).nullable(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  duration_seconds: z.number().int().nullable(),
+  operator: TravelerOperator.nullable(),
+  approved_by: TravelerApproval.nullable(),
+  equipment_used: z.array(TravelerEquipment),
+  measurements: z.array(TravelerMeasurement),
+  quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
+  defects_found: z.array(TravelerDefect),
+  materials_used: z.array(TravelerMaterial),
+  attachments: z.array(TravelerAttachment),
+});
+const PartTravelerResponse = z.object({
+  part_id: z.string().uuid(),
+  part_erp_id: z.string(),
+  work_order_id: z.string().uuid().nullable(),
+  process_name: z.string().nullable(),
+  current_step_id: z.string().uuid().nullable(),
+  current_step_name: z.string().nullable(),
+  part_status: z.string(),
+  traveler: z.array(TravelerStepEntry),
+});
+const PartsBulkIncrementInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+});
+const BulkResultResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const PartsBulkRollbackInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  reason: z.string().optional(),
+  override_id: z.string().uuid().nullish(),
+});
+const BulkRollbackResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const PartsBulkSetStatusInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  status: PartsStatusEnum,
+  reason: z.string().optional(),
+});
+const BulkSetStatusResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const PartSelect = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string().max(50),
+  part_type: z.string().uuid().nullish(),
+  part_type_name: z.string().nullable(),
+  part_status: PartsStatusEnum.optional(),
+});
+const PaginatedPartSelectList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PartSelect),
+});
 const ProcessStatusEnum = z.enum([
   "DRAFT",
   "PENDING_APPROVAL",
@@ -12099,97 +11715,85 @@ const TerminalStatusEnum = z.enum([
   "RMA_CLOSED",
 ]);
 const RevisitAssignmentEnum = z.enum(["ANY", "SAME", "DIFFERENT", "ROLE"]);
-const Step = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    description: z.string().nullish(),
-    part_type: z.string().uuid(),
-    part_type_name: z.string(),
-    expected_duration: z.string().nullish(),
-    requires_qa_signoff: z.boolean().optional(),
-    sampling_required: z.boolean().optional(),
-    min_sampling_rate: z.number().optional(),
-    block_on_quarantine: z.boolean().optional(),
-    pass_threshold: z.number().optional(),
-    step_type: StepTypeEnum.optional(),
-    is_decision_point: z.boolean().optional(),
-    decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
-    is_terminal: z.boolean().optional(),
-    terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
-    max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-    revisit_assignment: RevisitAssignmentEnum.optional(),
-  })
-  .passthrough();
-const ProcessStep = z
-  .object({
-    id: z.number().int(),
-    step: Step,
-    order: z.number().int().gte(-2147483648).lte(2147483647),
-    is_entry_point: z.boolean().optional(),
-  })
-  .passthrough();
+const Step = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  description: z.string().nullish(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  expected_duration: z.string().nullish(),
+  requires_qa_signoff: z.boolean().optional(),
+  sampling_required: z.boolean().optional(),
+  min_sampling_rate: z.number().optional(),
+  block_on_quarantine: z.boolean().optional(),
+  pass_threshold: z.number().optional(),
+  step_type: StepTypeEnum.optional(),
+  is_decision_point: z.boolean().optional(),
+  decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_terminal: z.boolean().optional(),
+  terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
+  max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
+  revisit_assignment: RevisitAssignmentEnum.optional(),
+});
+const ProcessStep = z.object({
+  id: z.number().int(),
+  step: Step,
+  order: z.number().int().gte(-2147483648).lte(2147483647),
+  is_entry_point: z.boolean().optional(),
+});
 const EdgeTypeEnum = z.enum(["DEFAULT", "ALTERNATE", "ESCALATION"]);
 const ConditionOperatorEnum = z.enum(["gte", "lte", "eq"]);
-const StepEdge = z
-  .object({
-    id: z.number().int(),
-    from_step: z.string().uuid(),
-    to_step: z.string().uuid(),
-    edge_type: EdgeTypeEnum.optional(),
-    from_step_name: z.string(),
-    to_step_name: z.string(),
-    condition_measurement: z.string().uuid().nullish(),
-    condition_operator: z.union([ConditionOperatorEnum, BlankEnum]).optional(),
-    condition_value: z
-      .string()
-      .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
-      .nullish(),
-  })
-  .passthrough();
-const Processes = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    name: z.string().max(50),
-    is_remanufactured: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    is_batch_process: z.boolean().optional(),
-    status: ProcessStatusEnum.optional(),
-    category: ProcessesCategoryEnum.optional(),
-    change_description: z.string().nullish(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    approved_by: z.number().int().nullable(),
-    part_type_name: z.string(),
-    process_steps: z.array(ProcessStep),
-    step_edges: z.array(StepEdge),
-    num_steps: z.number().int(),
-  })
-  .passthrough();
-const PaginatedProcessesList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Processes),
-  })
-  .passthrough();
-const ProcessesRequest = z
-  .object({
-    tenant: z.string().uuid().nullish(),
-    external_id: z.string().max(255).nullish(),
-    name: z.string().min(1).max(50),
-    is_remanufactured: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    is_batch_process: z.boolean().optional(),
-    status: ProcessStatusEnum.optional(),
-    category: ProcessesCategoryEnum.optional(),
-    change_description: z.string().nullish(),
-  })
-  .passthrough();
+const StepEdge = z.object({
+  id: z.number().int(),
+  from_step: z.string().uuid(),
+  to_step: z.string().uuid(),
+  edge_type: EdgeTypeEnum.optional(),
+  from_step_name: z.string(),
+  to_step_name: z.string(),
+  condition_measurement: z.string().uuid().nullish(),
+  condition_operator: z.union([ConditionOperatorEnum, BlankEnum]).optional(),
+  condition_value: z
+    .string()
+    .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
+    .nullish(),
+});
+const Processes = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  name: z.string().max(50),
+  is_remanufactured: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  is_batch_process: z.boolean().optional(),
+  status: ProcessStatusEnum.optional(),
+  category: ProcessesCategoryEnum.optional(),
+  change_description: z.string().nullish(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  approved_by: z.number().int().nullable(),
+  part_type_name: z.string(),
+  process_steps: z.array(ProcessStep),
+  step_edges: z.array(StepEdge),
+  num_steps: z.number().int(),
+});
+const PaginatedProcessesList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Processes),
+});
+const ProcessesRequest = z.object({
+  tenant: z.string().uuid().nullish(),
+  external_id: z.string().max(255).nullish(),
+  name: z.string().min(1).max(50),
+  is_remanufactured: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  is_batch_process: z.boolean().optional(),
+  status: ProcessStatusEnum.optional(),
+  category: ProcessesCategoryEnum.optional(),
+  change_description: z.string().nullish(),
+});
 const PatchedProcessesRequest = z
   .object({
     tenant: z.string().uuid().nullable(),
@@ -12202,46 +11806,39 @@ const PatchedProcessesRequest = z
     category: ProcessesCategoryEnum,
     change_description: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
-const ProcessWithSteps = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    is_remanufactured: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    is_batch_process: z.boolean().optional(),
-    process_steps: z.array(ProcessStep),
-    step_edges: z.array(StepEdge),
-    status: ProcessStatusEnum.optional(),
-    change_description: z.string().nullish(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    approved_by: z.number().int().nullable(),
-    version: z.number().int(),
-    previous_version: z.string().uuid().nullable(),
-    is_current_version: z.boolean(),
-  })
-  .passthrough();
-const PaginatedProcessWithStepsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ProcessWithSteps),
-  })
-  .passthrough();
-const ProcessWithStepsRequest = z
-  .object({
-    name: z.string().min(1).max(50),
-    is_remanufactured: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    is_batch_process: z.boolean().optional(),
-    nodes: z.array(z.object({}).partial().passthrough()).optional(),
-    edges: z.array(z.object({}).partial().passthrough()).optional(),
-    status: ProcessStatusEnum.optional(),
-    change_description: z.string().nullish(),
-  })
-  .passthrough();
+  .partial();
+const ProcessWithSteps = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  is_remanufactured: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  is_batch_process: z.boolean().optional(),
+  process_steps: z.array(ProcessStep),
+  step_edges: z.array(StepEdge),
+  status: ProcessStatusEnum.optional(),
+  change_description: z.string().nullish(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  approved_by: z.number().int().nullable(),
+  version: z.number().int(),
+  previous_version: z.string().uuid().nullable(),
+  is_current_version: z.boolean(),
+});
+const PaginatedProcessWithStepsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ProcessWithSteps),
+});
+const ProcessWithStepsRequest = z.object({
+  name: z.string().min(1).max(50),
+  is_remanufactured: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  is_batch_process: z.boolean().optional(),
+  nodes: z.array(z.object({}).partial().passthrough()).optional(),
+  edges: z.array(z.object({}).partial().passthrough()).optional(),
+  status: ProcessStatusEnum.optional(),
+  change_description: z.string().nullish(),
+});
 const PatchedProcessWithStepsRequest = z
   .object({
     name: z.string().min(1).max(50),
@@ -12253,23 +11850,18 @@ const PatchedProcessWithStepsRequest = z
     status: ProcessStatusEnum,
     change_description: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const DuplicateProcessRequestRequest = z
   .object({ name_suffix: z.string().min(1).default(" (Copy)") })
-  .partial()
-  .passthrough();
+  .partial();
 const SubmitProcessForApprovalRequestRequest = z
   .object({ reason: z.string().min(1) })
-  .partial()
-  .passthrough();
-const SubmitProcessForApprovalResponse = z
-  .object({
-    process: ProcessWithSteps,
-    approval_request_id: z.string().uuid(),
-    approval_number: z.string(),
-  })
-  .passthrough();
+  .partial();
+const SubmitProcessForApprovalResponse = z.object({
+  process: ProcessWithSteps,
+  approval_request_id: z.string().uuid(),
+  approval_number: z.string(),
+});
 const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
 const DispositionTypeEnum = z.enum([
   "REWORK",
@@ -12278,97 +11870,91 @@ const DispositionTypeEnum = z.enum([
   "USE_AS_IS",
   "RETURN_TO_SUPPLIER",
 ]);
-const QuarantineDisposition = z
-  .object({
-    id: z.string().uuid(),
-    disposition_number: z.string(),
-    current_state: CurrentStateEnum.optional(),
-    disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
-    severity: SeverityEnum.optional(),
-    severity_display: z.string(),
-    assigned_to: z.number().int().nullish(),
-    description: z.string().optional(),
-    resolution_notes: z.string().optional(),
-    resolution_completed: z.boolean().optional(),
-    resolution_completed_by: z.number().int().nullish(),
-    resolution_completed_by_name: z.string(),
-    resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
-    containment_action: z.string().optional(),
-    containment_completed_at: z.string().datetime({ offset: true }).nullish(),
-    containment_completed_by: z.number().int().nullish(),
-    containment_completed_by_name: z.string(),
-    requires_customer_approval: z.boolean().optional(),
-    customer_approval_received: z.boolean().optional(),
-    customer_approval_reference: z.string().max(100).optional(),
-    customer_approval_date: z.string().nullish(),
-    scrap_verified: z.boolean().optional(),
-    scrap_verification_method: z.string().max(100).optional(),
-    scrap_verified_by: z.number().int().nullish(),
-    scrap_verified_by_name: z.string(),
-    scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
-    part: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    rework_attempt_at_step: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional(),
-    rework_limit_exceeded: z.boolean(),
-    quality_reports: z.array(z.string().uuid()),
-    work_order_id: z.string().uuid().nullable(),
-    work_order_erp_id: z.string().nullable(),
-    assignee_name: z.string(),
-    choices_data: z.object({}).partial().passthrough().nullable(),
-    annotation_status: z.object({}).partial().passthrough(),
-    can_be_completed: z.boolean(),
-    completion_blockers: z.array(z.string()),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedQuarantineDispositionList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(QuarantineDisposition),
-  })
-  .passthrough();
-const QuarantineDispositionRequest = z
-  .object({
-    current_state: CurrentStateEnum.optional(),
-    disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
-    severity: SeverityEnum.optional(),
-    assigned_to: z.number().int().nullish(),
-    description: z.string().optional(),
-    resolution_notes: z.string().optional(),
-    resolution_completed: z.boolean().optional(),
-    resolution_completed_by: z.number().int().nullish(),
-    resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
-    containment_action: z.string().optional(),
-    containment_completed_at: z.string().datetime({ offset: true }).nullish(),
-    containment_completed_by: z.number().int().nullish(),
-    requires_customer_approval: z.boolean().optional(),
-    customer_approval_received: z.boolean().optional(),
-    customer_approval_reference: z.string().max(100).optional(),
-    customer_approval_date: z.string().nullish(),
-    scrap_verified: z.boolean().optional(),
-    scrap_verification_method: z.string().max(100).optional(),
-    scrap_verified_by: z.number().int().nullish(),
-    scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
-    part: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    rework_attempt_at_step: z
-      .number()
-      .int()
-      .gte(-2147483648)
-      .lte(2147483647)
-      .optional(),
-    quality_reports: z.array(z.string().uuid()),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const QuarantineDisposition = z.object({
+  id: z.string().uuid(),
+  disposition_number: z.string(),
+  current_state: CurrentStateEnum.optional(),
+  disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
+  severity: SeverityEnum.optional(),
+  severity_display: z.string(),
+  assigned_to: z.number().int().nullish(),
+  description: z.string().optional(),
+  resolution_notes: z.string().optional(),
+  resolution_completed: z.boolean().optional(),
+  resolution_completed_by: z.number().int().nullish(),
+  resolution_completed_by_name: z.string(),
+  resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+  containment_action: z.string().optional(),
+  containment_completed_at: z.string().datetime({ offset: true }).nullish(),
+  containment_completed_by: z.number().int().nullish(),
+  containment_completed_by_name: z.string(),
+  requires_customer_approval: z.boolean().optional(),
+  customer_approval_received: z.boolean().optional(),
+  customer_approval_reference: z.string().max(100).optional(),
+  customer_approval_date: z.string().nullish(),
+  scrap_verified: z.boolean().optional(),
+  scrap_verification_method: z.string().max(100).optional(),
+  scrap_verified_by: z.number().int().nullish(),
+  scrap_verified_by_name: z.string(),
+  scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  rework_attempt_at_step: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional(),
+  rework_limit_exceeded: z.boolean(),
+  quality_reports: z.array(z.string().uuid()),
+  work_order_id: z.string().uuid().nullable(),
+  work_order_erp_id: z.string().nullable(),
+  assignee_name: z.string(),
+  choices_data: z.object({}).partial().passthrough().nullable(),
+  annotation_status: z.object({}).partial().passthrough(),
+  can_be_completed: z.boolean(),
+  completion_blockers: z.array(z.string()),
+  archived: z.boolean().optional(),
+});
+const PaginatedQuarantineDispositionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(QuarantineDisposition),
+});
+const QuarantineDispositionRequest = z.object({
+  current_state: CurrentStateEnum.optional(),
+  disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
+  severity: SeverityEnum.optional(),
+  assigned_to: z.number().int().nullish(),
+  description: z.string().optional(),
+  resolution_notes: z.string().optional(),
+  resolution_completed: z.boolean().optional(),
+  resolution_completed_by: z.number().int().nullish(),
+  resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+  containment_action: z.string().optional(),
+  containment_completed_at: z.string().datetime({ offset: true }).nullish(),
+  containment_completed_by: z.number().int().nullish(),
+  requires_customer_approval: z.boolean().optional(),
+  customer_approval_received: z.boolean().optional(),
+  customer_approval_reference: z.string().max(100).optional(),
+  customer_approval_date: z.string().nullish(),
+  scrap_verified: z.boolean().optional(),
+  scrap_verification_method: z.string().max(100).optional(),
+  scrap_verified_by: z.number().int().nullish(),
+  scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  rework_attempt_at_step: z
+    .number()
+    .int()
+    .gte(-2147483648)
+    .lte(2147483647)
+    .optional(),
+  quality_reports: z.array(z.string().uuid()),
+  archived: z.boolean().optional(),
+});
 const PatchedQuarantineDispositionRequest = z
   .object({
     current_state: CurrentStateEnum,
@@ -12397,16 +11983,13 @@ const PatchedQuarantineDispositionRequest = z
     quality_reports: z.array(z.string().uuid()),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const PaginatedRcaRecordList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(RcaRecord),
-  })
-  .passthrough();
+  .partial();
+const PaginatedRcaRecordList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(RcaRecord),
+});
 const FiveWhysNestedRequest = z
   .object({
     why_1_question: z.string().nullable(),
@@ -12421,8 +12004,7 @@ const FiveWhysNestedRequest = z
     why_5_answer: z.string().nullable(),
     identified_root_cause: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const FishboneNestedRequest = z
   .object({
     problem_statement: z.string().nullable(),
@@ -12434,26 +12016,23 @@ const FishboneNestedRequest = z
     environment_causes: z.string().nullable(),
     identified_root_cause: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
-const RcaRecordRequest = z
-  .object({
-    capa: z.string().uuid(),
-    rca_method: RcaMethodEnum,
-    problem_description: z.string().min(1),
-    root_cause_summary: z.string().nullish(),
-    conducted_by: z.number().int().nullish(),
-    conducted_date: z.string().nullish(),
-    rca_review_status: RcaReviewStatusEnum.optional(),
-    root_cause_verification_status: RootCauseVerificationStatusEnum.optional(),
-    root_cause_verified_by: z.number().int().nullish(),
-    quality_reports: z.array(z.string().uuid()).optional(),
-    dispositions: z.array(z.string().uuid()).optional(),
-    five_whys_data: FiveWhysNestedRequest.optional(),
-    fishbone_data: FishboneNestedRequest.optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const RcaRecordRequest = z.object({
+  capa: z.string().uuid(),
+  rca_method: RcaMethodEnum,
+  problem_description: z.string().min(1),
+  root_cause_summary: z.string().nullish(),
+  conducted_by: z.number().int().nullish(),
+  conducted_date: z.string().nullish(),
+  rca_review_status: RcaReviewStatusEnum.optional(),
+  root_cause_verification_status: RootCauseVerificationStatusEnum.optional(),
+  root_cause_verified_by: z.number().int().nullish(),
+  quality_reports: z.array(z.string().uuid()).optional(),
+  dispositions: z.array(z.string().uuid()).optional(),
+  five_whys_data: FiveWhysNestedRequest.optional(),
+  fishbone_data: FishboneNestedRequest.optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedRcaRecordRequest = z
   .object({
     capa: z.string().uuid(),
@@ -12471,58 +12050,51 @@ const PatchedRcaRecordRequest = z
     fishbone_data: FishboneNestedRequest,
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const SamplingRuleSet = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    origin: z.string().max(100).optional(),
-    active: z.boolean().optional(),
-    version: z.number().int(),
-    is_fallback: z.boolean().optional(),
-    fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
-    fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-    part_type: z.string().uuid(),
-    part_type_info: z.object({}).partial().passthrough().nullable(),
-    process: z.string().uuid().nullish(),
-    process_info: z.object({}).partial().passthrough().nullable(),
-    step: z.string().uuid(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    rules: z.array(z.unknown()),
-    created_by: z.number().int().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    modified_by: z.number().int().nullish(),
-    updated_at: z.string().datetime({ offset: true }),
-    part_type_name: z.string(),
-    process_name: z.string(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedSamplingRuleSetList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(SamplingRuleSet),
-  })
-  .passthrough();
-const SamplingRuleSetRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    origin: z.string().max(100).optional(),
-    active: z.boolean().optional(),
-    is_fallback: z.boolean().optional(),
-    fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
-    fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-    part_type: z.string().uuid(),
-    process: z.string().uuid().nullish(),
-    step: z.string().uuid(),
-    created_by: z.number().int().nullish(),
-    modified_by: z.number().int().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const SamplingRuleSet = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  origin: z.string().max(100).optional(),
+  active: z.boolean().optional(),
+  version: z.number().int(),
+  is_fallback: z.boolean().optional(),
+  fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
+  fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
+  part_type: z.string().uuid(),
+  part_type_info: z.object({}).partial().passthrough().nullable(),
+  process: z.string().uuid().nullish(),
+  process_info: z.object({}).partial().passthrough().nullable(),
+  step: z.string().uuid(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  rules: z.array(z.unknown()),
+  created_by: z.number().int().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  modified_by: z.number().int().nullish(),
+  updated_at: z.string().datetime({ offset: true }),
+  part_type_name: z.string(),
+  process_name: z.string(),
+  archived: z.boolean().optional(),
+});
+const PaginatedSamplingRuleSetList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SamplingRuleSet),
+});
+const SamplingRuleSetRequest = z.object({
+  name: z.string().min(1).max(100),
+  origin: z.string().max(100).optional(),
+  active: z.boolean().optional(),
+  is_fallback: z.boolean().optional(),
+  fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
+  fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
+  part_type: z.string().uuid(),
+  process: z.string().uuid().nullish(),
+  step: z.string().uuid(),
+  created_by: z.number().int().nullish(),
+  modified_by: z.number().int().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedSamplingRuleSetRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -12538,8 +12110,7 @@ const PatchedSamplingRuleSetRequest = z
     modified_by: z.number().int().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const RuleTypeEnum = z.enum([
   "EVERY_NTH_PART",
   "PERCENTAGE",
@@ -12548,47 +12119,41 @@ const RuleTypeEnum = z.enum([
   "LAST_N_PARTS",
   "EXACT_COUNT",
 ]);
-const SamplingRule = z
-  .object({
-    id: z.string().uuid(),
-    rule_type: RuleTypeEnum,
-    rule_type_display: z.string(),
-    value: z.number().int().gte(0).lte(2147483647).nullish(),
-    order: z.number().int().gte(0).lte(2147483647).optional(),
-    algorithm_description: z.string().optional(),
-    last_validated: z.string().datetime({ offset: true }).nullish(),
-    ruleset: z.string().uuid(),
-    ruleset_info: z.object({}).partial().passthrough().nullable(),
-    created_by: z.number().int().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    modified_by: z.number().int().nullish(),
-    updated_at: z.string().datetime({ offset: true }),
-    ruletype_name: z.string(),
-    ruleset_name: z.string(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedSamplingRuleList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(SamplingRule),
-  })
-  .passthrough();
-const SamplingRuleRequest = z
-  .object({
-    rule_type: RuleTypeEnum,
-    value: z.number().int().gte(0).lte(2147483647).nullish(),
-    order: z.number().int().gte(0).lte(2147483647).optional(),
-    algorithm_description: z.string().min(1).optional(),
-    last_validated: z.string().datetime({ offset: true }).nullish(),
-    ruleset: z.string().uuid(),
-    created_by: z.number().int().nullish(),
-    modified_by: z.number().int().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const SamplingRule = z.object({
+  id: z.string().uuid(),
+  rule_type: RuleTypeEnum,
+  rule_type_display: z.string(),
+  value: z.number().int().gte(0).lte(2147483647).nullish(),
+  order: z.number().int().gte(0).lte(2147483647).optional(),
+  algorithm_description: z.string().optional(),
+  last_validated: z.string().datetime({ offset: true }).nullish(),
+  ruleset: z.string().uuid(),
+  ruleset_info: z.object({}).partial().passthrough().nullable(),
+  created_by: z.number().int().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  modified_by: z.number().int().nullish(),
+  updated_at: z.string().datetime({ offset: true }),
+  ruletype_name: z.string(),
+  ruleset_name: z.string(),
+  archived: z.boolean().optional(),
+});
+const PaginatedSamplingRuleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SamplingRule),
+});
+const SamplingRuleRequest = z.object({
+  rule_type: RuleTypeEnum,
+  value: z.number().int().gte(0).lte(2147483647).nullish(),
+  order: z.number().int().gte(0).lte(2147483647).optional(),
+  algorithm_description: z.string().min(1).optional(),
+  last_validated: z.string().datetime({ offset: true }).nullish(),
+  ruleset: z.string().uuid(),
+  created_by: z.number().int().nullish(),
+  modified_by: z.number().int().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedSamplingRuleRequest = z
   .object({
     rule_type: RuleTypeEnum,
@@ -12601,58 +12166,51 @@ const PatchedSamplingRuleRequest = z
     modified_by: z.number().int().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const ScheduleSlotStatusEnum = z.enum([
   "SCHEDULED",
   "IN_PROGRESS",
   "COMPLETED",
   "CANCELLED",
 ]);
-const ScheduleSlot = z
-  .object({
-    id: z.string().uuid(),
-    work_center: z.string().uuid(),
-    work_center_name: z.string(),
-    shift: z.string().uuid(),
-    shift_name: z.string(),
-    work_order: z.string().uuid(),
-    work_order_erp_id: z.string(),
-    scheduled_date: z.string(),
-    scheduled_start: z.string().datetime({ offset: true }),
-    scheduled_end: z.string().datetime({ offset: true }),
-    actual_start: z.string().datetime({ offset: true }).nullish(),
-    actual_end: z.string().datetime({ offset: true }).nullish(),
-    status: ScheduleSlotStatusEnum.optional(),
-    notes: z.string().optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedScheduleSlotList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ScheduleSlot),
-  })
-  .passthrough();
-const ScheduleSlotRequest = z
-  .object({
-    work_center: z.string().uuid(),
-    shift: z.string().uuid(),
-    work_order: z.string().uuid(),
-    scheduled_date: z.string(),
-    scheduled_start: z.string().datetime({ offset: true }),
-    scheduled_end: z.string().datetime({ offset: true }),
-    actual_start: z.string().datetime({ offset: true }).nullish(),
-    actual_end: z.string().datetime({ offset: true }).nullish(),
-    status: ScheduleSlotStatusEnum.optional(),
-    notes: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const ScheduleSlot = z.object({
+  id: z.string().uuid(),
+  work_center: z.string().uuid(),
+  work_center_name: z.string(),
+  shift: z.string().uuid(),
+  shift_name: z.string(),
+  work_order: z.string().uuid(),
+  work_order_erp_id: z.string(),
+  scheduled_date: z.string(),
+  scheduled_start: z.string().datetime({ offset: true }),
+  scheduled_end: z.string().datetime({ offset: true }),
+  actual_start: z.string().datetime({ offset: true }).nullish(),
+  actual_end: z.string().datetime({ offset: true }).nullish(),
+  status: ScheduleSlotStatusEnum.optional(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedScheduleSlotList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ScheduleSlot),
+});
+const ScheduleSlotRequest = z.object({
+  work_center: z.string().uuid(),
+  shift: z.string().uuid(),
+  work_order: z.string().uuid(),
+  scheduled_date: z.string(),
+  scheduled_start: z.string().datetime({ offset: true }),
+  scheduled_end: z.string().datetime({ offset: true }),
+  actual_start: z.string().datetime({ offset: true }).nullish(),
+  actual_end: z.string().datetime({ offset: true }).nullish(),
+  status: ScheduleSlotStatusEnum.optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedScheduleSlotRequest = z
   .object({
     work_center: z.string().uuid(),
@@ -12667,42 +12225,35 @@ const PatchedScheduleSlotRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const Shift = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    code: z.string().max(10),
-    start_time: z.string(),
-    end_time: z.string(),
-    days_of_week: z.string().max(20).optional(),
-    is_active: z.boolean().optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedShiftList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Shift),
-  })
-  .passthrough();
-const ShiftRequest = z
-  .object({
-    name: z.string().min(1).max(50),
-    code: z.string().min(1).max(10),
-    start_time: z.string(),
-    end_time: z.string(),
-    days_of_week: z.string().min(1).max(20).optional(),
-    is_active: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const Shift = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  code: z.string().max(10),
+  start_time: z.string(),
+  end_time: z.string(),
+  days_of_week: z.string().max(20).optional(),
+  is_active: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedShiftList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Shift),
+});
+const ShiftRequest = z.object({
+  name: z.string().min(1).max(50),
+  code: z.string().min(1).max(10),
+  start_time: z.string(),
+  end_time: z.string(),
+  days_of_week: z.string().min(1).max(20).optional(),
+  is_active: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedShiftRequest = z
   .object({
     name: z.string().min(1).max(50),
@@ -12713,58 +12264,47 @@ const PatchedShiftRequest = z
     is_active: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const StepExecutionMeasurement = z
-  .object({
-    id: z.string().uuid(),
-    step_execution: z.string().uuid(),
-    step_execution_info: z.object({}).partial().passthrough().nullable(),
-    measurement_definition: z.string().uuid(),
-    measurement_definition_info: z
-      .object({})
-      .partial()
-      .passthrough()
-      .nullable(),
-    value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
-      .nullish(),
-    string_value: z.string().max(100).optional(),
-    is_within_spec: z.boolean().nullable(),
-    spec_status: z.string(),
-    recorded_by: z.number().int(),
-    recorded_by_info: z.object({}).partial().passthrough().nullable(),
-    recorded_at: z.string().datetime({ offset: true }),
-    equipment: z.string().uuid().nullish(),
-    equipment_info: z.object({}).partial().passthrough().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedStepExecutionMeasurementList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(StepExecutionMeasurement),
-  })
-  .passthrough();
-const StepExecutionMeasurementRequest = z
-  .object({
-    step_execution: z.string().uuid(),
-    measurement_definition: z.string().uuid(),
-    value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
-      .nullish(),
-    string_value: z.string().max(100).optional(),
-    recorded_by: z.number().int(),
-    equipment: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const StepExecutionMeasurement = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  step_execution_info: z.object({}).partial().passthrough().nullable(),
+  measurement_definition: z.string().uuid(),
+  measurement_definition_info: z.object({}).partial().passthrough().nullable(),
+  value: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  string_value: z.string().max(100).optional(),
+  is_within_spec: z.boolean().nullable(),
+  spec_status: z.string(),
+  recorded_by: z.number().int(),
+  recorded_by_info: z.object({}).partial().passthrough().nullable(),
+  recorded_at: z.string().datetime({ offset: true }),
+  equipment: z.string().uuid().nullish(),
+  equipment_info: z.object({}).partial().passthrough().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedStepExecutionMeasurementList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepExecutionMeasurement),
+});
+const StepExecutionMeasurementRequest = z.object({
+  step_execution: z.string().uuid(),
+  measurement_definition: z.string().uuid(),
+  value: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  string_value: z.string().max(100).optional(),
+  recorded_by: z.number().int(),
+  equipment: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedStepExecutionMeasurementRequest = z
   .object({
     step_execution: z.string().uuid(),
@@ -12778,8 +12318,7 @@ const PatchedStepExecutionMeasurementRequest = z
     equipment: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const api_StepExecutionMeasurements_bulk_record_create_Body = z
   .object({
     step_execution: z.string().uuid(),
@@ -12792,11 +12331,9 @@ const api_StepExecutionMeasurements_bulk_record_create_Body = z
           equipment: z.string().uuid(),
         })
         .partial()
-        .passthrough()
     ),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const StepExecutionStatusEnum = z.enum([
   "PENDING",
   "CLAIMED",
@@ -12806,70 +12343,62 @@ const StepExecutionStatusEnum = z.enum([
   "CANCELLED",
   "ROLLED_BACK",
 ]);
-const StepExecutionList = z
-  .object({
-    id: z.string().uuid(),
-    part: z.string().uuid(),
-    part_erp_id: z.string(),
-    part_status: z.string(),
-    step: z.string().uuid(),
-    step_name: z.string(),
-    step_order: z.number().int().nullable(),
-    visit_number: z.number().int().gte(0).lte(2147483647).optional(),
-    entered_at: z.string().datetime({ offset: true }),
-    exited_at: z.string().datetime({ offset: true }).nullish(),
-    status: StepExecutionStatusEnum.optional(),
-    assigned_to: z.number().int().nullish(),
-    assigned_to_name: z.string().nullable(),
-    decision_result: z.string().max(50).optional(),
-  })
-  .passthrough();
-const PaginatedStepExecutionListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(StepExecutionList),
-  })
-  .passthrough();
-const StepExecutionRequest = z
-  .object({
-    part: z.string().uuid(),
-    step: z.string().uuid(),
-    visit_number: z.number().int().gte(0).lte(2147483647).optional(),
-    exited_at: z.string().datetime({ offset: true }).nullish(),
-    assigned_to: z.number().int().nullish(),
-    completed_by: z.number().int().nullish(),
-    next_step: z.string().uuid().nullish(),
-    decision_result: z.string().max(50).optional(),
-    status: StepExecutionStatusEnum.optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const StepExecution = z
-  .object({
-    id: z.string().uuid(),
-    part: z.string().uuid(),
-    step: z.string().uuid(),
-    visit_number: z.number().int().gte(0).lte(2147483647).optional(),
-    part_info: z.object({}).partial().passthrough().nullable(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    entered_at: z.string().datetime({ offset: true }),
-    exited_at: z.string().datetime({ offset: true }).nullish(),
-    duration_seconds: z.number().nullable(),
-    assigned_to: z.number().int().nullish(),
-    assigned_to_info: z.object({}).partial().passthrough().nullable(),
-    completed_by: z.number().int().nullish(),
-    completed_by_info: z.object({}).partial().passthrough().nullable(),
-    next_step: z.string().uuid().nullish(),
-    decision_result: z.string().max(50).optional(),
-    status: StepExecutionStatusEnum.optional(),
-    is_active: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const StepExecutionList = z.object({
+  id: z.string().uuid(),
+  part: z.string().uuid(),
+  part_erp_id: z.string(),
+  part_status: z.string(),
+  step: z.string().uuid(),
+  step_name: z.string(),
+  step_order: z.number().int().nullable(),
+  visit_number: z.number().int().gte(0).lte(2147483647).optional(),
+  entered_at: z.string().datetime({ offset: true }),
+  exited_at: z.string().datetime({ offset: true }).nullish(),
+  status: StepExecutionStatusEnum.optional(),
+  assigned_to: z.number().int().nullish(),
+  assigned_to_name: z.string().nullable(),
+  decision_result: z.string().max(50).optional(),
+});
+const PaginatedStepExecutionListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepExecutionList),
+});
+const StepExecutionRequest = z.object({
+  part: z.string().uuid(),
+  step: z.string().uuid(),
+  visit_number: z.number().int().gte(0).lte(2147483647).optional(),
+  exited_at: z.string().datetime({ offset: true }).nullish(),
+  assigned_to: z.number().int().nullish(),
+  completed_by: z.number().int().nullish(),
+  next_step: z.string().uuid().nullish(),
+  decision_result: z.string().max(50).optional(),
+  status: StepExecutionStatusEnum.optional(),
+  archived: z.boolean().optional(),
+});
+const StepExecution = z.object({
+  id: z.string().uuid(),
+  part: z.string().uuid(),
+  step: z.string().uuid(),
+  visit_number: z.number().int().gte(0).lte(2147483647).optional(),
+  part_info: z.object({}).partial().passthrough().nullable(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  entered_at: z.string().datetime({ offset: true }),
+  exited_at: z.string().datetime({ offset: true }).nullish(),
+  duration_seconds: z.number().nullable(),
+  assigned_to: z.number().int().nullish(),
+  assigned_to_info: z.object({}).partial().passthrough().nullable(),
+  completed_by: z.number().int().nullish(),
+  completed_by_info: z.object({}).partial().passthrough().nullable(),
+  next_step: z.string().uuid().nullish(),
+  decision_result: z.string().max(50).optional(),
+  status: StepExecutionStatusEnum.optional(),
+  is_active: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const PatchedStepExecutionRequest = z
   .object({
     part: z.string().uuid(),
@@ -12883,45 +12412,36 @@ const PatchedStepExecutionRequest = z
     status: StepExecutionStatusEnum,
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const StepDurationStats = z
-  .object({
-    step_id: z.string().uuid(),
-    step_name: z.string(),
-    avg_duration_seconds: z.number(),
-    min_duration_seconds: z.number(),
-    max_duration_seconds: z.number(),
-    completed_count: z.number().int(),
-  })
-  .passthrough();
-const PaginatedStepExecutionList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(StepExecution),
-  })
-  .passthrough();
-const WIPSummary = z
-  .object({
-    step_id: z.string().uuid(),
-    step_name: z.string(),
-    step_order: z.number().int(),
-    is_decision_point: z.boolean(),
-    pending_count: z.number().int(),
-    in_progress_count: z.number().int(),
-    total_active: z.number().int(),
-  })
-  .passthrough();
-const PaginatedWIPSummaryList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(WIPSummary),
-  })
-  .passthrough();
+  .partial();
+const StepDurationStats = z.object({
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  avg_duration_seconds: z.number(),
+  min_duration_seconds: z.number(),
+  max_duration_seconds: z.number(),
+  completed_count: z.number().int(),
+});
+const PaginatedStepExecutionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepExecution),
+});
+const WIPSummary = z.object({
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  step_order: z.number().int(),
+  is_decision_point: z.boolean(),
+  pending_count: z.number().int(),
+  in_progress_count: z.number().int(),
+  total_active: z.number().int(),
+});
+const PaginatedWIPSummaryList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(WIPSummary),
+});
 const BlockTypeEnum = z.enum([
   "QA_SIGNOFF",
   "FPI_REQUIRED",
@@ -12941,52 +12461,46 @@ const StepOverrideStatusEnum = z.enum([
   "REJECTED",
   "EXPIRED",
 ]);
-const StepOverride = z
-  .object({
-    id: z.string().uuid(),
-    step_execution: z.string().uuid(),
-    step_execution_info: z.object({}).partial().passthrough().nullable(),
-    block_type: BlockTypeEnum,
-    block_type_display: z.string(),
-    requested_by: z.number().int(),
-    requested_by_info: z.object({}).partial().passthrough().nullable(),
-    requested_at: z.string().datetime({ offset: true }),
-    reason: z.string(),
-    approved_by: z.number().int().nullish(),
-    approved_by_info: z.object({}).partial().passthrough().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    status: StepOverrideStatusEnum.optional(),
-    status_display: z.string(),
-    expires_at: z.string().datetime({ offset: true }).nullish(),
-    is_expired: z.boolean(),
-    used: z.boolean().optional(),
-    used_at: z.string().datetime({ offset: true }).nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedStepOverrideList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(StepOverride),
-  })
-  .passthrough();
-const StepOverrideRequest = z
-  .object({
-    step_execution: z.string().uuid(),
-    block_type: BlockTypeEnum,
-    requested_by: z.number().int(),
-    reason: z.string().min(1),
-    approved_by: z.number().int().nullish(),
-    status: StepOverrideStatusEnum.optional(),
-    expires_at: z.string().datetime({ offset: true }).nullish(),
-    used: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const StepOverride = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  step_execution_info: z.object({}).partial().passthrough().nullable(),
+  block_type: BlockTypeEnum,
+  block_type_display: z.string(),
+  requested_by: z.number().int(),
+  requested_by_info: z.object({}).partial().passthrough().nullable(),
+  requested_at: z.string().datetime({ offset: true }),
+  reason: z.string(),
+  approved_by: z.number().int().nullish(),
+  approved_by_info: z.object({}).partial().passthrough().nullable(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  status: StepOverrideStatusEnum.optional(),
+  status_display: z.string(),
+  expires_at: z.string().datetime({ offset: true }).nullish(),
+  is_expired: z.boolean(),
+  used: z.boolean().optional(),
+  used_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedStepOverrideList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(StepOverride),
+});
+const StepOverrideRequest = z.object({
+  step_execution: z.string().uuid(),
+  block_type: BlockTypeEnum,
+  requested_by: z.number().int(),
+  reason: z.string().min(1),
+  approved_by: z.number().int().nullish(),
+  status: StepOverrideStatusEnum.optional(),
+  expires_at: z.string().datetime({ offset: true }).nullish(),
+  used: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedStepOverrideRequest = z
   .object({
     step_execution: z.string().uuid(),
@@ -12999,68 +12513,61 @@ const PatchedStepOverrideRequest = z
     used: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const Steps = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    expected_duration: z.string().nullish(),
-    description: z.string().nullish(),
-    block_on_quarantine: z.boolean().optional(),
-    requires_qa_signoff: z.boolean().optional(),
-    sampling_required: z.boolean().optional(),
-    min_sampling_rate: z.number().optional(),
-    pass_threshold: z.number().optional(),
-    requires_first_piece_inspection: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    part_type_info: z.object({}).partial().passthrough().nullable(),
-    part_type_name: z.string().nullable(),
-    step_type: StepTypeEnum.optional(),
-    is_decision_point: z.boolean().optional(),
-    decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
-    is_terminal: z.boolean().optional(),
-    terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
-    max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-    revisit_assignment: RevisitAssignmentEnum.optional(),
-    revisit_role: z.number().int().nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedStepsList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Steps),
-  })
-  .passthrough();
-const StepsRequest = z
-  .object({
-    name: z.string().min(1).max(50),
-    expected_duration: z.string().nullish(),
-    description: z.string().nullish(),
-    block_on_quarantine: z.boolean().optional(),
-    requires_qa_signoff: z.boolean().optional(),
-    sampling_required: z.boolean().optional(),
-    min_sampling_rate: z.number().optional(),
-    pass_threshold: z.number().optional(),
-    requires_first_piece_inspection: z.boolean().optional(),
-    part_type: z.string().uuid(),
-    step_type: StepTypeEnum.optional(),
-    is_decision_point: z.boolean().optional(),
-    decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
-    is_terminal: z.boolean().optional(),
-    terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
-    max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-    revisit_assignment: RevisitAssignmentEnum.optional(),
-    revisit_role: z.number().int().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const Steps = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  expected_duration: z.string().nullish(),
+  description: z.string().nullish(),
+  block_on_quarantine: z.boolean().optional(),
+  requires_qa_signoff: z.boolean().optional(),
+  sampling_required: z.boolean().optional(),
+  min_sampling_rate: z.number().optional(),
+  pass_threshold: z.number().optional(),
+  requires_first_piece_inspection: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  part_type_info: z.object({}).partial().passthrough().nullable(),
+  part_type_name: z.string().nullable(),
+  step_type: StepTypeEnum.optional(),
+  is_decision_point: z.boolean().optional(),
+  decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_terminal: z.boolean().optional(),
+  terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
+  max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
+  revisit_assignment: RevisitAssignmentEnum.optional(),
+  revisit_role: z.number().int().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedStepsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Steps),
+});
+const StepsRequest = z.object({
+  name: z.string().min(1).max(50),
+  expected_duration: z.string().nullish(),
+  description: z.string().nullish(),
+  block_on_quarantine: z.boolean().optional(),
+  requires_qa_signoff: z.boolean().optional(),
+  sampling_required: z.boolean().optional(),
+  min_sampling_rate: z.number().optional(),
+  pass_threshold: z.number().optional(),
+  requires_first_piece_inspection: z.boolean().optional(),
+  part_type: z.string().uuid(),
+  step_type: StepTypeEnum.optional(),
+  is_decision_point: z.boolean().optional(),
+  decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_terminal: z.boolean().optional(),
+  terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
+  max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
+  revisit_assignment: RevisitAssignmentEnum.optional(),
+  revisit_role: z.number().int().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedStepsRequest = z
   .object({
     name: z.string().min(1).max(50),
@@ -13083,106 +12590,86 @@ const PatchedStepsRequest = z
     revisit_role: z.number().int().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const CreateStepRevisionInputRequest = z
-  .object({ change_description: z.string().min(1) })
-  .passthrough();
-const SamplingRuleUpdateRequest = z
-  .object({
-    rule_type: RuleTypeEnum,
-    value: z.number().int().nullish(),
-    order: z.number().int(),
-  })
-  .passthrough();
-const StepSamplingRulesUpdateRequest = z
-  .object({
-    rules: z.array(SamplingRuleUpdateRequest),
-    fallback_rules: z.array(SamplingRuleUpdateRequest).optional(),
-    fallback_threshold: z.number().int().optional(),
-    fallback_duration: z.number().int().optional(),
-  })
-  .passthrough();
-const TenantGroup = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    description: z.string().optional(),
-    is_custom: z.boolean(),
-    permission_count: z.number().int(),
-    member_count: z.number().int(),
-    preset_key: z.string().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedTenantGroupList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TenantGroup),
-  })
-  .passthrough();
-const TenantGroupRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    description: z.string().optional(),
-  })
-  .passthrough();
-const TenantGroupDetail = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    description: z.string().optional(),
-    is_custom: z.boolean(),
-    permission_count: z.number().int(),
-    member_count: z.number().int(),
-    preset_key: z.string().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    permissions: z.array(z.string()),
-  })
-  .passthrough();
+  .partial();
+const CreateStepRevisionInputRequest = z.object({
+  change_description: z.string().min(1),
+});
+const SamplingRuleUpdateRequest = z.object({
+  rule_type: RuleTypeEnum,
+  value: z.number().int().nullish(),
+  order: z.number().int(),
+});
+const StepSamplingRulesUpdateRequest = z.object({
+  rules: z.array(SamplingRuleUpdateRequest),
+  fallback_rules: z.array(SamplingRuleUpdateRequest).optional(),
+  fallback_threshold: z.number().int().optional(),
+  fallback_duration: z.number().int().optional(),
+});
+const TenantGroup = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().optional(),
+  is_custom: z.boolean(),
+  permission_count: z.number().int(),
+  member_count: z.number().int(),
+  preset_key: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedTenantGroupList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TenantGroup),
+});
+const TenantGroupRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+});
+const TenantGroupDetail = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().optional(),
+  is_custom: z.boolean(),
+  permission_count: z.number().int(),
+  member_count: z.number().int(),
+  preset_key: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  permissions: z.array(z.string()),
+});
 const PatchedTenantGroupRequest = z
   .object({ name: z.string().min(1).max(100), description: z.string() })
-  .partial()
-  .passthrough();
-const RemoveMemberResponse = z.object({ status: z.string() }).passthrough();
+  .partial();
+const RemoveMemberResponse = z.object({ status: z.string() });
 const TenantLLMProviderProviderEnum = z.enum(["ollama", "openai", "anthropic"]);
-const TenantLLMProvider = z
-  .object({
-    id: z.string().uuid(),
-    provider: TenantLLMProviderProviderEnum,
-    provider_display: z.string(),
-    is_default: z.boolean().optional(),
-    is_enabled: z.boolean().optional(),
-    model_name: z.string().max(100),
-    full_model_name: z.string(),
-    base_url: z.string().max(200).url().optional(),
-    has_api_key: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedTenantLLMProviderList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TenantLLMProvider),
-  })
-  .passthrough();
-const TenantLLMProviderRequest = z
-  .object({
-    provider: TenantLLMProviderProviderEnum,
-    is_default: z.boolean().optional(),
-    is_enabled: z.boolean().optional(),
-    model_name: z.string().min(1).max(100),
-    base_url: z.string().max(200).url().optional(),
-    api_key: z.string().optional(),
-  })
-  .passthrough();
+const TenantLLMProvider = z.object({
+  id: z.string().uuid(),
+  provider: TenantLLMProviderProviderEnum,
+  provider_display: z.string(),
+  is_default: z.boolean().optional(),
+  is_enabled: z.boolean().optional(),
+  model_name: z.string().max(100),
+  full_model_name: z.string(),
+  base_url: z.string().max(200).url().optional(),
+  has_api_key: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedTenantLLMProviderList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TenantLLMProvider),
+});
+const TenantLLMProviderRequest = z.object({
+  provider: TenantLLMProviderProviderEnum,
+  is_default: z.boolean().optional(),
+  is_enabled: z.boolean().optional(),
+  model_name: z.string().min(1).max(100),
+  base_url: z.string().max(200).url().optional(),
+  api_key: z.string().optional(),
+});
 const PatchedTenantLLMProviderRequest = z
   .object({
     provider: TenantLLMProviderProviderEnum,
@@ -13192,8 +12679,7 @@ const PatchedTenantLLMProviderRequest = z
     base_url: z.string().max(200).url(),
     api_key: z.string(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const TierEnum = z.enum(["STARTER", "PRO", "ENTERPRISE"]);
 const TenantStatusEnum = z.enum([
   "ACTIVE",
@@ -13201,89 +12687,79 @@ const TenantStatusEnum = z.enum([
   "SUSPENDED",
   "PENDING_DELETION",
 ]);
-const Tenant = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    slug: z
-      .string()
-      .max(50)
-      .regex(/^[-a-zA-Z0-9_]+$/),
-    tier: TierEnum.optional(),
-    status: TenantStatusEnum.optional(),
-    is_active: z.boolean().optional(),
-    is_demo: z.boolean().optional(),
-    trial_ends_at: z.string().datetime({ offset: true }).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    settings: z.unknown().optional(),
-    user_count: z.number().int(),
-    logo: z.string().url().nullish(),
-    logo_url: z.string().nullable(),
-    contact_email: z.string().max(254).email().optional(),
-    contact_phone: z.string().max(30).optional(),
-    website: z.string().max(200).url().optional(),
-    address: z.string().optional(),
-    default_timezone: z.string().max(50).optional(),
-  })
-  .passthrough();
-const PaginatedTenantList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(Tenant),
-  })
-  .passthrough();
-const TenantCreateRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    slug: z
-      .string()
-      .min(1)
-      .max(50)
-      .regex(/^[-a-zA-Z0-9_]+$/),
-    tier: TierEnum.optional(),
-    is_demo: z.boolean().optional(),
-    admin_email: z.string().min(1).email(),
-    admin_password: z.string().min(1).optional(),
-    admin_first_name: z.string().min(1).optional().default("Admin"),
-    admin_last_name: z.string().min(1).optional().default("User"),
-  })
-  .passthrough();
-const TenantCreate = z
-  .object({
-    name: z.string().max(100),
-    slug: z
-      .string()
-      .max(50)
-      .regex(/^[-a-zA-Z0-9_]+$/),
-    tier: TierEnum.optional(),
-    is_demo: z.boolean().optional(),
-  })
-  .passthrough();
-const TenantRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    slug: z
-      .string()
-      .min(1)
-      .max(50)
-      .regex(/^[-a-zA-Z0-9_]+$/),
-    tier: TierEnum.optional(),
-    status: TenantStatusEnum.optional(),
-    is_active: z.boolean().optional(),
-    is_demo: z.boolean().optional(),
-    trial_ends_at: z.string().datetime({ offset: true }).nullish(),
-    settings: z.unknown().optional(),
-    logo: z.instanceof(File).nullish(),
-    contact_email: z.string().max(254).email().optional(),
-    contact_phone: z.string().max(30).optional(),
-    website: z.string().max(200).url().optional(),
-    address: z.string().optional(),
-    default_timezone: z.string().min(1).max(50).optional(),
-  })
-  .passthrough();
+const Tenant = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  slug: z
+    .string()
+    .max(50)
+    .regex(/^[-a-zA-Z0-9_]+$/),
+  tier: TierEnum.optional(),
+  status: TenantStatusEnum.optional(),
+  is_active: z.boolean().optional(),
+  is_demo: z.boolean().optional(),
+  trial_ends_at: z.string().datetime({ offset: true }).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  settings: z.unknown().optional(),
+  user_count: z.number().int(),
+  logo: z.string().url().nullish(),
+  logo_url: z.string().nullable(),
+  contact_email: z.string().max(254).email().optional(),
+  contact_phone: z.string().max(30).optional(),
+  website: z.string().max(200).url().optional(),
+  address: z.string().optional(),
+  default_timezone: z.string().max(50).optional(),
+});
+const PaginatedTenantList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Tenant),
+});
+const TenantCreateRequest = z.object({
+  name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[-a-zA-Z0-9_]+$/),
+  tier: TierEnum.optional(),
+  is_demo: z.boolean().optional(),
+  admin_email: z.string().min(1).email(),
+  admin_password: z.string().min(1).optional(),
+  admin_first_name: z.string().min(1).optional().default("Admin"),
+  admin_last_name: z.string().min(1).optional().default("User"),
+});
+const TenantCreate = z.object({
+  name: z.string().max(100),
+  slug: z
+    .string()
+    .max(50)
+    .regex(/^[-a-zA-Z0-9_]+$/),
+  tier: TierEnum.optional(),
+  is_demo: z.boolean().optional(),
+});
+const TenantRequest = z.object({
+  name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[-a-zA-Z0-9_]+$/),
+  tier: TierEnum.optional(),
+  status: TenantStatusEnum.optional(),
+  is_active: z.boolean().optional(),
+  is_demo: z.boolean().optional(),
+  trial_ends_at: z.string().datetime({ offset: true }).nullish(),
+  settings: z.unknown().optional(),
+  logo: z.instanceof(File).nullish(),
+  contact_email: z.string().max(254).email().optional(),
+  contact_phone: z.string().max(30).optional(),
+  website: z.string().max(200).url().optional(),
+  address: z.string().optional(),
+  default_timezone: z.string().min(1).max(50).optional(),
+});
 const PatchedTenantRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -13305,60 +12781,53 @@ const PatchedTenantRequest = z
     address: z.string(),
     default_timezone: z.string().min(1).max(50),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const ProcessingStatusEnum = z.enum([
   "PENDING",
   "PROCESSING",
   "COMPLETED",
   "FAILED",
 ]);
-const ThreeDModel = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(255),
-    file: z.string().url(),
-    part_type: z.string().uuid(),
-    part_type_display: z.string(),
-    step: z.string().uuid().nullish(),
-    step_display: z.string(),
-    uploaded_at: z.string().datetime({ offset: true }),
-    file_type: z.string(),
-    annotation_count: z.number().int(),
-    processing_status: ProcessingStatusEnum,
-    processing_error: z.string(),
-    processed_at: z.string().datetime({ offset: true }).nullable(),
-    is_ready: z.boolean(),
-    processing_metrics: z.object({}).partial().passthrough().nullable(),
-    original_filename: z.string(),
-    original_format: z.string(),
-    original_size_bytes: z.number().int().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    deleted_at: z.string().datetime({ offset: true }).nullable(),
-    version: z.number().int(),
-    is_current_version: z.boolean(),
-    previous_version: z.string().uuid().nullable(),
-  })
-  .passthrough();
-const PaginatedThreeDModelList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ThreeDModel),
-  })
-  .passthrough();
-const ThreeDModelRequest = z
-  .object({
-    name: z.string().min(1).max(255),
-    file: z.instanceof(File),
-    part_type: z.string().uuid(),
-    step: z.string().uuid().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const ThreeDModel = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(255),
+  file: z.string().url(),
+  part_type: z.string().uuid(),
+  part_type_display: z.string(),
+  step: z.string().uuid().nullish(),
+  step_display: z.string(),
+  uploaded_at: z.string().datetime({ offset: true }),
+  file_type: z.string(),
+  annotation_count: z.number().int(),
+  processing_status: ProcessingStatusEnum,
+  processing_error: z.string(),
+  processed_at: z.string().datetime({ offset: true }).nullable(),
+  is_ready: z.boolean(),
+  processing_metrics: z.object({}).partial().passthrough().nullable(),
+  original_filename: z.string(),
+  original_format: z.string(),
+  original_size_bytes: z.number().int().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  deleted_at: z.string().datetime({ offset: true }).nullable(),
+  version: z.number().int(),
+  is_current_version: z.boolean(),
+  previous_version: z.string().uuid().nullable(),
+});
+const PaginatedThreeDModelList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ThreeDModel),
+});
+const ThreeDModelRequest = z.object({
+  name: z.string().min(1).max(255),
+  file: z.instanceof(File),
+  part_type: z.string().uuid(),
+  step: z.string().uuid().nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedThreeDModelRequest = z
   .object({
     name: z.string().min(1).max(255),
@@ -13367,8 +12836,7 @@ const PatchedThreeDModelRequest = z
     step: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const TimeEntryTypeEnum = z.enum([
   "PRODUCTION",
   "SETUP",
@@ -13376,56 +12844,50 @@ const TimeEntryTypeEnum = z.enum([
   "DOWNTIME",
   "INDIRECT",
 ]);
-const TimeEntry = z
-  .object({
-    id: z.string().uuid(),
-    entry_type: TimeEntryTypeEnum,
-    start_time: z.string().datetime({ offset: true }),
-    end_time: z.string().datetime({ offset: true }).nullish(),
-    user: z.number().int(),
-    user_name: z.string(),
-    duration_hours: z.number().nullable(),
-    part: z.string().uuid().nullish(),
-    part_erp_id: z.string().nullable(),
-    work_order: z.string().uuid().nullish(),
-    work_order_erp_id: z.string().nullable(),
-    step: z.string().uuid().nullish(),
-    equipment: z.string().uuid().nullish(),
-    work_center: z.string().uuid().nullish(),
-    notes: z.string().optional(),
-    downtime_reason: z.string().max(100).optional(),
-    approved: z.boolean().optional(),
-    approved_by: z.number().int().nullable(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedTimeEntryList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TimeEntry),
-  })
-  .passthrough();
-const TimeEntryRequest = z
-  .object({
-    entry_type: TimeEntryTypeEnum,
-    start_time: z.string().datetime({ offset: true }),
-    end_time: z.string().datetime({ offset: true }).nullish(),
-    part: z.string().uuid().nullish(),
-    work_order: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    equipment: z.string().uuid().nullish(),
-    work_center: z.string().uuid().nullish(),
-    notes: z.string().optional(),
-    downtime_reason: z.string().max(100).optional(),
-    approved: z.boolean().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const TimeEntry = z.object({
+  id: z.string().uuid(),
+  entry_type: TimeEntryTypeEnum,
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }).nullish(),
+  user: z.number().int(),
+  user_name: z.string(),
+  duration_hours: z.number().nullable(),
+  part: z.string().uuid().nullish(),
+  part_erp_id: z.string().nullable(),
+  work_order: z.string().uuid().nullish(),
+  work_order_erp_id: z.string().nullable(),
+  step: z.string().uuid().nullish(),
+  equipment: z.string().uuid().nullish(),
+  work_center: z.string().uuid().nullish(),
+  notes: z.string().optional(),
+  downtime_reason: z.string().max(100).optional(),
+  approved: z.boolean().optional(),
+  approved_by: z.number().int().nullable(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedTimeEntryList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TimeEntry),
+});
+const TimeEntryRequest = z.object({
+  entry_type: TimeEntryTypeEnum,
+  start_time: z.string().datetime({ offset: true }),
+  end_time: z.string().datetime({ offset: true }).nullish(),
+  part: z.string().uuid().nullish(),
+  work_order: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  equipment: z.string().uuid().nullish(),
+  work_center: z.string().uuid().nullish(),
+  notes: z.string().optional(),
+  downtime_reason: z.string().max(100).optional(),
+  approved: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedTimeEntryRequest = z
   .object({
     entry_type: TimeEntryTypeEnum,
@@ -13441,102 +12903,82 @@ const PatchedTimeEntryRequest = z
     approved: z.boolean(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const ClockOutInputRequest = z
-  .object({ notes: z.string().min(1) })
-  .partial()
-  .passthrough();
-const ClockInRequest = z
-  .object({
-    entry_type: TimeEntryTypeEnum,
-    work_order: z.string().uuid().nullish(),
-    part: z.string().uuid().nullish(),
-    step: z.string().uuid().nullish(),
-    equipment: z.string().uuid().nullish(),
-    work_center: z.string().uuid().nullish(),
-    notes: z.string().optional().default(""),
-  })
-  .passthrough();
-const CustomerOrder = z
-  .object({
-    id: z.string().uuid(),
-    order_number: z.string(),
-    name: z.string(),
-    latest_note: z.object({}).partial().passthrough().nullable(),
-    notes_timeline: z.array(z.unknown()),
-    order_status: z.string(),
-    order_status_code: z.string(),
-    estimated_completion: z.string().nullable(),
-    original_completion_date: z.string().datetime({ offset: true }).nullable(),
-    process_stages: z.array(z.unknown()),
-    gate_info: z.object({}).partial().passthrough().nullable(),
-    parts_summary: z.object({}).partial().passthrough().nullable(),
-    company_name: z.string().nullable(),
-    customer_first_name: z.string().nullable(),
-    customer_last_name: z.string().nullable(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const PaginatedCustomerOrderList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(CustomerOrder),
-  })
-  .passthrough();
-const InviteViewerInputRequest = z
-  .object({ email: z.string().min(1).email() })
-  .passthrough();
-const InviteViewerResponse = z
-  .object({
-    status: z.string(),
-    email: z.string().email(),
-    invitation_id: z.number().int().nullable(),
-    user_created: z.boolean(),
-  })
-  .passthrough();
-const InviteError = z.object({ detail: z.string() }).passthrough();
-const TrainingRecord = z
-  .object({
-    id: z.string().uuid(),
-    user: z.number().int(),
-    user_info: z.object({}).partial().passthrough().nullable(),
-    training_type: z.string().uuid(),
-    training_type_info: z.object({}).partial().passthrough().nullable(),
-    completed_date: z.string(),
-    expires_date: z.string().nullish(),
-    trainer: z.number().int().nullish(),
-    trainer_info: z.object({}).partial().passthrough().nullable(),
-    notes: z.string().optional(),
-    status: z.string(),
-    is_current: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedTrainingRecordList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TrainingRecord),
-  })
-  .passthrough();
-const TrainingRecordRequest = z
-  .object({
-    user: z.number().int(),
-    training_type: z.string().uuid(),
-    completed_date: z.string(),
-    expires_date: z.string().nullish(),
-    trainer: z.number().int().nullish(),
-    notes: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const ClockOutInputRequest = z.object({ notes: z.string().min(1) }).partial();
+const ClockInRequest = z.object({
+  entry_type: TimeEntryTypeEnum,
+  work_order: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  step: z.string().uuid().nullish(),
+  equipment: z.string().uuid().nullish(),
+  work_center: z.string().uuid().nullish(),
+  notes: z.string().optional().default(""),
+});
+const CustomerOrder = z.object({
+  id: z.string().uuid(),
+  order_number: z.string(),
+  name: z.string(),
+  latest_note: z.object({}).partial().passthrough().nullable(),
+  notes_timeline: z.array(z.unknown()),
+  order_status: z.string(),
+  order_status_code: z.string(),
+  estimated_completion: z.string().nullable(),
+  original_completion_date: z.string().datetime({ offset: true }).nullable(),
+  process_stages: z.array(z.unknown()),
+  gate_info: z.object({}).partial().passthrough().nullable(),
+  parts_summary: z.object({}).partial().passthrough().nullable(),
+  company_name: z.string().nullable(),
+  customer_first_name: z.string().nullable(),
+  customer_last_name: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedCustomerOrderList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CustomerOrder),
+});
+const InviteViewerInputRequest = z.object({ email: z.string().min(1).email() });
+const InviteViewerResponse = z.object({
+  status: z.string(),
+  email: z.string().email(),
+  invitation_id: z.number().int().nullable(),
+  user_created: z.boolean(),
+});
+const InviteError = z.object({ detail: z.string() });
+const TrainingRecord = z.object({
+  id: z.string().uuid(),
+  user: z.number().int(),
+  user_info: z.object({}).partial().passthrough().nullable(),
+  training_type: z.string().uuid(),
+  training_type_info: z.object({}).partial().passthrough().nullable(),
+  completed_date: z.string(),
+  expires_date: z.string().nullish(),
+  trainer: z.number().int().nullish(),
+  trainer_info: z.object({}).partial().passthrough().nullable(),
+  notes: z.string().optional(),
+  status: z.string(),
+  is_current: z.boolean(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedTrainingRecordList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TrainingRecord),
+});
+const TrainingRecordRequest = z.object({
+  user: z.number().int(),
+  training_type: z.string().uuid(),
+  completed_date: z.string(),
+  expires_date: z.string().nullish(),
+  trainer: z.number().int().nullish(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedTrainingRecordRequest = z
   .object({
     user: z.number().int(),
@@ -13547,53 +12989,44 @@ const PatchedTrainingRecordRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const TrainingStats = z
-  .object({
-    total_records: z.number().int(),
-    current: z.number().int(),
-    expiring_soon: z.number().int(),
-    expired: z.number().int(),
-  })
-  .passthrough();
-const TrainingRequirement = z
-  .object({
-    id: z.string().uuid(),
-    training_type: z.string().uuid(),
-    training_type_info: z.object({}).partial().passthrough().nullable(),
-    step: z.string().uuid().nullish(),
-    step_info: z.object({}).partial().passthrough().nullable(),
-    process: z.string().uuid().nullish(),
-    process_info: z.object({}).partial().passthrough().nullable(),
-    equipment_type: z.string().uuid().nullish(),
-    equipment_type_info: z.object({}).partial().passthrough().nullable(),
-    notes: z.string().optional(),
-    scope: z.string(),
-    scope_display: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedTrainingRequirementList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TrainingRequirement),
-  })
-  .passthrough();
-const TrainingRequirementRequest = z
-  .object({
-    training_type: z.string().uuid(),
-    step: z.string().uuid().nullish(),
-    process: z.string().uuid().nullish(),
-    equipment_type: z.string().uuid().nullish(),
-    notes: z.string().optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const TrainingStats = z.object({
+  total_records: z.number().int(),
+  current: z.number().int(),
+  expiring_soon: z.number().int(),
+  expired: z.number().int(),
+});
+const TrainingRequirement = z.object({
+  id: z.string().uuid(),
+  training_type: z.string().uuid(),
+  training_type_info: z.object({}).partial().passthrough().nullable(),
+  step: z.string().uuid().nullish(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  process: z.string().uuid().nullish(),
+  process_info: z.object({}).partial().passthrough().nullable(),
+  equipment_type: z.string().uuid().nullish(),
+  equipment_type_info: z.object({}).partial().passthrough().nullable(),
+  notes: z.string().optional(),
+  scope: z.string(),
+  scope_display: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedTrainingRequirementList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TrainingRequirement),
+});
+const TrainingRequirementRequest = z.object({
+  training_type: z.string().uuid(),
+  step: z.string().uuid().nullish(),
+  process: z.string().uuid().nullish(),
+  equipment_type: z.string().uuid().nullish(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
 const PatchedTrainingRequirementRequest = z
   .object({
     training_type: z.string().uuid(),
@@ -13603,36 +13036,29 @@ const PatchedTrainingRequirementRequest = z
     notes: z.string(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const TrainingType = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    description: z.string().optional(),
-    validity_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedTrainingTypeList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(TrainingType),
-  })
-  .passthrough();
-const TrainingTypeRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    description: z.string().optional(),
-    validity_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const TrainingType = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  description: z.string().optional(),
+  validity_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedTrainingTypeList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TrainingType),
+});
+const TrainingTypeRequest = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  validity_period_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  archived: z.boolean().optional(),
+});
 const PatchedTrainingTypeRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -13640,60 +13066,51 @@ const PatchedTrainingTypeRequest = z
     validity_period_days: z.number().int().gte(0).lte(2147483647).nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const TenantMinimal = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
-  })
-  .passthrough();
-const User = z
-  .object({
-    id: z.number().int(),
-    username: z
-      .string()
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-    email: z.string().max(254).email().optional(),
-    full_name: z.string(),
-    is_staff: z.boolean().optional(),
-    is_active: z.boolean().optional(),
-    date_joined: z.string().datetime({ offset: true }),
-    parent_company: Company.nullable(),
-    groups: z.array(z.object({}).partial().passthrough()),
-    tenant: TenantMinimal.nullable(),
-    user_type: z.string(),
-    user_type_display: z.string(),
-  })
-  .passthrough();
-const PaginatedUserList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(User),
-  })
-  .passthrough();
-const UserRequest = z
-  .object({
-    username: z
-      .string()
-      .min(1)
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-    email: z.string().max(254).email().optional(),
-    is_staff: z.boolean().optional(),
-    is_active: z.boolean().optional(),
-    parent_company_id: z.string().uuid().nullish(),
-    group_ids: z.array(z.number().int()).optional(),
-  })
-  .passthrough();
+  .partial();
+const TenantMinimal = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
+});
+const User = z.object({
+  id: z.number().int(),
+  username: z
+    .string()
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  full_name: z.string(),
+  is_staff: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+  date_joined: z.string().datetime({ offset: true }),
+  parent_company: Company.nullable(),
+  groups: z.array(z.object({}).partial().passthrough()),
+  tenant: TenantMinimal.nullable(),
+  user_type: z.string(),
+  user_type_display: z.string(),
+});
+const PaginatedUserList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(User),
+});
+const UserRequest = z.object({
+  username: z
+    .string()
+    .min(1)
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+  email: z.string().max(254).email().optional(),
+  is_staff: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+  parent_company_id: z.string().uuid().nullish(),
+  group_ids: z.array(z.number().int()).optional(),
+});
 const PatchedUserRequest = z
   .object({
     username: z
@@ -13709,135 +13126,111 @@ const PatchedUserRequest = z
     parent_company_id: z.string().uuid().nullable(),
     group_ids: z.array(z.number().int()),
   })
-  .partial()
-  .passthrough();
-const BulkUserActivationInputRequest = z
-  .object({ user_ids: z.array(z.number().int()), is_active: z.boolean() })
-  .passthrough();
-const BulkCompanyAssignmentInputRequest = z
-  .object({
-    user_ids: z.array(z.number().int()),
-    company_id: z.string().uuid().nullable(),
-  })
-  .passthrough();
-const SendInvitationInputRequest = z
-  .object({ user_id: z.number().int() })
-  .passthrough();
-const UserInvitation = z
-  .object({
-    id: z.number().int(),
-    user: z.number().int(),
-    user_email: z.string().email(),
-    user_name: z.string(),
-    invited_by: z.number().int().nullish(),
-    invited_by_name: z.string(),
-    sent_at: z.string().datetime({ offset: true }),
-    expires_at: z.string().datetime({ offset: true }),
-    accepted_at: z.string().datetime({ offset: true }).nullable(),
-    is_expired: z.boolean(),
-    is_valid: z.boolean(),
-    accepted_ip_address: z.string().nullable(),
-    accepted_user_agent: z.string().nullable(),
-    invitation_url: z.string(),
-  })
-  .passthrough();
-const PaginatedUserInvitationList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(UserInvitation),
-  })
-  .passthrough();
-const UserInvitationRequest = z
-  .object({
-    user: z.number().int(),
-    invited_by: z.number().int().nullish(),
-    expires_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
+  .partial();
+const BulkUserActivationInputRequest = z.object({
+  user_ids: z.array(z.number().int()),
+  is_active: z.boolean(),
+});
+const BulkCompanyAssignmentInputRequest = z.object({
+  user_ids: z.array(z.number().int()),
+  company_id: z.string().uuid().nullable(),
+});
+const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
+const UserInvitation = z.object({
+  id: z.number().int(),
+  user: z.number().int(),
+  user_email: z.string().email(),
+  user_name: z.string(),
+  invited_by: z.number().int().nullish(),
+  invited_by_name: z.string(),
+  sent_at: z.string().datetime({ offset: true }),
+  expires_at: z.string().datetime({ offset: true }),
+  accepted_at: z.string().datetime({ offset: true }).nullable(),
+  is_expired: z.boolean(),
+  is_valid: z.boolean(),
+  accepted_ip_address: z.string().nullable(),
+  accepted_user_agent: z.string().nullable(),
+  invitation_url: z.string(),
+});
+const PaginatedUserInvitationList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(UserInvitation),
+});
+const UserInvitationRequest = z.object({
+  user: z.number().int(),
+  invited_by: z.number().int().nullish(),
+  expires_at: z.string().datetime({ offset: true }),
+});
 const PatchedUserInvitationRequest = z
   .object({
     user: z.number().int(),
     invited_by: z.number().int().nullable(),
     expires_at: z.string().datetime({ offset: true }),
   })
-  .partial()
-  .passthrough();
-const AcceptInvitationInputRequest = z
-  .object({
-    token: z.string().min(1),
-    password: z.string().min(1),
-    opt_in_notifications: z.boolean().optional().default(false),
-  })
-  .passthrough();
-const AcceptInvitationResponse = z
-  .object({ detail: z.string(), user_id: z.number().int() })
-  .passthrough();
-const ResendInvitationInputRequest = z
-  .object({ invitation_id: z.number().int() })
-  .passthrough();
-const ValidateTokenInputRequest = z
-  .object({ token: z.string().min(1) })
-  .passthrough();
-const ValidateTokenResponse = z
-  .object({
-    valid: z.boolean(),
-    user_email: z.string().email(),
-    expires_at: z.string().datetime({ offset: true }),
-    expired: z.boolean(),
-  })
-  .passthrough();
-const WorkCenter = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(100),
-    code: z.string().max(20),
-    description: z.string().optional(),
-    capacity_units: z.string().max(20).optional(),
-    default_efficiency: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
-      .optional(),
-    equipment: z.array(z.string().uuid()).optional(),
-    equipment_names: z.array(z.string()),
-    cost_center: z.string().max(50).optional(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-    version: z.number().int(),
-  })
-  .passthrough();
-const PaginatedWorkCenterList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(WorkCenter),
-  })
-  .passthrough();
-const WorkCenterRequest = z
-  .object({
-    name: z.string().min(1).max(100),
-    code: z.string().min(1).max(20),
-    description: z.string().optional(),
-    capacity_units: z.string().min(1).max(20).optional(),
-    default_efficiency: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
-      .optional(),
-    equipment: z.array(z.string().uuid()).optional(),
-    cost_center: z.string().max(50).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const WorkCenterSelect = z
-  .object({
-    id: z.string().uuid(),
-    code: z.string().max(20),
-    name: z.string().max(100),
-  })
-  .passthrough();
+  .partial();
+const AcceptInvitationInputRequest = z.object({
+  token: z.string().min(1),
+  password: z.string().min(1),
+  opt_in_notifications: z.boolean().optional().default(false),
+});
+const AcceptInvitationResponse = z.object({
+  detail: z.string(),
+  user_id: z.number().int(),
+});
+const ResendInvitationInputRequest = z.object({
+  invitation_id: z.number().int(),
+});
+const ValidateTokenInputRequest = z.object({ token: z.string().min(1) });
+const ValidateTokenResponse = z.object({
+  valid: z.boolean(),
+  user_email: z.string().email(),
+  expires_at: z.string().datetime({ offset: true }),
+  expired: z.boolean(),
+});
+const WorkCenter = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(100),
+  code: z.string().max(20),
+  description: z.string().optional(),
+  capacity_units: z.string().max(20).optional(),
+  default_efficiency: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .optional(),
+  equipment: z.array(z.string().uuid()).optional(),
+  equipment_names: z.array(z.string()),
+  cost_center: z.string().max(50).optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+  version: z.number().int(),
+});
+const PaginatedWorkCenterList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(WorkCenter),
+});
+const WorkCenterRequest = z.object({
+  name: z.string().min(1).max(100),
+  code: z.string().min(1).max(20),
+  description: z.string().optional(),
+  capacity_units: z.string().min(1).max(20).optional(),
+  default_efficiency: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .optional(),
+  equipment: z.array(z.string().uuid()).optional(),
+  cost_center: z.string().max(50).optional(),
+  archived: z.boolean().optional(),
+});
+const WorkCenterSelect = z.object({
+  id: z.string().uuid(),
+  code: z.string().max(20),
+  name: z.string().max(100),
+});
 const PatchedWorkCenterRequest = z
   .object({
     name: z.string().min(1).max(100),
@@ -13849,8 +13242,7 @@ const PatchedWorkCenterRequest = z
     cost_center: z.string().max(50),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const WorkOrderStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
@@ -13866,89 +13258,81 @@ const WorkOrderPriorityEnum = z.union([
   z.literal(4),
 ]);
 const SplitReasonEnum = z.enum(["QUANTITY", "OPERATION", "REWORK"]);
-const WorkOrderList = z
-  .object({
-    id: z.string().uuid(),
-    ERP_id: z.string().max(50),
-    workorder_status: WorkOrderStatusEnum.optional(),
-    priority: WorkOrderPriorityEnum.optional(),
-    quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    related_order: z.string().uuid().nullish(),
-    related_order_info: z.object({}).partial().passthrough().nullable(),
-    process: z.string().uuid().nullish(),
-    process_info: z.object({}).partial().passthrough().nullable(),
-    expected_completion: z.string().nullish(),
-    true_completion: z.string().nullish(),
-    expected_duration: z.string().nullish(),
-    true_duration: z.string().nullish(),
-    notes: z.string().max(500).nullish(),
-    parts_count: z.number().int(),
-    qa_progress: z.object({}).partial().passthrough(),
-    completed_parts_count: z.number().int(),
-    is_batch_work_order: z.boolean(),
-    current_hold: z.object({}).partial().passthrough().nullable(),
-    parent_workorder_id: z.string().uuid().nullable(),
-    split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
-    split_at: z.string().datetime({ offset: true }).nullable(),
-    child_count: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const PaginatedWorkOrderListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(WorkOrderList),
-  })
-  .passthrough();
-const WorkOrderRequest = z
-  .object({
-    ERP_id: z.string().min(1).max(50),
-    workorder_status: WorkOrderStatusEnum.optional(),
-    priority: WorkOrderPriorityEnum.optional(),
-    quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    related_order: z.string().uuid().nullish(),
-    process: z.string().uuid().nullish(),
-    expected_completion: z.string().nullish(),
-    expected_duration: z.string().nullish(),
-    true_completion: z.string().nullish(),
-    true_duration: z.string().nullish(),
-    notes: z.string().max(500).nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const WorkOrder = z
-  .object({
-    id: z.string().uuid(),
-    ERP_id: z.string().max(50),
-    workorder_status: WorkOrderStatusEnum.optional(),
-    priority: WorkOrderPriorityEnum.optional(),
-    quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    related_order: z.string().uuid().nullish(),
-    related_order_info: z.object({}).partial().passthrough().nullable(),
-    related_order_detail: z.object({}).partial().passthrough().nullable(),
-    process: z.string().uuid().nullish(),
-    process_info: z.object({}).partial().passthrough().nullable(),
-    expected_completion: z.string().nullish(),
-    expected_duration: z.string().nullish(),
-    true_completion: z.string().nullish(),
-    true_duration: z.string().nullish(),
-    notes: z.string().max(500).nullish(),
-    parts_summary: z.object({}).partial().passthrough().nullable(),
-    is_batch_work_order: z.boolean(),
-    current_hold: z.object({}).partial().passthrough().nullable(),
-    parent_workorder_id: z.string().uuid().nullable(),
-    split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
-    split_at: z.string().datetime({ offset: true }).nullable(),
-    child_count: z.number().int(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+const WorkOrderList = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string().max(50),
+  workorder_status: WorkOrderStatusEnum.optional(),
+  priority: WorkOrderPriorityEnum.optional(),
+  quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  related_order: z.string().uuid().nullish(),
+  related_order_info: z.object({}).partial().passthrough().nullable(),
+  process: z.string().uuid().nullish(),
+  process_info: z.object({}).partial().passthrough().nullable(),
+  expected_completion: z.string().nullish(),
+  true_completion: z.string().nullish(),
+  expected_duration: z.string().nullish(),
+  true_duration: z.string().nullish(),
+  notes: z.string().max(500).nullish(),
+  parts_count: z.number().int(),
+  qa_progress: z.object({}).partial().passthrough(),
+  completed_parts_count: z.number().int(),
+  is_batch_work_order: z.boolean(),
+  current_hold: z.object({}).partial().passthrough().nullable(),
+  parent_workorder_id: z.string().uuid().nullable(),
+  split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
+  split_at: z.string().datetime({ offset: true }).nullable(),
+  child_count: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedWorkOrderListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(WorkOrderList),
+});
+const WorkOrderRequest = z.object({
+  ERP_id: z.string().min(1).max(50),
+  workorder_status: WorkOrderStatusEnum.optional(),
+  priority: WorkOrderPriorityEnum.optional(),
+  quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  related_order: z.string().uuid().nullish(),
+  process: z.string().uuid().nullish(),
+  expected_completion: z.string().nullish(),
+  expected_duration: z.string().nullish(),
+  true_completion: z.string().nullish(),
+  true_duration: z.string().nullish(),
+  notes: z.string().max(500).nullish(),
+  archived: z.boolean().optional(),
+});
+const WorkOrder = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string().max(50),
+  workorder_status: WorkOrderStatusEnum.optional(),
+  priority: WorkOrderPriorityEnum.optional(),
+  quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  related_order: z.string().uuid().nullish(),
+  related_order_info: z.object({}).partial().passthrough().nullable(),
+  related_order_detail: z.object({}).partial().passthrough().nullable(),
+  process: z.string().uuid().nullish(),
+  process_info: z.object({}).partial().passthrough().nullable(),
+  expected_completion: z.string().nullish(),
+  expected_duration: z.string().nullish(),
+  true_completion: z.string().nullish(),
+  true_duration: z.string().nullish(),
+  notes: z.string().max(500).nullish(),
+  parts_summary: z.object({}).partial().passthrough().nullable(),
+  is_batch_work_order: z.boolean(),
+  current_hold: z.object({}).partial().passthrough().nullable(),
+  parent_workorder_id: z.string().uuid().nullable(),
+  split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
+  split_at: z.string().datetime({ offset: true }).nullable(),
+  child_count: z.number().int(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const PatchedWorkOrderRequest = z
   .object({
     ERP_id: z.string().min(1).max(50),
@@ -13964,148 +13348,118 @@ const PatchedWorkOrderRequest = z
     notes: z.string().max(500).nullable(),
     archived: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const WorkOrderPlaceOnHoldInputRequest = z
-  .object({
-    reason: z.string().min(1),
-    notes: z.string().optional(),
-    expected_clear_at: z.string().datetime({ offset: true }).nullish(),
-  })
-  .passthrough();
-const QADocumentsResponse = z
-  .object({
-    work_order_documents: z.array(Documents),
-    current_step_documents: z.array(Documents),
-    part_type_documents: z.array(Documents),
-    current_step_id: z.string().uuid().nullable(),
-    parts_in_qa: z.number().int(),
-  })
-  .passthrough();
-const WorkOrderSplitInputRequest = z
-  .object({
-    reason: z.string().min(1),
-    new_erp_id: z.string().min(1),
-    part_ids: z.array(z.string().uuid()).optional(),
-    quantity: z.number().int().optional(),
-    target_process_id: z.string().uuid().nullish(),
-    notes: z.string().optional(),
-  })
-  .passthrough();
-const WorkOrderSplitResponse = z
-  .object({ child_work_order_id: z.string().uuid(), child_erp_id: z.string() })
-  .passthrough();
-const StepSummary = z
-  .object({
-    step_id: z.string().uuid(),
-    step_name: z.string(),
-    step_order: z.number().int(),
-    status: TravelerStepStatusEnum,
-    started_at: z.string().datetime({ offset: true }).nullable(),
-    completed_at: z.string().datetime({ offset: true }).nullable(),
-    duration_seconds: z.number().int().nullable(),
-    operator_name: z.string().nullable(),
-    quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
-    parts_at_step: z.number().int(),
-    parts_completed: z.number().int(),
-    measurement_count: z.number().int(),
-    defect_count: z.number().int(),
-    attachment_count: z.number().int(),
-  })
-  .passthrough();
-const WorkOrderStepHistoryResponse = z
-  .object({
-    work_order_id: z.string().uuid(),
-    process_name: z.string().nullable(),
-    total_parts: z.number().int(),
-    step_history: z.array(StepSummary),
-  })
-  .passthrough();
-const WorkOrderBulkClearHoldInputRequest = z
-  .object({ ids: z.array(z.string().uuid()) })
-  .passthrough();
-const WorkOrderBulkClearHoldResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const WorkOrderBulkPlaceOnHoldInputRequest = z
-  .object({
-    ids: z.array(z.string().uuid()),
-    reason: z.string().min(1),
-    notes: z.string().optional(),
-    expected_clear_at: z.string().datetime({ offset: true }).nullish(),
-  })
-  .passthrough();
-const WorkOrderBulkPlaceOnHoldResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const WorkOrderBulkTransitionInputRequest = z
-  .object({
-    ids: z.array(z.string().uuid()),
-    status: WorkOrderStatusEnum,
-    notes: z.string().optional(),
-  })
-  .passthrough();
-const WorkOrderBulkTransitionResponse = z
-  .object({ results: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const EmbedQueryRequestRequest = z
-  .object({ query: z.string().min(1) })
-  .passthrough();
-const EmbedQueryResponse = z
-  .object({ embedding: z.array(z.number()) })
-  .passthrough();
-const LLMConfigResponse = z
-  .object({
-    configured: z.boolean(),
-    provider: z.string(),
-    model: z.string(),
-    full_model_name: z.string(),
-    api_key: z.string(),
-    base_url: z.string(),
-  })
-  .passthrough();
-const ExecuteQueryResponse = z
-  .object({
-    model: z.string(),
-    filters: z.object({}).partial().passthrough(),
-    count: z.number().int(),
-    limit: z.number().int(),
-    results: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const ExecuteQueryRequestRequest = z
-  .object({
-    model: z.string().min(1),
-    filters: z.object({}).partial().passthrough().optional(),
-    fields: z.array(z.string().min(1)).optional(),
-    limit: z.number().int().optional(),
-    aggregate: z.string().min(1).optional(),
-  })
-  .passthrough();
-const QueryRequest = z
-  .object({
-    model: z.string(),
-    filters: z.object({}).partial().passthrough().optional(),
-    fields: z.array(z.string()).optional(),
-    limit: z.number().int().optional(),
-    aggregate: z.string().optional(),
-  })
-  .passthrough();
-const ContextWindowRequestRequest = z
-  .object({
-    chunk_id: z.string().uuid(),
-    window_size: z.number().int().optional(),
-  })
-  .passthrough();
-const ContextWindowResponse = z
-  .object({
-    center_chunk_id: z.string().uuid(),
-    center_index: z.number().int(),
-    window_size: z.number().int(),
-    doc_name: z.string(),
-    chunks: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
+  .partial();
+const WorkOrderPlaceOnHoldInputRequest = z.object({
+  reason: z.string().min(1),
+  notes: z.string().optional(),
+  expected_clear_at: z.string().datetime({ offset: true }).nullish(),
+});
+const QADocumentsResponse = z.object({
+  work_order_documents: z.array(Documents),
+  current_step_documents: z.array(Documents),
+  part_type_documents: z.array(Documents),
+  current_step_id: z.string().uuid().nullable(),
+  parts_in_qa: z.number().int(),
+});
+const WorkOrderSplitInputRequest = z.object({
+  reason: z.string().min(1),
+  new_erp_id: z.string().min(1),
+  part_ids: z.array(z.string().uuid()).optional(),
+  quantity: z.number().int().optional(),
+  target_process_id: z.string().uuid().nullish(),
+  notes: z.string().optional(),
+});
+const WorkOrderSplitResponse = z.object({
+  child_work_order_id: z.string().uuid(),
+  child_erp_id: z.string(),
+});
+const StepSummary = z.object({
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  step_order: z.number().int(),
+  status: TravelerStepStatusEnum,
+  started_at: z.string().datetime({ offset: true }).nullable(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  duration_seconds: z.number().int().nullable(),
+  operator_name: z.string().nullable(),
+  quality_status: z.union([QualityStatusEnum, NullEnum]).nullable(),
+  parts_at_step: z.number().int(),
+  parts_completed: z.number().int(),
+  measurement_count: z.number().int(),
+  defect_count: z.number().int(),
+  attachment_count: z.number().int(),
+});
+const WorkOrderStepHistoryResponse = z.object({
+  work_order_id: z.string().uuid(),
+  process_name: z.string().nullable(),
+  total_parts: z.number().int(),
+  step_history: z.array(StepSummary),
+});
+const WorkOrderBulkClearHoldInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+});
+const WorkOrderBulkClearHoldResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const WorkOrderBulkPlaceOnHoldInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  reason: z.string().min(1),
+  notes: z.string().optional(),
+  expected_clear_at: z.string().datetime({ offset: true }).nullish(),
+});
+const WorkOrderBulkPlaceOnHoldResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const WorkOrderBulkTransitionInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  status: WorkOrderStatusEnum,
+  notes: z.string().optional(),
+});
+const WorkOrderBulkTransitionResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const EmbedQueryRequestRequest = z.object({ query: z.string().min(1) });
+const EmbedQueryResponse = z.object({ embedding: z.array(z.number()) });
+const LLMConfigResponse = z.object({
+  configured: z.boolean(),
+  provider: z.string(),
+  model: z.string(),
+  full_model_name: z.string(),
+  api_key: z.string(),
+  base_url: z.string(),
+});
+const ExecuteQueryResponse = z.object({
+  model: z.string(),
+  filters: z.object({}).partial().passthrough(),
+  count: z.number().int(),
+  limit: z.number().int(),
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const ExecuteQueryRequestRequest = z.object({
+  model: z.string().min(1),
+  filters: z.object({}).partial().passthrough().optional(),
+  fields: z.array(z.string().min(1)).optional(),
+  limit: z.number().int().optional(),
+  aggregate: z.string().min(1).optional(),
+});
+const QueryRequest = z.object({
+  model: z.string(),
+  filters: z.object({}).partial().passthrough().optional(),
+  fields: z.array(z.string()).optional(),
+  limit: z.number().int().optional(),
+  aggregate: z.string().optional(),
+});
+const ContextWindowRequestRequest = z.object({
+  chunk_id: z.string().uuid(),
+  window_size: z.number().int().optional(),
+});
+const ContextWindowResponse = z.object({
+  center_chunk_id: z.string().uuid(),
+  center_index: z.number().int(),
+  window_size: z.number().int(),
+  doc_name: z.string(),
+  chunks: z.array(z.object({}).partial().passthrough()),
+});
 const HybridSearchRequestRequest = z
   .object({
     query: z.string().min(1),
@@ -14114,220 +13468,171 @@ const HybridSearchRequestRequest = z
     vector_threshold: z.number(),
     doc_ids: z.array(z.string().uuid()),
   })
-  .partial()
-  .passthrough();
-const HybridSearchResponse = z
-  .object({
-    query: z.string(),
-    has_embedding: z.boolean(),
-    total_results: z.number().int(),
-    results: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const KeywordSearchResponse = z
-  .object({
-    query: z.string(),
-    total_results: z.number().int(),
-    results: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const VectorSearchRequestRequest = z
-  .object({
-    embedding: z.array(z.number()),
-    limit: z.number().int().optional().default(10),
-    threshold: z.number().optional().default(0.7),
-    doc_ids: z.array(z.string().uuid()).optional(),
-  })
-  .passthrough();
-const VectorSearchResponse = z
-  .object({ results: z.array(z.unknown()) })
-  .passthrough();
+  .partial();
+const HybridSearchResponse = z.object({
+  query: z.string(),
+  has_embedding: z.boolean(),
+  total_results: z.number().int(),
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const KeywordSearchResponse = z.object({
+  query: z.string(),
+  total_results: z.number().int(),
+  results: z.array(z.object({}).partial().passthrough()),
+});
+const VectorSearchRequestRequest = z.object({
+  embedding: z.array(z.number()),
+  limit: z.number().int().optional().default(10),
+  threshold: z.number().optional().default(0.7),
+  doc_ids: z.array(z.string().uuid()).optional(),
+});
+const VectorSearchResponse = z.object({ results: z.array(z.unknown()) });
 const ActionEnum = z.union([
   z.literal(0),
   z.literal(1),
   z.literal(2),
   z.literal(3),
 ]);
-const AuditLog = z
-  .object({
-    id: z.number().int(),
-    object_pk: z.string().max(255),
-    object_repr: z.string(),
-    content_type: z.number().int(),
-    content_type_name: z.string(),
-    actor: z.number().int().nullish(),
-    actor_info: z.object({}).partial().passthrough().nullable(),
-    remote_addr: z.string().nullish(),
-    timestamp: z.string().datetime({ offset: true }),
-    action: ActionEnum,
-    changes: z.unknown().nullish(),
-  })
-  .passthrough();
-const PaginatedAuditLogList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(AuditLog),
-  })
-  .passthrough();
-const ContentType = z
-  .object({
-    id: z.number().int(),
-    app_label: z.string().max(100),
-    model: z.string().max(100),
-  })
-  .passthrough();
-const CAPAStatusResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total: z.number().int(),
-  })
-  .passthrough();
-const DefectParetoResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total: z.number().int(),
-  })
-  .passthrough();
-const DefectRecordsResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total: z.number().int(),
-    filters_applied: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const DefectTrendResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    summary: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const DefectsByProcessResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total: z.number().int(),
-  })
-  .passthrough();
-const DispositionBreakdownResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total: z.number().int(),
-  })
-  .passthrough();
-const FailedInspectionsResponse = z
-  .object({ data: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const FilterOptionsResponse = z
-  .object({
-    defect_types: z.array(z.object({}).partial().passthrough()),
-    processes: z.array(z.object({}).partial().passthrough()),
-    part_types: z.array(z.object({}).partial().passthrough()),
-  })
-  .passthrough();
-const FPYTrendResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    average: z.number(),
-    total_inspections: z.number().int(),
-    total_passed: z.number().int(),
-  })
-  .passthrough();
-const InProcessActionsResponse = z
-  .object({ data: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const DashboardKPIsResponse = z
-  .object({
-    active_capas: z.number().int(),
-    open_ncrs: z.number().int(),
-    overdue_capas: z.number().int(),
-    parts_in_quarantine: z.number().int(),
-    current_fpy: z.number().nullable(),
-  })
-  .passthrough();
-const NcrAgingResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    avg_age_days: z.number(),
-    overdue_count: z.number().int(),
-  })
-  .passthrough();
-const NcrTrendResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    summary: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const NeedsAttentionResponse = z
-  .object({ data: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const OpenDispositionsResponse = z
-  .object({ data: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const QualityRatesResponse = z
-  .object({
-    scrap_rate: z.number(),
-    rework_rate: z.number(),
-    use_as_is_rate: z.number(),
-    total_inspected: z.number().int(),
-    total_failed: z.number().int(),
-  })
-  .passthrough();
-const RepeatDefectsResponse = z
-  .object({
-    data: z.array(z.object({}).partial().passthrough()),
-    total_repeat_count: z.number().int(),
-  })
-  .passthrough();
-const HubSpotPipelineStage = z
-  .object({
-    id: z.string().uuid(),
-    stage_name: z.string(),
-    api_id: z.string(),
-    pipeline_id: z.string().nullable(),
-    display_order: z.number().int(),
-    include_in_progress: z.boolean(),
-    customer_display_name: z.string(),
-    mapped_milestone: z.string().uuid().nullable(),
-    last_synced_at: z.string().datetime({ offset: true }).nullable(),
-  })
-  .passthrough();
-const PaginatedHubSpotPipelineStageList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(HubSpotPipelineStage),
-  })
-  .passthrough();
+const AuditLog = z.object({
+  id: z.number().int(),
+  object_pk: z.string().max(255),
+  object_repr: z.string(),
+  content_type: z.number().int(),
+  content_type_name: z.string(),
+  actor: z.number().int().nullish(),
+  actor_info: z.object({}).partial().nullable(),
+  remote_addr: z.string().nullish(),
+  timestamp: z.string().datetime({ offset: true }),
+  action: ActionEnum,
+  changes: z.unknown().nullish(),
+});
+const PaginatedAuditLogList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(AuditLog),
+});
+const ContentType = z.object({
+  id: z.number().int(),
+  app_label: z.string().max(100),
+  model: z.string().max(100),
+});
+const CAPAStatusResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total: z.number().int(),
+});
+const DefectParetoResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total: z.number().int(),
+});
+const DefectRecordsResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total: z.number().int(),
+  filters_applied: z.object({}).partial().passthrough(),
+});
+const DefectTrendResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  summary: z.object({}).partial().passthrough(),
+});
+const DefectsByProcessResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total: z.number().int(),
+});
+const DispositionBreakdownResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total: z.number().int(),
+});
+const FailedInspectionsResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+});
+const FilterOptionsResponse = z.object({
+  defect_types: z.array(z.object({}).partial().passthrough()),
+  processes: z.array(z.object({}).partial().passthrough()),
+  part_types: z.array(z.object({}).partial().passthrough()),
+});
+const FPYTrendResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  average: z.number(),
+  total_inspections: z.number().int(),
+  total_passed: z.number().int(),
+});
+const InProcessActionsResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+});
+const DashboardKPIsResponse = z.object({
+  active_capas: z.number().int(),
+  open_ncrs: z.number().int(),
+  overdue_capas: z.number().int(),
+  parts_in_quarantine: z.number().int(),
+  current_fpy: z.number().nullable(),
+});
+const NcrAgingResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  avg_age_days: z.number(),
+  overdue_count: z.number().int(),
+});
+const NcrTrendResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  summary: z.object({}).partial().passthrough(),
+});
+const NeedsAttentionResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+});
+const OpenDispositionsResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+});
+const QualityRatesResponse = z.object({
+  scrap_rate: z.number(),
+  rework_rate: z.number(),
+  use_as_is_rate: z.number(),
+  total_inspected: z.number().int(),
+  total_failed: z.number().int(),
+});
+const RepeatDefectsResponse = z.object({
+  data: z.array(z.object({}).partial().passthrough()),
+  total_repeat_count: z.number().int(),
+});
+const HubSpotPipelineStage = z.object({
+  id: z.string().uuid(),
+  stage_name: z.string(),
+  api_id: z.string(),
+  pipeline_id: z.string().nullable(),
+  display_order: z.number().int(),
+  include_in_progress: z.boolean(),
+  customer_display_name: z.string(),
+  mapped_milestone: z.string().uuid().nullable(),
+  last_synced_at: z.string().datetime({ offset: true }).nullable(),
+});
+const PaginatedHubSpotPipelineStageList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(HubSpotPipelineStage),
+});
 const SyncTypeEnum = z.enum(["FULL", "INCREMENTAL", "SINGLE", "PUSH"]);
 const IntegrationSyncLogStatusEnum = z.enum(["RUNNING", "SUCCESS", "FAILED"]);
-const IntegrationSyncLog = z
-  .object({
-    id: z.string().uuid(),
-    integration: z.string().uuid(),
-    sync_type: SyncTypeEnum,
-    sync_type_display: z.string(),
-    status: IntegrationSyncLogStatusEnum,
-    status_display: z.string(),
-    started_at: z.string().datetime({ offset: true }),
-    completed_at: z.string().datetime({ offset: true }).nullable(),
-    duration_seconds: z.number(),
-    records_processed: z.number().int(),
-    records_created: z.number().int(),
-    records_updated: z.number().int(),
-    error_message: z.string().nullable(),
-    details: z.unknown(),
-  })
-  .passthrough();
-const PaginatedIntegrationSyncLogList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(IntegrationSyncLog),
-  })
-  .passthrough();
+const IntegrationSyncLog = z.object({
+  id: z.string().uuid(),
+  integration: z.string().uuid(),
+  sync_type: SyncTypeEnum,
+  sync_type_display: z.string(),
+  status: IntegrationSyncLogStatusEnum,
+  status_display: z.string(),
+  started_at: z.string().datetime({ offset: true }),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  duration_seconds: z.number(),
+  records_processed: z.number().int(),
+  records_created: z.number().int(),
+  records_updated: z.number().int(),
+  error_message: z.string().nullable(),
+  details: z.unknown(),
+});
+const PaginatedIntegrationSyncLogList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(IntegrationSyncLog),
+});
 const IntegrationProviderEnum = z.enum([
   "hubspot",
   "salesforce",
@@ -14335,60 +13640,52 @@ const IntegrationProviderEnum = z.enum([
   "xero",
 ]);
 const IntegrationSyncStatusEnum = z.enum(["IDLE", "SYNCING", "ERROR"]);
-const IntegrationConfigList = z
-  .object({
-    id: z.string().uuid(),
-    provider: IntegrationProviderEnum,
-    provider_display: z.string(),
-    display_name: z.string().max(100).optional(),
-    is_enabled: z.boolean().optional(),
-    sync_status: IntegrationSyncStatusEnum.optional(),
-    has_credentials: z.boolean(),
-    last_synced_at: z.string().datetime({ offset: true }).nullish(),
-    last_sync_error: z.string().nullish(),
-    last_sync_stats: z.unknown().optional(),
-    capabilities: z.array(z.string()),
-  })
-  .passthrough();
-const PaginatedIntegrationConfigListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(IntegrationConfigList),
-  })
-  .passthrough();
-const IntegrationConfigRequest = z
-  .object({
-    provider: IntegrationProviderEnum,
-    display_name: z.string().max(100).optional(),
-    is_enabled: z.boolean().optional(),
-    api_key: z.string().max(500).optional(),
-    oauth_refresh_token: z.string().max(500).optional(),
-    webhook_secret: z.string().max(500).optional(),
-    api_url: z.string().max(200).url().optional(),
-    config: z.unknown().optional(),
-  })
-  .passthrough();
-const IntegrationConfig = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid(),
-    provider: IntegrationProviderEnum,
-    provider_display: z.string(),
-    display_name: z.string().max(100).optional(),
-    is_enabled: z.boolean().optional(),
-    sync_status: IntegrationSyncStatusEnum,
-    api_url: z.string().max(200).url().optional(),
-    config: z.unknown().optional(),
-    last_synced_at: z.string().datetime({ offset: true }).nullable(),
-    last_sync_error: z.string().nullable(),
-    last_sync_stats: z.unknown(),
-    capabilities: z.array(z.string()),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
+const IntegrationConfigList = z.object({
+  id: z.string().uuid(),
+  provider: IntegrationProviderEnum,
+  provider_display: z.string(),
+  display_name: z.string().max(100).optional(),
+  is_enabled: z.boolean().optional(),
+  sync_status: IntegrationSyncStatusEnum.optional(),
+  has_credentials: z.boolean(),
+  last_synced_at: z.string().datetime({ offset: true }).nullish(),
+  last_sync_error: z.string().nullish(),
+  last_sync_stats: z.unknown().optional(),
+  capabilities: z.array(z.string()),
+});
+const PaginatedIntegrationConfigListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(IntegrationConfigList),
+});
+const IntegrationConfigRequest = z.object({
+  provider: IntegrationProviderEnum,
+  display_name: z.string().max(100).optional(),
+  is_enabled: z.boolean().optional(),
+  api_key: z.string().max(500).optional(),
+  oauth_refresh_token: z.string().max(500).optional(),
+  webhook_secret: z.string().max(500).optional(),
+  api_url: z.string().max(200).url().optional(),
+  config: z.unknown().optional(),
+});
+const IntegrationConfig = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid(),
+  provider: IntegrationProviderEnum,
+  provider_display: z.string(),
+  display_name: z.string().max(100).optional(),
+  is_enabled: z.boolean().optional(),
+  sync_status: IntegrationSyncStatusEnum,
+  api_url: z.string().max(200).url().optional(),
+  config: z.unknown().optional(),
+  last_synced_at: z.string().datetime({ offset: true }).nullable(),
+  last_sync_error: z.string().nullable(),
+  last_sync_stats: z.unknown(),
+  capabilities: z.array(z.string()),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
 const PatchedIntegrationConfigRequest = z
   .object({
     provider: IntegrationProviderEnum,
@@ -14400,96 +13697,87 @@ const PatchedIntegrationConfigRequest = z
     api_url: z.string().max(200).url(),
     config: z.unknown(),
   })
-  .partial()
-  .passthrough();
-const IntegrationHealth = z
-  .object({
-    status: z.string(),
-    is_enabled: z.boolean(),
-    sync_status: z.string(),
-    last_synced_at: z.string().datetime({ offset: true }).nullable(),
-    last_sync_error: z.string().nullable(),
-    last_sync_stats: z.object({}).partial().passthrough().nullable(),
-    consecutive_failures: z.number().int(),
-  })
-  .passthrough();
-const TestConnectionResult = z
-  .object({ success: z.boolean(), message: z.string() })
-  .passthrough();
-const TriggerSyncResult = z.object({ status: z.string() }).passthrough();
-const IntegrationCatalogItem = z
-  .object({
-    provider: z.string(),
-    name: z.string(),
-    category: z.string(),
-    description: z.string(),
-    long_description: z.string(),
-    icon: z.string(),
-    capabilities: z.array(z.string()),
-    auth_type: z.string(),
-    auth_label: z.string(),
-    auth_instructions: z.string(),
-    auth_docs_url: z.string(),
-    data_flows: z.array(z.object({}).partial().passthrough()),
-    sync_details: z.object({}).partial().passthrough(),
-    requirements: z.array(z.string()),
-    creates: z.array(z.string()),
-    limitations: z.array(z.string()),
-    status: z.string(),
-    config_id: z.string().nullable(),
-    is_enabled: z.boolean(),
-    display_name: z.string(),
-    sync_status: z.string().nullable(),
-    last_synced_at: z.string().nullable(),
-    last_sync_error: z.string().nullable(),
-    last_sync_stats: z.object({}).partial().passthrough().nullable(),
-  })
-  .passthrough();
-const PermissionListResponse = z
-  .object({ permissions: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
-const PresetListResponse = z
-  .object({ presets: z.array(z.object({}).partial().passthrough()) })
-  .passthrough();
+  .partial();
+const IntegrationHealth = z.object({
+  status: z.string(),
+  is_enabled: z.boolean(),
+  sync_status: z.string(),
+  last_synced_at: z.string().datetime({ offset: true }).nullable(),
+  last_sync_error: z.string().nullable(),
+  last_sync_stats: z.object({}).partial().passthrough().nullable(),
+  consecutive_failures: z.number().int(),
+});
+const TestConnectionResult = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+const TriggerSyncResult = z.object({ status: z.string() });
+const IntegrationCatalogItem = z.object({
+  provider: z.string(),
+  name: z.string(),
+  category: z.string(),
+  description: z.string(),
+  long_description: z.string(),
+  icon: z.string(),
+  capabilities: z.array(z.string()),
+  auth_type: z.string(),
+  auth_label: z.string(),
+  auth_instructions: z.string(),
+  auth_docs_url: z.string(),
+  data_flows: z.array(z.object({}).partial().passthrough()),
+  sync_details: z.object({}).partial().passthrough(),
+  requirements: z.array(z.string()),
+  creates: z.array(z.string()),
+  limitations: z.array(z.string()),
+  status: z.string(),
+  config_id: z.string().nullable(),
+  is_enabled: z.boolean(),
+  display_name: z.string(),
+  sync_status: z.string().nullable(),
+  last_synced_at: z.string().nullable(),
+  last_sync_error: z.string().nullable(),
+  last_sync_stats: z.object({}).partial().passthrough().nullable(),
+});
+const PermissionListResponse = z.object({
+  permissions: z.array(z.object({}).partial().passthrough()),
+});
+const PresetListResponse = z.object({
+  presets: z.array(z.object({}).partial().passthrough()),
+});
 const ProcessChangeNoticeStatusEnum = z.enum(["DRAFT", "RELEASED", "CLOSED"]);
 const DataOriginEnum = z.enum(["NATIVE", "IMPORTED"]);
-const ProcessChangeNotice = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullable(),
-    artifact_number: z.string(),
-    status: ProcessChangeNoticeStatusEnum,
-    order: z.string().uuid(),
-    order_artifact_number: z.string(),
-    pcr_artifact_number: z.string(),
-    target_process_name: z.string(),
-    notice_content: z.string(),
-    released_at: z.string().datetime({ offset: true }).nullable(),
-    released_by: z.number().int().nullable(),
-    released_by_username: z.string(),
-    closure_evidence: z.string().optional(),
-    closed_at: z.string().datetime({ offset: true }).nullable(),
-    closed_by: z.number().int().nullable(),
-    closed_by_username: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    created_by: z.number().int().nullable(),
-    updated_at: z.string().datetime({ offset: true }),
-    is_open: z.boolean(),
-    data_origin: DataOriginEnum,
-  })
-  .passthrough();
-const PaginatedProcessChangeNoticeList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ProcessChangeNotice),
-  })
-  .passthrough();
+const ProcessChangeNotice = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullable(),
+  artifact_number: z.string(),
+  status: ProcessChangeNoticeStatusEnum,
+  order: z.string().uuid(),
+  order_artifact_number: z.string(),
+  pcr_artifact_number: z.string(),
+  target_process_name: z.string(),
+  notice_content: z.string(),
+  released_at: z.string().datetime({ offset: true }).nullable(),
+  released_by: z.number().int().nullable(),
+  released_by_username: z.string(),
+  closure_evidence: z.string().optional(),
+  closed_at: z.string().datetime({ offset: true }).nullable(),
+  closed_by: z.number().int().nullable(),
+  closed_by_username: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  created_by: z.number().int().nullable(),
+  updated_at: z.string().datetime({ offset: true }),
+  is_open: z.boolean(),
+  data_origin: DataOriginEnum,
+});
+const PaginatedProcessChangeNoticeList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ProcessChangeNotice),
+});
 const PatchedProcessChangeNoticeRequest = z
   .object({ notice_content: z.string().min(1), closure_evidence: z.string() })
-  .partial()
-  .passthrough();
+  .partial();
 const ProcessChangeOrderStatusEnum = z.enum([
   "DRAFT",
   "APPROVED",
@@ -14503,44 +13791,40 @@ const MigrationDispositionEnum = z.enum([
   "MIGRATE_SELECTED",
   "KEEP_ALL",
 ]);
-const ProcessChangeOrder = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullable(),
-    artifact_number: z.string(),
-    status: ProcessChangeOrderStatusEnum,
-    request: z.string().uuid(),
-    request_artifact_number: z.string(),
-    request_title: z.string(),
-    target_process_name: z.string(),
-    draft_process_version_id: z.string().uuid(),
-    implementation_plan: z.string(),
-    effective_date: z.string().nullish(),
-    migration_disposition: MigrationDispositionEnum.optional(),
-    migration_reason: z.string().optional(),
-    migrated_workorder_ids: z.unknown(),
-    approved_at: z.string().datetime({ offset: true }).nullable(),
-    approved_by: z.number().int().nullable(),
-    approved_by_username: z.string(),
-    implemented_at: z.string().datetime({ offset: true }).nullable(),
-    implemented_by: z.number().int().nullable(),
-    implemented_by_username: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    created_by: z.number().int().nullable(),
-    updated_at: z.string().datetime({ offset: true }),
-    is_open: z.boolean(),
-    notice_id: z.string().uuid(),
-    data_origin: DataOriginEnum,
-  })
-  .passthrough();
-const PaginatedProcessChangeOrderList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ProcessChangeOrder),
-  })
-  .passthrough();
+const ProcessChangeOrder = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullable(),
+  artifact_number: z.string(),
+  status: ProcessChangeOrderStatusEnum,
+  request: z.string().uuid(),
+  request_artifact_number: z.string(),
+  request_title: z.string(),
+  target_process_name: z.string(),
+  draft_process_version_id: z.string().uuid(),
+  implementation_plan: z.string(),
+  effective_date: z.string().nullish(),
+  migration_disposition: MigrationDispositionEnum.optional(),
+  migration_reason: z.string().optional(),
+  migrated_workorder_ids: z.unknown(),
+  approved_at: z.string().datetime({ offset: true }).nullable(),
+  approved_by: z.number().int().nullable(),
+  approved_by_username: z.string(),
+  implemented_at: z.string().datetime({ offset: true }).nullable(),
+  implemented_by: z.number().int().nullable(),
+  implemented_by_username: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  created_by: z.number().int().nullable(),
+  updated_at: z.string().datetime({ offset: true }),
+  is_open: z.boolean(),
+  notice_id: z.string().uuid(),
+  data_origin: DataOriginEnum,
+});
+const PaginatedProcessChangeOrderList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ProcessChangeOrder),
+});
 const PatchedProcessChangeOrderRequest = z
   .object({
     implementation_plan: z.string().min(1),
@@ -14548,8 +13832,7 @@ const PatchedProcessChangeOrderRequest = z
     migration_disposition: MigrationDispositionEnum,
     migration_reason: z.string(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const ProcessChangeStatusEnum = z.enum([
   "DRAFT",
   "SUBMITTED",
@@ -14559,55 +13842,49 @@ const ProcessChangeStatusEnum = z.enum([
   "CANCELLED",
 ]);
 const ChangeControlPriorityEnum = z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]);
-const ProcessChangeRequest = z
-  .object({
-    id: z.string().uuid(),
-    tenant: z.string().uuid().nullable(),
-    artifact_number: z.string(),
-    status: ProcessChangeStatusEnum,
-    priority: ChangeControlPriorityEnum.optional(),
-    title: z.string().max(255),
-    proposed_change: z.string(),
-    justification: z.string(),
-    risk_analysis: z.string(),
-    target_process: z.string().uuid(),
-    target_process_name: z.string(),
-    baseline_version_id: z.string().uuid().nullable(),
-    affected_workorders_snapshot: z.unknown(),
-    affected_workorders_count: z.number().int(),
-    customer_notification_required: z.boolean().optional(),
-    rejected_reason: z.string(),
-    submitted_at: z.string().datetime({ offset: true }).nullable(),
-    submitted_by: z.number().int().nullable(),
-    submitted_by_username: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    created_by: z.number().int().nullable(),
-    created_by_username: z.string(),
-    updated_at: z.string().datetime({ offset: true }),
-    is_open: z.boolean(),
-    order_id: z.string().uuid(),
-    data_origin: DataOriginEnum,
-  })
-  .passthrough();
-const PaginatedProcessChangeRequestList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(ProcessChangeRequest),
-  })
-  .passthrough();
-const ProcessChangeRequestRequest = z
-  .object({
-    priority: ChangeControlPriorityEnum.optional(),
-    title: z.string().min(1).max(255),
-    proposed_change: z.string().min(1),
-    justification: z.string().min(1),
-    risk_analysis: z.string().min(1),
-    target_process: z.string().uuid(),
-    customer_notification_required: z.boolean().optional(),
-  })
-  .passthrough();
+const ProcessChangeRequest = z.object({
+  id: z.string().uuid(),
+  tenant: z.string().uuid().nullable(),
+  artifact_number: z.string(),
+  status: ProcessChangeStatusEnum,
+  priority: ChangeControlPriorityEnum.optional(),
+  title: z.string().max(255),
+  proposed_change: z.string(),
+  justification: z.string(),
+  risk_analysis: z.string(),
+  target_process: z.string().uuid(),
+  target_process_name: z.string(),
+  baseline_version_id: z.string().uuid().nullable(),
+  affected_workorders_snapshot: z.unknown(),
+  affected_workorders_count: z.number().int(),
+  customer_notification_required: z.boolean().optional(),
+  rejected_reason: z.string(),
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
+  submitted_by: z.number().int().nullable(),
+  submitted_by_username: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  created_by: z.number().int().nullable(),
+  created_by_username: z.string(),
+  updated_at: z.string().datetime({ offset: true }),
+  is_open: z.boolean(),
+  order_id: z.string().uuid(),
+  data_origin: DataOriginEnum,
+});
+const PaginatedProcessChangeRequestList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ProcessChangeRequest),
+});
+const ProcessChangeRequestRequest = z.object({
+  priority: ChangeControlPriorityEnum.optional(),
+  title: z.string().min(1).max(255),
+  proposed_change: z.string().min(1),
+  justification: z.string().min(1),
+  risk_analysis: z.string().min(1),
+  target_process: z.string().uuid(),
+  customer_notification_required: z.boolean().optional(),
+});
 const PatchedProcessChangeRequestRequest = z
   .object({
     priority: ChangeControlPriorityEnum,
@@ -14618,197 +13895,185 @@ const PatchedProcessChangeRequestRequest = z
     target_process: z.string().uuid(),
     customer_notification_required: z.boolean(),
   })
-  .partial()
-  .passthrough();
-const GenerateReportRequest = z
-  .object({
-    report_type: z.string().min(1),
-    params: z.object({}).partial().passthrough().optional(),
-  })
-  .passthrough();
-const GenerateReportResponse = z
-  .object({ message: z.string(), task_id: z.string() })
-  .passthrough();
+  .partial();
+const GenerateReportRequest = z.object({
+  report_type: z.string().min(1),
+  params: z.object({}).partial().passthrough().optional(),
+});
+const GenerateReportResponse = z.object({
+  message: z.string(),
+  task_id: z.string(),
+});
 const GeneratedReportStatusEnum = z.enum(["PENDING", "COMPLETED", "FAILED"]);
-const GeneratedReport = z
-  .object({
-    id: z.string().uuid(),
-    report_type: z.string(),
-    generated_by: z.number().int().nullable(),
-    generated_by_name: z.string().nullable(),
-    generated_at: z.string().datetime({ offset: true }),
-    parameters: z.unknown(),
-    document: z.string().uuid().nullable(),
-    document_url: z.string().url().nullable(),
-    emailed_to: z.string().email().nullable(),
-    emailed_at: z.string().datetime({ offset: true }).nullable(),
-    status: GeneratedReportStatusEnum,
-    error_message: z.string().nullable(),
-  })
-  .passthrough();
-const PaginatedGeneratedReportList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(GeneratedReport),
-  })
-  .passthrough();
-const ReportTypesResponse = z
-  .object({ name: z.string(), title: z.string(), template: z.string() })
-  .passthrough();
+const GeneratedReport = z.object({
+  id: z.string().uuid(),
+  report_type: z.string(),
+  generated_by: z.number().int().nullable(),
+  generated_by_name: z.string().nullable(),
+  generated_at: z.string().datetime({ offset: true }),
+  parameters: z.unknown(),
+  document: z.string().uuid().nullable(),
+  document_url: z.string().url().nullable(),
+  emailed_to: z.string().email().nullable(),
+  emailed_at: z.string().datetime({ offset: true }).nullable(),
+  status: GeneratedReportStatusEnum,
+  error_message: z.string().nullable(),
+});
+const PaginatedGeneratedReportList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(GeneratedReport),
+});
+const ReportTypesResponse = z.object({
+  name: z.string(),
+  title: z.string(),
+  template: z.string(),
+});
 const ChartTypeEnum = z.enum(["XBAR_R", "XBAR_S", "I_MR"]);
 const BaselineStatusEnum = z.enum(["ACTIVE", "SUPERSEDED"]);
-const SPCBaselineList = z
-  .object({
-    id: z.string().uuid(),
-    measurement_definition: z.string().uuid(),
-    measurement_label: z.string(),
-    chart_type: ChartTypeEnum,
-    chart_type_display: z.string(),
-    subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
-    status: BaselineStatusEnum.optional(),
-    status_display: z.string(),
-    frozen_by: z.number().int().nullish(),
-    frozen_by_name: z.string().nullable(),
-    frozen_at: z.string().datetime({ offset: true }),
-    sample_count: z.number().int().gte(0).lte(2147483647).optional(),
-  })
-  .passthrough();
-const PaginatedSPCBaselineListList = z
-  .object({
-    count: z.number().int(),
-    next: z.string().url().nullish(),
-    previous: z.string().url().nullish(),
-    results: z.array(SPCBaselineList),
-  })
-  .passthrough();
-const SPCBaselineRequest = z
-  .object({
-    measurement_definition: z.string().uuid(),
-    chart_type: ChartTypeEnum,
-    subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
-    xbar_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    status: BaselineStatusEnum.optional(),
-    frozen_by: z.number().int().nullish(),
-    superseded_by: z.string().uuid().nullish(),
-    superseded_reason: z.string().optional(),
-    sample_count: z.number().int().gte(0).lte(2147483647).optional(),
-    notes: z.string().optional(),
-  })
-  .passthrough();
-const SPCBaseline = z
-  .object({
-    id: z.string().uuid(),
-    measurement_definition: z.string().uuid(),
-    measurement_label: z.string(),
-    process_name: z.string().nullable(),
-    step_name: z.string(),
-    chart_type: ChartTypeEnum,
-    chart_type_display: z.string(),
-    subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
-    xbar_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    status: BaselineStatusEnum.optional(),
-    status_display: z.string(),
-    frozen_by: z.number().int().nullish(),
-    frozen_by_name: z.string().nullable(),
-    frozen_at: z.string().datetime({ offset: true }),
-    superseded_by: z.string().uuid().nullish(),
-    superseded_at: z.string().datetime({ offset: true }).nullable(),
-    superseded_reason: z.string().optional(),
-    sample_count: z.number().int().gte(0).lte(2147483647).optional(),
-    notes: z.string().optional(),
-    control_limits: z.object({}).partial().passthrough(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
+const SPCBaselineList = z.object({
+  id: z.string().uuid(),
+  measurement_definition: z.string().uuid(),
+  measurement_label: z.string(),
+  chart_type: ChartTypeEnum,
+  chart_type_display: z.string(),
+  subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
+  status: BaselineStatusEnum.optional(),
+  status_display: z.string(),
+  frozen_by: z.number().int().nullish(),
+  frozen_by_name: z.string().nullable(),
+  frozen_at: z.string().datetime({ offset: true }),
+  sample_count: z.number().int().gte(0).lte(2147483647).optional(),
+});
+const PaginatedSPCBaselineListList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SPCBaselineList),
+});
+const SPCBaselineRequest = z.object({
+  measurement_definition: z.string().uuid(),
+  chart_type: ChartTypeEnum,
+  subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
+  xbar_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  status: BaselineStatusEnum.optional(),
+  frozen_by: z.number().int().nullish(),
+  superseded_by: z.string().uuid().nullish(),
+  superseded_reason: z.string().optional(),
+  sample_count: z.number().int().gte(0).lte(2147483647).optional(),
+  notes: z.string().optional(),
+});
+const SPCBaseline = z.object({
+  id: z.string().uuid(),
+  measurement_definition: z.string().uuid(),
+  measurement_label: z.string(),
+  process_name: z.string().nullable(),
+  step_name: z.string(),
+  chart_type: ChartTypeEnum,
+  chart_type_display: z.string(),
+  subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
+  xbar_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  status: BaselineStatusEnum.optional(),
+  status_display: z.string(),
+  frozen_by: z.number().int().nullish(),
+  frozen_by_name: z.string().nullable(),
+  frozen_at: z.string().datetime({ offset: true }),
+  superseded_by: z.string().uuid().nullish(),
+  superseded_at: z.string().datetime({ offset: true }).nullable(),
+  superseded_reason: z.string().optional(),
+  sample_count: z.number().int().gte(0).lte(2147483647).optional(),
+  notes: z.string().optional(),
+  control_limits: z.object({}).partial().passthrough(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
 const PatchedSPCBaselineRequest = z
   .object({
     measurement_definition: z.string().uuid(),
@@ -14865,209 +14130,178 @@ const PatchedSPCBaselineRequest = z
     sample_count: z.number().int().gte(0).lte(2147483647),
     notes: z.string(),
   })
-  .partial()
-  .passthrough();
-const SupersedeRequestRequest = z
-  .object({ reason: z.string() })
-  .partial()
-  .passthrough();
-const SPCBaselineFreezeRequest = z
-  .object({
-    measurement_definition_id: z.string().uuid(),
-    chart_type: ChartTypeEnum,
-    subgroup_size: z.number().int().gte(1).lte(25),
-    xbar_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    xbar_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    range_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    individual_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    mr_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullish(),
-    sample_count: z.number().int().optional().default(0),
-    notes: z.string().optional().default(""),
-  })
-  .passthrough();
-const MeasurementDefinitionSPC = z
-  .object({
-    id: z.string().uuid(),
-    label: z.string().max(100),
-    type: TypeEnum,
-    unit: z.string().max(50).optional(),
-    nominal: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    upper_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-    lower_tol: z
-      .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
-      .nullish(),
-  })
-  .passthrough();
-const SPCCapabilityResponse = z
-  .object({
-    definition: MeasurementDefinitionSPC,
-    sample_size: z.number().int(),
-    subgroup_size: z.number().int(),
-    num_subgroups: z.number().int(),
-    usl: z.number(),
-    lsl: z.number(),
-    mean: z.number(),
-    std_dev_within: z.number(),
-    std_dev_overall: z.number(),
-    cp: z.number().nullable(),
-    cpk: z.number().nullable(),
-    pp: z.number().nullable(),
-    ppk: z.number().nullable(),
-    interpretation: z.string(),
-  })
-  .passthrough();
-const MeasurementDataPoint = z
-  .object({
-    id: z.string().uuid(),
-    value: z.number(),
-    timestamp: z.string().datetime({ offset: true }),
-    report_id: z.string().uuid(),
-    part_erp_id: z.string(),
-    operator_name: z.string().nullable(),
-    is_within_spec: z.boolean(),
-  })
-  .passthrough();
-const SPCDataResponse = z
-  .object({
-    definition: MeasurementDefinitionSPC,
-    process_name: z.string(),
-    step_name: z.string(),
-    data_points: z.array(MeasurementDataPoint),
-    statistics: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const DimensionalResultsResponse = z
-  .object({
-    part: z.object({}).partial().passthrough().nullable(),
-    work_order: z.object({}).partial().passthrough().nullable(),
-    results: z.array(z.object({}).partial().passthrough()),
-    summary: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const ProcessStepSPC = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string(),
-    order: z.number().int(),
-    measurements: z.array(MeasurementDefinitionSPC),
-  })
-  .passthrough();
-const ProcessSPC = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string().max(50),
-    part_type_name: z.string(),
-    steps: z.array(ProcessStepSPC),
-  })
-  .passthrough();
-const TenantInfo = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
-    logo_url: z.string().nullable(),
-    primary_color: z.string().nullable(),
-    secondary_color: z.string().nullable(),
-    default_timezone: z.string(),
-    tier: z.string().nullable(),
-    status: z.string().nullable(),
-    trial_ends_at: z.string().datetime({ offset: true }).nullable(),
-    is_demo: z.boolean(),
-  })
-  .passthrough();
+  .partial();
+const SupersedeRequestRequest = z.object({ reason: z.string() }).partial();
+const SPCBaselineFreezeRequest = z.object({
+  measurement_definition_id: z.string().uuid(),
+  chart_type: ChartTypeEnum,
+  subgroup_size: z.number().int().gte(1).lte(25),
+  xbar_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  xbar_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  range_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  individual_lcl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_ucl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  mr_cl: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
+    .nullish(),
+  sample_count: z.number().int().optional().default(0),
+  notes: z.string().optional().default(""),
+});
+const MeasurementDefinitionSPC = z.object({
+  id: z.string().uuid(),
+  label: z.string().max(100),
+  type: TypeEnum,
+  unit: z.string().max(50).optional(),
+  nominal: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  upper_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+  lower_tol: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .nullish(),
+});
+const SPCCapabilityResponse = z.object({
+  definition: MeasurementDefinitionSPC,
+  sample_size: z.number().int(),
+  subgroup_size: z.number().int(),
+  num_subgroups: z.number().int(),
+  usl: z.number(),
+  lsl: z.number(),
+  mean: z.number(),
+  std_dev_within: z.number(),
+  std_dev_overall: z.number(),
+  cp: z.number().nullable(),
+  cpk: z.number().nullable(),
+  pp: z.number().nullable(),
+  ppk: z.number().nullable(),
+  interpretation: z.string(),
+});
+const MeasurementDataPoint = z.object({
+  id: z.string().uuid(),
+  value: z.number(),
+  timestamp: z.string().datetime({ offset: true }),
+  report_id: z.string().uuid(),
+  part_erp_id: z.string(),
+  operator_name: z.string().nullable(),
+  is_within_spec: z.boolean(),
+});
+const SPCDataResponse = z.object({
+  definition: MeasurementDefinitionSPC,
+  process_name: z.string(),
+  step_name: z.string(),
+  data_points: z.array(MeasurementDataPoint),
+  statistics: z.object({}).partial().passthrough(),
+});
+const DimensionalResultsResponse = z.object({
+  part: z.object({}).partial().passthrough().nullable(),
+  work_order: z.object({}).partial().passthrough().nullable(),
+  results: z.array(z.object({}).partial().passthrough()),
+  summary: z.object({}).partial().passthrough(),
+});
+const ProcessStepSPC = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  order: z.number().int(),
+  measurements: z.array(MeasurementDefinitionSPC),
+});
+const ProcessSPC = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  part_type_name: z.string(),
+  steps: z.array(ProcessStepSPC),
+});
+const TenantInfo = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
+  logo_url: z.string().nullable(),
+  primary_color: z.string().nullable(),
+  secondary_color: z.string().nullable(),
+  default_timezone: z.string(),
+  tier: z.string().nullable(),
+  status: z.string().nullable(),
+  trial_ends_at: z.string().datetime({ offset: true }).nullable(),
+  is_demo: z.boolean(),
+});
 const ModeEnum = z.enum(["saas", "dedicated"]);
-const DeploymentInfo = z
-  .object({ mode: ModeEnum, is_saas: z.boolean(), is_dedicated: z.boolean() })
-  .passthrough();
-const CurrentTenantResponse = z
-  .object({
-    tenant: TenantInfo.nullable(),
-    deployment: DeploymentInfo,
-    features: z.object({}).partial().passthrough(),
-    limits: z.object({}).partial().passthrough().nullable(),
-    user: z.object({}).partial().passthrough().nullable(),
-  })
-  .passthrough();
+const DeploymentInfo = z.object({
+  mode: ModeEnum,
+  is_saas: z.boolean(),
+  is_dedicated: z.boolean(),
+});
+const CurrentTenantResponse = z.object({
+  tenant: TenantInfo.nullable(),
+  deployment: DeploymentInfo,
+  features: z.object({}).partial().passthrough(),
+  limits: z.object({}).partial().passthrough().nullable(),
+  user: z.object({}).partial().passthrough().nullable(),
+});
 const ScaleEnum = z.enum(["small", "medium", "large"]);
 const DemoResetRequestRequest = z
   .object({ scale: ScaleEnum.default("small") })
-  .partial()
-  .passthrough();
-const DemoResetResponse = z
-  .object({
-    success: z.boolean(),
-    message: z.string(),
-    reset_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const DemoResetForbidden = z.object({ detail: z.string() }).passthrough();
-const TenantLogoResponse = z
-  .object({ logo_url: z.string().nullable() })
-  .passthrough();
-const TenantLogoDeleteResponse = z
-  .object({ logo_url: z.string().nullable() })
-  .passthrough();
-const TenantSettingsResponse = z
-  .object({
-    name: z.string(),
-    tier: z.string(),
-    status: z.string(),
-    settings: z.object({}).partial().passthrough(),
-    contact_email: z.string().email().nullable(),
-    contact_phone: z.string().nullable(),
-    website: z.string().url().nullable(),
-    address: z.string().nullable(),
-    default_timezone: z.string(),
-    logo_url: z.string().nullable(),
-    allowed_domains: z.array(z.string()),
-  })
-  .passthrough();
+  .partial();
+const DemoResetResponse = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  reset_at: z.string().datetime({ offset: true }),
+});
+const DemoResetForbidden = z.object({ detail: z.string() });
+const TenantLogoResponse = z.object({ logo_url: z.string().nullable() });
+const TenantLogoDeleteResponse = z.object({ logo_url: z.string().nullable() });
+const TenantSettingsResponse = z.object({
+  name: z.string(),
+  tier: z.string(),
+  status: z.string(),
+  settings: z.object({}).partial().passthrough(),
+  contact_email: z.string().email().nullable(),
+  contact_phone: z.string().nullable(),
+  website: z.string().url().nullable(),
+  address: z.string().nullable(),
+  default_timezone: z.string(),
+  logo_url: z.string().nullable(),
+  allowed_domains: z.array(z.string()),
+});
 const PatchedTenantSettingsUpdateRequestRequest = z
   .object({
     name: z.string().min(1),
@@ -15079,134 +14313,105 @@ const PatchedTenantSettingsUpdateRequestRequest = z
     default_timezone: z.string().min(1),
     allowed_domains: z.array(z.string().min(1)),
   })
-  .partial()
-  .passthrough();
-const TenantSettingsUpdateResponse = z
-  .object({
-    name: z.string(),
-    tier: z.string(),
-    status: z.string(),
-    settings: z.object({}).partial().passthrough(),
-    contact_email: z.string().email().nullable(),
-    contact_phone: z.string().nullable(),
-    website: z.string().url().nullable(),
-    address: z.string().nullable(),
-    default_timezone: z.string(),
-    logo_url: z.string().nullable(),
-    allowed_domains: z.array(z.string()),
-  })
-  .passthrough();
-const SignupRequest = z
-  .object({
-    company_name: z.string().min(1).max(100),
-    slug: z
-      .string()
-      .min(1)
-      .regex(/^[-a-zA-Z0-9_]+$/)
-      .optional(),
-    email: z.string().min(1).email(),
-    password: z.string().min(8),
-    first_name: z.string().min(1).max(30),
-    last_name: z.string().min(1).max(30),
-  })
-  .passthrough();
-const SignupResponse = z
-  .object({
-    message: z.string(),
-    tenant: z.object({}).partial().passthrough(),
-    user: z.object({}).partial().passthrough(),
-  })
-  .passthrough();
-const UserTenantsResponse = z
-  .object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string(),
-    logo_url: z.string().nullable(),
-    tier: z.string(),
-    is_current: z.boolean(),
-  })
-  .passthrough();
-const SwitchTenantRequestRequest = z
-  .object({ tenant_id: z.string().uuid() })
-  .passthrough();
-const SwitchTenantResponse = z
-  .object({
-    success: z.boolean(),
-    tenant_id: z.string().uuid(),
-    tenant_name: z.string(),
-  })
-  .passthrough();
-const EffectivePermissionsResponse = z
-  .object({
-    user_id: z.string(),
-    user_email: z.string(),
-    groups: z.array(z.object({}).partial().passthrough()),
-    effective_permissions: z.array(z.string()),
-    total_count: z.number().int(),
-  })
-  .passthrough();
-const LoginRequest = z
-  .object({
-    username: z.string().optional(),
-    email: z.string().email().optional(),
-    password: z.string().min(1),
-  })
-  .passthrough();
-const Token = z.object({ key: z.string().max(40) }).passthrough();
-const RestAuthDetail = z.object({ detail: z.string() }).passthrough();
-const PasswordChangeRequest = z
-  .object({
-    new_password1: z.string().min(1).max(128),
-    new_password2: z.string().min(1).max(128),
-  })
-  .passthrough();
-const PasswordResetRequest = z
-  .object({ email: z.string().min(1).email() })
-  .passthrough();
-const PasswordResetConfirmRequest = z
-  .object({
-    new_password1: z.string().min(1).max(128),
-    new_password2: z.string().min(1).max(128),
-    uid: z.string().min(1),
-    token: z.string().min(1),
-  })
-  .passthrough();
-const RegisterRequest = z
-  .object({
-    username: z.string().min(1).max(150),
-    email: z.string().min(1).email(),
-    password1: z.string().min(1),
-    password2: z.string().min(1),
-  })
-  .passthrough();
-const ResendEmailVerificationRequest = z
-  .object({ email: z.string().min(1).email() })
-  .passthrough();
-const VerifyEmailRequest = z.object({ key: z.string().min(1) }).passthrough();
-const UserDetails = z
-  .object({
-    pk: z.number().int(),
-    username: z
-      .string()
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    email: z.string().email(),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-  })
-  .passthrough();
-const UserDetailsRequest = z
-  .object({
-    username: z
-      .string()
-      .min(1)
-      .max(150)
-      .regex(/^[\w.@+-]+$/),
-    first_name: z.string().max(150).nullish(),
-    last_name: z.string().max(150).nullish(),
-  })
-  .passthrough();
+  .partial();
+const TenantSettingsUpdateResponse = z.object({
+  name: z.string(),
+  tier: z.string(),
+  status: z.string(),
+  settings: z.object({}).partial().passthrough(),
+  contact_email: z.string().email().nullable(),
+  contact_phone: z.string().nullable(),
+  website: z.string().url().nullable(),
+  address: z.string().nullable(),
+  default_timezone: z.string(),
+  logo_url: z.string().nullable(),
+  allowed_domains: z.array(z.string()),
+});
+const SignupRequest = z.object({
+  company_name: z.string().min(1).max(100),
+  slug: z
+    .string()
+    .min(1)
+    .regex(/^[-a-zA-Z0-9_]+$/)
+    .optional(),
+  email: z.string().min(1).email(),
+  password: z.string().min(8),
+  first_name: z.string().min(1).max(30),
+  last_name: z.string().min(1).max(30),
+});
+const SignupResponse = z.object({
+  message: z.string(),
+  tenant: z.object({}).partial().passthrough(),
+  user: z.object({}).partial().passthrough(),
+});
+const UserTenantsResponse = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string(),
+  logo_url: z.string().nullable(),
+  tier: z.string(),
+  is_current: z.boolean(),
+});
+const SwitchTenantRequestRequest = z.object({ tenant_id: z.string().uuid() });
+const SwitchTenantResponse = z.object({
+  success: z.boolean(),
+  tenant_id: z.string().uuid(),
+  tenant_name: z.string(),
+});
+const EffectivePermissionsResponse = z.object({
+  user_id: z.string(),
+  user_email: z.string(),
+  groups: z.array(z.object({}).partial().passthrough()),
+  effective_permissions: z.array(z.string()),
+  total_count: z.number().int(),
+});
+const LoginRequest = z.object({
+  username: z.string().optional(),
+  email: z.string().email().optional(),
+  password: z.string().min(1),
+});
+const Token = z.object({ key: z.string().max(40) });
+const RestAuthDetail = z.object({ detail: z.string() });
+const PasswordChangeRequest = z.object({
+  new_password1: z.string().min(1).max(128),
+  new_password2: z.string().min(1).max(128),
+});
+const PasswordResetRequest = z.object({ email: z.string().min(1).email() });
+const PasswordResetConfirmRequest = z.object({
+  new_password1: z.string().min(1).max(128),
+  new_password2: z.string().min(1).max(128),
+  uid: z.string().min(1),
+  token: z.string().min(1),
+});
+const RegisterRequest = z.object({
+  username: z.string().min(1).max(150),
+  email: z.string().min(1).email(),
+  password1: z.string().min(1),
+  password2: z.string().min(1),
+});
+const ResendEmailVerificationRequest = z.object({
+  email: z.string().min(1).email(),
+});
+const VerifyEmailRequest = z.object({ key: z.string().min(1) });
+const UserDetails = z.object({
+  pk: z.number().int(),
+  username: z
+    .string()
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  email: z.string().email(),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+});
+const UserDetailsRequest = z.object({
+  username: z
+    .string()
+    .min(1)
+    .max(150)
+    .regex(/^[\w.@+-]+$/),
+  first_name: z.string().max(150).nullish(),
+  last_name: z.string().max(150).nullish(),
+});
 const PatchedUserDetailsRequest = z
   .object({
     username: z
@@ -15217,17 +14422,14 @@ const PatchedUserDetailsRequest = z
     first_name: z.string().max(150).nullable(),
     last_name: z.string().max(150).nullable(),
   })
-  .partial()
-  .passthrough();
-const CapaTaskAssigneeRequest = z
-  .object({
-    task: z.string().uuid(),
-    user: z.number().int(),
-    status: CapaTaskStatusEnum.optional(),
-    completion_notes: z.string().nullish(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
+  .partial();
+const CapaTaskAssigneeRequest = z.object({
+  task: z.string().uuid(),
+  user: z.number().int(),
+  status: CapaTaskStatusEnum.optional(),
+  completion_notes: z.string().nullish(),
+  archived: z.boolean().optional(),
+});
 const FishboneNested = z
   .object({
     problem_statement: z.string().nullable(),
@@ -15239,8 +14441,7 @@ const FishboneNested = z
     environment_causes: z.string().nullable(),
     identified_root_cause: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
+  .partial();
 const FiveWhysNested = z
   .object({
     why_1_question: z.string().nullable(),
@@ -15255,58 +14456,49 @@ const FiveWhysNested = z
     why_5_answer: z.string().nullable(),
     identified_root_cause: z.string().nullable(),
   })
-  .partial()
-  .passthrough();
-const ProcessStepRequest = z
-  .object({
-    step_id: z.string().uuid(),
-    order: z.number().int().gte(-2147483648).lte(2147483647),
-    is_entry_point: z.boolean().optional(),
-  })
-  .passthrough();
-const RootCauseRequest = z
-  .object({
-    rca_record: z.string().uuid(),
-    description: z.string().min(1),
-    category: RootCauseCategoryEnum,
-    role: RoleEnum.optional(),
-    sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
-    archived: z.boolean().optional(),
-  })
-  .passthrough();
-const StepEdgeRequest = z
-  .object({
-    from_step: z.string().uuid(),
-    to_step: z.string().uuid(),
-    edge_type: EdgeTypeEnum.optional(),
-    condition_measurement: z.string().uuid().nullish(),
-    condition_operator: z.union([ConditionOperatorEnum, BlankEnum]).optional(),
-    condition_value: z
-      .string()
-      .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
-      .nullish(),
-  })
-  .passthrough();
-const StepRequest = z
-  .object({
-    name: z.string().min(1).max(50),
-    description: z.string().nullish(),
-    part_type: z.string().uuid(),
-    expected_duration: z.string().nullish(),
-    requires_qa_signoff: z.boolean().optional(),
-    sampling_required: z.boolean().optional(),
-    min_sampling_rate: z.number().optional(),
-    block_on_quarantine: z.boolean().optional(),
-    pass_threshold: z.number().optional(),
-    step_type: StepTypeEnum.optional(),
-    is_decision_point: z.boolean().optional(),
-    decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
-    is_terminal: z.boolean().optional(),
-    terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
-    max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-    revisit_assignment: RevisitAssignmentEnum.optional(),
-  })
-  .passthrough();
+  .partial();
+const ProcessStepRequest = z.object({
+  step_id: z.string().uuid(),
+  order: z.number().int().gte(-2147483648).lte(2147483647),
+  is_entry_point: z.boolean().optional(),
+});
+const RootCauseRequest = z.object({
+  rca_record: z.string().uuid(),
+  description: z.string().min(1),
+  category: RootCauseCategoryEnum,
+  role: RoleEnum.optional(),
+  sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  archived: z.boolean().optional(),
+});
+const StepEdgeRequest = z.object({
+  from_step: z.string().uuid(),
+  to_step: z.string().uuid(),
+  edge_type: EdgeTypeEnum.optional(),
+  condition_measurement: z.string().uuid().nullish(),
+  condition_operator: z.union([ConditionOperatorEnum, BlankEnum]).optional(),
+  condition_value: z
+    .string()
+    .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
+    .nullish(),
+});
+const StepRequest = z.object({
+  name: z.string().min(1).max(50),
+  description: z.string().nullish(),
+  part_type: z.string().uuid(),
+  expected_duration: z.string().nullish(),
+  requires_qa_signoff: z.boolean().optional(),
+  sampling_required: z.boolean().optional(),
+  min_sampling_rate: z.number().optional(),
+  block_on_quarantine: z.boolean().optional(),
+  pass_threshold: z.number().optional(),
+  step_type: StepTypeEnum.optional(),
+  is_decision_point: z.boolean().optional(),
+  decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_terminal: z.boolean().optional(),
+  terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
+  max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
+  revisit_assignment: RevisitAssignmentEnum.optional(),
+});
 
 export const schemas = {
   ApprovalStatusEnum,
@@ -15893,7 +15085,7 @@ const endpoints = makeApi([
       {
         name: "body",
         type: "Body",
-        schema: z.object({ query: z.string().min(1) }).passthrough(),
+        schema: z.object({ query: z.string().min(1) }),
       },
     ],
     response: EmbedQueryResponse,
@@ -16014,7 +15206,7 @@ POST: Executes the query.`,
         schema: VectorSearchRequestRequest,
       },
     ],
-    response: z.object({ results: z.array(z.unknown()) }).passthrough(),
+    response: z.object({ results: z.array(z.unknown()) }),
   },
   {
     method: "get",
@@ -16670,7 +15862,7 @@ identity verification, and delegation support.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ change_description: z.string() }).passthrough(),
+        schema: z.object({ change_description: z.string() }),
       },
       {
         name: "id",
@@ -16843,10 +16035,7 @@ identity verification, and delegation support.`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ reason: z.string().default("") })
-          .partial()
-          .passthrough(),
+        schema: z.object({ reason: z.string().default("") }).partial(),
       },
       {
         name: "id",
@@ -17211,9 +16400,7 @@ identity verification, and delegation support.`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ change_description: z.string().min(1) })
-          .passthrough(),
+        schema: z.object({ change_description: z.string().min(1) }),
       },
       {
         name: "id",
@@ -17810,20 +16997,17 @@ identity verification, and delegation support.`,
             pending_verification: z.number().int(),
             closed: z.number().int(),
           })
-          .partial()
-          .passthrough(),
+          .partial(),
         by_severity: z
           .object({
             CRITICAL: z.number().int(),
             MAJOR: z.number().int(),
             MINOR: z.number().int(),
           })
-          .partial()
-          .passthrough(),
+          .partial(),
         overdue: z.number().int(),
       })
-      .partial()
-      .passthrough(),
+      .partial(),
   },
   {
     method: "get",
@@ -18874,10 +18058,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ reason: z.string().default("") })
-          .partial()
-          .passthrough(),
+        schema: z.object({ reason: z.string().default("") }).partial(),
       },
       {
         name: "id",
@@ -22172,7 +21353,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ notes: z.string() }).partial().passthrough(),
+        schema: z.object({ notes: z.string() }).partial(),
       },
       {
         name: "id",
@@ -22192,7 +21373,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ notes: z.string() }).partial().passthrough(),
+        schema: z.object({ notes: z.string() }).partial(),
       },
       {
         name: "id",
@@ -22212,7 +21393,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial().passthrough(),
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -22305,7 +21486,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ name: z.string().min(1).max(150) }).passthrough(),
+        schema: z.object({ name: z.string().min(1).max(150) }),
       },
     ],
     response: Group,
@@ -22335,10 +21516,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ name: z.string().min(1).max(150) })
-          .partial()
-          .passthrough(),
+        schema: z.object({ name: z.string().min(1).max(150) }).partial(),
       },
       {
         name: "id",
@@ -22682,10 +21860,7 @@ Components are created during core disassembly, then either:
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ erp_id: z.string().nullable() })
-          .partial()
-          .passthrough(),
+        schema: z.object({ erp_id: z.string().nullable() }).partial(),
       },
       {
         name: "id",
@@ -22705,10 +21880,7 @@ Components are created during core disassembly, then either:
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ reason: z.string().default("") })
-          .partial()
-          .passthrough(),
+        schema: z.object({ reason: z.string().default("") }).partial(),
       },
       {
         name: "id",
@@ -23266,7 +22438,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
         schema: z.string().uuid(),
       },
     ],
-    response: z.object({ status: z.string() }).passthrough(),
+    response: z.object({ status: z.string() }),
   },
   {
     method: "get",
@@ -24035,9 +23207,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ change_description: z.string().min(1) })
-          .passthrough(),
+        schema: z.object({ change_description: z.string().min(1) }),
       },
       {
         name: "id",
@@ -24570,7 +23740,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: z.object({ step_id: z.string().uuid() }).passthrough(),
+        schema: z.object({ step_id: z.string().uuid() }),
       },
       {
         name: "id",
@@ -24646,8 +23816,7 @@ a push to HubSpot.`,
         type: "Body",
         schema: z
           .object({ milestone_id: z.string().uuid().nullable() })
-          .partial()
-          .passthrough(),
+          .partial(),
       },
       {
         name: "id",
@@ -24766,7 +23935,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: z.object({ file: z.instanceof(File) }).passthrough(),
+        schema: z.object({ file: z.instanceof(File) }),
       },
     ],
     response: ImportPreviewResponse,
@@ -25098,10 +24267,7 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ decision: z.string().min(1) })
-          .partial()
-          .passthrough(),
+        schema: z.object({ decision: z.string().min(1) }).partial(),
       },
       {
         name: "id",
@@ -25276,7 +24442,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: z.object({ file: z.instanceof(File) }).passthrough(),
+        schema: z.object({ file: z.instanceof(File) }),
       },
       {
         name: "status__in",
@@ -25683,7 +24849,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: z.object({ file: z.instanceof(File) }).passthrough(),
+        schema: z.object({ file: z.instanceof(File) }),
       },
       {
         name: "part_type",
@@ -26638,8 +25804,7 @@ Usage:
         type: "Body",
         schema: z
           .object({ name_suffix: z.string().min(1).default(" (Copy)") })
-          .partial()
-          .passthrough(),
+          .partial(),
       },
       {
         name: "id",
@@ -26659,10 +25824,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ reason: z.string().min(1) })
-          .partial()
-          .passthrough(),
+        schema: z.object({ reason: z.string().min(1) }).partial(),
       },
       {
         name: "id",
@@ -27015,7 +26177,7 @@ Usage:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ change_description: z.string() }).passthrough(),
+        schema: z.object({ change_description: z.string() }),
       },
       {
         name: "id",
@@ -28895,7 +28057,7 @@ Standard CRUD plus custom actions:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial().passthrough(),
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -30124,10 +29286,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ expiry_hours: z.number().int() })
-          .partial()
-          .passthrough(),
+        schema: z.object({ expiry_hours: z.number().int() }).partial(),
       },
       {
         name: "id",
@@ -30147,7 +29306,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial().passthrough(),
+        schema: z.object({ reason: z.string() }).partial(),
       },
       {
         name: "id",
@@ -30538,9 +29697,7 @@ Returns the active + fallback rulesets for a given step`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ change_description: z.string().min(1) })
-          .passthrough(),
+        schema: z.object({ change_description: z.string().min(1) }),
       },
       {
         name: "id",
@@ -30677,7 +29834,7 @@ Calls the reset_demo management command which clears and repopulates data.`,
     errors: [
       {
         status: 403,
-        schema: z.object({ detail: z.string() }).passthrough(),
+        schema: z.object({ detail: z.string() }),
       },
     ],
   },
@@ -30694,13 +29851,10 @@ DELETE: Remove the current logo`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ logo: z.instanceof(File) })
-          .partial()
-          .passthrough(),
+        schema: z.object({ logo: z.instanceof(File) }).partial(),
       },
     ],
-    response: z.object({ logo_url: z.string().nullable() }).passthrough(),
+    response: z.object({ logo_url: z.string().nullable() }),
   },
   {
     method: "delete",
@@ -30711,7 +29865,7 @@ DELETE: Remove the current logo`,
 POST: Upload a new logo (multipart/form-data with &#x27;logo&#x27; file field)
 DELETE: Remove the current logo`,
     requestFormat: "json",
-    response: z.object({ logo_url: z.string().nullable() }).passthrough(),
+    response: z.object({ logo_url: z.string().nullable() }),
   },
   {
     method: "get",
@@ -30965,7 +30119,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
         schema: z.string(),
       },
     ],
-    response: z.object({ status: z.string() }).passthrough(),
+    response: z.object({ status: z.string() }),
   },
   {
     method: "get",
@@ -31826,10 +30980,7 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
       {
         name: "body",
         type: "Body",
-        schema: z
-          .object({ notes: z.string().min(1) })
-          .partial()
-          .passthrough(),
+        schema: z.object({ notes: z.string().min(1) }).partial(),
       },
       {
         name: "id",
@@ -31941,7 +31092,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ email: z.string().min(1).email() }).passthrough(),
+        schema: z.object({ email: z.string().min(1).email() }),
       },
       {
         name: "id",
@@ -31953,7 +31104,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     errors: [
       {
         status: 400,
-        schema: z.object({ detail: z.string() }).passthrough(),
+        schema: z.object({ detail: z.string() }),
       },
     ],
   },
@@ -32935,7 +32086,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ user_id: z.number().int() }).passthrough(),
+        schema: z.object({ user_id: z.number().int() }),
       },
     ],
     response: z.object({}).partial().passthrough(),
@@ -32960,7 +32111,7 @@ Stores the selected tenant in the session.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ tenant_id: z.string().uuid() }).passthrough(),
+        schema: z.object({ tenant_id: z.string().uuid() }),
       },
     ],
     response: SwitchTenantResponse,
@@ -32971,10 +32122,7 @@ Stores the selected tenant in the session.`,
     alias: "get_user_api_token",
     description: `Get or create an API token for the current session-authenticated user`,
     requestFormat: "json",
-    response: z
-      .object({ token: z.string(), created: z.boolean() })
-      .partial()
-      .passthrough(),
+    response: z.object({ token: z.string(), created: z.boolean() }).partial(),
     errors: [
       {
         status: 401,
@@ -33172,7 +32320,7 @@ Provides endpoints for:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ invitation_id: z.number().int() }).passthrough(),
+        schema: z.object({ invitation_id: z.number().int() }),
       },
     ],
     response: z.object({}).partial().passthrough(),
@@ -33187,7 +32335,7 @@ Provides endpoints for:
       {
         name: "body",
         type: "Body",
-        schema: z.object({ token: z.string().min(1) }).passthrough(),
+        schema: z.object({ token: z.string().min(1) }),
       },
     ],
     response: ValidateTokenResponse,
@@ -33802,7 +32950,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: z.object({ file: z.instanceof(File) }).passthrough(),
+        schema: z.object({ file: z.instanceof(File) }),
       },
     ],
     response: ImportPreviewResponse,
@@ -33891,7 +33039,7 @@ Return the REST Framework Token Object&#x27;s key.`,
         schema: LoginRequest,
       },
     ],
-    response: z.object({ key: z.string().max(40) }).passthrough(),
+    response: z.object({ key: z.string().max(40) }),
   },
   {
     method: "post",
@@ -33902,7 +33050,7 @@ assigned to the current User object.
 
 Accepts/Returns nothing.`,
     requestFormat: "json",
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -33920,7 +33068,7 @@ Returns the success/fail message.`,
         schema: PasswordChangeRequest,
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -33935,10 +33083,10 @@ Returns the success/fail message.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ email: z.string().min(1).email() }).passthrough(),
+        schema: z.object({ email: z.string().min(1).email() }),
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -33958,7 +33106,7 @@ Returns the success/fail message.`,
         schema: PasswordResetConfirmRequest,
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -33975,7 +33123,7 @@ Accepts the following POST parameters: username, email, password1, password2.`,
         schema: RegisterRequest,
       },
     ],
-    response: z.object({ key: z.string().max(40) }).passthrough(),
+    response: z.object({ key: z.string().max(40) }),
   },
   {
     method: "post",
@@ -33989,10 +33137,10 @@ Accepts the following POST parameter: email.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ email: z.string().min(1).email() }).passthrough(),
+        schema: z.object({ email: z.string().min(1).email() }),
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -34006,10 +33154,10 @@ Accepts the following POST parameter: key.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ key: z.string().min(1) }).passthrough(),
+        schema: z.object({ key: z.string().min(1) }),
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "get",
@@ -34077,7 +33225,7 @@ Returns the success/fail message.`,
         schema: z.string(),
       },
     ],
-    response: z.object({ detail: z.string() }).passthrough(),
+    response: z.object({ detail: z.string() }),
   },
 ]);
 

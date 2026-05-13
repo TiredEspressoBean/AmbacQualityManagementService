@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,20 +11,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveSteps(
-  queries?: StepsListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<StepsListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<StepsListResponse, Error>({
-    queryKey: ["step", queries, config],
+export const stepsOptions = (queries?: StepsListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["step", queries, config] as const,
     queryFn: () =>
       api.api_Steps_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<StepsListResponse>,
+  });
+
+export const stepsMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "Steps", "Steps"] as const,
+    queryFn: () => api.api_Steps_metadata_retrieve(),
+  });
+
+export function useRetrieveSteps(
+  queries?: StepsListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof stepsOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...stepsOptions(queries, config),
     ...options,
   });
 }

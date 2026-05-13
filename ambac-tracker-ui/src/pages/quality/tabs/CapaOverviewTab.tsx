@@ -190,8 +190,9 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                     <CardContent>
                         <ul className="space-y-1">
                             {(qualityReportsData || qualityReportIds).map((report: { id?: string; report_number?: string } | string) => {
-                                const id = report?.id || report
-                                const name = report?.report_number || `NCR-${id}`
+                                const isObj = typeof report === "object" && report !== null;
+                                const id = isObj ? report.id : report;
+                                const name = (isObj ? report.report_number : undefined) || `NCR-${id}`;
                                 return (
                                     <li key={id}>
                                         <Link

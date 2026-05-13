@@ -1,16 +1,19 @@
 import { api } from "@/lib/api/generated";
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 type RetrieveMeasurementDefinitionInput = Parameters<typeof api.api_MeasurementDefinitions_retrieve>[0];
-type RetrieveMeasurementDefinitionResponse = Awaited<ReturnType<typeof api.api_MeasurementDefinitions_retrieve>>;
+
+export const retrieveMeasurementDefinitionOptions = (input: RetrieveMeasurementDefinitionInput) => queryOptions({
+    queryKey: ["measurementDefinition", input] as const,
+    queryFn: () => api.api_MeasurementDefinitions_retrieve(input),
+});
 
 export const useRetrieveMeasurementDefinition = (
     input: RetrieveMeasurementDefinitionInput,
-    options?: UseQueryOptions<RetrieveMeasurementDefinitionResponse>
+    options?: Omit<ReturnType<typeof retrieveMeasurementDefinitionOptions>, "queryKey" | "queryFn">
 ) => {
-    return useQuery<RetrieveMeasurementDefinitionResponse>({
-        queryKey: ["measurementDefinition", input],
-        queryFn: () => api.api_MeasurementDefinitions_retrieve(input),
+    return useQuery({
+        ...retrieveMeasurementDefinitionOptions(input),
         ...options,
     });
 };

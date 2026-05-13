@@ -115,6 +115,7 @@ export function MilestonesEditorPage() {
     const [, setSaving] = useState(false);
 
     // Handle both paginated ({results: [...]}) and unpaginated ([...]) responses
+    // eslint-disable-next-line local/no-as-any -- useListMilestoneTemplates may return paginated or array shape; checked at runtime below
     const rawData = templates as any;
     const templatesList: MilestoneTemplate[] = Array.isArray(rawData)
         ? rawData
@@ -187,6 +188,7 @@ export function MilestonesEditorPage() {
     const handleAdd = async (template: MilestoneTemplate) => {
         const maxOrder = template.milestones.reduce((max, m) => Math.max(max, m.display_order), -1);
         try {
+            // eslint-disable-next-line local/no-as-any -- Milestone create body type requires all fields from generated schema; only a subset is needed at runtime
             await createMilestone.mutateAsync({
                 template: template.id,
                 name: "New Milestone",

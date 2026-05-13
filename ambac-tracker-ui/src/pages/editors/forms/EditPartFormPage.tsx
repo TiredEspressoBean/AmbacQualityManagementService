@@ -21,12 +21,10 @@ import {useRetrieveProcesses} from "@/hooks/useRetrieveProcesses.ts";
 import {useRetrieveSteps} from "@/hooks/useRetrieveSteps.ts";
 import {schemas} from "@/lib/api/generated.ts";
 import type {Schema} from "@/lib/api/types";
-import {useRetrievePart} from "@/hooks/useRetrievePart.ts";
+import {useRetrievePart, useCreatePart, useUpdatePart} from "@/hooks/parts";
 import {useParams} from "@tanstack/react-router";
 import { ReportButton } from "@/components/reports/ReportButton";
 import {useRetrieveOrder} from "@/hooks/useRetrieveOrder.ts";
-import {useCreatePart} from "@/hooks/useCreatePart.ts";
-import {useUpdatePart} from "@/hooks/useUpdatePart.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import {isFieldRequired} from "@/lib/zod-config";
 

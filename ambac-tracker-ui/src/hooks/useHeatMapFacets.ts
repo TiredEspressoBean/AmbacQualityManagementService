@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, queryOptions } from "@tanstack/react-query"
 import { api } from "@/lib/api/generated.ts"
 
 interface FacetFilters {
@@ -9,13 +9,17 @@ interface FacetFilters {
     created_at__lte?: string;
 }
 
+export const heatMapFacetsOptions = (filters: FacetFilters) => queryOptions({
+    queryKey: ["heatmap-facets", filters] as const,
+    queryFn: () => api.api_HeatMapAnnotation_facets_retrieve(filters as never),
+});
+
 export function useHeatMapFacets(
     filters: FacetFilters,
     options?: { enabled?: boolean }
 ) {
     return useQuery({
-        queryKey: ["heatmap-facets", filters],
-        queryFn: () => api.api_HeatMapAnnotation_facets_retrieve(filters),
+        ...heatMapFacetsOptions(filters),
         enabled: options?.enabled ?? true,
     });
 }

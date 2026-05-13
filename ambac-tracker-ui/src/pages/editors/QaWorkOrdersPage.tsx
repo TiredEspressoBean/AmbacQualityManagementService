@@ -1,7 +1,8 @@
 import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
 import { useNavigate } from "@tanstack/react-router";
-import { ModelEditorPage } from "@/pages/editors/ModelEditorPage.tsx";
+import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { Schema } from "@/lib/api/types";
 
 // Custom wrapper hook for consistent usage
 function useQaWorkOrdersList({
@@ -25,10 +26,19 @@ function useQaWorkOrdersList({
     });
 }
 
+type WO = Schema<"WorkOrderList">;
+
+// Sub-field shapes not captured by the openapi-typescript spec (both typed as {})
+type ProcessInfo = { name?: string };
+type QaProgress = { completed?: number; required?: number };
+type OrderInfo = { name?: string; company?: { name?: string }; customer?: { first_name?: string; last_name?: string } };
+
+const col = createColumnHelper<WO>();
+
 export function QaWorkOrdersPage() {
     const navigate = useNavigate();
 
-    const handleWorkOrderClick = (workOrder: any) => {
+    const handleWorkOrderClick = (workOrder: WO) => {
         navigate({ to: `/workorder/${workOrder.id}` });
     };
 
@@ -36,7 +46,7 @@ export function QaWorkOrdersPage() {
         <ModelEditorPage
             title="Work Orders"
             useList={useQaWorkOrdersList}
-            generateDetailLink={(workOrder: any) => `/workorder/${workOrder.id}`}
+            generateDetailLink={(workOrder: WO) => `/workorder/${workOrder.id}`}
             showDetailsLink={true}
             sortOptions={[
                 { label: "Due Date (Earliest)", value: "expected_completion" },
@@ -44,9 +54,9 @@ export function QaWorkOrdersPage() {
                 { label: "Created (Newest)", value: "-created_at" },
             ]}
             columns={[
-                {
+                col({
                     header: "Work Order",
-                    renderCell: (wo: any) => (
+                    renderCell: (wo) => (
                         <button
                             onClick={() => handleWorkOrderClick(wo)}
                             className="font-medium hover:underline text-left"
@@ -54,16 +64,19 @@ export function QaWorkOrdersPage() {
                             {wo.ERP_id}
                         </button>
                     )
-                },
-                {
+                }),
+                col({
                     header: "Process",
-                    renderCell: (wo: any) => wo.process_info?.name || <span className="text-muted-foreground">—</span>
-                },
-                {
+                    // eslint-disable-next-line local/no-double-cast-via-unknown -- process_info is {} in openapi spec; actual shape has .name
+                    renderCell: (wo) => (wo.process_info as unknown as ProcessInfo)?.name || <span className="text-muted-foreground">—</span>
+                }),
+                col({
                     header: "QA Progress",
-                    renderCell: (wo: any) => {
-                        const completed = wo.qa_progress?.completed || 0;
-                        const required = wo.qa_progress?.required || 0;
+                    renderCell: (wo) => {
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- qa_progress is {} in openapi spec; actual shape has .completed/.required
+                        const progress = wo.qa_progress as unknown as QaProgress;
+                        const completed = progress?.completed ?? 0;
+                        const required = progress?.required ?? 0;
 
                         if (required === 0) {
                             return <span className="text-muted-foreground">No QA Required</span>;
@@ -80,18 +93,19 @@ export function QaWorkOrdersPage() {
                             </div>
                         );
                     }
-                },
-                {
+                }),
+                col({
                     header: "Due Date",
-                    renderCell: (wo: any) => {
+                    renderCell: (wo) => {
                         if (!wo.expected_completion) return <span className="text-muted-foreground">—</span>;
                         return new Date(wo.expected_completion).toLocaleDateString();
                     }
-                },
-                {
+                }),
+                col({
                     header: "Customer",
-                    renderCell: (wo: any) => {
-                        const orderInfo = wo.related_order_info;
+                    renderCell: (wo) => {
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- related_order_info is {} in openapi spec; actual shape has .company/.customer
+                        const orderInfo = wo.related_order_info as unknown as OrderInfo | undefined;
                         if (!orderInfo) return <span className="text-muted-foreground">—</span>;
 
                         // Prefer company name, fall back to customer name
@@ -102,11 +116,12 @@ export function QaWorkOrdersPage() {
                         }
                         return orderInfo.name || <span className="text-muted-foreground">—</span>;
                     }
-                },
-                {
+                }),
+                col({
                     header: "Order",
-                    renderCell: (wo: any) => wo.related_order_info?.name || <span className="text-muted-foreground">—</span>
-                },
+                    // eslint-disable-next-line local/no-double-cast-via-unknown -- related_order_info is {} in openapi spec; actual shape has .name
+                    renderCell: (wo) => (wo.related_order_info as unknown as OrderInfo)?.name || <span className="text-muted-foreground">—</span>
+                }),
             ]}
         />
     );

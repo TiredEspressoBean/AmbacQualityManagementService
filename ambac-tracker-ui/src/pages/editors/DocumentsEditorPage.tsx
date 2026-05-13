@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
+import { useRetrieveDocuments, documentsOptions, documentsMetadataOptions } from "@/hooks/useRetrieveDocuments";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditDocumentsActionsCell } from "@/components/edit-documents-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { FileSignature } from "lucide-react";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -21,14 +20,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchDocumentsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["document", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Documents_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Documents", "Documents"],
-        queryFn: () => api.api_Documents_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(documentsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(documentsMetadataOptions());
 };
 
 // Custom wrapper hook with filter support
@@ -46,7 +39,9 @@ function useDocumentsListWithFilter(needsMyApproval: boolean) {
         search?: string;
         filters?: Record<string, string>;
     }) {
+         
         return useRetrieveDocuments(
+            // eslint-disable-next-line local/no-as-any -- `needs_my_approval` is a backend-only filter not declared in the OpenAPI spec
             {
                 offset,
                 limit,
@@ -138,7 +133,7 @@ export function DocumentsEditorPage() {
                 }),
                 col({
                     header: "Uploaded By",
-                    renderCell: (doc) => doc.uploaded_by_info?.full_name || doc.uploaded_by_info?.email || "—",
+                    renderCell: (doc) => (doc.uploaded_by_info?.full_name as string | undefined) || (doc.uploaded_by_info?.email as string | undefined) || "—",
                     priority: 5,
                 }),
             ]}

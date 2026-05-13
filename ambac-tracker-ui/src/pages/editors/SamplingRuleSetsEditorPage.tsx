@@ -1,8 +1,7 @@
-import { useRetrieveSamplingRulesSets } from "@/hooks/useRetrieveSamplingRulesSets";
+import { useRetrieveSamplingRulesSets, samplingRuleSetsOptions, samplingRuleSetsMetadataOptions } from "@/hooks/useRetrieveSamplingRulesSets";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditRuleTypeActionsCell } from "@/components/edit-sample-rule-types-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchSamplingRuleSetsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["sampling-rules-sets", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Sampling_rule_sets_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "SamplingRuleSets", "Sampling-rule-sets"],
-        queryFn: () => api.api_Sampling_rule_sets_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(samplingRuleSetsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(samplingRuleSetsMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage
@@ -61,7 +54,7 @@ export function SamplingRuleSetsEditorPage() {
             showDetailsLink={true}
             useList={useSamplingRuleList}
             columns={[
-                col({ header: "Rule Set Name", renderCell: (ruleSet) => ruleSet.name || ruleSet.code || "-", priority: 1 }),
+                col({ header: "Rule Set Name", renderCell: (ruleSet) => ruleSet.name || "-", priority: 1 }),
                 col({ header: "Part Type", renderCell: (ruleSet) => ruleSet.part_type_name ?? "-", priority: 2 }),
                 col({ header: "Process", renderCell: (ruleSet) => ruleSet.process_name ?? "-", priority: 3 }),
                 col({ header: "Active", renderCell: (ruleSet) => ruleSet.active ? "Yes" : "No", priority: 1 }),

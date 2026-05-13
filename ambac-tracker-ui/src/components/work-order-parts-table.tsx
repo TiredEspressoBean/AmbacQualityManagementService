@@ -19,26 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
-import { usePartTraveler } from "@/hooks/usePartTraveler";
+import { useRetrieveParts } from "@/hooks/parts";
+import { usePartTraveler } from "@/hooks/parts";
 import { cn } from "@/lib/utils";
-
-type PartsStatusEnum =
-    | "PENDING"
-    | "IN_PROGRESS"
-    | "AWAITING_QA"
-    | "READY_FOR_NEXT_STEP"
-    | "COMPLETED"
-    | "QUARANTINED"
-    | "REWORK_NEEDED"
-    | "REWORK_IN_PROGRESS"
-    | "SCRAPPED"
-    | "CANCELLED"
-    | "SHIPPED"
-    | "IN_STOCK"
-    | "AWAITING_PICKUP"
-    | "CORE_BANKED"
-    | "RMA_CLOSED";
 
 type Props = {
     workOrderId: string;
@@ -127,7 +110,7 @@ function PartStepHistory({ partId }: { partId: string }) {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                {step.quality_status && step.quality_status !== "null" && (
+                                {step.quality_status && (
                                     <Badge
                                         variant={step.quality_status === "PASS" ? "default" : "destructive"}
                                         className="text-xs"
@@ -157,7 +140,7 @@ export function WorkOrderPartsTable({ workOrderId, onPartSelect, selectedPartId 
         limit: 200,
     });
 
-    const parts = partsData?.results || [];
+    const parts = useMemo(() => partsData?.results ?? [], [partsData?.results]);
 
     // Filter parts by status
     const filteredParts = useMemo(() => {
@@ -291,7 +274,8 @@ export function WorkOrderPartsTable({ workOrderId, onPartSelect, selectedPartId 
                                                 <StatusBadge status={part.part_status || "PENDING"} />
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {(part.step_info as any)?.name || part.step_description || "-"}
+                                                {/* eslint-disable-next-line local/no-as-any -- step_info typed as {} passthrough in schema; .name field exists at runtime */}
+                                {(part.step_info as any)?.name || part.step_description || "-"}
                                             </TableCell>
                                             <TableCell>
                                                 <Button

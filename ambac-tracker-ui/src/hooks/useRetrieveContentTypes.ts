@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
 // Extract queries type from Zodios endpoint
@@ -9,20 +9,20 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveContentTypesOptions = (queries?: ContentTypesListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["contentTypes", queries, config] as const,
+  queryFn: () => api.api_content_types_list(
+    (queries || config ? { queries, ...config } : undefined) as never,
+  ),
+});
+
 export function useRetrieveContentTypes(
   queries?: ContentTypesListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_content_types_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<ReturnType<typeof retrieveContentTypesOptions>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: ["contentTypes", queries, config],
-    queryFn: () => api.api_content_types_list(queries || config ? { queries, ...config } : undefined),
+    ...retrieveContentTypesOptions(queries, config),
     ...options,
   });
 }

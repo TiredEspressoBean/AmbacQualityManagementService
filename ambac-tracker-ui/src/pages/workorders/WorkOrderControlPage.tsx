@@ -90,29 +90,31 @@ import {
 } from "./mockData";
 import { WO_PRIORITY_LABELS, HOLD_REASONS, STATUS_BAR_FILL, type HoldReason } from "./constants";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
-import { usePartTraveler } from "@/hooks/usePartTraveler";
+import { useRetrieveParts } from "@/hooks/parts";
+import { usePartTraveler } from "@/hooks/parts";
 import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
-import { useUpdatePart } from "@/hooks/useUpdatePart";
-import { useBulkIncrementParts } from "@/hooks/useBulkIncrementParts";
-import { useBulkRollbackParts } from "@/hooks/useBulkRollbackParts";
-import { useBulkSetStatusParts } from "@/hooks/useBulkSetStatusParts";
+import { useUpdatePart } from "@/hooks/parts";
+import { useBulkIncrementParts } from "@/hooks/parts";
+import { useBulkRollbackParts } from "@/hooks/parts";
+import { useBulkSetStatusParts } from "@/hooks/parts";
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { useSplitWorkOrder } from "@/hooks/useSplitWorkOrder";
 import { useUndoSplitWorkOrder } from "@/hooks/useUndoSplitWorkOrder";
 import { ReactFlowProvider } from "@xyflow/react";
-import { FlowCanvas, type StepData as FlowStepData } from "@/components/flow";
+import { FlowCanvas } from "@/components/flow";
+import type { StepData as FlowStepData } from "@/components/flow/use-steps-to-flow";
 import "@xyflow/react/dist/style.css";
 import { useExceptions } from "./useExceptions";
 import type {
-    WorkOrder,
-    Parts as PartRow,
     TravelerStepEntry,
     Processes as ProcessRecord,
     ProcessStep,
     StepEdge,
 } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
+type WorkOrder = Schema<"WorkOrder">;
+type PartRow = Schema<"Parts">;
 
 // Adapt the real detail serializer to the shape the component body uses.
 // Steps/edges start empty; the process-with-steps useEffect fills them once
@@ -200,7 +202,10 @@ function StepHistoryPanelLive({ partId }: { partId: string }) {
             </div>
         );
     }
-    const visits = (data?.traveler ?? []).map(adaptTravelerEntry);
+    // PartTravelerResponse.traveler is typed via the OpenAPI schema and
+    // structurally matches TravelerStepEntry at runtime; widen for the adapter.
+    // eslint-disable-next-line local/no-double-cast-via-unknown -- traveler array uses zodios passthrough type; TravelerStepEntry is the correct structural type
+    const visits = ((data?.traveler ?? []) as unknown as TravelerStepEntry[]).map(adaptTravelerEntry);
     const part: MockPart = {
         id: partId,
         serial: data?.part_erp_id ?? partId,
@@ -777,7 +782,7 @@ export function WorkOrderControlPage() {
         if (realProcess) {
             const { steps, edges } = adaptProcessSteps(realProcess);
             if (steps.length > 0) {
-                setWo((prev) => ({ ...prev, steps, edges }));
+                setWo((prev) => (prev ? { ...prev, steps, edges } : prev));
             }
         }
     }, [realProcess]);
@@ -1488,7 +1493,8 @@ export function WorkOrderControlPage() {
                                     id: s.id,
                                     name: s.name,
                                     order: s.order,
-                                    step_type: s.node_type,
+                                    // eslint-disable-next-line local/no-double-cast-via-unknown -- MockStepType is a superset of StepTypeEnum (adds ESCALATION); narrow at the FlowCanvas boundary
+                                    step_type: s.node_type as unknown as FlowStepData["step_type"],
                                     requires_qa_signoff: s.requires_qa,
                                     is_decision_point: s.node_type === "DECISION",
                                 }))}

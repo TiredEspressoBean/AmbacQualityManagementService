@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -10,20 +10,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveDocuments(
-  queries?: DocumentsListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<DocumentsListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<DocumentsListResponse, Error>({
-    queryKey: ["document", queries, config],
+export const documentsOptions = (queries?: DocumentsListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["document", queries, config] as const,
     queryFn: () =>
       api.api_Documents_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<DocumentsListResponse>,
+  });
+
+export const documentsMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "Documents", "Documents"] as const,
+    queryFn: () => api.api_Documents_metadata_retrieve(),
+  });
+
+export function useRetrieveDocuments(
+  queries?: DocumentsListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof documentsOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...documentsOptions(queries, config),
     ...options,
   });
 }

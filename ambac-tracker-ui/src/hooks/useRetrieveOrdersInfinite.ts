@@ -1,13 +1,16 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, infiniteQueryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
-export function useRetrieveOrdersInfinite(search: string) {
-    return useInfiniteQuery({
-        queryKey: ["order", search],
+export const retrieveOrdersInfiniteOptions = (search: string) =>
+    infiniteQueryOptions({
+        queryKey: ["order", search] as const,
         queryFn: ({ pageParam = 0 }) =>
             api.api_Orders_list({ queries: { search, offset: pageParam as number } }),
         initialPageParam: 0,
         getNextPageParam: (lastPage, allPages) =>
             (lastPage.next ?? null) ? allPages.length * 20 : undefined,
     });
+
+export function useRetrieveOrdersInfinite(search: string) {
+    return useInfiniteQuery(retrieveOrdersInfiniteOptions(search));
 }

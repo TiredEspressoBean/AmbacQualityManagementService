@@ -1,19 +1,19 @@
 import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type CreatePartTypeInput = Parameters<typeof api.api_Documents_create>[0];
-
-type CreatePartResponse = Awaited<ReturnType<typeof api.api_Documents_create>>;
+type CreateDocumentInput = Schema<"DocumentsRequest">;
+type CreateDocumentResponse = Schema<"Documents">;
 
 export const useCreateDocument = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<CreatePartResponse, unknown, CreatePartTypeInput>({
+    return useMutation<CreateDocumentResponse, unknown, CreateDocumentInput>({
         mutationFn: (data) =>
-            api.api_Documents_create(data, {
+            api.api_Documents_create(data as never, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<CreateDocumentResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["document"] });
         },

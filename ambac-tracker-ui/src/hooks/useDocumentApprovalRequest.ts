@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api, type DecisionEnum } from "@/lib/api/generated";
 import { useContentTypeMapping } from "./useContentTypes";
 
@@ -71,6 +71,26 @@ interface PaginatedResponse {
     results: ApprovalRequest[];
 }
 
+export const documentApprovalRequestOptions = (documentId: string | undefined, documentsContentTypeId: number | undefined) => queryOptions({
+    queryKey: ["approvals", "document", documentId, documentsContentTypeId] as const,
+    queryFn: async () => {
+        if (!documentsContentTypeId) {
+            throw new Error("Documents content type not found");
+        }
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- local ApprovalRequest interface has narrower types than the generated schema; runtime shape is correct
+        const response = await api.api_ApprovalRequests_list({
+            queries: {
+                content_type: documentsContentTypeId,
+                object_id: documentId!,
+                ordering: '-requested_at',
+                limit: 10,
+            }
+        }) as unknown as PaginatedResponse;
+
+        return response.results;
+    },
+});
+
 /**
  * Hook to fetch the approval request(s) for a specific Document.
  * Returns the most recent pending or completed approval request.
@@ -80,22 +100,7 @@ export function useDocumentApprovalRequest(documentId: string | undefined) {
     const documentsContentTypeId = getContentTypeId('documents');
 
     return useQuery({
-        queryKey: ["approvals", "document", documentId, documentsContentTypeId],
-        queryFn: async () => {
-            if (!documentsContentTypeId) {
-                throw new Error("Documents content type not found");
-            }
-            const response = await api.api_ApprovalRequests_list({
-                queries: {
-                    content_type: documentsContentTypeId,
-                    object_id: documentId!,
-                    ordering: '-requested_at',
-                    limit: 10,
-                }
-            }) as PaginatedResponse;
-
-            return response.results;
-        },
+        ...documentApprovalRequestOptions(documentId, documentsContentTypeId),
         enabled: documentId !== undefined && !!documentsContentTypeId && !contentTypesLoading,
     });
 }

@@ -33,7 +33,7 @@ import { Link } from "@tanstack/react-router"
 import { useCreateCapa } from "@/hooks/useCreateCapa"
 import { useCreateRcaRecord } from "@/hooks/useCreateRcaRecord"
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers"
-import { useRetrieveParts } from "@/hooks/useRetrieveParts"
+import { useRetrieveParts } from "@/hooks/parts"
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps"
 import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders"
 import { useQualityReports } from "@/hooks/useQualityReports"
@@ -48,10 +48,14 @@ import { Input } from "@/components/ui/input"
 // Get options from generated schemas, then create fresh enums for form validation
 const CAPA_TYPE_OPTIONS = schemas.CapaTypeEnum.options
 const CAPA_SEVERITY_OPTIONS = schemas.SeverityEnum.options
-// Only supporting these two RCA methods for now (subset of schemas.RcaMethodEnum.options)
-const RCA_METHOD_OPTIONS = schemas.RcaMethodEnum.options.filter(
-    (m): m is "FIVE_WHYS" | "FISHBONE" => m === "FIVE_WHYS" || m === "FISHBONE"
-)
+// Only supporting these two RCA methods for now (subset of schemas.RcaMethodEnum.options).
+// Hard-coded as a tuple so z.enum() has a provably non-empty input. If the backend ever
+// drops one of these from RcaMethodEnum, the assertion below fails at module load time
+// instead of the form silently accepting stale values.
+const RCA_METHOD_OPTIONS = ["FIVE_WHYS", "FISHBONE"] as const;
+if (RCA_METHOD_OPTIONS.some(m => !schemas.RcaMethodEnum.options.includes(m))) {
+    throw new Error("RCA_METHOD_OPTIONS drifted from schemas.RcaMethodEnum.options");
+}
 
 // Fresh zod enums to avoid type mismatch with Select component
 const capaTypeEnum = z.enum(CAPA_TYPE_OPTIONS)
@@ -242,9 +246,9 @@ export function CreateCapaPage() {
         if (initialQualityReports.length > 0) {
             form.setValue("quality_reports", initialQualityReports)
         }
-    }, [searchParams.quality_reports])
+    }, [searchParams.quality_reports, form, initialQualityReports])
 
-    // Check for pre-filled problem statement from SPC page
+    // Check for pre-filled problem statement from SPC page — reads a one-time session value on mount
     useEffect(() => {
         const spcProblemStatement = sessionStorage.getItem('spc_capa_problem_statement')
         if (spcProblemStatement) {
@@ -252,7 +256,7 @@ export function CreateCapaPage() {
             form.setValue("capa_type", "CORRECTIVE")
             sessionStorage.removeItem('spc_capa_problem_statement')
         }
-    }, [])
+    }, [form])
 
     function onSubmit(values: z.infer<typeof formSchema>) {
         // Extract RCA-specific fields from the form values

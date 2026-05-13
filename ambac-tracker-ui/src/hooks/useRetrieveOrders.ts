@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,20 +11,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveOrders(
-  queries?: OrdersListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<OrdersListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<OrdersListResponse, Error>({
-    queryKey: ["order", queries, config],
+export const ordersOptions = (queries?: OrdersListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["order", queries, config] as const,
     queryFn: () =>
       api.api_Orders_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<OrdersListResponse>,
+  });
+
+export const ordersMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "Orders", "Orders"] as const,
+    queryFn: () => api.api_Orders_metadata_retrieve(),
+  });
+
+export function useRetrieveOrders(
+  queries?: OrdersListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof ordersOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...ordersOptions(queries, config),
     ...options,
   });
 }

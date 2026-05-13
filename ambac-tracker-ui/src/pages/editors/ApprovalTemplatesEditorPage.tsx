@@ -1,9 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
-import { useRetrieveApprovalTemplates } from "@/hooks/useRetrieveApprovalTemplates";
+import { useRetrieveApprovalTemplates, approvalTemplatesOptions, approvalTemplatesMetadataOptions } from "@/hooks/useRetrieveApprovalTemplates";
 import { EditApprovalTemplateActionsCell } from "@/components/edit-approval-template-action-cell";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -18,14 +17,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchApprovalTemplatesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["approval-template", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_ApprovalTemplates_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "ApprovalTemplates", "ApprovalTemplates"],
-        queryFn: () => api.api_ApprovalTemplates_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(approvalTemplatesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(approvalTemplatesMetadataOptions());
 };
 
 function useApprovalTemplatesList({

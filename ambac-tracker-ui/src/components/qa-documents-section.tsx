@@ -11,14 +11,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { z } from "zod";
-import type { schemas } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
 import { useQaDocuments } from "@/hooks/useQaDocuments";
 import { useState, useEffect, memo } from "react";
 import DocumentRenderer from "@/pages/detail pages/DocumentRenderer";
 
-type Document = z.infer<typeof schemas.Documents>;
-type WorkOrder = z.infer<typeof schemas.WorkOrder>;
+type Document = Schema<"Documents">;
+type WorkOrder = Schema<"WorkOrder">;
 type DocumentWithSource = Document & { source?: string };
 
 type Props = {
@@ -40,25 +39,28 @@ export const QaDocumentsSection = memo(function QaDocumentsSection({ workOrder }
 
                 // Add work order docs
                 if (qaDocumentsData.work_order_documents) {
-                    combinedDocs.push(...qaDocumentsData.work_order_documents.map((doc: { id: string; [key: string]: any }) => ({
-                        ...doc,
-                        source: 'Work Order' as const
+                    combinedDocs.push(...qaDocumentsData.work_order_documents.map((doc) => ({
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- zodios inferred type for Documents differs structurally from openapi-typescript Schema<"Documents"> though values match
+                        ...(doc as unknown as Document),
+                        source: 'Work Order',
                     })));
                 }
 
                 // Add current step docs
                 if (qaDocumentsData.current_step_documents) {
-                    combinedDocs.push(...qaDocumentsData.current_step_documents.map((doc: { id: string; [key: string]: any }) => ({
-                        ...doc,
-                        source: 'Current Step' as const
+                    combinedDocs.push(...qaDocumentsData.current_step_documents.map((doc) => ({
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- same as above
+                        ...(doc as unknown as Document),
+                        source: 'Current Step',
                     })));
                 }
 
                 // Add part type docs
                 if (qaDocumentsData.part_type_documents) {
-                    combinedDocs.push(...qaDocumentsData.part_type_documents.map((doc: { id: string; [key: string]: any }) => ({
-                        ...doc,
-                        source: 'Part Type' as const
+                    combinedDocs.push(...qaDocumentsData.part_type_documents.map((doc) => ({
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- same as above
+                        ...(doc as unknown as Document),
+                        source: 'Part Type',
                     })));
                 }
 
@@ -68,8 +70,8 @@ export const QaDocumentsSection = memo(function QaDocumentsSection({ workOrder }
                         index === self.findIndex(d => d.id === doc.id)
                     )
                     .sort((a, b) => {
-                        const sourcePriority = { 'Work Order': 1, 'Current Step': 2, 'Part Type': 3 };
-                        return sourcePriority[a.source] - sourcePriority[b.source];
+                        const sourcePriority: Record<string, number> = { 'Work Order': 1, 'Current Step': 2, 'Part Type': 3 };
+                        return (sourcePriority[a.source ?? ''] ?? 99) - (sourcePriority[b.source ?? ''] ?? 99);
                     });
 
                 setAllDocuments(uniqueDocs);

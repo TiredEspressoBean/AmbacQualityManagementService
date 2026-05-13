@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export interface PendingApproval {
@@ -32,13 +32,16 @@ export interface PendingApproval {
 // Response can be either an array or paginated result
 type MyPendingResponse = PendingApproval[] | { results: PendingApproval[]; count: number };
 
+export const myPendingApprovalsOptions = () => queryOptions({
+    queryKey: ["approvals", "my-pending"] as const,
+    queryFn: async (): Promise<PendingApproval[]> => {
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- api_ApprovalRequests_my_pending_list returns a custom action response not typed in the schema
+        const response = await api.api_ApprovalRequests_my_pending_list() as unknown as MyPendingResponse;
+        // Normalize response: return array whether paginated or not
+        return Array.isArray(response) ? response : response.results;
+    },
+});
+
 export function useMyPendingApprovals() {
-    return useQuery({
-        queryKey: ["approvals", "my-pending"],
-        queryFn: async () => {
-            const response = await api.api_ApprovalRequests_my_pending_list() as MyPendingResponse;
-            // Normalize response: return array whether paginated or not
-            return Array.isArray(response) ? response : response.results;
-        },
-    });
+    return useQuery(myPendingApprovalsOptions());
 }

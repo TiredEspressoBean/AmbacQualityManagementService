@@ -1,4 +1,4 @@
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell.tsx";

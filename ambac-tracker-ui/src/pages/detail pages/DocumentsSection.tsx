@@ -2,10 +2,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { FileIcon } from "lucide-react";
-import {z} from "zod";
-import type {schemas} from "@/lib/api/generated.ts"; // or any icon
+import type { Schema } from "@/lib/api/types";
 
-type Document = z.infer<typeof schemas.Documents>;
+type Document = Schema<"Documents">;
 
 type Props = {
     documents: Document[];

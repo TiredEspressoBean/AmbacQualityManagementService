@@ -1,17 +1,16 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QaDocumentsSection } from "./qa-documents-section";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
-import { usePartTraveler } from "@/hooks/usePartTraveler";
+import { usePartTraveler } from "@/hooks/parts";
 import { Box, History, CheckCircle2, Clock, Circle, User, Gauge, AlertTriangle, Paperclip, Wrench } from "lucide-react";
-import type { schemas } from "@/lib/api/generated";
-import { z } from "zod";
+import type { Schema } from "@/lib/api/types";
 import { PartAnnotator } from "@/pages/PartAnnotator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useMemo, memo } from "react";
 
-type WorkOrder = z.infer<typeof schemas.WorkOrder>;
-type Part = z.infer<typeof schemas.Parts>;
+type WorkOrder = Schema<"WorkOrder">;
+type Part = Schema<"Parts">;
 
 type Props = {
     workOrder: WorkOrder;
@@ -132,7 +131,7 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
                                                                     Visit #{step.visit_number}
                                                                 </Badge>
                                                             )}
-                                                            {step.quality_status && step.quality_status !== 'null' && (
+                                                            {step.quality_status && (
                                                                 <Badge
                                                                     variant={step.quality_status === 'PASS' ? 'default' : 'destructive'}
                                                                     className="text-xs"

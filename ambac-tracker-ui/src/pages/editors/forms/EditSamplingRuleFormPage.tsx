@@ -83,12 +83,13 @@ export default function SamplingRuleFormPage() {
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(samplingRuleFormSchema) as Resolver<FormValues, any, FormValues>,
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
             ruleset: undefined,
             rule_type: undefined,
             value: 1,
             order: undefined,
-        } as FormValues,
+        } as unknown as FormValues,
     });
 
     useEffect(() => {

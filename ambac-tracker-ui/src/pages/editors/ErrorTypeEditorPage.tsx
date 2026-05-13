@@ -1,10 +1,9 @@
-import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes.ts";
+import { useRetrieveErrorTypes, errorTypesOptions, errorTypesMetadataOptions } from "@/hooks/useRetrieveErrorTypes.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditErrorTypeActionsCell } from "@/components/edit-error-type-action-cell.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Box } from "lucide-react";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -19,14 +18,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchErrorTypesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["error-types", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Error_types_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "ErrorTypes", "Error-types"],
-        queryFn: () => api.api_Error_types_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(errorTypesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(errorTypesMetadataOptions());
 };
 
 // Matches Django filter fields exactly

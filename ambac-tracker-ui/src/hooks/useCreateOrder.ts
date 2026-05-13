@@ -1,22 +1,21 @@
 import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-// 1️⃣ Infer the exact “body” type that your create endpoint wants:
-type CreateOrderInput = Parameters<typeof api.api_Orders_create>[0];
-// 2️⃣ (Optionally) infer the return type, if you need it:
-type CreateOrderResponse = Awaited<ReturnType<typeof api.api_Orders_create>>;
+type CreateOrderInput = Schema<"OrdersRequest">;
+type CreateOrderResponse = Schema<"Orders">;
 
 export const useCreateOrder = () => {
     const queryClient = useQueryClient();
 
     return useMutation<CreateOrderResponse, unknown, CreateOrderInput>({
         mutationFn: (body) =>
-            api.api_Orders_create(body, {
+            api.api_Orders_create(body as never, {
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),
                 },
-            }),
+            }) as Promise<CreateOrderResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["orders"],

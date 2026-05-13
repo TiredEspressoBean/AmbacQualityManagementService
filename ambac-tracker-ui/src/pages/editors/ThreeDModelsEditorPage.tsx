@@ -1,8 +1,7 @@
-import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels.ts";
+import { useRetrieveThreeDModels, threeDModelsOptions, threeDModelsMetadataOptions } from "@/hooks/useRetrieveThreeDModels.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditThreeDModelActionsCell } from "@/components/edit-three-d-model-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchThreeDModelsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["threeDModel", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_ThreeDModels_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "ThreeDModels", "ThreeDModels"],
-        queryFn: () => api.api_ThreeDModels_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(threeDModelsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(threeDModelsMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage

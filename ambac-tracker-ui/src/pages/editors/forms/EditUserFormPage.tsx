@@ -117,7 +117,7 @@ export default function UserFormPage() {
                 is_staff: user.is_staff ?? false,
                 is_active: user.is_active ?? true,
                 parent_company_id: user.parent_company?.id ?? undefined,
-                group_ids: user.groups?.map(group => group.id) ?? [],
+                group_ids: user.groups?.map(group => (group as { id: number }).id) ?? [],
             });
         }
     }, [mode, user, form]);
@@ -156,7 +156,7 @@ export default function UserFormPage() {
                 }
             );
         } else {
-            createUser.mutate(submitData, {
+            createUser.mutate(submitData as Parameters<typeof createUser.mutate>[0], {
                 onSuccess: () => {
                     toast.success("User created successfully!");
                     form.reset();

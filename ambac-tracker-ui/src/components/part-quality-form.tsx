@@ -4,8 +4,8 @@ import { toast } from "sonner";
 import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { api, type PaginatedUserSelectList, type PaginatedEquipmentsList, type PaginatedMeasurementDefinitionList } from "@/lib/api/generated";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { api, type PaginatedUserSelectList, type PaginatedEquipmentsList } from "@/lib/api/generated";
+import { useInfiniteQuery, useQuery, queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
 import { useCreateErrorType } from "@/hooks/useCreateErrorType";
 import { useCreateDocument } from "@/hooks/useCreateDocument";
@@ -92,7 +92,7 @@ type FormValues = {
     detected_by?: number;
     verified_by?: number;
     is_first_piece: boolean;
-    errors?: number[];
+    errors?: string[];
     measurements: Array<{
         definition: string;
         value_numeric?: number | null;
@@ -105,10 +105,26 @@ const required = {
     machine: isFieldRequired(formSchema.shape.machine),
 };
 
+const operatorOptionsInfinite = () =>
+    infiniteQueryOptions<PaginatedUserSelectList, Error>({
+        queryKey: ["employee-options"],
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
+        initialPageParam: 0,
+    });
+
+const machineOptionsInfinite = () =>
+    infiniteQueryOptions<PaginatedEquipmentsList, Error>({
+        queryKey: ["equipment-options"],
+        queryFn: ({ pageParam = 0 }) => api.api_Equipment_Options_list({ queries: { offset: pageParam as number } }),
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
+        initialPageParam: 0,
+    });
+
 export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => void }) {
     // Extract IDs once to ensure consistency across all queries
-    const stepId = React.useMemo(() => part?.step?.id || part?.step, [part?.step?.id, part?.step]);
-    const partTypeId = React.useMemo(() => part?.part_type?.id || part?.part_type, [part?.part_type?.id, part?.part_type]);
+    const stepId = React.useMemo(() => part?.step?.id || part?.step, [part?.step]);
+    const partTypeId = React.useMemo(() => part?.part_type?.id || part?.part_type, [part?.part_type]);
 
     const [operatorPopoverOpen, setOperatorPopoverOpen] = React.useState(false);
     const [machinePopoverOpen, setMachinePopoverOpen] = React.useState(false);
@@ -126,19 +142,9 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const [fileInputKey] = React.useState(Date.now());
     const [isUploadingDocument, setIsUploadingDocument] = React.useState(false);
 
-    const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
-        queryKey: ["employee-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam } }),
-        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
-        initialPageParam: 0,
-    });
+    const { data: operatorPages, isLoading: operatorsLoading } = useInfiniteQuery(operatorOptionsInfinite());
 
-    const { data: machinePages, isLoading: machinesLoading } = useInfiniteQuery<PaginatedEquipmentsList, Error>({
-        queryKey: ["equipment-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Equipment_Options_list({ queries: { offset: pageParam } }),
-        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
-        initialPageParam: 0,
-    });
+    const { data: machinePages, isLoading: machinesLoading } = useInfiniteQuery(machineOptionsInfinite());
 
 
     const { data: errorTypes, refetch: refetchErrorTypes } = useRetrieveErrorTypes({
@@ -148,18 +154,19 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const createErrorType = useCreateErrorType();
     const { mutate: uploadDocument } = useCreateDocument();
 
+    const measurementDefinitionsOptions = (sId: string) => queryOptions({
+        queryKey: ["measurement-definitions", sId] as const,
+        queryFn: () => api.api_MeasurementDefinitions_list({
+            queries: { step: sId }
+        }),
+    });
+
     const {
         data: measurementDefs,
         error: measurementError,
         isError: measurementIsError,
         isLoading: measurementLoading
-    } = useQuery<PaginatedMeasurementDefinitionList, Error>({
-        queryKey: ["measurement-definitions", stepId],
-        queryFn: () => api.api_MeasurementDefinitions_list({
-            queries: { step: stepId }
-        }),
-        enabled: !!stepId
-    });
+    } = useQuery({ ...measurementDefinitionsOptions(stepId), enabled: !!stepId });
 
     const operators = operatorPages?.pages.flatMap((p) => p.results) ?? [];
     const machines = machinePages?.pages.flatMap((p) => p.results) ?? [];
@@ -219,7 +226,9 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const onSubmit = async (values: FormValues) => {
         try {
             // Create the quality report first
-            const createdReport = await api.api_ErrorReports_create(values, {
+            // FormValues includes file/classification used for separate doc upload — cast to API request shape.
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- FormValues extends the API shape with file/classification UI fields; cast strips them for the API call
+            const createdReport = await api.api_ErrorReports_create(values as unknown as Parameters<typeof api.api_ErrorReports_create>[0], {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             });
 
@@ -232,7 +241,9 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                 formData.append("object_id", String(createdReport.id));
                 formData.append("content_type", "qualityreports");
 
-                uploadDocument(formData, {
+                // useCreateDocument is typed for JSON request shape, but the API actually accepts FormData for multipart upload.
+                // eslint-disable-next-line local/no-double-cast-via-unknown -- Document upload uses FormData (multipart); generated client type expects JSON object
+                uploadDocument(formData as unknown as Parameters<typeof uploadDocument>[0], {
                     onSuccess: () => {
                         setIsUploadingDocument(false);
                         toast.success("Quality Report and Document Submitted");
@@ -502,14 +513,14 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                         </CommandEmpty>
                                         <CommandGroup className="max-h-64 overflow-auto">
                                             {filteredErrorTypes.map((errorType) => {
-                                                const isSelected = field.value?.includes(errorType.id) ?? false;
+                                                const isSelected = field.value?.includes(String(errorType.id)) ?? false;
                                                 return (
                                                     <CommandItem
                                                         key={errorType.id}
                                                         onSelect={() => {
                                                             const updated = isSelected
-                                                                ? (field.value?.filter((id: string) => id !== errorType.id) ?? [])
-                                                                : [...(field.value ?? []), errorType.id];
+                                                                ? (field.value?.filter((id: string) => id !== String(errorType.id)) ?? [])
+                                                                : [...(field.value ?? []), String(errorType.id)];
                                                             field.onChange(updated);
                                                         }}
                                                     >
@@ -774,7 +785,11 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                                                 type="number"
                                                                 step="any"
                                                                 placeholder="Enter measurement value"
-                                                                {...measurementField}
+                                                                name={measurementField.name}
+                                                                ref={measurementField.ref}
+                                                                onBlur={measurementField.onBlur}
+                                                                disabled={measurementField.disabled}
+                                                                value={measurementField.value == null ? "" : String(measurementField.value)}
                                                                 onChange={(e) => {
                                                                     const value = e.target.value === '' ? undefined : Number(e.target.value);
                                                                     measurementField.onChange(value);
@@ -783,7 +798,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                                         ) : (
                                                             <Select
                                                                 onValueChange={measurementField.onChange}
-                                                                value={measurementField.value}
+                                                                value={measurementField.value == null ? "" : String(measurementField.value)}
                                                             >
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select result" />

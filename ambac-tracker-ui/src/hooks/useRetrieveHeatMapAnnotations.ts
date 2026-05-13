@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,17 +11,21 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveHeatMapAnnotationsOptions = (queries?: HeatMapAnnotationListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["heatMapAnnotation", queries, config] as const,
+  queryFn: () =>
+    api.api_HeatMapAnnotation_list(
+      (queries || config ? { queries, ...config } : undefined) as never,
+    ) as Promise<HeatMapAnnotationListResponse>,
+});
+
 export function useRetrieveHeatMapAnnotations(
   queries?: HeatMapAnnotationListQueries,
   config?: ListHookConfig,
-  options?: Omit<UseQueryOptions<HeatMapAnnotationListResponse, Error>, "queryKey" | "queryFn">
+  options?: Omit<ReturnType<typeof retrieveHeatMapAnnotationsOptions>, "queryKey" | "queryFn">
 ) {
-  return useQuery<HeatMapAnnotationListResponse, Error>({
-    queryKey: ["heatMapAnnotation", queries, config],
-    queryFn: () =>
-      api.api_HeatMapAnnotation_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
-      ) as Promise<HeatMapAnnotationListResponse>,
+  return useQuery({
+    ...retrieveHeatMapAnnotationsOptions(queries, config),
     ...options,
   });
 }

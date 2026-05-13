@@ -9,7 +9,12 @@ import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
+
+const annotatorPartOptions = (partId: string | null) => queryOptions({
+    queryKey: ["part", partId] as const,
+    queryFn: () => api.api_Parts_retrieve({ params: { id: partId! } }),
+});
 
 export function AnnotatorPage() {
     const navigate = useNavigate();
@@ -50,8 +55,7 @@ export function AnnotatorPage() {
 
     // Fetch part details to get part type
     const { data: partData } = useQuery({
-        queryKey: ["part", partId],
-        queryFn: () => api.api_Parts_retrieve({ params: { id: partId! } }),
+        ...annotatorPartOptions(partId ?? null),
         enabled: !!partId,
     });
 
@@ -124,7 +128,7 @@ export function AnnotatorPage() {
                                 {model3D?.name || `Model #${model3D?.id}`}
                             </h2>
                             <p className="text-xs text-muted-foreground">
-                                Part: {partData?.serial_number || `#${partId}`} • {selectedReportIds.length} report{selectedReportIds.length > 1 ? 's' : ''}
+                                Part: {partData?.ERP_id || `#${partId}`} • {selectedReportIds.length} report{selectedReportIds.length > 1 ? 's' : ''}
                             </p>
                         </div>
                     </div>

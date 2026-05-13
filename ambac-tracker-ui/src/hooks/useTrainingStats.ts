@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, queryOptions } from "@tanstack/react-query"
 import { api } from "@/lib/api/generated"
 
+export const trainingStatsOptions = () => queryOptions({
+    queryKey: ["training-records", "stats"] as const,
+    queryFn: () => api.api_TrainingRecords_stats_retrieve(),
+});
+
 export function useTrainingStats() {
-    return useQuery({
-        queryKey: ["training-records", "stats"],
-        queryFn: () => api.api_TrainingRecords_stats_retrieve(),
-    });
+    return useQuery(trainingStatsOptions());
 }

@@ -114,6 +114,7 @@ export default function OrderFormPage() {
         mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
             if (!orderId) throw new Error("Order ID required");
             return await api.api_Orders_add_note_create(
+                // eslint-disable-next-line local/no-as-any -- add_note body type doesn't expose message/visibility in generated schema; these are the actual runtime fields
                 { message, visibility } as any,
                 { params: { id: orderId } }
             );
@@ -151,6 +152,7 @@ export default function OrderFormPage() {
                 estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
                 current_hubspot_gate: order.current_hubspot_gate ?? undefined,
+                // eslint-disable-next-line local/no-as-any -- current_milestone not in generated Order schema; backend returns it as an extra field
                 current_milestone: (order as any).current_milestone ?? undefined,
                 company: order.company ?? undefined,
                 archived: order.archived || false,

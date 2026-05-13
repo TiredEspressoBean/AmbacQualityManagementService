@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
     Area,
@@ -136,7 +136,7 @@ export function DefectAnalysisPage() {
     // Transform data
     const defectTypes = paretoResponse?.data ?? [];
     const processes = processData?.data ?? [];
-    const records = recordsResponse?.data ?? [];
+    const records = useMemo(() => recordsResponse?.data ?? [], [recordsResponse?.data]);
     const totalRecords = recordsResponse?.total ?? 0;
     const trendPoints = trendData?.data ?? [];
     const trendSummary = trendData?.summary;
@@ -298,7 +298,7 @@ export function DefectAnalysisPage() {
                             trendSummary?.trend_direction === "down" ? "text-green-500" :
                             "text-muted-foreground"
                         )}>
-                            {trendSummary?.trend_change > 0 ? "+" : ""}{trendSummary?.trend_change ?? 0}% vs prior period
+                            {(trendSummary?.trend_change ?? 0) > 0 ? "+" : ""}{trendSummary?.trend_change ?? 0}% vs prior period
                         </p>
                     </CardContent>
                 </Card>
@@ -602,7 +602,7 @@ export function DefectAnalysisPage() {
                                                 <TableCell>
                                                     {record.part_id && (
                                                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
-                                                            <Link to={`/editors/parts/${record.part_id}`}>
+                                                            <Link to="/details/$model/$id" params={{ model: "Parts", id: String(record.part_id) }}>
                                                                 <ExternalLink className="h-3.5 w-3.5" />
                                                             </Link>
                                                         </Button>

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import type { MeasurementDefinitionSPC } from "./useSpcHierarchy";
 
 export type SpcDataPoint = {
@@ -37,21 +37,25 @@ type UseSpcDataParams = {
     enabled?: boolean;
 };
 
+export const spcDataOptions = (measurementId: string | null, days = 90, limit = 500) => queryOptions({
+    queryKey: ["spc-data", measurementId, days, limit] as const,
+    queryFn: () => api.api_spc_data_retrieve({
+        queries: {
+            measurement_id: measurementId!,
+            days,
+            limit
+        }
+    }) as Promise<SpcDataResponse>,
+});
+
 export const useSpcData = ({
     measurementId,
     days = 90,
     limit = 500,
     enabled = true,
 }: UseSpcDataParams) => {
-    return useQuery<SpcDataResponse>({
-        queryKey: ["spc-data", measurementId, days, limit],
-        queryFn: () => api.api_spc_data_retrieve({
-            queries: {
-                measurement_id: measurementId!,
-                days,
-                limit
-            }
-        }) as Promise<SpcDataResponse>,
+    return useQuery({
+        ...spcDataOptions(measurementId, days, limit),
         enabled: enabled && measurementId !== null,
     });
 };

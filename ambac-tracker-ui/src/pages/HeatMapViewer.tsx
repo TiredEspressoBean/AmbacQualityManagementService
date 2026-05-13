@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, type ComponentProps } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,53 @@ import {
 } from "lucide-react";
 import * as THREE from "three";
 import { api } from "@/lib/api/generated";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
+
+const threeDModelsAllOptions = () => queryOptions({
+    queryKey: ["three-d-models-all"] as const,
+    queryFn: () => api.api_ThreeDModels_list({ queries: { limit: 1000 } }),
+});
+
+const heatmapAnnotationsAllOptions = () => queryOptions({
+    queryKey: ["heatmap-annotations-all"] as const,
+    queryFn: () => api.api_HeatMapAnnotation_list({ queries: { limit: 10000 } }),
+});
+
+const partTypesSelectOptions = (partTypeSearch: string) => queryOptions({
+    queryKey: ["part-types-select", partTypeSearch] as const,
+    queryFn: () => api.api_PartTypes_select_list({ queries: { search: partTypeSearch } }),
+});
+
+const partsSelectOptions = (selectedPartTypeForPart: string | null, partSearch: string) => queryOptions({
+    queryKey: ["parts-select", selectedPartTypeForPart, partSearch] as const,
+    queryFn: () => api.api_Parts_select_list({
+        queries: {
+            part_type: selectedPartTypeForPart!,
+            search: partSearch,
+        }
+    }),
+});
+
+const heatmapPartOptions = (partId: string | null) => queryOptions({
+    queryKey: ["part", partId] as const,
+    queryFn: () => api.api_Parts_retrieve({ params: { id: partId! } }),
+});
+
+const heatmapModelsOptions = (resolvedPartTypeId: string | undefined) => queryOptions({
+    queryKey: ["models", resolvedPartTypeId] as const,
+    queryFn: () => api.api_ThreeDModels_list({
+        queries: { part_type: resolvedPartTypeId }
+    }),
+});
+
+const workordersForHeatmapOptions = (resolvedPartTypeId: string | undefined) => queryOptions({
+    queryKey: ["workorders-for-heatmap", resolvedPartTypeId] as const,
+    queryFn: () => api.api_WorkOrders_list({
+        // NOTE: api_WorkOrders_list does not expose a part_type filter; results are
+        // unfiltered here — backend widening needed to support part_type query param.
+        queries: { limit: 100 }
+    }),
+});
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useGLTF } from "@react-three/drei";
@@ -159,33 +205,20 @@ function HeatMapSelection({
     }, [rawPartSearch]);
 
     // Fetch all 3D models to find part types with models
-    const { data: modelsData, isLoading: isLoadingModels } = useQuery({
-        queryKey: ["three-d-models-all"],
-        queryFn: () => api.api_ThreeDModels_list({ queries: { limit: 1000 } }),
-    });
+    const { data: modelsData, isLoading: isLoadingModels } = useQuery(threeDModelsAllOptions());
 
     // Fetch all annotations for stats (background)
-    const { data: annotationsData } = useQuery({
-        queryKey: ["heatmap-annotations-all"],
-        queryFn: () => api.api_HeatMapAnnotation_list({ queries: { limit: 10000 } }),
-    });
+    const { data: annotationsData } = useQuery(heatmapAnnotationsAllOptions());
 
     // Fetch part types with search for combobox (using lightweight select endpoint)
     const { data: partTypesSearchData } = useQuery({
-        queryKey: ["part-types-select", partTypeSearch],
-        queryFn: () => api.api_PartTypes_select_list({ queries: { search: partTypeSearch } }),
+        ...partTypesSelectOptions(partTypeSearch),
         enabled: partTypeOpen,
     });
 
     // Fetch parts with search for combobox (using lightweight select endpoint)
     const { data: partsData, isLoading: isLoadingParts } = useQuery({
-        queryKey: ["parts-select", selectedPartTypeForPart, partSearch],
-        queryFn: () => api.api_Parts_select_list({
-            queries: {
-                part_type: selectedPartTypeForPart!,
-                search: partSearch,
-            }
-        }),
+        ...partsSelectOptions(selectedPartTypeForPart, partSearch),
         enabled: !!selectedPartTypeForPart && partOpen,
     });
 
@@ -234,23 +267,20 @@ function HeatMapSelection({
         }
 
         // Prefetch models metadata for this part type
-        queryClient.prefetchQuery({
-            queryKey: ["models", partTypeId],
-            queryFn: () => api.api_ThreeDModels_list({ queries: { part_type: partTypeId } }),
-        });
+        queryClient.prefetchQuery(heatmapModelsOptions(partTypeId));
 
-        // Prefetch error types
-        queryClient.prefetchQuery({
-            queryKey: ["error-types", { queries: { part_type: partTypeId } }],
+        // Prefetch error types — no shared factory for error-types; factory would need a separate hook file
+        queryClient.prefetchQuery(queryOptions({
+            queryKey: ["error-types", { queries: { part_type: partTypeId } }] as const,
             queryFn: () => api.api_Error_types_list({ queries: { part_type: partTypeId } }),
-        });
+        }));
 
-        // Prefetch annotations if we have a model ID
+        // Prefetch annotations if we have a model ID — uses dynamic model ID from prefetch context
         if (partType.firstModelId) {
-            queryClient.prefetchQuery({
-                queryKey: ["heatmap-annotations", { model: partType.firstModelId }],
+            queryClient.prefetchQuery(queryOptions({
+                queryKey: ["heatmap-annotations", { model: partType.firstModelId }] as const,
                 queryFn: () => api.api_HeatMapAnnotation_list({ queries: { model: partType.firstModelId } }),
-            });
+            }));
         }
     }, [queryClient, partTypesWithModels]);
 
@@ -568,7 +598,7 @@ function HeatMapViewerContent({
 
     // Editing state
     const [isEditing, setIsEditing] = useState(false);
-    const [editSeverity, setEditSeverity] = useState("");
+    const [editSeverity, setEditSeverity] = useState<"" | "CRITICAL" | "LOW" | "MEDIUM" | "HIGH">("");
     const [editDefectType, setEditDefectType] = useState("");
     const [editNotes, setEditNotes] = useState("");
 
@@ -599,8 +629,7 @@ function HeatMapViewerContent({
 
     // Step 1: If viewing by partId, fetch the part to get its part_type
     const { data: partData, isLoading: isLoadingPart } = useQuery({
-        queryKey: ["part", partId],
-        queryFn: () => api.api_Parts_retrieve({ params: { id: partId! } }),
+        ...heatmapPartOptions(partId ?? null),
         enabled: !!partId,
     });
 
@@ -608,23 +637,15 @@ function HeatMapViewerContent({
 
     // Step 3: Fetch available models for this part type to build step selector
     const { data: modelsData, isLoading: isLoadingModels } = useQuery({
-        queryKey: ["models", resolvedPartTypeId],
-        queryFn: () => api.api_ThreeDModels_list({
-            queries: { part_type: resolvedPartTypeId }
-        }),
+        ...heatmapModelsOptions(resolvedPartTypeId),
         enabled: !!resolvedPartTypeId,
     });
 
-    const availableModels = modelsData?.results || [];
+    const availableModels = useMemo(() => modelsData?.results ?? [], [modelsData?.results]);
 
     // Step 3b: Fetch work orders for the filter (based on part type)
     const { data: workOrdersData } = useQuery({
-        queryKey: ["workorders-for-heatmap", resolvedPartTypeId],
-        queryFn: () => api.api_WorkOrders_list({
-            // NOTE: api_WorkOrders_list does not expose a part_type filter; results are
-            // unfiltered here — backend widening needed to support part_type query param.
-            queries: { limit: 100 }
-        }),
+        ...workordersForHeatmapOptions(resolvedPartTypeId),
         enabled: !!resolvedPartTypeId,
     });
 
@@ -743,7 +764,7 @@ function HeatMapViewerContent({
     );
 
     // Annotations are already filtered server-side
-    const filteredAnnotations = annotationsData?.results || [];
+    const filteredAnnotations = useMemo(() => annotationsData?.results ?? [], [annotationsData?.results]);
 
     // Get facet data for dropdowns
     const availableDefectTypes = facetsData?.defect_types || [];
@@ -885,7 +906,7 @@ function HeatMapViewerContent({
     const startEditing = () => {
         if (selectedIdx === null || !filteredAnnotations[selectedIdx]) return;
         const ann = filteredAnnotations[selectedIdx];
-        setEditSeverity(ann.severity || "low");
+        setEditSeverity(ann.severity || "LOW");
         setEditDefectType(ann.defect_type || "");
         setEditNotes(ann.notes || "");
         setIsEditing(true);
@@ -1335,7 +1356,7 @@ function HeatMapViewerContent({
                     </div>
 
                     <ThreeDModelViewer
-                        modelUrl={modelUrl}
+                        modelUrl={modelUrl ?? ""}
                         mode="navigate"
                         isLoading={isLoading}
                         onLoadingComplete={() => setIsLoading(false)}
@@ -1360,7 +1381,8 @@ function HeatMapViewerContent({
 
                     {/* Annotations List */}
                     <AnnotationsList
-                        annotations={filteredAnnotations}
+                        // eslint-disable-next-line local/no-double-cast-via-unknown -- API returns id:string; AnnotationsList expects id?:number — only display fields are read, no mutation path
+                        annotations={filteredAnnotations as unknown as ComponentProps<typeof AnnotationsList>["annotations"]}
                         selectedIdx={selectedIdx}
                         expanded={annotationsExpanded}
                         onToggleExpanded={() => setAnnotationsExpanded(!annotationsExpanded)}
@@ -1413,7 +1435,7 @@ function HeatMapViewerContent({
                                             {/* Severity */}
                                             <div className="space-y-1">
                                                 <Label className="text-xs text-muted-foreground">Severity</Label>
-                                                <Select value={editSeverity} onValueChange={setEditSeverity}>
+                                                <Select value={editSeverity} onValueChange={(v) => setEditSeverity(v as "" | "CRITICAL" | "LOW" | "MEDIUM" | "HIGH")}>
                                                     <SelectTrigger>
                                                         <SelectValue />
                                                     </SelectTrigger>

@@ -1,28 +1,18 @@
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, AlertTriangle, CheckCircle2, Clock, Loader2, Users } from "lucide-react"
-import { useTrainingStats } from "@/hooks/useTrainingStats"
-import { useExpiringTraining } from "@/hooks/useExpiringTraining"
-import { useMyTraining } from "@/hooks/useMyTraining"
+import { useTrainingStats, trainingStatsOptions } from "@/hooks/useTrainingStats"
+import { useExpiringTraining, expiringTrainingOptions } from "@/hooks/useExpiringTraining"
+import { useMyTraining, myTrainingOptions } from "@/hooks/useMyTraining"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
-import { api } from "@/lib/api/generated"
 import type { QueryClient } from "@tanstack/react-query"
 
 // Prefetch function for route loader
 export const prefetchTrainingDashboard = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["training-records", "stats"],
-        queryFn: () => api.api_TrainingRecords_stats_retrieve(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["training-records", "expiring-soon", {}],
-        queryFn: () => api.api_TrainingRecords_expiring_soon_list(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["training-records", "my-training"],
-        queryFn: () => api.api_TrainingRecords_my_training_list(),
-    });
+    queryClient.prefetchQuery(trainingStatsOptions());
+    queryClient.prefetchQuery(expiringTrainingOptions());
+    queryClient.prefetchQuery(myTrainingOptions());
 };
 
 export function TrainingDashboardPage() {

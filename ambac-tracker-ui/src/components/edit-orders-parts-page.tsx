@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
 import {useReactTable, getCoreRowModel, flexRender, type ColumnDef} from "@tanstack/react-table";
-import {useRetrieveParts} from "@/hooks/useRetrieveParts";
+import {useRetrieveParts} from "@/hooks/parts";
 import {useRemovePartsMutation} from "@/hooks/useRemovePartsMutation";
 import {useQueryClient} from "@tanstack/react-query";
 import {toast} from "sonner";

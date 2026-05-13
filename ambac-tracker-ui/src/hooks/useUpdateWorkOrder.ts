@@ -1,21 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-// 1️⃣ Infer the exact input (body) that the partial-update endpoint wants:
-type UpdateWorkOrderInput = Parameters<typeof api.api_WorkOrders_partial_update>[0];
+type UpdateWorkOrderInput = Schema<"PatchedWorkOrderRequest">;
+type UpdateWorkOrderResponse = Schema<"WorkOrder">;
 
-// 2️⃣ Infer the shape of the `params` object:
-type UpdateWorkOrderConfig = Parameters<typeof api.api_WorkOrders_partial_update>[1];
-type UpdateWorkOrderParams = UpdateWorkOrderConfig["params"];
-
-// 3️⃣ Infer the response type, if you need it:
-type UpdateWorkOrderResponse = Awaited<ReturnType<typeof api.api_WorkOrders_partial_update>>;
-
-// 4️⃣ Compose the variables your hook will accept:
 type UpdateWorkOrderVariables = {
-    id: UpdateWorkOrderParams["id"];   // number
-    data: UpdateWorkOrderInput;        // exactly the patched-part payload
+    id: string;
+    data: UpdateWorkOrderInput;
 };
 
 export const useUpdateWorkOrder = () => {
@@ -23,10 +16,10 @@ export const useUpdateWorkOrder = () => {
 
     return useMutation<UpdateWorkOrderResponse, unknown, UpdateWorkOrderVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_WorkOrders_partial_update(data, {
+            api.api_WorkOrders_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateWorkOrderResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
                 predicate: (query) => {

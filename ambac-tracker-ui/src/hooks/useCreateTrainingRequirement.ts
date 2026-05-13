@@ -1,18 +1,19 @@
 import { api } from "@/lib/api/generated";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type CreateInput = Parameters<typeof api.api_TrainingRequirements_create>[0];
-type CreateResponse = Awaited<ReturnType<typeof api.api_TrainingRequirements_create>>;
+type CreateTrainingRequirementInput = Schema<"TrainingRequirementRequest">;
+type CreateTrainingRequirementResponse = Schema<"TrainingRequirement">;
 
 export const useCreateTrainingRequirement = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<CreateResponse, unknown, CreateInput>({
+    return useMutation<CreateTrainingRequirementResponse, unknown, CreateTrainingRequirementInput>({
         mutationFn: (data) =>
-            api.api_TrainingRequirements_create(data, {
+            api.api_TrainingRequirements_create(data as never, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<CreateTrainingRequirementResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["training-requirements"] });
         },

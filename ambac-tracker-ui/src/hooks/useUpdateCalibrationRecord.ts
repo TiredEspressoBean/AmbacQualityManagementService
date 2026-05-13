@@ -1,14 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type UpdateCalibrationRecordInput = Parameters<typeof api.api_CalibrationRecords_partial_update>[0];
-type UpdateCalibrationRecordConfig = Parameters<typeof api.api_CalibrationRecords_partial_update>[1];
-type UpdateCalibrationRecordParams = UpdateCalibrationRecordConfig["params"];
-type UpdateCalibrationRecordResponse = Awaited<ReturnType<typeof api.api_CalibrationRecords_partial_update>>;
+type UpdateCalibrationRecordInput = Schema<"PatchedCalibrationRecordRequest">;
+type UpdateCalibrationRecordResponse = Schema<"CalibrationRecord">;
 
 type UpdateCalibrationRecordVariables = {
-    id: UpdateCalibrationRecordParams["id"];
+    id: string;
     data: UpdateCalibrationRecordInput;
 };
 
@@ -17,10 +16,10 @@ export const useUpdateCalibrationRecord = () => {
 
     return useMutation<UpdateCalibrationRecordResponse, unknown, UpdateCalibrationRecordVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_CalibrationRecords_partial_update(data, {
+            api.api_CalibrationRecords_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateCalibrationRecordResponse>,
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ["calibration-records"] });
             queryClient.invalidateQueries({ queryKey: ["calibration-record", variables.id] });

@@ -8,7 +8,8 @@ export function usePartsIncrementMutation() {
     return useMutation({
         mutationFn: ({ orderId, stepId }: { orderId: string; stepId: string }) =>
             api.api_Orders_increment_step_create(
-                { order_id: orderId, step_id: stepId },
+                // order is identified by the path param `id`; body only needs step_id.
+                { step_id: stepId },
                 {
                     params: { id: orderId },
                     headers: {

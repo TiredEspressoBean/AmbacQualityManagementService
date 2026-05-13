@@ -281,7 +281,7 @@ export async function runElkLayout(
  * Must be used inside ReactFlowProvider.
  */
 export function useAutoLayout(options: UseStepsToFlowOptions = {}) {
-  const { getNodes, getEdges, setNodes, fitView } = useReactFlow();
+  const { getNodes, getEdges, setNodes } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const [hasLayouted, setHasLayouted] = useState(false);
 
@@ -316,7 +316,7 @@ export function useAutoLayout(options: UseStepsToFlowOptions = {}) {
     } catch (err) {
       console.error('ELK layout error:', err);
     }
-  }, [getNodes, getEdges, setNodes, fitView, options]);
+  }, [getNodes, getEdges, setNodes, options]);
 
   // Run layout when nodes are initialized (measured)
   useEffect(() => {

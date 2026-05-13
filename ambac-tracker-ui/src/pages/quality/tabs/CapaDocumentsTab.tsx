@@ -12,7 +12,7 @@ export function CapaDocumentsTab({ capa }: CapaDocumentsTabProps) {
     // Get content type ID for CAPA
     const { data: contentTypes, isLoading: contentTypesLoading } = useRetrieveContentTypes({})
     // contentTypes is now an array (unpaginated) or has .results if paginated
-    const contentTypesList = Array.isArray(contentTypes) ? contentTypes : contentTypes?.results
+    const contentTypesList = Array.isArray(contentTypes) ? contentTypes : []
     const capaContentType = contentTypesList?.find(
         (ct: any) => ct.model === "capa" && ct.app_label === "Tracker"
     )

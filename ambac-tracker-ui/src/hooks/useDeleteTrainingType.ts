@@ -7,10 +7,10 @@ export const useDeleteTrainingType = () => {
 
     return useMutation<void, unknown, { id: string }>({
         mutationFn: ({ id }) =>
-            api.api_TrainingTypes_destroy(
-                { params: { id } },
-                { headers: { "X-CSRFToken": getCookie("csrftoken") } }
-            ),
+            api.api_TrainingTypes_destroy(undefined, {
+                params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["training-types"] });
         },

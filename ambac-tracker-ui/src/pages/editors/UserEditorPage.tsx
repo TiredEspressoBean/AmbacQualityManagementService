@@ -1,8 +1,7 @@
-import { useRetrieveUsers } from "@/hooks/useRetrieveUsers.ts";
+import { useRetrieveUsers, usersOptions, usersMetadataOptions } from "@/hooks/useRetrieveUsers.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditUserActionsCell } from "@/components/edit-user-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchUsersEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["user", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_User_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Users", "User"],
-        queryFn: () => api.api_User_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(usersOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(usersMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage

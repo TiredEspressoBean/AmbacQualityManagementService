@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import {
@@ -43,13 +43,14 @@ export default function SignupPage() {
     const search = useSearch({ strict: false }) as { token?: string }
     const acceptInvitation = useAcceptInvitation()
 
-    const form = useForm<z.infer<typeof signupSchema>>({
-        resolver: zodResolver(signupSchema),
+    type SignupFormValues = z.infer<typeof signupSchema>
+    const form = useForm<SignupFormValues, any, SignupFormValues>({
+        resolver: zodResolver(signupSchema) as Resolver<SignupFormValues, any, SignupFormValues>,
         defaultValues: {
             password: '',
             confirmPassword: '',
             opt_in_notifications: false,
-        },
+        } as SignupFormValues,
     })
 
     // Validate token exists

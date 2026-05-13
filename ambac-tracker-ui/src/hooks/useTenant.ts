@@ -1,5 +1,5 @@
 // src/hooks/useTenant.ts
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api, type CurrentTenantResponse } from "@/lib/api/generated";
 
 /**
@@ -13,14 +13,13 @@ import { api, type CurrentTenantResponse } from "@/lib/api/generated";
  *
  * Authentication is optional - unauthenticated requests get deployment info only.
  */
-export function useTenant(options?: { enabled?: boolean }) {
-    return useQuery({
-        queryKey: ["tenant", "current"],
-        queryFn: () => api.api_tenant_current_retrieve() as Promise<CurrentTenantResponse>,
-        staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
-        retry: 1,
-        enabled: options?.enabled ?? true,
-    });
+export const tenantOptions = () => queryOptions({
+    queryKey: ["tenant", "current"] as const,
+    queryFn: () => api.api_tenant_current_retrieve() as Promise<CurrentTenantResponse>,
+});
+
+export function useTenant(options?: { enabled?: boolean }){
+    return useQuery({ ...tenantOptions(), enabled: options?.enabled ?? true, retry: 1, staleTime: 5 * 60 * 1000 });
 }
 
 // Convenience type exports

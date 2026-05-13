@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
@@ -156,10 +156,14 @@ export function useReportEmail() {
  * // reportTypes = [{ name: "spc", title: "SPC Report", template: "spc.typ" }, ...]
  * ```
  */
+export const reportTypesOptions = () => queryOptions({
+    queryKey: ["reportTypes"] as const,
+    queryFn: () => api.api_reports_types_retrieve(),
+});
+
 export function useReportTypes() {
     return useQuery({
-        queryKey: ["reportTypes"],
-        queryFn: () => api.api_reports_types_retrieve(),
+        ...reportTypesOptions(),
         staleTime: 60 * 60 * 1000, // Cache for 1 hour - report types rarely change
     });
 }

@@ -333,7 +333,8 @@ export function CoreDetailPage() {
                                         <TableCell>
                                             {component.component_part_erp_id ? (
                                                 <Link
-                                                    to={`/details/Parts/${component.component_part}`}
+                                                    to="/details/$model/$id"
+                                                    params={{ model: "Parts", id: String(component.component_part) }}
                                                     className="font-mono text-primary hover:underline"
                                                 >
                                                     {component.component_part_erp_id}

@@ -1,28 +1,18 @@
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShieldCheck, ClipboardList, AlertTriangle, CheckCircle2, Loader2, FileSignature } from "lucide-react"
-import { useCapaStats } from "@/hooks/useCapaStats"
-import { useMyCapaTasks, type CapaTask } from "@/hooks/useMyCapaTasks"
-import { useMyPendingApprovals, type PendingApproval } from "@/hooks/useMyPendingApprovals"
+import { useCapaStats, capaStatsOptions } from "@/hooks/useCapaStats"
+import { useMyCapaTasks, myCapaTasksOptions, type CapaTask } from "@/hooks/useMyCapaTasks"
+import { useMyPendingApprovals, myPendingApprovalsOptions, type PendingApproval } from "@/hooks/useMyPendingApprovals"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
-import { api } from "@/lib/api/generated"
 import type { QueryClient } from "@tanstack/react-query"
 
 // Prefetch function for route loader - uses same query keys as hooks
 export const prefetchQualityDashboard = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["capa-stats"],
-        queryFn: () => api.api_CAPAs_stats_retrieve(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["capa-my-tasks"],
-        queryFn: () => api.api_CapaTasks_my_tasks_list(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["approvals", "my-pending"],
-        queryFn: () => api.api_ApprovalRequests_my_pending_list(),
-    });
+    queryClient.prefetchQuery(capaStatsOptions());
+    queryClient.prefetchQuery(myCapaTasksOptions());
+    queryClient.prefetchQuery(myPendingApprovalsOptions());
 };
 
 export function QualityDashboardPage() {

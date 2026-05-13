@@ -1,4 +1,4 @@
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { QaQuarantineActionsCell } from "@/components/qa-quarantine-actions-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";

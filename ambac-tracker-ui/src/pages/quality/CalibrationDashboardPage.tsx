@@ -1,29 +1,19 @@
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Gauge, AlertTriangle, CheckCircle2, Clock, Loader2, Percent } from "lucide-react"
-import { useCalibrationStats } from "@/hooks/useCalibrationStats"
-import { useCalibrationsDueSoon } from "@/hooks/useCalibrationsDueSoon"
-import { useCalibrationsOverdue } from "@/hooks/useCalibrationsOverdue"
+import { useCalibrationStats, calibrationStatsOptions } from "@/hooks/useCalibrationStats"
+import { useCalibrationsDueSoon, calibrationsDueSoonOptions } from "@/hooks/useCalibrationsDueSoon"
+import { useCalibrationsOverdue, calibrationsOverdueOptions } from "@/hooks/useCalibrationsOverdue"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { ReportButton } from "@/components/reports/ReportButton"
-import { api } from "@/lib/api/generated"
 import type { QueryClient } from "@tanstack/react-query"
 
 // Prefetch function for route loader
 export const prefetchCalibrationDashboard = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["calibration-records", "stats"],
-        queryFn: () => api.api_CalibrationRecords_stats_retrieve(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["calibration-records", "due-soon", {}],
-        queryFn: () => api.api_CalibrationRecords_due_soon_list(),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["calibration-records", "overdue"],
-        queryFn: () => api.api_CalibrationRecords_overdue_list(),
-    });
+    queryClient.prefetchQuery(calibrationStatsOptions());
+    queryClient.prefetchQuery(calibrationsDueSoonOptions());
+    queryClient.prefetchQuery(calibrationsOverdueOptions());
 };
 
 export function CalibrationDashboardPage() {

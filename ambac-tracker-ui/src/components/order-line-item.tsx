@@ -195,7 +195,7 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                     </div>
 
                     {/* Quality & Sampling Section */}
-                    {(part.requires_sampling || part.quality_info?.error_count > 0) && (
+                    {(part.requires_sampling || (part.quality_info?.error_count ?? 0) > 0) && (
                         <>
                             <Separator />
                             <div className="space-y-2">

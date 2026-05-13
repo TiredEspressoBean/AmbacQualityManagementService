@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -10,20 +10,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveCompanies(
-  queries?: CompaniesListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<CompaniesListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<CompaniesListResponse, Error>({
-    queryKey: ["company", queries, config],
+export const companiesOptions = (queries?: CompaniesListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["company", queries, config] as const,
     queryFn: () =>
       api.api_Companies_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<CompaniesListResponse>,
+  });
+
+export const companiesMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "Companies", "Companies"] as const,
+    queryFn: () => api.api_Companies_metadata_retrieve(),
+  });
+
+export function useRetrieveCompanies(
+  queries?: CompaniesListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof companiesOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...companiesOptions(queries, config),
     ...options,
   });
 }

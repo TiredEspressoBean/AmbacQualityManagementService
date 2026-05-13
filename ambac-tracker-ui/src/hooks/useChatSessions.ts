@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type PaginatedChatSessionList } from "@/lib/api/generated";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
-export const CHAT_SESSIONS_QUERY_KEY = ["chatSessions"];
+export const CHAT_SESSIONS_QUERY_KEY = ["chatSessions"] as const;
 
 const csrfHeaders = () => ({
   headers: { "X-CSRFToken": getCookie("csrftoken") },
@@ -22,14 +22,16 @@ type UpdateChatSessionVariables = {
   data: UpdateChatSessionInput;
 };
 
+export const chatSessionsOptions = () => queryOptions({
+  queryKey: CHAT_SESSIONS_QUERY_KEY,
+  queryFn: () => api.api_ChatSessions_list({}),
+});
+
 /**
  * Hook to list all chat sessions for the current user
  */
 export function useChatSessions() {
-  return useQuery<PaginatedChatSessionList, Error>({
-    queryKey: CHAT_SESSIONS_QUERY_KEY,
-    queryFn: () => api.api_ChatSessions_list({}),
-  });
+  return useQuery(chatSessionsOptions());
 }
 
 /**
@@ -69,7 +71,7 @@ export function useDeleteChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.api_ChatSessions_destroy(undefined, { params: { id: Number(id) }, ...csrfHeaders() }),
+    mutationFn: (id: number) => api.api_ChatSessions_destroy(undefined, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
     },
@@ -83,7 +85,7 @@ export function useArchiveChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.api_ChatSessions_archive_create(undefined, { id, ...csrfHeaders() }),
+    mutationFn: (id: number) => api.api_ChatSessions_archive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
     },
@@ -97,7 +99,7 @@ export function useUnarchiveChatSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.api_ChatSessions_unarchive_create(undefined, { id, ...csrfHeaders() }),
+    mutationFn: (id: number) => api.api_ChatSessions_unarchive_create(undefined as never, { params: { id }, ...csrfHeaders() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_QUERY_KEY });
     },

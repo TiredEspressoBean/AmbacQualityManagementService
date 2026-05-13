@@ -1,24 +1,17 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, infiniteQueryOptions } from "@tanstack/react-query"
 import { ExpandableOrderTracker } from "@/components/TrackerCard"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useRef } from "react"
 import { api } from "@/lib/api/generated"
 
-export default function TrackerPage() {
-    const {
-        data,
-        isLoading,
-        error,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage
-    } = useInfiniteQuery({
-        queryKey: ['trackerOrders'],
+const trackerOrdersOptions = () =>
+    infiniteQueryOptions({
+        queryKey: ['trackerOrders'] as const,
         queryFn: async ({ pageParam = 0 }) => {
             return await api.api_TrackerOrders_list({
                 queries: {
                     limit: 25,
-                    offset: pageParam,
+                    offset: pageParam as number,
                 }
             });
         },
@@ -30,7 +23,17 @@ export default function TrackerPage() {
             return undefined;
         },
         initialPageParam: 0,
-    })
+    });
+
+export default function TrackerPage() {
+    const {
+        data,
+        isLoading,
+        error,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery(trackerOrdersOptions())
 
     const observerTarget = useRef<HTMLDivElement>(null)
 
@@ -89,7 +92,9 @@ export default function TrackerPage() {
                     orderName={order.name}
                     companyName={order.company_name ?? undefined}
                     estimatedCompletion={order.estimated_completion}
+                    // eslint-disable-next-line local/no-as-any -- gate_info and latest_note typed as {} passthrough in schema; actual shape matches GateInfo/NoteEntry at runtime
                     gateInfo={order.gate_info as any}
+                    // eslint-disable-next-line local/no-as-any -- latest_note not in generated schema; backend returns it as an extra field on the order list response
                     latestNote={(order as any).latest_note}
                     stages={(order.process_stages ?? []).map((stage: any) => ({
                         name: stage.name,

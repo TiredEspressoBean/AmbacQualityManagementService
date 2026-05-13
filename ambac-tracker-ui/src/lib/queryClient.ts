@@ -1,22 +1,67 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+/**
+ * Meta-aware global handlers.
+ *
+ * Each query/mutation can tag itself with `meta` to control global behavior:
+ *
+ *   meta: { errorMessage: "Couldn't save part" }
+ *   meta: { successMessage: "Part incremented" }
+ *   meta: { suppressGlobalError: true }   // handle locally via onError
+ *
+ * Default behavior (no meta):
+ *   - Errors: toast with the error message
+ *   - Success: no toast
+ *
+ * Why this lives on the cache, not defaultOptions:
+ *   - Cache callbacks fire ONCE per mutation regardless of how many observers
+ *     subscribe. defaultOptions.onError fires per-observer, causing duplicate
+ *     toasts if a mutation is observed by multiple components.
+ *   - Cache callbacks have access to the full mutation/query object, including
+ *     its meta field.
+ */
+
+type QueryMeta = { errorMessage?: string; suppressGlobalError?: boolean };
+type MutationMeta = {
+    errorMessage?: string;
+    successMessage?: string;
+    suppressGlobalError?: boolean;
+    suppressGlobalSuccess?: boolean;
+};
+
 export const queryClient = new QueryClient({
+    queryCache: new QueryCache({
+        onError: (error, query) => {
+            const meta = query.meta as QueryMeta | undefined;
+            if (meta?.suppressGlobalError) return;
+            toast.error(meta?.errorMessage ?? "Failed to load data", {
+                description: error instanceof Error ? error.message : undefined,
+            });
+        },
+    }),
+    mutationCache: new MutationCache({
+        onError: (error, _vars, _ctx, mutation) => {
+            const meta = mutation.meta as MutationMeta | undefined;
+            if (meta?.suppressGlobalError) return;
+            toast.error(meta?.errorMessage ?? "Operation failed", {
+                description: error instanceof Error ? error.message : undefined,
+            });
+        },
+        onSuccess: (_data, _vars, _ctx, mutation) => {
+            const meta = mutation.meta as MutationMeta | undefined;
+            if (meta?.suppressGlobalSuccess) return;
+            if (meta?.successMessage) toast.success(meta.successMessage);
+        },
+    }),
     defaultOptions: {
         queries: {
-            staleTime: 60 * 1000,       // Data considered fresh for 1 minute
-            gcTime: 5 * 60 * 1000,      // Cache garbage collected after 5 minutes
-            refetchOnWindowFocus: false, // Don't refetch when window regains focus
-            retry: 1,                    // Only retry failed requests once
-            networkMode: 'offlineFirst', // Use cached data when offline, fetch in background when online
-            refetchOnReconnect: true,    // Auto-refresh stale queries when connection returns
-        },
-        mutations: {
-            onError: (error) => {
-                toast.error("Operation failed", {
-                    description: error instanceof Error ? error.message : "An unexpected error occurred",
-                });
-            },
+            staleTime: 60 * 1000,
+            gcTime: 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            retry: 1,
+            networkMode: 'offlineFirst',
+            refetchOnReconnect: true,
         },
     },
 })

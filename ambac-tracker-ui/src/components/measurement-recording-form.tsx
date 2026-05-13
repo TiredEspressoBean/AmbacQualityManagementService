@@ -69,7 +69,7 @@ export function MeasurementRecordingForm({
     const [values, setValues] = useState<Record<string, MeasurementValue>>({});
 
     // Initialize values from definitions
-    const definitions = requiredData?.definitions ?? [];
+    const definitions = useMemo(() => requiredData?.definitions ?? [], [requiredData?.definitions]);
 
     const handleValueChange = (defId: string, value: string, isStringValue = false) => {
         setValues(prev => ({

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type DimensionalResult = {
     part_erp_id: string;
@@ -48,24 +48,28 @@ type UseDimensionalResultsParams = {
     enabled?: boolean;
 };
 
+export const dimensionalResultsOptions = (partId?: string | null, workOrderId?: string | null) => queryOptions({
+    queryKey: ["dimensional-results", partId, workOrderId] as const,
+    queryFn: async () => {
+        if (partId === null && workOrderId === null) {
+            throw new Error("Either partId or workOrderId is required");
+        }
+        return api.api_spc_dimensional_results_retrieve({
+            queries: {
+                part_id: partId ?? undefined,
+                work_order_id: workOrderId ?? undefined,
+            }
+        }) as Promise<DimensionalResultsResponse>;
+    },
+});
+
 export const useDimensionalResults = ({
     partId,
     workOrderId,
     enabled = true,
 }: UseDimensionalResultsParams) => {
-    return useQuery<DimensionalResultsResponse>({
-        queryKey: ["dimensional-results", partId, workOrderId],
-        queryFn: async () => {
-            if (partId === null && workOrderId === null) {
-                throw new Error("Either partId or workOrderId is required");
-            }
-            return api.api_spc_dimensional_results_retrieve({
-                queries: {
-                    part_id: partId ?? undefined,
-                    work_order_id: workOrderId ?? undefined,
-                }
-            }) as Promise<DimensionalResultsResponse>;
-        },
+    return useQuery({
+        ...dimensionalResultsOptions(partId, workOrderId),
         enabled: enabled && (partId !== null || workOrderId !== null),
     });
 };

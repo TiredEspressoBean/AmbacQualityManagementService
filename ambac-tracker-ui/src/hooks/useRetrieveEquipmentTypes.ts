@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,20 +11,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveEquipmentTypes(
-  queries?: EquipmentTypesListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<EquipmentTypesListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<EquipmentTypesListResponse, Error>({
-    queryKey: ["equipment-types", queries, config],
+export const equipmentTypesOptions = (queries?: EquipmentTypesListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["equipment-types", queries, config] as const,
     queryFn: () =>
       api.api_Equipment_types_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<EquipmentTypesListResponse>,
+  });
+
+export const equipmentTypesMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "EquipmentTypes", "Equipment-types"] as const,
+    queryFn: () => api.api_Equipment_types_metadata_retrieve(),
+  });
+
+export function useRetrieveEquipmentTypes(
+  queries?: EquipmentTypesListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof equipmentTypesOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...equipmentTypesOptions(queries, config),
     ...options,
   });
 }

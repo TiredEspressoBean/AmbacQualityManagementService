@@ -6,7 +6,7 @@ import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { useParams, useSearch, useNavigate, Link } from "@tanstack/react-router"
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
+import { useInfiniteQuery, infiniteQueryOptions, useQueryClient } from "@tanstack/react-query"
 
 import { cn, getCookie } from "@/lib/utils"
 import { api, type PaginatedUserSelectList } from "@/lib/api/generated"
@@ -47,8 +47,8 @@ import {
 
 import { ReportButton } from "@/components/reports/ReportButton"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
-import { useRetrievePart } from "@/hooks/useRetrievePart"
-import { useRetrieveParts } from "@/hooks/useRetrieveParts"
+import { useRetrievePart } from "@/hooks/parts"
+import { useRetrieveParts } from "@/hooks/parts"
 import { useQualityReports } from "@/hooks/useQualityReports"
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes"
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
@@ -138,6 +138,14 @@ type DispositionSearchParams = {
     qualityReportId?: string
 }
 
+const employeeOptionsInfinite = () =>
+    infiniteQueryOptions<PaginatedUserSelectList, Error>({
+        queryKey: ["employee-options"],
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
+        initialPageParam: 0,
+    });
+
 export default function EditDispositionFormPage() {
     const params = useParams({ strict: false })
     const searchParams = useSearch({ strict: false }) as DispositionSearchParams
@@ -164,12 +172,7 @@ export default function EditDispositionFormPage() {
     )
 
     // Fetch employees for dropdowns
-    const { data: employeePages, isLoading: employeesLoading } = useInfiniteQuery<PaginatedUserSelectList, Error>({
-        queryKey: ["employee-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
-        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
-        initialPageParam: 0,
-    })
+    const { data: employeePages, isLoading: employeesLoading } = useInfiniteQuery(employeeOptionsInfinite())
     const employees = employeePages?.pages.flatMap((p) => p.results) ?? []
 
     // Fetch content types for document upload
@@ -204,6 +207,7 @@ export default function EditDispositionFormPage() {
     // Form setup
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
             part: initialPartId ?? null,
             current_state: "OPEN",

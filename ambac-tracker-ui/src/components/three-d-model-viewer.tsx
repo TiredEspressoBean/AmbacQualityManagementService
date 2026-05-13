@@ -1,6 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
-import { Suspense, useRef, useEffect, type ReactNode, useState, useMemo } from "react";
+import { Suspense, useRef, useEffect, type ReactNode, useState, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { Loader2, AlertTriangle, SunDim } from "lucide-react";
 import { ThreeDErrorBoundary } from "./three-d-error-boundary";
@@ -446,14 +446,14 @@ export function ThreeDModelViewer({
     }, []);
 
     // Get default lighting for current theme
-    const getDefaultLighting = () => {
+    const getDefaultLighting = useCallback(() => {
         const theme = isDarkTheme ? "dark" : "light";
         return {
             ambient: THEME_LIGHTING[theme].ambient,
             mainLight: THEME_LIGHTING[theme].mainLight,
             fillLight: THEME_LIGHTING[theme].fillLight,
         };
-    };
+    }, [isDarkTheme]);
 
     // Initialize lighting settings
     const [lightingSettings, setLightingSettings] = useState<LightingSettings>(getDefaultLighting);
@@ -461,7 +461,7 @@ export function ThreeDModelViewer({
     // Update lighting when theme changes
     useEffect(() => {
         setLightingSettings(getDefaultLighting());
-    }, [isDarkTheme]);
+    }, [getDefaultLighting]);
 
     const handleLightingChange = (newSettings: LightingSettings) => {
         setLightingSettings(newSettings);

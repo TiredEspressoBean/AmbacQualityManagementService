@@ -13,18 +13,14 @@ import {
     ArrowRight,
     ClipboardList,
 } from "lucide-react"
-import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals"
+import { useMyPendingApprovals, myPendingApprovalsOptions } from "@/hooks/useMyPendingApprovals"
 import { useMySubmittedRequests } from "@/hooks/useApprovalRequests"
 import { useAuthUser } from "@/hooks/useAuthUser"
-import { api } from "@/lib/api/generated"
 import type { QueryClient } from "@tanstack/react-query"
 
 // Prefetch function for route loader
 export const prefetchApprovalsOverview = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["approvals", "my-pending"],
-        queryFn: () => api.api_ApprovalRequests_my_pending_list(),
-    });
+    queryClient.prefetchQuery(myPendingApprovalsOptions());
 };
 
 // Helper to get the detail link for an approval based on its type
@@ -80,7 +76,7 @@ export function ApprovalsOverviewPage() {
         <div className="container mx-auto p-6">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Approvals</h1>
-                <Link to="/approvals/history">
+                <Link to="/approvals/history" search={{ status: undefined, myRequests: undefined }}>
                     <Button variant="outline">
                         View All History
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -211,7 +207,7 @@ export function ApprovalsOverviewPage() {
                                 {pendingCount > 8 && (
                                     <Link
                                         to="/approvals/history"
-                                        search={{ status: "PENDING" }}
+                                        search={{ status: "PENDING", myRequests: undefined }}
                                         className="block text-sm text-center text-primary hover:underline pt-2"
                                     >
                                         View all {pendingCount} pending approvals
@@ -288,7 +284,7 @@ export function ApprovalsOverviewPage() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-medium truncate">
-                                                {request.content_object_info?.str || `#${request.object_id}`}
+                                                {(request.content_object_info?.str as string | undefined) || `#${request.object_id}`}
                                             </span>
                                             <StatusBadge status={request.status} size="sm" />
                                         </div>
@@ -305,7 +301,7 @@ export function ApprovalsOverviewPage() {
                                 {myRequests.length > 5 && (
                                     <Link
                                         to="/approvals/history"
-                                        search={{ myRequests: true }}
+                                        search={{ status: undefined, myRequests: true }}
                                         className="block text-sm text-center text-primary hover:underline pt-2"
                                     >
                                         View all {myRequests.length} requests
@@ -325,6 +321,7 @@ export function ApprovalsOverviewPage() {
                     <CardContent className="space-y-2">
                         <Link
                             to="/approvals/history"
+                            search={{ status: undefined, myRequests: undefined }}
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <div className="font-medium">Approval History</div>

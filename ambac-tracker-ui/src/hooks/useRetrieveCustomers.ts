@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 
 // Extract queries type from Zodios endpoint
@@ -9,20 +9,20 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveCustomersOptions = (queries?: CustomersListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["customers", queries, config] as const,
+  queryFn: () => api.api_Customers_list(
+    (queries || config ? { queries, ...config } : undefined) as never,
+  ),
+});
+
 export function useRetrieveCustomers(
   queries?: CustomersListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_Customers_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<ReturnType<typeof retrieveCustomersOptions>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: ["customers", queries, config],
-    queryFn: () => api.api_Customers_list(queries || config ? { queries, ...config } : undefined),
+    ...retrieveCustomersOptions(queries, config),
     ...options,
   });
 }

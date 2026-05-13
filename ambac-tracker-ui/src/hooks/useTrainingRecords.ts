@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -9,17 +9,21 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const trainingRecordsOptions = (queries?: TrainingRecordsListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["training-records", queries, config] as const,
+  queryFn: () =>
+    api.api_TrainingRecords_list(
+      (queries || config ? { queries, ...config } : undefined) as never,
+    ) as Promise<TrainingRecordsListResponse>,
+});
+
 export function useTrainingRecords(
   queries?: TrainingRecordsListQueries,
   config?: ListHookConfig,
-  options?: Omit<UseQueryOptions<TrainingRecordsListResponse, Error>, "queryKey" | "queryFn">
+  options?: Omit<ReturnType<typeof trainingRecordsOptions>, "queryKey" | "queryFn">
 ) {
-  return useQuery<TrainingRecordsListResponse, Error>({
-    queryKey: ["training-records", queries, config],
-    queryFn: () =>
-      api.api_TrainingRecords_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
-      ) as Promise<TrainingRecordsListResponse>,
+  return useQuery({
+    ...trainingRecordsOptions(queries, config),
     ...options,
   });
 }

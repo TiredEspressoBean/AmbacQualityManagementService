@@ -6,12 +6,13 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
     // Load from .env files if available
     const env = loadEnv(mode, process.cwd(), '');
-    console.log('Vite looking for .env in:', process.cwd());
-    console.log('Your .env is probably in:', path.resolve(process.cwd(), '../'));
+    // Dev diagnostic: console.warn('Vite looking for .env in:', process.cwd());
 
-    // Fallback to actual process.env if not defined in .env
+    // Fallback to actual process.env if not defined in .env.
+    // eslint-disable-next-line no-restricted-syntax -- dev-only default; .env is the real source in production
     const API_TARGET = env.VITE_API_TARGET || process.env.VITE_API_TARGET || "http://localhost:8000";
 
+    // eslint-disable-next-line no-restricted-syntax -- dev-only default; .env is the real source in production
     const LANGGRAPH_API_TARGET = env.VITE_LANGGRAPH_API_URL || "http://localhost:2025"
 
     if (!API_TARGET) {

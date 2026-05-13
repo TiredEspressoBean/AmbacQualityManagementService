@@ -5,9 +5,10 @@ import { getCookie } from "@/lib/utils";
 export const useDeleteCapaTask = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<void, unknown, number>({
+    return useMutation<void, unknown, string>({
         mutationFn: (id) =>
-            api.api_CapaTasks_destroy({ params: { id } }, {
+            api.api_CapaTasks_destroy(undefined, {
+                params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
         onSuccess: () => {

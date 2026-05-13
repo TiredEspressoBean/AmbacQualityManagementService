@@ -36,7 +36,7 @@ import { toast } from "sonner";
 type SettingsCard = {
     title: string;
     description: string;
-    icon: React.ElementType;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>;
     href: string;
     badge?: string;
     disabled?: boolean;

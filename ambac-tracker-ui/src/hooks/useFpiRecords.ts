@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
@@ -25,20 +25,36 @@ type ListHookConfig = {
     headers?: Record<string, string>;
 };
 
+export const fpiRecordsOptions = (queries?: FpiRecordsListQueries, config?: ListHookConfig) => queryOptions({
+    queryKey: ["fpi-records", queries, config] as const,
+    queryFn: () => api.api_FPIRecords_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+    ),
+});
+
 /**
  * Query hook for listing FPI records
  */
 export function useFpiRecords(
     queries?: FpiRecordsListQueries,
     config?: ListHookConfig,
-    options?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof fpiRecordsOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["fpi-records", queries, config],
-        queryFn: () => api.api_FPIRecords_list(queries || config ? { queries, ...config } : undefined),
+        ...fpiRecordsOptions(queries, config),
         ...options
     });
 }
+
+export const fpiCheckStatusOptions = (workOrderId: string | undefined, stepId: string | undefined) => queryOptions({
+    queryKey: ["fpi-status", workOrderId, stepId] as const,
+    queryFn: () => api.api_FPIRecords_check_status_retrieve({
+        queries: {
+            work_order: workOrderId!,
+            step: stepId!
+        }
+    }) as Promise<FpiCheckStatusResponse>,
+});
 
 /**
  * Query hook for checking FPI status for a work order/step
@@ -46,16 +62,10 @@ export function useFpiRecords(
 export function useFpiCheckStatus(
     workOrderId: string | undefined,
     stepId: string | undefined,
-    options?: Omit<UseQueryOptions<FpiCheckStatusResponse, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof fpiCheckStatusOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["fpi-status", workOrderId, stepId],
-        queryFn: () => api.api_FPIRecords_check_status_retrieve({
-            queries: {
-                work_order: workOrderId!,
-                step: stepId!
-            }
-        }) as Promise<FpiCheckStatusResponse>,
+        ...fpiCheckStatusOptions(workOrderId, stepId),
         enabled: !!workOrderId && !!stepId,
         ...options
     });

@@ -8,7 +8,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { useState } from "react";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {

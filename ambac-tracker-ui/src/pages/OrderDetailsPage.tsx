@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { orderPartsOptions } from "@/hooks/useOrderParts";
 import {
     CheckCircle, Clock, Circle, ArrowLeft, Edit, UserPlus,
     Calendar, Building2, User, FileText, Package,
@@ -169,6 +170,7 @@ export function OrderDetailsPage() {
     const addNoteMutation = useMutation({
         mutationFn: async ({ message, visibility }: { message: string; visibility: string }) => {
             return await api.api_Orders_add_note_create(
+                // eslint-disable-next-line local/no-as-any -- add_note body type doesn't expose message/visibility in generated schema; these are the actual runtime fields
                 { message, visibility } as any,
                 { params: { id: orderNumber } }
             );
@@ -205,24 +207,11 @@ export function OrderDetailsPage() {
         hasNextPage,
         isFetchingNextPage,
     } = useInfiniteQuery({
-        queryKey: ["order-parts", orderId],
-        initialPageParam: 0,
-        queryFn: async ({ pageParam = 0 }) => {
-            return await api.api_orders_parts_list({
-                params: { order_id: orderId! },
-                queries: { offset: pageParam, limit: 25 },
-            });
-        },
-        getNextPageParam: (lastPage, allPages) => {
-            if (!lastPage.next) return undefined;
-            // Calculate offset as total items loaded so far
-            const totalLoaded = allPages.reduce((sum, page) => sum + (page.results?.length ?? 0), 0);
-            return totalLoaded;
-        },
+        ...orderPartsOptions(orderId ?? ""),
         enabled: !!orderId,
     });
 
-    const allParts = partsData?.pages.flatMap(page => page.results) || [];
+    const allParts = useMemo(() => partsData?.pages.flatMap(page => page.results) ?? [], [partsData?.pages]);
     // Group parts by part type (with ID for document lookup)
     const partsByType = useMemo(() => {
         const groups: Record<string, { parts: typeof allParts; partTypeId: string | null }> = {};
@@ -231,7 +220,8 @@ export function OrderDetailsPage() {
             if (!groups[typeName]) {
                 groups[typeName] = {
                     parts: [],
-                    partTypeId: part.part_type_info?.id || part.part_type || null,
+                    // eslint-disable-next-line local/no-as-any -- part_type_info is typed as {} passthrough; id exists at runtime
+                    partTypeId: ((part.part_type_info as any)?.id as string | undefined) || part.part_type || null,
                 };
             }
             groups[typeName].parts.push(part);
@@ -281,6 +271,7 @@ export function OrderDetailsPage() {
         );
     }
 
+     
     const {
         process_stages,
         customer_first_name,
@@ -294,6 +285,7 @@ export function OrderDetailsPage() {
         name,
         created_at,
         parts_summary,
+        // eslint-disable-next-line local/no-as-any -- useOrderDetails returns an aggregated shape (notes_timeline, parts_summary, etc.) not declared in OpenAPI schema
     } = data as any;
 
     const customerName = customer_first_name && customer_last_name

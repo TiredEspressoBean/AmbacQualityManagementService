@@ -7,10 +7,10 @@ export const useDeleteCalibrationRecord = () => {
 
     return useMutation<void, unknown, { id: string }>({
         mutationFn: ({ id }) =>
-            api.api_CalibrationRecords_destroy(
-                { params: { id } },
-                { headers: { "X-CSRFToken": getCookie("csrftoken") } }
-            ),
+            api.api_CalibrationRecords_destroy(undefined, {
+                params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["calibration-records"] });
         },

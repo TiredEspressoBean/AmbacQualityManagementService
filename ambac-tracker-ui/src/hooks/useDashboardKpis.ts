@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type DashboardKpis = {
     active_capas: number;
@@ -9,10 +9,14 @@ export type DashboardKpis = {
     current_fpy: number;
 };
 
+export const dashboardKpisOptions = () => queryOptions({
+    queryKey: ["dashboard-kpis"] as const,
+    queryFn: () => api.api_dashboard_kpis_retrieve() as Promise<DashboardKpis>,
+});
+
 export const useDashboardKpis = () => {
-    return useQuery<DashboardKpis>({
-        queryKey: ["dashboard-kpis"],
-        queryFn: () => api.api_dashboard_kpis_retrieve() as Promise<DashboardKpis>,
+    return useQuery({
+        ...dashboardKpisOptions(),
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable KPIs
     });
 };

@@ -1,8 +1,7 @@
-import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies.ts";
+import { useRetrieveCompanies, companiesOptions, companiesMetadataOptions } from "@/hooks/useRetrieveCompanies.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditCompanyActionsCell } from "@/components/edit-company-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchCompaniesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["company", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Companies_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Companies", "Companies"],
-        queryFn: () => api.api_Companies_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(companiesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(companiesMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage

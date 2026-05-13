@@ -56,7 +56,7 @@ export function NotificationPreferencesCard() {
     const handleSave = async () => {
         try {
             const scheduleData = {
-                interval_type: "fixed" as const,
+                interval_type: "FIXED" as const,
                 day_of_week: parseInt(dayOfWeek),
                 time: time,
                 interval_weeks: parseInt(intervalWeeks),

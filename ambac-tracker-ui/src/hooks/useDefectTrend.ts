@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type DefectTrendDataPoint = {
     date: string;
@@ -25,10 +25,14 @@ type UseDefectTrendParams = {
     enabled?: boolean;
 };
 
+export const defectTrendOptions = (days: number) => queryOptions({
+    queryKey: ["defect-trend", days] as const,
+    queryFn: () => api.api_dashboard_defect_trend_retrieve({ queries: { days } }) as Promise<DefectTrendResponse>,
+});
+
 export const useDefectTrend = ({ days = 30, enabled = true }: UseDefectTrendParams = {}) => {
-    return useQuery<DefectTrendResponse>({
-        queryKey: ["defect-trend", days],
-        queryFn: () => api.api_dashboard_defect_trend_retrieve({ queries: { days } }) as Promise<DefectTrendResponse>,
+    return useQuery({
+        ...defectTrendOptions(days),
         enabled,
         refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - trend data
     });

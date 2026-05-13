@@ -12,7 +12,7 @@ export function RemanDashboardPage() {
     const { data: receivedCores } = useRetrieveCores({ status: "RECEIVED", limit: 1 });
     const { data: inDisassemblyCores } = useRetrieveCores({ status: "IN_DISASSEMBLY", limit: 1 });
     const { data: componentsData, isLoading: componentsLoading } = useRetrieveHarvestedComponents({ limit: 1 });
-    const { data: usableComponents } = useRetrieveHarvestedComponents({ is_scrapped: "false", limit: 1 });
+    const { data: usableComponents } = useRetrieveHarvestedComponents({ is_scrapped: false, limit: 1 });
 
     const totalCores = coresData?.count ?? 0;
     const awaitingDisassembly = receivedCores?.count ?? 0;

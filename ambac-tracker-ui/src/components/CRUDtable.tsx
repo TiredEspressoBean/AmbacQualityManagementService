@@ -41,6 +41,7 @@ export function CrudTable<T>({
                                  onCreate,
                                  emptyMessage = `No ${modelName.toLowerCase()} found.`,
                                  hideActions = false,
+                                 // eslint-disable-next-line local/no-as-any -- generic T has no id constraint; fallback needed for stable key
                                  rowKey = (row) => (row as any).id ?? JSON.stringify(row),
                                  toolbar,
                                  renderActions,

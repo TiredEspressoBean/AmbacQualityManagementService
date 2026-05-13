@@ -1,16 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
-import { api, type ContentType } from "@/lib/api/generated";
+import { useQuery, queryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
+
+type ContentType = Schema<"ContentType">;
 
 // Helper to normalize response (handles both array and paginated formats)
 function normalizeContentTypes(data: ContentType[] | undefined): ContentType[] {
     return data || [];
 }
 
+export const contentTypesOptions = () => queryOptions({
+    queryKey: ["content-types"] as const,
+    queryFn: () => api.api_content_types_list({}),
+});
+
 export function useContentTypes() {
-    return useQuery<ContentType[], Error>({
-        queryKey: ["content-types"],
-        queryFn: () => api.api_content_types_list({}),
-    });
+    return useQuery(contentTypesOptions());
 }
 
 export function useContentTypeMapping() {

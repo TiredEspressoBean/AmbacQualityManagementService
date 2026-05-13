@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 // Model names that have metadata endpoints
@@ -51,31 +51,32 @@ const metadataFetchers: Record<ModelName, () => Promise<any>> = {
     ApprovalRequests: api.api_ApprovalRequests_metadata_retrieve,
 };
 
+export const schemaMetadataOptions = (modelName: ModelName) => queryOptions({
+    queryKey: ["schema-metadata", modelName] as const,
+    queryFn: () => metadataFetchers[modelName](),
+});
+
 export function useSchemaMetadata(modelName: ModelName) {
-    return useQuery({
-        queryKey: ["schema-metadata", modelName],
-        queryFn: () => metadataFetchers[modelName](),
-        staleTime: Infinity, // Metadata doesn't change during a session
-        enabled: !!modelName && modelName in metadataFetchers,
-    });
+    return useQuery({ ...schemaMetadataOptions(modelName), enabled: !!modelName && modelName in metadataFetchers, staleTime: Infinity });
 }
 
-export function useAllSchemaMetadata() {
-    return useQuery({
-        queryKey: ["schema-metadata", "all"],
-        queryFn: async () => {
-            const results: Record<string, any> = {};
-            for (const model of MODELS_WITH_METADATA) {
-                try {
-                    results[model] = await metadataFetchers[model]();
-                } catch (e) {
-                    results[model] = { error: e instanceof Error ? e.message : "Unknown error" };
-                }
+export const allSchemaMetadataOptions = () => queryOptions({
+    queryKey: ["schema-metadata", "all"] as const,
+    queryFn: async () => {
+        const results: Record<string, any> = {};
+        for (const model of MODELS_WITH_METADATA) {
+            try {
+                results[model] = await metadataFetchers[model]();
+            } catch (e) {
+                results[model] = { error: e instanceof Error ? e.message : "Unknown error" };
             }
-            return results;
-        },
-        staleTime: Infinity,
-    });
+        }
+        return results;
+    },
+});
+
+export function useAllSchemaMetadata() {
+    return useQuery({ ...allSchemaMetadataOptions(), staleTime: Infinity });
 }
 
 export { MODELS_WITH_METADATA };

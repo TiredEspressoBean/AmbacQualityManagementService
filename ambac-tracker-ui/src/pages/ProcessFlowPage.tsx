@@ -16,7 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FlowCanvas, StepEditorPanel, type StepData } from '@/components/flow';
+import { FlowCanvas, StepEditorPanel, type StepWithOrder } from '@/components/flow';
+type StepData = StepWithOrder;
 import { useRetrieveProcesses } from '@/hooks/useRetrieveProcesses';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
 import { useUpdateProcess } from '@/hooks/useUpdateProcessWithSteps';
@@ -112,15 +113,16 @@ export default function ProcessFlowPage() {
   const [demoMode, setDemoMode] = useState<DemoMode>('template');
   const [localSteps, setLocalSteps] = useState<StepData[] | null>(null);
   const [localEdges, setLocalEdges] = useState<Edge[] | null>(null);
-  const [nextStepId, setNextStepId] = useState(-1); // Negative IDs for new steps (backend ignores negative IDs)
+  const [nextStepId, setNextStepId] = useState(-1); // Negative numeric counter; stringified when used as a Step id
 
   // Process-level properties (for editing)
-  const [localProcessProps, setLocalProcessProps] = useState<{
+  type ProcessProps = {
     name: string;
     part_type: string | null;
     is_remanufactured: boolean;
     is_batch_process: boolean;
-  } | null>(null);
+  };
+  const [localProcessProps, setLocalProcessProps] = useState<ProcessProps | null>(null);
 
   const isDemo = selectedProcessId === 'demo';
   const processId = isDemo ? null : selectedProcessId;
@@ -196,7 +198,7 @@ export default function ProcessFlowPage() {
           break;
 
         case 'part-journey': {
-          const journeySteps = DEMO_PART_JOURNEY.filter((j) => j.stepId === Number(step.id));
+          const journeySteps = DEMO_PART_JOURNEY.filter((j) => j.stepId === step.id);
           overlayData.visitedInJourney = journeySteps.length > 0;
           overlayData.journeyVisits = journeySteps;
           overlayData.highlighted = journeySteps.length > 0;
@@ -218,10 +220,11 @@ export default function ProcessFlowPage() {
           break;
       }
 
+      // eslint-disable-next-line local/no-double-cast-via-unknown -- _overlayData is a UI-only field added to the step; StepData is the display type accepted by FlowCanvas
       return {
         ...step,
         _overlayData: overlayData,
-      } as StepData;
+      } as unknown as StepData;
     });
   }, [isDemo, baseStepsFromSource, localSteps, editMode, demoMode]);
 
@@ -229,15 +232,18 @@ export default function ProcessFlowPage() {
   const initializeLocalSteps = useCallback(() => {
     if (!localSteps) {
       setLocalSteps([...baseStepsFromSource]);
-      // Set nextStepId to be higher than any existing step
-      const maxId = Math.max(...baseStepsFromSource.map(s => s.id), 0);
+      // Set nextStepId to be higher than any existing numeric step id (demo ids are "1".."11").
+      const numericIds = baseStepsFromSource
+        .map(s => Number(s.id))
+        .filter(n => Number.isFinite(n));
+      const maxId = numericIds.length ? Math.max(...numericIds) : 0;
       setNextStepId(maxId + 1);
     }
     // Initialize process props if not already set
     if (!localProcessProps && processWithSteps) {
       setLocalProcessProps({
         name: processWithSteps.name || '',
-        part_type: processWithSteps.part_type as number | null,
+        part_type: (processWithSteps.part_type as string | null) ?? null,
         is_remanufactured: processWithSteps.is_remanufactured || false,
         is_batch_process: processWithSteps.is_batch_process || false,
       });
@@ -259,7 +265,7 @@ export default function ProcessFlowPage() {
     const maxOrder = Math.max(...currentSteps.map(s => s.order), 0);
 
     const newStep: StepData = {
-      id: nextStepId,
+      id: String(nextStepId),
       name: `New ${stepType.charAt(0).toUpperCase() + stepType.slice(1).toLowerCase()} Step`,
       order: maxOrder + 1,
       step_type: stepType as StepData['step_type'],
@@ -321,11 +327,13 @@ export default function ProcessFlowPage() {
     // Also update selectedNode so the editor panel shows current values
     setSelectedNode(prev => {
       if (!prev || prev.id !== nodeId) return prev;
+      // eslint-disable-next-line local/no-as-any -- ReactFlow Node.data is untyped Record; step and label are set by our FlowCanvas node factory
       const updatedStep = { ...(prev.data as any).step, ...data };
       return {
         ...prev,
         data: {
           ...prev.data,
+          // eslint-disable-next-line local/no-as-any -- ReactFlow Node.data is untyped Record; label field is set by our FlowCanvas node factory
           label: data.name ?? (prev.data as any).label,
           step: updatedStep,
           isDecisionPoint: updatedStep.is_decision_point,
@@ -367,9 +375,12 @@ export default function ProcessFlowPage() {
 
     try {
       // Build nodes array from local steps (new graph-based format)
-      const nodesPayload = localSteps.map((step, index) => ({
-        id: step.id > 0 ? step.id : undefined, // Only include ID for existing steps
-        _temp_id: step.id <= 0 ? step.id : undefined, // Temp ID for new steps
+      const nodesPayload = localSteps.map((step, index) => {
+        const numericId = Number(step.id);
+        const isExisting = Number.isFinite(numericId) && numericId > 0;
+        return ({
+        id: isExisting ? step.id : undefined, // Only include ID for existing steps
+        _temp_id: !isExisting ? step.id : undefined, // Temp ID for new steps
         name: step.name,
         order: index + 1,
         is_entry_point: index === 0 || step.is_entry_point || false,
@@ -384,7 +395,8 @@ export default function ProcessFlowPage() {
         requires_qa_signoff: step.requires_qa_signoff || false,
         sampling_required: step.sampling_required || false,
         min_sampling_rate: step.min_sampling_rate,
-      }));
+      });
+      });
 
       // Build edges array from local edges (new graph-based format)
       const edgesToProcess = localEdges || [];
@@ -410,8 +422,7 @@ export default function ProcessFlowPage() {
           }),
           nodes: nodesPayload,
           edges: edgesPayload,
-          num_steps: localSteps.length,
-        },
+        } as Parameters<typeof updateProcess.mutateAsync>[0]['data'],
       });
 
       toast.success('Process saved successfully');
@@ -426,14 +437,14 @@ export default function ProcessFlowPage() {
   }, [processId, localSteps, localEdges, localProcessProps, isDemo, updateProcess]);
 
   // Handler to update process-level properties
-  const handleProcessPropChange = useCallback((prop: keyof typeof localProcessProps, value: unknown) => {
+  const handleProcessPropChange = useCallback((prop: keyof ProcessProps, value: unknown) => {
     initializeLocalSteps(); // Ensure we have local state initialized
     setLocalProcessProps(prev => {
       if (!prev) {
         // Initialize from current process data
-        const initial = {
+        const initial: ProcessProps = {
           name: processWithSteps?.name || '',
-          part_type: processWithSteps?.part_type as number | null,
+          part_type: (processWithSteps?.part_type as string | null) ?? null,
           is_remanufactured: processWithSteps?.is_remanufactured || false,
           is_batch_process: processWithSteps?.is_batch_process || false,
         };
@@ -836,8 +847,8 @@ export default function ProcessFlowPage() {
                     <span className="truncate">
                       {selectedProcessId === 'demo'
                         ? 'Demo: Remanufacturing Process'
-                        : (processes as { id: number; name: string }[]).find(
-                            (p) => p.id.toString() === selectedProcessId
+                        : (processes as { id: string | number; name: string }[]).find(
+                            (p) => String(p.id) === selectedProcessId
                           )?.name || 'Select a process...'}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1042,9 +1053,11 @@ export default function ProcessFlowPage() {
               </div>
             ) : (
               <ReactFlowProvider>
+                { }
                 <FlowCanvas
                   steps={steps}
-                  stepEdges={isDemo ? DEMO_STEP_EDGES : processWithSteps?.step_edges}
+                  // eslint-disable-next-line local/no-double-cast-via-unknown -- backend step_edges shape has wider edge_type union than FlowCanvas accepts; runtime values are always within the FlowCanvas-accepted subset
+                  stepEdges={isDemo ? DEMO_STEP_EDGES : (processWithSteps?.step_edges as unknown as { from_step: string; to_step: string; edge_type: string }[] | undefined)}
                   selectedNode={selectedNode}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}

@@ -43,13 +43,17 @@ export function TrainingRecordsPage() {
             columns={[
                 col({
                     header: "Trainee",
-                    renderCell: (record) =>
-                        record.user_info?.full_name || record.user_info?.username || "—",
+                    renderCell: (record) => {
+                        const info = record.user_info as { full_name?: string; username?: string } | null | undefined;
+                        return info?.full_name || info?.username || "—";
+                    },
                 }),
                 col({
                     header: "Training Type",
-                    renderCell: (record) =>
-                        record.training_type_info?.name || "—",
+                    renderCell: (record) => {
+                        const info = record.training_type_info as { name?: string } | null | undefined;
+                        return info?.name || "—";
+                    },
                 }),
                 col({
                     header: "Status",
@@ -79,8 +83,10 @@ export function TrainingRecordsPage() {
                 }),
                 col({
                     header: "Trainer",
-                    renderCell: (record) =>
-                        record.trainer_info?.full_name || record.trainer_info?.username || <span className="text-muted-foreground">—</span>,
+                    renderCell: (record) => {
+                        const info = record.trainer_info as { full_name?: string; username?: string } | null | undefined;
+                        return info?.full_name || info?.username || <span className="text-muted-foreground">—</span>;
+                    },
                 }),
             ]}
             renderActions={(record) => <EditTrainingRecordActionCell recordId={record.id} />}

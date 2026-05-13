@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 // Types matching the backend response
 export type MeasurementDefinitionSPC = {
@@ -26,9 +26,11 @@ export type ProcessSPC = {
     steps: StepSPC[];
 };
 
+export const spcHierarchyOptions = () => queryOptions({
+    queryKey: ["spc-hierarchy"] as const,
+    queryFn: () => api.api_spc_hierarchy_list() as Promise<ProcessSPC[]>,
+});
+
 export const useSpcHierarchy = () => {
-    return useQuery<ProcessSPC[]>({
-        queryKey: ["spc-hierarchy"],
-        queryFn: () => api.api_spc_hierarchy_list() as Promise<ProcessSPC[]>,
-    });
+    return useQuery(spcHierarchyOptions());
 };

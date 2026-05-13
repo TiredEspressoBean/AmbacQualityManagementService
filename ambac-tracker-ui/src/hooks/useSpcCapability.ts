@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import type { MeasurementDefinitionSPC } from "./useSpcHierarchy";
 
 export type SpcCapabilityResponse = {
@@ -27,21 +27,25 @@ type UseSpcCapabilityParams = {
     enabled?: boolean;
 };
 
+export const spcCapabilityOptions = (measurementId: string | null, days = 90, subgroupSize = 5) => queryOptions({
+    queryKey: ["spc-capability", measurementId, days, subgroupSize] as const,
+    queryFn: () => api.api_spc_capability_retrieve({
+        queries: {
+            measurement_id: measurementId!,
+            days,
+            subgroup_size: subgroupSize
+        }
+    }) as Promise<SpcCapabilityResponse>,
+});
+
 export const useSpcCapability = ({
     measurementId,
     days = 90,
     subgroupSize = 5,
     enabled = true,
 }: UseSpcCapabilityParams) => {
-    return useQuery<SpcCapabilityResponse>({
-        queryKey: ["spc-capability", measurementId, days, subgroupSize],
-        queryFn: () => api.api_spc_capability_retrieve({
-            queries: {
-                measurement_id: measurementId!,
-                days,
-                subgroup_size: subgroupSize
-            }
-        }) as Promise<SpcCapabilityResponse>,
+    return useQuery({
+        ...spcCapabilityOptions(measurementId, days, subgroupSize),
         enabled: enabled && measurementId !== null,
     });
 };

@@ -15,7 +15,7 @@ import {
   type OnConnect,
 } from '@xyflow/react';
 import { flowNodeTypes } from './nodes';
-import { buildNodesAndEdges, useAutoLayout, type StepData } from './use-steps-to-flow';
+import { buildNodesAndEdges, useAutoLayout, type StepData, type StepEdgeInput } from './use-steps-to-flow';
 import type { DemoMode } from '@/lib/demo-data/process-flow-demo';
 import { Button } from '@/components/ui/button';
 import { Maximize2 } from 'lucide-react';
@@ -107,11 +107,13 @@ export function FlowCanvas({
 
   // Build initial nodes and edges from steps
   // Convert stepEdges to the format expected by buildNodesAndEdges (memoized)
-  const edgeInputs = useMemo(() =>
+  const edgeInputs: StepEdgeInput[] | undefined = useMemo(() =>
     stepEdges?.map(e => ({
       from_step: e.from_step,
       to_step: e.to_step,
-      edge_type: e.edge_type as 'default' | 'alternate' | 'escalation',
+      // Backend EdgeTypeEnum is uppercase ("DEFAULT" | "ALTERNATE" | "ESCALATION").
+      // Normalize incoming values so legacy lowercase strings still match.
+      edge_type: (e.edge_type ?? "DEFAULT").toUpperCase() as StepEdgeInput["edge_type"],
     })),
     [stepEdges]
   );
@@ -229,7 +231,7 @@ export function FlowCanvas({
       defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
       nodesDraggable={true}
       nodesConnectable={editable}
-      edgesUpdatable={editable}
+      edgesReconnectable={editable}
       elementsSelectable={true}
       selectNodesOnDrag={false}
       deleteKeyCode={editable ? 'Delete' : null}

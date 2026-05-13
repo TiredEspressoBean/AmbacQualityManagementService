@@ -91,6 +91,7 @@ export default function EditTrainingRecordFormPage() {
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
             user: undefined,
             training_type: undefined,
@@ -98,7 +99,7 @@ export default function EditTrainingRecordFormPage() {
             expires_date: null,
             trainer: null,
             notes: "",
-        } as FormValues,
+        } as unknown as FormValues,
     });
 
     // Reset form when record data loads

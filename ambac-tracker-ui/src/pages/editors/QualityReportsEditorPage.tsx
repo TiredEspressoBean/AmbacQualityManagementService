@@ -1,13 +1,19 @@
-import { useQualityReports } from "@/hooks/useQualityReports";
+import { useQualityReports, qualityReportsOptions, qualityReportsMetadataOptions } from "@/hooks/useQualityReports";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditQualityReportActionsCell } from "@/components/edit-quality-report-action-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
 const col = createColumnHelper<Schema<"QualityReports">>();
+
+// Backend returns nested info objects typed as `{}` passthrough in the schema.
+// These local interfaces reflect the actual runtime shapes until the serializers are updated.
+// FLAG: QualityReports serializer should declare part_info, step_info, detected_by_info, verified_by_info fields explicitly.
+interface PartInfo { erp_id?: string }
+interface StepInfo { name?: string; process_name?: string }
+interface UserInfo { full_name?: string; username?: string }
 
 // Default params that match what useQualityReportsList passes on initial render
 const DEFAULT_LIST_PARAMS = {
@@ -18,14 +24,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchQualityReportsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["quality-reports", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_ErrorReports_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "QualityReports", "ErrorReports"],
-        queryFn: () => api.api_ErrorReports_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(qualityReportsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(qualityReportsMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage
@@ -83,27 +83,32 @@ export function QualityReportsEditorPage() {
                 }),
                 col({
                     header: "Part",
-                    renderCell: (qr) => (qr.part_info as any)?.erp_id || (qr.part ? `#${qr.part}` : "—"),
+                    renderCell: (qr) => (qr.part_info as PartInfo)?.erp_id || (qr.part ? `#${qr.part}` : "—"),
                 }),
                 col({
                     header: "Step",
                     renderCell: (qr) => {
                         if (!qr.step_info) return qr.step ? `#${qr.step}` : "—";
-                        if ((qr.step_info as any).process_name) {
-                            return `${(qr.step_info as any).process_name} > ${(qr.step_info as any).name}`;
+                        const info = qr.step_info as StepInfo;
+                        if (info.process_name) {
+                            return `${info.process_name} > ${info.name}`;
                         }
-                        return (qr.step_info as any).name;
+                        return info.name;
                     },
                 }),
                 col({
                     header: "Detected By",
-                    renderCell: (qr) =>
-                        (qr.detected_by_info as any)?.full_name || (qr.detected_by_info as any)?.username || "—",
+                    renderCell: (qr) => {
+                        const info = qr.detected_by_info as UserInfo;
+                        return info?.full_name || info?.username || "—";
+                    },
                 }),
                 col({
                     header: "Verified By",
-                    renderCell: (qr) =>
-                        (qr.verified_by_info as any)?.full_name || (qr.verified_by_info as any)?.username || "—",
+                    renderCell: (qr) => {
+                        const info = qr.verified_by_info as UserInfo;
+                        return info?.full_name || info?.username || "—";
+                    },
                 }),
                 col({
                     header: "Created",

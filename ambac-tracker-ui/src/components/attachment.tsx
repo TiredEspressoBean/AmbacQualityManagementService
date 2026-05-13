@@ -5,7 +5,6 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   useAuiState,
-  useAui,
 } from "@assistant-ui/react";
 import { useShallow } from "zustand/shallow";
 import {
@@ -124,8 +123,15 @@ const AttachmentThumb: FC = () => {
 };
 
 const AttachmentUI: FC = () => {
-  const aui = useAui();
-  const isComposer = aui.attachment().source === "composer";
+  // TODO(assistant-ui upgrade): `attachment.source` was removed from the SDK type.
+  // The composer-vs-message distinction now needs to be derived by passing a
+  // dedicated Attachment component to each primitive. Falls back to false here,
+  // which hides the Remove button in composer context until properly wired.
+   
+  const isComposer = useAuiState(({ attachment }) =>
+    // eslint-disable-next-line local/no-double-cast-via-unknown -- assistant-ui doesn't expose `source` on its public Attachment type but provides it at runtime
+    (attachment as unknown as { source?: string }).source === "composer"
+  );
 
   const isImage = useAuiState(
     ({ attachment }) => attachment.type === "image",

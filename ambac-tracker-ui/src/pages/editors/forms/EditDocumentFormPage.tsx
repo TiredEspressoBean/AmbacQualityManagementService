@@ -38,7 +38,7 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses";
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
@@ -177,7 +177,7 @@ export default function DocumentFormPage() {
     );
 
     // Normalize content types - filter to models that have GenericRelation to Documents
-    const contentTypesData = Array.isArray(contentTypesRaw) ? contentTypesRaw : contentTypesRaw?.results || [];
+    const contentTypesData = Array.isArray(contentTypesRaw) ? contentTypesRaw : [];
     const validDocumentModels = [
         'parttype', 'parts', 'orders', 'workorder', 'processes', 'steps',  // MES
         'equipment', 'companies',  // Core
@@ -185,9 +185,9 @@ export default function DocumentFormPage() {
     ];
     const contentTypeOptions = contentTypesData.filter((ct: { app_label?: string; model?: string; id?: number }) => {
         const appLabelMatch = ct.app_label?.toLowerCase() === 'tracker';
-        const modelMatch = validDocumentModels.includes(ct.model?.toLowerCase());
+        const modelMatch = ct.model ? validDocumentModels.includes(ct.model.toLowerCase()) : false;
         return appLabelMatch && modelMatch;
-    }) || [];
+    });
 
     // Document types
     const documentTypes = documentTypesData?.results || [];
@@ -211,16 +211,16 @@ export default function DocumentFormPage() {
             form.setValue("document_type", document.document_type ?? null);
 
             if (document.content_type != null) {
-                form.setValue("content_type", document.content_type);
+                form.setValue("content_type", String(document.content_type));
             }
             if (document.object_id != null) {
-                form.setValue("object_id", document.object_id);
+                form.setValue("object_id", String(document.object_id));
             }
         }
     }, [mode, document, form]);
 
     const selectedContentType = form.watch("content_type");
-    const selectedContentTypeModel = contentTypeOptions.find((ct: { id?: number; model?: string }) => ct.id === selectedContentType)?.model;
+    const selectedContentTypeModel = contentTypeOptions.find((ct: { id?: number; model?: string }) => String(ct.id) === selectedContentType)?.model;
 
     // Object search queries - MES models
     const { data: parts } = useRetrieveParts({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parts" });
@@ -455,7 +455,7 @@ export default function DocumentFormPage() {
                         control={form.control}
                         name="document_type"
                         render={({ field }) => {
-                            const selected = documentTypes.find((dt: { id: string }) => dt.id === field.value);
+                            const selected = documentTypes.find((dt) => dt.id === field.value);
                             return (
                                 <FormItem>
                                     <FormLabel>Document Type</FormLabel>
@@ -497,7 +497,7 @@ export default function DocumentFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {documentTypes.map((dt: { id: string }) => (
+                                                        {documentTypes.map((dt) => (
                                                             <CommandItem
                                                                 key={dt.id}
                                                                 value={dt.id.toString()}
@@ -615,9 +615,9 @@ export default function DocumentFormPage() {
                                                         {contentTypeOptions.map((opt: { id?: number; model?: string }) => (
                                                             <CommandItem
                                                                 key={opt.id}
-                                                                value={getContentTypeLabel(opt.model)}
+                                                                value={getContentTypeLabel(opt.model ?? "")}
                                                                 onSelect={() => {
-                                                                    form.setValue("content_type", opt.id);
+                                                                    form.setValue("content_type", opt.id != null ? String(opt.id) : undefined);
                                                                     form.setValue("object_id", undefined);
                                                                     setContentTypeSearch("");
                                                                 }}
@@ -625,10 +625,10 @@ export default function DocumentFormPage() {
                                                                 <Check
                                                                     className={cn(
                                                                         "mr-2 h-4 w-4",
-                                                                        opt.id === field.value ? "opacity-100" : "opacity-0"
+                                                                        String(opt.id) === field.value ? "opacity-100" : "opacity-0"
                                                                     )}
                                                                 />
-                                                                {getContentTypeLabel(opt.model)}
+                                                                {getContentTypeLabel(opt.model ?? "")}
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>

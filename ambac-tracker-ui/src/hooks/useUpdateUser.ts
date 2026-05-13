@@ -1,21 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-// 1️⃣ Infer the exact input (body) that the partial-update endpoint wants:
-type UpdateUserInput = Parameters<typeof api.api_User_partial_update>[0];
+type UpdateUserInput = Schema<"PatchedUserRequest">;
+type UpdateUserResponse = Schema<"User">;
 
-// 2️⃣ Infer the shape of the `params` object:
-type UpdateUserConfig = Parameters<typeof api.api_User_partial_update>[1];
-type UpdateUserParams = UpdateUserConfig["params"];
-
-// 3️⃣ Infer the response type, if you need it:
-type UpdateUserResponse = Awaited<ReturnType<typeof api.api_User_partial_update>>;
-
-// 4️⃣ Compose the variables your hook will accept:
 type UpdateUserVariables = {
-    id: UpdateUserParams["id"];   // number
-    data: UpdateUserInput;        // exactly the patched-part payload
+    id: number;
+    data: UpdateUserInput;
 };
 
 export const useUpdateUser = () => {
@@ -23,10 +16,10 @@ export const useUpdateUser = () => {
 
     return useMutation<UpdateUserResponse, unknown, UpdateUserVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_User_partial_update(data, {
+            api.api_User_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateUserResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["User"],

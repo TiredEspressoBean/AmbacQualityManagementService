@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ExternalLink } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { DataExportMenu } from "@/components/data-export-menu";
 import { DataImportDialog } from "@/components/data-import-dialog";
@@ -54,6 +54,20 @@ export interface ListMetadata {
     filterset_fields: string[];
     filters?: Record<string, FilterInfo>;
 }
+
+const modelEditorMetadataOptions = (modelName: string | undefined, apiEndpoint: string | undefined) => queryOptions({
+    queryKey: ["metadata", modelName, apiEndpoint] as const,
+    queryFn: async () => {
+        if (!apiEndpoint) return null;
+        // Dynamically call the metadata endpoint.
+        // eslint-disable-next-line local/no-as-any -- dynamic API alias lookup by string; zodios doesn't expose an index signature
+        const metadataFn = (api as any)[`api_${apiEndpoint}_metadata_retrieve`];
+        if (typeof metadataFn === "function") {
+            return metadataFn() as Promise<ListMetadata>;
+        }
+        return null;
+    },
+});
 
 /**
  * Maps modelName to API endpoint path.
@@ -248,17 +262,8 @@ export function ModelEditorPage<T extends { id: string | number }>({
     const apiEndpoint = modelName ? MODEL_API_ENDPOINTS[modelName] : undefined;
 
     // Auto-fetch metadata for search field hints based on modelName (must be before typedFilters)
-    const { data: metadata } = useQuery<ListMetadata>({
-        queryKey: ["metadata", modelName, apiEndpoint],
-        queryFn: async () => {
-            if (!apiEndpoint) return null;
-            // Dynamically call the metadata endpoint
-            const metadataFn = (api as any)[`api_${apiEndpoint}_metadata_retrieve`];
-            if (typeof metadataFn === "function") {
-                return metadataFn();
-            }
-            return null;
-        },
+    const { data: metadata } = useQuery({
+        ...modelEditorMetadataOptions(modelName, apiEndpoint),
         enabled: !!apiEndpoint && !disableMetadata,
         staleTime: Infinity, // Metadata rarely changes
     });
@@ -283,7 +288,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
         limit,
         ordering,
         search: debouncedSearch,
-        filters: typedFilters,
+        filters: typedFilters as Record<string, string>,
     });
 
     // Build search placeholder from metadata
@@ -347,7 +352,8 @@ export function ModelEditorPage<T extends { id: string | number }>({
         setActiveFilters((prev) => {
             if (!value || value === '__all__') {
                 // Remove filter if cleared
-                const { [fieldName]: _, ...rest } = prev;
+                const { [fieldName]: _dropped, ...rest } = prev;
+                void _dropped;
                 return rest;
             }
             return { ...prev, [fieldName]: value };

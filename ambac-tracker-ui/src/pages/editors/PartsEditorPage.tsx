@@ -1,8 +1,7 @@
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts, partsOptions, partsMetadataOptions } from "@/hooks/parts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditPartActionsCell } from "@/components/edit-parts-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Schema } from "@/lib/api/types";
@@ -19,14 +18,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchPartsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["part", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Parts_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Parts", "Parts"],
-        queryFn: () => api.api_Parts_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(partsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(partsMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage

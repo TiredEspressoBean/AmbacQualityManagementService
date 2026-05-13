@@ -34,13 +34,13 @@ function isUserAnApprover(
 ): boolean {
     if (!userId || !approvalRequest) return false;
 
-    if (approvalRequest.required_approvers?.includes(userId)) {
+    if (approvalRequest.required_approvers?.includes(String(userId))) {
         return true;
     }
 
     if (userGroupIds && approvalRequest.approver_groups?.length) {
         const hasMatchingGroup = userGroupIds.some(groupId =>
-            approvalRequest.approver_groups.includes(groupId)
+            approvalRequest.approver_groups.includes(String(groupId))
         );
         if (hasMatchingGroup) return true;
     }

@@ -260,6 +260,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
   // Note: active_ruleset and fallback_ruleset come from extended step type via hook
   useEffect(() => {
     if (step && open) {
+      // eslint-disable-next-line local/no-as-any -- step schema doesn't include ruleset fields; they're populated by a separate endpoint at runtime
       const stepWithRules = step as any;
       form.reset({
         rules: stepWithRules.active_ruleset?.rules ?? [],
@@ -288,7 +289,9 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
       {
         id: stepId,
         data: {
+          // eslint-disable-next-line local/no-as-any -- normalizedRules shape matches the API but the generated rule type uses stricter tuple/enum constraints
           rules: normalizedRules as any,
+          // eslint-disable-next-line local/no-as-any -- same as above for fallback_rules
           fallback_rules: normalizedFallbackRules as any,
           fallback_threshold: values.fallback_threshold ?? undefined,
           fallback_duration: values.fallback_duration ?? undefined,
@@ -315,8 +318,10 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
     onOpenChange(newOpen);
   };
 
-  const watchedRules = form.watch('rules') ?? [];
-  const watchedFallbackRules = form.watch('fallback_rules') ?? [];
+  const watchedRulesRaw = form.watch('rules');
+  const watchedRules = useMemo(() => watchedRulesRaw ?? [], [watchedRulesRaw]);
+  const watchedFallbackRulesRaw = form.watch('fallback_rules');
+  const watchedFallbackRules = useMemo(() => watchedFallbackRulesRaw ?? [], [watchedFallbackRulesRaw]);
   const watchedThreshold = form.watch('fallback_threshold');
   const watchedDuration = form.watch('fallback_duration');
   const hasFallbackRules = watchedFallbackRules.length > 0;

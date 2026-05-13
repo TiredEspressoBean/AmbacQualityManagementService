@@ -15,13 +15,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useParams } from "@tanstack/react-router"
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, infiniteQueryOptions } from "@tanstack/react-query"
 
 import { api, schemas, type PaginatedUserSelectList } from "@/lib/api/generated"
 import { useRetrieveQualityReport } from "@/hooks/useRetrieveQualityReport"
 import { useCreateQualityReport } from "@/hooks/useCreateQualityReport"
 import { useUpdateQualityReport } from "@/hooks/useUpdateQualityReport"
-import { useRetrieveParts } from "@/hooks/useRetrieveParts"
+import { useRetrieveParts } from "@/hooks/parts"
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps"
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments"
 import { isFieldRequired } from "@/lib/zod-config"
@@ -68,6 +68,14 @@ const statusLabels: Record<string, string> = {
     PENDING: "Pending Review",
 };
 
+const employeeOptionsInfinite = () =>
+    infiniteQueryOptions<PaginatedUserSelectList, Error>({
+        queryKey: ["employee-options"],
+        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
+        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
+        initialPageParam: 0,
+    });
+
 export default function EditQualityReportFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
@@ -77,12 +85,7 @@ export default function EditQualityReportFormPage() {
     const { data: qualityReport } = useRetrieveQualityReport(qualityReportId);
 
     // Fetch employees for dropdowns
-    const { data: employeePages } = useInfiniteQuery<PaginatedUserSelectList, Error>({
-        queryKey: ["employee-options"],
-        queryFn: ({ pageParam = 0 }) => api.api_Employees_Options_list({ queries: { offset: pageParam as number } }),
-        getNextPageParam: (lastPage, pages) => lastPage.results.length === 100 ? pages.length * 100 : undefined,
-        initialPageParam: 0,
-    });
+    const { data: employeePages } = useInfiniteQuery(employeeOptionsInfinite());
     const employees = employeePages?.pages.flatMap((p) => p.results) ?? [];
 
     // Search states

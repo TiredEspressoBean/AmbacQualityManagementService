@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type AgingBucket = {
     bucket: string;
@@ -16,13 +16,14 @@ type UseNcrAgingParams = {
     enabled?: boolean;
 };
 
-const fetchNcrAging = () =>
-    api.api_dashboard_ncr_aging_retrieve() as Promise<NcrAgingResponse>;
+export const ncrAgingOptions = () => queryOptions({
+    queryKey: ["ncr-aging"] as const,
+    queryFn: () => api.api_dashboard_ncr_aging_retrieve() as Promise<NcrAgingResponse>,
+});
 
 export const useNcrAging = ({ enabled = true }: UseNcrAgingParams = {}) => {
-    return useQuery<NcrAgingResponse>({
-        queryKey: ["ncr-aging"],
-        queryFn: fetchNcrAging,
+    return useQuery({
+        ...ncrAgingOptions(),
         enabled,
         refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - aging data
     });

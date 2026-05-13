@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type FilterOption = {
     value: string;
@@ -18,13 +18,14 @@ type UseFilterOptionsParams = {
     enabled?: boolean;
 };
 
-const fetchFilterOptions = (days: number) =>
-    api.api_dashboard_filter_options_retrieve({ queries: { days } }) as Promise<FilterOptionsResponse>;
+export const filterOptionsQueryOptions = (days: number) => queryOptions({
+    queryKey: ["filter-options", days] as const,
+    queryFn: () => api.api_dashboard_filter_options_retrieve({ queries: { days } }) as Promise<FilterOptionsResponse>,
+});
 
 export const useFilterOptions = ({ days = 30, enabled = true }: UseFilterOptionsParams = {}) => {
-    return useQuery<FilterOptionsResponse>({
-        queryKey: ["filter-options", days],
-        queryFn: () => fetchFilterOptions(days),
+    return useQuery({
+        ...filterOptionsQueryOptions(days),
         enabled,
     });
 };

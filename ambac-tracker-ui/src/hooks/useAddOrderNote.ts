@@ -14,6 +14,7 @@ export const useAddOrderNote = () => {
     return useMutation({
         mutationFn: async ({ orderId, message, visibility }: AddNoteInput) => {
             return api.api_Orders_add_note_create(
+                // eslint-disable-next-line local/no-as-any -- api_Orders_add_note_create body type doesn't expose message/visibility; these are the actual runtime fields
                 { message, visibility } as any,
                 {
                     params: { id: orderId },

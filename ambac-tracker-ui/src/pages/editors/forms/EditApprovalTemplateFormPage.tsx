@@ -114,6 +114,7 @@ export default function ApprovalTemplateFormPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             template_name: "",
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: approval_type is required enum but must start unset before user selects
             approval_type: undefined as unknown as FormValues["approval_type"],
             approval_flow_type: "ALL_REQUIRED",
             approval_sequence: "PARALLEL",
@@ -425,7 +426,7 @@ export default function ApprovalTemplateFormPage() {
                                                             />
                                                             None
                                                         </CommandItem>
-                                                        {filteredGroups.map((group: { id: string; name: string }) => (
+                                                        {filteredGroups.map((group) => (
                                                             <CommandItem
                                                                 key={group.id}
                                                                 value={group.name}

@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,17 +11,21 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveMeasurementDefinitionsOptions = (queries?: MeasurementDefinitionsListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["measurementDefinitions", queries, config] as const,
+  queryFn: () =>
+    api.api_MeasurementDefinitions_list(
+      (queries || config ? { queries, ...config } : undefined) as never,
+    ) as Promise<MeasurementDefinitionsListResponse>,
+});
+
 export function useRetrieveMeasurementDefinitions(
   queries?: MeasurementDefinitionsListQueries,
   config?: ListHookConfig,
-  options?: Omit<UseQueryOptions<MeasurementDefinitionsListResponse, Error>, "queryKey" | "queryFn">
+  options?: Omit<ReturnType<typeof retrieveMeasurementDefinitionsOptions>, "queryKey" | "queryFn">
 ) {
-  return useQuery<MeasurementDefinitionsListResponse, Error>({
-    queryKey: ["measurementDefinitions", queries, config],
-    queryFn: () =>
-      api.api_MeasurementDefinitions_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
-      ) as Promise<MeasurementDefinitionsListResponse>,
+  return useQuery({
+    ...retrieveMeasurementDefinitionsOptions(queries, config),
     ...options,
   });
 }

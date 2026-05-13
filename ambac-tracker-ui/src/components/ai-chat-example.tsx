@@ -5,7 +5,7 @@ import {Thread} from "@/components/thread";
 import type {LangChainMessage} from "@assistant-ui/react-langgraph";
 import {useMemo, useRef, useState, useCallback, useEffect} from "react";
 import {Client} from "@langchain/langgraph-sdk";
-import {useQuery, useQueryClient} from "@tanstack/react-query";
+import {useQuery, useQueryClient, queryOptions} from "@tanstack/react-query";
 import {useAuthUser} from "@/hooks/useAuthUser";
 import {api, type ChatSession} from "@/lib/api/generated";
 import {getCookie} from "@/lib/utils";
@@ -28,6 +28,11 @@ const fetchApiToken = async () => {
     });
     return response.token;
 };
+
+const apiTokenOptions = () => queryOptions({
+    queryKey: API_TOKEN_QUERY_KEY,
+    queryFn: fetchApiToken,
+});
 
 const API_URL = (import.meta.env.VITE_LANGGRAPH_API_URL as string) || `${window.location.origin}/lg`;
 const ASSISTANT_ID = (import.meta.env.VITE_LANGGRAPH_ASSISTANT_ID as string) ?? "agent";
@@ -55,7 +60,9 @@ function ChatContent({
             // Try the new API first, fall back to legacy
             if (runtime.threads?.switchToThread) {
                 await runtime.threads.switchToThread(threadId);
-            } else if ((runtime as any).switchToThread) {
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- assistant-ui legacy API: probing runtime for deprecated method before calling it
+            } else if ((runtime as unknown as Record<string, unknown>).switchToThread) {
+                // eslint-disable-next-line local/no-as-any -- assistant-ui legacy API: switchToThread lives on runtime in older versions
                 await (runtime as any).switchToThread(threadId);
             }
             onThreadChange(threadId);
@@ -69,7 +76,9 @@ function ChatContent({
             // Try the new API first, fall back to legacy
             if (runtime.threads?.switchToNewThread) {
                 await runtime.threads.switchToNewThread();
-            } else if ((runtime as any).switchToNewThread) {
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- assistant-ui legacy API: probing runtime for deprecated method before calling it
+            } else if ((runtime as unknown as Record<string, unknown>).switchToNewThread) {
+                // eslint-disable-next-line local/no-as-any -- assistant-ui legacy API: switchToNewThread lives on runtime in older versions
                 await (runtime as any).switchToNewThread();
             }
             onThreadChange(null); // Will be set when first message is sent
@@ -85,8 +94,8 @@ function ChatContent({
 
         // Only initialize a new thread if no thread is currently selected
         if (!currentThreadId) {
-            console.log("[AI Chat] Initializing with new thread on mount");
             // Use the runtime API directly to avoid dependency issues
+            // eslint-disable-next-line local/no-as-any -- assistant-ui legacy API fallback for switchToNewThread on older runtime shape
             const switchToNew = runtime.threads?.switchToNewThread ?? (runtime as any).switchToNewThread;
             if (switchToNew) {
                 switchToNew().catch((error: unknown) => {
@@ -124,10 +133,9 @@ export function AiChatExample() {
     const queryClient = useQueryClient();
 
     // API token with auto-refresh via React Query
-    // Note: apiToken is not used directly - the query keeps the cache warm for fetchQuery calls in stream()
-    const { data: _apiToken, isLoading: isLoadingToken } = useQuery({
-        queryKey: API_TOKEN_QUERY_KEY,
-        queryFn: fetchApiToken,
+    // Note: result is not used directly - the query keeps the cache warm for fetchQuery calls in stream()
+    const { isLoading: isLoadingToken } = useQuery({
+        ...apiTokenOptions(),
         enabled: !!user,
         staleTime: TOKEN_STALE_TIME,
         refetchInterval: TOKEN_REFETCH_INTERVAL,
@@ -140,7 +148,7 @@ export function AiChatExample() {
         if (sessionIdRef.current) return; // Already have session ID
 
         // Get fresh sessions data from cache to avoid stale closure
-        const freshSessionsData = queryClient.getQueryData(CHAT_SESSIONS_QUERY_KEY);
+        const freshSessionsData = queryClient.getQueryData<{ results?: ChatSession[] }>(CHAT_SESSIONS_QUERY_KEY);
         const freshSessions: Array<{ id: number; langgraph_thread_id: string }> = freshSessionsData?.results ?? [];
 
         // Check if session already exists for this thread
@@ -190,10 +198,8 @@ export function AiChatExample() {
         },
         // Create a brand-new thread when the UI requests it
         create: async () => {
-            console.log("[AI Chat] create() called");
             try {
                 const threadId = await createThread();
-                console.log("[AI Chat] create() succeeded, threadId:", threadId);
                 threadIdRef.current = threadId;
                 sessionIdRef.current = null; // Reset session for new thread
                 setCurrentThreadId(null);
@@ -206,25 +212,23 @@ export function AiChatExample() {
 
         // Load an existing thread
         load: async (externalId: string) => {
-            console.log("[AI Chat] load() called with externalId:", externalId);
             try {
                 const state = await langGraphClient.threads.getState(externalId);
-                console.log("[AI Chat] load() got state, messages count:", state.values?.messages?.length ?? 0);
+                const stateValues = state.values as { messages?: unknown[] } | undefined;
                 threadIdRef.current = externalId;
                 setCurrentThreadId(externalId);
 
                 // Get fresh sessions data from cache to avoid stale closure
-                const freshSessionsData = queryClient.getQueryData(CHAT_SESSIONS_QUERY_KEY);
-                const freshSessions = freshSessionsData?.results ?? [];
+                const freshSessionsData = queryClient.getQueryData<{ results?: ChatSession[] }>(CHAT_SESSIONS_QUERY_KEY);
+                const freshSessions: ChatSession[] = freshSessionsData?.results ?? [];
                 const session = freshSessions.find((s: ChatSession) => s.langgraph_thread_id === externalId);
                 sessionIdRef.current = session?.id ?? null;
 
                 const result = {
                     externalId,
-                    messages: state.values?.messages ?? [],
-                    interrupts: state.tasks?.[0]?.interrupts,
+                    messages: (stateValues?.messages ?? []) as LangChainMessage[],
+                    interrupts: state.tasks?.[0]?.interrupts as never,
                 };
-                console.log("[AI Chat] load() returning:", { externalId, messagesCount: result.messages.length });
                 return result;
             } catch (error) {
                 console.error("[AI Chat] load() failed:", error);
@@ -234,23 +238,17 @@ export function AiChatExample() {
 
         // Stream a user turn to the server using the SDK (messages mode)
         stream: async (messages: LangChainMessage[], { initialize }) => {
-            console.log("[AI Chat] stream() called with", messages.length, "messages");
             // Initialize handles thread creation/loading automatically
-            console.log("[AI Chat] stream() calling initialize()...");
             const initResult = await initialize();
-            console.log("[AI Chat] stream() initialize() returned:", initResult);
             let { externalId } = initResult;
 
             // Workaround: If initialize() didn't create a thread, create one manually
             if (!externalId) {
-                console.log("[AI Chat] stream() externalId is undefined, creating thread manually...");
                 const threadId = await createThread();
-                console.log("[AI Chat] stream() manually created thread:", threadId);
                 externalId = threadId;
                 threadIdRef.current = threadId;
                 sessionIdRef.current = null;
             }
-            console.log("[AI Chat] stream() proceeding with externalId:", externalId);
 
             threadIdRef.current = externalId;
 
@@ -271,10 +269,9 @@ export function AiChatExample() {
             let freshToken: string | null = null;
             try {
                 freshToken = await queryClient.fetchQuery({
-                    queryKey: API_TOKEN_QUERY_KEY,
-                    queryFn: fetchApiToken,
+                    ...apiTokenOptions(),
                     staleTime: TOKEN_STALE_TIME,
-                });
+                }) ?? null;
             } catch (tokenError) {
                 console.error("Failed to fetch API token:", tokenError);
                 // Continue without token - server will reject if auth required

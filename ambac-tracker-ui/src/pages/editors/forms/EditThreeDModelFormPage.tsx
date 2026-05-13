@@ -147,7 +147,7 @@ export default function ThreeDModelFormPage() {
                 form.setValue("step", "");
             }
         }
-    }, [selectedPartType]);
+    }, [selectedPartType, form]);
 
     const createModel = useCreateThreeDModel();
     const updateModel = useUpdateThreeDModel();

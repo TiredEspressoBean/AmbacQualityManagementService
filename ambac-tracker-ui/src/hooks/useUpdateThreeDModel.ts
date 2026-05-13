@@ -1,14 +1,13 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api/generated.ts"
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated.ts";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type UpdateThreeDModelInput = Parameters<typeof api.api_ThreeDModels_partial_update>[0];
-type UpdateThreeDModelConfig = Parameters<typeof api.api_ThreeDModels_partial_update>[1];
-type UpdateThreeDModelParams = UpdateThreeDModelConfig["params"];
-type UpdateThreeDModelResponse = Awaited<ReturnType<typeof api.api_ThreeDModels_partial_update>>;
+type UpdateThreeDModelInput = Schema<"PatchedThreeDModelRequest">;
+type UpdateThreeDModelResponse = Schema<"ThreeDModel">;
 
 type UpdateThreeDModelVariables = {
-    id: UpdateThreeDModelParams["id"];
+    id: string;
     data: UpdateThreeDModelInput;
 };
 
@@ -17,10 +16,10 @@ export function useUpdateThreeDModel() {
 
     return useMutation<UpdateThreeDModelResponse, unknown, UpdateThreeDModelVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_ThreeDModels_partial_update(data, {
+            api.api_ThreeDModels_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateThreeDModelResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["threeDModel"] });
         },

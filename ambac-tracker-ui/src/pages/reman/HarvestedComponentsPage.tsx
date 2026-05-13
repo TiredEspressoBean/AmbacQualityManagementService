@@ -3,6 +3,7 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { api } from "@/lib/api/generated";
+import { queryOptions } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
@@ -24,12 +25,14 @@ const DEFAULT_LIST_PARAMS = {
     search: "",
 };
 
+export const harvestedComponentsListOptions = () => queryOptions({
+    queryKey: ["harvested-components", DEFAULT_LIST_PARAMS] as const,
+    queryFn: () => api.api_HarvestedComponents_list({ queries: DEFAULT_LIST_PARAMS }),
+});
+
 // Prefetch function for route loader
 export const prefetchHarvestedComponents = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["harvested-components", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_HarvestedComponents_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
+    queryClient.prefetchQuery(harvestedComponentsListOptions());
 };
 
 // Custom wrapper hook
@@ -66,14 +69,14 @@ function ComponentActionsCell({ component }: { component: any }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                    <Link to={`/reman/cores/${component.core}`}>
+                    <Link to="/reman/cores/$id" params={{ id: String(component.core) }}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Source Core
                     </Link>
                 </DropdownMenuItem>
                 {component.component_part && (
                     <DropdownMenuItem asChild>
-                        <Link to={`/details/Parts/${component.component_part}`}>
+                        <Link to="/details/$model/$id" params={{ model: "Parts", id: String(component.component_part) }}>
                             <LinkIcon className="mr-2 h-4 w-4" />
                             View Part Record
                         </Link>
@@ -116,7 +119,8 @@ export function HarvestedComponentsPage() {
                     priority: 1,
                     renderCell: (component) => (
                         <Link
-                            to={`/reman/cores/${component.core}`}
+                            to="/reman/cores/$id"
+                            params={{ id: String(component.core) }}
                             className="font-mono text-primary hover:underline"
                         >
                             {component.core_number}
@@ -161,7 +165,8 @@ export function HarvestedComponentsPage() {
                         if (component.component_part_erp_id) {
                             return (
                                 <Link
-                                    to={`/details/Parts/${component.component_part}`}
+                                    to="/details/$model/$id"
+                                    params={{ model: "Parts", id: String(component.component_part) }}
                                     className="font-mono text-primary hover:underline"
                                 >
                                     {component.component_part_erp_id}

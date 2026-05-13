@@ -1,10 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+
+export const tenantGroupPermissionsOptions = (groupId: string | undefined) => queryOptions({
+    queryKey: ["tenantGroup", groupId, "permissions"] as const,
+    queryFn: () => api.api_TenantGroups_permissions_retrieve({ params: { id: groupId! } }),
+});
 
 export function useTenantGroupPermissions(groupId: string | undefined, options?: { enabled?: boolean }) {
     return useQuery({
-        queryKey: ["tenantGroup", groupId, "permissions"],
-        queryFn: () => api.api_TenantGroups_permissions_retrieve({ params: { id: groupId! } }),
+        ...tenantGroupPermissionsOptions(groupId),
         enabled: (options?.enabled ?? true) && !!groupId,
     });
 }
@@ -14,14 +18,15 @@ export function useAddTenantGroupPermissions(groupId: string) {
 
     return useMutation({
         mutationFn: (permissions: string[]) =>
+
             api.api_TenantGroups_permissions_create(
-                { name: "", permissions } as any,
+                { name: "", permissions } as never,
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] as const });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
         },
     });
 }
@@ -31,14 +36,15 @@ export function useSetTenantGroupPermissions(groupId: string) {
 
     return useMutation({
         mutationFn: (permissions: string[]) =>
+
             api.api_TenantGroups_permissions_update(
-                { name: "", permissions } as any,
+                { name: "", permissions } as never,
                 { params: { id: groupId } }
             ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] });
-            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId] as const });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroup", groupId, "permissions"] as const });
+            queryClient.invalidateQueries({ queryKey: ["tenantGroups"] as const });
         },
     });
 }

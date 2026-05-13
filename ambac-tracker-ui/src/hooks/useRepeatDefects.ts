@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 export type RepeatDefectData = {
@@ -24,6 +24,13 @@ type UseRepeatDefectsParams = {
 const fetchRepeatDefects = (days: number, minOccurrences: number, limit: number) =>
     api.api_dashboard_repeat_defects_retrieve({ queries: { days, min_occurrences: minOccurrences, limit } }) as Promise<RepeatDefectsResponse>;
 
+export const repeatDefectsOptions = (days: number, minOccurrences: number, limit: number) => queryOptions({
+    queryKey: ["repeat-defects", days, minOccurrences, limit] as const,
+    queryFn: () => fetchRepeatDefects(days, minOccurrences, limit),
+    placeholderData: (previousData) => previousData,
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - aggregated data
+});
+
 export const useRepeatDefects = ({
     days = 30,
     minOccurrences = 3,
@@ -35,18 +42,9 @@ export const useRepeatDefects = ({
     useEffect(() => {
         const rangesToPrefetch = [30, 60, 90].filter(d => d !== days);
         rangesToPrefetch.forEach(d => {
-            queryClient.prefetchQuery({
-                queryKey: ["repeat-defects", d, minOccurrences, limit],
-                queryFn: () => fetchRepeatDefects(d, minOccurrences, limit),
-            });
+            queryClient.prefetchQuery(repeatDefectsOptions(d, minOccurrences, limit));
         });
-    }, []);
+    }, [days, limit, minOccurrences, queryClient]);
 
-    return useQuery<RepeatDefectsResponse>({
-        queryKey: ["repeat-defects", days, minOccurrences, limit],
-        queryFn: () => fetchRepeatDefects(days, minOccurrences, limit),
-        enabled,
-        placeholderData: (previousData) => previousData,
-        refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - aggregated data
-    });
+    return useQuery({ ...repeatDefectsOptions(days, minOccurrences, limit), enabled });
 };

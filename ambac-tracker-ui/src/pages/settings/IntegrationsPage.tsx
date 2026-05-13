@@ -6,23 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import type { Schema } from "@/lib/api/types";
 
-type CatalogItem = {
-    provider: string;
-    name: string;
-    description: string;
-    icon: string;
-    auth_type: string;
-    capabilities: string[];
-    status: string;
-    config_id: string | null;
-    is_enabled: boolean;
-    display_name: string;
-    sync_status: string | null;
-    last_synced_at: string | null;
-    last_sync_error: string | null;
-    last_sync_stats: Record<string, number> | null;
-};
+type CatalogItem = Schema<"IntegrationCatalogItem">;
 
 function StatusBadge({ status }: { status: string }) {
     switch (status) {
@@ -167,7 +153,7 @@ export function IntegrationsPage() {
                                 {configured.filter(i => i.status === "error").map(item => (
                                     <div key={item.provider} className="flex items-center justify-between py-1">
                                         <span className="text-sm">{item.name}: {item.last_sync_error || "Sync failed"}</span>
-                                        <Link to={`/settings/integrations/${item.config_id}`}>
+                                        <Link to="/settings/integrations/$id" params={{ id: item.config_id ?? "" }}>
                                             <Button variant="outline" size="sm" className="h-7 text-xs">
                                                 View
                                             </Button>

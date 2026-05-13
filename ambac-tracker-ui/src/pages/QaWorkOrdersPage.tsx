@@ -29,14 +29,13 @@ import {
 } from "@/components/ui/sheet";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell";
-import { schemas } from "@/lib/api/generated";
-import { z } from "zod";
 import type { operations } from "@/lib/api/generated-types";
+import type { Schema } from "@/lib/api/types";
 
-type WorkOrder = z.infer<typeof schemas.WorkOrder>;
-type Part = z.infer<typeof schemas.Parts>;
+type WorkOrderListItem = Schema<"WorkOrderList">;
+type Part = Schema<"Parts">;
 
 type WorkOrdersListQueries = NonNullable<operations["api_WorkOrders_list"]["parameters"]["query"]>;
 type PartsListQueries = NonNullable<operations["api_Parts_list"]["parameters"]["query"]>;
@@ -56,7 +55,7 @@ export default function QaWorkOrdersPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortBy, setSortBy] = useState("-expected_completion");
-    const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
+    const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrderListItem | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     const debouncedSearch = useDebounce(searchTerm, 300);
@@ -92,7 +91,7 @@ export default function QaWorkOrdersPage() {
     const totalPages = Math.ceil(totalWorkOrders / ITEMS_PER_PAGE);
     const parts = partsData?.results || [];
 
-    const handleRowClick = (workOrder: WorkOrder) => {
+    const handleRowClick = (workOrder: WorkOrderListItem) => {
         setSelectedWorkOrder(workOrder);
         setDrawerOpen(true);
     };
@@ -153,7 +152,7 @@ export default function QaWorkOrdersPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            workOrders.map((workOrder: WorkOrder) => (
+                            workOrders.map((workOrder: WorkOrderListItem) => (
                                 <TableRow
                                     key={workOrder.id}
                                     className="cursor-pointer hover:bg-muted/50"
@@ -166,17 +165,21 @@ export default function QaWorkOrdersPage() {
                                         <StatusBadge status={workOrder.workorder_status} size="sm" />
                                     </TableCell>
                                     <TableCell>
-                                        {asOrderDetailInfo(workOrder.related_order_detail)?.name || "-"}
+                                        {asOrderDetailInfo(workOrder.related_order_info)?.name || "-"}
                                     </TableCell>
                                     <TableCell>
-                                        {asOrderDetailInfo(workOrder.related_order_detail)?.company_name || "-"}
+                                        {asOrderDetailInfo(workOrder.related_order_info)?.company_name || "-"}
                                     </TableCell>
                                     <TableCell>
+                                        {/* TODO(backend): WorkOrderList endpoint does not expose
+                                            parts_summary; this column currently renders "Unknown"
+                                            for every row. Either add parts_summary to the list
+                                            serializer or fetch per-row via a separate query. */}
                                         <span className="font-medium text-orange-600">
-                                            {asPartsSummary(workOrder.parts_summary)?.requiring_qa ?? "Unknown"}
+                                            {asPartsSummary((workOrder as { parts_summary?: unknown }).parts_summary)?.requiring_qa ?? "Unknown"}
                                         </span>
-                                        {asPartsSummary(workOrder.parts_summary)?.total &&
-                                            ` / ${asPartsSummary(workOrder.parts_summary)?.total}`
+                                        {asPartsSummary((workOrder as { parts_summary?: unknown }).parts_summary)?.total &&
+                                            ` / ${asPartsSummary((workOrder as { parts_summary?: unknown }).parts_summary)?.total}`
                                         }
                                     </TableCell>
                                     <TableCell>{workOrder.quantity}</TableCell>
@@ -292,8 +295,8 @@ export default function QaWorkOrdersPage() {
                         </SheetTitle>
                         {selectedWorkOrder && (
                             <div className="text-sm text-muted-foreground space-y-1">
-                                <p><strong>Order:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_detail)?.name || "N/A"}</p>
-                                <p><strong>Company:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_detail)?.company_name || "N/A"}</p>
+                                <p><strong>Order:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_info)?.name || "N/A"}</p>
+                                <p><strong>Company:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_info)?.company_name || "N/A"}</p>
                                 <p><strong>Status:</strong> {selectedWorkOrder.workorder_status?.replace('_', ' ') || 'Unknown'}</p>
                                 <p><strong>Quantity:</strong> {selectedWorkOrder.quantity}</p>
                                 {selectedWorkOrder.notes && (

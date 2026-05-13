@@ -1,10 +1,9 @@
-import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
+import { useRetrieveWorkOrders, workOrdersOptions, workOrdersMetadataOptions } from "@/hooks/useRetrieveWorkOrders";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditWorkOrderActionsCell } from "@/components/edit-work-order-action-cell.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { format } from "date-fns";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
@@ -22,14 +21,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchWorkOrdersEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["work_orders", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_WorkOrders_list({ queries: DEFAULT_LIST_PARAMS } as never),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "WorkOrders", "WorkOrders"],
-        queryFn: () => api.api_WorkOrders_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(workOrdersOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(workOrdersMetadataOptions());
 };
 
 // Custom wrapper hook for consistent usage

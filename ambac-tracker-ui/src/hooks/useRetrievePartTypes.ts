@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -11,20 +11,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrievePartTypes(
-  queries?: PartTypesListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<PartTypesListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<PartTypesListResponse, Error>({
-    queryKey: ["part-type", queries, config],
+export const partTypesOptions = (queries?: PartTypesListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["part-type", queries, config] as const,
     queryFn: () =>
       api.api_PartTypes_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<PartTypesListResponse>,
+  });
+
+export const partTypesMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "PartTypes", "PartTypes"] as const,
+    queryFn: () => api.api_PartTypes_metadata_retrieve(),
+  });
+
+export function useRetrievePartTypes(
+  queries?: PartTypesListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof partTypesOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...partTypesOptions(queries, config),
     ...options,
   });
 }

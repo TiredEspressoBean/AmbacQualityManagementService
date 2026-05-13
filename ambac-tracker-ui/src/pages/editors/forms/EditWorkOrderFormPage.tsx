@@ -85,6 +85,7 @@ export default function WorkOrderFormPage() {
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues>,
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
             ERP_id: "",
             workorder_status: undefined,
@@ -98,6 +99,7 @@ export default function WorkOrderFormPage() {
 
     useEffect(() => {
         if (mode === "edit" && workOrder) {
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF reset: workorder_status and priority are required enums; undefined is valid at runtime but not in strict FormValues
             form.reset({
                 ERP_id: workOrder.ERP_id ?? "",
                 workorder_status: workOrder.workorder_status,

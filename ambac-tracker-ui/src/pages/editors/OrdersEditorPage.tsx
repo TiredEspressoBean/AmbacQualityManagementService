@@ -1,10 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
-import { useRetrieveOrders } from "@/hooks/useRetrieveOrders";
+import { useRetrieveOrders, ordersOptions, ordersMetadataOptions } from "@/hooks/useRetrieveOrders";
 import { EditOrderActionsCell } from "@/components/edit-orders-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { format } from "date-fns";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
@@ -24,14 +23,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchOrdersEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["order", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Orders_list({ queries: DEFAULT_LIST_PARAMS } as never),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Orders", "Orders"],
-        queryFn: () => api.api_Orders_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(ordersOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(ordersMetadataOptions());
 };
 
 function useOrdersList({

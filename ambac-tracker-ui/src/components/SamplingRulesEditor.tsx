@@ -88,6 +88,7 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
                     {fields.map((field, index) => (
                         <SamplingRuleCard
                             key={field.id}
+                            // eslint-disable-next-line local/no-as-any -- react-hook-form useFieldArray appends { id } to the field object; SamplingRuleCard expects the plain rule shape
                             rule={field as any}
                             index={index}
                             onUpdate={handleUpdateRule}

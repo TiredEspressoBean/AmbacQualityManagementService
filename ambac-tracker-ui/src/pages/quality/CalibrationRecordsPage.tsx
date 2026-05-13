@@ -43,16 +43,19 @@ export function CalibrationRecordsPage() {
             columns={[
                 col({
                     header: "Equipment",
-                    renderCell: (record) => (
-                        <div>
-                            <div className="font-medium">{record.equipment_info?.name || "—"}</div>
-                            {record.equipment_info?.equipment_type && (
-                                <div className="text-xs text-muted-foreground">
-                                    {record.equipment_info.equipment_type}
-                                </div>
-                            )}
-                        </div>
-                    ),
+                    renderCell: (record) => {
+                        const info = record.equipment_info as { name?: string; equipment_type?: string } | null | undefined;
+                        return (
+                            <div>
+                                <div className="font-medium">{info?.name || "—"}</div>
+                                {info?.equipment_type && (
+                                    <div className="text-xs text-muted-foreground">
+                                        {info.equipment_type}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    },
                 }),
                 col({
                     header: "Result",

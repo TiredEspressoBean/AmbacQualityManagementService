@@ -30,15 +30,21 @@ export function AddPartsForm({ onSubmit }: AddPartsFormProps) {
   const form = useForm({
         defaultValues: defaults,
         onSubmit: ({ value }) => onSubmit(value),
-        validators: { onSubmit: AddPartsSchema },
+        // Zod schema with defaults/optionals doesn't match tanstack-form's strict
+        // validator inference. Cast through unknown so runtime validation still runs.
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- tanstack-form validator type doesn't accept Zod schemas directly; runtime validation still runs correctly
+        validators: { onSubmit: AddPartsSchema } as unknown as undefined,
     });
 
   // Extract Field, Subscribe, and store
 const { Field, Subscribe, store } = form;
 
+    // Process selection is a transient filter, not a form value — the API only
+    // takes the resolved step. Track it as local state.
+  const [processId, setProcessId] = useState<string | undefined>(undefined);
+
     // subscribe to values
   const partTypeId = useStore(store, (s) => s.values.part_type);
-  const processId = useStore(store, (s) => s.values.process_id);
   const stepId = useStore(store, (s) => s.values.step);
 
     const partTypesQuery = useRetrievePartTypes();
@@ -47,6 +53,7 @@ const { Field, Subscribe, store } = form;
     const selectedPartType = partTypesQuery.data?.results?.find((pt) => pt.id === partTypeId);
     const selectedProcess = processQuery.data?.results?.find((p) => p.id === processId);
     // Process steps are accessed via process_steps junction table
+    // eslint-disable-next-line local/no-double-cast-via-unknown -- Schema<"Processes"> doesn't include process_steps; field exists at runtime but backend serializer omits it from openapi spec (FLAG: add process_steps to ProcessesSerializer)
     const processSteps = (selectedProcess as unknown as { process_steps?: Array<{ step: { id: string; name: string; description?: string } }> })?.process_steps || [];
     const steps = processSteps.map((ps) => ps.step);
 
@@ -106,70 +113,56 @@ const { Field, Subscribe, store } = form;
                 )}
             </Field>
 
-            {/* Process */}
-            <Field name="process_id"
-                   listeners={{
-                       onChange: ({ fieldApi, value }) => {
-                           // default step to first step of the selected process
-                           const proc = processQuery.data?.results?.find((p) => p.id === value);
-                           const procSteps = (proc as unknown as { process_steps?: Array<{ step: { id: string } }> })?.process_steps || [];
-                           const firstStepId = procSteps[0]?.step?.id;
-                           if (firstStepId !== undefined) {
-                               fieldApi.form.setFieldValue("step", firstStepId);
-                           }
-                       },
-                   }}
-            >
-                {(field) => (
-                    <>
-                        <Label>Process</Label>
-                        <Popover open={openProcess} onOpenChange={setOpenProcess}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={cn(
-                                        "w-full justify-start",
-                                        !partTypeId && "opacity-50 cursor-not-allowed"
-                                    )}
-                                    disabled={!partTypeId}
-                                    onClick={() => setOpenProcess(true)}
-                                >
-                                    {selectedProcess?.name || "Select process"}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0 w-full">
-                                <Command>
-                                    <CommandInput placeholder="Search process..." />
-                                    <CommandList>
-                                        {processQuery.isLoading ? (
-                                            <CommandItem disabled>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
-                                            </CommandItem>
-                                        ) : (
-                                            processQuery.data?.results?.map((proc) => (
-                                                <CommandItem
-                                                    key={proc.id}
-                                                    onSelect={() => {
-                                                        field.setValue(proc.id);
-                                                        setOpenProcess(false);
-                                                    }}
-                                                >
-                                                    {proc.name}
-                                                </CommandItem>
-                                            ))
-                                        )}
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {!field.state.meta.isValid && (
-                            <p className="text-sm text-red-600">
-                                {field.state.meta.errors.join(', ')}
-                            </p>
-                        )}
-                    </>
-                )}
-            </Field>
+            {/* Process — transient filter, not part of the form payload */}
+            <>
+                <Label>Process</Label>
+                <Popover open={openProcess} onOpenChange={setOpenProcess}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                "w-full justify-start",
+                                !partTypeId && "opacity-50 cursor-not-allowed"
+                            )}
+                            disabled={!partTypeId}
+                            onClick={() => setOpenProcess(true)}
+                        >
+                            {selectedProcess?.name || "Select process"}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-full">
+                        <Command>
+                            <CommandInput placeholder="Search process..." />
+                            <CommandList>
+                                {processQuery.isLoading ? (
+                                    <CommandItem disabled>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                    </CommandItem>
+                                ) : (
+                                    processQuery.data?.results?.map((proc) => (
+                                        <CommandItem
+                                            key={proc.id}
+                                            onSelect={() => {
+                                                setProcessId(proc.id);
+                                                // default step to first step of the selected process
+                                                // eslint-disable-next-line local/no-double-cast-via-unknown -- process_steps not in schema (see FLAG above)
+                                                const procSteps = (proc as unknown as { process_steps?: Array<{ step: { id: string } }> })?.process_steps || [];
+                                                const firstStepId = procSteps[0]?.step?.id;
+                                                if (firstStepId !== undefined) {
+                                                    form.setFieldValue("step", firstStepId);
+                                                }
+                                                setOpenProcess(false);
+                                            }}
+                                        >
+                                            {proc.name}
+                                        </CommandItem>
+                                    ))
+                                )}
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+            </>
 
             {/* Step */}
             <Field name="step">
@@ -237,18 +230,18 @@ const { Field, Subscribe, store } = form;
                 )}
             </Field>
 
-            {/* ERP ID */}
-            <Field name="ERP_id">
+            {/* ERP ID start */}
+            <Field name="erp_id_start">
                 {(field) => (
                     <>
-                        <Label>ERP ID</Label>
+                        <Label>ERP ID start</Label>
                         <span className="text-sm font-medium text-muted-foreground">
               {selectedPartType?.ID_prefix || ''}
             </span>
                         <Input
-                            type="text"
+                            type="number"
                             value={field.state.value ?? ''}
-                            onChange={(e) => field.setValue(e.target.value)}
+                            onChange={(e) => field.setValue(Number(e.target.value))}
                         />
                         {!field.state.meta.isValid && (
                             <p className="text-sm text-red-600">

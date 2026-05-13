@@ -1,14 +1,13 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { api } from "@/lib/api/generated.ts"
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated.ts";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type UpdateHeatMapAnnotationInput = Parameters<typeof api.api_HeatMapAnnotation_partial_update>[0];
-type UpdateHeatMapAnnotationConfig = Parameters<typeof api.api_HeatMapAnnotation_partial_update>[1];
-type UpdateHeatMapAnnotationParams = UpdateHeatMapAnnotationConfig["params"];
-type UpdateHeatMapAnnotationResponse = Awaited<ReturnType<typeof api.api_HeatMapAnnotation_partial_update>>;
+type UpdateHeatMapAnnotationInput = Schema<"PatchedHeatMapAnnotationsRequest">;
+type UpdateHeatMapAnnotationResponse = Schema<"HeatMapAnnotations">;
 
 type UpdateHeatMapAnnotationVariables = {
-    id: UpdateHeatMapAnnotationParams["id"];
+    id: string;
     data: UpdateHeatMapAnnotationInput;
 };
 
@@ -17,12 +16,12 @@ export function useUpdateHeatMapAnnotation() {
 
     return useMutation<UpdateHeatMapAnnotationResponse, unknown, UpdateHeatMapAnnotationVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_HeatMapAnnotation_partial_update(data, {
+            api.api_HeatMapAnnotation_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateHeatMapAnnotationResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["heatMapAnnotation"] });
         },
     });
-};
+}

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type TypeEnum } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
@@ -56,53 +56,76 @@ type ListHookConfig = {
 };
 
 /**
+ * Factory for listing step execution measurements
+ */
+export const stepExecutionMeasurementsOptions = (queries?: StepExecutionMeasurementsListQueries, config?: ListHookConfig) => queryOptions({
+    queryKey: ["step-execution-measurements", queries, config] as const,
+    queryFn: () => api.api_StepExecutionMeasurements_list(
+        (queries || config ? { queries, ...config } : undefined) as never,
+    ),
+});
+
+/**
  * Query hook for listing step execution measurements
  */
 export function useStepExecutionMeasurements(
     queries?: StepExecutionMeasurementsListQueries,
     config?: ListHookConfig,
-    options?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof stepExecutionMeasurementsOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["step-execution-measurements", queries, config],
-        queryFn: () => api.api_StepExecutionMeasurements_list(queries || config ? { queries, ...config } : undefined),
+        ...stepExecutionMeasurementsOptions(queries, config),
         ...options
     });
 }
+
+/**
+ * Factory for getting required measurements for a step execution
+ */
+export const requiredMeasurementsOptions = (stepExecutionId: string | undefined) => queryOptions({
+    queryKey: ["required-measurements", stepExecutionId] as const,
+    queryFn: () => api.api_StepExecutionMeasurements_required_retrieve({
+        queries: {
+            step_execution: stepExecutionId!
+        }
+    }) as Promise<RequiredMeasurementsResponse>,
+});
 
 /**
  * Query hook for getting required measurements for a step execution
  */
 export function useRequiredMeasurements(
     stepExecutionId: string | undefined,
-    options?: Omit<UseQueryOptions<RequiredMeasurementsResponse, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof requiredMeasurementsOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["required-measurements", stepExecutionId],
-        queryFn: () => api.api_StepExecutionMeasurements_required_retrieve({
-            queries: {
-                step_execution: stepExecutionId!
-            }
-        }) as Promise<RequiredMeasurementsResponse>,
+        ...requiredMeasurementsOptions(stepExecutionId),
         enabled: !!stepExecutionId,
         ...options
     });
 }
 
 /**
+ * Factory for checking measurement compliance
+ */
+export const measurementComplianceOptions = (stepExecutionId: string | undefined) => queryOptions({
+    queryKey: ["measurement-compliance", stepExecutionId] as const,
+    queryFn: () => api.api_StepExecutionMeasurements_check_compliance_retrieve({
+        queries: {
+            step_execution: stepExecutionId!
+        }
+    }) as Promise<ComplianceCheckResponse>,
+});
+
+/**
  * Query hook for checking measurement compliance
  */
 export function useMeasurementCompliance(
     stepExecutionId: string | undefined,
-    options?: Omit<UseQueryOptions<ComplianceCheckResponse, Error>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof measurementComplianceOptions>, "queryKey" | "queryFn">
 ) {
     return useQuery({
-        queryKey: ["measurement-compliance", stepExecutionId],
-        queryFn: () => api.api_StepExecutionMeasurements_check_compliance_retrieve({
-            queries: {
-                step_execution: stepExecutionId!
-            }
-        }) as Promise<ComplianceCheckResponse>,
+        ...measurementComplianceOptions(stepExecutionId),
         enabled: !!stepExecutionId,
         ...options
     });
@@ -121,7 +144,7 @@ export function useRecordMeasurement() {
             value?: number | string;
             string_value?: string;
             equipment?: string;
-        }) => api.api_StepExecutionMeasurements_create(data, {
+        }) => api.api_StepExecutionMeasurements_create(data as never, {
             headers: {
                 "X-CSRFToken": getCookie("csrftoken") ?? "",
             },

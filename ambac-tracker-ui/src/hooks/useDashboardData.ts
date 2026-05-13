@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 // ===== CAPA Status Distribution =====
 export type CapaStatusDataPoint = {
@@ -12,10 +12,14 @@ export type CapaStatusResponse = {
     total: number;
 };
 
+export const capaStatusDistributionOptions = () => queryOptions({
+    queryKey: ["capa-status-distribution"] as const,
+    queryFn: () => api.api_dashboard_capa_status_retrieve() as Promise<CapaStatusResponse>,
+});
+
 export const useCapaStatusDistribution = (enabled = true) => {
-    return useQuery<CapaStatusResponse>({
-        queryKey: ["capa-status-distribution"],
-        queryFn: () => api.api_dashboard_capa_status_retrieve() as Promise<CapaStatusResponse>,
+    return useQuery({
+        ...capaStatusDistributionOptions(),
         enabled,
         refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes
     });
@@ -36,10 +40,14 @@ export type InProcessActionsResponse = {
     data: InProcessAction[];
 };
 
+export const inProcessActionsOptions = (limit: number) => queryOptions({
+    queryKey: ["in-process-actions", limit] as const,
+    queryFn: () => api.api_dashboard_in_process_actions_retrieve({ queries: { limit } }) as Promise<InProcessActionsResponse>,
+});
+
 export const useInProcessActions = (limit = 10, enabled = true) => {
-    return useQuery<InProcessActionsResponse>({
-        queryKey: ["in-process-actions", limit],
-        queryFn: () => api.api_dashboard_in_process_actions_retrieve({ queries: { limit } }) as Promise<InProcessActionsResponse>,
+    return useQuery({
+        ...inProcessActionsOptions(limit),
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable items
     });
@@ -59,10 +67,14 @@ export type FailedInspectionsResponse = {
     data: FailedInspection[];
 };
 
+export const failedInspectionsOptions = (limit: number, days: number) => queryOptions({
+    queryKey: ["failed-inspections", limit, days] as const,
+    queryFn: () => api.api_dashboard_failed_inspections_retrieve({ queries: { limit, days } }) as Promise<FailedInspectionsResponse>,
+});
+
 export const useFailedInspections = (limit = 10, days = 14, enabled = true) => {
-    return useQuery<FailedInspectionsResponse>({
-        queryKey: ["failed-inspections", limit, days],
-        queryFn: () => api.api_dashboard_failed_inspections_retrieve({ queries: { limit, days } }) as Promise<FailedInspectionsResponse>,
+    return useQuery({
+        ...failedInspectionsOptions(limit, days),
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - recent failures
     });
@@ -84,10 +96,14 @@ export type OpenDispositionsResponse = {
     data: OpenDisposition[];
 };
 
+export const openDispositionsOptions = (limit: number) => queryOptions({
+    queryKey: ["open-dispositions", limit] as const,
+    queryFn: () => api.api_dashboard_open_dispositions_retrieve({ queries: { limit } }) as Promise<OpenDispositionsResponse>,
+});
+
 export const useOpenDispositions = (limit = 10, enabled = true) => {
-    return useQuery<OpenDispositionsResponse>({
-        queryKey: ["open-dispositions", limit],
-        queryFn: () => api.api_dashboard_open_dispositions_retrieve({ queries: { limit } }) as Promise<OpenDispositionsResponse>,
+    return useQuery({
+        ...openDispositionsOptions(limit),
         enabled,
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes - actionable items
     });

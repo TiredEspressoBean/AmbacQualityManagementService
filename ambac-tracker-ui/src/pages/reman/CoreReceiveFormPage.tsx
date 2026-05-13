@@ -57,7 +57,7 @@ export function CoreReceiveFormPage() {
     // Fetch customers for dropdown
     // NOTE: api_Customers_list does not support limit or search; all customers returned
     const { data: customersData } = useRetrieveCustomers({});
-    const customers = customersData?.results ?? [];
+    const customers = Array.isArray(customersData) ? customersData : [];
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),

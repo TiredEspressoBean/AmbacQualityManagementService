@@ -42,6 +42,7 @@ export function EditOrderActionsCell({ orderId }: Props) {
         updateOrder.mutate(
             {
                 id: orderId,
+                // eslint-disable-next-line local/no-as-any -- PatchedCustomerOrderRequest has many required fields; only patching archived flag
                 newData: {
                     archived:true
                 } as any

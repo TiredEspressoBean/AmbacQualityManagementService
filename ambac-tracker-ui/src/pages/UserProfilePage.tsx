@@ -139,7 +139,7 @@ export function UserProfilePage() {
                             </div>
                             <div className="flex items-center justify-between py-2">
                                 <dt className="text-sm font-medium text-muted-foreground">Member since</dt>
-                                <dd className="text-sm font-medium">{new Date(user.date_joined).toLocaleDateString()}</dd>
+                                <dd className="text-sm font-medium">{user.date_joined ? new Date(user.date_joined).toLocaleDateString() : "—"}</dd>
                             </div>
                             {user.groups && user.groups.length > 0 && (
                                 <div className="flex items-center justify-between py-2">

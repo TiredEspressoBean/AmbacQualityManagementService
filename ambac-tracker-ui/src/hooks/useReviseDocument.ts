@@ -24,8 +24,8 @@ export function useReviseDocument() {
 
             // Use the generated API client's revise endpoint
             return api.api_Documents_revise_create(
+                formData as never,
                 { params: { id } },
-                formData as any,
             );
         },
         onSuccess: (_data, variables) => {

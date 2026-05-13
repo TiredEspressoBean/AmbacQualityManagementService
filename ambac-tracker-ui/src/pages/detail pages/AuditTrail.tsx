@@ -11,7 +11,7 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
     const { data: contentTypesRaw } = useRetrieveContentTypes({});
 
     // Normalize content types (handles both array and paginated formats)
-    const contentTypes = Array.isArray(contentTypesRaw) ? contentTypesRaw : contentTypesRaw?.results || [];
+    const contentTypes = Array.isArray(contentTypesRaw) ? contentTypesRaw : [];
 
     const contentTypeId = contentTypes.find(
         (ct: { model?: string; id?: number }) => ct.model?.toLowerCase() === modelType.toLowerCase()
@@ -76,7 +76,7 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
                             
                             <div className="text-sm text-muted-foreground mt-2">
                                 {entry.changes && typeof entry.changes === "object"
-                                    ? renderChanges(entry.changes, entry.action)
+                                    ? renderChanges(entry.changes as Record<string, unknown>, entry.action)
                                     : <span className="italic">No change details available</span>}
                             </div>
                         </div>

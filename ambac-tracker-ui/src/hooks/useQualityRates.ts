@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 export type QualityRatesResponse = {
@@ -18,6 +18,13 @@ type UseQualityRatesParams = {
 const fetchQualityRates = (days: number) =>
     api.api_dashboard_quality_rates_retrieve({ queries: { days } }) as Promise<QualityRatesResponse>;
 
+export const qualityRatesOptions = (days: number) => queryOptions({
+    queryKey: ["quality-rates", days] as const,
+    queryFn: () => fetchQualityRates(days),
+    placeholderData: (previousData) => previousData,
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - rate data
+});
+
 export const useQualityRates = ({ days = 30, enabled = true }: UseQualityRatesParams = {}) => {
     const queryClient = useQueryClient();
 
@@ -25,18 +32,9 @@ export const useQualityRates = ({ days = 30, enabled = true }: UseQualityRatesPa
     useEffect(() => {
         const rangesToPrefetch = [30, 60, 90].filter(d => d !== days);
         rangesToPrefetch.forEach(d => {
-            queryClient.prefetchQuery({
-                queryKey: ["quality-rates", d],
-                queryFn: () => fetchQualityRates(d),
-            });
+            queryClient.prefetchQuery(qualityRatesOptions(d));
         });
-    }, []);
+    }, [days, queryClient]);
 
-    return useQuery<QualityRatesResponse>({
-        queryKey: ["quality-rates", days],
-        queryFn: () => fetchQualityRates(days),
-        enabled,
-        placeholderData: (previousData) => previousData,
-        refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes - rate data
-    });
+    return useQuery({ ...qualityRatesOptions(days), enabled });
 };

@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 // Extract queries type from Zodios endpoint
@@ -9,20 +9,20 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveNotificationPreferencesOptions = (queries?: NotificationPreferencesListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["NotificationPreferences", queries, config] as const,
+  queryFn: () => api.api_NotificationPreferences_list(
+    (queries || config ? { queries, ...config } : undefined) as never,
+  ),
+});
+
 export function useRetrieveNotificationPreferences(
   queries?: NotificationPreferencesListQueries,
   config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof api.api_NotificationPreferences_list>>,
-      Error
-    >,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<ReturnType<typeof retrieveNotificationPreferencesOptions>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: ["NotificationPreferences", queries, config],
-    queryFn: () => api.api_NotificationPreferences_list(queries || config ? { queries, ...config } : undefined),
+    ...retrieveNotificationPreferencesOptions(queries, config),
     ...options,
   });
 }

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export interface TaskDocument {
@@ -53,13 +53,16 @@ export interface CapaTask {
 // Response can be either an array or paginated result
 type MyTasksResponse = CapaTask[] | { results: CapaTask[]; count: number };
 
+export const myCapaTasksOptions = () => queryOptions({
+    queryKey: ["capa-my-tasks"] as const,
+    queryFn: async (): Promise<CapaTask[]> => {
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- api_CapaTasks_my_tasks_list returns a custom action response not captured in the schema
+        const response = await api.api_CapaTasks_my_tasks_list() as unknown as MyTasksResponse;
+        // Normalize response: return array whether paginated or not
+        return Array.isArray(response) ? response : response.results;
+    },
+});
+
 export function useMyCapaTasks() {
-    return useQuery({
-        queryKey: ["capa-my-tasks"],
-        queryFn: async () => {
-            const response = await api.api_CapaTasks_my_tasks_list() as MyTasksResponse;
-            // Normalize response: return array whether paginated or not
-            return Array.isArray(response) ? response : response.results;
-        },
-    });
+    return useQuery(myCapaTasksOptions());
 }

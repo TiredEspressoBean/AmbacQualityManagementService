@@ -1,5 +1,5 @@
 import { api, schemas } from "@/lib/api/generated";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 // Re-export generated types for convenience
@@ -35,27 +35,31 @@ export type SpcBaselineWithLimits = Omit<SpcBaseline, 'control_limits'> & {
  * Fetch the active baseline for a measurement definition.
  * Returns null if no active baseline exists.
  */
-export const useSpcActiveBaseline = (measurementId: string | null) => {
-    return useQuery<SpcBaselineWithLimits | null>({
-        queryKey: ["spc-baseline-active", measurementId],
-        queryFn: async () => {
-            try {
-                const response = await api.api_spc_baselines_active_retrieve({
-                    queries: { measurement_id: measurementId! }
-                });
-                // Cast to our properly typed version
-                return (response as SpcBaselineWithLimits) || null;
-            } catch (error: unknown) {
-                // 404 means no active baseline - return null
-                if (error && typeof error === 'object' && 'response' in error) {
-                    const axiosError = error as { response?: { status?: number } };
-                    if (axiosError.response?.status === 404) {
-                        return null;
-                    }
+export const spcActiveBaselineOptions = (measurementId: string | null) => queryOptions({
+    queryKey: ["spc-baseline-active", measurementId] as const,
+    queryFn: async () => {
+        try {
+            const response = await api.api_spc_baselines_active_retrieve({
+                queries: { measurement_id: measurementId! }
+            });
+            // Cast to our properly typed version
+            return (response as SpcBaselineWithLimits) || null;
+        } catch (error: unknown) {
+            // 404 means no active baseline - return null
+            if (error && typeof error === 'object' && 'response' in error) {
+                const axiosError = error as { response?: { status?: number } };
+                if (axiosError.response?.status === 404) {
+                    return null;
                 }
-                throw error;
             }
-        },
+            throw error;
+        }
+    },
+});
+
+export const useSpcActiveBaseline = (measurementId: string | null) => {
+    return useQuery({
+        ...spcActiveBaselineOptions(measurementId),
         enabled: measurementId !== null,
     });
 };
@@ -69,19 +73,17 @@ export const useFreezeSpcBaseline = () => {
 
     return useMutation({
         mutationFn: async (data: SpcBaselineFreezeRequest) => {
-            const response = await api.api_spc_baselines_freeze_create({
-                body: data,
-            });
+            const response = await api.api_spc_baselines_freeze_create(data);
             return response;
         },
         onSuccess: (newBaseline) => {
             // Invalidate the active baseline query for this measurement
             queryClient.invalidateQueries({
-                queryKey: ["spc-baseline-active", newBaseline.measurement_definition],
+                queryKey: ["spc-baseline-active", newBaseline.measurement_definition] as const,
             });
             // Also invalidate the list of all baselines
             queryClient.invalidateQueries({
-                queryKey: ["spc-baselines"],
+                queryKey: ["spc-baselines"] as const,
             });
         },
     });
@@ -105,11 +107,11 @@ export const useSupersedeSpcBaseline = () => {
         onSuccess: (supersededBaseline) => {
             // Invalidate the active baseline query for this measurement
             queryClient.invalidateQueries({
-                queryKey: ["spc-baseline-active", supersededBaseline.measurement_definition],
+                queryKey: ["spc-baseline-active", supersededBaseline.measurement_definition] as const,
             });
             // Also invalidate the list of all baselines
             queryClient.invalidateQueries({
-                queryKey: ["spc-baselines"],
+                queryKey: ["spc-baselines"] as const,
             });
         },
     });
@@ -158,8 +160,8 @@ export const toFreezeRequest = (
         individual_lcl: toDecimalString(limits.individualLCL),
         mr_ucl: toDecimalString(limits.mrUCL),
         mr_cl: toDecimalString(limits.mrCL),
-        // Metadata
-        sample_count: sampleCount,
-        notes: notes,
+        // Metadata (zod .default("") makes these required in the inferred type)
+        sample_count: sampleCount ?? 0,
+        notes: notes ?? "",
     };
 };

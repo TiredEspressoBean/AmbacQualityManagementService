@@ -72,7 +72,7 @@ type ModelDetailPageProps = {
     modelData: ModelData;
     modelType: string;
     fieldsConfig: FieldsConfig;
-    RendererSidebarComponent?: FieldsConfig["subcomponents"]["RendererSidebarComponent"];
+    RendererSidebarComponent?: NonNullable<FieldsConfig["subcomponents"]>["RendererSidebarComponent"];
 };
 
 type DocumentWithSource = ApiDocument & {
@@ -97,11 +97,10 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
     const {
         data: contentTypesData,
         isLoading: isLoadingContentTypes,
-        error: _contentTypeError,
     } = useRetrieveContentTypes({});
 
     // Normalize content types (handles both array and paginated formats)
-    const contentTypes = Array.isArray(contentTypesData) ? contentTypesData : contentTypesData?.results || [];
+    const contentTypes = useMemo(() => Array.isArray(contentTypesData) ? contentTypesData : [], [contentTypesData]);
 
     // Get content type for main model
     const mainContentTypeId = contentTypes.find(
@@ -114,7 +113,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
         isLoading: isLoadingMainDocs,
     } = useRetrieveDocuments(
         {
-            object_id: modelData.id,
+            object_id: String(modelData.id),
             content_type: mainContentTypeId,
         },
         undefined,

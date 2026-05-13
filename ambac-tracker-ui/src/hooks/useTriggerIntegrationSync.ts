@@ -9,7 +9,7 @@ export const useTriggerIntegrationSync = () => {
 
     return useMutation<any, unknown, { id: TriggerSyncParams["id"] }>({
         mutationFn: ({ id }) =>
-            api.api_integrations_trigger_sync_create(undefined, {
+            api.api_integrations_trigger_sync_create(undefined as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),

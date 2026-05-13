@@ -27,16 +27,16 @@ export function TenantProvider({ children }: TenantProviderProps) {
     const { data, isLoading, isError, refetch } = useTenant();
 
     // Apply tenant branding colors when data loads
+    const tenant = data?.tenant;
+    const primaryColor = tenant?.primary_color ?? null;
+    const secondaryColor = (tenant as { secondary_color?: string | null } | undefined)?.secondary_color ?? null;
     useEffect(() => {
-        if (!data?.tenant) {
+        if (!tenant) {
             resetBrandingColors();
             return;
         }
 
         // Colors come from settings.branding on backend
-        const primaryColor = data.tenant.primary_color;
-        const secondaryColor = (data.tenant as { secondary_color?: string | null }).secondary_color;
-
         if (primaryColor) {
             applyBrandingColors(primaryColor, secondaryColor ?? undefined);
         } else {
@@ -45,7 +45,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
 
         // Cleanup on unmount
         return () => resetBrandingColors();
-    }, [data?.tenant?.primary_color, (data?.tenant as { secondary_color?: string | null })?.secondary_color]);
+    }, [tenant, primaryColor, secondaryColor]);
 
     const value: TenantContextValue = {
         tenant: data?.tenant ?? null,

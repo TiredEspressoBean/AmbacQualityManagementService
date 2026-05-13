@@ -1,9 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
-import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
+import { useRetrieveDocumentTypes, documentTypesOptions, documentTypesMetadataOptions } from "@/hooks/useRetrieveDocumentTypes";
 import { EditDocumentTypeActionsCell } from "@/components/edit-document-type-action-cell";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -18,14 +17,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchDocumentTypesEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["document-type", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_DocumentTypes_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "DocumentTypes", "DocumentTypes"],
-        queryFn: () => api.api_DocumentTypes_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(documentTypesOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(documentTypesMetadataOptions());
 };
 
 function useDocumentTypesList({

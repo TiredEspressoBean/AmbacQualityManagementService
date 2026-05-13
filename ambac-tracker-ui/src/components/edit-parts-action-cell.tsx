@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Archive } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useUpdatePart } from "@/hooks/useUpdatePart";
+import { useUpdatePart } from "@/hooks/parts";
 import {toast} from "sonner"; // <- adjust path as needed
 
 type Props = {
@@ -36,6 +36,7 @@ export function EditPartActionsCell({ partId }: Props) {
         updatePart.mutate(
             {
                 id: partId,
+                // eslint-disable-next-line local/no-as-any -- PatchedPartsRequest requires many fields; only patching archived flag
                 data:{archived:true} as any
             },
             {

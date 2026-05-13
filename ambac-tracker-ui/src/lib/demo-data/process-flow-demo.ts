@@ -1,4 +1,5 @@
-import type { StepData, FlowNodeData, NodeMetrics } from '@/components/flow';
+import type { StepWithOrder, NodeMetrics } from '@/components/flow';
+import type { EdgeTypeEnum } from '@/lib/api/generated';
 
 /**
  * Demo process data showcasing all node types in a remanufacturing workflow.
@@ -19,9 +20,9 @@ import type { StepData, FlowNodeData, NodeMetrics } from '@/components/flow';
  *                                                             Scrap Decision ─┬─→ Scrap
  *                                                                             └─→ Return to Supplier
  */
-export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
+export const DEMO_REMANUFACTURING_PROCESS: StepWithOrder[] = [
   {
-    id: 1,
+    id: "1",
     name: 'Receive Core',
     order: 1,
     step_type: 'START',
@@ -29,14 +30,14 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     description: 'Receive and log incoming core from customer',
   },
   {
-    id: 2,
+    id: "2",
     name: 'Disassemble',
     order: 2,
     step_type: 'TASK',
     description: 'Disassemble unit into components',
   },
   {
-    id: 3,
+    id: "3",
     name: 'Clean',
     order: 3,
     step_type: 'TIMER',
@@ -44,7 +45,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     expected_duration: '2h',
   },
   {
-    id: 4,
+    id: "4",
     name: 'Inspect',
     order: 4,
     step_type: 'DECISION',
@@ -56,14 +57,14 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     min_sampling_rate: 100,
   },
   {
-    id: 5,
+    id: "5",
     name: 'Reassemble',
     order: 5,
     step_type: 'TASK',
     description: 'Reassemble with new seals and gaskets',
   },
   {
-    id: 6,
+    id: "6",
     name: 'Final Test',
     order: 6,
     step_type: 'DECISION',
@@ -75,7 +76,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     min_sampling_rate: 25,
   },
   {
-    id: 7,
+    id: "7",
     name: 'Rework',
     order: 7,
     step_type: 'REWORK',
@@ -83,7 +84,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     max_visits: 3,
   },
   {
-    id: 8,
+    id: "8",
     name: 'Scrap Decision',
     order: 8,
     step_type: 'DECISION',
@@ -92,7 +93,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     decision_type: 'MANUAL',
   },
   {
-    id: 9,
+    id: "9",
     name: 'Scrap',
     order: 9,
     step_type: 'TERMINAL',
@@ -101,7 +102,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     terminal_status: 'SCRAPPED',
   },
   {
-    id: 10,
+    id: "10",
     name: 'Ship',
     order: 10,
     step_type: 'TERMINAL',
@@ -110,7 +111,7 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
     terminal_status: 'SHIPPED',
   },
   {
-    id: 11,
+    id: "11",
     name: 'Return to Supplier',
     order: 11,
     step_type: 'TERMINAL',
@@ -124,22 +125,22 @@ export const DEMO_REMANUFACTURING_PROCESS: StepData[] = [
  * Demo step edges defining the routing between steps.
  * Matches the flow diagram in the comment above.
  */
-export const DEMO_STEP_EDGES: Array<{ from_step: number; to_step: number; edge_type: string }> = [
+export const DEMO_STEP_EDGES: Array<{ from_step: string; to_step: string; edge_type: EdgeTypeEnum }> = [
   // Main flow
-  { from_step: 1, to_step: 2, edge_type: 'DEFAULT' },   // Receive Core → Disassemble
-  { from_step: 2, to_step: 3, edge_type: 'DEFAULT' },   // Disassemble → Clean
-  { from_step: 3, to_step: 4, edge_type: 'DEFAULT' },   // Clean → Inspect
-  { from_step: 4, to_step: 5, edge_type: 'DEFAULT' },   // Inspect → Reassemble (Pass)
-  { from_step: 4, to_step: 7, edge_type: 'ALTERNATE' }, // Inspect → Rework (Fail)
-  { from_step: 5, to_step: 6, edge_type: 'DEFAULT' },   // Reassemble → Final Test
-  { from_step: 6, to_step: 10, edge_type: 'DEFAULT' },  // Final Test → Ship (Pass)
-  { from_step: 6, to_step: 7, edge_type: 'ALTERNATE' }, // Final Test → Rework (Fail)
+  { from_step: "1", to_step: "2", edge_type: 'DEFAULT' },   // Receive Core → Disassemble
+  { from_step: "2", to_step: "3", edge_type: 'DEFAULT' },   // Disassemble → Clean
+  { from_step: "3", to_step: "4", edge_type: 'DEFAULT' },   // Clean → Inspect
+  { from_step: "4", to_step: "5", edge_type: 'DEFAULT' },   // Inspect → Reassemble (Pass)
+  { from_step: "4", to_step: "7", edge_type: 'ALTERNATE' }, // Inspect → Rework (Fail)
+  { from_step: "5", to_step: "6", edge_type: 'DEFAULT' },   // Reassemble → Final Test
+  { from_step: "6", to_step: "10", edge_type: 'DEFAULT' },  // Final Test → Ship (Pass)
+  { from_step: "6", to_step: "7", edge_type: 'ALTERNATE' }, // Final Test → Rework (Fail)
   // Rework loop
-  { from_step: 7, to_step: 4, edge_type: 'DEFAULT' },   // Rework → Inspect (retry)
-  { from_step: 7, to_step: 8, edge_type: 'ESCALATION' },// Rework → Scrap Decision (max exceeded)
+  { from_step: "7", to_step: "4", edge_type: 'DEFAULT' },   // Rework → Inspect (retry)
+  { from_step: "7", to_step: "8", edge_type: 'ESCALATION' },// Rework → Scrap Decision (max exceeded)
   // Scrap decision branches
-  { from_step: 8, to_step: 9, edge_type: 'DEFAULT' },   // Scrap Decision → Scrap
-  { from_step: 8, to_step: 11, edge_type: 'ALTERNATE' },// Scrap Decision → Return to Supplier
+  { from_step: "8", to_step: "9", edge_type: 'DEFAULT' },   // Scrap Decision → Scrap
+  { from_step: "8", to_step: "11", edge_type: 'ALTERNATE' },// Scrap Decision → Return to Supplier
 ];
 
 /** Demo process metadata */
@@ -157,18 +158,18 @@ export const DEMO_PROCESS_INFO = {
  * Simulated part distribution across steps for work order demo.
  * Shows how parts are currently distributed in an active work order.
  */
-export const DEMO_WORKORDER_PART_COUNTS: Record<number, number> = {
-  1: 0,   // Receive Core - none waiting
-  2: 2,   // Disassemble - 2 parts
-  3: 5,   // Clean - 5 parts (bottleneck!)
-  4: 3,   // Inspect - 3 parts
-  5: 4,   // Reassemble - 4 parts
-  6: 2,   // Final Test - 2 parts
-  7: 1,   // Rework - 1 part in rework
-  8: 0,   // Scrap Decision - none
-  9: 1,   // Scrap - 1 scrapped
-  10: 8,  // Ship - 8 shipped
-  11: 0,  // Return to Supplier - none
+export const DEMO_WORKORDER_PART_COUNTS: Record<string, number> = {
+  "1": 0,   // Receive Core - none waiting
+  "2": 2,   // Disassemble - 2 parts
+  "3": 5,   // Clean - 5 parts (bottleneck!)
+  "4": 3,   // Inspect - 3 parts
+  "5": 4,   // Reassemble - 4 parts
+  "6": 2,   // Final Test - 2 parts
+  "7": 1,   // Rework - 1 part in rework
+  "8": 0,   // Scrap Decision - none
+  "9": 1,   // Scrap - 1 scrapped
+  "10": 8,  // Ship - 8 shipped
+  "11": 0,  // Return to Supplier - none
 };
 
 export const DEMO_WORKORDER_INFO = {
@@ -188,7 +189,7 @@ export const DEMO_WORKORDER_INFO = {
  * Shows the path a part took through the process, including rework loops.
  */
 export interface PartExecutionStep {
-  stepId: number;
+  stepId: string;
   visitNumber: number;
   entryTime: Date;
   exitTime: Date | null;
@@ -197,15 +198,15 @@ export interface PartExecutionStep {
 }
 
 export const DEMO_PART_JOURNEY: PartExecutionStep[] = [
-  { stepId: 1, visitNumber: 1, entryTime: new Date('2024-01-15T08:00:00'), exitTime: new Date('2024-01-15T08:15:00'), operator: 'John D.' },
-  { stepId: 2, visitNumber: 1, entryTime: new Date('2024-01-15T08:15:00'), exitTime: new Date('2024-01-15T09:30:00'), operator: 'John D.' },
-  { stepId: 3, visitNumber: 1, entryTime: new Date('2024-01-15T09:30:00'), exitTime: new Date('2024-01-15T11:30:00'), operator: 'Auto' },
-  { stepId: 4, visitNumber: 1, entryTime: new Date('2024-01-15T11:30:00'), exitTime: new Date('2024-01-15T11:45:00'), result: 'FAIL', operator: 'Sarah M.' },
-  { stepId: 7, visitNumber: 1, entryTime: new Date('2024-01-15T11:45:00'), exitTime: new Date('2024-01-15T13:00:00'), operator: 'Mike R.' },
-  { stepId: 4, visitNumber: 2, entryTime: new Date('2024-01-15T13:00:00'), exitTime: new Date('2024-01-15T13:15:00'), result: 'PASS', operator: 'Sarah M.' },
-  { stepId: 5, visitNumber: 1, entryTime: new Date('2024-01-15T13:15:00'), exitTime: new Date('2024-01-15T14:45:00'), operator: 'John D.' },
-  { stepId: 6, visitNumber: 1, entryTime: new Date('2024-01-15T14:45:00'), exitTime: new Date('2024-01-15T15:00:00'), result: 'PASS', operator: 'Sarah M.' },
-  { stepId: 10, visitNumber: 1, entryTime: new Date('2024-01-15T15:00:00'), exitTime: new Date('2024-01-15T15:30:00'), operator: 'Shipping' },
+  { stepId: "1", visitNumber: 1, entryTime: new Date('2024-01-15T08:00:00'), exitTime: new Date('2024-01-15T08:15:00'), operator: 'John D.' },
+  { stepId: "2", visitNumber: 1, entryTime: new Date('2024-01-15T08:15:00'), exitTime: new Date('2024-01-15T09:30:00'), operator: 'John D.' },
+  { stepId: "3", visitNumber: 1, entryTime: new Date('2024-01-15T09:30:00'), exitTime: new Date('2024-01-15T11:30:00'), operator: 'Auto' },
+  { stepId: "4", visitNumber: 1, entryTime: new Date('2024-01-15T11:30:00'), exitTime: new Date('2024-01-15T11:45:00'), result: 'FAIL', operator: 'Sarah M.' },
+  { stepId: "7", visitNumber: 1, entryTime: new Date('2024-01-15T11:45:00'), exitTime: new Date('2024-01-15T13:00:00'), operator: 'Mike R.' },
+  { stepId: "4", visitNumber: 2, entryTime: new Date('2024-01-15T13:00:00'), exitTime: new Date('2024-01-15T13:15:00'), result: 'PASS', operator: 'Sarah M.' },
+  { stepId: "5", visitNumber: 1, entryTime: new Date('2024-01-15T13:15:00'), exitTime: new Date('2024-01-15T14:45:00'), operator: 'John D.' },
+  { stepId: "6", visitNumber: 1, entryTime: new Date('2024-01-15T14:45:00'), exitTime: new Date('2024-01-15T15:00:00'), result: 'PASS', operator: 'Sarah M.' },
+  { stepId: "10", visitNumber: 1, entryTime: new Date('2024-01-15T15:00:00'), exitTime: new Date('2024-01-15T15:30:00'), operator: 'Shipping' },
 ];
 
 export const DEMO_PART_INFO = {
@@ -223,71 +224,71 @@ export const DEMO_PART_INFO = {
 /**
  * Simulated performance metrics per step for bottleneck analysis.
  */
-export const DEMO_STEP_METRICS: Record<number, NodeMetrics> = {
-  1: {
+export const DEMO_STEP_METRICS: Record<string, NodeMetrics> = {
+  "1": {
     avgDwellTime: 15 * 60 * 1000,        // 15 min
     avgTransitionTime: 2 * 60 * 1000,    // 2 min
     throughput: 24,                       // 24/hr
     totalParts: 500,
   },
-  2: {
+  "2": {
     avgDwellTime: 75 * 60 * 1000,        // 1h 15m
     avgTransitionTime: 5 * 60 * 1000,
     throughput: 8,
     totalParts: 498,
   },
-  3: {
+  "3": {
     avgDwellTime: 120 * 60 * 1000,       // 2h (timer step)
     avgTransitionTime: 3 * 60 * 1000,
     throughput: 4,
     totalParts: 496,
   },
-  4: {
+  "4": {
     avgDwellTime: 45 * 60 * 1000,        // 45 min
     avgTransitionTime: 5 * 60 * 1000,
     throughput: 12,
     passRate: 85,
     totalParts: 580,                      // Higher due to rework revisits
   },
-  5: {
+  "5": {
     avgDwellTime: 90 * 60 * 1000,        // 1h 30m
     avgTransitionTime: 5 * 60 * 1000,
     throughput: 6,
     totalParts: 493,
   },
-  6: {
+  "6": {
     avgDwellTime: 30 * 60 * 1000,        // 30 min
     avgTransitionTime: 10 * 60 * 1000,
     throughput: 15,
     passRate: 92,
     totalParts: 493,
   },
-  7: {
+  "7": {
     avgDwellTime: 180 * 60 * 1000,       // 3h - BOTTLENECK!
     avgTransitionTime: 10 * 60 * 1000,
     throughput: 2.5,
     reworkRate: 100,                      // All parts here are rework
     totalParts: 87,
   },
-  8: {
+  "8": {
     avgDwellTime: 240 * 60 * 1000,       // 4h - Another bottleneck (MRB review)
     avgTransitionTime: 30 * 60 * 1000,
     throughput: 1,
     totalParts: 12,
   },
-  9: {
+  "9": {
     avgDwellTime: 15 * 60 * 1000,
     avgTransitionTime: 0,
     throughput: 4,
     totalParts: 7,
   },
-  10: {
+  "10": {
     avgDwellTime: 30 * 60 * 1000,
     avgTransitionTime: 0,
     throughput: 12,
     totalParts: 481,
   },
-  11: {
+  "11": {
     avgDwellTime: 60 * 60 * 1000,
     avgTransitionTime: 0,
     throughput: 2,
@@ -298,7 +299,7 @@ export const DEMO_STEP_METRICS: Record<number, NodeMetrics> = {
 /**
  * Calculate bottleneck severity (0-1) for a step based on its metrics.
  */
-export function calculateBottleneckSeverity(stepId: number): number {
+export function calculateBottleneckSeverity(stepId: string): number {
   const metrics = DEMO_STEP_METRICS[stepId];
   if (!metrics) return 0;
 
@@ -319,7 +320,7 @@ export function calculateBottleneckSeverity(stepId: number): number {
 /**
  * Steps with QA requirements highlighted.
  */
-export const DEMO_QA_STEPS = new Set([4, 6]); // Inspect and Final Test
+export const DEMO_QA_STEPS = new Set(["4", "6"]); // Inspect and Final Test
 
 // ============================================================================
 // Demo Mode Types

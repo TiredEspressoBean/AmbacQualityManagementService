@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api, type DecisionEnum } from "@/lib/api/generated";
 
 export interface ApprovalResponse {
@@ -54,10 +54,15 @@ export interface ApprovalRequest {
     threshold?: number;
 }
 
+export const approvalRequestOptions = (id: string) => queryOptions<ApprovalRequest>({
+    queryKey: ["approvals", "detail", id] as const,
+    // eslint-disable-next-line local/no-double-cast-via-unknown -- local ApprovalRequest interface predates schema generation; fields like required_approvers differ in shape from generated type
+    queryFn: () => api.api_ApprovalRequests_retrieve({ params: { id } }) as unknown as Promise<ApprovalRequest>,
+});
+
 export function useApprovalRequest(id: string | undefined) {
     return useQuery({
-        queryKey: ["approvals", "detail", id],
-        queryFn: () => api.api_ApprovalRequests_retrieve({ params: { id: id! } }) as Promise<ApprovalRequest>,
+        ...approvalRequestOptions(id!),
         enabled: id !== undefined,
     });
 }

@@ -98,7 +98,7 @@ export default function MeasurementDefinitionForm({
 
     if (isEditing) {
       updateMutation.mutate(
-        { params: { id: existingDefinition.id }, body: submitData },
+        { id: existingDefinition.id, data: submitData },
         {
           onSuccess: () => {
             toast.success("Measurement definition updated successfully!");
@@ -111,8 +111,7 @@ export default function MeasurementDefinitionForm({
         }
       );
     } else {
-      createMutation.mutate(
-        { body: submitData },
+      createMutation.mutate(submitData,
         {
           onSuccess: () => {
             toast.success("Measurement definition created successfully!");

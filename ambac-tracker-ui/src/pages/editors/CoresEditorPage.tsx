@@ -1,8 +1,7 @@
-import { useRetrieveCores } from "@/hooks/useRetrieveCores";
+import { useRetrieveCores, coresOptions } from "@/hooks/useRetrieveCores";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { format } from "date-fns";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,10 +26,7 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchCoresEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["cores", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Cores_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
+    queryClient.prefetchQuery(coresOptions(DEFAULT_LIST_PARAMS));
 };
 
 // Custom wrapper hook for consistent usage
@@ -80,7 +76,7 @@ function CoreActionsCell({ core }: { core: any }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                    <Link to={`/reman/cores/${core.id}`}>
+                    <Link to="/reman/cores/$id" params={{ id: String(core.id) }}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Details
                     </Link>

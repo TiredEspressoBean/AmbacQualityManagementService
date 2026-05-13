@@ -23,7 +23,7 @@ export function useDeleteTenantLogo() {
 
     return useMutation({
         mutationFn: () =>
-            api.api_tenant_logo_destroy({
+            api.api_tenant_logo_destroy(undefined, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: () => {

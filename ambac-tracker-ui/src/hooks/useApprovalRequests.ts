@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { api, schemas } from "@/lib/api/generated";
-import type { z } from "zod";
+import { useQuery, queryOptions } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
 
-export type ApprovalRequest = z.infer<typeof schemas.ApprovalRequest>;
+export type ApprovalRequest = Schema<"ApprovalRequest">;
+type PaginatedApprovalRequestList = Schema<"PaginatedApprovalRequestList">;
 
 export interface ApprovalRequestsFilters {
     approval_type?: string;
@@ -15,42 +16,46 @@ export interface ApprovalRequestsFilters {
     offset?: number;
 }
 
+export const approvalRequestsOptions = (filters: ApprovalRequestsFilters = {}) => queryOptions<PaginatedApprovalRequestList>({
+    queryKey: ["approvals", "list", filters] as const,
+    queryFn: async () => {
+        const response = await api.api_ApprovalRequests_list({
+            queries: {
+                approval_type: filters.approval_type,
+                status: filters.status,
+                requested_by: filters.requested_by,
+                overdue: filters.overdue,
+                search: filters.search,
+                ordering: filters.ordering ?? "-requested_at",
+                limit: filters.limit ?? 50,
+                offset: filters.offset ?? 0,
+            },
+        });
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- generated api returns slightly different shape than Schema<"PaginatedApprovalRequestList">; runtime types match
+        return response as unknown as PaginatedApprovalRequestList;
+    },
+});
+
 export function useApprovalRequests(filters: ApprovalRequestsFilters = {}) {
-    return useQuery({
-        queryKey: ["approvals", "list", filters],
-        queryFn: async () => {
-            const response = await api.api_ApprovalRequests_list({
-                queries: {
-                    approval_type: filters.approval_type,
-                    status: filters.status,
-                    requested_by: filters.requested_by,
-                    overdue: filters.overdue,
-                    search: filters.search,
-                    ordering: filters.ordering ?? "-requested_at",
-                    limit: filters.limit ?? 50,
-                    offset: filters.offset ?? 0,
-                },
-            });
-            return response;
-        },
-    });
+    return useQuery({ ...approvalRequestsOptions(filters) });
 }
 
 // Hook specifically for "my submitted requests" (things I requested from others)
+export const mySubmittedRequestsOptions = (userId?: number) => queryOptions({
+    queryKey: ["approvals", "my-submitted", userId] as const,
+    queryFn: async () => {
+        if (!userId) return { results: [], count: 0 };
+        const response = await api.api_ApprovalRequests_list({
+            queries: {
+                requested_by: userId,
+                ordering: "-requested_at",
+                limit: 50,
+            },
+        });
+        return response;
+    },
+});
+
 export function useMySubmittedRequests(userId?: number) {
-    return useQuery({
-        queryKey: ["approvals", "my-submitted", userId],
-        queryFn: async () => {
-            if (!userId) return { results: [], count: 0 };
-            const response = await api.api_ApprovalRequests_list({
-                queries: {
-                    requested_by: userId,
-                    ordering: "-requested_at",
-                    limit: 50,
-                },
-            });
-            return response;
-        },
-        enabled: !!userId,
-    });
+    return useQuery({ ...mySubmittedRequestsOptions(userId), enabled: !!userId });
 }

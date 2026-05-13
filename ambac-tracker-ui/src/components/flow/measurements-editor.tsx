@@ -54,18 +54,15 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
   const handleDelete = (measurementId: string) => {
     if (!confirm('Are you sure you want to delete this measurement?')) return;
 
-    deleteMutation.mutate(
-      { params: { id: measurementId } },
-      {
-        onSuccess: () => {
-          toast.success('Measurement deleted');
-          refetch();
-        },
-        onError: () => {
-          toast.error('Failed to delete measurement');
-        },
-      }
-    );
+    deleteMutation.mutate(measurementId, {
+      onSuccess: () => {
+        toast.success('Measurement deleted');
+        refetch();
+      },
+      onError: () => {
+        toast.error('Failed to delete measurement');
+      },
+    });
   };
 
   const handleFormSuccess = () => {

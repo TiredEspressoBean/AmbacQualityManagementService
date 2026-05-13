@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -149,8 +149,10 @@ export function WorkOrderDetailPage() {
             </div>
 
             {/* Process Info */}
+            {/* eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema; name field exists at runtime */}
             {(workOrder.process_info as any)?.name && (
                 <p className="text-muted-foreground">
+                    {/* eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema */}
                     Process: {(workOrder.process_info as any).name}
                 </p>
             )}

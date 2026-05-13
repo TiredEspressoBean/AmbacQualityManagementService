@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
-import { useRetrieveParts } from "@/hooks/useRetrieveParts";
+import { useRetrieveParts } from "@/hooks/parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -93,7 +93,9 @@ export function QaWorkOrderDetailPage() {
                     </h1>
                     <p className="text-muted-foreground">
                         Quality Assurance
+                        {/* eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema; name field exists at runtime */}
                         {(workOrder.process_info as any)?.name && (
+                            // eslint-disable-next-line local/no-as-any -- process_info typed as {} passthrough in schema
                             <span className="ml-2">• Process: {(workOrder.process_info as any).name}</span>
                         )}
                     </p>

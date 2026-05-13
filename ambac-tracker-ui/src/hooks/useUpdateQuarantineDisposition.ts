@@ -1,16 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
 
-type UpdateQuarantineDispositionInput = Parameters<typeof api.api_QuarantineDispositions_partial_update>[0];
-
-type UpdateQuarantineDispositionConfig = Parameters<typeof api.api_QuarantineDispositions_partial_update>[1];
-type UpdateQuarantineDispositionParams = UpdateQuarantineDispositionConfig["params"];
-
-type UpdateQuarantineDispositionResponse = Awaited<ReturnType<typeof api.api_QuarantineDispositions_partial_update>>;
+type UpdateQuarantineDispositionInput = Schema<"PatchedQuarantineDispositionRequest">;
+type UpdateQuarantineDispositionResponse = Schema<"QuarantineDisposition">;
 
 type UpdateQuarantineDispositionVariables = {
-    id: UpdateQuarantineDispositionParams["id"];
+    id: string;
     data: UpdateQuarantineDispositionInput;
 };
 
@@ -19,10 +16,10 @@ export const useUpdateQuarantineDisposition = () => {
 
     return useMutation<UpdateQuarantineDispositionResponse, unknown, UpdateQuarantineDispositionVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_QuarantineDispositions_partial_update(data, {
+            api.api_QuarantineDispositions_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }),
+            }) as Promise<UpdateQuarantineDispositionResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["quarantine-dispositions"],

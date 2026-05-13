@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ComponentType, type SVGProps } from "react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ type UrgencyLevel = "overdue" | "due_today" | "due_this_week" | "upcoming";
 
 interface InboxItem {
     id: string;
-    numericId: number;
+    numericId: string;
     type: InboxItemType;
     title: string;
     subtitle?: string;  // Secondary info like task type or content object
@@ -216,14 +216,16 @@ function groupByUrgency(items: InboxItem[]): Record<UrgencyLevel, InboxItem[]> {
 // CONFIG
 // ============================================================================
 
-const urgencyConfig: Record<UrgencyLevel, { label: string; icon: React.ElementType; className: string }> = {
+type IconComponent = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
+
+const urgencyConfig: Record<UrgencyLevel, { label: string; icon: IconComponent; className: string }> = {
     overdue: { label: "Overdue", icon: AlertTriangle, className: "text-destructive" },
     due_today: { label: "Due Today", icon: Clock, className: "text-amber-600" },
     due_this_week: { label: "This Week", icon: CalendarDays, className: "text-blue-600" },
     upcoming: { label: "Upcoming", icon: Calendar, className: "text-muted-foreground" },
 };
 
-const typeConfig: Record<InboxItemType, { icon: React.ElementType; bgColor: string; iconColor: string }> = {
+const typeConfig: Record<InboxItemType, { icon: IconComponent; bgColor: string; iconColor: string }> = {
     capa_task: { icon: ClipboardList, bgColor: "bg-primary/10", iconColor: "text-primary" },
     approval: { icon: FileSignature, bgColor: "bg-amber-100 dark:bg-amber-900/30", iconColor: "text-amber-700 dark:text-amber-400" },
 };
@@ -256,7 +258,7 @@ function CompleteTaskModal({
 
     // Get content type ID for CapaTasks
     const { data: contentTypes } = useRetrieveContentTypes({});
-    const contentTypesList = Array.isArray(contentTypes) ? contentTypes : contentTypes?.results;
+    const contentTypesList = Array.isArray(contentTypes) ? contentTypes : [];
     const capaTasksContentType = contentTypesList?.find(
         (ct: any) => ct.model === "capatasks" && ct.app_label === "Tracker"
     );
@@ -546,10 +548,9 @@ function InboxItemCard({ item }: { item: InboxItem }) {
         completeTask.mutate(
             {
                 id: item.numericId,
-                data: {
-                    completion_notes: data.notes,
-                    // signature_data and password not in CapaTasksRequest (backend gap)
-                }
+                 
+                // eslint-disable-next-line local/no-double-cast-via-unknown -- complete-task endpoint only consumes `completion_notes` server-side; generated type re-uses the full CapaTasksRequest shape
+                data: { completion_notes: data.notes } as unknown as Parameters<typeof completeTask.mutate>[0]["data"],
             },
             {
                 onSuccess: () => {
@@ -798,192 +799,6 @@ function EmptyState() {
 }
 
 // ============================================================================
-// MOCK DATA - Toggle this flag to use mock data instead of API
-// ============================================================================
-
-const USE_MOCK_DATA = false;
-
-// Mock data matching the actual API serializer structure
-const MOCK_TASKS: CapaTask[] = [
-    {
-        id: 1,
-        task_number: "TASK-2024-001",
-        capa: 101,
-        capa_info: {
-            id: 101,
-            capa_number: "CAPA-2024-001",
-            description: "Root cause analysis for dimensional deviation on Part #A1234",
-        },
-        task_type: "CORRECTIVE",
-        task_type_display: "Corrective Action",
-        description: "Implement SPC monitoring for critical dimensions",
-        assigned_to: 1,
-        assigned_to_info: {
-            id: 1,
-            username: "jsmith",
-            full_name: "John Smith",
-        },
-        completion_mode: "single",
-        completion_mode_display: "Single Approver",
-        due_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days ago (overdue)
-        status: "IN_PROGRESS",
-        status_display: "In Progress",
-        is_overdue: true,
-        requires_signature: true, // High-risk corrective action requires signature
-        documents_info: {
-            count: 2,
-            items: [
-                { id: 1001, file_name: "SPC_Control_Chart_Setup.pdf", file_url: "/media/docs/spc_setup.pdf", upload_date: "2024-12-05T10:30:00Z" },
-                { id: 1002, file_name: "Dimension_Analysis_Report.xlsx", file_url: "/media/docs/analysis.xlsx", upload_date: "2024-12-06T14:15:00Z" },
-            ],
-        },
-        created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 2,
-        task_number: "TASK-2024-002",
-        capa: 102,
-        capa_info: {
-            id: 102,
-            capa_number: "CAPA-2024-002",
-            description: "Process improvement for surface finish quality",
-        },
-        task_type: "PREVENTIVE",
-        task_type_display: "Preventive Action",
-        description: "Update work instructions for finishing process",
-        assigned_to: 1,
-        assigned_to_info: {
-            id: 1,
-            username: "jsmith",
-            full_name: "John Smith",
-        },
-        completion_mode: "single",
-        completion_mode_display: "Single Approver",
-        due_date: new Date().toISOString().split('T')[0], // Today
-        status: "PENDING",
-        status_display: "Pending",
-        is_overdue: false,
-        requires_signature: false, // Lower-risk preventive action
-        documents_info: {
-            count: 0,
-            items: [],
-        },
-        created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 3,
-        task_number: "TASK-2024-003",
-        capa: 103,
-        capa_info: {
-            id: 103,
-            capa_number: "CAPA-2024-003",
-            description: "Training documentation update",
-        },
-        task_type: "CORRECTIVE",
-        task_type_display: "Corrective Action",
-        description: "Review and approve updated training materials",
-        assigned_to: 1,
-        assigned_to_info: {
-            id: 1,
-            username: "jsmith",
-            full_name: "John Smith",
-        },
-        completion_mode: "single",
-        completion_mode_display: "Single Approver",
-        due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days from now
-        status: "PENDING",
-        status_display: "Pending",
-        is_overdue: false,
-        requires_signature: false, // Documentation review task
-        documents_info: {
-            count: 1,
-            items: [
-                { id: 1003, file_name: "Training_Material_Draft_v2.docx", file_url: "/media/docs/training.docx", upload_date: "2024-12-08T09:00:00Z" },
-            ],
-        },
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-];
-
-const MOCK_APPROVALS: PendingApproval[] = [
-    {
-        id: 201,
-        approval_number: "APR-2024-001",
-        approval_type: "CAPA_APPROVAL",
-        approval_type_display: "CAPA Approval",
-        status: "PENDING",
-        status_display: "Pending",
-        content_type: 15,
-        object_id: 104,
-        content_object_info: {
-            type: "capa",
-            id: 104,
-            str: "CAPA-2024-004: Equipment calibration schedule review",
-        },
-        requested_by: 2,
-        requested_by_info: {
-            id: 2,
-            username: "mjones",
-            full_name: "Mary Jones",
-        },
-        requested_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        due_date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Yesterday (overdue)
-        reason: "CAPA closure requires Quality Manager approval",
-    },
-    {
-        id: 202,
-        approval_number: "APR-2024-002",
-        approval_type: "DOCUMENT_APPROVAL",
-        approval_type_display: "Document Approval",
-        status: "PENDING",
-        status_display: "Pending",
-        content_type: 10,
-        object_id: 501,
-        content_object_info: {
-            type: "documents",
-            id: 501,
-            str: "WI-MFG-042 Rev C: Machining Work Instructions",
-        },
-        requested_by: 3,
-        requested_by_info: {
-            id: 3,
-            username: "bwilson",
-            full_name: "Bob Wilson",
-        },
-        requested_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days from now
-        reason: "Document revision requires review and approval",
-    },
-    {
-        id: 203,
-        approval_number: "APR-2024-003",
-        approval_type: "CAPA_APPROVAL",
-        approval_type_display: "CAPA Approval",
-        status: "PENDING",
-        status_display: "Pending",
-        content_type: 15,
-        object_id: 105,
-        content_object_info: {
-            type: "capa",
-            id: 105,
-            str: "CAPA-2024-005: Supplier quality improvement initiative",
-        },
-        requested_by: 4,
-        requested_by_info: {
-            id: 4,
-            username: "sjohnson",
-            full_name: "Sarah Johnson",
-        },
-        requested_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        due_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 10 days from now
-        reason: "CAPA implementation plan approval",
-    },
-];
-
-// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -991,13 +806,12 @@ export function InboxPage() {
     const { data: tasksData, isLoading: tasksLoading, error: tasksError } = useMyCapaTasks();
     const { data: approvalsData, isLoading: approvalsLoading, error: approvalsError } = useMyPendingApprovals();
 
-    // Use mock data or real API data based on flag
-    const isLoading = USE_MOCK_DATA ? false : (tasksLoading || approvalsLoading);
-    const hasError = USE_MOCK_DATA ? false : (tasksError || approvalsError);
+    const isLoading = tasksLoading || approvalsLoading;
+    const hasError = tasksError || approvalsError;
 
     // Transform data to InboxItems
-    const rawTasks = USE_MOCK_DATA ? MOCK_TASKS : (tasksData || []);
-    const rawApprovals = USE_MOCK_DATA ? MOCK_APPROVALS : (approvalsData || []);
+    const rawTasks = tasksData || [];
+    const rawApprovals = approvalsData || [];
 
     const tasks = rawTasks.map(transformCapaTask);
     const approvals = rawApprovals.map(transformApproval);

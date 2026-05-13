@@ -43,7 +43,7 @@ export const createSystemInfoSection = (fields: string[] = ['created_at', 'updat
 export const createModelConfig = (config: {
     modelType: string;
     fields: Record<string, { label: string }>;
-    customRenderers?: Record<string, (value: any) => React.ReactNode>;
+    customRenderers?: Record<string, (value: any, data?: any) => React.ReactNode>;
     sections: Array<{
         title: string;
         fields: string[];
@@ -66,7 +66,6 @@ export const createModelConfig = (config: {
     }>;
 }): FieldsConfig => {
     const {
-        modelType: _modelType,
         fields,
         customRenderers = {},
         sections,
@@ -80,6 +79,7 @@ export const createModelConfig = (config: {
     return {
         fields,
         customRenderers,
+        // eslint-disable-next-line local/no-as-any -- dynamic API method dispatch by string key; no index signature on the generated api object
         fetcher: (id) => (api as any)[apiPath]({ params: { id } }),
         sections: {
             header: [],
@@ -824,7 +824,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                 customRenderers: {
                     created_at: commonRenderers.datetime,
                     status_display: (value: string, data: Record<string, unknown>) => {
-                        const status = data?.status || value;
+                        const status = (data?.status as string | undefined) || value;
                         const statusColors: Record<string, string> = {
                             PASS: '🟢 Pass',
                             FAIL: '🔴 Fail',
@@ -1009,7 +1009,8 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         if (routeModel && objectPk && modelData?.action !== 2) {
                             return (
                                 <Link
-                                    to={`/details/${routeModel}/${objectPk}`}
+                                    to="/details/$model/$id"
+                                    params={{ model: String(routeModel), id: String(objectPk) }}
                                     className="text-primary hover:underline font-medium"
                                 >
                                     {objectRepr}

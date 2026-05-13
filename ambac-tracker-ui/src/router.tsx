@@ -826,7 +826,7 @@ export function createAppRouter(queryClient: QueryClient) {
         defaultPreloadStaleTime: 5000, // Keep prefetched data fresh for 5 seconds
         defaultPendingMs: 200, // Only show loading if navigation takes >200ms
         defaultPendingComponent: DefaultPendingComponent,
-        defaultErrorComponent: DefaultErrorComponent as ErrorComponent,
+        defaultErrorComponent: DefaultErrorComponent,
         context: {
             queryClient,
         },

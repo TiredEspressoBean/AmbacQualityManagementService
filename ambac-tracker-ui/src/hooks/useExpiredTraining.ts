@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, queryOptions } from "@tanstack/react-query"
 import { api } from "@/lib/api/generated"
 
+export const expiredTrainingOptions = () => queryOptions({
+    queryKey: ["training-records", "expired"] as const,
+    queryFn: () => api.api_TrainingRecords_expired_list(),
+});
+
 export function useExpiredTraining() {
-    return useQuery({
-        queryKey: ["training-records", "expired"],
-        queryFn: () => api.api_TrainingRecords_expired_list(),
-    });
+    return useQuery({ ...expiredTrainingOptions() });
 }

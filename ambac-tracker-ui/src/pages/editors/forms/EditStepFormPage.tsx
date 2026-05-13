@@ -102,6 +102,7 @@ export default function StepFormPage() {
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues>,
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum/tuple fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: ({
             name: "",
             description: "",
@@ -120,6 +121,7 @@ export default function StepFormPage() {
                 active_ruleset?: { rules?: FormValues["rules"]; fallback_threshold?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
             }
+            // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF reset: ruleset fields are optional at runtime but required in strict FormValues; undefined entries are valid
             form.reset({
                 name: step.name ?? "",
                 description: step.description ?? "",

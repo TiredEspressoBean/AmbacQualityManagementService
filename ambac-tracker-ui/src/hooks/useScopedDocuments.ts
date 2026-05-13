@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 interface ScopedDocument {
@@ -22,6 +22,25 @@ interface ScopeResponse {
  * @param rootId - The ID of the root object
  * @param options - Optional filters like classification
  */
+export const scopedDocumentsOptions = (
+    rootModel: string,
+    rootId: string | undefined,
+    classification?: string,
+) => queryOptions({
+    queryKey: ["scope", "documents", rootModel, rootId, classification] as const,
+    queryFn: async () => {
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- api_scope_list returns an untyped catch-all response; ScopeResponse matches runtime shape
+        const data = await api.api_scope_list({
+            queries: {
+                root: `${rootModel}:${rootId}`,
+                include: "documents",
+                classification,
+            },
+        }) as unknown as ScopeResponse;
+        return data.documents ?? [];
+    },
+});
+
 export function useScopedDocuments(
     rootModel: string,
     rootId: string | undefined,
@@ -32,18 +51,8 @@ export function useScopedDocuments(
 ) {
     const { classification, enabled = true } = options ?? {};
 
-    return useQuery<ScopedDocument[]>({
-        queryKey: ["scope", "documents", rootModel, rootId, classification],
-        queryFn: async () => {
-            const data = await api.api_scope_list({
-                queries: {
-                    root: `${rootModel}:${rootId}`,
-                    include: "documents",
-                    classification,
-                },
-            }) as ScopeResponse;
-            return data.documents ?? [];
-        },
+    return useQuery({
+        ...scopedDocumentsOptions(rootModel, rootId, classification),
         enabled: enabled && rootId !== undefined,
     });
 }

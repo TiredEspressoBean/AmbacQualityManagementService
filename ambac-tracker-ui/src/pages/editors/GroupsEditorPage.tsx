@@ -1,10 +1,9 @@
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
-import { useTenantGroups } from "@/hooks/useTenantGroups";
+import { useTenantGroups, tenantGroupsOptions } from "@/hooks/useTenantGroups";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -18,10 +17,7 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchGroupsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["tenantGroups", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_TenantGroups_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
+    queryClient.prefetchQuery(tenantGroupsOptions(DEFAULT_LIST_PARAMS));
 };
 
 function useGroupsList({
@@ -36,9 +32,10 @@ function useGroupsList({
     search?: string;
     filters?: Record<string, string>;
 }) {
+    // Note: TenantGroups list endpoint does not support `search` (no DRF search_fields on backend)
+    void search;
     const queries: Parameters<typeof useTenantGroups>[0] = { offset, limit };
     if (ordering !== undefined) queries.ordering = ordering;
-    if (search !== undefined) queries.search = search;
     return useTenantGroups(queries);
 }
 

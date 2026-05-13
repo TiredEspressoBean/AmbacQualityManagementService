@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, queryOptions } from '@tanstack/react-query';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
 import type {
   FlowData,
@@ -238,21 +238,17 @@ export function useProcessMetricsFlow({
 
   // Fetch metrics (placeholder - endpoint doesn't exist yet)
   // TODO: Replace with actual API call when endpoint is created
-  const {
-    data: metricsData,
-    isLoading: isLoadingMetrics,
-    error: metricsError,
-  } = useQuery({
-    queryKey: ['process-metrics', processId, dateRange, process?.process_steps],
+  const processMetricsOptions = (pId: string | null, dRange: typeof dateRange, processSteps: typeof process) => queryOptions({
+    queryKey: ['process-metrics', pId, dRange, processSteps?.process_steps] as const,
     queryFn: async (): Promise<StepMetricsResponse[]> => {
       // Placeholder: Return mock data until API is implemented
       // In production, this would be:
       // return api.api_Processes_metrics_retrieve({ params: { id: processId }, queries: dateRange });
 
-      if (!process?.process_steps) return [];
+      if (!processSteps?.process_steps) return [];
 
       // Generate mock metrics for demo
-      return process.process_steps.map((ps) => ({
+      return processSteps.process_steps.map((ps) => ({
         step_id: ps.step.id,
         avg_dwell_time_ms: Math.random() * 3600000 * 4, // 0-4 hours
         avg_transition_time_ms: Math.random() * 300000, // 0-5 minutes
@@ -262,8 +258,13 @@ export function useProcessMetricsFlow({
         total_parts: Math.floor(Math.random() * 500 + 100),
       }));
     },
-    enabled: enabled && processId !== null && !!process,
   });
+
+  const {
+    data: metricsData,
+    isLoading: isLoadingMetrics,
+    error: metricsError,
+  } = useQuery({ ...processMetricsOptions(processId, dateRange, process), enabled: enabled && processId !== null && !!process });
 
   // Transform metrics to map
   const metricsMap = useMemo(() => {

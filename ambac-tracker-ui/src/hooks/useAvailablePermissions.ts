@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export type Permission = {
@@ -13,10 +13,14 @@ export type PermissionGroup = {
     permissions: Permission[];
 };
 
+export const availablePermissionsOptions = (grouped?: boolean) => queryOptions({
+    queryKey: ["permissions", grouped] as const,
+    queryFn: () => api.api_permissions_retrieve({ queries: { grouped } }),
+});
+
 export function useAvailablePermissions(options?: { grouped?: boolean; enabled?: boolean }) {
     return useQuery({
-        queryKey: ["permissions", options?.grouped],
-        queryFn: () => api.api_permissions_retrieve({ queries: { grouped: options?.grouped } }),
+        ...availablePermissionsOptions(options?.grouped),
         enabled: options?.enabled ?? true,
     });
 }

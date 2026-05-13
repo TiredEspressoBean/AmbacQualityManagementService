@@ -67,7 +67,13 @@ export function CoreDisassemblyPage() {
     const queryClient = useQueryClient();
 
     const [harvestDialogOpen, setHarvestDialogOpen] = useState(false);
-    const [newComponent, setNewComponent] = useState({
+    const [newComponent, setNewComponent] = useState<{
+        component_type: string;
+        position: string;
+        condition_grade: "A" | "B" | "C" | "SCRAP";
+        condition_notes: string;
+        original_part_number: string;
+    }>({
         component_type: "",
         position: "",
         condition_grade: "B",
@@ -102,7 +108,7 @@ export function CoreDisassemblyPage() {
             queryClient.invalidateQueries({ queryKey: ["core", id] });
             queryClient.invalidateQueries({ queryKey: ["cores"] });
             toast.success("Disassembly completed");
-            navigate({ to: `/reman/cores/${id}` });
+            navigate({ to: "/reman/cores/$id", params: { id } });
         },
         onError: (error: any) => {
             toast.error(error?.message || "Failed to complete disassembly");
@@ -150,7 +156,7 @@ export function CoreDisassemblyPage() {
     // Accept to inventory mutation
     const acceptToInventoryMutation = useMutation({
         mutationFn: (componentId: string) =>
-            api.api_HarvestedComponents_accept_to_inventory_create(undefined, { params: { id: componentId } }),
+            api.api_HarvestedComponents_accept_to_inventory_create({}, { params: { id: componentId } }),
         onSuccess: (data: any) => {
             refetchComponents();
             toast.success(`Component accepted. Part ID: ${data.part_erp_id}`);
@@ -190,7 +196,7 @@ export function CoreDisassemblyPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link to={`/reman/cores/${id}`}>
+                        <Link to="/reman/cores/$id" params={{ id }}>
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
@@ -332,7 +338,7 @@ export function CoreDisassemblyPage() {
                                             <Select
                                                 value={newComponent.condition_grade}
                                                 onValueChange={(val) =>
-                                                    setNewComponent((prev) => ({ ...prev, condition_grade: val }))
+                                                    setNewComponent((prev) => ({ ...prev, condition_grade: val as "A" | "B" | "C" | "SCRAP" }))
                                                 }
                                             >
                                                 <SelectTrigger>

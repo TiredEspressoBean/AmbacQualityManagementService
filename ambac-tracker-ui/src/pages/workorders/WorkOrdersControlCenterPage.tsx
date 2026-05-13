@@ -60,7 +60,9 @@ import {
 import { WO_PRIORITY_LABELS, HOLD_REASONS, type HoldReason } from "./constants";
 import { ReportExceptionDialog, type ReportExceptionPayload } from "./ReportExceptionDialog";
 import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
-import type { WorkOrderList, WorkOrderStatusEnum } from "@/lib/api/generated";
+import type { WorkOrderStatusEnum } from "@/lib/api/generated";
+import type { Schema } from "@/lib/api/types";
+type WorkOrderList = Schema<"WorkOrderList">;
 import { useExceptions } from "./useExceptions";
 import { useBulkTransitionWorkOrders } from "@/hooks/useBulkTransitionWorkOrders";
 import { useBulkPlaceOnHoldWorkOrders } from "@/hooks/useBulkPlaceOnHoldWorkOrders";

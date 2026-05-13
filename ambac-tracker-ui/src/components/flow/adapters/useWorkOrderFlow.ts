@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useRetrieveWorkOrder } from '@/hooks/useRetrieveWorkOrder';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
-import { useRetrieveParts } from '@/hooks/useRetrieveParts';
+import { useRetrieveParts } from '@/hooks/parts';
 import type {
   FlowData,
   FlowNode,
@@ -179,8 +179,8 @@ export function useWorkOrderFlow({ workOrderId, enabled = true }: UseWorkOrderFl
     error: workOrderError,
   } = useRetrieveWorkOrder(workOrderId ?? '', { enabled: enabled && workOrderId !== null });
 
-  // Get process ID from work order's order
-  const processId = (workOrder as unknown as { order?: { process?: string | number } })?.order?.process;
+  // Get process ID directly from work order (process is a direct FK on WorkOrder)
+  const processId = workOrder?.process;
 
   // Fetch process with steps
   const {
@@ -208,7 +208,7 @@ export function useWorkOrderFlow({ workOrderId, enabled = true }: UseWorkOrderFl
     const counts = new Map<string, number>();
     if (partsData?.results) {
       partsData.results.forEach((part) => {
-        const stepId = (part as unknown as { step?: string | number }).step;
+        const stepId = part.step;
         if (stepId) {
           const stepKey = String(stepId);
           counts.set(stepKey, (counts.get(stepKey) || 0) + 1);
@@ -257,7 +257,8 @@ export function useWorkOrderFlow({ workOrderId, enabled = true }: UseWorkOrderFl
       condition_value: e.condition_value,
     }));
 
-    const workOrderName = (workOrder as unknown as { name?: string })?.name ?? `Work Order #${workOrderId}`;
+     
+    const workOrderName = workOrder?.ERP_id ?? `Work Order #${workOrderId}`;
 
     return transformToWorkOrderFlow(processSteps, stepEdges, partsByStep, workOrderName, process.name);
   }, [process, partsByStep, workOrder, workOrderId]);

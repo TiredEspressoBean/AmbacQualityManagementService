@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -10,20 +10,28 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export function useRetrieveThreeDModels(
-  queries?: ThreeDModelsListQueries,
-  config?: ListHookConfig,
-  options?: Omit<
-    UseQueryOptions<ThreeDModelsListResponse, Error>,
-    "queryKey" | "queryFn"
-  >
-) {
-  return useQuery<ThreeDModelsListResponse, Error>({
-    queryKey: ["threeDModel", queries, config],
+export const threeDModelsOptions = (queries?: ThreeDModelsListQueries, config?: ListHookConfig) =>
+  queryOptions({
+    queryKey: ["threeDModel", queries, config] as const,
     queryFn: () =>
       api.api_ThreeDModels_list(
         (queries || config ? { queries, ...config } : undefined) as never,
       ) as Promise<ThreeDModelsListResponse>,
+  });
+
+export const threeDModelsMetadataOptions = () =>
+  queryOptions({
+    queryKey: ["metadata", "ThreeDModels", "ThreeDModels"] as const,
+    queryFn: () => api.api_ThreeDModels_metadata_retrieve(),
+  });
+
+export function useRetrieveThreeDModels(
+  queries?: ThreeDModelsListQueries,
+  config?: ListHookConfig,
+  options?: Omit<ReturnType<typeof threeDModelsOptions>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    ...threeDModelsOptions(queries, config),
     ...options,
   });
 }

@@ -1,6 +1,21 @@
 import { useCallback, useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
+
+const downtimeEventsOptions = () => queryOptions({
+    queryKey: ["downtime-events", { limit: 200 }] as const,
+    queryFn: () => api.api_DowntimeEvents_list({ queries: { limit: 200 } }),
+});
+
+const quarantineDispositionsExceptionsOptions = () => queryOptions({
+    queryKey: ["quarantine-dispositions", { limit: 200 }] as const,
+    queryFn: () => api.api_QuarantineDispositions_list({ queries: { limit: 200 } }),
+});
+
+const capasExceptionsOptions = () => queryOptions({
+    queryKey: ["capas", { limit: 200 }] as const,
+    queryFn: () => api.api_CAPAs_list({ queries: { limit: 200 } }),
+});
 import type { DowntimeEvent, QuarantineDisposition, CAPA } from "@/lib/api/generated";
 import type { ExceptionItem, ExceptionSeverity } from "./mockData";
 import { getCookie } from "@/lib/utils";
@@ -91,24 +106,18 @@ function adaptCapa(c: CAPA): ExceptionItem {
 }
 
 export function useExceptions() {
-    const dt = useQuery({
-        queryKey: ["downtime-events", { limit: 200 }],
-        queryFn: () => api.api_DowntimeEvents_list({ queries: { limit: 200 } }),
-    });
-    const qd = useQuery({
-        queryKey: ["quarantine-dispositions", { limit: 200 }],
-        queryFn: () => api.api_QuarantineDispositions_list({ queries: { limit: 200 } }),
-    });
-    const capas = useQuery({
-        queryKey: ["capas", { limit: 200 }],
-        queryFn: () => api.api_CAPAs_list({ queries: { limit: 200 } }),
-    });
+    const dt = useQuery(downtimeEventsOptions());
+    const qd = useQuery(quarantineDispositionsExceptionsOptions());
+    const capas = useQuery(capasExceptionsOptions());
 
     const items = useMemo<ExceptionItem[]>(() => {
         const out: ExceptionItem[] = [];
-        (dt.data?.results ?? []).forEach((e) => out.push(adaptDowntime(e)));
-        (qd.data?.results ?? []).forEach((e) => out.push(adaptQd(e)));
-        (capas.data?.results ?? []).forEach((e) => out.push(adaptCapa(e)));
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- zodios passthrough types don't structurally match local interfaces; runtime shapes are compatible
+        (dt.data?.results ?? []).forEach((e) => out.push(adaptDowntime(e as unknown as DowntimeEvent)));
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- same as above for QuarantineDisposition
+        (qd.data?.results ?? []).forEach((e) => out.push(adaptQd(e as unknown as QuarantineDisposition)));
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- same as above for CAPA
+        (capas.data?.results ?? []).forEach((e) => out.push(adaptCapa(e as unknown as CAPA)));
         return out;
     }, [dt.data, qd.data, capas.data]);
 

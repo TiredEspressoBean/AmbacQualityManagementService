@@ -10,9 +10,9 @@ import type {
  * that gets passed directly to the LLM without persistent storage.
  */
 export class EphemeralAttachmentAdapter implements AttachmentAdapter {
-  accept(): string {
-    return "image/*,text/*,.txt,.md,.csv,.json,.xml,.html,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
+  // SDK reads this as a string property (not a method). At runtime this becomes
+  // the <input accept="..."> attribute on the file picker.
+  accept = "image/*,text/*,.txt,.md,.csv,.json,.xml,.html,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
   async add(state: { file: File }): Promise<PendingAttachment> {
     const { file } = state;

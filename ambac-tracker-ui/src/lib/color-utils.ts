@@ -211,7 +211,7 @@ export function generateBrandPalette(
     const primary = generateColorPalette(primaryHex);
     if (!primary) return null;
 
-    const secondary = secondaryHex ? generateColorPalette(secondaryHex) : undefined;
+    const secondary = secondaryHex ? generateColorPalette(secondaryHex) ?? undefined : undefined;
 
     return {
         primary,

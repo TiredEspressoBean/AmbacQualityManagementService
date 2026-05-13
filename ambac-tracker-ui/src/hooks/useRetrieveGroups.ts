@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components, operations } from "@/lib/api/generated-types";
 
@@ -9,17 +9,21 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
+export const retrieveGroupsOptions = (queries?: GroupsListQueries, config?: ListHookConfig) => queryOptions({
+  queryKey: ["groups", queries, config] as const,
+  queryFn: () =>
+    api.api_Groups_list(
+      (queries || config ? { queries, ...config } : undefined) as never,
+    ) as Promise<GroupsListResponse>,
+});
+
 export function useRetrieveGroups(
   queries?: GroupsListQueries,
   config?: ListHookConfig,
-  options?: Omit<UseQueryOptions<GroupsListResponse, Error>, "queryKey" | "queryFn">
+  options?: Omit<ReturnType<typeof retrieveGroupsOptions>, "queryKey" | "queryFn">
 ) {
-  return useQuery<GroupsListResponse, Error>({
-    queryKey: ["groups", queries, config],
-    queryFn: () =>
-      api.api_Groups_list(
-        (queries || config ? { queries, ...config } : undefined) as never,
-      ) as Promise<GroupsListResponse>,
+  return useQuery({
+    ...retrieveGroupsOptions(queries, config),
     ...options,
   });
 }

@@ -619,14 +619,14 @@ export default function SpcPage() {
 
     // Build measurementDef from API data for compatibility with existing calculations
     // Note: API may return strings, so we parse to ensure numbers for arithmetic
-    const measurementDef: MeasurementDef | null = selectedMeasurement ? {
+    const measurementDef = useMemo<MeasurementDef | null>(() => selectedMeasurement ? {
         id: selectedMeasurement.id,
         name: selectedMeasurement.label,
         nominal: Number(selectedMeasurement.nominal) || 0,
         tolerancePlus: Number(selectedMeasurement.upper_tol) || 0,
         toleranceMinus: Number(selectedMeasurement.lower_tol) || 0,
         unit: selectedMeasurement.unit,
-    } : null;
+    } : null, [selectedMeasurement]);
 
     // Reset step when process changes
     const handleProcessChange = (processId: string) => {
@@ -756,7 +756,7 @@ export default function SpcPage() {
 
         const request = toFreezeRequest(
             selectedMeasurementId,
-            "i_mr",
+            "I_MR",
             1, // subgroup size is always 1 for I-MR
             {
                 individualUCL: calculatedIMRLimits.individualUCL,
@@ -875,7 +875,7 @@ export default function SpcPage() {
 
     // Handle creating CAPA from OOC point (X-bar/R)
     const handleInvestigate = () => {
-        if (!selectedPoint) return;
+        if (!selectedPoint || !controlLimits) return;
 
         const violations = selectedPointViolations.map(v => v.rule).join(", ");
         const problemStatement = `SPC Out-of-Control Condition Detected
@@ -908,7 +908,7 @@ Specification Limits:
 
     // Handle creating CAPA from I-MR point
     const handleIMRInvestigate = () => {
-        if (!selectedIMRPoint) return;
+        if (!selectedIMRPoint || !imrControlLimits) return;
 
         const violations = selectedIMRPointViolations.map(v => v.rule).join(", ");
         const problemStatement = `SPC Out-of-Control Condition Detected (I-MR Chart)
@@ -1611,11 +1611,9 @@ Specification Limits:
                                         activeDot={{
                                             r: 6,
                                             style: { cursor: "pointer" },
-                                            onClick: (_, payload) => {
-                                                if (payload && payload.payload) {
-                                                    setSelectedPoint(payload.payload as SubgroupPoint);
-                                                }
-                                            }
+                                            onClick: (props: { payload?: SubgroupPoint }) => {
+                                                if (props?.payload) setSelectedPoint(props.payload);
+                                            },
                                         }}
                                     />
                                 </LineChart>
@@ -1690,11 +1688,9 @@ Specification Limits:
                                         activeDot={{
                                             r: 6,
                                             style: { cursor: "pointer" },
-                                            onClick: (_, payload) => {
-                                                if (payload && payload.payload) {
-                                                    setSelectedPoint(payload.payload as SubgroupPoint);
-                                                }
-                                            }
+                                            onClick: (props: { payload?: SubgroupPoint }) => {
+                                                if (props?.payload) setSelectedPoint(props.payload);
+                                            },
                                         }}
                                     />
                                 </LineChart>
@@ -1781,11 +1777,9 @@ Specification Limits:
                                         activeDot={{
                                             r: 6,
                                             style: { cursor: "pointer" },
-                                            onClick: (_, payload) => {
-                                                if (payload && payload.payload) {
-                                                    setSelectedIMRPoint(payload.payload as IndividualPoint);
-                                                }
-                                            }
+                                            onClick: (props: { payload?: IndividualPoint }) => {
+                                                if (props?.payload) setSelectedIMRPoint(props.payload);
+                                            },
                                         }}
                                     />
                                 </LineChart>
@@ -1848,11 +1842,9 @@ Specification Limits:
                                         activeDot={{
                                             r: 6,
                                             style: { cursor: "pointer" },
-                                            onClick: (_, payload) => {
-                                                if (payload && payload.payload) {
-                                                    setSelectedIMRPoint(payload.payload as IndividualPoint);
-                                                }
-                                            }
+                                            onClick: (props: { payload?: IndividualPoint }) => {
+                                                if (props?.payload) setSelectedIMRPoint(props.payload);
+                                            },
                                         }}
                                     />
                                 </LineChart>

@@ -1,14 +1,14 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, infiniteQueryOptions } from '@tanstack/react-query'
 import { api } from '@/lib/api/generated.ts'
 
-export function useUserOrders() {
-    return useInfiniteQuery({
-        queryKey: ['userOrders'],
+export const userOrdersOptions = () =>
+    infiniteQueryOptions({
+        queryKey: ['userOrders'] as const,
         queryFn: async ({ pageParam = 0 }) => {
             const response = await api.api_TrackerOrders_list({
                 queries: {
                     limit: 25,
-                    offset: pageParam,
+                    offset: pageParam as number,
                 }
             });
             return response;
@@ -24,4 +24,7 @@ export function useUserOrders() {
         },
         initialPageParam: 0,
     });
+
+export function useUserOrders() {
+    return useInfiniteQuery(userOrdersOptions());
 }

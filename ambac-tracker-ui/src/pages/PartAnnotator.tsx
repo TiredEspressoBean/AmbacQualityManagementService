@@ -1,5 +1,5 @@
 import {type ThreeEvent} from "@react-three/fiber";
-import {useState, useMemo} from "react";
+import {useState, useMemo, type ComponentProps} from "react";
 import {Button} from "@/components/ui/button";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Textarea} from "@/components/ui/textarea";
@@ -42,7 +42,7 @@ function normalizeMediaUrl(url: string | undefined | null): string | undefined {
 const SEVERITY_LEVELS = ["low", "medium", "high", "critical"];
 
 interface LocalAnnotation {
-    id?: number; // ID if it's an existing annotation from the backend
+    id?: string; // UUID if it's an existing annotation from the backend
     position_x: number;
     position_y: number;
     position_z: number;
@@ -53,8 +53,10 @@ interface LocalAnnotation {
 }
 
 interface PartAnnotatorProps {
-    modelId: string;
-    partId: string;
+    // Route mounts this without props (params come from useParams); embedded
+    // usages pass them explicitly.
+    modelId?: string;
+    partId?: string;
     workOrderId?: string;
     qualityReportIds?: string[];
     className?: string;
@@ -111,7 +113,7 @@ export function PartAnnotator({
             }));
             setAnnotations(existingAnns);
         }
-    }, [existingAnnotationsData]);
+    }, [existingAnnotationsData, annotations.length]);
 
     // Fetch failed quality reports for this work order
     const { data: qualityReportsData, isLoading: isLoadingReports } = useQualityReports(
@@ -273,7 +275,7 @@ export function PartAnnotator({
                         position_y: annotation.position_y,
                         position_z: annotation.position_z,
                         defect_type: annotation.defect_type,
-                        severity: annotation.severity,
+                        severity: annotation.severity.toUpperCase() as "CRITICAL" | "LOW" | "MEDIUM" | "HIGH",
                         notes: annotation.notes,
                     });
                     successCount++;
@@ -467,7 +469,7 @@ export function PartAnnotator({
             {/* 3D Viewport */}
             <div className="flex-1 relative min-h-0">
                 <ThreeDModelViewer
-                    modelUrl={modelUrl}
+                    modelUrl={modelUrl ?? ""}
                     mode={mode}
                     onModelClick={handleClick}
                     isLoading={isLoading}
@@ -488,8 +490,10 @@ export function PartAnnotator({
                 </ThreeDModelViewer>
 
                 {/* Annotations List */}
+                { }
                 <AnnotationsList
-                    annotations={annotations}
+                    // eslint-disable-next-line local/no-double-cast-via-unknown -- annotation shape from useRetrieveHeatMapAnnotations is wider than AnnotationsList's prop type; both describe the same runtime shape
+                    annotations={annotations as unknown as ComponentProps<typeof AnnotationsList>["annotations"]}
                     selectedIdx={selectedIdx}
                     expanded={annotationsExpanded}
                     onToggleExpanded={() => setAnnotationsExpanded(!annotationsExpanded)}

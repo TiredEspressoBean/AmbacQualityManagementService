@@ -1,8 +1,7 @@
-import { useRetrieveSteps } from "@/hooks/useRetrieveSteps.ts";
+import { useRetrieveSteps, stepsOptions, stepsMetadataOptions } from "@/hooks/useRetrieveSteps.ts";
 import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { EditStepActionsCell } from "@/components/edit-step-action-cell.tsx";
-import { api } from "@/lib/api/generated";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,14 +16,8 @@ const DEFAULT_LIST_PARAMS = {
 
 // Prefetch function for route loader
 export const prefetchStepsEditor = (queryClient: QueryClient) => {
-    queryClient.prefetchQuery({
-        queryKey: ["steps", DEFAULT_LIST_PARAMS],
-        queryFn: () => api.api_Steps_list({ queries: DEFAULT_LIST_PARAMS }),
-    });
-    queryClient.prefetchQuery({
-        queryKey: ["metadata", "Steps", "Steps"],
-        queryFn: () => api.api_Steps_metadata_retrieve(),
-    });
+    queryClient.prefetchQuery(stepsOptions(DEFAULT_LIST_PARAMS));
+    queryClient.prefetchQuery(stepsMetadataOptions());
 };
 
 // Matches Django filter fields exactly

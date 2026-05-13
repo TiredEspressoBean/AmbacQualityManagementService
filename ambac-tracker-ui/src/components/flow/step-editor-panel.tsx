@@ -49,6 +49,7 @@ export interface StepEditorPanelProps {
 }
 
 export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }: StepEditorPanelProps) {
+  // eslint-disable-next-line local/no-as-any -- FlowNodeData is a union type; we use structural access for the step sub-shape here
   const data = node.data as any;
   const stepId = data.step?.id as string | undefined;
 
@@ -75,6 +76,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
     { enabled: !!stepId }
   );
   // active_ruleset may be on the extended type from the hook
+  // eslint-disable-next-line local/no-as-any -- active_ruleset is not in Schema<"ProcessStep">; backend returns it via extended serializer (FLAG: add active_ruleset to ProcessStepSerializer)
   const samplingRuleCount = (stepWithRules as any)?.active_ruleset?.rules?.length ?? 0;
 
   // Fetch document count
@@ -165,6 +167,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
               {editable ? (
                 <Select
                   value={data.decisionType || ''}
+                  // eslint-disable-next-line local/no-as-any -- decision_type is a string enum; Select returns string and the update fn accepts the wider type
                   onValueChange={(v) => onUpdate(node.id, { decision_type: v as any })}
                 >
                   <SelectTrigger>
@@ -210,6 +213,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
               {editable ? (
                 <Select
                   value={data.terminalStatus || ''}
+                  // eslint-disable-next-line local/no-as-any -- terminal_status is a string enum; Select returns string and the update fn accepts the wider type
                   onValueChange={(v) => onUpdate(node.id, { terminal_status: v as any })}
                 >
                   <SelectTrigger>

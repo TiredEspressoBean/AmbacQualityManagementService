@@ -27,6 +27,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 
 // Helper to extract user-friendly error messages from API errors
 function getPasswordResetErrorMessage(error: unknown, fallback: string): string {
+    // eslint-disable-next-line local/no-as-any -- error from fetch/axios may have .response.data; unknown requires narrowing which would be verbose for an error helper
     const apiError = (error as any)?.response?.data;
     if (apiError?.email?.[0]) return apiError.email[0];
     if (apiError?.new_password1?.[0]) return apiError.new_password1[0];

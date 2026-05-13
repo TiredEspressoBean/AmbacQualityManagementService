@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 
 export interface DocumentStats {
@@ -10,9 +10,11 @@ export interface DocumentStats {
     by_classification: Record<string, number>;
 }
 
+export const documentStatsOptions = () => queryOptions({
+    queryKey: ["documents", "stats"] as const,
+    queryFn: () => api.api_Documents_stats_retrieve() as unknown as Promise<DocumentStats>,
+});
+
 export function useDocumentStats() {
-    return useQuery({
-        queryKey: ["documents", "stats"],
-        queryFn: () => api.api_Documents_stats_retrieve() as Promise<DocumentStats>,
-    });
+    return useQuery({ ...documentStatsOptions() });
 }

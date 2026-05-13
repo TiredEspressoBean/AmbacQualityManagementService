@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/generated";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 
 export type DefectRecord = {
     id: string;
@@ -42,19 +42,23 @@ export type DefectRecordsResponse = {
     };
 };
 
+export const defectRecordsOptions = (filters: DefectRecordsFilters) => queryOptions({
+    queryKey: ["defect-records", filters] as const,
+    queryFn: () => api.api_dashboard_defect_records_retrieve({
+        queries: {
+            days: filters.days,
+            defect_type: filters.defect_type ?? undefined,
+            process: filters.process ?? undefined,
+            part_type: filters.part_type ?? undefined,
+            limit: filters.limit,
+            offset: filters.offset,
+        },
+    }) as Promise<DefectRecordsResponse>,
+});
+
 export const useDefectRecords = (filters: DefectRecordsFilters = {}, enabled = true) => {
-    return useQuery<DefectRecordsResponse>({
-        queryKey: ["defect-records", filters],
-        queryFn: () => api.api_dashboard_defect_records_retrieve({
-            queries: {
-                days: filters.days,
-                defect_type: filters.defect_type ?? undefined,
-                process: filters.process ?? undefined,
-                part_type: filters.part_type ?? undefined,
-                limit: filters.limit,
-                offset: filters.offset,
-            },
-        }) as Promise<DefectRecordsResponse>,
+    return useQuery({
+        ...defectRecordsOptions(filters),
         enabled,
         placeholderData: (previousData) => previousData,
     });
