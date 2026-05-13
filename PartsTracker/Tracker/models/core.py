@@ -2191,6 +2191,11 @@ class Approval_Type(models.TextChoices):
     TRAINING_CERT = 'TRAINING_CERT', 'Training Certification'
     PROCESS_APPROVAL = 'PROCESS_APPROVAL', 'Process Approval'
 
+    # Change Control (Phase 1: process changes)
+    PCR_APPROVAL = 'PCR_APPROVAL', 'Process Change Request Approval'
+    PCO_APPROVAL = 'PCO_APPROVAL', 'Process Change Order Approval'
+    PCN_RELEASE = 'PCN_RELEASE', 'Process Change Notice Release'
+
 class Approval_Status_Type(models.TextChoices):
     NOT_REQUIRED = 'NOT_REQUIRED', 'Not Required'
     PENDING = 'PENDING', 'Pending'
@@ -2558,7 +2563,9 @@ class ApprovalRequest(SecureModel):
         from django.utils import timezone
         if self.status in [Approval_Status_Type.APPROVED, Approval_Status_Type.REJECTED, Approval_Status_Type.CANCELLED]:
             return False
-        return self.due_date and timezone.now() > self.due_date
+        if not self.due_date:
+            return False
+        return timezone.now() > self.due_date
 
     def can_approve(self, user):
         """Check if user is authorized to approve"""

@@ -122,6 +122,7 @@ class CurrentTenantView(APIView):
                     tenant.trial_ends_at.isoformat()
                     if user and tenant.trial_ends_at else None
                 ),
+                'is_demo': tenant.is_demo,
             }
 
         # Features based on tier (simplified for now)

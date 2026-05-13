@@ -105,7 +105,7 @@ class MeasurementDefinitionSerializer(serializers.ModelSerializer, SecureModelMi
 class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin):
     report = serializers.CharField(read_only=True)
     is_within_spec = serializers.BooleanField(read_only=True)
-    created_by = serializers.IntegerField(read_only=True)
+    created_by = serializers.IntegerField(read_only=True, source='created_by_id')
 
     class Meta:
         model = MeasurementResult
