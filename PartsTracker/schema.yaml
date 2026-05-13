@@ -5429,8 +5429,63 @@ paths:
           description: ''
   /api/Documents/recent/:
     get:
-      operationId: api_Documents_recent_retrieve
-      description: Get recently updated documents
+      operationId: api_Documents_recent_list
+      description: Get recently updated documents (paginated; defaults to 10 per page).
+      parameters:
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - in: query
+        name: is_image
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - DRAFT
+          - OBSOLETE
+          - RELEASED
+          - UNDER_REVIEW
+        description: |-
+          Document workflow status
+
+          * `DRAFT` - Draft
+          * `UNDER_REVIEW` - Under Review
+          * `APPROVED` - Approved
+          * `RELEASED` - Released
+          * `OBSOLETE` - Obsolete
       tags:
       - api
       security:
@@ -5441,7 +5496,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/PaginatedDocumentsList'
           description: ''
   /api/Documents/stats/:
     get:
@@ -5457,7 +5512,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/DocumentStatsResponse'
           description: ''
   /api/DowntimeEvents/:
     get:
@@ -29818,6 +29873,44 @@ components:
         * `SCRAP` - Scrap
         * `USE_AS_IS` - Use As Is
         * `RETURN_TO_SUPPLIER` - Return to Supplier
+    DocumentStatsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        pending_approval:
+          type: integer
+        needs_my_approval:
+          type: integer
+        my_uploads:
+          type: integer
+        recent_count:
+          type: integer
+        due_for_review:
+          type: integer
+        released:
+          type: integer
+        obsolete:
+          type: integer
+        by_classification:
+          type: object
+          additionalProperties:
+            type: integer
+        by_status:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - by_classification
+      - by_status
+      - due_for_review
+      - my_uploads
+      - needs_my_approval
+      - obsolete
+      - pending_approval
+      - recent_count
+      - released
+      - total
     DocumentType:
       type: object
       description: |-

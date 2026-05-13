@@ -156,7 +156,7 @@ export default function ProcessFormPage() {
         if (mode === 'edit' && processId && !isLoading && data && data?.id !== undefined) {
             // Use process_steps (new structure) - each has a nested step object
             const processSteps = Array.isArray(data.process_steps) ? data.process_steps : [];
-            const numSteps = data.num_steps ?? (processSteps.length || 1);
+            const numSteps = processSteps.length || 1;
 
             // Sort by order and extract step data
             const sortedProcessSteps = [...processSteps].sort((a, b) => (a.order || 0) - (b.order || 0));

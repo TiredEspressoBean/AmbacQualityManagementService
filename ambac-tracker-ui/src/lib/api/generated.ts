@@ -10276,6 +10276,18 @@ const PatchedDocumentsRequest = z
     export_control_reason: z.string().max(100),
   })
   .partial();
+const DocumentStatsResponse = z.object({
+  total: z.number().int(),
+  pending_approval: z.number().int(),
+  needs_my_approval: z.number().int(),
+  my_uploads: z.number().int(),
+  recent_count: z.number().int(),
+  due_for_review: z.number().int(),
+  released: z.number().int(),
+  obsolete: z.number().int(),
+  by_classification: z.record(z.number().int()),
+  by_status: z.record(z.number().int()),
+});
 const DowntimeCategoryEnum = z.enum([
   "PLANNED",
   "UNPLANNED",
@@ -14610,6 +14622,7 @@ export const schemas = {
   PaginatedDocumentsList,
   DocumentsRequest,
   PatchedDocumentsRequest,
+  DocumentStatsResponse,
   DowntimeCategoryEnum,
   DowntimeEvent,
   PaginatedDowntimeEventList,
@@ -19222,10 +19235,54 @@ Returns documents where review_date &lt;&#x3D; today.`,
   {
     method: "get",
     path: "/api/Documents/recent/",
-    alias: "api_Documents_recent_retrieve",
-    description: `Get recently updated documents`,
+    alias: "api_Documents_recent_list",
+    description: `Get recently updated documents (paginated; defaults to 10 per page).`,
     requestFormat: "json",
-    response: Documents,
+    parameters: [
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "is_image",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum(["APPROVED", "DRAFT", "OBSOLETE", "RELEASED", "UNDER_REVIEW"])
+          .optional(),
+      },
+    ],
+    response: PaginatedDocumentsList,
   },
   {
     method: "get",
@@ -19233,7 +19290,7 @@ Returns documents where review_date &lt;&#x3D; today.`,
     alias: "api_Documents_stats_retrieve",
     description: `Get document statistics for dashboard`,
     requestFormat: "json",
-    response: Documents,
+    response: DocumentStatsResponse,
   },
   {
     method: "get",

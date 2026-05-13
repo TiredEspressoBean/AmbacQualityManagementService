@@ -108,10 +108,13 @@ import "@xyflow/react/dist/style.css";
 import { useExceptions } from "./useExceptions";
 import type {
     TravelerStepEntry,
-    Processes as ProcessRecord,
     ProcessStep,
     StepEdge,
 } from "@/lib/api/generated";
+import type { Schema as ApiSchema } from "@/lib/api/types";
+// `useRetrieveProcessWithSteps` returns the with-steps payload; this is the
+// shape adaptProcessSteps consumes.
+type ProcessRecord = ApiSchema<"ProcessWithSteps">;
 import type { Schema } from "@/lib/api/types";
 type WorkOrder = Schema<"WorkOrder">;
 type PartRow = Schema<"Parts">;

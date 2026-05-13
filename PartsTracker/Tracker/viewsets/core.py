@@ -1357,6 +1357,23 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         serializer = self.get_serializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @extend_schema(
+        responses=inline_serializer(
+            name="DocumentStatsResponse",
+            fields={
+                "total": serializers.IntegerField(),
+                "pending_approval": serializers.IntegerField(),
+                "needs_my_approval": serializers.IntegerField(),
+                "my_uploads": serializers.IntegerField(),
+                "recent_count": serializers.IntegerField(),
+                "due_for_review": serializers.IntegerField(),
+                "released": serializers.IntegerField(),
+                "obsolete": serializers.IntegerField(),
+                "by_classification": serializers.DictField(child=serializers.IntegerField()),
+                "by_status": serializers.DictField(child=serializers.IntegerField()),
+            },
+        ),
+    )
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get document statistics for dashboard"""
@@ -1437,10 +1454,15 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(responses=DocumentsSerializer(many=True))
     @action(detail=False, methods=['get'], url_path='recent')
     def recent(self, request):
-        """Get recently updated documents"""
-        queryset = self.get_queryset().order_by('-updated_at')[:10]
+        """Get recently updated documents (paginated; defaults to 10 per page)."""
+        queryset = self.get_queryset().order_by('-updated_at')
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 

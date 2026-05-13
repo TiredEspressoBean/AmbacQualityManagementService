@@ -1804,8 +1804,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get recently updated documents */
-        get: operations["api_Documents_recent_retrieve"];
+        /** @description Get recently updated documents (paginated; defaults to 10 per page). */
+        get: operations["api_Documents_recent_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12913,6 +12913,22 @@ export interface components {
          * @enum {string}
          */
         DispositionTypeEnum: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+        DocumentStatsResponse: {
+            total: number;
+            pending_approval: number;
+            needs_my_approval: number;
+            my_uploads: number;
+            recent_count: number;
+            due_for_review: number;
+            released: number;
+            obsolete: number;
+            by_classification: {
+                [key: string]: number;
+            };
+            by_status: {
+                [key: string]: number;
+            };
+        };
         /**
          * @description Serializer for document types with DMS compliance settings.
          *
@@ -25436,9 +25452,31 @@ export interface operations {
             };
         };
     };
-    api_Documents_recent_retrieve: {
+    api_Documents_recent_list: {
         parameters: {
-            query?: never;
+            query?: {
+                content_type?: number;
+                is_image?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                object_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description Document workflow status
+                 *
+                 *     * `DRAFT` - Draft
+                 *     * `UNDER_REVIEW` - Under Review
+                 *     * `APPROVED` - Approved
+                 *     * `RELEASED` - Released
+                 *     * `OBSOLETE` - Obsolete
+                 */
+                status?: "APPROVED" | "DRAFT" | "OBSOLETE" | "RELEASED" | "UNDER_REVIEW";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -25450,7 +25488,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["PaginatedDocumentsList"];
                 };
             };
         };
@@ -25469,7 +25507,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["DocumentStatsResponse"];
                 };
             };
         };
