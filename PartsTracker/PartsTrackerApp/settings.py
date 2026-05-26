@@ -345,6 +345,9 @@ SPECTACULAR_SETTINGS = {
         # Integration enums (resolve collision between IntegrationConfig.provider and TenantLLMProvider.provider)
         "IntegrationProviderEnum": [('hubspot', 'HubSpot CRM'), ('salesforce', 'Salesforce CRM'), ('quickbooks', 'QuickBooks Online'), ('xero', 'Xero')],
         "IntegrationSyncStatusEnum": [('IDLE', 'Idle'), ('SYNCING', 'Syncing'), ('ERROR', 'Error')],
+        # Priority enums (resolve collision between WorkOrder.priority and Change Control artifacts)
+        "WorkOrderPriorityEnum": "Tracker.models.mes_lite.WorkOrderPriority.choices",
+        "ChangeControlPriorityEnum": "Tracker.models.change_control.ChangeControlPriority.choices",
     },
 }
 # CORS: Allow localhost for dev, Railway subdomains for production
@@ -571,12 +574,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "Tracker.tasks.dispatch_pending_notifications",
         "schedule": crontab(minute="*/5"),
         "options": {"expires": 240},
-    },
-    # Weekly report task creation (creates NotificationTask records for customers)
-    "create-weekly-customer-notifications": {
-        "task": "Tracker.tasks.create_weekly_report_notifications",
-        "schedule": crontab(day_of_week="tuesday", hour=15, minute=0),
-        "options": {"expires": 3600},
     },
     # Daily check for overdue approvals - sends reminders to pending approvers
     "check-overdue-approvals": {

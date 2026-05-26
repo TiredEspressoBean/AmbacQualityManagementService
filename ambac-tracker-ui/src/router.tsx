@@ -484,8 +484,93 @@ export const brandingSettingsRoute = createRoute({
 });
 
 export const notificationRulesSettingsRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/settings/notification-rules',
-    component: lazyRouteComponent(() => import("@/pages/settings/NotificationRulesPage"), "NotificationRulesPage"),
+    getParentRoute: () => rootRoute,
+    path: '/settings/notification-rules',
+    component: lazyRouteComponent(
+        () => import("@/pages/settings/NotificationRulesPage"),
+        "NotificationRulesPage",
+    ),
+});
+
+const NotificationRuleEditPage = lazyRouteComponent(
+    () => import("@/pages/settings/NotificationRuleEditPage"),
+    "NotificationRuleEditPage",
+);
+
+// Scope lives in the URL path — it's a structural identifier (which collection
+// the row belongs to), not a filter. This keeps deep links self-describing
+// and lets the editor fire exactly one retrieve query instead of fanning out.
+function parseScopeParam(raw: string): 'tenant' | 'customer' | 'personal' {
+    if (raw === 'tenant' || raw === 'customer' || raw === 'personal') return raw;
+    throw new Error(`Invalid notification rule scope: ${raw}`);
+}
+
+export const notificationRuleNewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/settings/notification-rules/$scope/new',
+    component: function NotificationRuleNewRouteComponent() {
+        const { scope } = notificationRuleNewRoute.useParams();
+        return <NotificationRuleEditPage initialScope={parseScopeParam(scope)} />;
+    },
+});
+
+export const notificationRuleEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/settings/notification-rules/$scope/$ruleId/edit',
+    component: function NotificationRuleEditRouteComponent() {
+        const { scope, ruleId } = notificationRuleEditRoute.useParams();
+        return (
+            <NotificationRuleEditPage
+                ruleId={ruleId}
+                initialScope={parseScopeParam(scope)}
+            />
+        );
+    },
+});
+
+// Schedule edit pages — list lives inside the Notifications admin page
+// as a top-level tab; only the edit routes are stand-alone.
+const NotificationScheduleEditPage = lazyRouteComponent(
+    () => import("@/pages/settings/NotificationScheduleEditPage"),
+    "NotificationScheduleEditPage",
+);
+
+function parseAdminScopeParam(raw: string): 'tenant' | 'customer' {
+    if (raw === 'tenant' || raw === 'customer') return raw;
+    throw new Error(`Invalid notification schedule scope: ${raw}`);
+}
+
+export const notificationScheduleNewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/settings/notification-schedules/$scope/new',
+    component: function NotificationScheduleNewRouteComponent() {
+        const { scope } = notificationScheduleNewRoute.useParams();
+        return <NotificationScheduleEditPage initialScope={parseAdminScopeParam(scope)} />;
+    },
+});
+
+export const notificationScheduleEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/settings/notification-schedules/$scope/$scheduleId/edit',
+    component: function NotificationScheduleEditRouteComponent() {
+        const { scope, scheduleId } = notificationScheduleEditRoute.useParams();
+        return (
+            <NotificationScheduleEditPage
+                scheduleId={scheduleId}
+                initialScope={parseAdminScopeParam(scope)}
+            />
+        );
+    },
+});
+
+export const notificationDefaultsSettingsRoute = createRoute({
+    getParentRoute: () => rootRoute, path: '/settings/notifications',
+    component: lazyRouteComponent(() => import("@/pages/settings/NotificationDefaultsPage"), "NotificationDefaultsPage"),
+});
+
+export const myNotificationsRoute = createRoute({
+    getParentRoute: () => rootRoute, path: '/profile/notifications',
+    component: lazyRouteComponent(() => import("@/pages/MyNotificationsPage"), "MyNotificationsPage"),
 });
 
 export const billingSettingsRoute = createRoute({
@@ -816,7 +901,7 @@ export const remanDashboardRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/reman/RemanDashboardPage"), "RemanDashboardPage"),
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, qaWorkOrderDetailRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreDisassemblyRoute, harvestedComponentsRoute])
+const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, qaWorkOrderDetailRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, myNotificationsRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreDisassemblyRoute, harvestedComponentsRoute])
 
 // Create router with context
 export function createAppRouter(queryClient: QueryClient) {

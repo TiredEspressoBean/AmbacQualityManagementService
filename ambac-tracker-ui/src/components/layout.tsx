@@ -31,16 +31,19 @@ export default function Layout() {
                     <AppSidebar />
 
                     {/* Main Content */}
-                    <div className="flex flex-1 flex-col w-0 relative">
-                        {/* Floating controls */}
-                        <div className="absolute top-3 left-3 z-10">
-                            <SidebarTrigger className="h-8 w-8 bg-background/80 backdrop-blur-sm border shadow-sm hover:bg-accent" />
-                        </div>
-                        <div className="absolute top-3 right-6 z-10">
+                    <div className="flex flex-1 flex-col w-0">
+                        {/* Top chrome bar — sibling of main, not absolute-positioned,
+                            so pages can use `sticky top-0` without fighting padding. */}
+                        <div className="flex items-center justify-between px-3 py-2 border-b bg-background/95 backdrop-blur-sm shrink-0">
+                            <SidebarTrigger className="h-8 w-8 hover:bg-accent" />
                             <ThemeToggle />
                         </div>
 
-                        <main className="flex-1 overflow-auto p-6 pt-14">
+                        {/* Main has no padding — pages own their own gutters via
+                            their container divs. Keeping main padding-free is
+                            what allows `sticky top-0` on a page's header to
+                            pin flush to the chrome bar. */}
+                        <main className="flex-1 overflow-auto">
                             <div className="container mx-auto justify-center h-full">
                                 <Outlet />
                             </div>

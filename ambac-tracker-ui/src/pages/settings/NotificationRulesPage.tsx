@@ -1,212 +1,120 @@
+/**
+ * Notifications admin page — combined rule + schedule management.
+ *
+ * Top-level tabs: Rules | Schedules.
+ * Each section has its own scope sub-tabs (Tenant / Customer / Personal for
+ * rules; Tenant / Customer for schedules — personal schedules are managed
+ * from /profile/notifications, not here).
+ *
+ * Routed at /settings/notification-rules (URL stays the same for now to
+ * avoid breaking bookmarks). Rule edit pages route off
+ * `/settings/notification-rules/$scope/$ruleId/edit`; schedule edit pages
+ * route off `/settings/notification-schedules/$scope/$scheduleId/edit`.
+ */
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { toast } from "sonner";
-import { ArrowLeft, Bell, Pencil, Plus, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Bell, Building2, CalendarClock, Pencil, Plus, Trash2, User as UserIcon } from "lucide-react";
 
-import { api, type NotificationRule } from "@/lib/api/generated";
-import { useContentTypeMapping } from "@/hooks/useContentTypes";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
-    RadioGroup,
-    RadioGroupItem,
-} from "@/components/ui/radio-group";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// ---------------------------------------------------------------------------
-// Types derived from the generated client
-// ---------------------------------------------------------------------------
+import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
+import { useTenantGroups } from "@/hooks/useTenantGroups";
+import {
+    useCustomerRules,
+    useDeleteCustomerRule,
+    useDeletePersonalRule,
+    useDeleteTenantRule,
+    usePersonalRules,
+    useTenantRules,
+    useUpdateCustomerRule,
+    useUpdatePersonalRule,
+    useUpdateTenantRule,
+    type CustomerRule,
+    type PersonalRule,
+    type TenantRule,
+} from "@/hooks/notificationRules";
+import {
+    useCustomerSchedules,
+    useDeleteCustomerSchedule,
+    useDeleteTenantSchedule,
+    useScheduledContentProviders,
+    useTenantSchedules,
+    useUpdateCustomerSchedule,
+    useUpdateTenantSchedule,
+    type CustomerSchedule,
+    type TenantSchedule,
+} from "@/hooks/notificationSchedules";
+import { useNotificationEventCatalog } from "@/lib/notifications/eventCatalog";
 
-type EventCatalogEntry = {
-    key: string;
-    label: string;
-    description: string;
-    scope_model: string | null;
-    scope_label: string | null;
-    resolver_keys: string[];
+type Scope = "tenant" | "customer" | "personal";
+
+const SCOPE_LABELS: Record<Scope, string> = {
+    tenant: "Tenant-wide",
+    customer: "Customer-scoped",
+    personal: "Personal",
 };
 
-const NONE = "__none__";
-
-const formSchema = z.object({
-    name: z.string().min(1, "Name is required").max(200),
-    description: z.string().optional(),
-    event_type: z.string().min(1, "Event type is required"),
-    channel_type: z.enum(["EMAIL", "IN_APP"]),
-    scope_mode: z.enum(["any", "specific"]),
-    scope_object_id: z.string().optional(),
-    recipient_user_ids: z.array(z.number()),
-    recipient_group_ids: z.array(z.string()),
-    recipient_resolver_key: z.string(),
-    cooldown_minutes: z.coerce.number().int().min(0),
-    is_active: z.boolean(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-const defaultFormValues: FormValues = {
-    name: "",
-    description: "",
-    event_type: "STEP_FAILURE",
-    channel_type: "EMAIL",
-    scope_mode: "any",
-    scope_object_id: "",
-    recipient_user_ids: [],
-    recipient_group_ids: [],
-    recipient_resolver_key: NONE,
-    cooldown_minutes: 60,
-    is_active: true,
+const SCOPE_DESCRIPTIONS: Record<Scope, string> = {
+    tenant: "Fire for any matching event tenant-wide. Admin-authored.",
+    customer:
+        "Fire only when the event references a specific customer. Used for outbound notifications to ExternalContacts at that customer.",
+    personal:
+        "Each user authors their own rules. Owner is the implicit recipient — no recipient picker needed.",
 };
 
-// ---------------------------------------------------------------------------
-// Hooks
-// ---------------------------------------------------------------------------
-
-const notificationRulesOptions = () => queryOptions({
-    queryKey: ["notificationRules"] as const,
-    queryFn: () => api.api_NotificationRules_list({}),
-});
-
-const notificationEventTypesOptions = () => queryOptions({
-    queryKey: ["notificationEventTypes"] as const,
-    queryFn: () => api.api_NotificationEventTypes_list() as Promise<EventCatalogEntry[]>,
-});
-
-const employeeOptionsOptions = () => queryOptions({
-    queryKey: ["employeeOptions"] as const,
-    queryFn: () => api.api_Employees_Options_list({}),
-});
-
-const tenantGroupOptionsOptions = () => queryOptions({
-    queryKey: ["tenantGroupOptions"] as const,
-    queryFn: () => api.api_TenantGroups_list({}),
-});
-
-const stepOptionsOptions = () => queryOptions({
-    queryKey: ["stepOptions"] as const,
-    queryFn: () => api.api_Steps_list({ queries: { limit: 500 } }),
-});
-
-function useNotificationRules() {
-    return useQuery(notificationRulesOptions());
-}
-
-function useEventCatalog() {
-    return useQuery(notificationEventTypesOptions());
-}
-
-function useEmployeeOptions() {
-    return useQuery(employeeOptionsOptions());
-}
-
-function useTenantGroupOptions() {
-    return useQuery(tenantGroupOptionsOptions());
-}
-
-function useStepOptions() {
-    return useQuery(stepOptionsOptions());
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+type Section = "rules" | "schedules";
+type AdminScope = "tenant" | "customer";
 
 export function NotificationRulesPage() {
-    const queryClient = useQueryClient();
-    const { data: rulesResp, isLoading } = useNotificationRules();
-    const { data: catalog } = useEventCatalog();
+    const navigate = useNavigate();
+    const [section, setSection] = useState<Section>("rules");
+    const [ruleScopeTab, setRuleScopeTab] = useState<Scope>("tenant");
+    const [scheduleScopeTab, setScheduleScopeTab] = useState<AdminScope>("tenant");
 
-    const [editing, setEditing] = useState<NotificationRule | null>(null);
-    const [isDialogOpen, setDialogOpen] = useState(false);
-    const [pendingDelete, setPendingDelete] = useState<NotificationRule | null>(
-        null
-    );
+    const handleNewRule = () =>
+        navigate({
+            to: "/settings/notification-rules/$scope/new",
+            params: { scope: ruleScopeTab },
+        });
 
-    const rules = (rulesResp?.results ?? []) as NotificationRule[];
+    const handleEditRule = (id: string, scope: Scope) =>
+        navigate({
+            to: "/settings/notification-rules/$scope/$ruleId/edit",
+            params: { scope, ruleId: id },
+        });
 
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) =>
-            api.api_NotificationRules_destroy(undefined, { params: { id } }),
-        onSuccess: () => {
-            toast.success("Rule deleted");
-            queryClient.invalidateQueries({ queryKey: ["notificationRules"] });
-            setPendingDelete(null);
-        },
-        onError: (e: Error) => toast.error(e.message || "Delete failed"),
-    });
+    const handleNewSchedule = () =>
+        navigate({
+            to: "/settings/notification-schedules/$scope/new",
+            params: { scope: scheduleScopeTab },
+        });
 
-    const handleNew = () => {
-        setEditing(null);
-        setDialogOpen(true);
-    };
-    const handleEdit = (rule: NotificationRule) => {
-        setEditing(rule);
-        setDialogOpen(true);
-    };
+    const handleEditSchedule = (id: string, scope: AdminScope) =>
+        navigate({
+            to: "/settings/notification-schedules/$scope/$scheduleId/edit",
+            params: { scope, scheduleId: id },
+        });
+
+    const newButton =
+        section === "rules" ? (
+            <Button onClick={handleNewRule} className="shrink-0">
+                <Plus className="h-4 w-4 mr-2" />
+                New rule
+            </Button>
+        ) : (
+            <Button onClick={handleNewSchedule} className="shrink-0">
+                <Plus className="h-4 w-4 mr-2" />
+                New schedule
+            </Button>
+        );
 
     return (
-        <div className="container mx-auto p-6 max-w-4xl">
-            {/* Header */}
+        <div className="container mx-auto p-6 max-w-6xl">
             <div className="mb-6">
                 <Link
                     to="/settings"
@@ -221,611 +129,663 @@ export function NotificationRulesPage() {
                             <Bell className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold">Notification Rules</h1>
+                            <h1 className="text-2xl font-bold">Notifications</h1>
                             <p className="text-muted-foreground text-sm">
-                                Configure who gets notified when events happen in your tenant.
+                                Event-driven rules and recurring scheduled digests.
                             </p>
                         </div>
                     </div>
-                    <Button onClick={handleNew} className="shrink-0">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Rule
-                    </Button>
+                    {newButton}
                 </div>
             </div>
 
-            <Card className="mb-6">
-                <CardHeader>
-                    <CardTitle className="text-lg">Active rules</CardTitle>
-                    <CardDescription>
-                        {rules.length === 0
-                            ? "No rules yet. Click \"New Rule\" to create the first one."
-                            : `${rules.length} rule${rules.length === 1 ? "" : "s"}`}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="space-y-2">
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
-                    ) : rules.length === 0 ? null : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Event</TableHead>
-                                    <TableHead>Channel</TableHead>
-                                    <TableHead>Cooldown</TableHead>
-                                    <TableHead>Active</TableHead>
-                                    <TableHead className="w-24"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rules.map((rule) => (
-                                    <TableRow key={rule.id}>
-                                        <TableCell className="font-medium">
-                                            <button
-                                                className="text-left hover:underline"
-                                                onClick={() => handleEdit(rule)}
-                                            >
-                                                {rule.name}
-                                            </button>
-                                            {rule.description && (
-                                                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                                    {rule.description}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">
-                                                {catalog?.find((c) => c.key === rule.event_type)
-                                                    ?.label ?? rule.event_type}
-                                            </Badge>
-                                            {rule.scope_object_id ? (
-                                                <div className="text-xs text-muted-foreground mt-0.5">
-                                                    scoped
-                                                </div>
-                                            ) : (
-                                                <div className="text-xs text-muted-foreground mt-0.5">
-                                                    all occurrences
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>{rule.channel_type ?? "EMAIL"}</TableCell>
-                                        <TableCell>
-                                            {formatCooldown(rule.min_gap_seconds ?? 3600)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {rule.is_active ? (
-                                                <Badge>Active</Badge>
-                                            ) : (
-                                                <Badge variant="secondary">Paused</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                onClick={() => handleEdit(rule)}
-                                                aria-label="Edit"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                onClick={() => setPendingDelete(rule)}
-                                                aria-label="Delete"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+            <Tabs value={section} onValueChange={(v) => setSection(v as Section)}>
+                <TabsList>
+                    <TabsTrigger value="rules">
+                        <Bell className="h-4 w-4 mr-2" />
+                        Rules
+                    </TabsTrigger>
+                    <TabsTrigger value="schedules">
+                        <CalendarClock className="h-4 w-4 mr-2" />
+                        Schedules
+                    </TabsTrigger>
+                </TabsList>
 
-            <RuleDialog
-                key={editing?.id ?? "new"}
-                open={isDialogOpen}
-                onOpenChange={setDialogOpen}
-                rule={editing}
-                catalog={catalog ?? []}
-            />
+                <TabsContent value="rules" className="mt-4">
+                    <Tabs value={ruleScopeTab} onValueChange={(v) => setRuleScopeTab(v as Scope)}>
+                        <TabsList>
+                            <TabsTrigger value="tenant">
+                                <Building2 className="h-4 w-4 mr-2" />
+                                Tenant-wide
+                            </TabsTrigger>
+                            <TabsTrigger value="customer">
+                                <Building2 className="h-4 w-4 mr-2" />
+                                Customer-scoped
+                            </TabsTrigger>
+                            <TabsTrigger value="personal">
+                                <UserIcon className="h-4 w-4 mr-2" />
+                                Personal
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="tenant" className="mt-4">
+                            <TenantRulesCard onEdit={(id) => handleEditRule(id, "tenant")} />
+                        </TabsContent>
+                        <TabsContent value="customer" className="mt-4">
+                            <CustomerRulesCard onEdit={(id) => handleEditRule(id, "customer")} />
+                        </TabsContent>
+                        <TabsContent value="personal" className="mt-4">
+                            <PersonalRulesCard onEdit={(id) => handleEditRule(id, "personal")} />
+                        </TabsContent>
+                    </Tabs>
+                </TabsContent>
 
-            <AlertDialog
-                open={pendingDelete !== null}
-                onOpenChange={(open) => !open && setPendingDelete(null)}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this rule?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            &quot;{pendingDelete?.name}&quot; will stop sending notifications
-                            immediately. Already-queued notifications will still send.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() =>
-                                pendingDelete && deleteMutation.mutate(pendingDelete.id)
-                            }
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                <TabsContent value="schedules" className="mt-4">
+                    <Tabs
+                        value={scheduleScopeTab}
+                        onValueChange={(v) => setScheduleScopeTab(v as AdminScope)}
+                    >
+                        <TabsList>
+                            <TabsTrigger value="tenant">
+                                <Building2 className="h-4 w-4 mr-2" />
+                                Tenant-wide
+                            </TabsTrigger>
+                            <TabsTrigger value="customer">
+                                <Building2 className="h-4 w-4 mr-2" />
+                                Customer-scoped
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="tenant" className="mt-4">
+                            <TenantSchedulesCard
+                                onEdit={(id) => handleEditSchedule(id, "tenant")}
+                            />
+                        </TabsContent>
+                        <TabsContent value="customer" className="mt-4">
+                            <CustomerSchedulesCard
+                                onEdit={(id) => handleEditSchedule(id, "customer")}
+                            />
+                        </TabsContent>
+                    </Tabs>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
 
-// ---------------------------------------------------------------------------
-// Dialog
-// ---------------------------------------------------------------------------
+// =============================================================================
+// Scope cards — one query each, only fires when its tab is mounted.
+// =============================================================================
 
-function RuleDialog({
-    open,
-    onOpenChange,
+function TenantRulesCard({ onEdit }: { onEdit: (id: string) => void }) {
+    const { data, isLoading } = useTenantRules();
+    const { data: groupsResp } = useTenantGroups();
+    const updateRule = useUpdateTenantRule();
+    const deleteRule = useDeleteTenantRule();
+
+    const groupNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const g of groupsResp?.results ?? []) map.set(String(g.id), g.name);
+        return map;
+    }, [groupsResp]);
+
+    return (
+        <ScopeCard scope="tenant">
+            {renderTable({
+                isLoading,
+                rules: data?.results ?? [],
+                renderRow: (r: TenantRule) => (
+                    <TenantRuleRow
+                        key={r.id}
+                        rule={r}
+                        groupNameById={groupNameById}
+                        onEdit={() => onEdit(r.id)}
+                        onToggle={(enabled) =>
+                            updateRule.mutate({ id: r.id, data: { enabled } })
+                        }
+                        onDelete={() => deleteRule.mutate(r.id)}
+                    />
+                ),
+            })}
+        </ScopeCard>
+    );
+}
+
+function CustomerRulesCard({ onEdit }: { onEdit: (id: string) => void }) {
+    const { data, isLoading } = useCustomerRules();
+    const { data: groupsResp } = useTenantGroups();
+    const { data: companiesResp } = useRetrieveCompanies();
+    const updateRule = useUpdateCustomerRule();
+    const deleteRule = useDeleteCustomerRule();
+
+    const groupNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const g of groupsResp?.results ?? []) map.set(String(g.id), g.name);
+        return map;
+    }, [groupsResp]);
+
+    const companyNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const c of companiesResp?.results ?? []) map.set(String(c.id), c.name);
+        return map;
+    }, [companiesResp]);
+
+    return (
+        <ScopeCard scope="customer">
+            {renderTable({
+                isLoading,
+                rules: data?.results ?? [],
+                renderRow: (r: CustomerRule) => (
+                    <CustomerRuleRow
+                        key={r.id}
+                        rule={r}
+                        groupNameById={groupNameById}
+                        companyNameById={companyNameById}
+                        onEdit={() => onEdit(r.id)}
+                        onToggle={(enabled) =>
+                            updateRule.mutate({ id: r.id, data: { enabled } })
+                        }
+                        onDelete={() => deleteRule.mutate(r.id)}
+                    />
+                ),
+            })}
+        </ScopeCard>
+    );
+}
+
+function PersonalRulesCard({ onEdit }: { onEdit: (id: string) => void }) {
+    const { data, isLoading } = usePersonalRules();
+    const updateRule = useUpdatePersonalRule();
+    const deleteRule = useDeletePersonalRule();
+
+    return (
+        <ScopeCard scope="personal">
+            {renderTable({
+                isLoading,
+                rules: data?.results ?? [],
+                renderRow: (r: PersonalRule) => (
+                    <PersonalRuleRow
+                        key={r.id}
+                        rule={r}
+                        onEdit={() => onEdit(r.id)}
+                        onToggle={(enabled) =>
+                            updateRule.mutate({ id: r.id, data: { enabled } })
+                        }
+                        onDelete={() => deleteRule.mutate(r.id)}
+                    />
+                ),
+            })}
+        </ScopeCard>
+    );
+}
+
+// =============================================================================
+// Shared UI bits
+// =============================================================================
+
+function ScopeCard({ scope, children }: { scope: Scope; children: React.ReactNode }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">{SCOPE_LABELS[scope]}</CardTitle>
+                <CardDescription>{SCOPE_DESCRIPTIONS[scope]}</CardDescription>
+            </CardHeader>
+            <CardContent>{children}</CardContent>
+        </Card>
+    );
+}
+
+function renderTable<T extends { id: string }>({
+    isLoading,
+    rules,
+    renderRow,
+}: {
+    isLoading: boolean;
+    rules: T[];
+    renderRow: (rule: T) => React.ReactNode;
+}) {
+    if (isLoading) {
+        return <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>;
+    }
+    if (rules.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+                No rules in this scope yet.
+            </p>
+        );
+    }
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>When</TableHead>
+                    <TableHead>Recipients</TableHead>
+                    <TableHead>Channels</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead />
+                </TableRow>
+            </TableHeader>
+            <TableBody>{rules.map(renderRow)}</TableBody>
+        </Table>
+    );
+}
+
+function EventCell({ eventCode }: { eventCode: string | undefined }) {
+    const { events } = useNotificationEventCatalog();
+    const event = events.find((e) => e.code === eventCode);
+    return <Badge variant="outline">{event?.label ?? eventCode ?? "—"}</Badge>;
+}
+
+function ConditionsCell({ source }: { source: string | undefined }) {
+    if (!source) return <span className="text-xs text-muted-foreground">always</span>;
+    return (
+        <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono break-all">
+            {source}
+        </code>
+    );
+}
+
+function ChannelsCell({ channels }: { channels: readonly string[] }) {
+    return (
+        <div className="flex gap-1">
+            {channels.includes("in_app") && <Badge variant="secondary">In-app</Badge>}
+            {channels.includes("email") && <Badge variant="secondary">Email</Badge>}
+        </div>
+    );
+}
+
+function RowActions({
+    enabled,
+    onToggle,
+    onEdit,
+    onDelete,
+}: {
+    enabled: boolean;
+    onToggle: (enabled: boolean) => void;
+    onEdit: () => void;
+    onDelete: () => void;
+}) {
+    return (
+        <>
+            <TableCell>
+                <Switch checked={enabled} onCheckedChange={onToggle} />
+            </TableCell>
+            <TableCell className="text-right">
+                <Button size="icon" variant="ghost" aria-label="Edit" onClick={onEdit}>
+                    <Pencil className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Delete" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </TableCell>
+        </>
+    );
+}
+
+// Backend `channels` is typed as `unknown` in the zod-derived schemas
+// (JSONField). Narrow it for display.
+function asChannelList(channels: unknown): string[] {
+    return Array.isArray(channels) ? channels.filter((c): c is string => typeof c === "string") : [];
+}
+
+// =============================================================================
+// Per-scope rows
+// =============================================================================
+
+function TenantRuleRow({
     rule,
-    catalog,
+    groupNameById,
+    onEdit,
+    onToggle,
+    onDelete,
 }: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    rule: NotificationRule | null;
-    catalog: EventCatalogEntry[];
+    rule: TenantRule;
+    groupNameById: Map<string, string>;
+    onEdit: () => void;
+    onToggle: (enabled: boolean) => void;
+    onDelete: () => void;
 }) {
-    const queryClient = useQueryClient();
-    const { getContentTypeId } = useContentTypeMapping();
-    const { data: employees } = useEmployeeOptions();
-    const { data: groupsResp } = useTenantGroupOptions();
-    const { data: stepsResp } = useStepOptions();
-
-    const employeeList = employees?.results ?? [];
-    const groupList = (groupsResp?.results ?? []) as Array<{ id: string; name: string }>;
-    const stepList = (stepsResp?.results ?? []) as Array<{ id: string; name: string }>;
-
-    const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
-        defaultValues: rule
-            ? ruleToForm(rule)
-            : defaultFormValues,
-    });
-
-    const selectedEventKey = form.watch("event_type");
-    const scopeMode = form.watch("scope_mode");
-    const selectedEvent = useMemo(
-        () => catalog.find((c) => c.key === selectedEventKey),
-        [catalog, selectedEventKey]
-    );
-
-    const saveMutation = useMutation({
-        mutationFn: async (values: FormValues) => {
-            // Resolve the ContentType ID for the selected event's scope_model
-            const scopeContentTypeId =
-                values.scope_mode === "specific" && selectedEvent?.scope_model
-                    ? getContentTypeId(
-                          selectedEvent.scope_model.split(".")[1].toLowerCase()
-                      )
-                    : null;
-
-            const body = {
-                name: values.name,
-                description: values.description || "",
-                event_type: values.event_type as "STEP_FAILURE",
-                channel_type: values.channel_type,
-                scope_content_type:
-                    values.scope_mode === "specific" ? scopeContentTypeId ?? null : null,
-                scope_object_id:
-                    values.scope_mode === "specific" ? values.scope_object_id || null : null,
-                recipient_users: values.recipient_user_ids,
-                recipient_groups: values.recipient_group_ids,
-                recipient_resolver_key:
-                    values.recipient_resolver_key === NONE
-                        ? ""
-                        : values.recipient_resolver_key,
-                min_gap_seconds: values.cooldown_minutes * 60,
-                is_active: values.is_active,
-            };
-
-            if (rule) {
-                return api.api_NotificationRules_update(body, {
-                    params: { id: rule.id },
-                });
-            }
-            return api.api_NotificationRules_create(body);
-        },
-        onSuccess: () => {
-            toast.success(rule ? "Rule updated" : "Rule created");
-            queryClient.invalidateQueries({ queryKey: ["notificationRules"] });
-            onOpenChange(false);
-        },
-        onError: (e: Error) => toast.error(e.message || "Save failed"),
-    });
-
-    const hasRecipient =
-        form.watch("recipient_user_ids").length > 0 ||
-        form.watch("recipient_group_ids").length > 0 ||
-        form.watch("recipient_resolver_key") !== NONE;
-
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{rule ? "Edit rule" : "New rule"}</DialogTitle>
-                    <DialogDescription>
-                        Rules fire for events in your tenant and turn into emails or in-app
-                        notifications for the people you choose.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <Form {...form}>
-                    <form
-                        onSubmit={form.handleSubmit((v) => saveMutation.mutate(v))}
-                        className="space-y-5"
-                    >
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Name</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            placeholder="e.g. QA supervisor on any failure"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                            rows={2}
-                                            {...field}
-                                            placeholder="Optional — explain what this rule does for your team."
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="event_type"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Event</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {catalog.map((ev) => (
-                                                <SelectItem key={ev.key} value={ev.key}>
-                                                    {ev.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedEvent && (
-                                        <FormDescription>
-                                            {selectedEvent.description}
-                                        </FormDescription>
-                                    )}
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="scope_mode"
-                            render={({ field }) => (
-                                <FormItem className="space-y-2">
-                                    <FormLabel>Applies to</FormLabel>
-                                    <FormControl>
-                                        <RadioGroup
-                                            value={field.value}
-                                            onValueChange={field.onChange}
-                                            className="flex flex-col gap-2"
-                                        >
-                                            <Label className="flex items-center gap-2 cursor-pointer font-normal">
-                                                <RadioGroupItem value="any" />
-                                                All occurrences tenant-wide
-                                            </Label>
-                                            {selectedEvent?.scope_model && (
-                                                <Label className="flex items-center gap-2 cursor-pointer font-normal">
-                                                    <RadioGroupItem value="specific" />
-                                                    A specific{" "}
-                                                    {selectedEvent.scope_label ?? "object"}
-                                                </Label>
-                                            )}
-                                        </RadioGroup>
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-
-                        {scopeMode === "specific" &&
-                            selectedEvent?.scope_model === "Tracker.Steps" && (
-                                <FormField
-                                    control={form.control}
-                                    name="scope_object_id"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{selectedEvent.scope_label}</FormLabel>
-                                            <Select
-                                                value={field.value || ""}
-                                                onValueChange={field.onChange}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Choose a step…" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {stepList.map((s) => (
-                                                        <SelectItem key={s.id} value={s.id}>
-                                                            {s.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-
-                        <FormField
-                            control={form.control}
-                            name="channel_type"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Channel</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="EMAIL">Email</SelectItem>
-                                            <SelectItem value="IN_APP">In-App</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Recipients */}
-                        <div className="space-y-2">
-                            <Label>Recipients</Label>
-                            <div className="text-xs text-muted-foreground">
-                                Anyone matched by any of these will be notified. At least one
-                                source is required.
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Users</Label>
-                                    <MultiCheckboxList
-                                        items={employeeList.map((u: any) => ({
-                                            id: u.id,
-                                            label:
-                                                u.full_name ||
-                                                `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() ||
-                                                u.email ||
-                                                `User ${u.id}`,
-                                        }))}
-                                        selected={form.watch("recipient_user_ids")}
-                                        onChange={(ids) =>
-                                            form.setValue("recipient_user_ids", ids as number[])
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Groups</Label>
-                                    <MultiCheckboxList
-                                        items={groupList.map((g) => ({
-                                            id: g.id,
-                                            label: g.name,
-                                        }))}
-                                        selected={form.watch("recipient_group_ids")}
-                                        onChange={(ids) =>
-                                            form.setValue("recipient_group_ids", ids as string[])
-                                        }
-                                    />
-                                </div>
-                            </div>
-
-                            <FormField
-                                control={form.control}
-                                name="recipient_resolver_key"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <Label className="text-xs">Role-based</Label>
-                                        <Select
-                                            value={field.value}
-                                            onValueChange={field.onChange}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value={NONE}>(none)</SelectItem>
-                                                {(selectedEvent?.resolver_keys ?? []).map((k) => (
-                                                    <SelectItem key={k} value={k}>
-                                                        {humanizeKey(k)}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                            Resolved at the moment of the event. E.g.
-                                            &quot;operator assigned to the step&quot;.
-                                        </FormDescription>
-                                    </FormItem>
-                                )}
-                            />
-
-                            {!hasRecipient && (
-                                <div className="text-xs text-destructive">
-                                    Pick at least one user, group, or role resolver.
-                                </div>
-                            )}
-                        </div>
-
-                        <FormField
-                            control={form.control}
-                            name="cooldown_minutes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Cooldown (minutes)</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" min={0} {...field} />
-                                    </FormControl>
-                                    <FormDescription>
-                                        Minimum gap between notifications to the same recipient
-                                        from this rule. 0 disables dedup.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="is_active"
-                            render={({ field }) => (
-                                <FormItem className="flex items-center justify-between">
-                                    <div>
-                                        <FormLabel>Active</FormLabel>
-                                        <FormDescription>
-                                            Paused rules don&apos;t fire, but history is kept.
-                                        </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => onOpenChange(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                disabled={!hasRecipient || saveMutation.isPending}
-                            >
-                                {saveMutation.isPending ? "Saving…" : rule ? "Save" : "Create"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+        <TableRow>
+            <TableCell className="font-medium">
+                <button className="text-left hover:underline" onClick={onEdit}>
+                    {rule.name || <em className="text-muted-foreground">(unnamed)</em>}
+                </button>
+            </TableCell>
+            <TableCell><EventCell eventCode={rule.event_code} /></TableCell>
+            <TableCell className="max-w-[280px]"><ConditionsCell source={rule.conditions_source} /></TableCell>
+            <TableCell className="max-w-[200px]">
+                <RecipientSummary
+                    userCount={rule.recipient_users?.length ?? 0}
+                    groupIds={rule.recipient_groups ?? []}
+                    groupNameById={groupNameById}
+                    externalCount={0}
+                />
+            </TableCell>
+            <TableCell><ChannelsCell channels={asChannelList(rule.channels)} /></TableCell>
+            <RowActions
+                enabled={rule.enabled ?? true}
+                onToggle={onToggle}
+                onEdit={onEdit}
+                onDelete={onDelete}
+            />
+        </TableRow>
     );
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function ruleToForm(rule: NotificationRule): FormValues {
-    return {
-        name: rule.name,
-        description: rule.description ?? "",
-        event_type: rule.event_type,
-        channel_type: (rule.channel_type ?? "EMAIL") as "EMAIL" | "IN_APP",
-        scope_mode: rule.scope_object_id ? "specific" : "any",
-        scope_object_id: rule.scope_object_id ?? "",
-        recipient_user_ids: (rule.recipient_users ?? []) as number[],
-        recipient_group_ids: (rule.recipient_groups ?? []) as string[],
-        recipient_resolver_key: rule.recipient_resolver_key || NONE,
-        cooldown_minutes: Math.round((rule.min_gap_seconds ?? 3600) / 60),
-        is_active: rule.is_active ?? true,
-    };
-}
-
-function formatCooldown(seconds: number): string {
-    if (seconds === 0) return "none";
-    if (seconds < 60) return `${seconds}s`;
-    const mins = Math.round(seconds / 60);
-    if (mins < 60) return `${mins}m`;
-    const hours = Math.round(mins / 60);
-    return `${hours}h`;
-}
-
-function humanizeKey(key: string): string {
-    return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function MultiCheckboxList<T extends string | number>({
-    items,
-    selected,
-    onChange,
+function CustomerRuleRow({
+    rule,
+    groupNameById,
+    companyNameById,
+    onEdit,
+    onToggle,
+    onDelete,
 }: {
-    items: Array<{ id: T; label: string }>;
-    selected: T[];
-    onChange: (ids: T[]) => void;
+    rule: CustomerRule;
+    groupNameById: Map<string, string>;
+    companyNameById: Map<string, string>;
+    onEdit: () => void;
+    onToggle: (enabled: boolean) => void;
+    onDelete: () => void;
 }) {
-    const selectedSet = new Set(selected);
-    const toggle = (id: T) => {
-        if (selectedSet.has(id)) {
-            onChange(selected.filter((x) => x !== id));
-        } else {
-            onChange([...selected, id]);
-        }
-    };
+    const customerName = rule.scope_customer
+        ? companyNameById.get(String(rule.scope_customer))
+        : undefined;
     return (
-        <ScrollArea className="h-40 rounded-md border">
-            <div className="p-2 space-y-1">
-                {items.length === 0 ? (
-                    <div className="text-xs text-muted-foreground p-2">(none available)</div>
-                ) : (
-                    items.map((item) => (
-                        <label
-                            key={String(item.id)}
-                            className="flex items-center gap-2 text-sm cursor-pointer py-1 px-1 rounded hover:bg-muted"
-                        >
-                            <Checkbox
-                                checked={selectedSet.has(item.id)}
-                                onCheckedChange={() => toggle(item.id)}
-                            />
-                            <span>{item.label}</span>
-                        </label>
-                    ))
+        <TableRow>
+            <TableCell className="font-medium">
+                <button className="text-left hover:underline" onClick={onEdit}>
+                    {rule.name || <em className="text-muted-foreground">(unnamed)</em>}
+                </button>
+                {customerName && (
+                    <div className="text-xs text-muted-foreground mt-0.5">{customerName}</div>
                 )}
-            </div>
-        </ScrollArea>
+            </TableCell>
+            <TableCell><EventCell eventCode={rule.event_code} /></TableCell>
+            <TableCell className="max-w-[280px]"><ConditionsCell source={rule.conditions_source} /></TableCell>
+            <TableCell className="max-w-[200px]">
+                <RecipientSummary
+                    userCount={rule.recipient_users?.length ?? 0}
+                    groupIds={rule.recipient_groups ?? []}
+                    groupNameById={groupNameById}
+                    externalCount={rule.recipient_external?.length ?? 0}
+                />
+            </TableCell>
+            <TableCell><ChannelsCell channels={asChannelList(rule.channels)} /></TableCell>
+            <RowActions
+                enabled={rule.enabled ?? true}
+                onToggle={onToggle}
+                onEdit={onEdit}
+                onDelete={onDelete}
+            />
+        </TableRow>
     );
 }
+
+function PersonalRuleRow({
+    rule,
+    onEdit,
+    onToggle,
+    onDelete,
+}: {
+    rule: PersonalRule;
+    onEdit: () => void;
+    onToggle: (enabled: boolean) => void;
+    onDelete: () => void;
+}) {
+    return (
+        <TableRow>
+            <TableCell className="font-medium">
+                <button className="text-left hover:underline" onClick={onEdit}>
+                    {rule.name || <em className="text-muted-foreground">(unnamed)</em>}
+                </button>
+            </TableCell>
+            <TableCell><EventCell eventCode={rule.event_code} /></TableCell>
+            <TableCell className="max-w-[280px]"><ConditionsCell source={rule.conditions_source} /></TableCell>
+            <TableCell className="max-w-[200px]">
+                <span className="text-xs text-muted-foreground">rule owner</span>
+            </TableCell>
+            <TableCell><ChannelsCell channels={asChannelList(rule.channels)} /></TableCell>
+            <RowActions
+                enabled={rule.enabled ?? true}
+                onToggle={onToggle}
+                onEdit={onEdit}
+                onDelete={onDelete}
+            />
+        </TableRow>
+    );
+}
+
+function RecipientSummary({
+    userCount,
+    groupIds,
+    groupNameById,
+    externalCount,
+}: {
+    userCount: number;
+    groupIds: readonly string[];
+    groupNameById: Map<string, string>;
+    externalCount: number;
+}) {
+    const parts: string[] = [];
+    if (groupIds.length) {
+        const names = groupIds
+            .map((id) => groupNameById.get(String(id)))
+            .filter((n): n is string => Boolean(n));
+        if (names.length) parts.push(names.join(", "));
+        else parts.push(`${groupIds.length} group(s)`);
+    }
+    if (userCount) parts.push(`${userCount} user(s)`);
+    if (externalCount) parts.push(`${externalCount} external`);
+    if (!parts.length) return <span className="text-xs text-muted-foreground">none</span>;
+    return <span className="text-xs">{parts.join(" · ")}</span>;
+}
+
+// =============================================================================
+// Schedules section — admin scopes only (personal lives under /profile/notifications).
+// =============================================================================
+
+const DAYS_OF_WEEK_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function scheduleCadenceSummary(row: TenantSchedule | CustomerSchedule): string {
+    const time = (row.time_of_day ?? "").slice(0, 5);
+    if (row.cadence === "weekly" && row.day_of_week !== null && row.day_of_week !== undefined) {
+        return `Weekly · ${DAYS_OF_WEEK_SHORT[row.day_of_week]} ${time} ${row.timezone ?? "UTC"}`;
+    }
+    if (row.cadence === "monthly" && row.day_of_month) {
+        return `Monthly · day ${row.day_of_month} ${time} ${row.timezone ?? "UTC"}`;
+    }
+    return row.cadence ?? "—";
+}
+
+function TenantSchedulesCard({ onEdit }: { onEdit: (id: string) => void }) {
+    const { data, isLoading } = useTenantSchedules();
+    const { data: providers } = useScheduledContentProviders();
+    const update = useUpdateTenantSchedule();
+    const del = useDeleteTenantSchedule();
+
+    const providerLabelByName = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const p of providers ?? []) m.set(p.name, p.title);
+        return m;
+    }, [providers]);
+
+    return (
+        <ScheduleScopeCard
+            title="Tenant-wide schedules"
+            description="Recurring deliveries fired across the whole tenant. Recipients are internal users/groups."
+        >
+            {renderScheduleTable({
+                isLoading,
+                rows: data?.results ?? [],
+                renderRow: (r: TenantSchedule) => (
+                    <ScheduleRow
+                        key={r.id}
+                        row={r}
+                        providerLabel={providerLabelByName.get(r.provider_kind) ?? r.provider_kind}
+                        onEdit={() => onEdit(r.id)}
+                        onToggle={(enabled) =>
+                            update.mutate({ id: r.id, data: { enabled } })
+                        }
+                        onDelete={() => del.mutate(r.id)}
+                    />
+                ),
+            })}
+        </ScheduleScopeCard>
+    );
+}
+
+function CustomerSchedulesCard({ onEdit }: { onEdit: (id: string) => void }) {
+    const { data, isLoading } = useCustomerSchedules();
+    const { data: providers } = useScheduledContentProviders();
+    const { data: companiesResp } = useRetrieveCompanies();
+    const update = useUpdateCustomerSchedule();
+    const del = useDeleteCustomerSchedule();
+
+    const providerLabelByName = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const p of providers ?? []) m.set(p.name, p.title);
+        return m;
+    }, [providers]);
+
+    const companyNameById = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const c of companiesResp?.results ?? []) m.set(String(c.id), c.name);
+        return m;
+    }, [companiesResp]);
+
+    return (
+        <ScheduleScopeCard
+            title="Customer-scoped schedules"
+            description="Recurring deliveries for one customer organization. Used for outbound digests to ExternalContacts."
+        >
+            {renderScheduleTable({
+                isLoading,
+                rows: data?.results ?? [],
+                renderRow: (r: CustomerSchedule) => (
+                    <ScheduleRow
+                        key={r.id}
+                        row={r}
+                        providerLabel={providerLabelByName.get(r.provider_kind) ?? r.provider_kind}
+                        customerName={
+                            r.scope_customer
+                                ? companyNameById.get(String(r.scope_customer))
+                                : undefined
+                        }
+                        onEdit={() => onEdit(r.id)}
+                        onToggle={(enabled) =>
+                            update.mutate({ id: r.id, data: { enabled } })
+                        }
+                        onDelete={() => del.mutate(r.id)}
+                    />
+                ),
+            })}
+        </ScheduleScopeCard>
+    );
+}
+
+function ScheduleScopeCard({
+    title,
+    description,
+    children,
+}: {
+    title: string;
+    description: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+            </CardHeader>
+            <CardContent>{children}</CardContent>
+        </Card>
+    );
+}
+
+function renderScheduleTable<T extends { id: string }>({
+    isLoading,
+    rows,
+    renderRow,
+}: {
+    isLoading: boolean;
+    rows: T[];
+    renderRow: (row: T) => React.ReactNode;
+}) {
+    if (isLoading) {
+        return <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>;
+    }
+    if (rows.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+                No schedules in this scope yet.
+            </p>
+        );
+    }
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Report</TableHead>
+                    <TableHead>Cadence</TableHead>
+                    <TableHead>Channels</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead />
+                </TableRow>
+            </TableHeader>
+            <TableBody>{rows.map(renderRow)}</TableBody>
+        </Table>
+    );
+}
+
+function ScheduleRow({
+    row,
+    providerLabel,
+    customerName,
+    onEdit,
+    onToggle,
+    onDelete,
+}: {
+    row: TenantSchedule | CustomerSchedule;
+    providerLabel: string;
+    customerName?: string;
+    onEdit: () => void;
+    onToggle: (enabled: boolean) => void;
+    onDelete: () => void;
+}) {
+    const channels = asChannelList(row.channels);
+    return (
+        <TableRow>
+            <TableCell className="font-medium">
+                <button className="text-left hover:underline" onClick={onEdit}>
+                    {row.name || <em className="text-muted-foreground">(unnamed)</em>}
+                </button>
+                {customerName && (
+                    <div className="text-xs text-muted-foreground mt-0.5">{customerName}</div>
+                )}
+            </TableCell>
+            <TableCell><Badge variant="outline">{providerLabel}</Badge></TableCell>
+            <TableCell className="text-xs">{scheduleCadenceSummary(row)}</TableCell>
+            <TableCell>
+                <div className="flex gap-1">
+                    {channels.includes("email") && <Badge variant="secondary">Email</Badge>}
+                </div>
+            </TableCell>
+            <TableCell>
+                <Switch checked={row.enabled ?? true} onCheckedChange={onToggle} />
+            </TableCell>
+            <TableCell className="text-right">
+                <Button size="icon" variant="ghost" aria-label="Edit" onClick={onEdit}>
+                    <Pencil className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" aria-label="Delete" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </TableCell>
+        </TableRow>
+    );
+}
+
+export default NotificationRulesPage;

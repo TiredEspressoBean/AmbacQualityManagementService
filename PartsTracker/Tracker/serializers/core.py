@@ -410,7 +410,7 @@ class TenantGroupSerializer(serializers.ModelSerializer):
     @extend_schema_field({"type": "integer"})
     def get_user_count(self, obj):
         """Return count of users in this group via UserRole"""
-        return obj.user_roles.count()
+        return obj.role_assignments.values('user').distinct().count()
 
 
 # ===== AUDIT LOG SERIALIZERS =====

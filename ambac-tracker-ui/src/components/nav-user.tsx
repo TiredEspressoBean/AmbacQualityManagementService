@@ -1,6 +1,7 @@
 "use client"
 
 import {
+    Bell,
     BookOpen,
     ChevronsUpDown,
     User,
@@ -63,6 +64,12 @@ export function NavUser({
                             <Link to="/profile" className="cursor-pointer">
                                 <User className="mr-2 h-4 w-4" />
                                 <span>Profile</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link to="/profile/notifications" className="cursor-pointer">
+                                <Bell className="mr-2 h-4 w-4" />
+                                <span>My Notifications</span>
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>

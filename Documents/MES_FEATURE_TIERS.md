@@ -796,22 +796,24 @@ Integration and connectivity features are platform concerns, not MES functionali
 
 > Progress = Complete [x] features only. Standard is 43% because expanded scheduling (46 features), labels/scanning (8), WO lifecycle gaps (10), material traceability (5), shop floor execution (3), and reporting (5) are mostly unbuilt. Pro includes outside processing (4), compliance (3), quality reports/certs (4), and audit management (2) as gaps.
 
-### What We'll Never Build
+### Out of Scope for the MES Module
 
-These belong in specialized systems:
+These capabilities are not part of the MES tier ladder. Some belong permanently in specialized systems; others may be delivered later as separate UQMES add-on modules with their own scope docs (following the pattern of the Remanufacturing add-on). "Out of scope for MES" is not the same as "we will never build it."
 
-| Feature                    | Belongs In                     |
-|----------------------------|--------------------------------|
-| MRP / demand planning      | ERP (SAP, Oracle, NetSuite)    |
-| Inventory management       | ERP                            |
-| Purchase orders            | ERP                            |
-| Preventive maintenance     | CMMS (Fiix, UpKeep)            |
-| Full calibration mgmt      | CMMS (track due dates only)    |
-| Employee time & attendance | HRIS (ADP, Workday)            |
-| BI / ad-hoc reporting      | BI (Power BI, Tableau)         |
-| ECO/ECR workflow           | PLM (Arena, Windchill)         |
-| Full BOM revision control  | PLM/ERP                        |
-| Gage R&R studies           | Metrology software             |
+| Feature                    | Where it belongs / status                                       |
+|----------------------------|------------------------------------------------------------------|
+| MRP / demand planning      | ERP today; possible future UQMES planning module                 |
+| Inventory management       | ERP today; light single-location WMS under consideration as add-on |
+| Purchase orders            | ERP (SAP, Oracle, NetSuite)                                      |
+| Preventive maintenance     | CMMS (Fiix, UpKeep)                                              |
+| Full calibration mgmt      | CMMS (UQMES tracks due dates only)                               |
+| Employee time & attendance | HRIS (ADP, Workday)                                              |
+| BI / ad-hoc reporting      | BI (Power BI, Tableau)                                           |
+| ECO/ECR workflow           | PLM (Arena, Windchill)                                           |
+| Full BOM revision control  | PLM/ERP                                                          |
+| Gage R&R studies           | Metrology software                                               |
+
+> Items marked "possible future" or "under consideration" are not commitments and not on the current roadmap. They are recorded here so the MES scope boundary stays clear without foreclosing future product decisions. Any such add-on would ship as its own module with its own in-scope / out-of-scope list, not by expanding the MES tiers.
 
 > **Clarification:** We track *production BOM* (what parts went into this assembly) for traceability. We do NOT manage *engineering BOM* (revision control, effectivity dates, ECOs).
 

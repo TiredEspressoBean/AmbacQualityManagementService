@@ -115,10 +115,6 @@ from .qms import (
     SamplingAuditLogSerializer,
     SamplingTriggerStateSerializer,
 
-    # Notifications
-    NotificationScheduleSerializer,
-    NotificationPreferenceSerializer,
-
     # CAPA
     RootCauseSerializer,
     FiveWhysSerializer,
@@ -321,8 +317,6 @@ __all__ = [
     'SamplingAnalyticsSerializer',
     'SamplingAuditLogSerializer',
     'SamplingTriggerStateSerializer',
-    'NotificationScheduleSerializer',
-    'NotificationPreferenceSerializer',
     'RootCauseSerializer',
     'FiveWhysSerializer',
     'FishboneSerializer',

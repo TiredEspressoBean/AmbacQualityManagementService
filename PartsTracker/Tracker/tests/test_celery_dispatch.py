@@ -44,36 +44,40 @@ class CeleryOnCommitDispatchTestCase(TenantContextMixin, VectorTestCase):
             tenant=self.tenant,
         )
 
-    @patch('Tracker.tasks.send_capa_assignment_notification.delay')
-    def test_capa_assignment_dispatches_after_commit(self, mock_delay):
+    @patch('Tracker.services.core.notifications.emit')
+    def test_capa_assignment_dispatches_after_commit(self, mock_emit):
         """
-        Signal handler notify_assignment wraps its dispatch in
-        transaction.on_commit. During the captured block, .delay has not
+        Signal handler notify_assignment wraps its emit() in
+        transaction.on_commit. During the captured block, emit has not
         been invoked (it's queued as an on_commit callback). After the
-        block exits (which emulates commit), the callback runs and .delay
-        is called exactly once with the CAPA id.
+        block exits (which emulates commit), the callback runs and emit
+        is called exactly once with event_code='capa.assigned'.
 
         Django's captureOnCommitCallbacks populates the returned list in
         its finally clause (after the block exits), so len(callbacks)
         assertions belong outside the `with`.
+
+        Phase 6b: previously this test patched `send_capa_assignment_notification.delay`;
+        emit() replaces the Path B task entirely.
         """
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
-            capa = CAPA.objects.create(
+            CAPA.objects.create(
                 capa_type='CORRECTIVE',
                 severity='MINOR',
                 problem_statement='race-fix happy-path check',
                 initiated_by=self.user,
                 assigned_to=self.user,
             )
-            # Inside the block: on_commit callback is queued but .delay
-            # has NOT been invoked. If someone reverts the wrap to a plain
-            # .delay(), this assertion fails (delay fires synchronously).
-            self.assertEqual(mock_delay.call_count, 0)
+            # Inside the block: on_commit callback is queued but emit has
+            # NOT been invoked. If someone reverts the wrap to a plain
+            # emit(), this assertion fails (emit fires synchronously).
+            self.assertEqual(mock_emit.call_count, 0)
 
-        # After block exits: captured callbacks execute, delay fires once.
+        # After block exits: captured callbacks execute, emit fires once.
         self.assertGreaterEqual(len(callbacks), 1)
-        self.assertEqual(mock_delay.call_count, 1)
-        mock_delay.assert_called_with(capa.id)
+        self.assertEqual(mock_emit.call_count, 1)
+        call_args = mock_emit.call_args
+        self.assertEqual(call_args.args[0], 'capa.assigned')
 
 
 class CeleryRollbackDispatchTestCase(TenantContextMixin, TransactionTestCase):
@@ -90,12 +94,12 @@ class CeleryRollbackDispatchTestCase(TenantContextMixin, TransactionTestCase):
             tenant=self.tenant,
         )
 
-    @patch('Tracker.tasks.send_capa_assignment_notification.delay')
-    def test_rollback_cancels_capa_dispatch(self, mock_delay):
+    @patch('Tracker.services.core.notifications.emit')
+    def test_rollback_cancels_capa_dispatch(self, mock_emit):
         """
         When the enclosing atomic() block rolls back, any on_commit
         callbacks registered within it are discarded. If the race-fix
-        were reverted, mock_delay would have fired before the rollback
+        were reverted, mock_emit would have fired before the rollback
         and this assertion would fail.
         """
         try:
@@ -112,8 +116,8 @@ class CeleryRollbackDispatchTestCase(TenantContextMixin, TransactionTestCase):
         except RuntimeError:
             pass
 
-        # Task was NOT dispatched because the transaction rolled back.
-        self.assertEqual(mock_delay.call_count, 0)
+        # emit was NOT invoked because the transaction rolled back.
+        self.assertEqual(mock_emit.call_count, 0)
 
     @patch('Tracker.tasks.send_invitation_email_task.delay')
     def test_invitation_helper_fires_immediately_outside_transaction(self, mock_delay):

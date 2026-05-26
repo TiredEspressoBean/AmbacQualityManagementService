@@ -282,7 +282,9 @@ export function UserProfilePage() {
                     </CardContent>
                 </Card>
 
-                {/* Notification Preferences */}
+                {/* Notification Preferences — simple one-click weekly setup.
+                    Power users (multiple digests, event subscriptions, channel
+                    matrix) get the full UI at /profile/notifications. */}
                 <NotificationPreferencesCard />
             </div>
         </div>

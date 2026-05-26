@@ -784,12 +784,30 @@ class CAPA(SecureModel):
         return f"{self.capa_number} - {self.get_severity_display()} - {self.get_status_display()}"
 
     def save(self, *args, **kwargs):
-        """Auto-generate CAPA number on creation"""
+        """Auto-generate CAPA number on creation; capture prior assignee for
+        reassignment-detection in `notify_assignment` signal handler.
+
+        The `_old_assigned_to_id` snapshot mirrors the `_old_status` pattern
+        on `ApprovalRequest`. Without it, signal-driven reassignment
+        notifications fire only on create because no other write populates
+        an "assigned_to changed" predicate.
+        """
         if not self.capa_number:
             from django.utils import timezone
             # Use initiated_date if it exists, otherwise use today
             initiated_date = self.initiated_date if hasattr(self, 'initiated_date') and self.initiated_date else timezone.now().date()
             self.capa_number = self.generate_capa_number(self.capa_type, initiated_date, self.tenant)
+
+        # Snapshot the previously-persisted assignee on update so the post_save
+        # signal can detect reassignment without an ad-hoc `_changed_fields`
+        # contract. `_state.adding` is the canonical insert-vs-update flag for
+        # SecureModel (which pre-assigns pks at instantiation).
+        if not self._state.adding:
+            try:
+                old = CAPA.all_tenants.only('assigned_to_id').get(pk=self.pk)
+                self._old_assigned_to_id = old.assigned_to_id
+            except CAPA.DoesNotExist:
+                self._old_assigned_to_id = None
 
         super().save(*args, **kwargs)
 

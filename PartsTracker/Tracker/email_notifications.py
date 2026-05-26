@@ -14,36 +14,6 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-def send_weekly_order_update(customer_id: int, order_data: List[Dict[str, Any]], immediate: bool = False):
-    """
-    Send weekly order update email to a customer.
-
-    Args:
-        customer_id: Customer user ID
-        order_data: List of order summary dicts
-        immediate: If True, send now. If False, queue to Celery.
-
-    Returns:
-        Celery AsyncResult if queued, None if immediate
-    """
-    from .tasks import send_weekly_order_update_task
-
-    if immediate:
-        # Send synchronously (blocks)
-        send_weekly_order_update_task(customer_id, order_data)
-        logger.info(f"Sent weekly order update to customer {customer_id} (immediate)")
-        return None
-    else:
-        # Queue to Celery after the enclosing transaction commits. If called
-        # outside a transaction, on_commit fires immediately. Returns None
-        # because the AsyncResult isn't available until dispatch actually runs.
-        def _dispatch():
-            result = send_weekly_order_update_task.delay(customer_id, order_data)
-            logger.info(f"Queued weekly order update for customer {customer_id} (task_id: {result.id})")
-        transaction.on_commit(_dispatch)
-        return None
-
-
 def send_invitation_email(invitation_id: int, immediate: bool = False):
     """
     Send invitation email to a user.

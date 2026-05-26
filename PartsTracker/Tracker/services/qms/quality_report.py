@@ -44,6 +44,8 @@ def record_quality_report_side_effects(report) -> None:
             report.part.save(update_fields=["part_status"])
             _notify_step_failure(report)
 
+        _emit_ncr_opened(report)
+
     _update_sampling_analytics(report)
 
 
@@ -56,15 +58,16 @@ def _notify_step_failure(report) -> None:
     tenant context.
     """
     from Tracker.models import StepExecution
-    from Tracker.services.core.notification import notify
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import StepFailurePayload
 
     part = report.part
     step = getattr(part, 'step', None)
 
-    # Current StepExecution for this part+step. `step_execution_id` in
-    # the payload lets the `step_execution_assignee` resolver notify the
-    # operator. Prefer an open execution (exited_at IS NULL) over a closed
-    # one, so late-arriving QA reports still reach whoever is on the step.
+    # Current StepExecution for this part+step. Phase 3 rules can match on
+    # this via `payload.step_execution_id` if they need to route to the
+    # current operator; the legacy `step_execution_assignee` resolver is
+    # gone, replaced by personal rules with CEL conditions.
     step_execution = None
     if part and step:
         step_execution = (
@@ -74,16 +77,68 @@ def _notify_step_failure(report) -> None:
             .first()
         )
 
-    payload = {
-        'part_id': str(part.id),
-        'step_id': str(step.id) if step else None,
-        'work_order_id': str(part.work_order.id) if part.work_order else None,
-        'quality_report_id': str(report.id),
-        'step_execution_id': str(step_execution.id) if step_execution else None,
-    }
-    # Scope = Step (so rules can target a specific step); related_obj = Part
-    # (so the email-building handler reads the failed part off the task).
-    notify('STEP_FAILURE', scope_obj=step, payload=payload, related_obj=part)
+    work_order = part.work_order if part else None
+    payload = StepFailurePayload(
+        id=str(report.id),
+        tenant_id=str(report.tenant_id),
+        quality_report_id=str(report.id),
+        part_id=str(part.id) if part else '',
+        # Parts.ERP_id (uppercase) — pre-Phase 5 code had `erp_id` here which
+        # silently returned None and emitted blank part_numbers since 2025.
+        part_number=getattr(part, 'ERP_id', None) or getattr(part, 'name', '') or '',
+        step_id=str(step.id) if step else None,
+        step_name=getattr(step, 'name', '') if step else '',
+        work_order_id=str(work_order.id) if work_order else None,
+        # WorkOrder model uses ERP_id, not order_number. The latter raised
+        # AttributeError on every emit() in the pre-Phase 5 code.
+        work_order_number=getattr(work_order, 'ERP_id', '') if work_order else '',
+        step_execution_id=str(step_execution.id) if step_execution else None,
+    )
+    emit('quality.step_failure', tenant=report.tenant, payload=payload)
+
+
+def _emit_ncr_opened(report) -> None:
+    """Fire `ncr.opened` on the new unified notification path.
+
+    Parallels the legacy `_notify_step_failure` until Phase 5 removes that.
+    The new path is rule-resolution-free in Phase 1 (one ConsoleChannel row);
+    Phase 3 adds per-tenant/per-customer/per-user rules.
+    """
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import NCROpenedPayload
+
+    part = report.part
+    work_order = part.work_order if part else None
+    step = report.step
+
+    payload = NCROpenedPayload(
+        id=str(report.id),
+        tenant_id=str(report.tenant_id) if report.tenant_id else '',
+        part_id=str(part.id) if part else None,
+        part_number=part.ERP_id if part else '',
+        work_order_id=str(work_order.id) if work_order else None,
+        work_order_number=work_order.ERP_id if work_order else '',
+        step_id=str(step.id) if step else None,
+        step_name=step.name if step else '',
+        severity=report.status,
+        description=report.description or '',
+        opened_by_id=report.detected_by_id,
+        opened_by_name=(
+            (report.detected_by.get_full_name() or report.detected_by.username)
+            if report.detected_by else ''
+        ),
+        opened_at=report.created_at,
+    )
+
+    # Use a stable idempotency key tied to the source record so retries of
+    # the create-side-effects flow (e.g. on partial commit) don't double-emit.
+    emit(
+        'ncr.opened',
+        tenant=report.tenant,
+        payload=payload,
+        correlation_id=f"qualityreport:{report.id}",
+        idempotency_key=f"ncr.opened:qualityreport:{report.id}",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -206,11 +206,25 @@ router.register("QuarantineDispositions", QuarantineDispositionViewSet, basename
 router.register("HeatMapAnnotation", HeatMapAnnotationsViewSet, basename="HeatMapAnnotation")
 router.register("ThreeDModels", ThreeDModelViewSet, basename="ThreeDModels")
 
-# Notification preferences endpoint
-router.register("NotificationPreferences", NotificationPreferenceViewSet, basename="NotificationPreferences")
-
 # User invitation endpoints
 router.register("UserInvitations", UserInvitationViewSet, basename="UserInvitations")
+
+# Change Control endpoints (PCR / PCO / PCN)
+router.register(
+    "process-change-requests",
+    ProcessChangeRequestViewSet,
+    basename="process-change-requests",
+)
+router.register(
+    "process-change-orders",
+    ProcessChangeOrderViewSet,
+    basename="process-change-orders",
+)
+router.register(
+    "process-change-notices",
+    ProcessChangeNoticeViewSet,
+    basename="process-change-notices",
+)
 
 # Approval Workflow endpoints
 router.register("ApprovalTemplates", ApprovalTemplateViewSet, basename="ApprovalTemplates")
@@ -296,11 +310,56 @@ router.register(r'TrainingRequirements', TrainingRequirementViewSet, basename='T
 router.register(r'CalibrationRecords', CalibrationRecordViewSet, basename='CalibrationRecords')
 
 # ===== NOTIFICATION RULES =====
-router.register(r'NotificationRules', NotificationRuleViewSet, basename='NotificationRules')
+# Phase 3 per-scope rule endpoints + ExternalContacts.
+router.register(
+    r'notifications/rules/tenant',
+    TenantRuleViewSet,
+    basename='notification-rules-tenant',
+)
+router.register(
+    r'notifications/rules/customer',
+    CustomerRuleViewSet,
+    basename='notification-rules-customer',
+)
+router.register(
+    r'notifications/rules/personal',
+    PersonalRuleViewSet,
+    basename='notification-rules-personal',
+)
+router.register(
+    r'notifications/external-contacts',
+    ExternalContactViewSet,
+    basename='notification-external-contacts',
+)
+
+# Phase 3.5 scheduled notification deliveries.
+router.register(
+    r'notifications/schedules/tenant',
+    TenantScheduleViewSet,
+    basename='notification-schedules-tenant',
+)
+router.register(
+    r'notifications/schedules/customer',
+    CustomerScheduleViewSet,
+    basename='notification-schedules-customer',
+)
+router.register(
+    r'notifications/schedules/personal',
+    PersonalScheduleViewSet,
+    basename='notification-schedules-personal',
+)
 
 urlpatterns += [
     path("media/<path:path>", serve_media_iframe_safe),
     path('api/', include(router.urls)),  # ✅ Adds /api/TrackerOrders/
     path("api/orders/<uuid:order_id>/parts/", PartsByOrderView.as_view(), name="order-parts-list"),
+    # Legacy event-type catalog kept at this path; Phase 3 also exposes it at
+    # /api/notifications/events/ below for the new frontend.
     path("api/NotificationEventTypes/", NotificationEventTypeCatalogView.as_view(), name="notification-event-types"),
+    path("api/notifications/events/", NotificationEventTypeCatalogView.as_view(), name="notifications-events"),
+    path(
+        "api/notifications/schedules/providers/",
+        ScheduledContentProviderCatalogView.as_view(),
+        name="notifications-schedule-providers",
+    ),
 ]

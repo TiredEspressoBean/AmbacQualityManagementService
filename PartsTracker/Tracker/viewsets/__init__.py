@@ -93,9 +93,6 @@ from .qms import (
     SamplingRuleViewSet,
     MeasurementsDefinitionViewSet,
 
-    # Notification ViewSets
-    NotificationPreferenceViewSet,
-
     # CAPA ViewSets
     CAPAViewSet,
     CapaTasksViewSet,
@@ -197,14 +194,38 @@ from .life_tracking import (
 )
 
 from .notifications import (
-    NotificationRuleViewSet,
     NotificationEventTypeCatalogView,
+    TenantRuleViewSet,
+    CustomerRuleViewSet,
+    PersonalRuleViewSet,
+    ExternalContactViewSet,
+    TenantScheduleViewSet,
+    CustomerScheduleViewSet,
+    PersonalScheduleViewSet,
+    ScheduledContentProviderCatalogView,
+)
+
+# Change Control ViewSets (PCR / PCO / PCN)
+from .change_control import (
+    ProcessChangeRequestViewSet,
+    ProcessChangeOrderViewSet,
+    ProcessChangeNoticeViewSet,
 )
 
 
 __all__ = [
-    'NotificationRuleViewSet',
     'NotificationEventTypeCatalogView',
+    'TenantRuleViewSet',
+    'CustomerRuleViewSet',
+    'PersonalRuleViewSet',
+    'ExternalContactViewSet',
+    'TenantScheduleViewSet',
+    'CustomerScheduleViewSet',
+    'PersonalScheduleViewSet',
+    'ScheduledContentProviderCatalogView',
+    'ProcessChangeRequestViewSet',
+    'ProcessChangeOrderViewSet',
+    'ProcessChangeNoticeViewSet',
     # Base - Tenant Scoping
     'TenantAwareMixin',
     'TenantScopedMixin',
@@ -284,9 +305,6 @@ __all__ = [
     'SamplingRuleSetViewSet',
     'SamplingRuleViewSet',
     'MeasurementsDefinitionViewSet',
-
-    # QMS - Notifications
-    'NotificationPreferenceViewSet',
 
     # QMS - CAPA
     'CAPAViewSet',
@@ -424,7 +442,6 @@ def register_viewsets(router):
     router.register(r'Sampling-rule-sets', SamplingRuleSetViewSet, basename='sampling-rule-sets')
     router.register(r'Sampling-rules', SamplingRuleViewSet, basename='sampling-rules')
     router.register(r'MeasurementDefinitions', MeasurementsDefinitionViewSet)
-    router.register(r'NotificationPreferences', NotificationPreferenceViewSet, basename='NotificationPreferences')
 
     # CAPA
     router.register(r'CAPAs', CAPAViewSet, basename='CAPAs')

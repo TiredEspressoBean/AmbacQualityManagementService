@@ -151,13 +151,16 @@ class UserInvitationTestCase(VectorTestCase):
         self.assertIsNotNone(invitation.accepted_at)
         self.assertIsNotNone(invitation.accepted_ip_address)
 
-        # Check notification preference was created if opted in.
-        # Use unscoped because the test isn't running inside a tenant context.
-        notification_exists = NotificationTask.unscoped.filter(
-            recipient=self.invited_user,
-            notification_type='WEEKLY_REPORT'
+        # `opt_in_notifications=True` creates a personal NotificationSchedule
+        # (the new system; the legacy WEEKLY_REPORT NotificationTask path is
+        # gone). Verify the schedule was created for this user.
+        from Tracker.models import NotificationSchedule
+        schedule_exists = NotificationSchedule.all_tenants.filter(
+            owner_user=self.invited_user,
+            scope_kind='personal',
+            provider_kind='customer_active_orders',
         ).exists()
-        self.assertTrue(notification_exists)
+        self.assertTrue(schedule_exists)
 
     def test_duplicate_invitation_prevention(self):
         """Test that a user cannot be invited multiple times with active invitations"""

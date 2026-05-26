@@ -1,198 +1,143 @@
-import {useState} from "react";
-import {toast} from "sonner";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Button} from "@/components/ui/button";
-import {Loader2} from "lucide-react";
-import {useRetrieveNotificationPreferences} from "@/hooks/useRetrieveNotificationPreferences";
-import {useCreateNotificationPreference} from "@/hooks/useCreateNotificationPreference";
-import {useUpdateNotificationPreference} from "@/hooks/useUpdateNotificationPreference";
-import {useDeleteNotificationPreference} from "@/hooks/useDeleteNotificationPreference";
+/**
+ * Notification preferences card — the simple, customer-friendly entry point
+ * for the weekly order digest, shown on `/profile`.
+ *
+ * Audience: customers who just want "send me a weekly email about my orders."
+ * For multi-digest, event-driven, or channel-matrix configuration, the full
+ * UI lives at `/profile/notifications`.
+ *
+ * Surface contract: this card and the "Scheduled digests" section on
+ * `/profile/notifications` are two views of the same underlying data —
+ * personal NotificationSchedule rows with `provider_kind='customer_active_orders'`.
+ * Both write through `usePersonalSchedule*` mutations so cache invalidation
+ * propagates between surfaces; the card simply filters to the
+ * customer_active_orders one and presents it as a single toggle.
+ */
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import {
-    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {Label} from "@/components/ui/label";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {Input} from "@/components/ui/input";
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 
+import { PersonalScheduleSheet } from "@/components/notifications/PersonalScheduleSheet";
+import {
+    useDeletePersonalSchedule,
+    usePersonalSchedules,
+    type PersonalSchedule,
+} from "@/hooks/notificationSchedules";
 
+const DAYS = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+];
 
-
-
-const DAYS = [{value: "0", label: "Monday"}, {value: "1", label: "Tuesday"}, {
-    value: "2",
-    label: "Wednesday"
-}, {value: "3", label: "Thursday"}, {value: "4", label: "Friday"}, {value: "5", label: "Saturday"}, {
-    value: "6",
-    label: "Sunday"
-},];
-
-const INTERVALS = [{value: "1", label: "Every week"}, {value: "2", label: "Every 2 weeks"}, {
-    value: "4",
-    label: "Every 4 weeks"
-},];
+function summarize(schedule: PersonalSchedule): string {
+    const time = (schedule.time_of_day ?? "").slice(0, 5);
+    if (schedule.cadence === "weekly" && schedule.day_of_week !== null && schedule.day_of_week !== undefined) {
+        return `Every ${DAYS[schedule.day_of_week]} at ${time} ${schedule.timezone ?? "UTC"}`;
+    }
+    if (schedule.cadence === "monthly" && schedule.day_of_month) {
+        return `Every month on day ${schedule.day_of_month} at ${time} ${schedule.timezone ?? "UTC"}`;
+    }
+    return schedule.cadence ?? "";
+}
 
 export function NotificationPreferencesCard() {
-    const {data: preferences, isLoading} = useRetrieveNotificationPreferences();
-    const createPreference = useCreateNotificationPreference();
-    const updatePreference = useUpdateNotificationPreference();
-    const deletePreference = useDeleteNotificationPreference();
+    const { data, isLoading } = usePersonalSchedules();
+    const deleteSchedule = useDeletePersonalSchedule();
+    const [sheetOpen, setSheetOpen] = useState(false);
 
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [dayOfWeek, setDayOfWeek] = useState("4");
-    const [time, setTime] = useState("15:00");
-    const [intervalWeeks, setIntervalWeeks] = useState("1");
-
-    const weeklyReport = preferences?.results.find((p) => p.notification_type === "WEEKLY_REPORT");
-
-    const handleOpen = () => {
-        if (weeklyReport) {
-            setDayOfWeek(weeklyReport.schedule?.day_of_week?.toString() ?? "4");
-            setTime(weeklyReport.schedule?.time ?? "15:00");
-            setIntervalWeeks(weeklyReport.schedule?.interval_weeks?.toString() ?? "1");
-        }
-        setIsDialogOpen(true);
-    };
-
-    const handleSave = async () => {
-        try {
-            const scheduleData = {
-                interval_type: "FIXED" as const,
-                day_of_week: parseInt(dayOfWeek),
-                time: time,
-                interval_weeks: parseInt(intervalWeeks),
-            };
-
-            if (weeklyReport) {
-                await updatePreference.mutateAsync({
-                    id: weeklyReport.id, data: {schedule: scheduleData},
-                });
-                toast.success("Updated notification preference");
-            } else {
-                await createPreference.mutateAsync({
-                    notification_type: "WEEKLY_REPORT", channel_type: "EMAIL", schedule: scheduleData,
-                });
-                toast.success("Created notification preference");
-            }
-            setIsDialogOpen(false);
-        } catch {
-            toast.error("Failed to save preference");
-        }
-    };
-
-    const handleDisable = async () => {
-        if (!weeklyReport) return;
-        try {
-            await deletePreference.mutateAsync(weeklyReport.id);
-            toast.success("Disabled weekly reports");
-            setIsDialogOpen(false);
-        } catch {
-            toast.error("Failed to disable");
-        }
-    };
+    // Find the customer_active_orders personal schedule — the "weekly orders"
+    // subscription this card represents. Customers usually have at most one.
+    const ordersSchedule = (data?.results ?? []).find(
+        (s) => s.provider_kind === "customer_active_orders",
+    );
 
     if (isLoading) {
-        return (<Card>
-                <CardHeader>
-                    <CardTitle>Notification Preferences</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Loader2 className="h-6 w-6 animate-spin"/>
-                </CardContent>
-            </Card>);
-    }
-
-    return (<>
+        return (
             <Card>
                 <CardHeader>
                     <CardTitle>Notification Preferences</CardTitle>
-                    <CardDescription>Manage your email notifications</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-between">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const handleDisable = () => {
+        if (!ordersSchedule) return;
+        deleteSchedule.mutate(ordersSchedule.id);
+    };
+
+    return (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Notification Preferences</CardTitle>
+                    <CardDescription>
+                        Manage your email notifications about your orders.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
                             <h4 className="font-medium">Weekly Order Updates</h4>
                             <p className="text-sm text-muted-foreground">
-                                {weeklyReport ? (<>
-                                        {INTERVALS.find(i => i.value === weeklyReport.schedule?.interval_weeks?.toString())?.label || "Weekly"},{" "}
-                                        {DAYS[parseInt(weeklyReport.schedule?.day_of_week?.toString() ?? "4")].label}s
-                                        at{" "}
-                                        {weeklyReport.schedule?.time}
-                                    </>) : ("You are not receiving order updates")}
+                                {ordersSchedule ? (
+                                    summarize(ordersSchedule)
+                                ) : (
+                                    "You are not receiving order updates."
+                                )}
                             </p>
                         </div>
-                        <Button onClick={handleOpen} variant="outline">
-                            {weeklyReport ? "Edit" : "Set Up"}
-                        </Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {ordersSchedule && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleDisable}
+                                    disabled={deleteSchedule.isPending}
+                                >
+                                    Disable
+                                </Button>
+                            )}
+                            <Button variant="outline" onClick={() => setSheetOpen(true)}>
+                                {ordersSchedule ? "Edit" : "Set up"}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                        Want event-driven pings (shipments, holds, NCRs) or other digests?{" "}
+                        <Link
+                            to="/profile/notifications"
+                            className="underline underline-offset-2 hover:text-foreground"
+                        >
+                            Open My Notifications
+                        </Link>
+                        .
                     </div>
                 </CardContent>
             </Card>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Order Report Schedule</DialogTitle>
-                        <DialogDescription>
-                            Choose when to receive your order updates
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Frequency</Label>
-                            <Select value={intervalWeeks} onValueChange={setIntervalWeeks}>
-                                <SelectTrigger>
-                                    <SelectValue/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {INTERVALS.map((interval) => (
-                                        <SelectItem key={interval.value} value={interval.value}>
-                                            {interval.label}
-                                        </SelectItem>))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Day of Week</Label>
-                            <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
-                                <SelectTrigger>
-                                    <SelectValue/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {DAYS.map((day) => (<SelectItem key={day.value} value={day.value}>
-                                            {day.label}
-                                        </SelectItem>))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Time</Label>
-                            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)}
-                                   className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"/>
-                            <p className="text-xs text-muted-foreground">Time is in your local timezone</p>
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        {weeklyReport && (<Button
-                                variant="destructive"
-                                onClick={handleDisable}
-                                disabled={deletePreference.isPending}
-                            >
-                                Disable
-                            </Button>)}
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSave}
-                            disabled={createPreference.isPending || updatePreference.isPending}
-                        >
-                            {createPreference.isPending || updatePreference.isPending ? "Saving..." : "Save"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>);
+            <PersonalScheduleSheet
+                open={sheetOpen}
+                onOpenChange={setSheetOpen}
+                editingSchedule={ordersSchedule ?? null}
+            />
+        </>
+    );
 }

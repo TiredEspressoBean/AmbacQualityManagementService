@@ -18,12 +18,10 @@ from Tracker.models import (
 )
 from Tracker.notifications import get_notification_handler
 from Tracker.notifications.handlers import (
-    build_weekly_report_context,
     build_capa_context,
     build_approval_request_context,
     build_approval_decision_context,
     build_approval_escalation_context,
-    validate_weekly_report_send,
     validate_capa_send,
     validate_approval_request_send,
     validate_approval_escalation_send,
@@ -276,13 +274,8 @@ class NotificationHandlerTestCase(TenantTestCase):
             is_active=True,
         )
 
-    def test_load_weekly_report_handler(self):
-        """Test that WEEKLY_REPORT handler can be loaded"""
-        handler = get_notification_handler('WEEKLY_REPORT')
-        self.assertIsNotNone(handler)
-        self.assertTrue(hasattr(handler, 'context_builder'))
-        self.assertTrue(hasattr(handler, 'send_validator'))
-        self.assertTrue(hasattr(handler, 'senders'))
+    # `test_load_weekly_report_handler` removed — WEEKLY_REPORT handler is
+    # gone; scheduled deliveries route through NotificationSchedule now.
 
     def test_load_capa_reminder_handler(self):
         """Test that CAPA_REMINDER handler can be loaded"""
@@ -311,27 +304,12 @@ class NotificationHandlerTestCase(TenantTestCase):
 
     def test_handler_has_email_sender(self):
         """Test that handlers have email sender configured"""
-        for notification_type in ['WEEKLY_REPORT', 'CAPA_REMINDER', 'APPROVAL_REQUEST']:
+        for notification_type in ['CAPA_REMINDER', 'APPROVAL_REQUEST']:
             handler = get_notification_handler(notification_type)
             self.assertIn('EMAIL', handler.senders)
 
-    def test_handler_validation(self):
-        """Test handler validation logic"""
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            day_of_week=4,
-            time=datetime_time(15, 0),
-            interval_weeks=1,
-            status='PENDING',
-            next_send_at=timezone.now() - timedelta(minutes=1),
-        )
-
-        handler = get_notification_handler('WEEKLY_REPORT')
-        result = handler.should_send(notification)
-        self.assertIsInstance(result, bool)
+    # Removed `test_handler_validation` — was WEEKLY_REPORT-specific.
+    # CAPA handler validation is covered by `test_validate_capa_*` below.
 
 
 class NotificationValidatorTestCase(TenantTestCase):
@@ -352,35 +330,9 @@ class NotificationValidatorTestCase(TenantTestCase):
             is_active=False,
         )
 
-    def test_validate_weekly_report_active_user(self):
-        """Test weekly report validation passes for active user"""
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.active_user,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            status='PENDING',
-            next_send_at=timezone.now(),
-        )
-
-        result = validate_weekly_report_send(notification)
-        self.assertTrue(result)
-
-    def test_validate_weekly_report_inactive_user(self):
-        """Test weekly report validation fails for inactive user"""
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.inactive_user,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            status='PENDING',
-            next_send_at=timezone.now(),
-        )
-
-        result = validate_weekly_report_send(notification)
-        self.assertFalse(result)
-        notification.refresh_from_db()
-        self.assertEqual(notification.status, 'CANCELLED')
+    # Removed `test_validate_weekly_report_active_user` +
+    # `test_validate_weekly_report_inactive_user` — the
+    # validate_weekly_report_send helper is gone.
 
     def test_validate_capa_no_related_object(self):
         """Test CAPA validation fails when no related object"""
@@ -419,51 +371,9 @@ class NotificationValidatorTestCase(TenantTestCase):
 class ContextBuilderTestCase(TenantTestCase):
     """Test context builders for different notification types"""
 
-    def test_build_weekly_report_context_no_orders(self):
-        """Test weekly report context returns None when no active orders"""
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user_a,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            status='PENDING',
-            next_send_at=timezone.now(),
-        )
-
-        context = build_weekly_report_context(notification)
-        self.assertIsNone(context)  # No orders = no context = skip sending
-
-    def test_build_weekly_report_context_with_orders(self):
-        """Test weekly report context with active orders"""
-        # Create an order for user_a
-        company = Companies.objects.create(
-            tenant=self.tenant_a,
-            name='Test Company',
-            description='Test company for notification tests'
-        )
-        order = Orders.objects.create(
-            tenant=self.tenant_a,
-            name='Test Order',
-            customer=self.user_a,
-            company=company,
-            order_status=OrdersStatus.IN_PROGRESS,
-        )
-
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user_a,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            status='PENDING',
-            next_send_at=timezone.now(),
-        )
-
-        context = build_weekly_report_context(notification)
-        self.assertIsNotNone(context)
-        self.assertEqual(context['recipient'], self.user_a)
-        self.assertEqual(context['total_orders'], 1)
-        self.assertIn('orders', context)
-        self.assertIn('frontend_url', context)
+    # Removed test_build_weekly_report_context_* — that builder is gone;
+    # equivalent rendering coverage lives in
+    # Tracker.tests.notifications.test_schedule_provider.
 
     def test_build_capa_context(self):
         """Test CAPA context builder"""
@@ -640,69 +550,10 @@ class NotificationQueryTestCase(TenantTestCase):
 class NotificationTasksTestCase(TenantTestCase):
     """Test Celery tasks for notification creation"""
 
-    def test_create_weekly_report_notifications(self):
-        """Test creating weekly report notifications for customers"""
-        from Tracker.tasks import create_weekly_report_notifications
-        
-        # Create a customer with an active order
-        company = Companies.objects.create(
-            tenant=self.tenant_a,
-            name='Test Company',
-            description='Test company for notification tests'
-        )
-        order = Orders.objects.create(
-            tenant=self.tenant_a,
-            name='Active Order',
-            customer=self.user_a,
-            company=company,
-            order_status=OrdersStatus.IN_PROGRESS,
-        )
-
-        # Run the task
-        result = create_weekly_report_notifications()
-
-        self.assertEqual(result['status'], 'success')
-        self.assertGreaterEqual(result['created'], 1)
-
-        # Check notification was created
-        notification = NotificationTask.objects.filter(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user_a,
-            status='PENDING'
-        ).first()
-        self.assertIsNotNone(notification)
-
-    def test_create_weekly_report_no_duplicate(self):
-        """Test that duplicate weekly report notifications are not created"""
-        from Tracker.tasks import create_weekly_report_notifications
-        
-        company = Companies.objects.create(
-            tenant=self.tenant_a,
-            name='Test Company',
-            description='Test company for notification tests'
-        )
-        order = Orders.objects.create(
-            tenant=self.tenant_a,
-            name='Active Order',
-            customer=self.user_a,
-            company=company,
-            order_status=OrdersStatus.IN_PROGRESS,
-        )
-
-        # Run twice
-        result1 = create_weekly_report_notifications()
-        result2 = create_weekly_report_notifications()
-
-        # Second run should skip (notification already pending)
-        self.assertEqual(result2['skipped'], result2['skipped'])
-
-        # Only one notification should exist
-        count = NotificationTask.objects.filter(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user_a,
-            status='PENDING'
-        ).count()
-        self.assertEqual(count, 1)
+    # `test_create_weekly_report_notifications` + `test_create_weekly_report_no_duplicate`
+    # removed — `create_weekly_report_notifications` was deleted in the
+    # NotificationSchedule cutover. Equivalent coverage lives in
+    # Tracker.tests.notifications.test_schedule_dispatcher.
 
     def test_check_capa_reminders(self):
         """Test CAPA reminder creation"""
@@ -855,47 +706,9 @@ class NotificationTasksTestCase(TenantTestCase):
 class SendNotificationTaskTestCase(TenantTestCase):
     """Test the send_notification_task Celery task"""
 
-    @patch('Tracker.notifications.handlers.send_mail')
-    def test_send_weekly_report_notification(self, mock_send_mail):
-        """Test sending a weekly report notification"""
-        from Tracker.tasks import send_notification_task
-
-        # Create order for context
-        company = Companies.objects.create(
-            tenant=self.tenant_a,
-            name='Test Company',
-            description='Test company for notification tests'
-        )
-        order = Orders.objects.create(
-            tenant=self.tenant_a,
-            name='Test Order',
-            customer=self.user_a,
-            company=company,
-            order_status=OrdersStatus.IN_PROGRESS,
-        )
-
-        notification = NotificationTask.objects.create(
-            notification_type='WEEKLY_REPORT',
-            recipient=self.user_a,
-            channel_type='EMAIL',
-            interval_type='FIXED',
-            day_of_week=4,  # Friday
-            time=datetime_time(15, 0),  # 3 PM
-            interval_weeks=1,
-            status='PENDING',
-            next_send_at=timezone.now() - timedelta(minutes=1),
-        )
-
-        mock_send_mail.return_value = 1
-
-        result = send_notification_task(notification.id)
-
-        self.assertEqual(result['status'], 'success')
-        mock_send_mail.assert_called_once()
-
-        notification.refresh_from_db()
-        self.assertEqual(notification.attempt_count, 1)
-        self.assertIsNotNone(notification.last_sent_at)
+    # Removed `test_send_weekly_report_notification` — WEEKLY_REPORT
+    # handler is gone; coverage moves to fire_schedule tests in
+    # Tracker.tests.notifications.test_schedule_dispatcher.
 
     @patch('Tracker.notifications.handlers.send_mail')
     def test_send_capa_reminder_notification(self, mock_send_mail):

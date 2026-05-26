@@ -25,7 +25,6 @@ from Tracker.models import (
 from Tracker.serializers.qms import (
     QualityReportsSerializer, QualityErrorsListSerializer, QuarantineDispositionSerializer,
     SamplingRuleSetSerializer, SamplingRuleSerializer, MeasurementDefinitionSerializer,
-    NotificationPreferenceSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer
 )
@@ -163,145 +162,11 @@ class MeasurementsDefinitionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelE
         return qs
 
 
-# ===== NOTIFICATION VIEWSETS =====
-
-@extend_schema_view(list=extend_schema(description="List user's notification preferences", parameters=[
-    OpenApiParameter(name='notification_type', description='Filter by notification type', required=False, type=str),
-    OpenApiParameter(name='channel_type', description='Filter by channel type (email, in_app, sms)', required=False,
-                     type=str),
-    OpenApiParameter(name='status', description='Filter by status (pending, sent, failed, cancelled)', required=False,
-                     type=str), ]),
-                    create=extend_schema(description="Create a new notification preference for the current user",
-                                         request=NotificationPreferenceSerializer,
-                                         responses={201: NotificationPreferenceSerializer}),
-                    retrieve=extend_schema(description="Retrieve a specific notification preference"),
-                    update=extend_schema(description="Update a notification preference",
-                                         request=NotificationPreferenceSerializer,
-                                         responses={200: NotificationPreferenceSerializer}),
-                    partial_update=extend_schema(description="Partially update a notification preference",
-                                                 request=NotificationPreferenceSerializer,
-                                                 responses={200: NotificationPreferenceSerializer}),
-                    destroy=extend_schema(description="Delete a notification preference"))
-class NotificationPreferenceViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing user notification preferences.
-
-    Provides CRUD operations for notification preferences including:
-    - Weekly order reports (recurring, fixed schedule)
-    - CAPA reminders (escalating, deadline-based)
-
-    Automatically handles timezone conversion between user's local time and UTC.
-
-    Permissions:
-    - Users can only see and manage their own notification preferences
-    - Only authenticated users can access this endpoint
-    """
-    # Class-level queryset exists purely so drf-spectacular can introspect
-    # the model without invoking get_queryset() (which requires a tenant
-    # ContextVar under SecureManager). Real filtering happens in get_queryset.
-    queryset = NotificationTask.all_tenants.none()
-    serializer_class = NotificationPreferenceSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['notification_type', 'channel_type', 'status']
-    ordering_fields = ['created_at', 'updated_at', 'next_send_at']
-    ordering = ['-created_at']
-    pagination_class = LimitOffsetPagination
-
-    def get_queryset(self):
-        """
-        Filter notifications to only show current user's preferences.
-        Excludes system-managed notifications (e.g., CAPA reminders created by signals).
-        """
-        if getattr(self, 'swagger_fake_view', False):
-            return NotificationTask.all_tenants.none()
-
-        # Users can only see their own notification preferences.
-        # tenant-safe: SecureManager auto-scopes via tenant_context (request middleware)
-        return NotificationTask.objects.filter(recipient=self.request.user,
-                                               # Optionally filter to only user-configurable types
-                                               notification_type='WEEKLY_REPORT'
-                                               # For now, only weekly reports are user-configurable
-                                               ).select_related('recipient')
-
-    def perform_create(self, serializer):
-        """Create notification preference for current user."""
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        """
-        Soft delete: Cancel the notification instead of hard deleting.
-        This preserves history and allows for audit logging.
-        """
-        instance.status = 'CANCELLED'
-        instance.save()
-
-    @extend_schema(description="Get available notification types that users can configure", responses={
-        200: inline_serializer(name='AvailableNotificationTypes',
-                               fields={'notification_types': serializers.ListField(child=serializers.DictField())})})
-    @action(detail=False, methods=['get'], url_path='available-types')
-    def available_types(self, request):
-        """
-        Return list of notification types that users can configure.
-
-        Returns:
-            {
-                "notification_types": [
-                    {
-                        "value": "WEEKLY_REPORT",
-                        "label": "Weekly Order Report",
-                        "description": "Receive weekly updates on your active orders",
-                        "configurable": true,
-                        "supported_channels": ["email", "in_app"]
-                    }
-                ]
-            }
-        """
-        types = [{"value": "WEEKLY_REPORT", "label": "Weekly Order Report",
-                  "description": "Receive weekly updates on your active orders", "configurable": True,
-                  "supported_channels": ["email", "in_app"], "interval_type": "fixed"},
-                 # CAPA reminders are system-managed, not user-configurable
-                 {"value": "CAPA_REMINDER", "label": "CAPA Reminder",
-                  "description": "Reminders for pending CAPA actions (system-managed)", "configurable": False,
-                  "supported_channels": ["email", "in_app"], "interval_type": "deadline_based"}]
-
-        return Response({"notification_types": types})
-
-    @extend_schema(description="Test send a notification immediately (for testing purposes)", request=None, responses={
-        200: inline_serializer(name='TestSendResponse',
-                               fields={'status': serializers.CharField(), 'message': serializers.CharField()})})
-    @action(detail=True, methods=['post'], url_path='test-send')
-    def test_send(self, request, pk=None):
-        """
-        Send a test notification immediately (bypasses normal scheduling).
-
-        Useful for testing notification templates and delivery.
-        """
-        notification = self.get_object()
-
-        # Import here to avoid circular imports
-        from Tracker.notifications import get_notification_handler
-
-        try:
-            # Get the handler
-            handler = get_notification_handler(notification.notification_type)
-
-            # Check if can send
-            if not handler.should_send(notification):
-                return Response({"detail": "Notification validation failed"},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-            # Send it
-            success = handler.send(notification)
-
-            if success:
-                return Response(
-                    {"status": "success", "message": f"Test notification sent to {notification.recipient.email}"})
-            else:
-                return Response({"detail": "Failed to send notification"},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# Legacy `NotificationPreferenceViewSet` removed — the only path it served
+# was user-configured WEEKLY_REPORT notifications, replaced by the
+# NotificationSchedule system. Customer-facing weekly setup lives on
+# /profile via NotificationPreferencesCard, which now uses
+# `usePersonalSchedule*` and `PersonalScheduleSheet`.
 
 
 # ===== CAPA VIEWSETS =====

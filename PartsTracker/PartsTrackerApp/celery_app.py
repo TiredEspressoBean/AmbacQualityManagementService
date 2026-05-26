@@ -16,6 +16,19 @@ app.conf.beat_schedule = {
         'task': 'Tracker.tasks.dispatch_pending_notifications',
         'schedule': crontab(minute='*/5'),
     },
+    # Scan scheduled notifications for due fires every 5 minutes.
+    # Each due schedule gets a `fire_one_schedule` task queued by the tick.
+    'tick-notification-schedules': {
+        'task': 'Tracker.tasks.tick_notification_schedules',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Scan escalation instances whose timer has elapsed. Every minute —
+    # escalation timers are measured in hours, but a tight tick keeps the
+    # delay between "step due" and "step fires" bounded.
+    'tick-escalations': {
+        'task': 'Tracker.tasks.tick_escalations',
+        'schedule': crontab(minute='*'),
+    },
     # Check for overdue approvals every hour
     'check-overdue-approvals': {
         'task': 'Tracker.tasks.check_overdue_approvals',

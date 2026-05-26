@@ -262,16 +262,74 @@ from .spc import (
     BaselineStatus,
 )
 
-# Event-driven notification rules
+# Phase 3 notification rules — three-scope routing with CEL conditions.
 from .notifications import (
     NotificationRule,
-    NotificationEventType,
+    NotificationRuleManager,
+    ExternalContact,
+    SCOPE_CHOICES,
+    SCOPE_TENANT,
+    SCOPE_CUSTOMER,
+    SCOPE_PERSONAL,
+)
+
+# Scheduled snapshot deliveries (replaces legacy weekly-report mechanism).
+from .notification_schedule import (
+    NotificationSchedule,
+    NotificationScheduleManager,
+    CADENCE_CHOICES,
+    CADENCE_WEEKLY,
+    CADENCE_MONTHLY,
+    SCHEDULE_SCOPE_CHOICES,
+)
+
+# Escalation (Phase 4 — rule extension for unacknowledged-event chains).
+from .escalation import (
+    EscalationPolicy,
+    EscalationStep,
+    EscalationInstance,
+    EscalationStatus,
+    MAX_ESCALATION_STEPS,
+)
+
+# New unified notification system (Phase 1+) — see Documents/NOTIFICATION_SYSTEM_DESIGN.md
+from .notification_outbox import (
+    NotificationOutbox,
+    NotificationStatus,
+)
+from .notification_settings import (
+    TenantNotificationDefault,
+    UserNotificationPreference,
+    TenantNotificationBranding,
+    NotificationTemplate,
 )
 
 # DMS models - AI/LLM document intelligence (optional module)
 from .dms import (
     DocChunk,
     ChatSession,
+)
+
+# Change Control - PCR/PCO/PCN three-stage workflow (Phase 1: process changes)
+from .change_control import (
+    # Shared choices
+    ChangeControlPriority,
+    ChangeControlDataOrigin,
+    ProcessChangeMigrationDisposition,
+
+    # Sequencing
+    ArtifactSequence,
+
+    # Abstract bases (re-exported for Phase 2 reuse)
+    BaseChangeArtifact,
+    BaseChangeRequest,
+    BaseChangeOrder,
+    BaseChangeNotice,
+
+    # Concrete process-change models
+    ProcessChangeRequest,
+    ProcessChangeOrder,
+    ProcessChangeNotice,
 )
 
 # Define __all__ for explicit exports
@@ -440,7 +498,48 @@ __all__ = [
     'DocChunk',
     'ChatSession',
 
-    # Event-driven notifications
+    # Phase 3 notification rules (three-scope routing + CEL)
     'NotificationRule',
-    'NotificationEventType',
+    'NotificationRuleManager',
+    'ExternalContact',
+    'SCOPE_CHOICES',
+    'SCOPE_TENANT',
+    'SCOPE_CUSTOMER',
+    'SCOPE_PERSONAL',
+
+    # Scheduled notifications (snapshot deliveries on a cadence)
+    'NotificationSchedule',
+    'NotificationScheduleManager',
+    'CADENCE_CHOICES',
+    'CADENCE_WEEKLY',
+    'CADENCE_MONTHLY',
+    'SCHEDULE_SCOPE_CHOICES',
+
+    # Escalation (rule extension)
+    'EscalationPolicy',
+    'EscalationStep',
+    'EscalationInstance',
+    'EscalationStatus',
+    'MAX_ESCALATION_STEPS',
+
+    # New unified notification system (Phase 1+)
+    'NotificationOutbox',
+    'NotificationStatus',
+    'TenantNotificationDefault',
+    'UserNotificationPreference',
+    'TenantNotificationBranding',
+    'NotificationTemplate',
+
+    # Change Control (Phase 1: process changes)
+    'ChangeControlPriority',
+    'ChangeControlDataOrigin',
+    'ProcessChangeMigrationDisposition',
+    'ArtifactSequence',
+    'BaseChangeArtifact',
+    'BaseChangeRequest',
+    'BaseChangeOrder',
+    'BaseChangeNotice',
+    'ProcessChangeRequest',
+    'ProcessChangeOrder',
+    'ProcessChangeNotice',
 ]

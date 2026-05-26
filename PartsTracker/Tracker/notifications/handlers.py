@@ -27,87 +27,9 @@ def get_frontend_url() -> str:
 # CONTEXT BUILDERS - Build fresh context from related objects
 # ============================================================================
 
-def build_weekly_report_context(task) -> Optional[Dict[str, Any]]:
-    """Build context for weekly order report notifications."""
-    from Tracker.models import Orders, OrdersStatus
-
-    customer = task.recipient
-
-    # Get customer's active orders
-    active_statuses = [
-        OrdersStatus.RFI,
-        OrdersStatus.PENDING,
-        OrdersStatus.IN_PROGRESS,
-        OrdersStatus.ON_HOLD
-    ]
-
-    # tenant-safe: customer is a specific user; orders are scoped to that user's account
-    active_orders = Orders.objects.filter(
-        customer=customer,
-        archived=False,
-        order_status__in=active_statuses
-    ).select_related('company').prefetch_related('parts__step')
-
-    if not active_orders.exists():
-        # No active orders, skip sending
-        return None
-
-    # Prepare order summaries
-    order_summaries = []
-    for order in active_orders:
-        parts_qs = order.parts.filter(archived=False).select_related('step', 'work_order', 'work_order__process')
-        total_parts = parts_qs.count()
-        completed_parts = parts_qs.filter(part_status='COMPLETED').count()
-
-        # Calculate progress based on work order's process
-        progress = 0
-        if total_parts > 0:
-            # Get unique processes from work orders
-            work_orders = order.related_orders.filter(archived=False).select_related('process')
-            if work_orders.exists():
-                # Use the first work order's process for progress calculation
-                first_wo = work_orders.first()
-                if first_wo and first_wo.process:
-                    process = first_wo.process
-                    max_step = process.process_steps.count()
-
-                    if max_step > 0:
-                        # Calculate average step position using ProcessStep
-                        from Tracker.models import ProcessStep
-                        step_ids = parts_qs.values_list('step_id', flat=True).distinct()
-                        avg_order = ProcessStep.objects.filter(
-                            process=process,
-                            step_id__in=step_ids
-                        ).aggregate(a=Avg('order'))['a'] or 0
-                        progress = int(round(100 * (avg_order / max_step)))
-
-        # Get current stage
-        current_stage = "Not Started"
-        if order.parts.exists():
-            first_part = order.parts.first()
-            if first_part and first_part.step:
-                current_stage = first_part.step.name
-
-        order_summaries.append({
-            'name': order.name,
-            'status': order.get_order_status_display(),
-            'progress': round(progress),
-            'current_stage': current_stage,
-            'completion_date': order.estimated_completion,
-            'original_completion': order.original_completion_date,
-            'total_parts': total_parts,
-            'completed_parts': completed_parts,
-        })
-
-    return {
-        'recipient': task.recipient,
-        'customer': customer,
-        'customer_name': customer.get_full_name() or customer.email,
-        'orders': order_summaries,
-        'week_ending': timezone.now().date(),
-        'total_orders': len(order_summaries),
-        'frontend_url': get_frontend_url(),
-    }
+# Removed: `build_weekly_report_context`.
+# Replaced by CustomerActiveOrdersProvider in
+# Tracker/services/core/notifications/scheduled_content/customer_active_orders.py.
 
 
 def build_capa_context(task) -> Optional[Dict[str, Any]]:
@@ -193,60 +115,6 @@ def build_approval_decision_context(task) -> Optional[Dict[str, Any]]:
     }
 
 
-def build_step_failure_context(task) -> Optional[Dict[str, Any]]:
-    """Build context for step-failure notifications.
-
-    The NotificationTask's related_object is the failed Part (set by the
-    dispatcher from scope_obj). Reading the Part lazily lets the template
-    show current state if the user takes a while to read the email.
-    """
-    part = task.related_object
-    if part is None:
-        return None
-
-    work_order = part.work_order
-    step = part.step
-
-    # Latest FAIL quality report on this part, for optional notes
-    from Tracker.models import QualityReports
-    latest_fail = (
-        QualityReports.objects
-        .filter(part=part, status='FAIL')
-        .order_by('-created_at')
-        .first()
-    )
-    notes = getattr(latest_fail, 'notes', None) if latest_fail else None
-
-    return {
-        'recipient': task.recipient,
-        'part_id': str(part.id),
-        'part_erp_id': part.ERP_id,
-        'part_status': part.get_part_status_display(),
-        'step_name': step.name if step else '(unassigned)',
-        'work_order_erp_id': work_order.ERP_id if work_order else None,
-        'quality_report_notes': notes,
-        'frontend_url': get_frontend_url(),
-    }
-
-
-def validate_step_failure_send(task) -> bool:
-    """Only send if the related part still exists and is still in a
-    failure state. If the part has already been reworked/scrapped cleanly,
-    skip the notification."""
-    part = task.related_object
-    if part is None:
-        task.status = 'CANCELLED'
-        task.save()
-        return False
-    # Still notify for QUARANTINED, REWORK_NEEDED, SCRAPPED — all are
-    # failure-adjacent states worth alerting on.
-    if part.part_status not in ('QUARANTINED', 'REWORK_NEEDED', 'SCRAPPED'):
-        task.status = 'CANCELLED'
-        task.save()
-        return False
-    return True
-
-
 def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
     """Build context for approval escalation notifications."""
     approval_request = task.related_object
@@ -278,13 +146,7 @@ def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
 # SEND VALIDATORS - Check if notification should send
 # ============================================================================
 
-def validate_weekly_report_send(task) -> bool:
-    """Check if weekly report should send."""
-    if not task.recipient.is_active:
-        task.status = 'CANCELLED'
-        task.save()
-        return False
-    return True
+# Removed: `validate_weekly_report_send` (no longer referenced).
 
 
 def validate_capa_send(task) -> bool:
@@ -448,19 +310,8 @@ class NotificationHandler:
 # ============================================================================
 
 NOTIFICATION_HANDLERS = {
-    'WEEKLY_REPORT': NotificationHandler(
-        context_builder=build_weekly_report_context,
-        send_validator=validate_weekly_report_send,
-        senders={
-            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/weekly_customer_update'),
-            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
-                'type': 'info',
-                'title': 'Weekly Order Report Available',
-                'message': f"Your report for week ending {ctx['week_ending']} is ready",
-                'link': '/orders/reports/weekly/',
-            }),
-        }
-    ),
+    # WEEKLY_REPORT removed — replaced by personal NotificationSchedule
+    # rows fired via `Tracker.tasks.fire_one_schedule`.
 
     'CAPA_REMINDER': NotificationHandler(
         context_builder=build_capa_context,
@@ -500,20 +351,6 @@ NOTIFICATION_HANDLERS = {
                 'title': f"Approval {ctx['status']}: {ctx['content_title']}",
                 'message': f"Your request has been {ctx['status'].lower()}",
                 'link': '/inbox',
-            }),
-        }
-    ),
-
-    'STEP_FAILURE': NotificationHandler(
-        context_builder=build_step_failure_context,
-        send_validator=validate_step_failure_send,
-        senders={
-            'EMAIL': lambda task, ctx: send_via_email(task, ctx, 'emails/step_failure'),
-            'IN_APP': lambda task, ctx: send_via_in_app(task, ctx, {
-                'type': 'danger',
-                'title': f"Part Failed: {ctx['part_erp_id']}",
-                'message': f"at {ctx['step_name']}",
-                'link': f"/parts/{ctx['part_id']}",
             }),
         }
     ),

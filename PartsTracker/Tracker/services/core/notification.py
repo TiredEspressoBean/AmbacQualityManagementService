@@ -16,15 +16,12 @@ import logging
 from datetime import datetime, timedelta
 
 import pytz
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
 from django.utils import timezone
 
 from Tracker.models import NotificationTask
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
 
 def calculate_next_send(task: NotificationTask):
@@ -144,161 +141,20 @@ def enqueue_escalation_notification(recipient, approval_request) -> Notification
     )
 
 
-def enqueue_weekly_report(recipient, *, next_send_at, day_of_week, time_of_day) -> NotificationTask:
-    """Queue a recurring WEEKLY_REPORT notification for a customer."""
-    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
-    return NotificationTask.objects.create(
-        notification_type='WEEKLY_REPORT',
-        recipient=recipient,
-        channel_type='EMAIL',
-        interval_type='FIXED',
-        day_of_week=day_of_week,
-        time=time_of_day,
-        interval_weeks=1,
-        status='PENDING',
-        next_send_at=next_send_at,
-    )
+# `enqueue_weekly_report` removed — replaced by personal NotificationSchedule
+# rows created from /profile/notifications. See migration 0046_migrate_weekly_reports.
 
-
-# =========================================================================
-# Event-driven dispatcher (NotificationRule)
-# =========================================================================
-
-def _resolve_recipients(rule, payload: dict):
-    """Union of static users, group members, and resolver output for `rule`.
-
-    Runs inside the current tenant context. Static recipients come from
-    the rule's M2Ms; dynamic recipients from the registered resolver
-    (if any). Returns a set of User instances.
-    """
-    from Tracker.services.core.notification_resolvers import get_resolver
-
-    recipients: set = set(rule.recipient_users.all())
-
-    for group in rule.recipient_groups.all():
-        # TenantGroup → users via UserRole
-        members = User.objects.filter(
-            user_roles__group=group,
-            user_roles__group__tenant_id=rule.tenant_id,
-        )
-        recipients.update(members)
-
-    if rule.recipient_resolver_key:
-        try:
-            resolver = get_resolver(rule.recipient_resolver_key)
-            recipients.update(resolver(payload))
-        except KeyError:
-            logger.warning(
-                'NotificationRule %s references unknown resolver %r; skipping',
-                rule.id, rule.recipient_resolver_key,
-            )
-        except Exception:
-            logger.exception(
-                'NotificationRule %s resolver %r raised; skipping',
-                rule.id, rule.recipient_resolver_key,
-            )
-
-    return recipients
-
-
-def _within_cooldown(rule, recipient, now) -> bool:
-    """True if a task was created for this (rule, recipient) within the
-    rule's min_gap_seconds window."""
-    if rule.min_gap_seconds <= 0:
-        return False
-    cooldown_start = now - timedelta(seconds=rule.min_gap_seconds)
-    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
-    return NotificationTask.objects.filter(
-        source_rule=rule,
-        recipient=recipient,
-        created_at__gte=cooldown_start,
-    ).exists()
-
-
-def notify(
-    event_type: str,
-    scope_obj=None,
-    payload: dict | None = None,
-    related_obj=None,
-) -> list[NotificationTask]:
-    """Fire a notification event.
-
-    Finds every active NotificationRule for `event_type` whose scope is
-    either null (tenant-wide) or matches `scope_obj`, resolves recipients,
-    applies cooldowns, and creates NotificationTask rows. Returns the list
-    of tasks created (empty if no rules matched or all were cooled down).
-
-    Must be called inside a tenant context — the ContextVar provides the
-    tenant scoping for the `NotificationRule.objects` query and the
-    NotificationTask auto-inject. The existing Celery beat (dispatch_pending_notifications)
-    picks up the created tasks on its next tick.
-
-    Args:
-        event_type: Must match a NotificationEventType value.
-        scope_obj: Optional. A specific object (e.g. Step instance); rules
-                   scoped at this exact object match. Rules with null scope
-                   always match.
-        payload: Arbitrary dict passed to the rule's resolver. Conventionally
-                 includes IDs of the triggering objects (part_id,
-                 step_execution_id, ...).
-        related_obj: Optional. The object stashed on each NotificationTask's
-                     related_object GFK for the handler/context-builder to
-                     read. Defaults to scope_obj. Use a different value when
-                     scope (for rule matching) and payload-target (for the
-                     email body) differ — e.g. STEP_FAILURE scopes at the
-                     Step but the handler wants the failed Part.
-    """
-    from Tracker.models import NotificationRule
-
-    payload = payload or {}
-    now = timezone.now()
-
-    # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
-    rules_qs = NotificationRule.objects.filter(
-        event_type=event_type,
-        is_active=True,
-    )
-    if scope_obj is not None:
-        scope_ct = ContentType.objects.get_for_model(scope_obj.__class__)
-        rules_qs = rules_qs.filter(
-            Q(scope_content_type__isnull=True)
-            | Q(scope_content_type=scope_ct, scope_object_id=str(scope_obj.pk))
-        )
-    else:
-        rules_qs = rules_qs.filter(scope_content_type__isnull=True)
-
-    # NotificationTask.related_* stashes the handler-facing object. When
-    # the caller didn't pass `related_obj`, fall back to scope_obj so the
-    # simple case (scope == target of the email) still works.
-    target = related_obj if related_obj is not None else scope_obj
-    related_ct = (
-        ContentType.objects.get_for_model(target.__class__) if target else None
-    )
-    related_id = str(target.pk) if target else None
-
-    created: list[NotificationTask] = []
-
-    for rule in rules_qs.prefetch_related('recipient_users', 'recipient_groups'):
-        recipients = _resolve_recipients(rule, payload)
-        for recipient in recipients:
-            if _within_cooldown(rule, recipient, now):
-                continue
-            # tenant-safe: SecureManager auto-scopes via tenant_context ContextVar
-            task = NotificationTask.objects.create(
-                notification_type=event_type,
-                recipient=recipient,
-                channel_type=rule.channel_type,
-                interval_type='FIXED',
-                related_content_type=related_ct,
-                related_object_id=related_id,
-                source_rule=rule,
-                next_send_at=now,
-                status='PENDING',
-            )
-            created.append(task)
-
-    logger.info(
-        'notify(%s): %d rule(s) evaluated, %d task(s) created',
-        event_type, rules_qs.count(), len(created),
-    )
-    return created
+# =============================================================================
+# Legacy event-driven dispatcher removed in Phase 3 slice 3.
+#
+# `notify()` and its NotificationRule-driven recipient resolver are gone.
+# The replacement is `emit(event_code, tenant, payload)` from
+# `Tracker.services.core.notifications`, which fans out via the rule-based
+# Phase 3 dispatcher to `NotificationOutbox` rows.
+#
+# The `NotificationTask` aggregate helpers above (calculate_next_send,
+# mark_notification_sent, enqueue_*) remain because the legacy approval
+# and CAPA paths still create NotificationTask rows directly via tasks.py.
+# Phase 5 migrates those paths to `emit()` and deletes the rest of this
+# module.
+# =============================================================================

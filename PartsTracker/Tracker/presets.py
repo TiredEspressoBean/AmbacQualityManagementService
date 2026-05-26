@@ -552,6 +552,97 @@ GROUP_PRESETS = {
     },
 
     # -------------------------------------------------------------------------
+    # SHIFT LEAD - Floor-shaped supervisor between Operator and Production Manager
+    # -------------------------------------------------------------------------
+    # Base permission set is Operator's, plus team/quality oversight visibility.
+    # Override / waive / reassign authority will be added when those features
+    # exist as distinct permissions.
+    'shift_lead': {
+        'name': 'Shift Lead',
+        'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
+        'permissions': [
+            # Full tenant visibility (sees all data, not just relationship-filtered)
+            'full_tenant_access',
+            # Parts - full working access
+            'add_parts', 'change_parts', 'view_parts',
+            # Work Orders
+            'add_workorder', 'change_workorder', 'view_workorder',
+            # Orders
+            'view_orders',
+            # Processes/Steps - view instructions
+            'view_processes', 'view_steps',
+            'view_parttypes',
+            # Process flow modeling
+            'view_processstep', 'view_stepedge',
+            # Step execution & transitions
+            'add_stepexecution', 'change_stepexecution', 'view_stepexecution',
+            'add_steptransitionlog', 'change_steptransitionlog', 'view_steptransitionlog',
+            # Step measurement requirements
+            'view_stepmeasurementrequirement',
+            # Equipment
+            'view_equipments', 'view_equipmenttype',
+            'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
+            # Materials
+            'add_materialusage', 'change_materialusage', 'view_materialusage',
+            'view_materiallot',
+            # BOM
+            'view_bom', 'view_bomline',
+            'add_assemblyusage', 'change_assemblyusage', 'view_assemblyusage',
+            # Disassembly BOM
+            'view_disassemblybomline',
+            # Harvested components (remanufacturing)
+            'add_harvestedcomponent', 'change_harvestedcomponent', 'view_harvestedcomponent',
+            # Time tracking
+            'add_timeentry', 'change_timeentry', 'view_timeentry',
+            # Measurements
+            'add_measurementresult', 'change_measurementresult', 'view_measurementresult',
+            'view_measurementdefinition',
+            # Quality Reports - operators report issues
+            'add_qualityreports', 'change_qualityreports', 'view_qualityreports',
+            'add_qualityreportdefect', 'change_qualityreportdefect', 'view_qualityreportdefect',
+            'view_qualityerrorslist',
+            # Dispositions
+            'add_quarantinedisposition', 'change_quarantinedisposition', 'view_quarantinedisposition',
+            # CAPA - view and work on tasks
+            'view_capa', 'view_capatasks', 'change_capatasks',
+            # 3D Models & Annotations
+            'view_threedmodel',
+            'add_heatmapannotations', 'change_heatmapannotations', 'view_heatmapannotations',
+            # Documents
+            'add_documents', 'view_documents',
+            # Generated Reports
+            'add_generatedreport', 'view_generatedreport',
+            # Companies
+            'view_companies',
+            # Training
+            'add_trainingrecord', 'view_trainingrecord', 'view_trainingrequirement',
+            # Calibration
+            'view_calibrationrecord',
+            # Approvals
+            'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
+            'respond_to_approval',
+            # Scheduling
+            'view_shift', 'view_scheduleslot', 'view_workcenter',
+            'add_downtimeevent', 'change_downtimeevent', 'view_downtimeevent',
+            # AI Chat
+            'add_chatsession', 'change_chatsession', 'view_chatsession',
+            # Doc chunks (AI embedding)
+            'view_docchunk',
+            # Facilities
+            'add_facility', 'change_facility', 'view_facility',
+            # Archive reasons
+            'view_archivereason',
+            # ---- Shift Lead additions over Operator ----
+            # Team visibility - see who is on shift, who claimed what
+            'view_user',
+            # Sampling oversight - see configured rules and analytics
+            'view_samplingrule', 'view_samplingruleset', 'view_samplinganalytics',
+            # Quality investigation visibility
+            'view_rcarecord', 'view_capaverification',
+        ],
+    },
+
+    # -------------------------------------------------------------------------
     # DOCUMENT CONTROLLER - Manage controlled documents
     # -------------------------------------------------------------------------
     'document_controller': {

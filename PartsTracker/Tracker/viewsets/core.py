@@ -967,19 +967,33 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         invitation.accepted_user_agent = request.META.get('HTTP_USER_AGENT', '')
         invitation.save()
 
-        # Create notification preference if opted in. The accept-invitation
-        # endpoint is unauthenticated, so middleware doesn't set the tenant
-        # ContextVar — we set it explicitly from the user's tenant for the
-        # SecureManager .create() call.
+        # If the invitee checked the "weekly order updates" opt-in box on
+        # the activation form, create a personal NotificationSchedule for
+        # them. This is an explicit user choice, not a silent default —
+        # `opt_in_notifications=False` (unchecked) creates nothing, and the
+        # user can always set up / change cadence from /profile.
         if opt_in_notifications and user.tenant_id:
-            from Tracker.services.core.notification import enqueue_weekly_report
+            from datetime import time
+            from Tracker.models import NotificationSchedule
             from Tracker.utils.tenant_context import tenant_context
             with tenant_context(user.tenant_id):
-                enqueue_weekly_report(
-                    recipient=user,
-                    next_send_at=timezone.now() + timedelta(days=7),
-                    day_of_week=4,  # Friday
-                    time_of_day=timezone.now().time().replace(hour=15, minute=0),  # 3 PM UTC
+                NotificationSchedule.objects.create(
+                    tenant=user.tenant,
+                    owner_user=user,
+                    scope_kind='personal',
+                    name='Weekly orders summary',
+                    description=(
+                        'Opted in during account activation. Edit cadence or '
+                        'turn off any time at /profile/notifications.'
+                    ),
+                    enabled=True,
+                    provider_kind='customer_active_orders',
+                    provider_params={},
+                    cadence='weekly',
+                    day_of_week=4,           # Friday — matches the legacy default
+                    time_of_day=time(15, 0),  # 3pm UTC — matches the legacy default
+                    timezone='UTC',
+                    channels=['email'],
                 )
 
         return Response({"detail": "Account activated successfully", "user_id": user.id, "email": user.email},
