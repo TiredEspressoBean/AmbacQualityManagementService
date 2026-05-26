@@ -230,87 +230,9 @@ def process_3d_model(self, model_id: str):
             }
 
 
-@shared_task(bind=True, base=RetryableEmailTask)
-def send_weekly_order_update_task(self, customer_id: int, order_data: List[Dict[str, Any]]):
-    """
-    Celery task to send weekly order update email to a customer.
-    Uses RetryableEmailTask for automatic retry with exponential backoff.
-
-    Args:
-        customer_id: Customer user ID
-        order_data: List of order summary dicts with keys:
-            - name, status, progress, current_stage, completion_date,
-              total_parts, completed_parts, etc.
-
-    Returns:
-        dict with status and info
-    """
-    from django.core.mail import send_mail
-    from django.template.loader import render_to_string
-    from django.utils import timezone
-    from django.conf import settings
-    from Tracker.models import User
-
-    try:
-        customer = User.objects.get(id=customer_id)
-    except User.DoesNotExist:
-        logger.error(f"Customer {customer_id} not found")
-        return {'status': 'error', 'message': 'Customer not found'}
-
-    # Prepare email context
-    context = {
-        'customer': customer,
-        'orders': order_data,
-        'week_ending': timezone.now().date(),
-        'total_orders': len(order_data),
-    }
-
-    # Render email templates
-    subject = f"Weekly Order Update - {timezone.now().strftime('%B %d, %Y')}"
-
-    try:
-        html_content = render_to_string('emails/weekly_customer_update.html', context)
-        text_content = render_to_string('emails/weekly_customer_update.txt', context)
-    except Exception as e:
-        logger.error(f"Error rendering email templates for customer {customer_id}: {e}")
-        return {'status': 'error', 'message': f'Template error: {str(e)}'}
-
-    # Send email - autoretry handles SMTP failures
-    send_mail(
-        subject=subject,
-        message=text_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[customer.email],
-        html_message=html_content,
-        fail_silently=False,
-    )
-
-    logger.info(f"Successfully sent weekly update to {customer.email}")
-    return {
-        'status': 'success',
-        'customer_id': customer_id,
-        'customer_email': customer.email,
-        'orders_count': len(order_data)
-    }
-
-
-@shared_task
-def send_weekly_emails_to_all_customers():
-    """
-    DEPRECATED: Use create_weekly_report_notifications instead.
-
-    This task is kept for backwards compatibility but now redirects to the
-    new notification system which uses NotificationTask records.
-
-    Returns:
-        dict with redirect info
-    """
-    logger.warning(
-        "send_weekly_emails_to_all_customers is deprecated. "
-        "Use create_weekly_report_notifications instead."
-    )
-    # Delegate to new system
-    return create_weekly_report_notifications()
+# Removed: `send_weekly_order_update_task` and `send_weekly_emails_to_all_customers`.
+# Replaced by `tick_notification_schedules` + `fire_one_schedule` + the
+# CustomerActiveOrdersProvider. See Tracker/services/core/notifications/schedule.py.
 
 
 def _prepare_order_data(orders):
@@ -527,6 +449,113 @@ def send_invitation_email_task(self, invitation_id: int):
 
 
 @shared_task
+def tick_notification_schedules():
+    """
+    Celery Beat task: scan enabled NotificationSchedules and queue fires
+    for any that are due. Runs every 5 minutes via beat_schedule (matches
+    the existing notification-dispatch cadence).
+
+    Cross-tenant via `.all_tenants`. Each queued fire re-enters its own
+    tenant_context inside `fire_one_schedule`.
+
+    Returns a summary dict for observability — total scanned, queued.
+    """
+    from django.utils import timezone
+    from Tracker.models import NotificationSchedule
+    from Tracker.services.core.notifications.schedule import compute_next_fire
+
+    now = timezone.now()
+    queued = 0
+    scanned = 0
+
+    for sched in (
+        NotificationSchedule.all_tenants
+        .filter(enabled=True, archived=False)
+        .iterator()
+    ):
+        scanned += 1
+        anchor = sched.last_fired_at or sched.created_at
+        try:
+            next_fire = compute_next_fire(sched, after=anchor)
+        except Exception:
+            logger.exception(
+                "tick_notification_schedules: compute_next_fire failed for %s",
+                sched.id,
+            )
+            continue
+        if next_fire <= now:
+            fire_one_schedule.delay(str(sched.id))
+            queued += 1
+
+    logger.info(
+        "tick_notification_schedules: scanned=%d queued=%d",
+        scanned, queued,
+    )
+    return {'status': 'success', 'scanned': scanned, 'queued': queued}
+
+
+@shared_task(bind=True, max_retries=3)
+def fire_one_schedule(self, schedule_id):
+    """Worker task: fire a single NotificationSchedule by ID.
+
+    Delegates to `services.core.notifications.schedule.fire_schedule()`
+    which handles row locking, due-check, last_fired_at update, content
+    rendering, and outbox writing.
+
+    `max_retries=3` because celery autoretry on transient DB errors is
+    cheap — but `fire_schedule` itself is at-most-once (sets
+    last_fired_at BEFORE rendering), so a retry after the lock-and-mark
+    phase becomes a no-op via `_lock_and_validate_due` returning None.
+    """
+    from Tracker.services.core.notifications.schedule import fire_schedule
+    try:
+        fire_schedule(schedule_id)
+    except Exception as exc:
+        logger.exception("fire_one_schedule: schedule=%s failed", schedule_id)
+        raise self.retry(exc=exc, countdown=60) from exc
+
+
+@shared_task
+def tick_escalations():
+    """Celery Beat task: scan pending EscalationInstances whose timer has
+    elapsed and queue one `fire_one_escalation` per due instance.
+
+    Cross-tenant via `.all_tenants`. Each queued fire re-enters its own
+    tenant_context inside `fire_one_escalation`.
+
+    Runs every minute (configured in celery_app.py beat_schedule). One
+    minute is fine — escalation timers are measured in hours, so the
+    sub-minute fan-out tax is small.
+    """
+    from Tracker.services.core.notifications.escalation import tick_due
+
+    due_ids = tick_due()
+    for inst_id in due_ids:
+        fire_one_escalation.delay(inst_id)
+
+    logger.info("tick_escalations: queued=%d", len(due_ids))
+    return {'status': 'success', 'queued': len(due_ids)}
+
+
+@shared_task(bind=True, max_retries=3)
+def fire_one_escalation(self, instance_id):
+    """Worker task: process one EscalationInstance by ID.
+
+    Delegates to `services.core.notifications.escalation.fire_one()` which
+    handles row locking (SELECT FOR UPDATE SKIP LOCKED), ack/cancel
+    predicate evaluation, step firing, and state advancement.
+    """
+    from Tracker.services.core.notifications.escalation import fire_one
+    try:
+        fire_one(instance_id)
+    except Exception as exc:
+        logger.exception(
+            "fire_one_escalation: instance=%s failed", instance_id,
+        )
+        raise self.retry(exc=exc, countdown=60) from exc
+
+
+@shared_task
 def dispatch_pending_notifications():
     """
     Celery Beat scheduled task to find and dispatch pending notifications.
@@ -576,79 +605,9 @@ def dispatch_pending_notifications():
 # NOTIFICATION CREATION TASKS (Create NotificationTask records for dispatch)
 # ============================================================================
 
-@shared_task
-def create_weekly_report_notifications():
-    """
-    Celery Beat scheduled task to create WEEKLY_REPORT NotificationTask records.
-
-    Runs weekly (Tuesday 3 PM) and creates notification records for each customer
-    with active orders. The dispatch_pending_notifications task will then send them.
-
-    Returns:
-        dict with summary of created notifications
-    """
-    from django.db.models import Q
-    from django.utils import timezone
-    from django.contrib.contenttypes.models import ContentType
-    from Tracker.models import User, Orders, OrdersStatus, NotificationTask as NotificationTaskModel, Tenant
-
-    logger.info("Creating weekly report notifications")
-
-    active_statuses = [
-        OrdersStatus.RFI,
-        OrdersStatus.PENDING,
-        OrdersStatus.IN_PROGRESS,
-        OrdersStatus.ON_HOLD
-    ]
-
-    created_count = 0
-    skipped_count = 0
-
-    # Process each active tenant
-    for tenant in Tenant.objects.filter(is_active=True):
-        with tenant_context(tenant.id):
-            # Get customers with active orders in this tenant
-            customers_with_orders = User.objects.filter(
-                customer_orders__archived=False,
-                customer_orders__order_status__in=active_statuses,
-                customer_orders__tenant=tenant
-            ).distinct()
-
-            for customer in customers_with_orders:
-                if not customer.email:
-                    skipped_count += 1
-                    continue
-
-                # Check if we already have a pending weekly report for this customer
-                existing = NotificationTaskModel.objects.filter(
-                    notification_type='WEEKLY_REPORT',
-                    recipient=customer,
-                    status='PENDING'
-                ).exists()
-
-                if existing:
-                    skipped_count += 1
-                    continue
-
-                # Create notification task (dispatch will call handler to build context)
-                NotificationTaskModel.objects.create(
-                    notification_type='WEEKLY_REPORT',
-                    recipient=customer,
-                    channel_type='EMAIL',
-                    interval_type='FIXED',
-                    status='PENDING',
-                    next_send_at=timezone.now(),
-                )
-                created_count += 1
-                logger.info(f"Created weekly report notification for {customer.email}")
-
-    logger.info(f"Weekly report notifications: {created_count} created, {skipped_count} skipped")
-
-    return {
-        'status': 'success',
-        'created': created_count,
-        'skipped': skipped_count,
-    }
+# Removed: `create_weekly_report_notifications`.
+# Replaced by user-managed personal NotificationSchedule rows. Existing
+# legacy subscriptions were migrated in 0046_migrate_weekly_reports.
 
 
 @shared_task
@@ -1006,52 +965,9 @@ def escalate_approvals():
     }
 
 
-@shared_task(bind=True, base=RetryableEmailTask)
-def send_capa_assignment_notification(self, capa_id):
-    """Send notification when CAPA is assigned.
-    Uses RetryableEmailTask for automatic retry with exponential backoff."""
-    from .models import CAPA
-    from django.core.mail import send_mail
-    from django.conf import settings
-
-    # Initial lookup to get tenant context
-    try:
-        capa = CAPA.objects.get(id=capa_id)
-    except CAPA.DoesNotExist:
-        logger.error(f"CAPA {capa_id} not found")
-        return {'status': 'error', 'message': 'CAPA not found'}
-
-    # Run with tenant context for RLS enforcement
-    tenant_id = get_tenant_for_object(capa)
-    with tenant_context(tenant_id):
-        if capa.assigned_to and capa.assigned_to.email:
-            subject = f"CAPA Assignment: {capa.capa_number}"
-            message = f"""
-You have been assigned to a CAPA.
-
-CAPA Number: {capa.capa_number}
-Type: {capa.get_capa_type_display()}
-Severity: {capa.get_severity_display()}
-Initiated By: {capa.initiated_by.get_full_name() if capa.initiated_by else 'System'}
-Due Date: {capa.due_date.strftime('%Y-%m-%d') if capa.due_date else 'Not set'}
-
-Problem Statement:
-{capa.problem_statement}
-
-Please log in to review and work on this CAPA.
-            """
-
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [capa.assigned_to.email],
-                fail_silently=False,
-            )
-
-            return {'status': 'success'}
-
-        return {'status': 'skipped', 'message': 'No email for assigned user'}
+# send_capa_assignment_notification removed in Phase 6b — replaced by emit()
+# of `capa.assigned` from `signals.py:notify_assignment`. See
+# `Documents/NOTIFICATION_SYSTEM_DESIGN.md` for the cutover narrative.
 
 
 @shared_task(bind=True, base=RetryableEmailTask)
@@ -1453,8 +1369,12 @@ def scan_work_order_holds_and_overdue():
     """
     from datetime import timedelta
     from django.utils import timezone
-    from Tracker.models import WorkOrder, WorkOrderHold, WorkOrderStatus
-    from Tracker.services.core.notification import notify
+    from Tracker.models import Tenant, WorkOrder, WorkOrderHold, WorkOrderStatus
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.mes.events import (
+        WorkOrderHeldPayload,
+        WorkOrderOverduePayload,
+    )
 
     now = timezone.now()
     hold_cutoff = now - timedelta(hours=WORK_ORDER_HOLD_THRESHOLD_HOURS)
@@ -1477,18 +1397,22 @@ def scan_work_order_holds_and_overdue():
             wo = WorkOrder.objects.filter(id=h['work_order_id']).first()
             if wo is None:
                 continue
-            notify(
-                event_type='WORK_ORDER_HELD_TOO_LONG',
-                scope_obj=wo,
-                payload={
-                    'work_order_id': str(wo.id),
-                    'hold_id': str(h['id']),
-                    'reason': h['reason'],
-                    'placed_at': h['placed_at'].isoformat() if h['placed_at'] else None,
-                    'hours_open': (now - h['placed_at']).total_seconds() / 3600.0 if h['placed_at'] else None,
-                },
-                related_obj=wo,
-            )
+            tenant = Tenant.objects.filter(id=h['tenant_id']).first()
+            if tenant is None:
+                continue
+            emit('workorder.held', tenant=tenant, payload=WorkOrderHeldPayload(
+                id=str(wo.id),
+                tenant_id=str(wo.tenant_id),
+                work_order_id=str(wo.id),
+                work_order_number=getattr(wo, 'order_number', '') or '',
+                hold_id=str(h['id']),
+                reason=h['reason'] or '',
+                placed_at=h['placed_at'],
+                hours_open=(
+                    (now - h['placed_at']).total_seconds() / 3600.0
+                    if h['placed_at'] else None
+                ),
+            ))
             held_emitted += 1
 
     overdue = WorkOrder.all_tenants.filter(
@@ -1503,15 +1427,19 @@ def scan_work_order_holds_and_overdue():
             wo = WorkOrder.objects.filter(id=row['id']).first()
             if wo is None:
                 continue
-            notify(
-                event_type='WORK_ORDER_OVERDUE',
-                scope_obj=wo,
-                payload={
-                    'work_order_id': str(wo.id),
-                    'expected_completion': row['expected_completion'].isoformat() if row['expected_completion'] else None,
-                },
-                related_obj=wo,
-            )
+            tenant = Tenant.objects.filter(id=row['tenant_id']).first()
+            if tenant is None:
+                continue
+            emit('workorder.overdue', tenant=tenant, payload=WorkOrderOverduePayload(
+                id=str(wo.id),
+                tenant_id=str(wo.tenant_id),
+                work_order_id=str(wo.id),
+                work_order_number=getattr(wo, 'order_number', '') or '',
+                expected_completion=(
+                    row['expected_completion'].isoformat()
+                    if row['expected_completion'] else None
+                ),
+            ))
             overdue_emitted += 1
 
     logger.info(

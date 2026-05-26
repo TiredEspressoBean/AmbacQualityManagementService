@@ -1429,6 +1429,292 @@ export type ModeEnum =
    * @enum saas, dedicated
    */
   "saas" | "dedicated";
+export type CustomerRule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _Escalation | undefined;
+  created_at: string;
+  updated_at: string;
+  scope_customer: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_external?: Array<string> | undefined;
+};
+export type RecipientStrategyEnum =
+  /**
+   * * `static` - Static — recipients from this rule only
+   * `from_payload` - From event — recipients from the event payload
+   * `union` - Union — combine event-payload recipients with this rule's
+   *
+   * @enum static, from_payload, union
+   */
+  "static" | "from_payload" | "union";
+export type _Escalation = {
+  enabled?: /**
+   * @default true
+   */
+  boolean | undefined;
+  steps: Array<_EscalationStep>;
+};
+export type _EscalationStep = {
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  order: number;
+  /**
+   * @minimum 1
+   */
+  delay_seconds: number;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  subject_override?: /**
+   * @default ""
+   * @maxLength 255
+   */
+  string | undefined;
+};
+export type CustomerRuleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _EscalationRequest | undefined;
+  scope_customer: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_external?: Array<string> | undefined;
+};
+export type _EscalationRequest = {
+  enabled?: /**
+   * @default true
+   */
+  boolean | undefined;
+  steps: Array<_EscalationStepRequest>;
+};
+export type _EscalationStepRequest = {
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  order: number;
+  /**
+   * @minimum 1
+   */
+  delay_seconds: number;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  subject_override?: /**
+   * @default ""
+   * @maxLength 255
+   */
+  string | undefined;
+};
+export type CustomerSchedule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+  /**
+   * Set to now() inside the fire transaction, before rendering.
+   */
+  last_fired_at: string | null;
+  created_at: string;
+  updated_at: string;
+  scope_customer: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_external?: Array<string> | undefined;
+};
+export type CadenceEnum =
+  /**
+   * * `weekly` - Weekly
+   * `monthly` - Monthly
+   *
+   * @enum weekly, monthly
+   */
+  "weekly" | "monthly";
+export type CustomerScheduleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+  scope_customer: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+  recipient_external?: Array<string> | undefined;
+};
 export type DemoResetRequestRequest = Partial<{
   /**
    * @default "small"
@@ -2502,241 +2788,6 @@ export type Milestone = {
    */
   boolean | undefined;
 };
-export type NotificationPreference = {
-  id: number;
-  notification_type: NotificationTypeEnum;
-  notification_type_display: string;
-  channel_type?: NotificationPreferenceChannelTypeEnum | undefined;
-  channel_type_display: string;
-  status: NotificationTaskStatusEnum;
-  status_display: string;
-  schedule?: NotificationSchedule | undefined;
-  /**
-   * When this notification should be sent (UTC)
-   */
-  next_send_at: string;
-  next_send_at_display: string | null;
-  last_sent_at: string | null;
-  last_sent_at_display: string | null;
-  attempt_count: number;
-  max_attempts?:
-    | /**
-     * Max sends before stopping. Null = infinite
-     *
-     * @minimum -2147483648
-     * @maximum 2147483647
-     */
-    (number | null)
-    | undefined;
-  created_at: string;
-  updated_at: string;
-};
-export type NotificationTypeEnum =
-  /**
-   * * `WEEKLY_REPORT` - Weekly Order Report
-   * `CAPA_REMINDER` - CAPA Reminder
-   * `APPROVAL_REQUEST` - Approval Request
-   * `APPROVAL_DECISION` - Approval Decision
-   * `APPROVAL_ESCALATION` - Approval Escalation
-   * `STEP_FAILURE` - Part failed at step
-   *
-   * @enum WEEKLY_REPORT, CAPA_REMINDER, APPROVAL_REQUEST, APPROVAL_DECISION, APPROVAL_ESCALATION, STEP_FAILURE
-   */
-  | "WEEKLY_REPORT"
-  | "CAPA_REMINDER"
-  | "APPROVAL_REQUEST"
-  | "APPROVAL_DECISION"
-  | "APPROVAL_ESCALATION"
-  | "STEP_FAILURE";
-export type NotificationPreferenceChannelTypeEnum =
-  /**
-   * * `EMAIL` - Email
-   * `IN_APP` - In-App Notification
-   * `SMS` - SMS
-   *
-   * @enum EMAIL, IN_APP, SMS
-   */
-  "EMAIL" | "IN_APP" | "SMS";
-export type NotificationTaskStatusEnum =
-  /**
-   * * `PENDING` - Pending
-   * `SENT` - Sent
-   * `FAILED` - Failed
-   * `CANCELLED` - Cancelled
-   *
-   * @enum PENDING, SENT, FAILED, CANCELLED
-   */
-  "PENDING" | "SENT" | "FAILED" | "CANCELLED";
-export type NotificationSchedule = {
-  interval_type: IntervalTypeEnum;
-  day_of_week?:
-    | /**
-     * 0=Monday, 6=Sunday
-     *
-     * @minimum 0
-     * @maximum 6
-     */
-    (number | null)
-    | undefined;
-  time?:
-    | /**
-     * Time in user's local timezone
-     */
-    (string | null)
-    | undefined;
-  interval_weeks?:
-    | /**
-     * Number of weeks between sends
-     *
-     * @minimum 1
-     */
-    (number | null)
-    | undefined;
-  escalation_tiers?:
-    | /**
-     * List of [threshold_days, interval_days] tuples
-     */
-    (Array<Array<number>> | null)
-    | undefined;
-};
-export type IntervalTypeEnum =
-  /**
-   * * `FIXED` - FIXED
-   * `DEADLINE_BASED` - DEADLINE_BASED
-   *
-   * @enum FIXED, DEADLINE_BASED
-   */
-  "FIXED" | "DEADLINE_BASED";
-export type NotificationPreferenceRequest = {
-  notification_type: NotificationTypeEnum;
-  channel_type?: NotificationPreferenceChannelTypeEnum | undefined;
-  schedule?: NotificationScheduleRequest | undefined;
-  max_attempts?:
-    | /**
-     * Max sends before stopping. Null = infinite
-     *
-     * @minimum -2147483648
-     * @maximum 2147483647
-     */
-    (number | null)
-    | undefined;
-};
-export type NotificationScheduleRequest = {
-  interval_type: IntervalTypeEnum;
-  day_of_week?:
-    | /**
-     * 0=Monday, 6=Sunday
-     *
-     * @minimum 0
-     * @maximum 6
-     */
-    (number | null)
-    | undefined;
-  time?:
-    | /**
-     * Time in user's local timezone
-     */
-    (string | null)
-    | undefined;
-  interval_weeks?:
-    | /**
-     * Number of weeks between sends
-     *
-     * @minimum 1
-     */
-    (number | null)
-    | undefined;
-  escalation_tiers?:
-    | /**
-     * List of [threshold_days, interval_days] tuples
-     */
-    (Array<Array<number>> | null)
-    | undefined;
-};
-export type NotificationRule = {
-  id: string;
-  /**
-   * Admin-friendly label shown in the rule list.
-   *
-   * @maxLength 200
-   */
-  name: string;
-  description?: string | undefined;
-  event_type: EventTypeEnum;
-  scope_content_type?: (number | null) | undefined;
-  scope_object_id?: (string | null) | undefined;
-  recipient_users?: Array<number> | undefined;
-  recipient_groups?: Array<string> | undefined;
-  recipient_resolver_key?: /**
-   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
-   *
-   * @maxLength 64
-   */
-  string | undefined;
-  channel_type?: NotificationRuleChannelTypeEnum | undefined;
-  min_gap_seconds?: /**
-   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_active?: boolean | undefined;
-  created_at: string;
-  updated_at: string;
-  available_resolvers: Array<string>;
-};
-export type EventTypeEnum =
-  /**
-   * * `STEP_FAILURE` - Part failed at step
-   * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
-   * `WORK_ORDER_STALLED` - Work order stalled
-   * `WORK_ORDER_OVERDUE` - Work order overdue
-   *
-   * @enum STEP_FAILURE, WORK_ORDER_HELD_TOO_LONG, WORK_ORDER_STALLED, WORK_ORDER_OVERDUE
-   */
-  | "STEP_FAILURE"
-  | "WORK_ORDER_HELD_TOO_LONG"
-  | "WORK_ORDER_STALLED"
-  | "WORK_ORDER_OVERDUE";
-export type NotificationRuleChannelTypeEnum =
-  /**
-   * * `EMAIL` - Email
-   * `IN_APP` - In-App Notification
-   *
-   * @enum EMAIL, IN_APP
-   */
-  "EMAIL" | "IN_APP";
-export type NotificationRuleRequest = {
-  /**
-   * Admin-friendly label shown in the rule list.
-   *
-   * @minLength 1
-   * @maxLength 200
-   */
-  name: string;
-  description?: string | undefined;
-  event_type: EventTypeEnum;
-  scope_content_type?: (number | null) | undefined;
-  scope_object_id?: (string | null) | undefined;
-  recipient_users?: Array<number> | undefined;
-  recipient_groups?: Array<string> | undefined;
-  recipient_resolver_key?: /**
-   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
-   *
-   * @maxLength 64
-   */
-  string | undefined;
-  channel_type?: NotificationRuleChannelTypeEnum | undefined;
-  min_gap_seconds?: /**
-   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  is_active?: boolean | undefined;
-};
 export type Orders = {
   id: string;
   /**
@@ -3191,6 +3242,44 @@ export type CustomerOrder = {
   created_at: string;
   updated_at: string;
 };
+export type PaginatedCustomerRuleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<CustomerRule>;
+};
+export type PaginatedCustomerScheduleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<CustomerSchedule>;
+};
 export type PaginatedDisassemblyBOMLineList = {
   /**
    * @example 123
@@ -3434,6 +3523,46 @@ export type PaginatedEquipmentsList = {
     (string | null)
     | undefined;
   results: Array<Equipments>;
+};
+export type PaginatedExternalContactList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ExternalContact>;
+};
+export type ExternalContact = {
+  id: string;
+  customer: string;
+  /**
+   * @maxLength 128
+   */
+  name: string;
+  /**
+   * @maxLength 254
+   */
+  email: string;
+  role?: /**
+   * Free-form label, e.g. 'primary', 'quality', 'procurement'.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  enabled?: boolean | undefined;
+  created_at: string;
+  updated_at: string;
 };
 export type PaginatedFPIRecordList = {
   /**
@@ -3724,44 +3853,6 @@ export type PaginatedMeasurementDefinitionList = {
     | undefined;
   results: Array<MeasurementDefinition>;
 };
-export type PaginatedNotificationPreferenceList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<NotificationPreference>;
-};
-export type PaginatedNotificationRuleList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<NotificationRule>;
-};
 export type PaginatedOrdersList = {
   /**
    * @example 123
@@ -3968,6 +4059,150 @@ export type Parts = {
   process: string | null;
   total_rework_count: number;
   archived?: boolean | undefined;
+};
+export type PaginatedPersonalRuleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<PersonalRule>;
+};
+export type PersonalRule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _Escalation | undefined;
+  created_at: string;
+  updated_at: string;
+  owner_user: number;
+};
+export type PaginatedPersonalScheduleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<PersonalSchedule>;
+};
+export type PersonalSchedule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+  /**
+   * Set to now() inside the fire transaction, before rendering.
+   */
+  last_fired_at: string | null;
+  created_at: string;
+  updated_at: string;
+  owner_user: number;
 };
 export type PaginatedProcessChangeNoticeList = {
   /**
@@ -5729,6 +5964,152 @@ export type TenantStatusEnum =
    * @enum ACTIVE, TRIAL, SUSPENDED, PENDING_DELETION
    */
   "ACTIVE" | "TRIAL" | "SUSPENDED" | "PENDING_DELETION";
+export type PaginatedTenantRuleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<TenantRule>;
+};
+export type TenantRule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _Escalation | undefined;
+  created_at: string;
+  updated_at: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+};
+export type PaginatedTenantScheduleList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<TenantSchedule>;
+};
+export type TenantSchedule = {
+  id: string;
+  /**
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+  /**
+   * Set to now() inside the fire transaction, before rendering.
+   */
+  last_fired_at: string | null;
+  created_at: string;
+  updated_at: string;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+};
 export type PaginatedThreeDModelList = {
   /**
    * @example 123
@@ -6722,6 +7103,109 @@ export type PatchedCoreRequest = Partial<{
   work_order: string | null;
   archived: boolean;
 }>;
+export type PatchedCustomerRuleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  event_code: string;
+  /**
+   * CEL expression evaluated against the event's payload.
+   */
+  conditions_source: string;
+  /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  channels: unknown;
+  /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  priority: number;
+  enabled: boolean;
+  /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  min_gap_seconds: number;
+  /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  recipient_strategy: RecipientStrategyEnum;
+  escalation: _EscalationRequest;
+  scope_customer: string;
+  recipient_users: Array<number>;
+  recipient_groups: Array<string>;
+  recipient_external: Array<string>;
+}>;
+export type PatchedCustomerScheduleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  enabled: boolean;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  provider_params: unknown;
+  cadence: CadenceEnum;
+  /**
+   * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_week: number | null;
+  /**
+   * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_month: number | null;
+  /**
+   * Local clock time in the schedule's timezone.
+   */
+  time_of_day: string;
+  /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  timezone: string;
+  /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  channels: unknown;
+  scope_customer: string;
+  recipient_users: Array<number>;
+  recipient_groups: Array<string>;
+  recipient_external: Array<string>;
+}>;
 export type PatchedDocumentsRequest = Partial<{
   /**
      * Security classification level for document access control
@@ -6974,48 +7458,6 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
   spc_enabled: boolean;
   archived: boolean;
 }>;
-export type PatchedNotificationPreferenceRequest = Partial<{
-  notification_type: NotificationTypeEnum;
-  channel_type: NotificationPreferenceChannelTypeEnum;
-  schedule: NotificationScheduleRequest;
-  /**
-   * Max sends before stopping. Null = infinite
-   *
-   * @minimum -2147483648
-   * @maximum 2147483647
-   */
-  max_attempts: number | null;
-}>;
-export type PatchedNotificationRuleRequest = Partial<{
-  /**
-   * Admin-friendly label shown in the rule list.
-   *
-   * @minLength 1
-   * @maxLength 200
-   */
-  name: string;
-  description: string;
-  event_type: EventTypeEnum;
-  scope_content_type: number | null;
-  scope_object_id: string | null;
-  recipient_users: Array<number>;
-  recipient_groups: Array<string>;
-  /**
-   * Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users.
-   *
-   * @maxLength 64
-   */
-  recipient_resolver_key: string;
-  channel_type: NotificationRuleChannelTypeEnum;
-  /**
-   * Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  min_gap_seconds: number;
-  is_active: boolean;
-}>;
 export type PatchedOrdersRequest = Partial<{
   /**
    * @minLength 1
@@ -7046,6 +7488,101 @@ export type PatchedPartsRequest = Partial<{
   sampling_ruleset: string | null;
   sampling_context: unknown;
   archived: boolean;
+}>;
+export type PatchedPersonalRuleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  event_code: string;
+  /**
+   * CEL expression evaluated against the event's payload.
+   */
+  conditions_source: string;
+  /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  channels: unknown;
+  /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  priority: number;
+  enabled: boolean;
+  /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  min_gap_seconds: number;
+  /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  recipient_strategy: RecipientStrategyEnum;
+  escalation: _EscalationRequest;
+}>;
+export type PatchedPersonalScheduleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  enabled: boolean;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  provider_params: unknown;
+  cadence: CadenceEnum;
+  /**
+   * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_week: number | null;
+  /**
+   * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_month: number | null;
+  /**
+   * Local clock time in the schedule's timezone.
+   */
+  time_of_day: string;
+  /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  timezone: string;
+  /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  channels: unknown;
 }>;
 export type PatchedProcessChangeOrderRequest = Partial<{
   /**
@@ -7680,6 +8217,105 @@ export type PatchedTenantRequest = Partial<{
    */
   default_timezone: string;
 }>;
+export type PatchedTenantRuleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  event_code: string;
+  /**
+   * CEL expression evaluated against the event's payload.
+   */
+  conditions_source: string;
+  /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  channels: unknown;
+  /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  priority: number;
+  enabled: boolean;
+  /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  min_gap_seconds: number;
+  /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  recipient_strategy: RecipientStrategyEnum;
+  escalation: _EscalationRequest;
+  recipient_users: Array<number>;
+  recipient_groups: Array<string>;
+}>;
+export type PatchedTenantScheduleRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description: string;
+  enabled: boolean;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  provider_params: unknown;
+  cadence: CadenceEnum;
+  /**
+   * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_week: number | null;
+  /**
+   * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+   *
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  day_of_month: number | null;
+  /**
+   * Local clock time in the schedule's timezone.
+   */
+  time_of_day: string;
+  /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  timezone: string;
+  /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  channels: unknown;
+  recipient_users: Array<number>;
+  recipient_groups: Array<string>;
+}>;
 export type PatchedTimeEntryRequest = Partial<{
   entry_type: TimeEntryTypeEnum;
   start_time: string;
@@ -7733,6 +8369,105 @@ export type PatchedWorkOrderRequest = Partial<{
   notes: string | null;
   archived: boolean;
 }>;
+export type PersonalRuleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _EscalationRequest | undefined;
+};
+export type PersonalScheduleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+};
 export type ProcessChangeRequestRequest = {
   priority?: ChangeControlPriorityEnum | undefined;
   /**
@@ -8860,6 +9595,109 @@ export type TenantRequest = {
    * @maxLength 50
    */
   string | undefined;
+};
+export type TenantRuleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  event_code?: /**
+   * Must exist in EVENT_REGISTRY (validated at save time).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  conditions_source?: /**
+   * CEL expression evaluated against the event's payload.
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email', 'in_app'].
+   */
+  unknown | undefined;
+  priority?: /**
+   * @minimum -2147483648
+   * @maximum 2147483647
+   */
+  number | undefined;
+  enabled?: boolean | undefined;
+  min_gap_seconds?: /**
+   * Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  recipient_strategy?: /**
+     * Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+    
+    * `static` - Static — recipients from this rule only
+    * `from_payload` - From event — recipients from the event payload
+    * `union` - Union — combine event-payload recipients with this rule's
+     */
+  RecipientStrategyEnum | undefined;
+  escalation?: _EscalationRequest | undefined;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
+};
+export type TenantScheduleRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  description?: string | undefined;
+  enabled?: boolean | undefined;
+  /**
+   * ScheduledContentProvider registry key.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  provider_kind: string;
+  provider_params?: /**
+   * Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider.
+   */
+  unknown | undefined;
+  cadence?: CadenceEnum | undefined;
+  day_of_week?:
+    | /**
+     * 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  day_of_month?:
+    | /**
+     * 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'.
+     *
+     * @minimum -2147483648
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  time_of_day?: /**
+   * Local clock time in the schedule's timezone.
+   */
+  string | undefined;
+  timezone?: /**
+   * IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  string | undefined;
+  channels?: /**
+   * List of channel codes, e.g. ['email']. Email-only at launch.
+   */
+  unknown | undefined;
+  recipient_users?: Array<number> | undefined;
+  recipient_groups?: Array<string> | undefined;
 };
 export type TimeEntryRequest = {
   entry_type: TimeEntryTypeEnum;
@@ -11163,147 +12001,14 @@ const PatchedMilestoneRequest = z
   })
   .partial();
 const NotificationEventTypeCatalog = z.object({
-  key: z.string(),
+  code: z.string(),
   label: z.string(),
+  domain: z.string(),
   description: z.string(),
-  scope_model: z.string().nullable(),
-  scope_label: z.string().nullable(),
-  resolver_keys: z.array(z.string()),
+  default_channels: z.array(z.string()),
+  default_on: z.boolean(),
+  supports_escalation: z.boolean(),
 });
-const NotificationTypeEnum = z.enum([
-  "WEEKLY_REPORT",
-  "CAPA_REMINDER",
-  "APPROVAL_REQUEST",
-  "APPROVAL_DECISION",
-  "APPROVAL_ESCALATION",
-  "STEP_FAILURE",
-]);
-const NotificationPreferenceChannelTypeEnum = z.enum([
-  "EMAIL",
-  "IN_APP",
-  "SMS",
-]);
-const NotificationTaskStatusEnum = z.enum([
-  "PENDING",
-  "SENT",
-  "FAILED",
-  "CANCELLED",
-]);
-const IntervalTypeEnum = z.enum(["FIXED", "DEADLINE_BASED"]);
-const NotificationSchedule = z.object({
-  interval_type: IntervalTypeEnum,
-  day_of_week: z.number().int().gte(0).lte(6).nullish(),
-  time: z.string().nullish(),
-  interval_weeks: z.number().int().gte(1).nullish(),
-  escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
-});
-const NotificationPreference = z.object({
-  id: z.number().int(),
-  notification_type: NotificationTypeEnum,
-  notification_type_display: z.string(),
-  channel_type: NotificationPreferenceChannelTypeEnum.optional(),
-  channel_type_display: z.string(),
-  status: NotificationTaskStatusEnum,
-  status_display: z.string(),
-  schedule: NotificationSchedule.optional(),
-  next_send_at: z.string().datetime({ offset: true }),
-  next_send_at_display: z.string().datetime({ offset: true }).nullable(),
-  last_sent_at: z.string().datetime({ offset: true }).nullable(),
-  last_sent_at_display: z.string().datetime({ offset: true }).nullable(),
-  attempt_count: z.number().int(),
-  max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-  created_at: z.string().datetime({ offset: true }),
-  updated_at: z.string().datetime({ offset: true }),
-});
-const PaginatedNotificationPreferenceList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(NotificationPreference),
-});
-const NotificationScheduleRequest = z.object({
-  interval_type: IntervalTypeEnum,
-  day_of_week: z.number().int().gte(0).lte(6).nullish(),
-  time: z.string().nullish(),
-  interval_weeks: z.number().int().gte(1).nullish(),
-  escalation_tiers: z.array(z.array(z.number()).min(2).max(2)).nullish(),
-});
-const NotificationPreferenceRequest = z.object({
-  notification_type: NotificationTypeEnum,
-  channel_type: NotificationPreferenceChannelTypeEnum.optional(),
-  schedule: NotificationScheduleRequest.optional(),
-  max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
-});
-const PatchedNotificationPreferenceRequest = z
-  .object({
-    notification_type: NotificationTypeEnum,
-    channel_type: NotificationPreferenceChannelTypeEnum,
-    schedule: NotificationScheduleRequest,
-    max_attempts: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
-  })
-  .partial();
-const TestSendResponse = z.object({ status: z.string(), message: z.string() });
-const AvailableNotificationTypes = z.object({
-  notification_types: z.array(z.object({}).partial().passthrough()),
-});
-const EventTypeEnum = z.enum([
-  "STEP_FAILURE",
-  "WORK_ORDER_HELD_TOO_LONG",
-  "WORK_ORDER_STALLED",
-  "WORK_ORDER_OVERDUE",
-]);
-const NotificationRuleChannelTypeEnum = z.enum(["EMAIL", "IN_APP"]);
-const NotificationRule = z.object({
-  id: z.string().uuid(),
-  name: z.string().max(200),
-  description: z.string().optional(),
-  event_type: EventTypeEnum,
-  scope_content_type: z.number().int().nullish(),
-  scope_object_id: z.string().nullish(),
-  recipient_users: z.array(z.number().int()).optional(),
-  recipient_groups: z.array(z.string().uuid()).optional(),
-  recipient_resolver_key: z.string().max(64).optional(),
-  channel_type: NotificationRuleChannelTypeEnum.optional(),
-  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
-  is_active: z.boolean().optional(),
-  created_at: z.string().datetime({ offset: true }),
-  updated_at: z.string().datetime({ offset: true }),
-  available_resolvers: z.array(z.string()),
-});
-const PaginatedNotificationRuleList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(NotificationRule),
-});
-const NotificationRuleRequest = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().optional(),
-  event_type: EventTypeEnum,
-  scope_content_type: z.number().int().nullish(),
-  scope_object_id: z.string().nullish(),
-  recipient_users: z.array(z.number().int()).optional(),
-  recipient_groups: z.array(z.string().uuid()).optional(),
-  recipient_resolver_key: z.string().max(64).optional(),
-  channel_type: NotificationRuleChannelTypeEnum.optional(),
-  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
-  is_active: z.boolean().optional(),
-});
-const PatchedNotificationRuleRequest = z
-  .object({
-    name: z.string().min(1).max(200),
-    description: z.string(),
-    event_type: EventTypeEnum,
-    scope_content_type: z.number().int().nullable(),
-    scope_object_id: z.string().nullable(),
-    recipient_users: z.array(z.number().int()),
-    recipient_groups: z.array(z.string().uuid()),
-    recipient_resolver_key: z.string().max(64),
-    channel_type: NotificationRuleChannelTypeEnum,
-    min_gap_seconds: z.number().int().gte(0).lte(2147483647),
-    is_active: z.boolean(),
-  })
-  .partial();
 const OrdersStatusEnum = z.enum([
   "RFI",
   "PENDING",
@@ -13750,6 +14455,400 @@ const IntegrationCatalogItem = z.object({
   last_sync_error: z.string().nullable(),
   last_sync_stats: z.object({}).partial().passthrough().nullable(),
 });
+const ExternalContact = z.object({
+  id: z.string().uuid(),
+  customer: z.string().uuid(),
+  name: z.string().max(128),
+  email: z.string().max(254).email(),
+  role: z.string().max(64).optional(),
+  enabled: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedExternalContactList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ExternalContact),
+});
+const ExternalContactRequest = z.object({
+  customer: z.string().uuid(),
+  name: z.string().min(1).max(128),
+  email: z.string().min(1).max(254).email(),
+  role: z.string().max(64).optional(),
+  enabled: z.boolean().optional(),
+});
+const PatchedExternalContactRequest = z
+  .object({
+    customer: z.string().uuid(),
+    name: z.string().min(1).max(128),
+    email: z.string().min(1).max(254).email(),
+    role: z.string().max(64),
+    enabled: z.boolean(),
+  })
+  .partial();
+const RecipientStrategyEnum = z.enum(["static", "from_payload", "union"]);
+const _EscalationStep = z.object({
+  order: z.number().int().gte(0).lte(2),
+  delay_seconds: z.number().int().gte(1),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  subject_override: z.string().max(255).optional().default(""),
+});
+const _Escalation = z.object({
+  enabled: z.boolean().optional().default(true),
+  steps: z.array(_EscalationStep),
+});
+const CustomerRule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  event_code: z.string().max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _Escalation.nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  scope_customer: z.string().uuid(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_external: z.array(z.string().uuid()).optional(),
+});
+const PaginatedCustomerRuleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CustomerRule),
+});
+const _EscalationStepRequest = z.object({
+  order: z.number().int().gte(0).lte(2),
+  delay_seconds: z.number().int().gte(1),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  subject_override: z.string().max(255).optional().default(""),
+});
+const _EscalationRequest = z.object({
+  enabled: z.boolean().optional().default(true),
+  steps: z.array(_EscalationStepRequest),
+});
+const CustomerRuleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  event_code: z.string().min(1).max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _EscalationRequest.nullish(),
+  scope_customer: z.string().uuid(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_external: z.array(z.string().uuid()).optional(),
+});
+const PatchedCustomerRuleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    event_code: z.string().min(1).max(64),
+    conditions_source: z.string(),
+    channels: z.unknown(),
+    priority: z.number().int().gte(-2147483648).lte(2147483647),
+    enabled: z.boolean(),
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647),
+    recipient_strategy: RecipientStrategyEnum,
+    escalation: _EscalationRequest.nullable(),
+    scope_customer: z.string().uuid(),
+    recipient_users: z.array(z.number().int()),
+    recipient_groups: z.array(z.string().uuid()),
+    recipient_external: z.array(z.string().uuid()),
+  })
+  .partial();
+const PersonalRule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  event_code: z.string().max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _Escalation.nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  owner_user: z.number().int(),
+});
+const PaginatedPersonalRuleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PersonalRule),
+});
+const PersonalRuleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  event_code: z.string().min(1).max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _EscalationRequest.nullish(),
+});
+const PatchedPersonalRuleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    event_code: z.string().min(1).max(64),
+    conditions_source: z.string(),
+    channels: z.unknown(),
+    priority: z.number().int().gte(-2147483648).lte(2147483647),
+    enabled: z.boolean(),
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647),
+    recipient_strategy: RecipientStrategyEnum,
+    escalation: _EscalationRequest.nullable(),
+  })
+  .partial();
+const TenantRule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  event_code: z.string().max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _Escalation.nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+});
+const PaginatedTenantRuleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TenantRule),
+});
+const TenantRuleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  event_code: z.string().min(1).max(64).optional(),
+  conditions_source: z.string().optional(),
+  channels: z.unknown().optional(),
+  priority: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  enabled: z.boolean().optional(),
+  min_gap_seconds: z.number().int().gte(0).lte(2147483647).optional(),
+  recipient_strategy: RecipientStrategyEnum.optional(),
+  escalation: _EscalationRequest.nullish(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+});
+const PatchedTenantRuleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    event_code: z.string().min(1).max(64),
+    conditions_source: z.string(),
+    channels: z.unknown(),
+    priority: z.number().int().gte(-2147483648).lte(2147483647),
+    enabled: z.boolean(),
+    min_gap_seconds: z.number().int().gte(0).lte(2147483647),
+    recipient_strategy: RecipientStrategyEnum,
+    escalation: _EscalationRequest.nullable(),
+    recipient_users: z.array(z.number().int()),
+    recipient_groups: z.array(z.string().uuid()),
+  })
+  .partial();
+const CadenceEnum = z.enum(["weekly", "monthly"]);
+const CustomerSchedule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().max(64).optional(),
+  channels: z.unknown().optional(),
+  last_fired_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  scope_customer: z.string().uuid(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_external: z.array(z.string().uuid()).optional(),
+});
+const PaginatedCustomerScheduleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CustomerSchedule),
+});
+const CustomerScheduleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().min(1).max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().min(1).max(64).optional(),
+  channels: z.unknown().optional(),
+  scope_customer: z.string().uuid(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+  recipient_external: z.array(z.string().uuid()).optional(),
+});
+const PatchedCustomerScheduleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    enabled: z.boolean(),
+    provider_kind: z.string().min(1).max(64),
+    provider_params: z.unknown(),
+    cadence: CadenceEnum,
+    day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    time_of_day: z.string(),
+    timezone: z.string().min(1).max(64),
+    channels: z.unknown(),
+    scope_customer: z.string().uuid(),
+    recipient_users: z.array(z.number().int()),
+    recipient_groups: z.array(z.string().uuid()),
+    recipient_external: z.array(z.string().uuid()),
+  })
+  .partial();
+const PersonalSchedule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().max(64).optional(),
+  channels: z.unknown().optional(),
+  last_fired_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  owner_user: z.number().int(),
+});
+const PaginatedPersonalScheduleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PersonalSchedule),
+});
+const PersonalScheduleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().min(1).max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().min(1).max(64).optional(),
+  channels: z.unknown().optional(),
+});
+const PatchedPersonalScheduleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    enabled: z.boolean(),
+    provider_kind: z.string().min(1).max(64),
+    provider_params: z.unknown(),
+    cadence: CadenceEnum,
+    day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    time_of_day: z.string(),
+    timezone: z.string().min(1).max(64),
+    channels: z.unknown(),
+  })
+  .partial();
+const ScheduledContentProviderCatalog = z.object({
+  name: z.string(),
+  title: z.string(),
+  description: z.string(),
+  params_schema: z.unknown(),
+});
+const TenantSchedule = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().max(64).optional(),
+  channels: z.unknown().optional(),
+  last_fired_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+});
+const PaginatedTenantScheduleList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(TenantSchedule),
+});
+const TenantScheduleRequest = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  provider_kind: z.string().min(1).max(64),
+  provider_params: z.unknown().optional(),
+  cadence: CadenceEnum.optional(),
+  day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
+  time_of_day: z.string().optional(),
+  timezone: z.string().min(1).max(64).optional(),
+  channels: z.unknown().optional(),
+  recipient_users: z.array(z.number().int()).optional(),
+  recipient_groups: z.array(z.string().uuid()).optional(),
+});
+const PatchedTenantScheduleRequest = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string(),
+    enabled: z.boolean(),
+    provider_kind: z.string().min(1).max(64),
+    provider_params: z.unknown(),
+    cadence: CadenceEnum,
+    day_of_week: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    day_of_month: z.number().int().gte(-2147483648).lte(2147483647).nullable(),
+    time_of_day: z.string(),
+    timezone: z.string().min(1).max(64),
+    channels: z.unknown(),
+    recipient_users: z.array(z.number().int()),
+    recipient_groups: z.array(z.string().uuid()),
+  })
+  .partial();
 const PermissionListResponse = z.object({
   permissions: z.array(z.object({}).partial().passthrough()),
 });
@@ -14716,24 +15815,6 @@ export const schemas = {
   MilestoneRequest,
   PatchedMilestoneRequest,
   NotificationEventTypeCatalog,
-  NotificationTypeEnum,
-  NotificationPreferenceChannelTypeEnum,
-  NotificationTaskStatusEnum,
-  IntervalTypeEnum,
-  NotificationSchedule,
-  NotificationPreference,
-  PaginatedNotificationPreferenceList,
-  NotificationScheduleRequest,
-  NotificationPreferenceRequest,
-  PatchedNotificationPreferenceRequest,
-  TestSendResponse,
-  AvailableNotificationTypes,
-  EventTypeEnum,
-  NotificationRuleChannelTypeEnum,
-  NotificationRule,
-  PaginatedNotificationRuleList,
-  NotificationRuleRequest,
-  PatchedNotificationRuleRequest,
   OrdersStatusEnum,
   Orders,
   PaginatedOrdersList,
@@ -15007,6 +16088,41 @@ export const schemas = {
   TestConnectionResult,
   TriggerSyncResult,
   IntegrationCatalogItem,
+  ExternalContact,
+  PaginatedExternalContactList,
+  ExternalContactRequest,
+  PatchedExternalContactRequest,
+  RecipientStrategyEnum,
+  _EscalationStep,
+  _Escalation,
+  CustomerRule,
+  PaginatedCustomerRuleList,
+  _EscalationStepRequest,
+  _EscalationRequest,
+  CustomerRuleRequest,
+  PatchedCustomerRuleRequest,
+  PersonalRule,
+  PaginatedPersonalRuleList,
+  PersonalRuleRequest,
+  PatchedPersonalRuleRequest,
+  TenantRule,
+  PaginatedTenantRuleList,
+  TenantRuleRequest,
+  PatchedTenantRuleRequest,
+  CadenceEnum,
+  CustomerSchedule,
+  PaginatedCustomerScheduleList,
+  CustomerScheduleRequest,
+  PatchedCustomerScheduleRequest,
+  PersonalSchedule,
+  PaginatedPersonalScheduleList,
+  PersonalScheduleRequest,
+  PatchedPersonalScheduleRequest,
+  ScheduledContentProviderCatalog,
+  TenantSchedule,
+  PaginatedTenantScheduleList,
+  TenantScheduleRequest,
+  PatchedTenantScheduleRequest,
   PermissionListResponse,
   PresetListResponse,
   ProcessChangeNoticeStatusEnum,
@@ -23278,192 +24394,36 @@ Usage:
     method: "get",
     path: "/api/NotificationEventTypes/",
     alias: "api_NotificationEventTypes_list",
-    description: `Static catalog of event types the rule engine can fire on.
+    description: `Returns the EVENT_REGISTRY catalog (event_code, label, description,
+domain, default_channels, default_on, supports_escalation).
 
-Consumed by the admin UI to build the event-type dropdown and to
-render the right scope picker per event (scope_model tells the UI
-which model list to fetch when the admin picks &quot;scope at a specific
-object&quot;).`,
+&#x60;supports_escalation&#x60; is derived from the ack registry — events without
+an ack predicate registration can&#x27;t have escalation chains attached,
+so the rule editor disables that toggle for them.`,
     requestFormat: "json",
     response: z.array(NotificationEventTypeCatalog),
   },
   {
     method: "get",
-    path: "/api/NotificationPreferences/",
-    alias: "api_NotificationPreferences_list",
-    description: `List user&#x27;s notification preferences`,
+    path: "/api/notifications/events/",
+    alias: "api_notifications_events_list",
+    description: `Returns the EVENT_REGISTRY catalog (event_code, label, description,
+domain, default_channels, default_on, supports_escalation).
+
+&#x60;supports_escalation&#x60; is derived from the ack registry — events without
+an ack predicate registration can&#x27;t have escalation chains attached,
+so the rule editor disables that toggle for them.`,
     requestFormat: "json",
-    parameters: [
-      {
-        name: "channel_type",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "notification_type",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "status",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: PaginatedNotificationPreferenceList,
-  },
-  {
-    method: "post",
-    path: "/api/NotificationPreferences/",
-    alias: "api_NotificationPreferences_create",
-    description: `Create a new notification preference for the current user`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: NotificationPreferenceRequest,
-      },
-    ],
-    response: NotificationPreference,
+    response: z.array(NotificationEventTypeCatalog),
   },
   {
     method: "get",
-    path: "/api/NotificationPreferences/:id/",
-    alias: "api_NotificationPreferences_retrieve",
-    description: `Retrieve a specific notification preference`,
+    path: "/api/notifications/external-contacts/",
+    alias: "api_notifications_external_contacts_list",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: NotificationPreference,
-  },
-  {
-    method: "put",
-    path: "/api/NotificationPreferences/:id/",
-    alias: "api_NotificationPreferences_update",
-    description: `Update a notification preference`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: NotificationPreferenceRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: NotificationPreference,
-  },
-  {
-    method: "patch",
-    path: "/api/NotificationPreferences/:id/",
-    alias: "api_NotificationPreferences_partial_update",
-    description: `Partially update a notification preference`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedNotificationPreferenceRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: NotificationPreference,
-  },
-  {
-    method: "delete",
-    path: "/api/NotificationPreferences/:id/",
-    alias: "api_NotificationPreferences_destroy",
-    description: `Delete a notification preference`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/api/NotificationPreferences/:id/test-send/",
-    alias: "api_NotificationPreferences_test_send_create",
-    description: `Test send a notification immediately (for testing purposes)`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: TestSendResponse,
-  },
-  {
-    method: "get",
-    path: "/api/NotificationPreferences/available-types/",
-    alias: "api_NotificationPreferences_available_types_retrieve",
-    description: `Get available notification types that users can configure`,
-    requestFormat: "json",
-    response: AvailableNotificationTypes,
-  },
-  {
-    method: "get",
-    path: "/api/NotificationRules/",
-    alias: "api_NotificationRules_list",
-    description: `CRUD for event-driven notification rules.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "channel_type",
-        type: "Query",
-        schema: z.enum(["EMAIL", "IN_APP"]).optional(),
-      },
-      {
-        name: "event_type",
-        type: "Query",
-        schema: z
-          .enum([
-            "STEP_FAILURE",
-            "WORK_ORDER_HELD_TOO_LONG",
-            "WORK_ORDER_OVERDUE",
-            "WORK_ORDER_STALLED",
-          ])
-          .optional(),
-      },
-      {
-        name: "is_active",
-        type: "Query",
-        schema: z.boolean().optional(),
-      },
       {
         name: "limit",
         type: "Query",
@@ -23485,28 +24445,30 @@ object&quot;).`,
         schema: z.string().optional(),
       },
     ],
-    response: PaginatedNotificationRuleList,
+    response: PaginatedExternalContactList,
   },
   {
     method: "post",
-    path: "/api/NotificationRules/",
-    alias: "api_NotificationRules_create",
-    description: `CRUD for event-driven notification rules.`,
+    path: "/api/notifications/external-contacts/",
+    alias: "api_notifications_external_contacts_create",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: NotificationRuleRequest,
+        schema: ExternalContactRequest,
       },
     ],
-    response: NotificationRule,
+    response: ExternalContact,
   },
   {
     method: "get",
-    path: "/api/NotificationRules/:id/",
-    alias: "api_NotificationRules_retrieve",
-    description: `CRUD for event-driven notification rules.`,
+    path: "/api/notifications/external-contacts/:id/",
+    alias: "api_notifications_external_contacts_retrieve",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -23515,19 +24477,20 @@ object&quot;).`,
         schema: z.string().uuid(),
       },
     ],
-    response: NotificationRule,
+    response: ExternalContact,
   },
   {
     method: "put",
-    path: "/api/NotificationRules/:id/",
-    alias: "api_NotificationRules_update",
-    description: `CRUD for event-driven notification rules.`,
+    path: "/api/notifications/external-contacts/:id/",
+    alias: "api_notifications_external_contacts_update",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: NotificationRuleRequest,
+        schema: ExternalContactRequest,
       },
       {
         name: "id",
@@ -23535,19 +24498,20 @@ object&quot;).`,
         schema: z.string().uuid(),
       },
     ],
-    response: NotificationRule,
+    response: ExternalContact,
   },
   {
     method: "patch",
-    path: "/api/NotificationRules/:id/",
-    alias: "api_NotificationRules_partial_update",
-    description: `CRUD for event-driven notification rules.`,
+    path: "/api/notifications/external-contacts/:id/",
+    alias: "api_notifications_external_contacts_partial_update",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: PatchedNotificationRuleRequest,
+        schema: PatchedExternalContactRequest,
       },
       {
         name: "id",
@@ -23555,13 +24519,794 @@ object&quot;).`,
         schema: z.string().uuid(),
       },
     ],
-    response: NotificationRule,
+    response: ExternalContact,
   },
   {
     method: "delete",
-    path: "/api/NotificationRules/:id/",
-    alias: "api_NotificationRules_destroy",
-    description: `CRUD for event-driven notification rules.`,
+    path: "/api/notifications/external-contacts/:id/",
+    alias: "api_notifications_external_contacts_destroy",
+    description: `CRUD over &#x60;ExternalContact&#x60; rows. Tenant-scoped via the mixin;
+customer FK validation handled at the serializer layer.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/customer/",
+    alias: "api_notifications_rules_customer_list",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedCustomerRuleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/rules/customer/",
+    alias: "api_notifications_rules_customer_create",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CustomerRuleRequest,
+      },
+    ],
+    response: CustomerRule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/customer/:id/",
+    alias: "api_notifications_rules_customer_retrieve",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerRule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/rules/customer/:id/",
+    alias: "api_notifications_rules_customer_update",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CustomerRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerRule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/rules/customer/:id/",
+    alias: "api_notifications_rules_customer_partial_update",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedCustomerRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerRule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/rules/customer/:id/",
+    alias: "api_notifications_rules_customer_destroy",
+    description: `CRUD over customer-scoped rules.
+
+Supports a &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; query param to filter to one customer&#x27;s
+rules; without it, all customer-scoped rules in the tenant are returned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/personal/",
+    alias: "api_notifications_rules_personal_list",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedPersonalRuleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/rules/personal/",
+    alias: "api_notifications_rules_personal_create",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PersonalRuleRequest,
+      },
+    ],
+    response: PersonalRule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/personal/:id/",
+    alias: "api_notifications_rules_personal_retrieve",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalRule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/rules/personal/:id/",
+    alias: "api_notifications_rules_personal_update",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PersonalRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalRule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/rules/personal/:id/",
+    alias: "api_notifications_rules_personal_partial_update",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPersonalRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalRule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/rules/personal/:id/",
+    alias: "api_notifications_rules_personal_destroy",
+    description: `CRUD over the request user&#x27;s own personal rules. Filtered to
+&#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each other&#x27;s
+personal rules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/tenant/",
+    alias: "api_notifications_rules_tenant_list",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedTenantRuleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/rules/tenant/",
+    alias: "api_notifications_rules_tenant_create",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantRuleRequest,
+      },
+    ],
+    response: TenantRule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/rules/tenant/:id/",
+    alias: "api_notifications_rules_tenant_retrieve",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantRule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/rules/tenant/:id/",
+    alias: "api_notifications_rules_tenant_update",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantRule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/rules/tenant/:id/",
+    alias: "api_notifications_rules_tenant_partial_update",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedTenantRuleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantRule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/rules/tenant/:id/",
+    alias: "api_notifications_rules_tenant_destroy",
+    description: `CRUD over tenant-scoped rules. Filtered to the current tenant via
+&#x60;TenantScopedMixin&#x60;; further filtered to &#x60;scope_kind&#x3D;&#x27;tenant&#x27;&#x60; via the
+manager method so customer/personal rules don&#x27;t leak through.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/customer/",
+    alias: "api_notifications_schedules_customer_list",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedCustomerScheduleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/schedules/customer/",
+    alias: "api_notifications_schedules_customer_create",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CustomerScheduleRequest,
+      },
+    ],
+    response: CustomerSchedule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/customer/:id/",
+    alias: "api_notifications_schedules_customer_retrieve",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerSchedule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/schedules/customer/:id/",
+    alias: "api_notifications_schedules_customer_update",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CustomerScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerSchedule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/schedules/customer/:id/",
+    alias: "api_notifications_schedules_customer_partial_update",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedCustomerScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerSchedule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/schedules/customer/:id/",
+    alias: "api_notifications_schedules_customer_destroy",
+    description: `CRUD over customer-scoped scheduled notifications.
+
+Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;s schedules.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/personal/",
+    alias: "api_notifications_schedules_personal_list",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedPersonalScheduleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/schedules/personal/",
+    alias: "api_notifications_schedules_personal_create",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PersonalScheduleRequest,
+      },
+    ],
+    response: PersonalSchedule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/personal/:id/",
+    alias: "api_notifications_schedules_personal_retrieve",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalSchedule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/schedules/personal/:id/",
+    alias: "api_notifications_schedules_personal_update",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PersonalScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalSchedule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/schedules/personal/:id/",
+    alias: "api_notifications_schedules_personal_partial_update",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPersonalScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PersonalSchedule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/schedules/personal/:id/",
+    alias: "api_notifications_schedules_personal_destroy",
+    description: `CRUD over the request user&#x27;s own personal schedules.
+
+Filtered to &#x60;owner_user&#x3D;request.user&#x60; — users can&#x27;t see or modify each
+other&#x27;s scheduled subscriptions. Used by &#x60;/profile/notifications&#x60; to
+let customers self-manage their digest cadence.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/providers/",
+    alias: "api_notifications_schedules_providers_list",
+    description: `Returns the registered ScheduledContentProvider catalog.
+
+Used by the schedule editor UI to populate the provider dropdown and
+render dynamic param fields (via the provider&#x27;s &#x60;param_serializer_class&#x60;
+field metadata).`,
+    requestFormat: "json",
+    response: z.array(ScheduledContentProviderCatalog),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/tenant/",
+    alias: "api_notifications_schedules_tenant_list",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedTenantScheduleList,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/schedules/tenant/",
+    alias: "api_notifications_schedules_tenant_create",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantScheduleRequest,
+      },
+    ],
+    response: TenantSchedule,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/schedules/tenant/:id/",
+    alias: "api_notifications_schedules_tenant_retrieve",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantSchedule,
+  },
+  {
+    method: "put",
+    path: "/api/notifications/schedules/tenant/:id/",
+    alias: "api_notifications_schedules_tenant_update",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TenantScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantSchedule,
+  },
+  {
+    method: "patch",
+    path: "/api/notifications/schedules/tenant/:id/",
+    alias: "api_notifications_schedules_tenant_partial_update",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedTenantScheduleRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: TenantSchedule,
+  },
+  {
+    method: "delete",
+    path: "/api/notifications/schedules/tenant/:id/",
+    alias: "api_notifications_schedules_tenant_destroy",
+    description: `CRUD over tenant-scoped scheduled notifications.`,
     requestFormat: "json",
     parameters: [
       {

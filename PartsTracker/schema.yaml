@@ -10569,12 +10569,12 @@ paths:
     get:
       operationId: api_NotificationEventTypes_list
       description: |-
-        Static catalog of event types the rule engine can fire on.
+        Returns the EVENT_REGISTRY catalog (event_code, label, description,
+        domain, default_channels, default_on, supports_escalation).
 
-        Consumed by the admin UI to build the event-type dropdown and to
-        render the right scope picker per event (scope_model tells the UI
-        which model list to fetch when the admin picks "scope at a specific
-        object").
+        `supports_escalation` is derived from the ack registry — events without
+        an ack predicate registration can't have escalation chains attached,
+        so the rule editor disables that toggle for them.
       tags:
       - api
       security:
@@ -10589,438 +10589,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/NotificationEventTypeCatalog'
           description: ''
-  /api/NotificationPreferences/:
-    get:
-      operationId: api_NotificationPreferences_list
-      description: List user's notification preferences
-      parameters:
-      - in: query
-        name: channel_type
-        schema:
-          type: string
-        description: Filter by channel type (email, in_app, sms)
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - in: query
-        name: notification_type
-        schema:
-          type: string
-        description: Filter by notification type
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      - in: query
-        name: status
-        schema:
-          type: string
-        description: Filter by status (pending, sent, failed, cancelled)
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedNotificationPreferenceList'
-          description: ''
-    post:
-      operationId: api_NotificationPreferences_create
-      description: Create a new notification preference for the current user
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationPreference'
-          description: ''
-  /api/NotificationPreferences/{id}/:
-    get:
-      operationId: api_NotificationPreferences_retrieve
-      description: Retrieve a specific notification preference
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Notification Task.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationPreference'
-          description: ''
-    put:
-      operationId: api_NotificationPreferences_update
-      description: Update a notification preference
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Notification Task.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/NotificationPreferenceRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationPreference'
-          description: ''
-    patch:
-      operationId: api_NotificationPreferences_partial_update
-      description: Partially update a notification preference
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Notification Task.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationPreference'
-          description: ''
-    delete:
-      operationId: api_NotificationPreferences_destroy
-      description: Delete a notification preference
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Notification Task.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/NotificationPreferences/{id}/test-send/:
-    post:
-      operationId: api_NotificationPreferences_test_send_create
-      description: Test send a notification immediately (for testing purposes)
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this Notification Task.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TestSendResponse'
-          description: ''
-  /api/NotificationPreferences/available-types/:
-    get:
-      operationId: api_NotificationPreferences_available_types_retrieve
-      description: Get available notification types that users can configure
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AvailableNotificationTypes'
-          description: ''
-  /api/NotificationRules/:
-    get:
-      operationId: api_NotificationRules_list
-      description: CRUD for event-driven notification rules.
-      parameters:
-      - in: query
-        name: channel_type
-        schema:
-          type: string
-          enum:
-          - EMAIL
-          - IN_APP
-        description: |-
-          * `EMAIL` - Email
-          * `IN_APP` - In-App Notification
-      - in: query
-        name: event_type
-        schema:
-          type: string
-          enum:
-          - STEP_FAILURE
-          - WORK_ORDER_HELD_TOO_LONG
-          - WORK_ORDER_OVERDUE
-          - WORK_ORDER_STALLED
-        description: |-
-          * `STEP_FAILURE` - Part failed at step
-          * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
-          * `WORK_ORDER_STALLED` - Work order stalled
-          * `WORK_ORDER_OVERDUE` - Work order overdue
-      - in: query
-        name: is_active
-        schema:
-          type: boolean
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      - name: search
-        required: false
-        in: query
-        description: A search term.
-        schema:
-          type: string
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedNotificationRuleList'
-          description: ''
-    post:
-      operationId: api_NotificationRules_create
-      description: CRUD for event-driven notification rules.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationRule'
-          description: ''
-  /api/NotificationRules/{id}/:
-    get:
-      operationId: api_NotificationRules_retrieve
-      description: CRUD for event-driven notification rules.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this notification rule.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationRule'
-          description: ''
-    put:
-      operationId: api_NotificationRules_update
-      description: CRUD for event-driven notification rules.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this notification rule.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/NotificationRuleRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationRule'
-          description: ''
-    patch:
-      operationId: api_NotificationRules_partial_update
-      description: CRUD for event-driven notification rules.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this notification rule.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedNotificationRuleRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationRule'
-          description: ''
-    delete:
-      operationId: api_NotificationRules_destroy
-      description: CRUD for event-driven notification rules.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this notification rule.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/Orders/:
     get:
       operationId: api_Orders_list
@@ -24307,6 +23875,1433 @@ paths:
                 items:
                   $ref: '#/components/schemas/IntegrationCatalogItem'
           description: ''
+  /api/notifications/events/:
+    get:
+      operationId: api_notifications_events_list
+      description: |-
+        Returns the EVENT_REGISTRY catalog (event_code, label, description,
+        domain, default_channels, default_on, supports_escalation).
+
+        `supports_escalation` is derived from the ack registry — events without
+        an ack predicate registration can't have escalation chains attached,
+        so the rule editor disables that toggle for them.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationEventTypeCatalog'
+          description: ''
+  /api/notifications/external-contacts/:
+    get:
+      operationId: api_notifications_external_contacts_list
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExternalContactList'
+          description: ''
+    post:
+      operationId: api_notifications_external_contacts_create
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalContact'
+          description: ''
+  /api/notifications/external-contacts/{id}/:
+    get:
+      operationId: api_notifications_external_contacts_retrieve
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this external contact.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalContact'
+          description: ''
+    put:
+      operationId: api_notifications_external_contacts_update
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this external contact.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExternalContactRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalContact'
+          description: ''
+    patch:
+      operationId: api_notifications_external_contacts_partial_update
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this external contact.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExternalContactRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedExternalContactRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedExternalContactRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalContact'
+          description: ''
+    delete:
+      operationId: api_notifications_external_contacts_destroy
+      description: |-
+        CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+        customer FK validation handled at the serializer layer.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this external contact.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/rules/customer/:
+    get:
+      operationId: api_notifications_rules_customer_list
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerRuleList'
+          description: ''
+    post:
+      operationId: api_notifications_rules_customer_create
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRule'
+          description: ''
+  /api/notifications/rules/customer/{id}/:
+    get:
+      operationId: api_notifications_rules_customer_retrieve
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRule'
+          description: ''
+    put:
+      operationId: api_notifications_rules_customer_update
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRule'
+          description: ''
+    patch:
+      operationId: api_notifications_rules_customer_partial_update
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerRuleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRule'
+          description: ''
+    delete:
+      operationId: api_notifications_rules_customer_destroy
+      description: |-
+        CRUD over customer-scoped rules.
+
+        Supports a `?customer=<uuid>` query param to filter to one customer's
+        rules; without it, all customer-scoped rules in the tenant are returned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/rules/personal/:
+    get:
+      operationId: api_notifications_rules_personal_list
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonalRuleList'
+          description: ''
+    post:
+      operationId: api_notifications_rules_personal_create
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalRule'
+          description: ''
+  /api/notifications/rules/personal/{id}/:
+    get:
+      operationId: api_notifications_rules_personal_retrieve
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalRule'
+          description: ''
+    put:
+      operationId: api_notifications_rules_personal_update
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonalRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalRule'
+          description: ''
+    patch:
+      operationId: api_notifications_rules_personal_partial_update
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalRuleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalRule'
+          description: ''
+    delete:
+      operationId: api_notifications_rules_personal_destroy
+      description: |-
+        CRUD over the request user's own personal rules. Filtered to
+        `owner_user=request.user` — users can't see or modify each other's
+        personal rules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/rules/tenant/:
+    get:
+      operationId: api_notifications_rules_tenant_list
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTenantRuleList'
+          description: ''
+    post:
+      operationId: api_notifications_rules_tenant_create
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRule'
+          description: ''
+  /api/notifications/rules/tenant/{id}/:
+    get:
+      operationId: api_notifications_rules_tenant_retrieve
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRule'
+          description: ''
+    put:
+      operationId: api_notifications_rules_tenant_update
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantRuleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRule'
+          description: ''
+    patch:
+      operationId: api_notifications_rules_tenant_partial_update
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRuleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRuleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRuleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRule'
+          description: ''
+    delete:
+      operationId: api_notifications_rules_tenant_destroy
+      description: |-
+        CRUD over tenant-scoped rules. Filtered to the current tenant via
+        `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+        manager method so customer/personal rules don't leak through.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification rule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/schedules/customer/:
+    get:
+      operationId: api_notifications_schedules_customer_list
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerScheduleList'
+          description: ''
+    post:
+      operationId: api_notifications_schedules_customer_create
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSchedule'
+          description: ''
+  /api/notifications/schedules/customer/{id}/:
+    get:
+      operationId: api_notifications_schedules_customer_retrieve
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSchedule'
+          description: ''
+    put:
+      operationId: api_notifications_schedules_customer_update
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSchedule'
+          description: ''
+    patch:
+      operationId: api_notifications_schedules_customer_partial_update
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerScheduleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSchedule'
+          description: ''
+    delete:
+      operationId: api_notifications_schedules_customer_destroy
+      description: |-
+        CRUD over customer-scoped scheduled notifications.
+
+        Supports `?customer=<uuid>` to filter to one customer's schedules.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/schedules/personal/:
+    get:
+      operationId: api_notifications_schedules_personal_list
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPersonalScheduleList'
+          description: ''
+    post:
+      operationId: api_notifications_schedules_personal_create
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalSchedule'
+          description: ''
+  /api/notifications/schedules/personal/{id}/:
+    get:
+      operationId: api_notifications_schedules_personal_retrieve
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalSchedule'
+          description: ''
+    put:
+      operationId: api_notifications_schedules_personal_update
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PersonalScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalSchedule'
+          description: ''
+    patch:
+      operationId: api_notifications_schedules_personal_partial_update
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPersonalScheduleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalSchedule'
+          description: ''
+    delete:
+      operationId: api_notifications_schedules_personal_destroy
+      description: |-
+        CRUD over the request user's own personal schedules.
+
+        Filtered to `owner_user=request.user` — users can't see or modify each
+        other's scheduled subscriptions. Used by `/profile/notifications` to
+        let customers self-manage their digest cadence.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/notifications/schedules/providers/:
+    get:
+      operationId: api_notifications_schedules_providers_list
+      description: |-
+        Returns the registered ScheduledContentProvider catalog.
+
+        Used by the schedule editor UI to populate the provider dropdown and
+        render dynamic param fields (via the provider's `param_serializer_class`
+        field metadata).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledContentProviderCatalog'
+          description: ''
+  /api/notifications/schedules/tenant/:
+    get:
+      operationId: api_notifications_schedules_tenant_list
+      description: CRUD over tenant-scoped scheduled notifications.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTenantScheduleList'
+          description: ''
+    post:
+      operationId: api_notifications_schedules_tenant_create
+      description: CRUD over tenant-scoped scheduled notifications.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSchedule'
+          description: ''
+  /api/notifications/schedules/tenant/{id}/:
+    get:
+      operationId: api_notifications_schedules_tenant_retrieve
+      description: CRUD over tenant-scoped scheduled notifications.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSchedule'
+          description: ''
+    put:
+      operationId: api_notifications_schedules_tenant_update
+      description: CRUD over tenant-scoped scheduled notifications.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantScheduleRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSchedule'
+          description: ''
+    patch:
+      operationId: api_notifications_schedules_tenant_partial_update
+      description: CRUD over tenant-scoped scheduled notifications.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantScheduleRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantScheduleRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantScheduleRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSchedule'
+          description: ''
+    delete:
+      operationId: api_notifications_schedules_tenant_destroy
+      description: CRUD over tenant-scoped scheduled notifications.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification schedule.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/orders/{order_id}/parts/:
     get:
       operationId: api_orders_parts_list
@@ -27529,16 +28524,6 @@ components:
       - object_pk
       - object_repr
       - timestamp
-    AvailableNotificationTypes:
-      type: object
-      properties:
-        notification_types:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
-      required:
-      - notification_types
     AvailablePermissionResponse:
       type: object
       properties:
@@ -28256,6 +29241,14 @@ components:
       required:
       - data
       - total
+    CadenceEnum:
+      enum:
+      - weekly
+      - monthly
+      type: string
+      description: |-
+        * `weekly` - Weekly
+        * `monthly` - Monthly
     CalibrationRecord:
       type: object
       description: |-
@@ -29538,6 +30531,320 @@ components:
       - parts_summary
       - process_stages
       - updated_at
+    CustomerRule:
+      type: object
+      description: |-
+        Admin-authored, fires only for events referencing a specific customer.
+        Can route to ExternalContacts at that customer in addition to internal
+        users/groups.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_Escalation'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - created_at
+      - id
+      - name
+      - scope_customer
+      - updated_at
+    CustomerRuleRequest:
+      type: object
+      description: |-
+        Admin-authored, fires only for events referencing a specific customer.
+        Can route to ExternalContacts at that customer in addition to internal
+        users/groups.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - name
+      - scope_customer
+    CustomerSchedule:
+      type: object
+      description: |-
+        Admin-authored, routes to one customer org's recipients (users,
+        groups, or ExternalContacts at that customer).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Set to now() inside the fire transaction, before rendering.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - created_at
+      - id
+      - last_fired_at
+      - name
+      - provider_kind
+      - scope_customer
+      - updated_at
+    CustomerScheduleRequest:
+      type: object
+      description: |-
+        Admin-authored, routes to one customer org's recipients (users,
+        groups, or ExternalContacts at that customer).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - name
+      - provider_kind
+      - scope_customer
     DashboardKPIsResponse:
       type: object
       properties:
@@ -30779,18 +32086,6 @@ components:
         * `IN_CALIBRATION` - In Calibration
         * `IN_MAINTENANCE` - In Maintenance
         * `RETIRED` - Retired
-    EventTypeEnum:
-      enum:
-      - STEP_FAILURE
-      - WORK_ORDER_HELD_TOO_LONG
-      - WORK_ORDER_STALLED
-      - WORK_ORDER_OVERDUE
-      type: string
-      description: |-
-        * `STEP_FAILURE` - Part failed at step
-        * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
-        * `WORK_ORDER_STALLED` - Work order stalled
-        * `WORK_ORDER_OVERDUE` - Work order overdue
     ExecuteQueryRequestRequest:
       type: object
       properties:
@@ -30840,6 +32135,77 @@ components:
       - limit
       - model
       - results
+    ExternalContact:
+      type: object
+      description: |-
+        CRUD over `ExternalContact`. Tenant-scoped automatically by the
+        viewset; the customer FK is validated to belong to the current tenant
+        via TenantScopedPrimaryKeyRelatedField.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        customer:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 128
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        role:
+          type: string
+          description: Free-form label, e.g. 'primary', 'quality', 'procurement'.
+          maxLength: 64
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - customer
+      - email
+      - id
+      - name
+      - updated_at
+    ExternalContactRequest:
+      type: object
+      description: |-
+        CRUD over `ExternalContact`. Tenant-scoped automatically by the
+        viewset; the customer FK is validated to belong to the current tenant
+        via TenantScopedPrimaryKeyRelatedField.
+      properties:
+        customer:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        role:
+          type: string
+          description: Free-form label, e.g. 'primary', 'quality', 'procurement'.
+          maxLength: 64
+        enabled:
+          type: boolean
+      required:
+      - customer
+      - email
+      - name
     FPIRecord:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -32541,14 +33907,6 @@ components:
         * `IDLE` - Idle
         * `SYNCING` - Syncing
         * `ERROR` - Error
-    IntervalTypeEnum:
-      enum:
-      - FIXED
-      - DEADLINE_BASED
-      type: string
-      description: |-
-        * `FIXED` - FIXED
-        * `DEADLINE_BASED` - DEADLINE_BASED
     InviteError:
       type: object
       properties:
@@ -33383,370 +34741,30 @@ components:
     NotificationEventTypeCatalog:
       type: object
       properties:
-        key:
+        code:
           type: string
         label:
           type: string
+        domain:
+          type: string
         description:
           type: string
-        scope_model:
-          type: string
-          nullable: true
-        scope_label:
-          type: string
-          nullable: true
-        resolver_keys:
+        default_channels:
           type: array
           items:
             type: string
+        default_on:
+          type: boolean
+        supports_escalation:
+          type: boolean
       required:
+      - code
+      - default_channels
+      - default_on
       - description
-      - key
+      - domain
       - label
-      - resolver_keys
-      - scope_label
-      - scope_model
-    NotificationPreference:
-      type: object
-      description: |-
-        Serializer for user notification preferences.
-
-        Handles timezone conversion:
-        - INPUT: User sends time in their local timezone
-        - STORED: Time converted to UTC in database
-        - OUTPUT: Time converted back to user's local timezone
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        notification_type:
-          $ref: '#/components/schemas/NotificationTypeEnum'
-        notification_type_display:
-          type: string
-          readOnly: true
-        channel_type:
-          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
-        channel_type_display:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/NotificationTaskStatusEnum'
-          readOnly: true
-        status_display:
-          type: string
-          readOnly: true
-        schedule:
-          $ref: '#/components/schemas/NotificationSchedule'
-        next_send_at:
-          type: string
-          format: date-time
-          readOnly: true
-          description: When this notification should be sent (UTC)
-        next_send_at_display:
-          type: string
-          format: date-time
-          nullable: true
-          readOnly: true
-        last_sent_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        last_sent_at_display:
-          type: string
-          format: date-time
-          nullable: true
-          readOnly: true
-        attempt_count:
-          type: integer
-          readOnly: true
-        max_attempts:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-          nullable: true
-          description: Max sends before stopping. Null = infinite
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-      required:
-      - attempt_count
-      - channel_type_display
-      - created_at
-      - id
-      - last_sent_at
-      - last_sent_at_display
-      - next_send_at
-      - next_send_at_display
-      - notification_type
-      - notification_type_display
-      - status
-      - status_display
-      - updated_at
-    NotificationPreferenceChannelTypeEnum:
-      enum:
-      - EMAIL
-      - IN_APP
-      - SMS
-      type: string
-      description: |-
-        * `EMAIL` - Email
-        * `IN_APP` - In-App Notification
-        * `SMS` - SMS
-    NotificationPreferenceRequest:
-      type: object
-      description: |-
-        Serializer for user notification preferences.
-
-        Handles timezone conversion:
-        - INPUT: User sends time in their local timezone
-        - STORED: Time converted to UTC in database
-        - OUTPUT: Time converted back to user's local timezone
-      properties:
-        notification_type:
-          $ref: '#/components/schemas/NotificationTypeEnum'
-        channel_type:
-          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
-        schedule:
-          $ref: '#/components/schemas/NotificationScheduleRequest'
-        max_attempts:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-          nullable: true
-          description: Max sends before stopping. Null = infinite
-      required:
-      - notification_type
-    NotificationRule:
-      type: object
-      description: CRUD for NotificationRule.
-      properties:
-        id:
-          type: string
-          format: uuid
-          readOnly: true
-        name:
-          type: string
-          description: Admin-friendly label shown in the rule list.
-          maxLength: 200
-        description:
-          type: string
-        event_type:
-          $ref: '#/components/schemas/EventTypeEnum'
-        scope_content_type:
-          type: integer
-          nullable: true
-        scope_object_id:
-          type: string
-          nullable: true
-        recipient_users:
-          type: array
-          items:
-            type: integer
-        recipient_groups:
-          type: array
-          items:
-            type: string
-            format: uuid
-        recipient_resolver_key:
-          type: string
-          description: Name of a registered role resolver (e.g. "step_execution_assignee").
-            Resolver takes the event payload and returns an iterable of Users.
-          maxLength: 64
-        channel_type:
-          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
-        min_gap_seconds:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Per-(rule, recipient) cooldown. A recipient will not receive
-            another notification from this rule until this many seconds have passed.
-            0 disables dedup.
-        is_active:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-        available_resolvers:
-          type: array
-          items:
-            type: string
-          readOnly: true
-      required:
-      - available_resolvers
-      - created_at
-      - event_type
-      - id
-      - name
-      - updated_at
-    NotificationRuleChannelTypeEnum:
-      enum:
-      - EMAIL
-      - IN_APP
-      type: string
-      description: |-
-        * `EMAIL` - Email
-        * `IN_APP` - In-App Notification
-    NotificationRuleRequest:
-      type: object
-      description: CRUD for NotificationRule.
-      properties:
-        name:
-          type: string
-          minLength: 1
-          description: Admin-friendly label shown in the rule list.
-          maxLength: 200
-        description:
-          type: string
-        event_type:
-          $ref: '#/components/schemas/EventTypeEnum'
-        scope_content_type:
-          type: integer
-          nullable: true
-        scope_object_id:
-          type: string
-          nullable: true
-        recipient_users:
-          type: array
-          items:
-            type: integer
-        recipient_groups:
-          type: array
-          items:
-            type: string
-            format: uuid
-        recipient_resolver_key:
-          type: string
-          description: Name of a registered role resolver (e.g. "step_execution_assignee").
-            Resolver takes the event payload and returns an iterable of Users.
-          maxLength: 64
-        channel_type:
-          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
-        min_gap_seconds:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Per-(rule, recipient) cooldown. A recipient will not receive
-            another notification from this rule until this many seconds have passed.
-            0 disables dedup.
-        is_active:
-          type: boolean
-      required:
-      - event_type
-      - name
-    NotificationSchedule:
-      type: object
-      description: |-
-        Nested serializer for notification schedule configuration.
-        Handles both fixed and deadline-based interval types.
-      properties:
-        interval_type:
-          $ref: '#/components/schemas/IntervalTypeEnum'
-        day_of_week:
-          type: integer
-          maximum: 6
-          minimum: 0
-          nullable: true
-          description: 0=Monday, 6=Sunday
-        time:
-          type: string
-          format: time
-          nullable: true
-          description: Time in user's local timezone
-        interval_weeks:
-          type: integer
-          minimum: 1
-          nullable: true
-          description: Number of weeks between sends
-        escalation_tiers:
-          type: array
-          items:
-            type: array
-            items:
-              type: number
-              format: double
-            maxItems: 2
-            minItems: 2
-          nullable: true
-          description: List of [threshold_days, interval_days] tuples
-      required:
-      - interval_type
-    NotificationScheduleRequest:
-      type: object
-      description: |-
-        Nested serializer for notification schedule configuration.
-        Handles both fixed and deadline-based interval types.
-      properties:
-        interval_type:
-          $ref: '#/components/schemas/IntervalTypeEnum'
-        day_of_week:
-          type: integer
-          maximum: 6
-          minimum: 0
-          nullable: true
-          description: 0=Monday, 6=Sunday
-        time:
-          type: string
-          format: time
-          nullable: true
-          description: Time in user's local timezone
-        interval_weeks:
-          type: integer
-          minimum: 1
-          nullable: true
-          description: Number of weeks between sends
-        escalation_tiers:
-          type: array
-          items:
-            type: array
-            items:
-              type: number
-              format: double
-            maxItems: 2
-            minItems: 2
-          nullable: true
-          description: List of [threshold_days, interval_days] tuples
-      required:
-      - interval_type
-    NotificationTaskStatusEnum:
-      enum:
-      - PENDING
-      - SENT
-      - FAILED
-      - CANCELLED
-      type: string
-      description: |-
-        * `PENDING` - Pending
-        * `SENT` - Sent
-        * `FAILED` - Failed
-        * `CANCELLED` - Cancelled
-    NotificationTypeEnum:
-      enum:
-      - WEEKLY_REPORT
-      - CAPA_REMINDER
-      - APPROVAL_REQUEST
-      - APPROVAL_DECISION
-      - APPROVAL_ESCALATION
-      - STEP_FAILURE
-      type: string
-      description: |-
-        * `WEEKLY_REPORT` - Weekly Order Report
-        * `CAPA_REMINDER` - CAPA Reminder
-        * `APPROVAL_REQUEST` - Approval Request
-        * `APPROVAL_DECISION` - Approval Decision
-        * `APPROVAL_ESCALATION` - Approval Escalation
-        * `STEP_FAILURE` - Part failed at step
+      - supports_escalation
     NullEnum:
       enum:
       - null
@@ -34298,6 +35316,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomerOrder'
+    PaginatedCustomerRuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerRule'
+    PaginatedCustomerScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerSchedule'
     PaginatedDisassemblyBOMLineList:
       type: object
       required:
@@ -34436,6 +35500,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Equipments'
+    PaginatedExternalContactList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalContact'
     PaginatedFPIRecordList:
       type: object
       required:
@@ -34735,52 +35822,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeasurementDefinition'
-    PaginatedNotificationPreferenceList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/NotificationPreference'
-    PaginatedNotificationRuleList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=400&limit=100
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?offset=200&limit=100
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/NotificationRule'
     PaginatedOrdersList:
       type: object
       required:
@@ -34896,6 +35937,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Parts'
+    PaginatedPersonalRuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonalRule'
+    PaginatedPersonalScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonalSchedule'
     PaginatedProcessChangeNoticeList:
       type: object
       required:
@@ -35425,6 +36512,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tenant'
+    PaginatedTenantRuleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantRule'
+    PaginatedTenantScheduleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantSchedule'
     PaginatedThreeDModelList:
       type: object
       required:
@@ -36685,6 +37818,140 @@ components:
           nullable: true
         archived:
           type: boolean
+    PatchedCustomerRuleRequest:
+      type: object
+      description: |-
+        Admin-authored, fires only for events referencing a specific customer.
+        Can route to ExternalContacts at that customer in addition to internal
+        users/groups.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
+    PatchedCustomerScheduleRequest:
+      type: object
+      description: |-
+        Admin-authored, routes to one customer org's recipients (users,
+        groups, or ExternalContacts at that customer).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        scope_customer:
+          type: string
+          format: uuid
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        recipient_external:
+          type: array
+          items:
+            type: string
+            format: uuid
     PatchedDisassemblyBOMLineRequest:
       type: object
       description: |-
@@ -36962,6 +38229,31 @@ components:
         notes:
           type: string
         archived:
+          type: boolean
+    PatchedExternalContactRequest:
+      type: object
+      description: |-
+        CRUD over `ExternalContact`. Tenant-scoped automatically by the
+        viewset; the customer FK is validated to belong to the current tenant
+        via TenantScopedPrimaryKeyRelatedField.
+      properties:
+        customer:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        role:
+          type: string
+          description: Free-form label, e.g. 'primary', 'quality', 'procurement'.
+          maxLength: 64
+        enabled:
           type: boolean
     PatchedFPIRecordRequest:
       type: object
@@ -37314,72 +38606,6 @@ components:
           description: Default template for new orders in this tenant
         archived:
           type: boolean
-    PatchedNotificationPreferenceRequest:
-      type: object
-      description: |-
-        Serializer for user notification preferences.
-
-        Handles timezone conversion:
-        - INPUT: User sends time in their local timezone
-        - STORED: Time converted to UTC in database
-        - OUTPUT: Time converted back to user's local timezone
-      properties:
-        notification_type:
-          $ref: '#/components/schemas/NotificationTypeEnum'
-        channel_type:
-          $ref: '#/components/schemas/NotificationPreferenceChannelTypeEnum'
-        schedule:
-          $ref: '#/components/schemas/NotificationScheduleRequest'
-        max_attempts:
-          type: integer
-          maximum: 2147483647
-          minimum: -2147483648
-          nullable: true
-          description: Max sends before stopping. Null = infinite
-    PatchedNotificationRuleRequest:
-      type: object
-      description: CRUD for NotificationRule.
-      properties:
-        name:
-          type: string
-          minLength: 1
-          description: Admin-friendly label shown in the rule list.
-          maxLength: 200
-        description:
-          type: string
-        event_type:
-          $ref: '#/components/schemas/EventTypeEnum'
-        scope_content_type:
-          type: integer
-          nullable: true
-        scope_object_id:
-          type: string
-          nullable: true
-        recipient_users:
-          type: array
-          items:
-            type: integer
-        recipient_groups:
-          type: array
-          items:
-            type: string
-            format: uuid
-        recipient_resolver_key:
-          type: string
-          description: Name of a registered role resolver (e.g. "step_execution_assignee").
-            Resolver takes the event payload and returns an iterable of Users.
-          maxLength: 64
-        channel_type:
-          $ref: '#/components/schemas/NotificationRuleChannelTypeEnum'
-        min_gap_seconds:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Per-(rule, recipient) cooldown. A recipient will not receive
-            another notification from this rule until this many seconds have passed.
-            0 disables dedup.
-        is_active:
-          type: boolean
     PatchedOrdersRequest:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -37493,6 +38719,111 @@ components:
         sampling_context: {}
         archived:
           type: boolean
+    PatchedPersonalRuleRequest:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_* fields
+        are exposed.
+
+        `owner_user` is write-once at create time; the viewset stamps it from the
+        request user. The serializer exposes it read-only so clients can see who
+        owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+        ownership" endpoint if needed.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+    PatchedPersonalScheduleRequest:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_*
+        fields are exposed. `owner_user` is stamped from the request user at
+        create time and read-only thereafter.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
     PatchedProcessChangeNoticeRequest:
       type: object
       description: Read/write serializer for PCNs.
@@ -38480,6 +39811,119 @@ components:
           minLength: 1
           description: Default timezone for the organization (IANA format, e.g., 'America/New_York')
           maxLength: 50
+    PatchedTenantRuleRequest:
+      type: object
+      description: Admin-authored, fires tenant-wide. Recipients are internal.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+    PatchedTenantScheduleRequest:
+      type: object
+      description: Admin-authored, internal recipients only.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
     PatchedTenantSettingsUpdateRequestRequest:
       type: object
       properties:
@@ -38885,6 +40329,266 @@ components:
             additionalProperties: {}
       required:
       - permissions
+    PersonalRule:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_* fields
+        are exposed.
+
+        `owner_user` is write-once at create time; the viewset stamps it from the
+        request user. The serializer exposes it read-only so clients can see who
+        owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+        ownership" endpoint if needed.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_Escalation'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        owner_user:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - owner_user
+      - updated_at
+    PersonalRuleRequest:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_* fields
+        are exposed.
+
+        `owner_user` is write-once at create time; the viewset stamps it from the
+        request user. The serializer exposes it read-only so clients can see who
+        owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+        ownership" endpoint if needed.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+      required:
+      - name
+    PersonalSchedule:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_*
+        fields are exposed. `owner_user` is stamped from the request user at
+        create time and read-only thereafter.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Set to now() inside the fire transaction, before rendering.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        owner_user:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - last_fired_at
+      - name
+      - owner_user
+      - provider_kind
+      - updated_at
+    PersonalScheduleRequest:
+      type: object
+      description: |-
+        User-authored. Owner is the implicit recipient — no recipient_*
+        fields are exposed. `owner_user` is stamped from the request user at
+        create time and read-only thereafter.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+      required:
+      - name
+      - provider_kind
     PresetListResponse:
       type: object
       properties:
@@ -40567,6 +42271,16 @@ components:
         * `NOT_REQUIRED` - Not Required
         * `REQUIRED` - Required
         * `COMPLETED` - Completed
+    RecipientStrategyEnum:
+      enum:
+      - static
+      - from_payload
+      - union
+      type: string
+      description: |-
+        * `static` - Static — recipients from this rule only
+        * `from_payload` - From event — recipients from the event payload
+        * `union` - Union — combine event-payload recipients with this rule's
     RegisterRequest:
       type: object
       properties:
@@ -41727,6 +43441,21 @@ components:
         * `IN_PROGRESS` - In Progress
         * `COMPLETED` - Completed
         * `CANCELLED` - Cancelled
+    ScheduledContentProviderCatalog:
+      type: object
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        params_schema: {}
+      required:
+      - description
+      - name
+      - params_schema
+      - title
     SendInvitationInputRequest:
       type: object
       properties:
@@ -43625,6 +45354,274 @@ components:
       required:
       - name
       - slug
+    TenantRule:
+      type: object
+      description: Admin-authored, fires tenant-wide. Recipients are internal.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_Escalation'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    TenantRuleRequest:
+      type: object
+      description: Admin-authored, fires tenant-wide. Recipients are internal.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        event_code:
+          type: string
+          minLength: 1
+          description: Must exist in EVENT_REGISTRY (validated at save time).
+          maxLength: 64
+        conditions_source:
+          type: string
+          description: CEL expression evaluated against the event's payload.
+        channels:
+          description: List of channel codes, e.g. ['email', 'in_app'].
+        priority:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        enabled:
+          type: boolean
+        min_gap_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Per-(rule, recipient) cooldown. Recipients will not receive
+            another notification from this rule until this many seconds have passed.
+            0 disables dedup.
+        recipient_strategy:
+          allOf:
+          - $ref: '#/components/schemas/RecipientStrategyEnum'
+          description: |-
+            Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+
+            * `static` - Static — recipients from this rule only
+            * `from_payload` - From event — recipients from the event payload
+            * `union` - Union — combine event-payload recipients with this rule's
+        escalation:
+          allOf:
+          - $ref: '#/components/schemas/_EscalationRequest'
+          nullable: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - name
+    TenantSchedule:
+      type: object
+      description: Admin-authored, internal recipients only.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Set to now() inside the fire transaction, before rendering.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - created_at
+      - id
+      - last_fired_at
+      - name
+      - provider_kind
+      - updated_at
+    TenantScheduleRequest:
+      type: object
+      description: Admin-authored, internal recipients only.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+        enabled:
+          type: boolean
+        provider_kind:
+          type: string
+          minLength: 1
+          description: ScheduledContentProvider registry key.
+          maxLength: 64
+        provider_params:
+          description: 'Params passed to the provider. For customer-scoped schedules,
+            the dispatcher merges in {''customer_id'': scope_customer.id} before invoking
+            the provider.'
+        cadence:
+          $ref: '#/components/schemas/CadenceEnum'
+        day_of_week:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 0=Monday ... 6=Sunday. Required when cadence='weekly'.
+        day_of_month:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          description: 1-28 (capped to avoid Feb/short-month gotchas). Required when
+            cadence='monthly'.
+        time_of_day:
+          type: string
+          format: time
+          description: Local clock time in the schedule's timezone.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'America/New_York'). Defaults to UTC;
+            the fire task falls back to tenant.default_timezone if 'UTC' is set and
+            the tenant configured a non-UTC default.
+          maxLength: 64
+        channels:
+          description: List of channel codes, e.g. ['email']. Email-only at launch.
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - name
+      - provider_kind
     TenantSettingsResponse:
       type: object
       properties:
@@ -43761,16 +45758,6 @@ components:
       required:
       - message
       - success
-    TestSendResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-      required:
-      - message
-      - status
     ThreeDModel:
       type: object
       description: |-
@@ -45825,6 +47812,92 @@ components:
       - step_history
       - total_parts
       - work_order_id
+    _Escalation:
+      type: object
+      description: |-
+        Nested policy + steps. Replace-all semantics on update: writing a
+        step list overwrites the existing steps entirely. Passing `null` for
+        the whole escalation deletes the policy (and its steps via CASCADE).
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/_EscalationStep'
+      required:
+      - steps
+    _EscalationRequest:
+      type: object
+      description: |-
+        Nested policy + steps. Replace-all semantics on update: writing a
+        step list overwrites the existing steps entirely. Passing `null` for
+        the whole escalation deletes the policy (and its steps via CASCADE).
+      properties:
+        enabled:
+          type: boolean
+          default: true
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/_EscalationStepRequest'
+      required:
+      - steps
+    _EscalationStep:
+      type: object
+      description: One step in a nested escalation chain.
+      properties:
+        order:
+          type: integer
+          maximum: 2
+          minimum: 0
+        delay_seconds:
+          type: integer
+          minimum: 1
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        subject_override:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - delay_seconds
+      - order
+    _EscalationStepRequest:
+      type: object
+      description: One step in a nested escalation chain.
+      properties:
+        order:
+          type: integer
+          maximum: 2
+          minimum: 0
+        delay_seconds:
+          type: integer
+          minimum: 1
+        recipient_users:
+          type: array
+          items:
+            type: integer
+        recipient_groups:
+          type: array
+          items:
+            type: string
+            format: uuid
+        subject_override:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - delay_seconds
+      - order
   securitySchemes:
     cookieAuth:
       type: apiKey

@@ -1,8 +1,23 @@
 """
-ViewSet for event-driven NotificationRule.
+Per-scope viewsets for `NotificationRule` and `NotificationSchedule`,
+plus the `ExternalContact` viewset and read-only catalog endpoints.
 
-Uses TenantScopedMixin for auto-scoping + TenantModelPermissions; admins
-with the notificationrule permissions get full CRUD within their tenant.
+URL layout (registered in `PartsTrackerApp/urls.py`):
+    /api/notifications/rules/tenant/             TenantRuleViewSet
+    /api/notifications/rules/customer/           CustomerRuleViewSet
+    /api/notifications/rules/personal/           PersonalRuleViewSet
+    /api/notifications/schedules/tenant/         TenantScheduleViewSet
+    /api/notifications/schedules/customer/       CustomerScheduleViewSet
+    /api/notifications/schedules/personal/       PersonalScheduleViewSet
+    /api/notifications/schedules/providers/      ScheduledContentProviderCatalogView
+    /api/notifications/external-contacts/        ExternalContactViewSet
+    /api/notifications/events/                   NotificationEventTypeCatalogView
+
+Permission model (matches across rules and schedules — `edit_notification_rules`
+is reused for both since they're managed by the same admin role):
+  - Tenant + customer scopes: `Tracker.edit_notification_rules` required.
+  - Personal scope: viewset filters to the request user's own rows; any
+    authenticated user can manage their own without the permission.
 """
 from __future__ import annotations
 
@@ -10,95 +25,277 @@ from rest_framework import filters, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer
 
-from Tracker.models import NotificationRule
-from Tracker.serializers.notifications import NotificationRuleSerializer
-from Tracker.services.core.notification_resolvers import resolver_keys
+from Tracker.models import ExternalContact, NotificationRule, NotificationSchedule
+from Tracker.serializers.notifications import (
+    CustomerRuleSerializer,
+    ExternalContactSerializer,
+    PersonalRuleSerializer,
+    TenantRuleSerializer,
+)
+from Tracker.serializers.notification_schedule import (
+    CustomerScheduleSerializer,
+    PersonalScheduleSerializer,
+    TenantScheduleSerializer,
+)
 from Tracker.viewsets.base import TenantScopedMixin
 
 
-# Catalog of event types the rule engine understands. Adding a new event:
-#   1. Append to NotificationEventType.choices in models/notifications.py
-#   2. Append here with the scope model the UI should use for narrowing
-#   3. Register a handler in Tracker.notifications.handlers
-#   4. Add a trigger call to `notify(...)` at the event site
-_EVENT_CATALOG: list[dict] = [
-    {
-        'key': 'STEP_FAILURE',
-        'label': 'Part failed at step',
-        'description': 'A part has been quarantined because a quality report failed at its current step.',
-        'scope_model': 'Tracker.Steps',
-        'scope_label': 'Step',
-    },
-    {
-        'key': 'WORK_ORDER_HELD_TOO_LONG',
-        'label': 'Work order held too long',
-        'description': 'A work order has been on hold past the configured threshold.',
-        'scope_model': 'Tracker.WorkOrder',
-        'scope_label': 'Work Order',
-    },
-    {
-        'key': 'WORK_ORDER_STALLED',
-        'label': 'Work order stalled',
-        'description': 'A work order has had no step activity for an extended period.',
-        'scope_model': 'Tracker.WorkOrder',
-        'scope_label': 'Work Order',
-    },
-    {
-        'key': 'WORK_ORDER_OVERDUE',
-        'label': 'Work order overdue',
-        'description': 'A work order is past its expected completion date and has not completed.',
-        'scope_model': 'Tracker.WorkOrder',
-        'scope_label': 'Work Order',
-    },
-]
+# =============================================================================
+# Rule viewsets (one per scope).
+# =============================================================================
+
+class TenantRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over tenant-scoped rules. Filtered to the current tenant via
+    `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+    manager method so customer/personal rules don't leak through."""
+
+    # Class-level queryset for drf-spectacular schema introspection (runs
+    # without a tenant context). Real filtering happens in get_queryset.
+    queryset = NotificationRule.all_tenants.none()
+    serializer_class = TenantRuleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "event_code"]
+    ordering_fields = ["created_at", "updated_at", "name", "priority"]
+    ordering = ["priority", "-created_at"]
+
+    def get_queryset(self):
+        return NotificationRule.objects.tenant_rules()
 
 
-class NotificationRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """CRUD for event-driven notification rules."""
+class CustomerRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over customer-scoped rules.
 
-    # Class-level queryset evaluates at import time with no tenant
-    # context; use all_tenants to avoid the SecureManager raise. The
-    # tenant filter is re-applied per-request by TenantScopedMixin.
-    queryset = NotificationRule.all_tenants.all()
-    serializer_class = NotificationRuleSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
-    filterset_fields = ['event_type', 'is_active', 'channel_type']
-    search_fields = ['name', 'description']
-    ordering_fields = ['created_at', 'updated_at', 'name']
-    ordering = ['-created_at']
+    Supports a `?customer=<uuid>` query param to filter to one customer's
+    rules; without it, all customer-scoped rules in the tenant are returned.
+    """
 
+    queryset = NotificationRule.all_tenants.none()
+    serializer_class = CustomerRuleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "event_code"]
+    ordering_fields = ["created_at", "updated_at", "name", "priority"]
+    ordering = ["priority", "-created_at"]
+
+    def get_queryset(self):
+        # tenant-safe: viewset request runs under TenantMiddleware ContextVar; SecureManager auto-scopes.
+        qs = NotificationRule.objects.filter(scope_kind="customer", archived=False)
+        customer_id = self.request.query_params.get("customer")
+        if customer_id:
+            qs = qs.filter(scope_customer_id=customer_id)
+        return qs
+
+
+class PersonalRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over the request user's own personal rules. Filtered to
+    `owner_user=request.user` — users can't see or modify each other's
+    personal rules."""
+
+    queryset = NotificationRule.all_tenants.none()
+    serializer_class = PersonalRuleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "event_code"]
+    ordering_fields = ["created_at", "updated_at", "name"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        return NotificationRule.objects.personal_rules_for(self.request.user)
+
+
+# =============================================================================
+# External contacts.
+# =============================================================================
+
+class ExternalContactViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+    customer FK validation handled at the serializer layer."""
+
+    queryset = ExternalContact.all_tenants.none()
+    serializer_class = ExternalContactSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "email", "role"]
+    ordering_fields = ["created_at", "updated_at", "name"]
+    ordering = ["name"]
+
+    def get_queryset(self):
+        # tenant-safe: viewset request runs under TenantMiddleware ContextVar; SecureManager auto-scopes.
+        qs = ExternalContact.objects.filter(archived=False)
+        customer_id = self.request.query_params.get("customer")
+        if customer_id:
+            qs = qs.filter(customer_id=customer_id)
+        return qs
+
+
+# =============================================================================
+# Event catalog (slice 1 stub kept; route stays the same).
+# =============================================================================
 
 class NotificationEventTypeCatalogView(APIView):
-    """Static catalog of event types the rule engine can fire on.
+    """Returns the EVENT_REGISTRY catalog (event_code, label, description,
+    domain, default_channels, default_on, supports_escalation).
 
-    Consumed by the admin UI to build the event-type dropdown and to
-    render the right scope picker per event (scope_model tells the UI
-    which model list to fetch when the admin picks "scope at a specific
-    object").
+    `supports_escalation` is derived from the ack registry — events without
+    an ack predicate registration can't have escalation chains attached,
+    so the rule editor disables that toggle for them.
     """
+
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: inline_serializer(
-            name='NotificationEventTypeCatalog',
+            name="NotificationEventTypeCatalog",
             many=True,
             fields={
-                'key': serializers.CharField(),
-                'label': serializers.CharField(),
-                'description': serializers.CharField(),
-                'scope_model': serializers.CharField(allow_null=True),
-                'scope_label': serializers.CharField(allow_null=True),
-                'resolver_keys': serializers.ListField(child=serializers.CharField()),
+                "code": serializers.CharField(),
+                "label": serializers.CharField(),
+                "domain": serializers.CharField(),
+                "description": serializers.CharField(),
+                "default_channels": serializers.ListField(child=serializers.CharField()),
+                "default_on": serializers.BooleanField(),
+                "supports_escalation": serializers.BooleanField(),
             },
         )}
     )
     def get(self, request):
-        resolvers = resolver_keys()
+        from Tracker.services.core.notifications import EVENT_REGISTRY
+        from Tracker.services.core.notifications.escalation import (
+            list_acknowledged_events,
+        )
+
+        ack_events = set(list_acknowledged_events())
+
         entries = [
-            {**entry, 'resolver_keys': resolvers}
-            for entry in _EVENT_CATALOG
+            {
+                "code": event.code,
+                "label": event.label,
+                "domain": event.domain,
+                "description": event.description,
+                "default_channels": list(event.default_channels),
+                "default_on": event.default_on,
+                "supports_escalation": event.code in ack_events,
+            }
+            for event in EVENT_REGISTRY.values()
         ]
         return Response(entries, status=status.HTTP_200_OK)
+
+
+# =============================================================================
+# Schedule viewsets (one per scope).
+# =============================================================================
+
+class TenantScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over tenant-scoped scheduled notifications."""
+
+    queryset = NotificationSchedule.all_tenants.none()
+    serializer_class = TenantScheduleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "provider_kind"]
+    ordering_fields = ["created_at", "updated_at", "name", "cadence"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        return NotificationSchedule.objects.tenant_schedules()
+
+
+class CustomerScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over customer-scoped scheduled notifications.
+
+    Supports `?customer=<uuid>` to filter to one customer's schedules.
+    """
+
+    queryset = NotificationSchedule.all_tenants.none()
+    serializer_class = CustomerScheduleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "provider_kind"]
+    ordering_fields = ["created_at", "updated_at", "name", "cadence"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        # tenant-safe: viewset request runs under TenantMiddleware ContextVar; SecureManager auto-scopes.
+        qs = NotificationSchedule.objects.filter(
+            scope_kind="customer", archived=False,
+        )
+        customer_id = self.request.query_params.get("customer")
+        if customer_id:
+            qs = qs.filter(scope_customer_id=customer_id)
+        return qs
+
+
+class PersonalScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+    """CRUD over the request user's own personal schedules.
+
+    Filtered to `owner_user=request.user` — users can't see or modify each
+    other's scheduled subscriptions. Used by `/profile/notifications` to
+    let customers self-manage their digest cadence.
+    """
+
+    queryset = NotificationSchedule.all_tenants.none()
+    serializer_class = PersonalScheduleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter, filters.SearchFilter]
+    search_fields = ["name", "description", "provider_kind"]
+    ordering_fields = ["created_at", "updated_at", "name"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        return NotificationSchedule.objects.personal_schedules_for(self.request.user)
+
+
+# =============================================================================
+# Scheduled content provider catalog
+# =============================================================================
+
+class ScheduledContentProviderCatalogView(APIView):
+    """Returns the registered ScheduledContentProvider catalog.
+
+    Used by the schedule editor UI to populate the provider dropdown and
+    render dynamic param fields (via the provider's `param_serializer_class`
+    field metadata).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: inline_serializer(
+            name="ScheduledContentProviderCatalog",
+            many=True,
+            fields={
+                "name": serializers.CharField(),
+                "title": serializers.CharField(),
+                "description": serializers.CharField(),
+                "params_schema": serializers.JSONField(),
+            },
+        )}
+    )
+    def get(self, request):
+        from Tracker.services.core.notifications.scheduled_content import (
+            get_all_providers,
+        )
+
+        entries = []
+        for provider in get_all_providers().values():
+            param_serializer = provider.param_serializer_class()
+            params_schema = {
+                field_name: {
+                    "type": field.__class__.__name__,
+                    "required": field.required,
+                    "help_text": getattr(field, "help_text", "") or "",
+                }
+                for field_name, field in param_serializer.fields.items()
+            }
+            entries.append({
+                "name": provider.name,
+                "title": provider.title,
+                "description": provider.description,
+                "params_schema": params_schema,
+            })
+        return Response(entries, status=status.HTTP_200_OK)
+
+

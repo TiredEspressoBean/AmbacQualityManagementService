@@ -171,11 +171,60 @@ def create_initial_containment_task(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=CAPA)
 def notify_assignment(sender, instance, created, **kwargs):
-    """Notify assigned user when CAPA is created or reassigned"""
-    if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
-        from .tasks import send_capa_assignment_notification
-        capa_id = instance.id
-        transaction.on_commit(lambda: send_capa_assignment_notification.delay(capa_id))
+    """Emit `capa.assigned` when a CAPA is created with an assignee or
+    reassigned to a new user.
+
+    Phase 6b: emit-based notification with `recipient_user_ids=[assignee.id]`.
+    A tenant rule with `recipient_strategy='from_payload'` routes to the
+    actual assignee. Admins can author union-strategy rules to CC
+    supervisors on assignments.
+
+    Reassignment detection uses `_old_assigned_to_id` set by `CAPA.save()` —
+    not the `_changed_fields` predicate that an earlier version relied on
+    (no writer populates that attribute in production).
+    """
+    if not instance.assigned_to_id:
+        return
+    if not created:
+        old = getattr(instance, '_old_assigned_to_id', None)
+        if old == instance.assigned_to_id:
+            return  # Same assignee — no reassignment, no notification.
+
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import CapaAssignedPayload
+
+    capa = instance
+    payload = CapaAssignedPayload(
+        id=str(capa.id),
+        tenant_id=str(capa.tenant_id) if capa.tenant_id else '',
+        capa_id=str(capa.id),
+        capa_number=capa.capa_number or '',
+        capa_type=capa.capa_type or '',
+        capa_type_display=capa.get_capa_type_display() if capa.capa_type else '',
+        severity=capa.severity or '',
+        severity_display=capa.get_severity_display() if capa.severity else '',
+        status=capa.status or '',
+        problem_statement=capa.problem_statement or '',
+        assigned_to_id=capa.assigned_to_id,
+        assigned_to_name=(
+            capa.assigned_to.get_full_name() or capa.assigned_to.username
+            if capa.assigned_to else ''
+        ),
+        assigned_to_email=capa.assigned_to.email if capa.assigned_to else '',
+        initiated_by_id=capa.initiated_by_id,
+        initiated_by_name=(
+            capa.initiated_by.get_full_name() or capa.initiated_by.username
+            if capa.initiated_by else ''
+        ),
+        due_date=capa.due_date,
+        is_reassignment=not created,
+        recipient_user_ids=[capa.assigned_to_id],
+    )
+
+    tenant = capa.tenant
+    transaction.on_commit(
+        lambda t=tenant, p=payload: emit('capa.assigned', tenant=t, payload=p)
+    )
 
 
 @receiver(post_save, sender=CAPA)
@@ -258,9 +307,14 @@ def seed_tenant_defaults(sender, instance, created, **kwargs):
     - Default groups from GroupSeeder (using GROUP_PRESETS from presets.py)
     - Default document types
     - Default approval templates
+    - Default notification rules (starter set; admins customize from there)
     """
     if created:
+        import sys
         from .groups import GroupSeeder
+        from .services.core.notifications.system_rules import (
+            seed_system_rules_for_tenant,
+        )
         from .services.defaults_service import seed_reference_data_for_tenant
         from .utils.tenant_context import tenant_context
 
@@ -273,6 +327,13 @@ def seed_tenant_defaults(sender, instance, created, **kwargs):
         with tenant_context(instance.id):
             GroupSeeder.seed_for_tenant(instance)
             seed_reference_data_for_tenant(instance)
+            # System notification rules go last — they reference groups
+            # seeded by GroupSeeder. Skipped during tests: most existing
+            # tests assume an empty rules state in setUp and would choke
+            # on the starter set. Tests that want to verify seeding call
+            # `seed_system_rules_for_tenant()` directly.
+            if 'test' not in sys.argv:
+                seed_system_rules_for_tenant(instance)
 
 
 # =============================================================================

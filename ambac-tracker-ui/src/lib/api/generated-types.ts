@@ -4051,12 +4051,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Static catalog of event types the rule engine can fire on.
+         * @description Returns the EVENT_REGISTRY catalog (event_code, label, description,
+         *     domain, default_channels, default_on, supports_escalation).
          *
-         *     Consumed by the admin UI to build the event-type dropdown and to
-         *     render the right scope picker per event (scope_model tells the UI
-         *     which model list to fetch when the admin picks "scope at a specific
-         *     object").
+         *     `supports_escalation` is derived from the ack registry — events without
+         *     an ack predicate registration can't have escalation chains attached,
+         *     so the rule editor disables that toggle for them.
          */
         get: operations["api_NotificationEventTypes_list"];
         put?: never;
@@ -4065,116 +4065,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/NotificationPreferences/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description List user's notification preferences */
-        get: operations["api_NotificationPreferences_list"];
-        put?: never;
-        /** @description Create a new notification preference for the current user */
-        post: operations["api_NotificationPreferences_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/NotificationPreferences/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Retrieve a specific notification preference */
-        get: operations["api_NotificationPreferences_retrieve"];
-        /** @description Update a notification preference */
-        put: operations["api_NotificationPreferences_update"];
-        post?: never;
-        /** @description Delete a notification preference */
-        delete: operations["api_NotificationPreferences_destroy"];
-        options?: never;
-        head?: never;
-        /** @description Partially update a notification preference */
-        patch: operations["api_NotificationPreferences_partial_update"];
-        trace?: never;
-    };
-    "/api/NotificationPreferences/{id}/test-send/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Test send a notification immediately (for testing purposes) */
-        post: operations["api_NotificationPreferences_test_send_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/NotificationPreferences/available-types/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get available notification types that users can configure */
-        get: operations["api_NotificationPreferences_available_types_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/NotificationRules/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description CRUD for event-driven notification rules. */
-        get: operations["api_NotificationRules_list"];
-        put?: never;
-        /** @description CRUD for event-driven notification rules. */
-        post: operations["api_NotificationRules_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/NotificationRules/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description CRUD for event-driven notification rules. */
-        get: operations["api_NotificationRules_retrieve"];
-        /** @description CRUD for event-driven notification rules. */
-        put: operations["api_NotificationRules_update"];
-        post?: never;
-        /** @description CRUD for event-driven notification rules. */
-        delete: operations["api_NotificationRules_destroy"];
-        options?: never;
-        head?: never;
-        /** @description CRUD for event-driven notification rules. */
-        patch: operations["api_NotificationRules_partial_update"];
         trace?: never;
     };
     "/api/Orders/": {
@@ -10098,6 +9988,475 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Returns the EVENT_REGISTRY catalog (event_code, label, description,
+         *     domain, default_channels, default_on, supports_escalation).
+         *
+         *     `supports_escalation` is derived from the ack registry — events without
+         *     an ack predicate registration can't have escalation chains attached,
+         *     so the rule editor disables that toggle for them.
+         */
+        get: operations["api_notifications_events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        get: operations["api_notifications_external_contacts_list"];
+        put?: never;
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        post: operations["api_notifications_external_contacts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/external-contacts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        get: operations["api_notifications_external_contacts_retrieve"];
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        put: operations["api_notifications_external_contacts_update"];
+        post?: never;
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        delete: operations["api_notifications_external_contacts_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over `ExternalContact` rows. Tenant-scoped via the mixin;
+         *     customer FK validation handled at the serializer layer.
+         */
+        patch: operations["api_notifications_external_contacts_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/rules/customer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        get: operations["api_notifications_rules_customer_list"];
+        put?: never;
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        post: operations["api_notifications_rules_customer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/rules/customer/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        get: operations["api_notifications_rules_customer_retrieve"];
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        put: operations["api_notifications_rules_customer_update"];
+        post?: never;
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        delete: operations["api_notifications_rules_customer_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over customer-scoped rules.
+         *
+         *     Supports a `?customer=<uuid>` query param to filter to one customer's
+         *     rules; without it, all customer-scoped rules in the tenant are returned.
+         */
+        patch: operations["api_notifications_rules_customer_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/rules/personal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        get: operations["api_notifications_rules_personal_list"];
+        put?: never;
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        post: operations["api_notifications_rules_personal_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/rules/personal/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        get: operations["api_notifications_rules_personal_retrieve"];
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        put: operations["api_notifications_rules_personal_update"];
+        post?: never;
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        delete: operations["api_notifications_rules_personal_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over the request user's own personal rules. Filtered to
+         *     `owner_user=request.user` — users can't see or modify each other's
+         *     personal rules.
+         */
+        patch: operations["api_notifications_rules_personal_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/rules/tenant/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        get: operations["api_notifications_rules_tenant_list"];
+        put?: never;
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        post: operations["api_notifications_rules_tenant_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/rules/tenant/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        get: operations["api_notifications_rules_tenant_retrieve"];
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        put: operations["api_notifications_rules_tenant_update"];
+        post?: never;
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        delete: operations["api_notifications_rules_tenant_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over tenant-scoped rules. Filtered to the current tenant via
+         *     `TenantScopedMixin`; further filtered to `scope_kind='tenant'` via the
+         *     manager method so customer/personal rules don't leak through.
+         */
+        patch: operations["api_notifications_rules_tenant_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/schedules/customer/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        get: operations["api_notifications_schedules_customer_list"];
+        put?: never;
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        post: operations["api_notifications_schedules_customer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/schedules/customer/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        get: operations["api_notifications_schedules_customer_retrieve"];
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        put: operations["api_notifications_schedules_customer_update"];
+        post?: never;
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        delete: operations["api_notifications_schedules_customer_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over customer-scoped scheduled notifications.
+         *
+         *     Supports `?customer=<uuid>` to filter to one customer's schedules.
+         */
+        patch: operations["api_notifications_schedules_customer_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/schedules/personal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        get: operations["api_notifications_schedules_personal_list"];
+        put?: never;
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        post: operations["api_notifications_schedules_personal_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/schedules/personal/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        get: operations["api_notifications_schedules_personal_retrieve"];
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        put: operations["api_notifications_schedules_personal_update"];
+        post?: never;
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        delete: operations["api_notifications_schedules_personal_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD over the request user's own personal schedules.
+         *
+         *     Filtered to `owner_user=request.user` — users can't see or modify each
+         *     other's scheduled subscriptions. Used by `/profile/notifications` to
+         *     let customers self-manage their digest cadence.
+         */
+        patch: operations["api_notifications_schedules_personal_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/schedules/providers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Returns the registered ScheduledContentProvider catalog.
+         *
+         *     Used by the schedule editor UI to populate the provider dropdown and
+         *     render dynamic param fields (via the provider's `param_serializer_class`
+         *     field metadata).
+         */
+        get: operations["api_notifications_schedules_providers_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/schedules/tenant/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        get: operations["api_notifications_schedules_tenant_list"];
+        put?: never;
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        post: operations["api_notifications_schedules_tenant_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/schedules/tenant/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        get: operations["api_notifications_schedules_tenant_retrieve"];
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        put: operations["api_notifications_schedules_tenant_update"];
+        post?: never;
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        delete: operations["api_notifications_schedules_tenant_destroy"];
+        options?: never;
+        head?: never;
+        /** @description CRUD over tenant-scoped scheduled notifications. */
+        patch: operations["api_notifications_schedules_tenant_partial_update"];
+        trace?: never;
+    };
     "/api/orders/{order_id}/parts/": {
         parameters: {
             query?: never;
@@ -11752,11 +12111,6 @@ export interface components {
             /** Change message */
             changes?: unknown;
         };
-        AvailableNotificationTypes: {
-            notification_types: {
-                [key: string]: unknown;
-            }[];
-        };
         AvailablePermissionResponse: {
             id: number;
             codename: string;
@@ -12087,6 +12441,12 @@ export interface components {
             }[];
             total: number;
         };
+        /**
+         * @description * `weekly` - Weekly
+         *     * `monthly` - Monthly
+         * @enum {string}
+         */
+        CadenceEnum: "weekly" | "monthly";
         /**
          * @description Serializer for CalibrationRecord model.
          *
@@ -12724,6 +13084,153 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /**
+         * @description Admin-authored, fires only for events referencing a specific customer.
+         *     Can route to ExternalContacts at that customer in addition to internal
+         *     users/groups.
+         */
+        CustomerRule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_Escalation"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: uuid */
+            scope_customer: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
+        };
+        /**
+         * @description Admin-authored, fires only for events referencing a specific customer.
+         *     Can route to ExternalContacts at that customer in addition to internal
+         *     users/groups.
+         */
+        CustomerRuleRequest: {
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+            /** Format: uuid */
+            scope_customer: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
+        };
+        /**
+         * @description Admin-authored, routes to one customer org's recipients (users,
+         *     groups, or ExternalContacts at that customer).
+         */
+        CustomerSchedule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            /**
+             * Format: date-time
+             * @description Set to now() inside the fire transaction, before rendering.
+             */
+            readonly last_fired_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** Format: uuid */
+            scope_customer: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
+        };
+        /**
+         * @description Admin-authored, routes to one customer org's recipients (users,
+         *     groups, or ExternalContacts at that customer).
+         */
+        CustomerScheduleRequest: {
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            /** Format: uuid */
+            scope_customer: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
         };
         DashboardKPIsResponse: {
             active_capas: number;
@@ -13368,14 +13875,6 @@ export interface components {
          * @enum {string}
          */
         EquipmentsStatusEnum: "IN_SERVICE" | "OUT_OF_SERVICE" | "IN_CALIBRATION" | "IN_MAINTENANCE" | "RETIRED";
-        /**
-         * @description * `STEP_FAILURE` - Part failed at step
-         *     * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
-         *     * `WORK_ORDER_STALLED` - Work order stalled
-         *     * `WORK_ORDER_OVERDUE` - Work order overdue
-         * @enum {string}
-         */
-        EventTypeEnum: "STEP_FAILURE" | "WORK_ORDER_HELD_TOO_LONG" | "WORK_ORDER_STALLED" | "WORK_ORDER_OVERDUE";
         ExecuteQueryRequestRequest: {
             /** @description Model name to query */
             model: string;
@@ -13400,6 +13899,42 @@ export interface components {
             results: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
+         *     viewset; the customer FK is validated to belong to the current tenant
+         *     via TenantScopedPrimaryKeyRelatedField.
+         */
+        ExternalContact: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            customer: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @description Free-form label, e.g. 'primary', 'quality', 'procurement'. */
+            role?: string;
+            enabled?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
+         *     viewset; the customer FK is validated to belong to the current tenant
+         *     via TenantScopedPrimaryKeyRelatedField.
+         */
+        ExternalContactRequest: {
+            /** Format: uuid */
+            customer: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @description Free-form label, e.g. 'primary', 'quality', 'procurement'. */
+            role?: string;
+            enabled?: boolean;
         };
         /** @description Serializer for First Piece Inspection records. */
         FPIRecord: {
@@ -14157,12 +14692,6 @@ export interface components {
          * @enum {string}
          */
         IntegrationSyncStatusEnum: "IDLE" | "SYNCING" | "ERROR";
-        /**
-         * @description * `FIXED` - FIXED
-         *     * `DEADLINE_BASED` - DEADLINE_BASED
-         * @enum {string}
-         */
-        IntervalTypeEnum: "FIXED" | "DEADLINE_BASED";
         InviteError: {
             detail: string;
         };
@@ -14537,172 +15066,14 @@ export interface components {
             }[];
         };
         NotificationEventTypeCatalog: {
-            key: string;
+            code: string;
             label: string;
+            domain: string;
             description: string;
-            scope_model: string | null;
-            scope_label: string | null;
-            resolver_keys: string[];
+            default_channels: string[];
+            default_on: boolean;
+            supports_escalation: boolean;
         };
-        /**
-         * @description Serializer for user notification preferences.
-         *
-         *     Handles timezone conversion:
-         *     - INPUT: User sends time in their local timezone
-         *     - STORED: Time converted to UTC in database
-         *     - OUTPUT: Time converted back to user's local timezone
-         */
-        NotificationPreference: {
-            readonly id: number;
-            notification_type: components["schemas"]["NotificationTypeEnum"];
-            readonly notification_type_display: string;
-            channel_type?: components["schemas"]["NotificationPreferenceChannelTypeEnum"];
-            readonly channel_type_display: string;
-            readonly status: components["schemas"]["NotificationTaskStatusEnum"];
-            readonly status_display: string;
-            schedule?: components["schemas"]["NotificationSchedule"];
-            /**
-             * Format: date-time
-             * @description When this notification should be sent (UTC)
-             */
-            readonly next_send_at: string;
-            /** Format: date-time */
-            readonly next_send_at_display: string | null;
-            /** Format: date-time */
-            readonly last_sent_at: string | null;
-            /** Format: date-time */
-            readonly last_sent_at_display: string | null;
-            readonly attempt_count: number;
-            /** @description Max sends before stopping. Null = infinite */
-            max_attempts?: number | null;
-            /** Format: date-time */
-            readonly created_at: string;
-            /** Format: date-time */
-            readonly updated_at: string;
-        };
-        /**
-         * @description * `EMAIL` - Email
-         *     * `IN_APP` - In-App Notification
-         *     * `SMS` - SMS
-         * @enum {string}
-         */
-        NotificationPreferenceChannelTypeEnum: "EMAIL" | "IN_APP" | "SMS";
-        /**
-         * @description Serializer for user notification preferences.
-         *
-         *     Handles timezone conversion:
-         *     - INPUT: User sends time in their local timezone
-         *     - STORED: Time converted to UTC in database
-         *     - OUTPUT: Time converted back to user's local timezone
-         */
-        NotificationPreferenceRequest: {
-            notification_type: components["schemas"]["NotificationTypeEnum"];
-            channel_type?: components["schemas"]["NotificationPreferenceChannelTypeEnum"];
-            schedule?: components["schemas"]["NotificationScheduleRequest"];
-            /** @description Max sends before stopping. Null = infinite */
-            max_attempts?: number | null;
-        };
-        /** @description CRUD for NotificationRule. */
-        NotificationRule: {
-            /** Format: uuid */
-            readonly id: string;
-            /** @description Admin-friendly label shown in the rule list. */
-            name: string;
-            description?: string;
-            event_type: components["schemas"]["EventTypeEnum"];
-            scope_content_type?: number | null;
-            scope_object_id?: string | null;
-            recipient_users?: number[];
-            recipient_groups?: string[];
-            /** @description Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users. */
-            recipient_resolver_key?: string;
-            channel_type?: components["schemas"]["NotificationRuleChannelTypeEnum"];
-            /** @description Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
-            min_gap_seconds?: number;
-            is_active?: boolean;
-            /** Format: date-time */
-            readonly created_at: string;
-            /** Format: date-time */
-            readonly updated_at: string;
-            readonly available_resolvers: string[];
-        };
-        /**
-         * @description * `EMAIL` - Email
-         *     * `IN_APP` - In-App Notification
-         * @enum {string}
-         */
-        NotificationRuleChannelTypeEnum: "EMAIL" | "IN_APP";
-        /** @description CRUD for NotificationRule. */
-        NotificationRuleRequest: {
-            /** @description Admin-friendly label shown in the rule list. */
-            name: string;
-            description?: string;
-            event_type: components["schemas"]["EventTypeEnum"];
-            scope_content_type?: number | null;
-            scope_object_id?: string | null;
-            recipient_users?: number[];
-            recipient_groups?: string[];
-            /** @description Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users. */
-            recipient_resolver_key?: string;
-            channel_type?: components["schemas"]["NotificationRuleChannelTypeEnum"];
-            /** @description Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
-            min_gap_seconds?: number;
-            is_active?: boolean;
-        };
-        /**
-         * @description Nested serializer for notification schedule configuration.
-         *     Handles both fixed and deadline-based interval types.
-         */
-        NotificationSchedule: {
-            interval_type: components["schemas"]["IntervalTypeEnum"];
-            /** @description 0=Monday, 6=Sunday */
-            day_of_week?: number | null;
-            /**
-             * Format: time
-             * @description Time in user's local timezone
-             */
-            time?: string | null;
-            /** @description Number of weeks between sends */
-            interval_weeks?: number | null;
-            /** @description List of [threshold_days, interval_days] tuples */
-            escalation_tiers?: number[][] | null;
-        };
-        /**
-         * @description Nested serializer for notification schedule configuration.
-         *     Handles both fixed and deadline-based interval types.
-         */
-        NotificationScheduleRequest: {
-            interval_type: components["schemas"]["IntervalTypeEnum"];
-            /** @description 0=Monday, 6=Sunday */
-            day_of_week?: number | null;
-            /**
-             * Format: time
-             * @description Time in user's local timezone
-             */
-            time?: string | null;
-            /** @description Number of weeks between sends */
-            interval_weeks?: number | null;
-            /** @description List of [threshold_days, interval_days] tuples */
-            escalation_tiers?: number[][] | null;
-        };
-        /**
-         * @description * `PENDING` - Pending
-         *     * `SENT` - Sent
-         *     * `FAILED` - Failed
-         *     * `CANCELLED` - Cancelled
-         * @enum {string}
-         */
-        NotificationTaskStatusEnum: "PENDING" | "SENT" | "FAILED" | "CANCELLED";
-        /**
-         * @description * `WEEKLY_REPORT` - Weekly Order Report
-         *     * `CAPA_REMINDER` - CAPA Reminder
-         *     * `APPROVAL_REQUEST` - Approval Request
-         *     * `APPROVAL_DECISION` - Approval Decision
-         *     * `APPROVAL_ESCALATION` - Approval Escalation
-         *     * `STEP_FAILURE` - Part failed at step
-         * @enum {string}
-         */
-        NotificationTypeEnum: "WEEKLY_REPORT" | "CAPA_REMINDER" | "APPROVAL_REQUEST" | "APPROVAL_DECISION" | "APPROVAL_ESCALATION" | "STEP_FAILURE";
         /** @enum {unknown} */
         NullEnum: null;
         OpenDispositionsResponse: {
@@ -15022,6 +15393,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["CustomerOrder"][];
         };
+        PaginatedCustomerRuleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["CustomerRule"][];
+        };
+        PaginatedCustomerScheduleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["CustomerSchedule"][];
+        };
         PaginatedDisassemblyBOMLineList: {
             /** @example 123 */
             count: number;
@@ -15111,6 +15512,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Equipments"][];
+        };
+        PaginatedExternalContactList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ExternalContact"][];
         };
         PaginatedFPIRecordList: {
             /** @example 123 */
@@ -15307,36 +15723,6 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["MeasurementDefinition"][];
         };
-        PaginatedNotificationPreferenceList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["NotificationPreference"][];
-        };
-        PaginatedNotificationRuleList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["NotificationRule"][];
-        };
         PaginatedOrdersList: {
             /** @example 123 */
             count: number;
@@ -15411,6 +15797,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Parts"][];
+        };
+        PaginatedPersonalRuleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["PersonalRule"][];
+        };
+        PaginatedPersonalScheduleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["PersonalSchedule"][];
         };
         PaginatedProcessChangeNoticeList: {
             /** @example 123 */
@@ -15756,6 +16172,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Tenant"][];
+        };
+        PaginatedTenantRuleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["TenantRule"][];
+        };
+        PaginatedTenantScheduleList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["TenantSchedule"][];
         };
         PaginatedThreeDModelList: {
             /** @example 123 */
@@ -16430,6 +16876,71 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description Admin-authored, fires only for events referencing a specific customer.
+         *     Can route to ExternalContacts at that customer in addition to internal
+         *     users/groups.
+         */
+        PatchedCustomerRuleRequest: {
+            name?: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+            /** Format: uuid */
+            scope_customer?: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
+        };
+        /**
+         * @description Admin-authored, routes to one customer org's recipients (users,
+         *     groups, or ExternalContacts at that customer).
+         */
+        PatchedCustomerScheduleRequest: {
+            name?: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind?: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            /** Format: uuid */
+            scope_customer?: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            recipient_external?: string[];
+        };
+        /**
          * @description Disassembly BOM line serializer.
          *
          *     DisassemblyBOMLine is a VERSIONED controlled record. Any content
@@ -16599,6 +17110,21 @@ export interface components {
             status?: components["schemas"]["EquipmentsStatusEnum"];
             notes?: string;
             archived?: boolean;
+        };
+        /**
+         * @description CRUD over `ExternalContact`. Tenant-scoped automatically by the
+         *     viewset; the customer FK is validated to belong to the current tenant
+         *     via TenantScopedPrimaryKeyRelatedField.
+         */
+        PatchedExternalContactRequest: {
+            /** Format: uuid */
+            customer?: string;
+            name?: string;
+            /** Format: email */
+            email?: string;
+            /** @description Free-form label, e.g. 'primary', 'quality', 'procurement'. */
+            role?: string;
+            enabled?: boolean;
         };
         /** @description Serializer for First Piece Inspection records. */
         PatchedFPIRecordRequest: {
@@ -16794,38 +17320,6 @@ export interface components {
             is_default?: boolean;
             archived?: boolean;
         };
-        /**
-         * @description Serializer for user notification preferences.
-         *
-         *     Handles timezone conversion:
-         *     - INPUT: User sends time in their local timezone
-         *     - STORED: Time converted to UTC in database
-         *     - OUTPUT: Time converted back to user's local timezone
-         */
-        PatchedNotificationPreferenceRequest: {
-            notification_type?: components["schemas"]["NotificationTypeEnum"];
-            channel_type?: components["schemas"]["NotificationPreferenceChannelTypeEnum"];
-            schedule?: components["schemas"]["NotificationScheduleRequest"];
-            /** @description Max sends before stopping. Null = infinite */
-            max_attempts?: number | null;
-        };
-        /** @description CRUD for NotificationRule. */
-        PatchedNotificationRuleRequest: {
-            /** @description Admin-friendly label shown in the rule list. */
-            name?: string;
-            description?: string;
-            event_type?: components["schemas"]["EventTypeEnum"];
-            scope_content_type?: number | null;
-            scope_object_id?: string | null;
-            recipient_users?: number[];
-            recipient_groups?: string[];
-            /** @description Name of a registered role resolver (e.g. "step_execution_assignee"). Resolver takes the event payload and returns an iterable of Users. */
-            recipient_resolver_key?: string;
-            channel_type?: components["schemas"]["NotificationRuleChannelTypeEnum"];
-            /** @description Per-(rule, recipient) cooldown. A recipient will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
-            min_gap_seconds?: number;
-            is_active?: boolean;
-        };
         /** @description Enhanced orders serializer with user filtering and features */
         PatchedOrdersRequest: {
             name?: string;
@@ -16886,6 +17380,66 @@ export interface components {
             sampling_ruleset?: string | null;
             sampling_context?: unknown;
             archived?: boolean;
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_* fields
+         *     are exposed.
+         *
+         *     `owner_user` is write-once at create time; the viewset stamps it from the
+         *     request user. The serializer exposes it read-only so clients can see who
+         *     owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+         *     ownership" endpoint if needed.
+         */
+        PatchedPersonalRuleRequest: {
+            name?: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_*
+         *     fields are exposed. `owner_user` is stamped from the request user at
+         *     create time and read-only thereafter.
+         */
+        PatchedPersonalScheduleRequest: {
+            name?: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind?: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
         };
         /** @description Read/write serializer for PCNs. */
         PatchedProcessChangeNoticeRequest: {
@@ -17514,6 +18068,58 @@ export interface components {
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
             default_timezone?: string;
         };
+        /** @description Admin-authored, fires tenant-wide. Recipients are internal. */
+        PatchedTenantRuleRequest: {
+            name?: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
+        /** @description Admin-authored, internal recipients only. */
+        PatchedTenantScheduleRequest: {
+            name?: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind?: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
         PatchedTenantSettingsUpdateRequestRequest: {
             name?: string;
             settings?: {
@@ -17750,6 +18356,145 @@ export interface components {
             permissions: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_* fields
+         *     are exposed.
+         *
+         *     `owner_user` is write-once at create time; the viewset stamps it from the
+         *     request user. The serializer exposes it read-only so clients can see who
+         *     owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+         *     ownership" endpoint if needed.
+         */
+        PersonalRule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_Escalation"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly owner_user: number;
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_* fields
+         *     are exposed.
+         *
+         *     `owner_user` is write-once at create time; the viewset stamps it from the
+         *     request user. The serializer exposes it read-only so clients can see who
+         *     owns a rule but can't reassign it. Phase 4 may add an explicit "transfer
+         *     ownership" endpoint if needed.
+         */
+        PersonalRuleRequest: {
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_*
+         *     fields are exposed. `owner_user` is stamped from the request user at
+         *     create time and read-only thereafter.
+         */
+        PersonalSchedule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            /**
+             * Format: date-time
+             * @description Set to now() inside the fire transaction, before rendering.
+             */
+            readonly last_fired_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly owner_user: number;
+        };
+        /**
+         * @description User-authored. Owner is the implicit recipient — no recipient_*
+         *     fields are exposed. `owner_user` is stamped from the request user at
+         *     create time and read-only thereafter.
+         */
+        PersonalScheduleRequest: {
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
         };
         PresetListResponse: {
             presets: {
@@ -18526,6 +19271,13 @@ export interface components {
          * @enum {string}
          */
         RcaReviewStatusEnum: "NOT_REQUIRED" | "REQUIRED" | "COMPLETED";
+        /**
+         * @description * `static` - Static — recipients from this rule only
+         *     * `from_payload` - From event — recipients from the event payload
+         *     * `union` - Union — combine event-payload recipients with this rule's
+         * @enum {string}
+         */
+        RecipientStrategyEnum: "static" | "from_payload" | "union";
         RegisterRequest: {
             username: string;
             /** Format: email */
@@ -19136,6 +19888,12 @@ export interface components {
          * @enum {string}
          */
         ScheduleSlotStatusEnum: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+        ScheduledContentProviderCatalog: {
+            name: string;
+            title: string;
+            description: string;
+            params_schema: unknown;
+        };
         SendInvitationInputRequest: {
             user_id: number;
         };
@@ -20154,6 +20912,127 @@ export interface components {
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
             default_timezone?: string;
         };
+        /** @description Admin-authored, fires tenant-wide. Recipients are internal. */
+        TenantRule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_Escalation"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
+        /** @description Admin-authored, fires tenant-wide. Recipients are internal. */
+        TenantRuleRequest: {
+            name: string;
+            description?: string;
+            /** @description Must exist in EVENT_REGISTRY (validated at save time). */
+            event_code?: string;
+            /** @description CEL expression evaluated against the event's payload. */
+            conditions_source?: string;
+            /** @description List of channel codes, e.g. ['email', 'in_app']. */
+            channels?: unknown;
+            priority?: number;
+            enabled?: boolean;
+            /** @description Per-(rule, recipient) cooldown. Recipients will not receive another notification from this rule until this many seconds have passed. 0 disables dedup. */
+            min_gap_seconds?: number;
+            /**
+             * @description Where to pull recipients from at fire time. 'static' uses the rule's M2M lists only; 'from_payload' reads recipient IDs from the event's payload; 'union' combines both.
+             *
+             *     * `static` - Static — recipients from this rule only
+             *     * `from_payload` - From event — recipients from the event payload
+             *     * `union` - Union — combine event-payload recipients with this rule's
+             */
+            recipient_strategy?: components["schemas"]["RecipientStrategyEnum"];
+            escalation?: components["schemas"]["_EscalationRequest"] | null;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
+        /** @description Admin-authored, internal recipients only. */
+        TenantSchedule: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            /**
+             * Format: date-time
+             * @description Set to now() inside the fire transaction, before rendering.
+             */
+            readonly last_fired_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
+        /** @description Admin-authored, internal recipients only. */
+        TenantScheduleRequest: {
+            name: string;
+            description?: string;
+            enabled?: boolean;
+            /** @description ScheduledContentProvider registry key. */
+            provider_kind: string;
+            /** @description Params passed to the provider. For customer-scoped schedules, the dispatcher merges in {'customer_id': scope_customer.id} before invoking the provider. */
+            provider_params?: unknown;
+            cadence?: components["schemas"]["CadenceEnum"];
+            /** @description 0=Monday ... 6=Sunday. Required when cadence='weekly'. */
+            day_of_week?: number | null;
+            /** @description 1-28 (capped to avoid Feb/short-month gotchas). Required when cadence='monthly'. */
+            day_of_month?: number | null;
+            /**
+             * Format: time
+             * @description Local clock time in the schedule's timezone.
+             */
+            time_of_day?: string;
+            /** @description IANA timezone name (e.g. 'America/New_York'). Defaults to UTC; the fire task falls back to tenant.default_timezone if 'UTC' is set and the tenant configured a non-UTC default. */
+            timezone?: string;
+            /** @description List of channel codes, e.g. ['email']. Email-only at launch. */
+            channels?: unknown;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+        };
         TenantSettingsResponse: {
             name: string;
             tier: string;
@@ -20210,10 +21089,6 @@ export interface components {
         TerminalStatusEnum: "COMPLETED" | "SHIPPED" | "STOCK" | "SCRAPPED" | "RETURNED" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED";
         TestConnectionResult: {
             success: boolean;
-            message: string;
-        };
-        TestSendResponse: {
-            status: string;
             message: string;
         };
         /**
@@ -21178,6 +22053,44 @@ export interface components {
             process_name: string | null;
             total_parts: number;
             step_history: components["schemas"]["StepSummary"][];
+        };
+        /**
+         * @description Nested policy + steps. Replace-all semantics on update: writing a
+         *     step list overwrites the existing steps entirely. Passing `null` for
+         *     the whole escalation deletes the policy (and its steps via CASCADE).
+         */
+        _Escalation: {
+            /** @default true */
+            enabled: boolean;
+            steps: components["schemas"]["_EscalationStep"][];
+        };
+        /**
+         * @description Nested policy + steps. Replace-all semantics on update: writing a
+         *     step list overwrites the existing steps entirely. Passing `null` for
+         *     the whole escalation deletes the policy (and its steps via CASCADE).
+         */
+        _EscalationRequest: {
+            /** @default true */
+            enabled: boolean;
+            steps: components["schemas"]["_EscalationStepRequest"][];
+        };
+        /** @description One step in a nested escalation chain. */
+        _EscalationStep: {
+            order: number;
+            delay_seconds: number;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            /** @default  */
+            subject_override: string;
+        };
+        /** @description One step in a nested escalation chain. */
+        _EscalationStepRequest: {
+            order: number;
+            delay_seconds: number;
+            recipient_users?: number[];
+            recipient_groups?: string[];
+            /** @default  */
+            subject_override: string;
         };
     };
     responses: never;
@@ -28951,368 +29864,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationEventTypeCatalog"][];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_list: {
-        parameters: {
-            query?: {
-                /** @description Filter by channel type (email, in_app, sms) */
-                channel_type?: string;
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description Filter by notification type */
-                notification_type?: string;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                /** @description Filter by status (pending, sent, failed, cancelled) */
-                status?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedNotificationPreferenceList"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NotificationPreferenceRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["NotificationPreferenceRequest"];
-                "multipart/form-data": components["schemas"]["NotificationPreferenceRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationPreference"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this Notification Task. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationPreference"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this Notification Task. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NotificationPreferenceRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["NotificationPreferenceRequest"];
-                "multipart/form-data": components["schemas"]["NotificationPreferenceRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationPreference"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this Notification Task. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_NotificationPreferences_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this Notification Task. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedNotificationPreferenceRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedNotificationPreferenceRequest"];
-                "multipart/form-data": components["schemas"]["PatchedNotificationPreferenceRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationPreference"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_test_send_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this Notification Task. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TestSendResponse"];
-                };
-            };
-        };
-    };
-    api_NotificationPreferences_available_types_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AvailableNotificationTypes"];
-                };
-            };
-        };
-    };
-    api_NotificationRules_list: {
-        parameters: {
-            query?: {
-                /**
-                 * @description * `EMAIL` - Email
-                 *     * `IN_APP` - In-App Notification
-                 */
-                channel_type?: "EMAIL" | "IN_APP";
-                /**
-                 * @description * `STEP_FAILURE` - Part failed at step
-                 *     * `WORK_ORDER_HELD_TOO_LONG` - Work order held too long
-                 *     * `WORK_ORDER_STALLED` - Work order stalled
-                 *     * `WORK_ORDER_OVERDUE` - Work order overdue
-                 */
-                event_type?: "STEP_FAILURE" | "WORK_ORDER_HELD_TOO_LONG" | "WORK_ORDER_OVERDUE" | "WORK_ORDER_STALLED";
-                is_active?: boolean;
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                /** @description A search term. */
-                search?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedNotificationRuleList"];
-                };
-            };
-        };
-    };
-    api_NotificationRules_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NotificationRuleRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["NotificationRuleRequest"];
-                "multipart/form-data": components["schemas"]["NotificationRuleRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationRule"];
-                };
-            };
-        };
-    };
-    api_NotificationRules_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this notification rule. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationRule"];
-                };
-            };
-        };
-    };
-    api_NotificationRules_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this notification rule. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NotificationRuleRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["NotificationRuleRequest"];
-                "multipart/form-data": components["schemas"]["NotificationRuleRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationRule"];
-                };
-            };
-        };
-    };
-    api_NotificationRules_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this notification rule. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_NotificationRules_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this notification rule. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedNotificationRuleRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedNotificationRuleRequest"];
-                "multipart/form-data": components["schemas"]["PatchedNotificationRuleRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationRule"];
                 };
             };
         };
@@ -38473,6 +39024,1108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationCatalogItem"][];
+                };
+            };
+        };
+    };
+    api_notifications_events_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationEventTypeCatalog"][];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedExternalContactList"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalContactRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExternalContactRequest"];
+                "multipart/form-data": components["schemas"]["ExternalContactRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this external contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this external contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalContactRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExternalContactRequest"];
+                "multipart/form-data": components["schemas"]["ExternalContactRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_external_contacts_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this external contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_external_contacts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this external contact. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalContactRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedExternalContactRequest"];
+                "multipart/form-data": components["schemas"]["PatchedExternalContactRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_customer_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCustomerRuleList"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_customer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CustomerRuleRequest"];
+                "multipart/form-data": components["schemas"]["CustomerRuleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_customer_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_customer_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CustomerRuleRequest"];
+                "multipart/form-data": components["schemas"]["CustomerRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_customer_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_rules_customer_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCustomerRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCustomerRuleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedCustomerRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_personal_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPersonalRuleList"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_personal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PersonalRuleRequest"];
+                "multipart/form-data": components["schemas"]["PersonalRuleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_personal_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_personal_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PersonalRuleRequest"];
+                "multipart/form-data": components["schemas"]["PersonalRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_personal_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_rules_personal_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPersonalRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPersonalRuleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPersonalRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_tenant_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTenantRuleList"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_tenant_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantRuleRequest"];
+                "multipart/form-data": components["schemas"]["TenantRuleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_tenant_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_tenant_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantRuleRequest"];
+                "multipart/form-data": components["schemas"]["TenantRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRule"];
+                };
+            };
+        };
+    };
+    api_notifications_rules_tenant_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_rules_tenant_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification rule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTenantRuleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTenantRuleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTenantRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantRule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_customer_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCustomerScheduleList"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_customer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CustomerScheduleRequest"];
+                "multipart/form-data": components["schemas"]["CustomerScheduleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_customer_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_customer_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CustomerScheduleRequest"];
+                "multipart/form-data": components["schemas"]["CustomerScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_customer_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_schedules_customer_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCustomerScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCustomerScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedCustomerScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_personal_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPersonalScheduleList"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_personal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PersonalScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PersonalScheduleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_personal_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_personal_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonalScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PersonalScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PersonalScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_personal_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_schedules_personal_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPersonalScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPersonalScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPersonalScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_providers_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledContentProviderCatalog"][];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_tenant_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTenantScheduleList"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_tenant_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantScheduleRequest"];
+                "multipart/form-data": components["schemas"]["TenantScheduleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_tenant_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_tenant_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantScheduleRequest"];
+                "multipart/form-data": components["schemas"]["TenantScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSchedule"];
+                };
+            };
+        };
+    };
+    api_notifications_schedules_tenant_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_notifications_schedules_tenant_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification schedule. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTenantScheduleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTenantScheduleRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTenantScheduleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSchedule"];
                 };
             };
         };
