@@ -584,10 +584,24 @@ class TenantModelPermissions(TenantPermission):
     - PUT/PATCH -> change_{model}
     - DELETE -> delete_{model}
 
+    Optionally, viewsets can declare action-specific permissions via an
+    `action_permissions` attribute. These are checked ADDITIVELY on top of
+    the CRUD perm (both must pass). The dict maps DRF action names to a
+    list of required permission codenames.
+
     Usage:
         class OrderViewSet(viewsets.ModelViewSet):
             permission_classes = [TenantModelPermissions]
             queryset = Orders.objects.all()
+
+            # Optional: action-level gates on top of CRUD
+            action_permissions = {
+                'approve': ['approve_orders'],
+                'close':   ['close_orders'],
+            }
+
+    Viewsets without `action_permissions` behave exactly as the CRUD-only
+    case; actions not listed in the dict fall through to CRUD-only.
 
     The model name is derived from view.queryset.model._meta.model_name.
     """
@@ -637,55 +651,21 @@ class TenantModelPermissions(TenantPermission):
         if not super().has_permission(request, view):
             return False
 
-        # Get required permission
+        # CRUD gate (HTTP method → view/add/change/delete_{model})
         perm = self.get_required_permission(request, view)
-        if not perm:
-            return True  # No permission required (shouldn't happen normally)
-
-        # Check tenant-scoped permission (tenant auto-resolved by User._resolve_tenant)
-        return request.user.has_tenant_perm(perm)
-
-
-class TenantActionPermissions(TenantPermission):
-    """
-    Tenant-scoped permissions for custom viewset actions.
-
-    Use this when you need custom permission names for specific actions.
-
-    Usage:
-        class OrderViewSet(viewsets.ModelViewSet):
-            permission_classes = [TenantActionPermissions]
-
-            # Define permissions per action
-            action_permissions = {
-                'list': ['view_orders'],
-                'create': ['add_orders'],
-                'approve': ['approve_orders'],
-                'export': ['view_orders', 'export_data'],
-            }
-
-            @action(detail=True, methods=['post'])
-            def approve(self, request, pk=None):
-                ...
-    """
-
-    def has_permission(self, request, view):
-        if not super().has_permission(request, view):
+        if perm and not request.user.has_tenant_perm(perm):
             return False
 
-        # Get action-specific permissions
+        # Action-specific gate, additive on top of CRUD. Viewsets opt in by
+        # declaring `action_permissions = {'action_name': ['perm', ...]}`.
+        # Actions not listed fall through to CRUD-only.
         action = getattr(view, 'action', None)
-        if not action:
-            return True
+        action_permissions = getattr(view, 'action_permissions', None) or {}
+        required = action_permissions.get(action) or []
+        if required and not request.user.has_tenant_perms(required):
+            return False
 
-        action_permissions = getattr(view, 'action_permissions', {})
-        required_perms = action_permissions.get(action, [])
-
-        if not required_perms:
-            return True  # No specific permissions required for this action
-
-        # Check if user has ALL required permissions
-        return request.user.has_tenant_perms(required_perms)
+        return True
 
 
 class RequirePermission(TenantPermission):

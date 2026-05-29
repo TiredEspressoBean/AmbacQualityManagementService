@@ -352,3 +352,135 @@ class PermissionIntegrityTests(TestCase):
                 f"Found {len(issues)} custom permission issue(s):\n  "
                 + "\n  ".join(issues)
             )
+
+
+class TenantModelPermissionsActionGateTests(TestCase):
+    """
+    Tests for the action_permissions branch added to TenantModelPermissions.
+
+    The class now checks an optional `action_permissions` dict on the viewset
+    after the CRUD perm passes. Viewsets without the attribute behave exactly
+    as before; actions not listed in the dict fall through to CRUD-only.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIRequestFactory
+        from Tracker.permissions import TenantModelPermissions
+        from Tracker.models import Tenant
+        from Tracker.utils.tenant_context import set_current_tenant_id
+
+        self.factory = APIRequestFactory()
+        self.perm_class = TenantModelPermissions()
+
+        self.tenant = Tenant.objects.create(name="T", slug="t", tier="PRO")
+        self._tok = set_current_tenant_id(self.tenant.id)
+
+        # Build a user who has the CRUD perm we'll exercise but neither
+        # of the action-specific perms. Each test grants what it needs on
+        # top of this baseline via assign_perms().
+        self.user = User.objects.create_user(
+            username='u', email='u@t.com', password='x', tenant=self.tenant,
+        )
+
+    def tearDown(self):
+        from Tracker.utils.tenant_context import reset_current_tenant
+        reset_current_tenant(self._tok)
+
+    def _assign_perms(self, *codenames):
+        """Grant tenant-scoped perms to self.user via a tenant group."""
+        from django.contrib.auth.models import Permission
+        from Tracker.models import TenantGroup
+
+        group = TenantGroup.objects.create(
+            tenant=self.tenant, name=f"grp-{'-'.join(codenames) or 'empty'}",
+        )
+        for codename in codenames:
+            perm = Permission.objects.filter(codename=codename).first()
+            if perm:
+                group.permissions.add(perm)
+        self.user.add_to_tenant_group(group, tenant=self.tenant)
+        self.user.clear_permission_cache(self.tenant)
+
+    def _make_view(self, *, model_class, action_name, action_permissions=None):
+        """Build a minimal stand-in for a DRF viewset."""
+        class _StubView:
+            queryset = type('Q', (), {'model': model_class})()
+            action = action_name
+        if action_permissions is not None:
+            _StubView.action_permissions = action_permissions
+        return _StubView()
+
+    def _make_request(self, method='POST'):
+        request = getattr(self.factory, method.lower())('/x/')
+        request.user = self.user
+        return request
+
+    def test_no_action_permissions_attr_behaves_unchanged(self):
+        """Viewsets without action_permissions get the legacy CRUD-only check."""
+        from Tracker.models import RcaRecord
+        view = self._make_view(model_class=RcaRecord, action_name='approve_rca')
+
+        # User lacks add_rcarecord — should be rejected by the CRUD gate.
+        self.assertFalse(self.perm_class.has_permission(self._make_request(), view))
+
+        # Grant add_rcarecord; with no action_permissions, this is sufficient.
+        self._assign_perms('add_rcarecord')
+        self.assertTrue(self.perm_class.has_permission(self._make_request(), view))
+
+    def test_action_perm_required_user_lacks_it_rejected(self):
+        """User with CRUD perm but missing action perm is rejected."""
+        from Tracker.models import RcaRecord
+        self._assign_perms('add_rcarecord')  # CRUD passes, action does not.
+        view = self._make_view(
+            model_class=RcaRecord,
+            action_name='approve_rca',
+            action_permissions={'approve_rca': ['review_rca']},
+        )
+        self.assertFalse(self.perm_class.has_permission(self._make_request(), view))
+
+    def test_action_perm_required_user_has_it_passes(self):
+        """User with both CRUD and action perms passes."""
+        from Tracker.models import RcaRecord
+        self._assign_perms('add_rcarecord', 'review_rca')
+        view = self._make_view(
+            model_class=RcaRecord,
+            action_name='approve_rca',
+            action_permissions={'approve_rca': ['review_rca']},
+        )
+        self.assertTrue(self.perm_class.has_permission(self._make_request(), view))
+
+    def test_action_not_in_dict_falls_through_to_crud_only(self):
+        """Action absent from action_permissions only requires the CRUD perm."""
+        from Tracker.models import RcaRecord
+        self._assign_perms('add_rcarecord')  # CRUD passes, no action perm needed.
+        view = self._make_view(
+            model_class=RcaRecord,
+            action_name='submit_for_review',  # not in dict below
+            action_permissions={'approve_rca': ['review_rca']},
+        )
+        self.assertTrue(self.perm_class.has_permission(self._make_request(), view))
+
+    def test_multiple_action_perms_all_required(self):
+        """When action_permissions lists N perms, the user needs ALL of them."""
+        from Tracker.models import RcaRecord
+        view = self._make_view(
+            model_class=RcaRecord,
+            action_name='approve_rca',
+            action_permissions={'approve_rca': ['review_rca', 'conduct_rca']},
+        )
+
+        # CRUD + one of two action perms — still rejected.
+        self._assign_perms('add_rcarecord', 'review_rca')
+        self.assertFalse(self.perm_class.has_permission(self._make_request(), view))
+
+    def test_crud_perm_failure_short_circuits_action_check(self):
+        """If the CRUD gate rejects, action_permissions are not consulted."""
+        from Tracker.models import RcaRecord
+        # User has the action perm but lacks the CRUD perm.
+        self._assign_perms('review_rca')  # no add_rcarecord
+        view = self._make_view(
+            model_class=RcaRecord,
+            action_name='approve_rca',
+            action_permissions={'approve_rca': ['review_rca']},
+        )
+        self.assertFalse(self.perm_class.has_permission(self._make_request(), view))

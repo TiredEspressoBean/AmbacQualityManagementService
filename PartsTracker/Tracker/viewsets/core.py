@@ -1560,6 +1560,10 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     search_fields = ['template_name', 'approval_type']
     ordering_fields = ['template_name', 'created_at', 'updated_at']
     ordering = ['template_name']
+    action_permissions = {
+        'activate': ['manage_approval_workflow'],
+        'deactivate': ['manage_approval_workflow'],
+    }
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1578,13 +1582,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     @action(detail=True, methods=['post'], url_path='deactivate')
     def deactivate(self, request, pk=None):
         """Deactivate an approval template"""
-        # Check permission
-        if not request.user.has_tenant_perm('manage_approval_workflow'):
-            return Response(
-                {'detail': 'You do not have permission to manage approval templates'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
+        # `manage_approval_workflow` enforced declaratively via action_permissions.
         template = self.get_object()
         template.deactivated_at = timezone.now()
         template.save(update_fields=['deactivated_at'])
@@ -1593,13 +1591,7 @@ class ApprovalTemplateViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     @action(detail=True, methods=['post'], url_path='activate')
     def activate(self, request, pk=None):
         """Reactivate an approval template"""
-        # Check permission
-        if not request.user.has_tenant_perm('manage_approval_workflow'):
-            return Response(
-                {'detail': 'You do not have permission to manage approval templates'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
+        # `manage_approval_workflow` enforced declaratively via action_permissions.
         template = self.get_object()
         template.deactivated_at = None
         template.save(update_fields=['deactivated_at'])
@@ -1688,6 +1680,9 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     ordering_fields = ['requested_at', 'completed_at', 'due_date', 'approval_number']
     ordering = ['-requested_at']
     pagination_class = LimitOffsetPagination
+    action_permissions = {
+        'submit_response': ['respond_to_approval'],
+    }
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1738,14 +1733,10 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     @action(detail=True, methods=['post'], url_path='submit-response')
     def submit_response(self, request, pk=None):
         """Submit an approval response (approve/reject/delegate)"""
+        # `respond_to_approval` enforced declaratively via action_permissions.
+        # Per-instance assignment check (can_approve) remains inline — it's
+        # template-binding logic that depends on the specific approval row.
         approval = self.get_object()
-
-        # Check permission
-        if not request.user.has_tenant_perm('respond_to_approval'):
-            return Response(
-                {'detail': 'You do not have permission to respond to approval requests'},
-                status=status.HTTP_403_FORBIDDEN
-            )
 
         # Check if user is an assigned approver
         if not approval.can_approve(request.user):
@@ -1843,6 +1834,9 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     filterset_fields = ['approval_request', 'approver', 'decision', 'verification_method']
     ordering_fields = ['decision_date', 'responded_at']
     ordering = ['-decision_date']
+    action_permissions = {
+        'delegate': ['respond_to_approval'],
+    }
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1857,14 +1851,10 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     @action(detail=True, methods=['post'], url_path='delegate')
     def delegate(self, request, pk=None):
         """Delegate this approval to another user"""
+        # `respond_to_approval` enforced declaratively via action_permissions.
+        # Per-instance ownership check (response.approver == user) remains
+        # inline — it depends on the specific response row.
         response = self.get_object()
-
-        # Check permission - user must have respond_to_approval permission
-        if not request.user.has_tenant_perm('respond_to_approval'):
-            return Response(
-                {'detail': 'You do not have permission to delegate approval requests'},
-                status=status.HTTP_403_FORBIDDEN
-            )
 
         # Check if user is the approver for this response
         if response.approver != request.user:

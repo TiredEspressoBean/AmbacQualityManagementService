@@ -64,7 +64,8 @@ def approve_rca(rca: RcaRecord, user) -> RcaRecord:
     Distinct from `verify_root_cause`: this is the reviewer workflow
     exposed at the `approve` viewset action; no self-verification rules
     apply here because the reviewer is explicitly a different persona.
-    Viewset-level permission gating (`review_rca`) stays at the viewset.
+    The `review_rca` perm is enforced declaratively at the viewset via
+    `RcaRecordViewSet.action_permissions`.
     """
     rca.root_cause_verification_status = RootCauseVerificationStatus.VERIFIED
     rca.root_cause_verified_by = user

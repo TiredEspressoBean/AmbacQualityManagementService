@@ -537,6 +537,9 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     filterset_fields = ['capa', 'rca_method', 'rca_review_status', 'conducted_by', 'root_cause_verified_by']
     ordering_fields = ['conducted_date', 'root_cause_verified_at']
     ordering = ['-conducted_date']
+    action_permissions = {
+        'approve_rca': ['review_rca'],
+    }
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -567,12 +570,7 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_rca(self, request, pk=None):
         """Approve RCA record"""
-        if not request.user.has_tenant_perm('review_rca'):
-            return Response(
-                {'detail': 'You do not have permission to review RCA records'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
+        # `review_rca` perm enforced declaratively via action_permissions on the viewset.
         from Tracker.services.qms.rca import approve_rca as approve_rca_service
 
         rca = self.get_object()
