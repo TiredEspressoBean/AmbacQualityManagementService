@@ -5,6 +5,7 @@ ViewSets for remanufacturing models:
 - HarvestedComponent: Disassembled components with scrap/accept actions
 - DisassemblyBOMLine: Expected disassembly yields
 """
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import viewsets, status, serializers
@@ -114,6 +115,125 @@ class CoreViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
         core = self.get_object()
         components = core.harvested_components.all()
         return Response(HarvestedComponentSerializer(components, many=True, context={'request': request}).data)
+
+    @extend_schema(
+        request=inline_serializer(name="CoreBulkCreateInput", fields={
+            "cores": serializers.ListField(child=serializers.DictField(), allow_empty=False),
+        }),
+        responses={
+            201: inline_serializer(name="CoreBulkCreateResponse", fields={
+                "count": serializers.IntegerField(),
+                "created_core_ids": serializers.ListField(child=serializers.UUIDField()),
+            }),
+            400: inline_serializer(name="CoreBulkCreateError", fields={
+                "detail": serializers.CharField(required=False),
+                "errors": serializers.ListField(child=serializers.DictField(), required=False),
+            }),
+        },
+        description="Create N cores from a shipment. All-or-nothing — any row error rolls back the batch.",
+    )
+    @action(detail=False, methods=['post'], url_path='bulk_create')
+    def bulk_create(self, request):
+        """Bulk-create cores. Atomic: all rows validate and save together, or none do."""
+        rows = request.data.get('cores')
+        if not isinstance(rows, list) or len(rows) == 0:
+            return Response(
+                {"detail": "cores must be a non-empty list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ctx = {'request': request}
+        per_row_errors = []
+        serializer_instances = []
+        for idx, row in enumerate(rows):
+            ser = CoreSerializer(data=row, context=ctx)
+            if ser.is_valid():
+                serializer_instances.append(ser)
+            else:
+                per_row_errors.append({'index': idx, 'errors': ser.errors})
+
+        if per_row_errors:
+            return Response(
+                {"detail": "Validation failed", "errors": per_row_errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                created = [ser.save(received_by=request.user) for ser in serializer_instances]
+        except Exception as exc:
+            return Response(
+                {"detail": "Bulk create failed", "errors": [{"index": -1, "errors": str(exc)}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "count": len(created),
+                "created_core_ids": [str(c.id) for c in created],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        request=inline_serializer(name="CoreStartTeardownBatchInput", fields={
+            "core_ids": serializers.ListField(child=serializers.UUIDField(), allow_empty=False),
+            "process_id": serializers.UUIDField(required=False),
+        }),
+        responses={
+            201: inline_serializer(name="CoreStartTeardownBatchResponse", fields={
+                "work_order_id": serializers.UUIDField(),
+                "work_order_erp_id": serializers.CharField(),
+                "transitioned_core_ids": serializers.ListField(child=serializers.UUIDField()),
+            }),
+        },
+        description=(
+            "Create one teardown WorkOrder that links the given cores and "
+            "transitions each from RECEIVED to IN_DISASSEMBLY. All-or-nothing."
+        ),
+    )
+    @action(detail=False, methods=['post'], url_path='start_teardown_batch')
+    def start_teardown_batch(self, request):
+        from Tracker.models import Processes
+        from Tracker.services.reman.teardown import start_teardown_batch as svc
+
+        core_ids = request.data.get('core_ids') or []
+        process_id = request.data.get('process_id')
+        if not isinstance(core_ids, list) or not core_ids:
+            return Response(
+                {"detail": "core_ids must be a non-empty list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cores = list(Core.objects.filter(id__in=core_ids).select_related('core_type', 'tenant'))
+        if len(cores) != len(set(core_ids)):
+            return Response(
+                {"detail": "One or more core_ids not found in this tenant"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        process = None
+        if process_id:
+            process = Processes.objects.filter(id=process_id).first()
+            if process is None:
+                return Response(
+                    {"detail": "process_id not found in this tenant"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        try:
+            wo = svc(cores=cores, user=request.user, process=process)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "work_order_id": str(wo.id),
+                "work_order_erp_id": wo.ERP_id,
+                "transitioned_core_ids": [str(c.id) for c in cores],
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # ===== HARVESTED COMPONENT VIEWSETS =====

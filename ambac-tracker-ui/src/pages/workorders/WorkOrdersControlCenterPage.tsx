@@ -37,6 +37,7 @@ import {
     AlertTriangle,
     Pause,
     Play,
+    Plus,
     X,
     ChevronRight,
     PauseCircle,
@@ -67,6 +68,7 @@ import { useExceptions } from "./useExceptions";
 import { useBulkTransitionWorkOrders } from "@/hooks/useBulkTransitionWorkOrders";
 import { useBulkPlaceOnHoldWorkOrders } from "@/hooks/useBulkPlaceOnHoldWorkOrders";
 import { useBulkClearHoldWorkOrders } from "@/hooks/useBulkClearHoldWorkOrders";
+import { BulkAddPartsDialog } from "./BulkAddPartsDialog";
 
 // Nested serializer shapes that the codegen exposes as `{}`. The backend
 // produces these fields on WorkOrderList; we cast through for FK crawl.
@@ -89,6 +91,7 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
     qa_required: number;
     qa_completed: number;
     current_hold: CurrentHold | null;
+    process_id: string | null;
 } {
     const proc = (w.process_info ?? {}) as ProcessInfo;
     const order = (w.related_order_info ?? {}) as RelatedOrderInfo;
@@ -115,6 +118,7 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
         qa_required: qa.required ?? 0,
         qa_completed: qa.completed ?? 0,
         current_hold: hold,
+        process_id: proc.id ?? null,
     };
 }
 
@@ -148,6 +152,7 @@ export function WorkOrdersControlCenterPage() {
     const [priority, setPriority] = useState("all");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [bulkError, setBulkError] = useState<string | null>(null);
+    const [addPartsOpen, setAddPartsOpen] = useState(false);
 
     const { data: woData, isLoading: woLoading, error: woError } = useRetrieveWorkOrders({ limit: 200 });
     const workOrders = useMemo(
@@ -711,10 +716,25 @@ export function WorkOrdersControlCenterPage() {
                         onClearHold={(ids) => handleBulkClearHold(ids)}
                         onChangeStatus={(ids, status) => handleBulkTransition(ids, status)}
                         onSplit={(id) => navigate({ to: `/workorder/${id}/control` })}
+                        onAddParts={() => setAddPartsOpen(true)}
                         onReport={() => setReportOpen(true)}
                         onClear={() => setSelected(new Set())}
                     />
                 )}
+
+                {(() => {
+                    const id = selected.size === 1 ? Array.from(selected)[0] : null;
+                    const wo = id ? workOrders.find((w) => w.id === id) ?? null : null;
+                    return (
+                        <BulkAddPartsDialog
+                            open={addPartsOpen}
+                            onOpenChange={setAddPartsOpen}
+                            workOrderId={wo?.id ?? null}
+                            workOrderErpId={wo?.erp_id ?? null}
+                            processId={wo?.process_id ?? null}
+                        />
+                    );
+                })()}
 
                 <ReportExceptionDialog
                     open={reportOpen}
@@ -734,6 +754,7 @@ function FleetBulkBar({
     onClearHold,
     onChangeStatus,
     onSplit,
+    onAddParts,
     onReport,
     onClear,
 }: {
@@ -744,6 +765,7 @@ function FleetBulkBar({
     onClearHold: (ids: string[]) => void;
     onChangeStatus: (ids: string[], status: WorkOrderStatusEnum) => void;
     onSplit: (id: string) => void;
+    onAddParts: () => void;
     onReport: () => void;
     onClear: () => void;
 }) {
@@ -768,22 +790,21 @@ function FleetBulkBar({
                         <div className="mr-2 border-r pr-2 text-sm font-medium">
                             {selectedIds.length} selected
                         </div>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
+                        {releasable.length > 0 && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        disabled={releasable.length === 0}
-                                        onClick={() => releasable.length > 0 && onRelease(releasable)}
+                                        onClick={() => onRelease(releasable)}
                                     >
                                         <Play className="mr-1 h-4 w-4" />
-                                        Release {releasable.length > 0 ? `(${releasable.length})` : ""}
+                                        Release ({releasable.length})
                                     </Button>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>Only PENDING work orders</TooltipContent>
-                        </Tooltip>
+                                </TooltipTrigger>
+                                <TooltipContent>Only PENDING work orders</TooltipContent>
+                            </Tooltip>
+                        )}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <span>
@@ -800,21 +821,20 @@ function FleetBulkBar({
                             </TooltipTrigger>
                             <TooltipContent>PENDING or IN_PROGRESS only</TooltipContent>
                         </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
+                        {holdcleared.length > 0 && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        disabled={holdcleared.length === 0}
-                                        onClick={() => holdcleared.length > 0 && onClearHold(holdcleared)}
+                                        onClick={() => onClearHold(holdcleared)}
                                     >
-                                        Clear hold {holdcleared.length > 0 ? `(${holdcleared.length})` : ""}
+                                        Clear hold ({holdcleared.length})
                                     </Button>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>Only ON_HOLD work orders</TooltipContent>
-                        </Tooltip>
+                                </TooltipTrigger>
+                                <TooltipContent>Only ON_HOLD work orders</TooltipContent>
+                            </Tooltip>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => setChangeOpen(true)}>
                             Change status…
                         </Button>
@@ -822,6 +842,22 @@ function FleetBulkBar({
                             <CircleAlert className="mr-1 h-4 w-4" />
                             Report exception
                         </Button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={selectedIds.length !== 1}
+                                        onClick={() => selectedIds.length === 1 && onAddParts()}
+                                    >
+                                        <Plus className="mr-1 h-4 w-4" />
+                                        Add Parts
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>Bulk-create parts under one WO. Select exactly one WO.</TooltipContent>
+                        </Tooltip>
                         <Button
                             size="sm"
                             variant="outline"

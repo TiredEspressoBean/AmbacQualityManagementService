@@ -29,12 +29,20 @@ export function RemanDashboardPage() {
                         Core receiving, disassembly, and component harvesting
                     </p>
                 </div>
-                <Button asChild>
-                    <Link to="/reman/cores/receive">
-                        <Package className="mr-2 h-4 w-4" />
-                        Receive Core
-                    </Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" asChild>
+                        <Link to="/reman/cores/receive-batch">
+                            <Package className="mr-2 h-4 w-4" />
+                            Receive Cores
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link to="/reman/cores/receive">
+                            <Package className="mr-2 h-4 w-4" />
+                            Receive Core
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Cards */}

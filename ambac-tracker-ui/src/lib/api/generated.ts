@@ -9804,6 +9804,23 @@ export type WorkOrder = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type WorkOrderBulkAddPartsInputRequest = {
+  part_type: string;
+  step: string;
+  /**
+   * @minimum 1
+   */
+  quantity: number;
+  part_status?: /**
+   * @default "PENDING"
+   */
+  PartsStatusEnum | undefined;
+  erp_id_start?: /**
+   * @default 1
+   * @minimum 1
+   */
+  number | undefined;
+};
 export type WorkOrderBulkTransitionInputRequest = {
   ids: Array<string>;
   status: WorkOrderStatusEnum;
@@ -10874,6 +10891,28 @@ const PaginatedHarvestedComponentList = z.object({
   results: z.array(HarvestedComponent),
 });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
+const CoreBulkCreateInputRequest = z.object({
+  cores: z.array(z.object({}).partial().passthrough()),
+});
+const CoreBulkCreateResponse = z.object({
+  count: z.number().int(),
+  created_core_ids: z.array(z.string().uuid()),
+});
+const CoreBulkCreateError = z
+  .object({
+    detail: z.string(),
+    errors: z.array(z.object({}).partial().passthrough()),
+  })
+  .partial();
+const CoreStartTeardownBatchInputRequest = z.object({
+  core_ids: z.array(z.string().uuid()),
+  process_id: z.string().uuid().optional(),
+});
+const CoreStartTeardownBatchResponse = z.object({
+  work_order_id: z.string().uuid(),
+  work_order_erp_id: z.string(),
+  transitioned_core_ids: z.array(z.string().uuid()),
+});
 const UserDetail = z.object({
   id: z.number().int(),
   username: z
@@ -14066,6 +14105,17 @@ const PatchedWorkOrderRequest = z
     archived: z.boolean(),
   })
   .partial();
+const WorkOrderBulkAddPartsInputRequest = z.object({
+  part_type: z.string().uuid(),
+  step: z.string().uuid(),
+  quantity: z.number().int().gte(1),
+  part_status: PartsStatusEnum.optional().default("PENDING"),
+  erp_id_start: z.number().int().gte(1).optional().default(1),
+});
+const WorkOrderBulkAddPartsResponse = z.object({
+  count: z.number().int(),
+  created_part_ids: z.array(z.string().uuid()),
+});
 const WorkOrderPlaceOnHoldInputRequest = z.object({
   reason: z.string().min(1),
   notes: z.string().optional(),
@@ -15703,6 +15753,11 @@ export const schemas = {
   HarvestedComponent,
   PaginatedHarvestedComponentList,
   CoreScrapRequest,
+  CoreBulkCreateInputRequest,
+  CoreBulkCreateResponse,
+  CoreBulkCreateError,
+  CoreStartTeardownBatchInputRequest,
+  CoreStartTeardownBatchResponse,
   UserDetail,
   UserDetailRequest,
   PatchedUserDetailRequest,
@@ -16025,6 +16080,8 @@ export const schemas = {
   WorkOrderRequest,
   WorkOrder,
   PatchedWorkOrderRequest,
+  WorkOrderBulkAddPartsInputRequest,
+  WorkOrderBulkAddPartsResponse,
   WorkOrderPlaceOnHoldInputRequest,
   QADocumentsResponse,
   WorkOrderSplitInputRequest,
@@ -19213,6 +19270,27 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
     response: Core,
   },
   {
+    method: "post",
+    path: "/api/Cores/bulk_create/",
+    alias: "api_Cores_bulk_create_create",
+    description: `Create N cores from a shipment. All-or-nothing — any row error rolls back the batch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreBulkCreateInputRequest,
+      },
+    ],
+    response: CoreBulkCreateResponse,
+    errors: [
+      {
+        status: 400,
+        schema: CoreBulkCreateError,
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Cores/export-excel/",
     alias: "api_Cores_export_excel_retrieve",
@@ -19231,6 +19309,21 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Cores/start_teardown_batch/",
+    alias: "api_Cores_start_teardown_batch_create",
+    description: `Create one teardown WorkOrder that links the given cores and transitions each from RECEIVED to IN_DISASSEMBLY. All-or-nothing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreStartTeardownBatchInputRequest,
+      },
+    ],
+    response: CoreStartTeardownBatchResponse,
   },
   {
     method: "get",
@@ -34515,6 +34608,26 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/bulk_add_parts/",
+    alias: "api_WorkOrders_bulk_add_parts_create",
+    description: `Create N Parts attached to this WO via services.mes.work_order.bulk_add_parts_to_workorder.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: WorkOrderBulkAddPartsInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderBulkAddPartsResponse,
   },
   {
     method: "post",

@@ -1606,6 +1606,79 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         return Response({"results": [r.to_dict() for r in results]})
 
     @extend_schema(
+        request=inline_serializer(name="WorkOrderBulkAddPartsInput", fields={
+            "part_type": TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all()),
+            "step": TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all()),
+            "quantity": serializers.IntegerField(min_value=1),
+            "part_status": serializers.ChoiceField(choices=PartsStatus.choices, default=PartsStatus.PENDING, required=False),
+            "erp_id_start": serializers.IntegerField(default=1, required=False, min_value=1),
+        }),
+        responses={201: inline_serializer(name="WorkOrderBulkAddPartsResponse", fields={
+            "count": serializers.IntegerField(),
+            "created_part_ids": serializers.ListField(child=serializers.UUIDField()),
+        })},
+        description="Create N Parts attached to this WO via services.mes.work_order.bulk_add_parts_to_workorder.",
+    )
+    @action(detail=True, methods=["post"], url_path="bulk_add_parts")
+    def bulk_add_parts(self, request, pk=None):
+        """Create N Parts on this WO. Atomic.
+
+        Body: { part_type, step, quantity, part_status?, erp_id_start? }
+        Returns: { count, created_part_ids }
+        """
+        from Tracker.services.mes.work_order import bulk_add_parts_to_workorder
+
+        wo = self.get_object()
+
+        part_type_id = request.data.get('part_type')
+        step_id = request.data.get('step')
+        quantity = request.data.get('quantity')
+        part_status_val = request.data.get('part_status', PartsStatus.PENDING)
+        erp_id_start = request.data.get('erp_id_start', 1)
+
+        if not all([part_type_id, step_id, quantity]):
+            return Response(
+                {"detail": "Missing required fields: part_type, step, quantity"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            quantity_int = int(quantity)
+            erp_id_start_int = int(erp_id_start)
+        except (TypeError, ValueError):
+            return Response({"detail": "quantity and erp_id_start must be integers"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if part_status_val not in PartsStatus.values:
+            return Response({"detail": f"Invalid part_status: {part_status_val}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            part_type = PartTypes.objects.get(id=part_type_id)
+            step = Steps.objects.get(id=step_id)
+        except (PartTypes.DoesNotExist, Steps.DoesNotExist) as e:
+            return Response({"detail": f"Invalid reference: {e}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            new_parts = bulk_add_parts_to_workorder(
+                wo,
+                part_type=part_type,
+                step=step,
+                quantity=quantity_int,
+                erp_id_start=erp_id_start_int,
+                part_status=part_status_val,
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "count": len(new_parts),
+                "created_part_ids": [str(p.id) for p in new_parts],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
         request=inline_serializer(
             name="WorkOrderBulkTransitionInput",
             fields={

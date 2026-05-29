@@ -45,12 +45,15 @@ def create_parts_batch(
     part_type,
     step,
     quantity: int | None = None,
+    erp_id_start: int = 1,
+    part_status: str = PartsStatus.PENDING,
 ) -> list:
     """Create parts for this work order idempotently and evaluate sampling.
 
-    ERP_id pattern: `{work_order.ERP_id}-{part_type.ID_prefix}{seq:04d}`.
-    Running the service twice won't duplicate parts — already-present
-    ERP_ids are skipped.
+    ERP_id pattern: `{work_order.ERP_id}-{part_type.ID_prefix}{seq:04d}`,
+    where `seq` starts at `erp_id_start` and runs for `quantity` items.
+    Running the service twice with overlapping ranges won't duplicate
+    parts — already-present ERP_ids are skipped.
 
     Returns the full set of parts for (work_order, part_type, step) —
     existing + newly created.
@@ -64,7 +67,7 @@ def create_parts_batch(
 
     parts_to_create = []
     for i in range(quantity):
-        erp_id = f"{work_order.ERP_id}-{part_type.ID_prefix or 'P'}{i + 1:04d}"
+        erp_id = f"{work_order.ERP_id}-{part_type.ID_prefix or 'P'}{erp_id_start + i:04d}"
         if erp_id not in existing_erp_ids:
             parts_to_create.append(Parts(
                 tenant=work_order.tenant,
@@ -72,7 +75,7 @@ def create_parts_batch(
                 part_type=part_type,
                 step=step,
                 ERP_id=erp_id,
-                part_status=PartsStatus.PENDING,
+                part_status=part_status,
             ))
 
     if parts_to_create:
@@ -89,6 +92,49 @@ def create_parts_batch(
     work_order._bulk_evaluate_sampling(fresh_parts)
 
     return fresh_parts
+
+
+def bulk_add_parts_to_workorder(
+    work_order: WorkOrder,
+    part_type,
+    step,
+    quantity: int,
+    erp_id_start: int = 1,
+    part_status: str = PartsStatus.PENDING,
+) -> list:
+    """Create N parts on `work_order` and return only the newly-created ones.
+
+    Validates that `part_type` matches the WO's process part_type when the
+    process is set. Wraps `create_parts_batch` (which is idempotent) and
+    diffs the part_ids before/after to return only what was added in this
+    call. Atomic via `transaction.atomic` so a failure mid-bulk rolls back
+    the whole batch.
+    """
+    if quantity <= 0:
+        raise ValueError("quantity must be > 0")
+    if work_order.process and work_order.process.part_type_id != part_type.id:
+        raise ValueError(
+            "part_type does not match the work order's process part_type"
+        )
+
+    with transaction.atomic():
+        existing_ids = set(
+            Parts.objects.filter(work_order=work_order).values_list('id', flat=True)
+        )
+        create_parts_batch(
+            work_order,
+            part_type,
+            step,
+            quantity=quantity,
+            erp_id_start=erp_id_start,
+            part_status=part_status,
+        )
+        new_parts = list(
+            Parts.objects.filter(work_order=work_order)
+            .exclude(id__in=existing_ids)
+            .order_by('ERP_id')
+        )
+    return new_parts
 
 
 def cascade_order_status(work_order: WorkOrder) -> None:

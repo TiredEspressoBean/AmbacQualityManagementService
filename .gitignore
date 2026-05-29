@@ -85,6 +85,10 @@ nul
 # ---- Claude Code ----
 .claude/
 CLAUDE.md
+# Local debug/UX-review screenshots dropped at PartsTracker/ root by ad-hoc
+# sessions. Real PNG assets live deeper (under apps/static or similar) and
+# are unaffected.
+PartsTracker/*.png
 
 # ---- Test Coverage / Reporting ----
 .coverage

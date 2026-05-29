@@ -4288,6 +4288,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/Core'
           description: ''
+  /api/Cores/bulk_create/:
+    post:
+      operationId: api_Cores_bulk_create_create
+      description: Create N cores from a shipment. All-or-nothing — any row error
+        rolls back the batch.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreBulkCreateInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreBulkCreateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreBulkCreateInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreBulkCreateResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreBulkCreateError'
+          description: ''
   /api/Cores/export-excel/:
     get:
       operationId: api_Cores_export_excel_retrieve
@@ -4317,6 +4352,35 @@ paths:
                 type: string
                 format: binary
                 description: Excel file download
+          description: ''
+  /api/Cores/start_teardown_batch/:
+    post:
+      operationId: api_Cores_start_teardown_batch_create
+      description: Create one teardown WorkOrder that links the given cores and transitions
+        each from RECEIVED to IN_DISASSEMBLY. All-or-nothing.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreStartTeardownBatchInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreStartTeardownBatchInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreStartTeardownBatchInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreStartTeardownBatchResponse'
           description: ''
   /api/Customers/:
     get:
@@ -21814,6 +21878,42 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/WorkOrders/{id}/bulk_add_parts/:
+    post:
+      operationId: api_WorkOrders_bulk_add_parts_create
+      description: Create N Parts attached to this WO via services.mes.work_order.bulk_add_parts_to_workorder.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkAddPartsInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkAddPartsInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderBulkAddPartsInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderBulkAddPartsResponse'
+          description: ''
   /api/WorkOrders/{id}/clear_hold/:
     post:
       operationId: api_WorkOrders_clear_hold_create
@@ -30208,6 +30308,39 @@ components:
       - received_date
       - updated_at
       - usable_component_count
+    CoreBulkCreateError:
+      type: object
+      properties:
+        detail:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    CoreBulkCreateInputRequest:
+      type: object
+      properties:
+        cores:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - cores
+    CoreBulkCreateResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        created_core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - count
+      - created_core_ids
     CoreList:
       type: object
       description: |-
@@ -30351,6 +30484,36 @@ components:
         reason:
           type: string
           default: ''
+    CoreStartTeardownBatchInputRequest:
+      type: object
+      properties:
+        core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        process_id:
+          type: string
+          format: uuid
+      required:
+      - core_ids
+    CoreStartTeardownBatchResponse:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        work_order_erp_id:
+          type: string
+        transitioned_core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - transitioned_core_ids
+      - work_order_erp_id
+      - work_order_id
     CoreStatusEnum:
       enum:
       - RECEIVED
@@ -47454,6 +47617,43 @@ components:
       - split_at
       - split_reason
       - updated_at
+    WorkOrderBulkAddPartsInputRequest:
+      type: object
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        part_status:
+          allOf:
+          - $ref: '#/components/schemas/PartsStatusEnum'
+          default: PENDING
+        erp_id_start:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+      - part_type
+      - quantity
+      - step
+    WorkOrderBulkAddPartsResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        created_part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - count
+      - created_part_ids
     WorkOrderBulkClearHoldInputRequest:
       type: object
       properties:

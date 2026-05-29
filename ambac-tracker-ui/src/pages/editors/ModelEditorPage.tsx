@@ -232,6 +232,13 @@ export interface ModelEditorProps<T> {
     disableMetadata?: boolean;
     /** Disable the export button */
     disableExport?: boolean;
+    /**
+     * Notify the parent whenever the current page's items change. Use to
+     * drive selection toolbars or other parent-side state that depends on
+     * the visible rows without lifting the editor's pagination/filter
+     * state. Fires once per query result.
+     */
+    onDataChange?: (items: T[]) => void;
 }
 
 export function ModelEditorPage<T extends { id: string | number }>({
@@ -248,6 +255,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               headerContent,
                                                               disableMetadata = false,
                                                               disableExport = false,
+                                                              onDataChange,
                                                           }: ModelEditorProps<T>) {
     const [offset, setOffset] = useState(0);
     const [limit] = useState(25);
@@ -299,6 +307,14 @@ export function ModelEditorPage<T extends { id: string | number }>({
     useEffect(() => {
         setOffset(0);
     }, [debouncedSearch, ordering, activeFilters]);
+
+    // Notify parent (used by selection-toolbar consumers like CoresEditorPage
+    // to mirror the current page's rows without lifting list state).
+    useEffect(() => {
+        if (onDataChange && data?.results) {
+            onDataChange(data.results);
+        }
+    }, [data?.results, onDataChange]);
 
     // Get filterable fields from metadata (choice and boolean types only for now)
     const filterableFields = useMemo(() => {
@@ -439,7 +455,9 @@ export function ModelEditorPage<T extends { id: string | number }>({
     const pageCount = Math.ceil(total / limit);
 
     return (
-        <div className="space-y-4">
+        // Page-owned gutters — Layout's <main> has no padding so each page
+        // is responsible for its own breathing room from the sidebar/chrome.
+        <div className="space-y-4 p-6 pb-24">
             {/* Title */}
             <h2 className="text-xl font-semibold">{title}</h2>
 

@@ -36,6 +36,7 @@ STAFF_VIEW_PERMISSIONS = [
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
     'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
+    'view_core',
     # Equipment & Calibration
     'view_equipments', 'view_equipmenttype', 'view_equipmentusage',
     'view_calibrationrecord',
@@ -136,6 +137,9 @@ GROUP_PRESETS = {
             'add_materiallot', 'change_materiallot', 'delete_materiallot', 'view_materiallot',
             'add_materialusage', 'change_materialusage', 'delete_materialusage', 'view_materialusage',
             'add_harvestedcomponent', 'change_harvestedcomponent', 'delete_harvestedcomponent', 'view_harvestedcomponent',
+            # Reman cores — CRUD plus the Core-defined custom perms
+            'add_core', 'change_core', 'delete_core', 'view_core',
+            'start_disassembly', 'complete_disassembly', 'scrap_core',
             # Full Equipment & Calibration
             'add_equipments', 'change_equipments', 'delete_equipments', 'view_equipments',
             'add_equipmenttype', 'change_equipmenttype', 'delete_equipmenttype', 'view_equipmenttype',
@@ -272,7 +276,7 @@ GROUP_PRESETS = {
             'add_parts', 'change_parts', 'delete_parts', 'view_parts',
             'add_workorder', 'change_workorder', 'delete_workorder', 'view_workorder',
             'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies',
+            'view_companies', 'view_core',
             'view_steptransitionlog',
             # Process flow modeling
             'view_processstep', 'view_stepedge',
@@ -341,7 +345,7 @@ GROUP_PRESETS = {
             # Production - view + change parts
             'view_orders', 'change_parts', 'view_parts', 'view_workorder',
             'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies', 'view_equipments', 'view_equipmenttype',
+            'view_companies', 'view_core', 'view_equipments', 'view_equipmenttype',
             'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
             'view_steptransitionlog',
             # Process flow modeling
@@ -411,6 +415,9 @@ GROUP_PRESETS = {
             'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
             # Harvested components (remanufacturing)
             'add_harvestedcomponent', 'change_harvestedcomponent', 'delete_harvestedcomponent', 'view_harvestedcomponent',
+            # Reman cores — full CRUD plus the Core-defined custom perms
+            'add_core', 'change_core', 'delete_core', 'view_core',
+            'start_disassembly', 'complete_disassembly', 'scrap_core',
             # Materials
             'add_materiallot', 'change_materiallot', 'delete_materiallot', 'view_materiallot',
             'add_materialusage', 'change_materialusage', 'delete_materialusage', 'view_materialusage',
@@ -508,6 +515,9 @@ GROUP_PRESETS = {
             'view_disassemblybomline',
             # Harvested components (remanufacturing)
             'add_harvestedcomponent', 'change_harvestedcomponent', 'view_harvestedcomponent',
+            # Reman cores — receive + work disassembly, no delete
+            'add_core', 'change_core', 'view_core',
+            'start_disassembly', 'complete_disassembly', 'scrap_core',
             # Time tracking
             'add_timeentry', 'change_timeentry', 'view_timeentry',
             # Measurements
@@ -592,6 +602,9 @@ GROUP_PRESETS = {
             'view_disassemblybomline',
             # Harvested components (remanufacturing)
             'add_harvestedcomponent', 'change_harvestedcomponent', 'view_harvestedcomponent',
+            # Reman cores — receive + work disassembly, no delete
+            'add_core', 'change_core', 'view_core',
+            'start_disassembly', 'complete_disassembly', 'scrap_core',
             # Time tracking
             'add_timeentry', 'change_timeentry', 'view_timeentry',
             # Measurements
@@ -679,7 +692,7 @@ GROUP_PRESETS = {
             'view_orders', 'view_parts', 'view_workorder',
             'add_processes', 'change_processes', 'view_processes',
             'add_steps', 'change_steps', 'view_steps',
-            'view_parttypes',
+            'view_parttypes', 'view_core',
             'view_companies', 'view_equipments', 'view_equipmenttype',
             'view_measurementdefinition', 'view_measurementresult',
             'view_calibrationrecord',
@@ -733,6 +746,8 @@ GROUP_PRESETS = {
             'add_bomline', 'change_bomline', 'delete_bomline', 'view_bomline',
             # Disassembly BOM - full control
             'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
+            # Reman cores — engineering reads inventory for yield analysis
+            'view_core',
             # Equipment specs
             'add_equipmenttype', 'change_equipmenttype', 'view_equipmenttype',
             'view_equipments',
@@ -789,7 +804,7 @@ GROUP_PRESETS = {
             # Production - view all
             'view_orders', 'view_parts', 'view_workorder',
             'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies', 'view_equipments', 'view_equipmenttype',
+            'view_companies', 'view_core', 'view_equipments', 'view_equipmenttype',
             # Process flow modeling
             'view_processstep', 'view_stepedge',
             # Step measurement requirements
@@ -804,6 +819,8 @@ GROUP_PRESETS = {
             'view_bom', 'view_bomline', 'view_disassemblybomline',
             # Harvested components
             'view_harvestedcomponent',
+            # Reman cores
+            'view_core',
             # Documents
             'view_documents', 'view_documenttype',
             # Approvals

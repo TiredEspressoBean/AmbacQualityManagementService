@@ -1362,6 +1362,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/bulk_create/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create N cores from a shipment. All-or-nothing — any row error rolls back the batch. */
+        post: operations["api_Cores_bulk_create_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/export-excel/": {
         parameters: {
             query?: never;
@@ -1373,6 +1390,23 @@ export interface paths {
         get: operations["api_Cores_export_excel_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/start_teardown_batch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create one teardown WorkOrder that links the given cores and transitions each from RECEIVED to IN_DISASSEMBLY. All-or-nothing. */
+        post: operations["api_Cores_start_teardown_batch_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8630,6 +8664,23 @@ export interface paths {
         patch: operations["api_WorkOrders_partial_update"];
         trace?: never;
     };
+    "/api/WorkOrders/{id}/bulk_add_parts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create N Parts attached to this WO via services.mes.work_order.bulk_add_parts_to_workorder. */
+        post: operations["api_WorkOrders_bulk_add_parts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/{id}/clear_hold/": {
         parameters: {
             query?: never;
@@ -12914,6 +12965,21 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        CoreBulkCreateError: {
+            detail?: string;
+            errors?: {
+                [key: string]: unknown;
+            }[];
+        };
+        CoreBulkCreateInputRequest: {
+            cores: {
+                [key: string]: unknown;
+            }[];
+        };
+        CoreBulkCreateResponse: {
+            count: number;
+            created_core_ids: string[];
+        };
         /**
          * @description Lightweight core serializer for lists.
          *
@@ -13004,6 +13070,17 @@ export interface components {
         CoreScrapRequest: {
             /** @default  */
             reason: string;
+        };
+        CoreStartTeardownBatchInputRequest: {
+            core_ids: string[];
+            /** Format: uuid */
+            process_id?: string;
+        };
+        CoreStartTeardownBatchResponse: {
+            /** Format: uuid */
+            work_order_id: string;
+            work_order_erp_id: string;
+            transitioned_core_ids: string[];
         };
         /**
          * @description * `RECEIVED` - Received
@@ -21897,6 +21974,21 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        WorkOrderBulkAddPartsInputRequest: {
+            /** Format: uuid */
+            part_type: string;
+            /** Format: uuid */
+            step: string;
+            quantity: number;
+            /** @default PENDING */
+            part_status: components["schemas"]["PartsStatusEnum"];
+            /** @default 1 */
+            erp_id_start: number;
+        };
+        WorkOrderBulkAddPartsResponse: {
+            count: number;
+            created_part_ids: string[];
+        };
         WorkOrderBulkClearHoldInputRequest: {
             ids: string[];
         };
@@ -25408,6 +25500,39 @@ export interface operations {
             };
         };
     };
+    api_Cores_bulk_create_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreBulkCreateInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreBulkCreateInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreBulkCreateInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreBulkCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreBulkCreateError"];
+                };
+            };
+        };
+    };
     api_Cores_export_excel_retrieve: {
         parameters: {
             query?: {
@@ -25428,6 +25553,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_Cores_start_teardown_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreStartTeardownBatchInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreStartTeardownBatchInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreStartTeardownBatchInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreStartTeardownBatchResponse"];
                 };
             };
         };
@@ -37535,6 +37685,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrder"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_bulk_add_parts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderBulkAddPartsInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderBulkAddPartsInputRequest"];
+                "multipart/form-data": components["schemas"]["WorkOrderBulkAddPartsInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderBulkAddPartsResponse"];
                 };
             };
         };
