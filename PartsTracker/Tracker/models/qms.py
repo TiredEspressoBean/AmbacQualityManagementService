@@ -2441,12 +2441,26 @@ class StepExecutionMeasurement(SecureModel):
         help_text='Equipment used for measurement'
     )
 
+    substep = models.ForeignKey(
+        'Tracker.Substep',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='step_execution_measurements',
+        help_text=(
+            'Substep this measurement was captured from, when the source was '
+            'a DWI MeasurementInput node. Null means the measurement was '
+            'recorded at the Op level (legacy path or non-DWI workflow).'
+        ),
+    )
+
     class Meta:
         verbose_name = 'Step Execution Measurement'
         verbose_name_plural = 'Step Execution Measurements'
         ordering = ['step_execution', 'recorded_at']
         indexes = [
             models.Index(fields=['step_execution', 'measurement_definition']),
+            models.Index(fields=['substep', 'recorded_at'], name='dwi_sem_substep_time_idx'),
         ]
 
     def __str__(self):

@@ -358,6 +358,17 @@ class StepMeasurementRequirement(models.Model):
     tolerance_upper_override = models.FloatField(null=True, blank=True)
     tolerance_lower_override = models.FloatField(null=True, blank=True)
 
+    # DWI: when set, the requirement applies at substep granularity rather
+    # than at Op level. Null = Op-level requirement (matches today's behavior).
+    substep = models.ForeignKey(
+        'Tracker.Substep',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='measurement_requirements',
+        help_text="If set, the requirement applies at substep granularity rather than Op-level.",
+    )
+
     class Meta:
         ordering = ['sequence']
         unique_together = ['step', 'measurement']
@@ -930,6 +941,16 @@ class StepRequirement(SecureModel):
         Steps,
         on_delete=models.CASCADE,
         related_name='requirements'
+    )
+    # DWI: when set, the requirement applies at substep granularity rather
+    # than at Op level. Null = Op-level requirement (matches today's behavior).
+    substep = models.ForeignKey(
+        'Tracker.Substep',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='step_requirements',
+        help_text='If set, the requirement applies at substep granularity rather than Op-level.',
     )
     requirement_type = models.CharField(
         max_length=30,

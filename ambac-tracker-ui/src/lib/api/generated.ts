@@ -5544,6 +5544,12 @@ export type StepExecutionMeasurement = {
     (string | null)
     | undefined;
   equipment_info: {};
+  substep?:
+    | /**
+     * Substep this measurement was captured from, when the source was a DWI MeasurementInput node. Null means the measurement was recorded at the Op level (legacy path or non-DWI workflow).
+     */
+    (string | null)
+    | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -13059,6 +13065,7 @@ const StepExecutionMeasurement = z.object({
   recorded_at: z.string().datetime({ offset: true }),
   equipment: z.string().uuid().nullish(),
   equipment_info: z.object({}).partial().passthrough().nullable(),
+  substep: z.string().uuid().nullish(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -13079,6 +13086,7 @@ const StepExecutionMeasurementRequest = z.object({
   string_value: z.string().max(100).optional(),
   recorded_by: z.number().int(),
   equipment: z.string().uuid().nullish(),
+  substep: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedStepExecutionMeasurementRequest = z
@@ -13092,6 +13100,7 @@ const PatchedStepExecutionMeasurementRequest = z
     string_value: z.string().max(100),
     recorded_by: z.number().int(),
     equipment: z.string().uuid().nullable(),
+    substep: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial();

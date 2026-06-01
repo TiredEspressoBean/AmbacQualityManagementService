@@ -17941,6 +17941,11 @@ export interface components {
              * @description Equipment used for measurement
              */
             equipment?: string | null;
+            /**
+             * Format: uuid
+             * @description Substep this measurement was captured from, when the source was a DWI MeasurementInput node. Null means the measurement was recorded at the Op level (legacy path or non-DWI workflow).
+             */
+            substep?: string | null;
             archived?: boolean;
         };
         /**
@@ -20296,6 +20301,11 @@ export interface components {
             readonly equipment_info: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Format: uuid
+             * @description Substep this measurement was captured from, when the source was a DWI MeasurementInput node. Null means the measurement was recorded at the Op level (legacy path or non-DWI workflow).
+             */
+            substep?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -20321,6 +20331,11 @@ export interface components {
              * @description Equipment used for measurement
              */
             equipment?: string | null;
+            /**
+             * Format: uuid
+             * @description Substep this measurement was captured from, when the source was a DWI MeasurementInput node. Null means the measurement was recorded at the Op level (legacy path or non-DWI workflow).
+             */
+            substep?: string | null;
             archived?: boolean;
         };
         /**

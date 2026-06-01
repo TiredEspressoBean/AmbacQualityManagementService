@@ -8,12 +8,22 @@ Renders a tenant-scoped SPC summary for a single MeasurementDefinition:
   - Process capability indices (Cp, Cpk, Pp, Ppk) + interpretation
   - The data points used (timestamp, part, value, in/out of spec)
 
+Two-tier data ingestion (per architectural decision #21 in
+`DIGITAL_WORK_INSTRUCTIONS_DESIGN.md`): the adapter reads from both
+`MeasurementResult` (inspection records — QC bench, FPI, DWI inspection
+points) and `StepExecutionMeasurement` (process data — DWI MeasurementInput
+captures at routine substeps + legacy direct-record viewset). Each source's
+rows are normalized to a common `_SpcRow` shape and merged by timestamp so
+every measurement reaches the control chart regardless of which tier
+captured it.
+
 Defense-in-depth: every ORM query in build_context() filters by tenant
 explicitly, in addition to the param serializer's upstream check.
 """
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -210,6 +220,7 @@ class SpcAdapter(ReportAdapter):
             MeasurementDefinition,
             MeasurementResult,
             ProcessStep,
+            StepExecutionMeasurement,
         )
         from Tracker.models.spc import SPCBaseline
 
@@ -229,18 +240,19 @@ class SpcAdapter(ReportAdapter):
         end = timezone.now()
         start = end - timedelta(days=days)
 
-        results = list(
-            MeasurementResult.objects
-            .filter(
-                tenant=tenant,
-                definition_id=measurement_id,
-                value_numeric__isnull=False,
-                report__created_at__gte=start,
-                report__created_at__lte=end,
-                archived=False,
-            )
-            .select_related("report", "report__part", "created_by")
-            .order_by("report__created_at")
+        # Two-tier UNION read (per architectural decision #21):
+        # - MeasurementResult feeds inspection records (QC bench, FPI, DWI
+        #   inspection-point captures).
+        # - StepExecutionMeasurement feeds process data (DWI MeasurementInput
+        #   captures at routine substeps + the legacy direct-record viewset).
+        # Both sources are normalized to `_SpcRow` and merged by timestamp.
+        results = _collect_normalized_rows(
+            tenant=tenant,
+            measurement_id=measurement_id,
+            start=start,
+            end=end,
+            MeasurementResult=MeasurementResult,
+            StepExecutionMeasurement=StepExecutionMeasurement,
         )
 
         # Spec limits
@@ -259,7 +271,7 @@ class SpcAdapter(ReportAdapter):
         )
 
         # Statistics
-        values = [float(r.value_numeric) for r in results]
+        values = [r.value for r in results]
         stats = SpcStatistics()
         if values:
             n = len(values)
@@ -363,10 +375,10 @@ class SpcAdapter(ReportAdapter):
         rows = results[:max_rows]
         data_points = [
             SpcDataPoint(
-                timestamp=r.report.created_at,
-                value=float(r.value_numeric),
-                part_erp_id=(r.report.part.ERP_id if r.report.part else "") or "",
-                operator=_user_name(r.created_by),
+                timestamp=r.timestamp,
+                value=r.value,
+                part_erp_id=r.part_erp_id,
+                operator=r.operator_name,
                 is_within_spec=r.is_within_spec,
             )
             for r in rows
@@ -398,3 +410,95 @@ class SpcAdapter(ReportAdapter):
 
 def _to_float(v) -> Optional[float]:
     return float(v) if v is not None else None
+
+
+# ---------------------------------------------------------------------------
+# Two-tier measurement ingestion (per architectural decision #21)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _SpcRow:
+    """Normalized data point fed to statistics + capability + chart logic.
+
+    Used to merge MeasurementResult (inspection records) and
+    StepExecutionMeasurement (process data) into one timeline without
+    leaking source-specific shapes into the stats / capability code.
+    """
+    timestamp: datetime
+    value: float
+    is_within_spec: bool
+    part_erp_id: str
+    operator_name: Optional[str]
+
+
+def _collect_normalized_rows(
+    *,
+    tenant,
+    measurement_id,
+    start: datetime,
+    end: datetime,
+    MeasurementResult,
+    StepExecutionMeasurement,
+) -> list[_SpcRow]:
+    """Read both measurement sources for the window, normalize, merge, sort.
+
+    Tenant filter applied to both queries (defense-in-depth). Rows with
+    ``is_within_spec is None`` are dropped — they indicate a row where the
+    spec evaluation didn't run, which shouldn't happen in normal paths
+    but defends against partial-state seed/test data.
+    """
+    inspection_rows = (
+        MeasurementResult.objects
+        .filter(
+            tenant=tenant,
+            definition_id=measurement_id,
+            value_numeric__isnull=False,
+            report__created_at__gte=start,
+            report__created_at__lte=end,
+            archived=False,
+        )
+        .select_related("report", "report__part", "created_by")
+    )
+
+    process_rows = (
+        StepExecutionMeasurement.objects
+        .filter(
+            tenant=tenant,
+            measurement_definition_id=measurement_id,
+            value__isnull=False,
+            is_within_spec__isnull=False,
+            recorded_at__gte=start,
+            recorded_at__lte=end,
+            archived=False,
+        )
+        .select_related(
+            "step_execution",
+            "step_execution__part",
+            "recorded_by",
+        )
+    )
+
+    rows: list[_SpcRow] = []
+    for mr in inspection_rows:
+        rows.append(_SpcRow(
+            timestamp=mr.report.created_at,
+            value=float(mr.value_numeric),
+            is_within_spec=bool(mr.is_within_spec),
+            part_erp_id=(mr.report.part.ERP_id if mr.report.part else "") or "",
+            operator_name=_user_name(mr.created_by),
+        ))
+    for sem in process_rows:
+        rows.append(_SpcRow(
+            timestamp=sem.recorded_at,
+            value=float(sem.value),
+            is_within_spec=bool(sem.is_within_spec),
+            part_erp_id=(
+                sem.step_execution.part.ERP_id
+                if sem.step_execution and sem.step_execution.part
+                else ""
+            ) or "",
+            operator_name=_user_name(sem.recorded_by),
+        ))
+    rows.sort(key=lambda r: r.timestamp)
+    return rows

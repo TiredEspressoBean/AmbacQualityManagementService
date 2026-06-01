@@ -39685,6 +39685,13 @@ components:
           format: uuid
           nullable: true
           description: Equipment used for measurement
+        substep:
+          type: string
+          format: uuid
+          nullable: true
+          description: Substep this measurement was captured from, when the source
+            was a DWI MeasurementInput node. Null means the measurement was recorded
+            at the Op level (legacy path or non-DWI workflow).
         archived:
           type: boolean
     PatchedStepExecutionRequest:
@@ -44236,6 +44243,13 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        substep:
+          type: string
+          format: uuid
+          nullable: true
+          description: Substep this measurement was captured from, when the source
+            was a DWI MeasurementInput node. Null means the measurement was recorded
+            at the Op level (legacy path or non-DWI workflow).
         created_at:
           type: string
           format: date-time
@@ -44287,6 +44301,13 @@ components:
           format: uuid
           nullable: true
           description: Equipment used for measurement
+        substep:
+          type: string
+          format: uuid
+          nullable: true
+          description: Substep this measurement was captured from, when the source
+            was a DWI MeasurementInput node. Null means the measurement was recorded
+            at the Op level (legacy path or non-DWI workflow).
         archived:
           type: boolean
       required:

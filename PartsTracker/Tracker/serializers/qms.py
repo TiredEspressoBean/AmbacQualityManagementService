@@ -1324,6 +1324,8 @@ class StepExecutionMeasurementSerializer(serializers.ModelSerializer, SecureMode
             'recorded_by', 'recorded_by_info',
             'recorded_at',
             'equipment', 'equipment_info',
+            # DWI — when this measurement was captured from a substep MeasurementInput
+            'substep',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('is_within_spec', 'recorded_at', 'created_at', 'updated_at')

@@ -850,7 +850,7 @@ Per architectural decision #21, DWI numeric captures use a two-tier shape:
 - `StepExecutionMeasurement` — add nullable `substep` FK (attribution for DWI captures)
 - `StepMeasurementRequirement` — add nullable `substep` FK (substep-scoped measurement requirements)
 - `StepRequirement` — add nullable `substep` FK (substep-scoped general requirements)
-- `ProcessChangeRequest` — add nullable `target_substep` FK + `CheckConstraint(exactly one of target_process / target_step / target_substep)`
+- ~~`ProcessChangeRequest` — `target_substep` FK + CheckConstraint~~ **Deferred** — the existing model has `target_process` as a required FK with a unique constraint built around it; adding a substep-targeted PCR requires restructuring those constraints (make `target_process` nullable, add `target_step` and `target_substep`, update the open-PCR-per-target uniqueness logic to handle three targets). Substep-targeted PCRs aren't on the M1 critical path — they're a Phase 4-ish concern (when someone wants to propose a change against a specific substep rather than the whole Process). Defer to a focused PR when that workflow surfaces.
 
 **New service:**
 - `services/qms/inline_capture.py::record_dwi_measurement(step_execution, substep, measurement_definition, value, recorded_by, equipment=None, value_string=None)` — always writes the Tier 1 row; if `substep.is_inspection_point`, additionally creates the Tier 2 chain (idempotent on `QualityReports` lookup — one report per `(step_execution, substep)` inspection event; subsequent captures during that same substep attach as additional `MeasurementResult` rows). Calls `record_quality_report_side_effects()` on the Tier 2 path.

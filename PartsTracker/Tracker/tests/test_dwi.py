@@ -738,3 +738,329 @@ class SubstepPhase2FkOnDeleteTests(DwiPhase2BaseTestCase):
         from django.db import models as dj_models
         field = SubstepResponse._meta.get_field('value_document')
         self.assertEqual(field.remote_field.on_delete, dj_models.SET_NULL)
+
+
+# =============================================================================
+# Phase 3 — substep-aware measurements + two-tier capture pipeline
+# =============================================================================
+#
+# Per architectural decision #21 in DIGITAL_WORK_INSTRUCTIONS_DESIGN.md:
+# - DWI MeasurementInput captures always write StepExecutionMeasurement (Tier 1).
+# - When the parent substep has is_inspection_point=True, the capture also
+#   creates QualityReports + MeasurementResult (Tier 2), which fires
+#   record_quality_report_side_effects (auto-quarantine, ncr.opened, sampling).
+
+
+class DwiPhase3BaseTestCase(DwiPhase1BaseTestCase):
+    """Shared setup: a routine substep + an inspection-point substep + a
+    numeric MeasurementDefinition with tolerances."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from Tracker.models import MeasurementDefinition
+
+        # Re-set the tenant context — setUpTestData ran the parent's
+        # setUpTestData but classroom-level setup may have been torn down.
+        cls.measurement_def = MeasurementDefinition.objects.create(
+            tenant=cls.tenant,
+            label="Outer Diameter",
+            type="NUMERIC",
+            unit="in",
+            nominal=1.247,
+            upper_tol=0.002,
+            lower_tol=0.002,
+            step=cls.step,
+        )
+
+    def setUp(self):
+        super().setUp()
+        self.routine_substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0,
+            title="Setup", is_inspection_point=False,
+        )
+        self.inspection_substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=1,
+            title="First piece inspection", is_inspection_point=True,
+        )
+
+
+class SubstepInspectionPointFieldTests(DwiPhase1BaseTestCase):
+    """Phase 3 adds the load-bearing flag on Substep."""
+
+    def test_default_is_false(self):
+        substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Routine",
+        )
+        self.assertFalse(substep.is_inspection_point)
+
+    def test_assignable_at_create(self):
+        substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0,
+            title="FAI", is_inspection_point=True,
+        )
+        self.assertTrue(substep.is_inspection_point)
+
+
+class StepExecutionMeasurementSubstepFkTests(DwiPhase3BaseTestCase):
+    """`substep` FK is nullable — null means "Op-level capture, no substep."""
+
+    def test_substep_fk_nullable_default(self):
+        from Tracker.models import StepExecutionMeasurement
+        sem = StepExecutionMeasurement.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            measurement_definition=self.measurement_def,
+            value=1.247,
+            recorded_by=self.user,
+        )
+        self.assertIsNone(sem.substep)
+
+    def test_substep_fk_assignable(self):
+        from Tracker.models import StepExecutionMeasurement
+        sem = StepExecutionMeasurement.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            measurement_definition=self.measurement_def,
+            value=1.247,
+            recorded_by=self.user,
+            substep=self.routine_substep,
+        )
+        self.assertEqual(sem.substep, self.routine_substep)
+
+    def test_substep_fk_set_null_on_substep_delete(self):
+        from django.db import models as dj_models
+        from Tracker.models import StepExecutionMeasurement
+        field = StepExecutionMeasurement._meta.get_field('substep')
+        self.assertEqual(field.remote_field.on_delete, dj_models.SET_NULL)
+
+
+class RecordDwiMeasurementTier1Tests(DwiPhase3BaseTestCase):
+    """Routine (non-inspection) substep captures stay process-data-only."""
+
+    def test_writes_step_execution_measurement(self):
+        from Tracker.models import QualityReports, StepExecutionMeasurement
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        sem = record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.routine_substep,
+            measurement_definition=self.measurement_def,
+            value=1.247,
+            recorded_by=self.user,
+        )
+        self.assertIsInstance(sem, StepExecutionMeasurement)
+        self.assertEqual(sem.value, 1.247)
+        self.assertEqual(sem.substep, self.routine_substep)
+        # In-spec value auto-evaluated.
+        self.assertTrue(sem.is_within_spec)
+
+        # No QualityReports row created for routine captures.
+        self.assertEqual(QualityReports.objects.count(), 0)
+
+    def test_out_of_spec_routine_no_quarantine(self):
+        from Tracker.models import PartsStatus, QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        # Out-of-spec value (nominal 1.247, +/- 0.002 → 1.260 is way out)
+        sem = record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.routine_substep,
+            measurement_definition=self.measurement_def,
+            value=1.260,
+            recorded_by=self.user,
+        )
+        self.assertFalse(sem.is_within_spec)
+        # No QualityReports, no auto-quarantine, no NCR.
+        self.assertEqual(QualityReports.objects.count(), 0)
+        self.part.refresh_from_db()
+        self.assertNotEqual(self.part.part_status, PartsStatus.QUARANTINED)
+
+    def test_requires_value_or_string(self):
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        with self.assertRaises(ValueError):
+            record_dwi_measurement(
+                step_execution=self.step_execution,
+                substep=self.routine_substep,
+                measurement_definition=self.measurement_def,
+                recorded_by=self.user,
+            )
+
+
+class RecordDwiMeasurementTier2Tests(DwiPhase3BaseTestCase):
+    """`is_inspection_point=True` substeps additionally create inspection
+    records and fire the side-effects pipeline."""
+
+    def test_in_spec_creates_passing_report_no_quarantine(self):
+        from Tracker.models import (
+            MeasurementResult,
+            PartsStatus,
+            QualityReports,
+        )
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.247,  # in-spec
+            recorded_by=self.user,
+        )
+
+        # Tier 2 row created.
+        reports = QualityReports.objects.all()
+        self.assertEqual(reports.count(), 1)
+        self.assertEqual(reports.first().status, "PASS")
+
+        # MeasurementResult auto-evaluated.
+        mrs = MeasurementResult.objects.all()
+        self.assertEqual(mrs.count(), 1)
+        self.assertTrue(mrs.first().is_within_spec)
+
+        # No auto-quarantine on PASS.
+        self.part.refresh_from_db()
+        self.assertNotEqual(self.part.part_status, PartsStatus.QUARANTINED)
+
+    def test_out_of_spec_creates_failing_report_and_quarantines(self):
+        from Tracker.models import PartsStatus, QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.260,  # out of spec
+            recorded_by=self.user,
+        )
+
+        report = QualityReports.objects.get()
+        self.assertEqual(report.status, "FAIL")
+
+        # Part auto-quarantined via record_quality_report_side_effects.
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, PartsStatus.QUARANTINED)
+
+    def test_idempotent_one_report_per_substep_execution(self):
+        """Multiple captures during the same (step_execution, substep)
+        share one QualityReports; each adds a MeasurementResult."""
+        from Tracker.models import MeasurementResult, QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        for value in [1.246, 1.247, 1.248]:
+            record_dwi_measurement(
+                step_execution=self.step_execution,
+                substep=self.inspection_substep,
+                measurement_definition=self.measurement_def,
+                value=value,
+                recorded_by=self.user,
+            )
+
+        # One report, three measurements.
+        self.assertEqual(QualityReports.objects.count(), 1)
+        self.assertEqual(MeasurementResult.objects.count(), 3)
+
+    def test_transition_into_fail_quarantines_late(self):
+        """First in-spec captures pass; a later out-of-spec transitions the
+        report to FAIL and triggers auto-quarantine."""
+        from Tracker.models import PartsStatus, QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        # Three in-spec readings — report stays PASS, no quarantine.
+        for value in [1.246, 1.247, 1.248]:
+            record_dwi_measurement(
+                step_execution=self.step_execution,
+                substep=self.inspection_substep,
+                measurement_definition=self.measurement_def,
+                value=value,
+                recorded_by=self.user,
+            )
+        self.part.refresh_from_db()
+        self.assertNotEqual(self.part.part_status, PartsStatus.QUARANTINED)
+        self.assertEqual(QualityReports.objects.get().status, "PASS")
+
+        # Now an out-of-spec reading — report transitions to FAIL.
+        record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.260,
+            recorded_by=self.user,
+        )
+        self.assertEqual(QualityReports.objects.get().status, "FAIL")
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, PartsStatus.QUARANTINED)
+
+
+class SpcAdapterUnionReadTests(DwiPhase3BaseTestCase):
+    """SPC adapter UNION-reads both MeasurementResult and StepExecutionMeasurement."""
+
+    def test_normalized_rows_collect_from_both_sources(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from Tracker.models import (
+            MeasurementResult,
+            QualityReports,
+            StepExecutionMeasurement,
+        )
+        from Tracker.reports.adapters.spc import _collect_normalized_rows
+
+        # 2 inspection-record rows (process_data-disconnected QR + 2 MRs)
+        report = QualityReports.objects.create(
+            tenant=self.tenant,
+            step=self.step,
+            part=self.part,
+            detected_by=self.user,
+            sampling_method="manual",
+            status="PENDING",
+        )
+        MeasurementResult.objects.create(
+            tenant=self.tenant,
+            report=report,
+            definition=self.measurement_def,
+            value_numeric=1.247,
+            created_by=self.user,
+        )
+        MeasurementResult.objects.create(
+            tenant=self.tenant,
+            report=report,
+            definition=self.measurement_def,
+            value_numeric=1.248,
+            created_by=self.user,
+        )
+
+        # 2 process-data rows
+        StepExecutionMeasurement.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            measurement_definition=self.measurement_def,
+            value=1.246,
+            recorded_by=self.user,
+            substep=self.routine_substep,
+        )
+        StepExecutionMeasurement.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            measurement_definition=self.measurement_def,
+            value=1.249,
+            recorded_by=self.user,
+            substep=self.routine_substep,
+        )
+
+        end = timezone.now() + timedelta(hours=1)
+        start = timezone.now() - timedelta(days=30)
+        rows = _collect_normalized_rows(
+            tenant=self.tenant,
+            measurement_id=self.measurement_def.id,
+            start=start,
+            end=end,
+            MeasurementResult=MeasurementResult,
+            StepExecutionMeasurement=StepExecutionMeasurement,
+        )
+
+        self.assertEqual(len(rows), 4)
+        # All values present, regardless of source.
+        values = sorted(r.value for r in rows)
+        self.assertEqual(values, [1.246, 1.247, 1.248, 1.249])
+        # Rows sorted by timestamp.
+        timestamps = [r.timestamp for r in rows]
+        self.assertEqual(timestamps, sorted(timestamps))

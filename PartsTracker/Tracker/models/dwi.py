@@ -124,6 +124,26 @@ class Substep(SecureModel):
             "which are gates inside the substep flow."
         ),
     )
+
+    is_inspection_point = models.BooleanField(
+        default=False,
+        help_text=(
+            "When True, MeasurementInput captures within this substep "
+            "additionally create inspection records (QualityReports + "
+            "MeasurementResult) via services/qms/inline_capture.py, firing "
+            "the existing record_quality_report_side_effects pipeline "
+            "(auto-quarantine on out-of-spec, ncr.opened notification, "
+            "sampling fallback). Default False = process data only. Set "
+            "True for FAI substeps, in-process hold-points, final "
+            "inspection. See architectural decision #21 in the DWI design doc."
+        ),
+    )
+    """Promotes routine inline measurement captures into binding inspection
+    records. See architectural decision #21 — established MES/QMS systems
+    (Plex, SAP QM, Aegis FactoryLogix) separate process data from inspection
+    records as first-class concepts. Routine captures stay process-data-only
+    (no auto-quarantine, no NCR spam); inspection-point substeps fire the
+    full inspection pipeline."""
     """If True, the SubstepCompletion row must carry signature_data when the
     operator marks the substep complete. Inline signature gates inside the
     substep body use SubstepGateCompletion (Phase 2) — different storage,
