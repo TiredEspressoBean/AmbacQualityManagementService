@@ -155,18 +155,9 @@ function useOperatorResponse(node_id: string | undefined) {
     } as const;
 }
 
-// Tiny UUID helper — `crypto.randomUUID()` is available in modern browsers.
-function newNodeId() {
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID();
-    }
-    return `node-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-// Toolbar inserts use this so each new node gets a fresh `node_id` attr.
-function withFreshNodeId<T extends { attrs?: Record<string, unknown> }>(sample: T): T {
-    return { ...sample, attrs: { ...(sample.attrs ?? {}), node_id: newNodeId() } };
-}
+// node_id minting and paste/import regeneration live in src/lib/dwi/node-id.ts
+// (see decision #18 in DIGITAL_WORK_INSTRUCTIONS_DESIGN.md).
+import { newNodeId, withFreshNodeId } from "@/lib/dwi/node-id";
 
 // ============================================================================
 // Authoring popover infrastructure
