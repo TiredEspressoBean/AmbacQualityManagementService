@@ -61,6 +61,80 @@ Adds a substep layer below the existing `Steps` (Op) model to support Dozuki-sty
 
 ---
 
+## Milestones (happy-path demo targets)
+
+Implementation is structured around two end-to-end happy-path scenarios. Each milestone defines a concrete demoable user journey that exercises every architectural decision relevant to that phase. Feature ordering *within* each phase is driven by what the milestone needs.
+
+### Milestone 1 — General Manufacturing (DWI core)
+
+> Engineer authors "OD Turn — Spacer P/N 11782-3" with 3 substeps:
+> 1. **Setup OD offsets** — `TextInput` (lot #) + `ScanInput` (tool barcode) + `AttestationCheckpoint` (cert verified)
+> 2. **First piece + measure** — `MeasurementInput` linked to a `MeasurementDefinition` row; spec language renders in-spec / out-of-spec badge live
+> 3. **Final inspection** — `PhotoCapture` + `AttestationCheckpoint(kind='signature')`
+>
+> Engineer submits the `ProcessStep` for approval → QA Manager approves → operator at the CNC workstation picks the WO from their queue → works through the 3 substeps in the substep editor → `MeasurementInput` captures persist to `StepExecutionMeasurement` → out-of-spec reading triggers the existing CAPA auto-create → WO advances.
+
+**Architectural decisions this exercises:**
+
+- Two-editor authoring + operator-view pattern (decision #12)
+- Custom-node library with structured attrs (Editor & Custom Node Library section)
+- Authoring popover (decision #20) including `MeasurementDefinition` autocomplete
+- Spec language for measurements (`nominal` / `upper_tol` / `lower_tol`)
+- Substep completion contract (per-node preconditions, scroll-to-blocked UX)
+- Batch-on-complete persistence (decision #19)
+- Author≠approver enforcement (decision #17)
+- Per-Step approval workflow (decision #15)
+- Permission model (Engineering authors, QA approves, Operator executes)
+- Closed-loop measurement → SPC → CAPA pipeline (existing infrastructure)
+
+**Required phases:** DWI Phase 1 + 2 + 3 + 4 (all four). No Reman phases.
+
+**Required reman work:** none. Milestone 1 ships entirely on the DWI core.
+
+### Milestone 2 — Reman Teardown (lighthouse vertical)
+
+> Engineer authors "Teardown 6.7L Cummins injector" with 3 substeps:
+> 1. **External inspection** — `PhotoCapture` + `ChoiceInput` (condition grade)
+> 2. **Disassemble + harvest** — `HarvestedComponentCapture` node enumerates expected components from `DisassemblyBOMLine` for the core type
+> 3. **Final sign-off** — `AttestationCheckpoint(kind='signature')`
+>
+> Engineer submits for approval → QA approves → operator opens a received Core → "Start Teardown" action creates the teardown WO and links the Core → operator works through the 3 substeps → `HarvestedComponent` rows persist with FK to Core → WO closes, Core transitions DISASSEMBLED.
+
+**Additional architectural decisions this exercises (beyond M1):**
+
+- `StepExecution.core` two-FK extension (Reman decision R2)
+- Core flow through Steps (`Core.step` + `advance_core_step`, Reman decision R3)
+- Auto-coordinate Core lifecycle with WO state (Reman decision R5)
+- `start_teardown` service (Reman decision R6)
+- `HarvestedComponentCapture` custom node (Reman decision R7)
+- Per-unit storage philosophy (Reman decision R1) — each Core in a teardown batch has its own `StepExecution`
+
+**Required phases:** Milestone 1 complete + Reman R1 + R2 + R3 + R4.
+
+**Parallelism opportunity:** Reman R1–R3 can ship in parallel with DWI Phase 1–3 (R1 is fully independent of substep models). R4 (`HarvestedComponentCapture`) is the convergence point — needs both DWI substep machinery and `StepExecution.core` to land before it can build. If solo, ship M1 fully first; if parallel capacity, run a reman track alongside.
+
+### Sequencing summary
+
+```
+DWI Phase 1 → 2 → 3 → frontend editor → Phase 4    → Milestone 1 demo
+                                                          ↓
+                                          Reman R1 → R2 → R3 → R4 → Milestone 2 demo
+                                                          (R1 can start any time after DWI Phase 1)
+```
+
+### Frontend route placement for the substep editor
+
+Per the URL convention captured in `CLAUDE.md` (lowercase + kebab-case + nested under a domain prefix):
+
+```
+/editor/processes/$processId/steps/$stepId/substeps          ← substep list + editor for a step
+/editor/processes/$processId/steps/$stepId/substeps/$substepId ← single-substep detail/edit (if needed)
+```
+
+`/editor/` matches the existing process-editor surface (`/editor/processes`, `/editor/milestones`, `/editor/groups/$id`). Nesting under `processes/$processId/steps/$stepId` matches the data model — substeps belong to steps, which belong to a process version. Operator-side execution UX is a separate workstream and lives nested under work-order routes, not the editor namespace.
+
+---
+
 ## Editor & Custom Node Library
 
 ### Library choice: raw TipTap
