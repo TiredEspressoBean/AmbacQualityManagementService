@@ -186,6 +186,16 @@ from .reman import (
     DisassemblyBOMLineViewSet,
 )
 
+# Digital Work Instructions ViewSets
+from .dwi import (
+    SubstepViewSet,
+    SubstepResourceViewSet,
+    SubstepTranslationViewSet,
+    SubstepCompletionViewSet,
+    SubstepGateCompletionViewSet,
+    SubstepResponseViewSet,
+)
+
 # Life Tracking ViewSets
 from .life_tracking import (
     LifeLimitDefinitionViewSet,
@@ -372,6 +382,14 @@ __all__ = [
     'CoreViewSet',
     'HarvestedComponentViewSet',
     'DisassemblyBOMLineViewSet',
+
+    # Digital Work Instructions
+    'SubstepViewSet',
+    'SubstepResourceViewSet',
+    'SubstepTranslationViewSet',
+    'SubstepCompletionViewSet',
+    'SubstepGateCompletionViewSet',
+    'SubstepResponseViewSet',
 
     # Training
     'TrainingTypeViewSet',

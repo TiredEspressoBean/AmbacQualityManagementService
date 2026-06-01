@@ -17807,6 +17807,1246 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/SubstepCompletions/:
+    get:
+      operationId: api_SubstepCompletions_list
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      parameters:
+      - in: query
+        name: completed_by
+        schema:
+          type: integer
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: marked_not_applicable
+        schema:
+          type: boolean
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepCompletionList'
+          description: ''
+    post:
+      operationId: api_SubstepCompletions_create
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepCompletion'
+          description: ''
+  /api/SubstepCompletions/{id}/:
+    get:
+      operationId: api_SubstepCompletions_retrieve
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep completion.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepCompletion'
+          description: ''
+    put:
+      operationId: api_SubstepCompletions_update
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep completion.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepCompletion'
+          description: ''
+    patch:
+      operationId: api_SubstepCompletions_partial_update
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep completion.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepCompletion'
+          description: ''
+    delete:
+      operationId: api_SubstepCompletions_destroy
+      description: |-
+        Per-execution substep completions.
+
+        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep completion.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/SubstepGateCompletions/:
+    get:
+      operationId: api_SubstepGateCompletions_list
+      description: Per-node attestation / signature gate completions.
+      parameters:
+      - in: query
+        name: completed_by
+        schema:
+          type: integer
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: node_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepGateCompletionList'
+          description: ''
+    post:
+      operationId: api_SubstepGateCompletions_create
+      description: Per-node attestation / signature gate completions.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepGateCompletion'
+          description: ''
+  /api/SubstepGateCompletions/{id}/:
+    get:
+      operationId: api_SubstepGateCompletions_retrieve
+      description: Per-node attestation / signature gate completions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep gate completion.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepGateCompletion'
+          description: ''
+    put:
+      operationId: api_SubstepGateCompletions_update
+      description: Per-node attestation / signature gate completions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep gate completion.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepGateCompletionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepGateCompletion'
+          description: ''
+    patch:
+      operationId: api_SubstepGateCompletions_partial_update
+      description: Per-node attestation / signature gate completions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep gate completion.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepGateCompletion'
+          description: ''
+    delete:
+      operationId: api_SubstepGateCompletions_destroy
+      description: Per-node attestation / signature gate completions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep gate completion.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/SubstepResources/:
+    get:
+      operationId: api_SubstepResources_list
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      parameters:
+      - in: query
+        name: equipment_type
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: required
+        schema:
+          type: boolean
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepResourceList'
+          description: ''
+    post:
+      operationId: api_SubstepResources_create
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResource'
+          description: ''
+  /api/SubstepResources/{id}/:
+    get:
+      operationId: api_SubstepResources_retrieve
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep resource.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResource'
+          description: ''
+    put:
+      operationId: api_SubstepResources_update
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep resource.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepResourceRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResource'
+          description: ''
+    patch:
+      operationId: api_SubstepResources_partial_update
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep resource.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResourceRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResource'
+          description: ''
+    delete:
+      operationId: api_SubstepResources_destroy
+      description: |-
+        CRUD for SubstepResource rows.
+
+        Filter by `?substep=<substep_id>` to fetch the resource list for a
+        substep (the typical authoring-popover query).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep resource.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/SubstepResponses/:
+    get:
+      operationId: api_SubstepResponses_list
+      description: Per-node operator capture rows.
+      parameters:
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - choice
+          - computed
+          - file
+          - photo
+          - scan
+          - text
+          - timer
+          - video
+        description: |-
+          Which kind of capture node produced this response.
+
+          * `text` - Text input
+          * `choice` - Choice (radio / select)
+          * `photo` - Photo capture
+          * `video` - Video capture
+          * `scan` - Barcode / QR scan
+          * `file` - File upload
+          * `timer` - Timer (countdown / stopwatch)
+          * `computed` - Computed value (formula)
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: node_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: responded_by
+        schema:
+          type: integer
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepResponseList'
+          description: ''
+    post:
+      operationId: api_SubstepResponses_create
+      description: Per-node operator capture rows.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResponse'
+          description: ''
+  /api/SubstepResponses/{id}/:
+    get:
+      operationId: api_SubstepResponses_retrieve
+      description: Per-node operator capture rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep response.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResponse'
+          description: ''
+    put:
+      operationId: api_SubstepResponses_update
+      description: Per-node operator capture rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep response.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepResponseRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResponse'
+          description: ''
+    patch:
+      operationId: api_SubstepResponses_partial_update
+      description: Per-node operator capture rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep response.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResponseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResponseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepResponseRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepResponse'
+          description: ''
+    delete:
+      operationId: api_SubstepResponses_destroy
+      description: Per-node operator capture rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep response.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/SubstepTranslations/:
+    get:
+      operationId: api_SubstepTranslations_list
+      description: CRUD for SubstepTranslation rows.
+      parameters:
+      - in: query
+        name: language
+        schema:
+          type: string
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepTranslationList'
+          description: ''
+    post:
+      operationId: api_SubstepTranslations_create
+      description: CRUD for SubstepTranslation rows.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepTranslation'
+          description: ''
+  /api/SubstepTranslations/{id}/:
+    get:
+      operationId: api_SubstepTranslations_retrieve
+      description: CRUD for SubstepTranslation rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep translation.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepTranslation'
+          description: ''
+    put:
+      operationId: api_SubstepTranslations_update
+      description: CRUD for SubstepTranslation rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep translation.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepTranslationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepTranslation'
+          description: ''
+    patch:
+      operationId: api_SubstepTranslations_partial_update
+      description: CRUD for SubstepTranslation rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep translation.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepTranslationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepTranslationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepTranslationRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepTranslation'
+          description: ''
+    delete:
+      operationId: api_SubstepTranslations_destroy
+      description: CRUD for SubstepTranslation rows.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep translation.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/Substeps/:
+    get:
+      operationId: api_Substeps_list
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      parameters:
+      - in: query
+        name: is_inspection_point
+        schema:
+          type: boolean
+      - in: query
+        name: is_optional
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: requires_signature
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubstepList'
+          description: ''
+    post:
+      operationId: api_Substeps_create
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+  /api/Substeps/{id}/:
+    get:
+      operationId: api_Substeps_retrieve
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+    put:
+      operationId: api_Substeps_update
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+    patch:
+      operationId: api_Substeps_partial_update
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubstepRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+    delete:
+      operationId: api_Substeps_destroy
+      description: |-
+        CRUD for Substep rows.
+
+        Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+        (the typical substep-editor query). Default ordering matches the
+        operator's working order within the parent Op.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/TenantGroups/:
     get:
       operationId: api_TenantGroups_list
@@ -34120,6 +35360,26 @@ components:
       - query
       - results
       - total_results
+    KindEnum:
+      enum:
+      - text
+      - choice
+      - photo
+      - video
+      - scan
+      - file
+      - timer
+      - computed
+      type: string
+      description: |-
+        * `text` - Text input
+        * `choice` - Choice (radio / select)
+        * `photo` - Photo capture
+        * `video` - Video capture
+        * `scan` - Barcode / QR scan
+        * `file` - File upload
+        * `timer` - Timer (countdown / stopwatch)
+        * `computed` - Computed value (formula)
     LLMConfigResponse:
       type: object
       properties:
@@ -36606,6 +37866,144 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Steps'
+    PaginatedSubstepCompletionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstepCompletion'
+    PaginatedSubstepGateCompletionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstepGateCompletion'
+    PaginatedSubstepList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Substep'
+    PaginatedSubstepResourceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstepResource'
+    PaginatedSubstepResponseList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstepResponse'
+    PaginatedSubstepTranslationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubstepTranslation'
     PaginatedTenantGroupList:
       type: object
       required:
@@ -39879,6 +41277,280 @@ components:
             = substep N requires N-1 complete; 'free_order' = any order. Choices defined
             in Tracker.models.dwi.SequencingMode.
           maxLength: 20
+        archived:
+          type: boolean
+    PatchedSubstepCompletionRequest:
+      type: object
+      description: Per-execution completion record.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record the operator was working when they completed
+            this substep.
+        substep:
+          type: string
+          format: uuid
+          description: The substep that was completed (or marked N/A).
+        completed_by:
+          type: integer
+          description: Operator who completed the substep.
+        marked_not_applicable:
+          type: boolean
+          description: Set when the operator marks an optional substep N/A instead
+            of completing it.
+        notes:
+          type: string
+          description: Operator notes captured at completion; required when marking
+            N/A.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          minLength: 1
+          description: Client IP at signing time; captured for audit defense.
+    PatchedSubstepGateCompletionRequest:
+      type: object
+      description: Per-node attestation / signature gate records.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this gate was completed.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the gate node lives in.
+        node_id:
+          type: string
+          minLength: 1
+          description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
+            (minted client-side per decision #18). Stable across the substep''s lifetime
+            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+          maxLength: 64
+        completed_by:
+          type: integer
+          description: Operator who confirmed/signed the gate.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          minLength: 1
+          description: Client IP at signing time; captured for audit defense.
+    PatchedSubstepRequest:
+      type: object
+      description: |-
+        Substep — the unit of work instruction within a Step.
+
+        The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+        content: [...]}`. Frontend uses the type at
+        `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+      properties:
+        step:
+          type: string
+          format: uuid
+          description: The parent Op this substep belongs to.
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position within the parent Op's substep sequence (0-indexed).
+        title:
+          type: string
+          minLength: 1
+          description: Short human-readable title shown in substep listings.
+          maxLength: 200
+        body_blocks:
+          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
+            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+        is_optional:
+          type: boolean
+          description: Operator may mark this substep N/A instead of completing it.
+        requires_signature:
+          type: boolean
+          description: Operator must sign at substep completion. Distinct from inline
+            AttestationCheckpoint(kind='signature') nodes within the body, which are
+            gates inside the substep flow.
+        is_inspection_point:
+          type: boolean
+          description: 'When True, MeasurementInput captures within this substep additionally
+            create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py,
+            firing the existing record_quality_report_side_effects pipeline (auto-quarantine
+            on out-of-spec, ncr.opened notification, sampling fallback). Default False
+            = process data only. Set True for FAI substeps, in-process hold-points,
+            final inspection. See architectural decision #21 in the DWI design doc.'
+        expected_duration:
+          type: string
+          nullable: true
+          description: Estimated time the substep typically takes. Informational.
+        sampling_rule:
+          type: string
+          format: uuid
+          nullable: true
+          description: If set, the substep only applies to parts this rule selects.
+            Null = substep always applies to every part visiting the step.
+        source_library_substep_id:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: id of the LibrarySubstep this was inserted
+            from.'
+        source_library_version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: version of the LibrarySubstep at insert
+            time.'
+        archived:
+          type: boolean
+    PatchedSubstepResourceRequest:
+      type: object
+      description: Equipment / material / PPE references attached to a substep.
+      properties:
+        substep:
+          type: string
+          format: uuid
+          description: The substep this resource is referenced from.
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Optional quantity (e.g. count of fasteners, mass of material).
+        notes:
+          type: string
+          description: Short note about how/why this resource is needed.
+          maxLength: 200
+        required:
+          type: boolean
+          description: If True, operator can't proceed without the resource being
+            present.
+        archived:
+          type: boolean
+    PatchedSubstepResponseRequest:
+      type: object
+      description: |-
+        Per-node operator capture rows (text / choice / photo / file /
+        timer / computed).
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this response was captured.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the capture node lives in.
+        node_id:
+          type: string
+          minLength: 1
+          description: 'UUIDv7 of the capture node in Substep.body_blocks (minted
+            client-side per decision #18).'
+          maxLength: 64
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          description: |-
+            Which kind of capture node produced this response.
+
+            * `text` - Text input
+            * `choice` - Choice (radio / select)
+            * `photo` - Photo capture
+            * `video` - Video capture
+            * `scan` - Barcode / QR scan
+            * `file` - File upload
+            * `timer` - Timer (countdown / stopwatch)
+            * `computed` - Computed value (formula)
+        value_text:
+          type: string
+          description: 'Short text capture: text input, choice selection, scan code.'
+        value_document:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Photo / video / file capture: FK to the uploaded Documents
+            row.'
+        value_json:
+          nullable: true
+          description: 'Structured payload for kinds that don''t fit a single string:
+            Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue
+            (inputs/result/in_spec).'
+        responded_by:
+          type: integer
+          description: Operator who captured the response.
+    PatchedSubstepTranslationRequest:
+      type: object
+      description: Localized title + body for a substep.
+      properties:
+        substep:
+          type: string
+          format: uuid
+          description: The substep this translation applies to.
+        language:
+          type: string
+          minLength: 1
+          description: BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR').
+          maxLength: 10
+        title:
+          type: string
+          minLength: 1
+          description: Translated title.
+          maxLength: 200
+        body_blocks:
+          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
         archived:
           type: boolean
     PatchedTenantGroupRequest:
@@ -44978,6 +46650,730 @@ components:
       - approval_number
       - approval_request_id
       - process
+    Substep:
+      type: object
+      description: |-
+        Substep — the unit of work instruction within a Step.
+
+        The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+        content: [...]}`. Frontend uses the type at
+        `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+          description: The parent Op this substep belongs to.
+        step_name:
+          type: string
+          readOnly: true
+          nullable: true
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position within the parent Op's substep sequence (0-indexed).
+        title:
+          type: string
+          description: Short human-readable title shown in substep listings.
+          maxLength: 200
+        body_blocks:
+          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
+            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+        is_optional:
+          type: boolean
+          description: Operator may mark this substep N/A instead of completing it.
+        requires_signature:
+          type: boolean
+          description: Operator must sign at substep completion. Distinct from inline
+            AttestationCheckpoint(kind='signature') nodes within the body, which are
+            gates inside the substep flow.
+        is_inspection_point:
+          type: boolean
+          description: 'When True, MeasurementInput captures within this substep additionally
+            create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py,
+            firing the existing record_quality_report_side_effects pipeline (auto-quarantine
+            on out-of-spec, ncr.opened notification, sampling fallback). Default False
+            = process data only. Set True for FAI substeps, in-process hold-points,
+            final inspection. See architectural decision #21 in the DWI design doc.'
+        expected_duration:
+          type: string
+          nullable: true
+          description: Estimated time the substep typically takes. Informational.
+        sampling_rule:
+          type: string
+          format: uuid
+          nullable: true
+          description: If set, the substep only applies to parts this rule selects.
+            Null = substep always applies to every part visiting the step.
+        source_library_substep_id:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: id of the LibrarySubstep this was inserted
+            from.'
+        source_library_version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: version of the LibrarySubstep at insert
+            time.'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - step
+      - step_name
+      - title
+      - updated_at
+    SubstepCompletion:
+      type: object
+      description: Per-execution completion record.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record the operator was working when they completed
+            this substep.
+        substep:
+          type: string
+          format: uuid
+          description: The substep that was completed (or marked N/A).
+        substep_title:
+          type: string
+          readOnly: true
+          nullable: true
+        completed_by:
+          type: integer
+          description: Operator who completed the substep.
+        completed_by_name:
+          type: string
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: UTC timestamp when the completion was recorded.
+        marked_not_applicable:
+          type: boolean
+          description: Set when the operator marks an optional substep N/A instead
+            of completing it.
+        notes:
+          type: string
+          description: Operator notes captured at completion; required when marking
+            N/A.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          description: Client IP at signing time; captured for audit defense.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - completed_at
+      - completed_by
+      - completed_by_name
+      - created_at
+      - id
+      - step_execution
+      - substep
+      - substep_title
+      - updated_at
+    SubstepCompletionRequest:
+      type: object
+      description: Per-execution completion record.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record the operator was working when they completed
+            this substep.
+        substep:
+          type: string
+          format: uuid
+          description: The substep that was completed (or marked N/A).
+        completed_by:
+          type: integer
+          description: Operator who completed the substep.
+        marked_not_applicable:
+          type: boolean
+          description: Set when the operator marks an optional substep N/A instead
+            of completing it.
+        notes:
+          type: string
+          description: Operator notes captured at completion; required when marking
+            N/A.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          minLength: 1
+          description: Client IP at signing time; captured for audit defense.
+      required:
+      - completed_by
+      - step_execution
+      - substep
+    SubstepGateCompletion:
+      type: object
+      description: Per-node attestation / signature gate records.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this gate was completed.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the gate node lives in.
+        node_id:
+          type: string
+          description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
+            (minted client-side per decision #18). Stable across the substep''s lifetime
+            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+          maxLength: 64
+        completed_by:
+          type: integer
+          description: Operator who confirmed/signed the gate.
+        completed_by_name:
+          type: string
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: UTC timestamp when the gate was confirmed/signed.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          description: Client IP at signing time; captured for audit defense.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - completed_at
+      - completed_by
+      - completed_by_name
+      - created_at
+      - id
+      - node_id
+      - step_execution
+      - substep
+      - updated_at
+    SubstepGateCompletionRequest:
+      type: object
+      description: Per-node attestation / signature gate records.
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this gate was completed.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the gate node lives in.
+        node_id:
+          type: string
+          minLength: 1
+          description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
+            (minted client-side per decision #18). Stable across the substep''s lifetime
+            as long as the engineer doesn''t cut-paste the node — see src/lib/dwi/node-id.ts.'
+          maxLength: 64
+        completed_by:
+          type: integer
+          description: Operator who confirmed/signed the gate.
+        signature_data:
+          type: string
+          nullable: true
+          description: Base64 PNG signature blob, matching the ApprovalResponse format.
+        signature_meaning:
+          type: string
+          nullable: true
+          description: Short human-readable description of what the signature attests
+            to.
+          maxLength: 200
+        verified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When identity verification (password / SSO) succeeded.
+        verification_method:
+          allOf:
+          - $ref: '#/components/schemas/VerificationMethodEnum'
+          description: |-
+            How the signing operator's identity was verified.
+
+            * `PASSWORD` - Password
+            * `SSO` - SSO
+            * `NONE` - None
+        ip_address:
+          type: string
+          nullable: true
+          minLength: 1
+          description: Client IP at signing time; captured for audit defense.
+      required:
+      - completed_by
+      - node_id
+      - step_execution
+      - substep
+    SubstepRequest:
+      type: object
+      description: |-
+        Substep — the unit of work instruction within a Step.
+
+        The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+        content: [...]}`. Frontend uses the type at
+        `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+      properties:
+        step:
+          type: string
+          format: uuid
+          description: The parent Op this substep belongs to.
+        order:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Position within the parent Op's substep sequence (0-indexed).
+        title:
+          type: string
+          minLength: 1
+          description: Short human-readable title shown in substep listings.
+          maxLength: 200
+        body_blocks:
+          description: 'TipTap document JSON. Shape: {type: ''doc'', content: [...]}.
+            See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.'
+        is_optional:
+          type: boolean
+          description: Operator may mark this substep N/A instead of completing it.
+        requires_signature:
+          type: boolean
+          description: Operator must sign at substep completion. Distinct from inline
+            AttestationCheckpoint(kind='signature') nodes within the body, which are
+            gates inside the substep flow.
+        is_inspection_point:
+          type: boolean
+          description: 'When True, MeasurementInput captures within this substep additionally
+            create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py,
+            firing the existing record_quality_report_side_effects pipeline (auto-quarantine
+            on out-of-spec, ncr.opened notification, sampling fallback). Default False
+            = process data only. Set True for FAI substeps, in-process hold-points,
+            final inspection. See architectural decision #21 in the DWI design doc.'
+        expected_duration:
+          type: string
+          nullable: true
+          description: Estimated time the substep typically takes. Informational.
+        sampling_rule:
+          type: string
+          format: uuid
+          nullable: true
+          description: If set, the substep only applies to parts this rule selects.
+            Null = substep always applies to every part visiting the step.
+        source_library_substep_id:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: id of the LibrarySubstep this was inserted
+            from.'
+        source_library_version:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'Forward-compatible: version of the LibrarySubstep at insert
+            time.'
+        archived:
+          type: boolean
+      required:
+      - step
+      - title
+    SubstepResource:
+      type: object
+      description: Equipment / material / PPE references attached to a substep.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        substep:
+          type: string
+          format: uuid
+          description: The substep this resource is referenced from.
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+        equipment_type_name:
+          type: string
+          readOnly: true
+          nullable: true
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Optional quantity (e.g. count of fasteners, mass of material).
+        notes:
+          type: string
+          description: Short note about how/why this resource is needed.
+          maxLength: 200
+        required:
+          type: boolean
+          description: If True, operator can't proceed without the resource being
+            present.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - equipment_type_name
+      - id
+      - substep
+      - updated_at
+    SubstepResourceRequest:
+      type: object
+      description: Equipment / material / PPE references attached to a substep.
+      properties:
+        substep:
+          type: string
+          format: uuid
+          description: The substep this resource is referenced from.
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Optional quantity (e.g. count of fasteners, mass of material).
+        notes:
+          type: string
+          description: Short note about how/why this resource is needed.
+          maxLength: 200
+        required:
+          type: boolean
+          description: If True, operator can't proceed without the resource being
+            present.
+        archived:
+          type: boolean
+      required:
+      - substep
+    SubstepResponse:
+      type: object
+      description: |-
+        Per-node operator capture rows (text / choice / photo / file /
+        timer / computed).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this response was captured.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the capture node lives in.
+        node_id:
+          type: string
+          description: 'UUIDv7 of the capture node in Substep.body_blocks (minted
+            client-side per decision #18).'
+          maxLength: 64
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          description: |-
+            Which kind of capture node produced this response.
+
+            * `text` - Text input
+            * `choice` - Choice (radio / select)
+            * `photo` - Photo capture
+            * `video` - Video capture
+            * `scan` - Barcode / QR scan
+            * `file` - File upload
+            * `timer` - Timer (countdown / stopwatch)
+            * `computed` - Computed value (formula)
+        value_text:
+          type: string
+          description: 'Short text capture: text input, choice selection, scan code.'
+        value_document:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Photo / video / file capture: FK to the uploaded Documents
+            row.'
+        value_json:
+          nullable: true
+          description: 'Structured payload for kinds that don''t fit a single string:
+            Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue
+            (inputs/result/in_spec).'
+        responded_by:
+          type: integer
+          description: Operator who captured the response.
+        responded_by_name:
+          type: string
+          readOnly: true
+        responded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: UTC timestamp when the response was captured.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - kind
+      - node_id
+      - responded_at
+      - responded_by
+      - responded_by_name
+      - step_execution
+      - substep
+      - updated_at
+    SubstepResponseRequest:
+      type: object
+      description: |-
+        Per-node operator capture rows (text / choice / photo / file /
+        timer / computed).
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          description: The execution record where this response was captured.
+        substep:
+          type: string
+          format: uuid
+          description: The substep the capture node lives in.
+        node_id:
+          type: string
+          minLength: 1
+          description: 'UUIDv7 of the capture node in Substep.body_blocks (minted
+            client-side per decision #18).'
+          maxLength: 64
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindEnum'
+          description: |-
+            Which kind of capture node produced this response.
+
+            * `text` - Text input
+            * `choice` - Choice (radio / select)
+            * `photo` - Photo capture
+            * `video` - Video capture
+            * `scan` - Barcode / QR scan
+            * `file` - File upload
+            * `timer` - Timer (countdown / stopwatch)
+            * `computed` - Computed value (formula)
+        value_text:
+          type: string
+          description: 'Short text capture: text input, choice selection, scan code.'
+        value_document:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Photo / video / file capture: FK to the uploaded Documents
+            row.'
+        value_json:
+          nullable: true
+          description: 'Structured payload for kinds that don''t fit a single string:
+            Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue
+            (inputs/result/in_spec).'
+        responded_by:
+          type: integer
+          description: Operator who captured the response.
+      required:
+      - kind
+      - node_id
+      - responded_by
+      - step_execution
+      - substep
+    SubstepTranslation:
+      type: object
+      description: Localized title + body for a substep.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        substep:
+          type: string
+          format: uuid
+          description: The substep this translation applies to.
+        language:
+          type: string
+          description: BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR').
+          maxLength: 10
+        title:
+          type: string
+          description: Translated title.
+          maxLength: 200
+        body_blocks:
+          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - language
+      - substep
+      - title
+      - updated_at
+    SubstepTranslationRequest:
+      type: object
+      description: Localized title + body for a substep.
+      properties:
+        substep:
+          type: string
+          format: uuid
+          description: The substep this translation applies to.
+        language:
+          type: string
+          minLength: 1
+          description: BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR').
+          maxLength: 10
+        title:
+          type: string
+          minLength: 1
+          description: Translated title.
+          maxLength: 200
+        body_blocks:
+          description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+        archived:
+          type: boolean
+      required:
+      - language
+      - substep
+      - title
     SupersedeRequestRequest:
       type: object
       properties:

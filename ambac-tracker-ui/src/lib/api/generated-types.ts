@@ -7151,6 +7151,324 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/SubstepCompletions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        get: operations["api_SubstepCompletions_list"];
+        put?: never;
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        post: operations["api_SubstepCompletions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SubstepCompletions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        get: operations["api_SubstepCompletions_retrieve"];
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        put: operations["api_SubstepCompletions_update"];
+        post?: never;
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        delete: operations["api_SubstepCompletions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Per-execution substep completions.
+         *
+         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         */
+        patch: operations["api_SubstepCompletions_partial_update"];
+        trace?: never;
+    };
+    "/api/SubstepGateCompletions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per-node attestation / signature gate completions. */
+        get: operations["api_SubstepGateCompletions_list"];
+        put?: never;
+        /** @description Per-node attestation / signature gate completions. */
+        post: operations["api_SubstepGateCompletions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SubstepGateCompletions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per-node attestation / signature gate completions. */
+        get: operations["api_SubstepGateCompletions_retrieve"];
+        /** @description Per-node attestation / signature gate completions. */
+        put: operations["api_SubstepGateCompletions_update"];
+        post?: never;
+        /** @description Per-node attestation / signature gate completions. */
+        delete: operations["api_SubstepGateCompletions_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Per-node attestation / signature gate completions. */
+        patch: operations["api_SubstepGateCompletions_partial_update"];
+        trace?: never;
+    };
+    "/api/SubstepResources/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        get: operations["api_SubstepResources_list"];
+        put?: never;
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        post: operations["api_SubstepResources_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SubstepResources/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        get: operations["api_SubstepResources_retrieve"];
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        put: operations["api_SubstepResources_update"];
+        post?: never;
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        delete: operations["api_SubstepResources_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for SubstepResource rows.
+         *
+         *     Filter by `?substep=<substep_id>` to fetch the resource list for a
+         *     substep (the typical authoring-popover query).
+         */
+        patch: operations["api_SubstepResources_partial_update"];
+        trace?: never;
+    };
+    "/api/SubstepResponses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per-node operator capture rows. */
+        get: operations["api_SubstepResponses_list"];
+        put?: never;
+        /** @description Per-node operator capture rows. */
+        post: operations["api_SubstepResponses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SubstepResponses/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per-node operator capture rows. */
+        get: operations["api_SubstepResponses_retrieve"];
+        /** @description Per-node operator capture rows. */
+        put: operations["api_SubstepResponses_update"];
+        post?: never;
+        /** @description Per-node operator capture rows. */
+        delete: operations["api_SubstepResponses_destroy"];
+        options?: never;
+        head?: never;
+        /** @description Per-node operator capture rows. */
+        patch: operations["api_SubstepResponses_partial_update"];
+        trace?: never;
+    };
+    "/api/SubstepTranslations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description CRUD for SubstepTranslation rows. */
+        get: operations["api_SubstepTranslations_list"];
+        put?: never;
+        /** @description CRUD for SubstepTranslation rows. */
+        post: operations["api_SubstepTranslations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SubstepTranslations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description CRUD for SubstepTranslation rows. */
+        get: operations["api_SubstepTranslations_retrieve"];
+        /** @description CRUD for SubstepTranslation rows. */
+        put: operations["api_SubstepTranslations_update"];
+        post?: never;
+        /** @description CRUD for SubstepTranslation rows. */
+        delete: operations["api_SubstepTranslations_destroy"];
+        options?: never;
+        head?: never;
+        /** @description CRUD for SubstepTranslation rows. */
+        patch: operations["api_SubstepTranslations_partial_update"];
+        trace?: never;
+    };
+    "/api/Substeps/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        get: operations["api_Substeps_list"];
+        put?: never;
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        post: operations["api_Substeps_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Substeps/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        get: operations["api_Substeps_retrieve"];
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        put: operations["api_Substeps_update"];
+        post?: never;
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        delete: operations["api_Substeps_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description CRUD for Substep rows.
+         *
+         *     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
+         *     (the typical substep-editor query). Default ordering matches the
+         *     operator's working order within the parent Op.
+         */
+        patch: operations["api_Substeps_partial_update"];
+        trace?: never;
+    };
     "/api/TenantGroups/": {
         parameters: {
             query?: never;
@@ -14790,6 +15108,18 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /**
+         * @description * `text` - Text input
+         *     * `choice` - Choice (radio / select)
+         *     * `photo` - Photo capture
+         *     * `video` - Video capture
+         *     * `scan` - Barcode / QR scan
+         *     * `file` - File upload
+         *     * `timer` - Timer (countdown / stopwatch)
+         *     * `computed` - Computed value (formula)
+         * @enum {string}
+         */
+        KindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed";
         LLMConfigResponse: {
             configured: boolean;
             provider: string;
@@ -16204,6 +16534,96 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Steps"][];
+        };
+        PaginatedSubstepCompletionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SubstepCompletion"][];
+        };
+        PaginatedSubstepGateCompletionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SubstepGateCompletion"][];
+        };
+        PaginatedSubstepList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["Substep"][];
+        };
+        PaginatedSubstepResourceList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SubstepResource"][];
+        };
+        PaginatedSubstepResponseList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SubstepResponse"][];
+        };
+        PaginatedSubstepTranslationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SubstepTranslation"][];
         };
         PaginatedTenantGroupList: {
             /** @example 123 */
@@ -18075,6 +18495,198 @@ export interface components {
             revisit_role?: number | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
+            archived?: boolean;
+        };
+        /** @description Per-execution completion record. */
+        PatchedSubstepCompletionRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record the operator was working when they completed this substep.
+             */
+            step_execution?: string;
+            /**
+             * Format: uuid
+             * @description The substep that was completed (or marked N/A).
+             */
+            substep?: string;
+            /** @description Operator who completed the substep. */
+            completed_by?: number;
+            /** @description Set when the operator marks an optional substep N/A instead of completing it. */
+            marked_not_applicable?: boolean;
+            /** @description Operator notes captured at completion; required when marking N/A. */
+            notes?: string;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+        };
+        /** @description Per-node attestation / signature gate records. */
+        PatchedSubstepGateCompletionRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record where this gate was completed.
+             */
+            step_execution?: string;
+            /**
+             * Format: uuid
+             * @description The substep the gate node lives in.
+             */
+            substep?: string;
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            node_id?: string;
+            /** @description Operator who confirmed/signed the gate. */
+            completed_by?: number;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+        };
+        /**
+         * @description Substep — the unit of work instruction within a Step.
+         *
+         *     The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+         *     content: [...]}`. Frontend uses the type at
+         *     `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+         */
+        PatchedSubstepRequest: {
+            /**
+             * Format: uuid
+             * @description The parent Op this substep belongs to.
+             */
+            step?: string;
+            /** @description Position within the parent Op's substep sequence (0-indexed). */
+            order?: number;
+            /** @description Short human-readable title shown in substep listings. */
+            title?: string;
+            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
+            body_blocks?: unknown;
+            /** @description Operator may mark this substep N/A instead of completing it. */
+            is_optional?: boolean;
+            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            requires_signature?: boolean;
+            /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
+            is_inspection_point?: boolean;
+            /** @description Estimated time the substep typically takes. Informational. */
+            expected_duration?: string | null;
+            /**
+             * Format: uuid
+             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             */
+            sampling_rule?: string | null;
+            /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
+            source_library_substep_id?: number | null;
+            /** @description Forward-compatible: version of the LibrarySubstep at insert time. */
+            source_library_version?: number | null;
+            archived?: boolean;
+        };
+        /** @description Equipment / material / PPE references attached to a substep. */
+        PatchedSubstepResourceRequest: {
+            /**
+             * Format: uuid
+             * @description The substep this resource is referenced from.
+             */
+            substep?: string;
+            /**
+             * Format: uuid
+             * @description The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+             */
+            equipment_type?: string | null;
+            /**
+             * Format: decimal
+             * @description Optional quantity (e.g. count of fasteners, mass of material).
+             */
+            quantity?: string | null;
+            /** @description Short note about how/why this resource is needed. */
+            notes?: string;
+            /** @description If True, operator can't proceed without the resource being present. */
+            required?: boolean;
+            archived?: boolean;
+        };
+        /**
+         * @description Per-node operator capture rows (text / choice / photo / file /
+         *     timer / computed).
+         */
+        PatchedSubstepResponseRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record where this response was captured.
+             */
+            step_execution?: string;
+            /**
+             * Format: uuid
+             * @description The substep the capture node lives in.
+             */
+            substep?: string;
+            /** @description UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18). */
+            node_id?: string;
+            /**
+             * @description Which kind of capture node produced this response.
+             *
+             *     * `text` - Text input
+             *     * `choice` - Choice (radio / select)
+             *     * `photo` - Photo capture
+             *     * `video` - Video capture
+             *     * `scan` - Barcode / QR scan
+             *     * `file` - File upload
+             *     * `timer` - Timer (countdown / stopwatch)
+             *     * `computed` - Computed value (formula)
+             */
+            kind?: components["schemas"]["KindEnum"];
+            /** @description Short text capture: text input, choice selection, scan code. */
+            value_text?: string;
+            /**
+             * Format: uuid
+             * @description Photo / video / file capture: FK to the uploaded Documents row.
+             */
+            value_document?: string | null;
+            /** @description Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec). */
+            value_json?: unknown;
+            /** @description Operator who captured the response. */
+            responded_by?: number;
+        };
+        /** @description Localized title + body for a substep. */
+        PatchedSubstepTranslationRequest: {
+            /**
+             * Format: uuid
+             * @description The substep this translation applies to.
+             */
+            substep?: string;
+            /** @description BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR'). */
+            language?: string;
+            /** @description Translated title. */
+            title?: string;
+            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
+            body_blocks?: unknown;
             archived?: boolean;
         };
         /** @description Serializer for TenantGroup with permission counts. */
@@ -20715,6 +21327,447 @@ export interface components {
             /** Format: uuid */
             approval_request_id: string;
             approval_number: string;
+        };
+        /**
+         * @description Substep — the unit of work instruction within a Step.
+         *
+         *     The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+         *     content: [...]}`. Frontend uses the type at
+         *     `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+         */
+        Substep: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The parent Op this substep belongs to.
+             */
+            step: string;
+            readonly step_name: string | null;
+            /** @description Position within the parent Op's substep sequence (0-indexed). */
+            order?: number;
+            /** @description Short human-readable title shown in substep listings. */
+            title: string;
+            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
+            body_blocks?: unknown;
+            /** @description Operator may mark this substep N/A instead of completing it. */
+            is_optional?: boolean;
+            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            requires_signature?: boolean;
+            /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
+            is_inspection_point?: boolean;
+            /** @description Estimated time the substep typically takes. Informational. */
+            expected_duration?: string | null;
+            /**
+             * Format: uuid
+             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             */
+            sampling_rule?: string | null;
+            /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
+            source_library_substep_id?: number | null;
+            /** @description Forward-compatible: version of the LibrarySubstep at insert time. */
+            source_library_version?: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Per-execution completion record. */
+        SubstepCompletion: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The execution record the operator was working when they completed this substep.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep that was completed (or marked N/A).
+             */
+            substep: string;
+            readonly substep_title: string | null;
+            /** @description Operator who completed the substep. */
+            completed_by: number;
+            readonly completed_by_name: string;
+            /**
+             * Format: date-time
+             * @description UTC timestamp when the completion was recorded.
+             */
+            readonly completed_at: string;
+            /** @description Set when the operator marks an optional substep N/A instead of completing it. */
+            marked_not_applicable?: boolean;
+            /** @description Operator notes captured at completion; required when marking N/A. */
+            notes?: string;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Per-execution completion record. */
+        SubstepCompletionRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record the operator was working when they completed this substep.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep that was completed (or marked N/A).
+             */
+            substep: string;
+            /** @description Operator who completed the substep. */
+            completed_by: number;
+            /** @description Set when the operator marks an optional substep N/A instead of completing it. */
+            marked_not_applicable?: boolean;
+            /** @description Operator notes captured at completion; required when marking N/A. */
+            notes?: string;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+        };
+        /** @description Per-node attestation / signature gate records. */
+        SubstepGateCompletion: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The execution record where this gate was completed.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep the gate node lives in.
+             */
+            substep: string;
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            node_id: string;
+            /** @description Operator who confirmed/signed the gate. */
+            completed_by: number;
+            readonly completed_by_name: string;
+            /**
+             * Format: date-time
+             * @description UTC timestamp when the gate was confirmed/signed.
+             */
+            readonly completed_at: string;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Per-node attestation / signature gate records. */
+        SubstepGateCompletionRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record where this gate was completed.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep the gate node lives in.
+             */
+            substep: string;
+            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts. */
+            node_id: string;
+            /** @description Operator who confirmed/signed the gate. */
+            completed_by: number;
+            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
+            signature_data?: string | null;
+            /** @description Short human-readable description of what the signature attests to. */
+            signature_meaning?: string | null;
+            /**
+             * Format: date-time
+             * @description When identity verification (password / SSO) succeeded.
+             */
+            verified_at?: string | null;
+            /**
+             * @description How the signing operator's identity was verified.
+             *
+             *     * `PASSWORD` - Password
+             *     * `SSO` - SSO
+             *     * `NONE` - None
+             */
+            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            /** @description Client IP at signing time; captured for audit defense. */
+            ip_address?: string | null;
+        };
+        /**
+         * @description Substep — the unit of work instruction within a Step.
+         *
+         *     The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
+         *     content: [...]}`. Frontend uses the type at
+         *     `ambac-tracker-ui/src/types/dwi.ts` (DwiDocument).
+         */
+        SubstepRequest: {
+            /**
+             * Format: uuid
+             * @description The parent Op this substep belongs to.
+             */
+            step: string;
+            /** @description Position within the parent Op's substep sequence (0-indexed). */
+            order?: number;
+            /** @description Short human-readable title shown in substep listings. */
+            title: string;
+            /** @description TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary. */
+            body_blocks?: unknown;
+            /** @description Operator may mark this substep N/A instead of completing it. */
+            is_optional?: boolean;
+            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            requires_signature?: boolean;
+            /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
+            is_inspection_point?: boolean;
+            /** @description Estimated time the substep typically takes. Informational. */
+            expected_duration?: string | null;
+            /**
+             * Format: uuid
+             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             */
+            sampling_rule?: string | null;
+            /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
+            source_library_substep_id?: number | null;
+            /** @description Forward-compatible: version of the LibrarySubstep at insert time. */
+            source_library_version?: number | null;
+            archived?: boolean;
+        };
+        /** @description Equipment / material / PPE references attached to a substep. */
+        SubstepResource: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The substep this resource is referenced from.
+             */
+            substep: string;
+            /**
+             * Format: uuid
+             * @description The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+             */
+            equipment_type?: string | null;
+            readonly equipment_type_name: string | null;
+            /**
+             * Format: decimal
+             * @description Optional quantity (e.g. count of fasteners, mass of material).
+             */
+            quantity?: string | null;
+            /** @description Short note about how/why this resource is needed. */
+            notes?: string;
+            /** @description If True, operator can't proceed without the resource being present. */
+            required?: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Equipment / material / PPE references attached to a substep. */
+        SubstepResourceRequest: {
+            /**
+             * Format: uuid
+             * @description The substep this resource is referenced from.
+             */
+            substep: string;
+            /**
+             * Format: uuid
+             * @description The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+             */
+            equipment_type?: string | null;
+            /**
+             * Format: decimal
+             * @description Optional quantity (e.g. count of fasteners, mass of material).
+             */
+            quantity?: string | null;
+            /** @description Short note about how/why this resource is needed. */
+            notes?: string;
+            /** @description If True, operator can't proceed without the resource being present. */
+            required?: boolean;
+            archived?: boolean;
+        };
+        /**
+         * @description Per-node operator capture rows (text / choice / photo / file /
+         *     timer / computed).
+         */
+        SubstepResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The execution record where this response was captured.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep the capture node lives in.
+             */
+            substep: string;
+            /** @description UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18). */
+            node_id: string;
+            /**
+             * @description Which kind of capture node produced this response.
+             *
+             *     * `text` - Text input
+             *     * `choice` - Choice (radio / select)
+             *     * `photo` - Photo capture
+             *     * `video` - Video capture
+             *     * `scan` - Barcode / QR scan
+             *     * `file` - File upload
+             *     * `timer` - Timer (countdown / stopwatch)
+             *     * `computed` - Computed value (formula)
+             */
+            kind: components["schemas"]["KindEnum"];
+            /** @description Short text capture: text input, choice selection, scan code. */
+            value_text?: string;
+            /**
+             * Format: uuid
+             * @description Photo / video / file capture: FK to the uploaded Documents row.
+             */
+            value_document?: string | null;
+            /** @description Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec). */
+            value_json?: unknown;
+            /** @description Operator who captured the response. */
+            responded_by: number;
+            readonly responded_by_name: string;
+            /**
+             * Format: date-time
+             * @description UTC timestamp when the response was captured.
+             */
+            readonly responded_at: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Per-node operator capture rows (text / choice / photo / file /
+         *     timer / computed).
+         */
+        SubstepResponseRequest: {
+            /**
+             * Format: uuid
+             * @description The execution record where this response was captured.
+             */
+            step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep the capture node lives in.
+             */
+            substep: string;
+            /** @description UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18). */
+            node_id: string;
+            /**
+             * @description Which kind of capture node produced this response.
+             *
+             *     * `text` - Text input
+             *     * `choice` - Choice (radio / select)
+             *     * `photo` - Photo capture
+             *     * `video` - Video capture
+             *     * `scan` - Barcode / QR scan
+             *     * `file` - File upload
+             *     * `timer` - Timer (countdown / stopwatch)
+             *     * `computed` - Computed value (formula)
+             */
+            kind: components["schemas"]["KindEnum"];
+            /** @description Short text capture: text input, choice selection, scan code. */
+            value_text?: string;
+            /**
+             * Format: uuid
+             * @description Photo / video / file capture: FK to the uploaded Documents row.
+             */
+            value_document?: string | null;
+            /** @description Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec). */
+            value_json?: unknown;
+            /** @description Operator who captured the response. */
+            responded_by: number;
+        };
+        /** @description Localized title + body for a substep. */
+        SubstepTranslation: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The substep this translation applies to.
+             */
+            substep: string;
+            /** @description BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR'). */
+            language: string;
+            /** @description Translated title. */
+            title: string;
+            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
+            body_blocks?: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /** @description Localized title + body for a substep. */
+        SubstepTranslationRequest: {
+            /**
+             * Format: uuid
+             * @description The substep this translation applies to.
+             */
+            substep: string;
+            /** @description BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR'). */
+            language: string;
+            /** @description Translated title. */
+            title: string;
+            /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
+            body_blocks?: unknown;
+            archived?: boolean;
         };
         SupersedeRequestRequest: {
             reason?: string;
@@ -34624,6 +35677,942 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_SubstepCompletions_list: {
+        parameters: {
+            query?: {
+                completed_by?: number;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                marked_not_applicable?: boolean;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                step_execution?: string;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepCompletionList"];
+                };
+            };
+        };
+    };
+    api_SubstepCompletions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
+                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepCompletions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepCompletions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
+                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepCompletions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SubstepCompletions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepCompletionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepCompletionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_list: {
+        parameters: {
+            query?: {
+                completed_by?: number;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                node_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                step_execution?: string;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepGateCompletionList"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepGateCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepGateCompletionRequest"];
+                "multipart/form-data": components["schemas"]["SubstepGateCompletionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepGateCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep gate completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepGateCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep gate completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepGateCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepGateCompletionRequest"];
+                "multipart/form-data": components["schemas"]["SubstepGateCompletionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepGateCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep gate completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SubstepGateCompletions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep gate completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepGateCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepGateCompletionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepGateCompletionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepGateCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepResources_list: {
+        parameters: {
+            query?: {
+                equipment_type?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                required?: boolean;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepResourceList"];
+                };
+            };
+        };
+    };
+    api_SubstepResources_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepResourceRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepResourceRequest"];
+                "multipart/form-data": components["schemas"]["SubstepResourceRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResource"];
+                };
+            };
+        };
+    };
+    api_SubstepResources_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep resource. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResource"];
+                };
+            };
+        };
+    };
+    api_SubstepResources_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep resource. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepResourceRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepResourceRequest"];
+                "multipart/form-data": components["schemas"]["SubstepResourceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResource"];
+                };
+            };
+        };
+    };
+    api_SubstepResources_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep resource. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SubstepResources_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep resource. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepResourceRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepResourceRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepResourceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResource"];
+                };
+            };
+        };
+    };
+    api_SubstepResponses_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Which kind of capture node produced this response.
+                 *
+                 *     * `text` - Text input
+                 *     * `choice` - Choice (radio / select)
+                 *     * `photo` - Photo capture
+                 *     * `video` - Video capture
+                 *     * `scan` - Barcode / QR scan
+                 *     * `file` - File upload
+                 *     * `timer` - Timer (countdown / stopwatch)
+                 *     * `computed` - Computed value (formula)
+                 */
+                kind?: "choice" | "computed" | "file" | "photo" | "scan" | "text" | "timer" | "video";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                node_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                responded_by?: number;
+                step_execution?: string;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepResponseList"];
+                };
+            };
+        };
+    };
+    api_SubstepResponses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepResponseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepResponseRequest"];
+                "multipart/form-data": components["schemas"]["SubstepResponseRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResponse"];
+                };
+            };
+        };
+    };
+    api_SubstepResponses_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep response. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResponse"];
+                };
+            };
+        };
+    };
+    api_SubstepResponses_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep response. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepResponseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepResponseRequest"];
+                "multipart/form-data": components["schemas"]["SubstepResponseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResponse"];
+                };
+            };
+        };
+    };
+    api_SubstepResponses_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep response. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SubstepResponses_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep response. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepResponseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepResponseRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepResponseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepResponse"];
+                };
+            };
+        };
+    };
+    api_SubstepTranslations_list: {
+        parameters: {
+            query?: {
+                language?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepTranslationList"];
+                };
+            };
+        };
+    };
+    api_SubstepTranslations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepTranslationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepTranslationRequest"];
+                "multipart/form-data": components["schemas"]["SubstepTranslationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepTranslation"];
+                };
+            };
+        };
+    };
+    api_SubstepTranslations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep translation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepTranslation"];
+                };
+            };
+        };
+    };
+    api_SubstepTranslations_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep translation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepTranslationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepTranslationRequest"];
+                "multipart/form-data": components["schemas"]["SubstepTranslationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepTranslation"];
+                };
+            };
+        };
+    };
+    api_SubstepTranslations_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep translation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SubstepTranslations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep translation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepTranslationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepTranslationRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepTranslationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepTranslation"];
+                };
+            };
+        };
+    };
+    api_Substeps_list: {
+        parameters: {
+            query?: {
+                is_inspection_point?: boolean;
+                is_optional?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                requires_signature?: boolean;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSubstepList"];
+                };
+            };
+        };
+    };
+    api_Substeps_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
+                "multipart/form-data": components["schemas"]["SubstepRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
+                "multipart/form-data": components["schemas"]["SubstepRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_Substeps_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSubstepRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
                 };
             };
         };

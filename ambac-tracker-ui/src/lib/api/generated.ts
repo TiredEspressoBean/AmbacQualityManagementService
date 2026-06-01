@@ -5765,6 +5765,454 @@ export type Steps = {
   archived?: boolean | undefined;
   version: number;
 };
+export type PaginatedSubstepCompletionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SubstepCompletion>;
+};
+export type SubstepCompletion = {
+  id: string;
+  /**
+   * The execution record the operator was working when they completed this substep.
+   */
+  step_execution: string;
+  /**
+   * The substep that was completed (or marked N/A).
+   */
+  substep: string;
+  substep_title: string | null;
+  /**
+   * Operator who completed the substep.
+   */
+  completed_by: number;
+  completed_by_name: string;
+  /**
+   * UTC timestamp when the completion was recorded.
+   */
+  completed_at: string;
+  marked_not_applicable?: /**
+   * Set when the operator marks an optional substep N/A instead of completing it.
+   */
+  boolean | undefined;
+  notes?: /**
+   * Operator notes captured at completion; required when marking N/A.
+   */
+  string | undefined;
+  signature_data?:
+    | /**
+     * Base64 PNG signature blob, matching the ApprovalResponse format.
+     */
+    (string | null)
+    | undefined;
+  signature_meaning?:
+    | /**
+     * Short human-readable description of what the signature attests to.
+     *
+     * @maxLength 200
+     */
+    (string | null)
+    | undefined;
+  verified_at?:
+    | /**
+     * When identity verification (password / SSO) succeeded.
+     */
+    (string | null)
+    | undefined;
+  verification_method?: /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  VerificationMethodEnum | undefined;
+  ip_address?:
+    | /**
+     * Client IP at signing time; captured for audit defense.
+     */
+    (string | null)
+    | undefined;
+  created_at: string;
+  updated_at: string;
+};
+export type PaginatedSubstepGateCompletionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SubstepGateCompletion>;
+};
+export type SubstepGateCompletion = {
+  id: string;
+  /**
+   * The execution record where this gate was completed.
+   */
+  step_execution: string;
+  /**
+   * The substep the gate node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   *
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+   * Operator who confirmed/signed the gate.
+   */
+  completed_by: number;
+  completed_by_name: string;
+  /**
+   * UTC timestamp when the gate was confirmed/signed.
+   */
+  completed_at: string;
+  signature_data?:
+    | /**
+     * Base64 PNG signature blob, matching the ApprovalResponse format.
+     */
+    (string | null)
+    | undefined;
+  signature_meaning?:
+    | /**
+     * Short human-readable description of what the signature attests to.
+     *
+     * @maxLength 200
+     */
+    (string | null)
+    | undefined;
+  verified_at?:
+    | /**
+     * When identity verification (password / SSO) succeeded.
+     */
+    (string | null)
+    | undefined;
+  verification_method?: /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  VerificationMethodEnum | undefined;
+  ip_address?:
+    | /**
+     * Client IP at signing time; captured for audit defense.
+     */
+    (string | null)
+    | undefined;
+  created_at: string;
+  updated_at: string;
+};
+export type PaginatedSubstepList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Substep>;
+};
+export type Substep = {
+  id: string;
+  /**
+   * The parent Op this substep belongs to.
+   */
+  step: string;
+  step_name: string | null;
+  order?: /**
+   * Position within the parent Op's substep sequence (0-indexed).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  /**
+   * Short human-readable title shown in substep listings.
+   *
+   * @maxLength 200
+   */
+  title: string;
+  body_blocks?: /**
+   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
+   */
+  unknown | undefined;
+  is_optional?: /**
+   * Operator may mark this substep N/A instead of completing it.
+   */
+  boolean | undefined;
+  requires_signature?: /**
+   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   */
+  boolean | undefined;
+  is_inspection_point?: /**
+   * When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc.
+   */
+  boolean | undefined;
+  expected_duration?:
+    | /**
+     * Estimated time the substep typically takes. Informational.
+     */
+    (string | null)
+    | undefined;
+  sampling_rule?:
+    | /**
+     * If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+     */
+    (string | null)
+    | undefined;
+  source_library_substep_id?:
+    | /**
+     * Forward-compatible: id of the LibrarySubstep this was inserted from.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  source_library_version?:
+    | /**
+     * Forward-compatible: version of the LibrarySubstep at insert time.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type PaginatedSubstepResourceList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SubstepResource>;
+};
+export type SubstepResource = {
+  id: string;
+  /**
+   * The substep this resource is referenced from.
+   */
+  substep: string;
+  equipment_type?:
+    | /**
+     * The equipment class needed (e.g. 'Digital micrometer 0-1 in').
+     */
+    (string | null)
+    | undefined;
+  equipment_type_name: string | null;
+  quantity?:
+    | /**
+     * Optional quantity (e.g. count of fasteners, mass of material).
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  notes?: /**
+   * Short note about how/why this resource is needed.
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+  required?: /**
+   * If True, operator can't proceed without the resource being present.
+   */
+  boolean | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type PaginatedSubstepResponseList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SubstepResponse>;
+};
+export type SubstepResponse = {
+  id: string;
+  /**
+   * The execution record where this response was captured.
+   */
+  step_execution: string;
+  /**
+   * The substep the capture node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18).
+   *
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+     * Which kind of capture node produced this response.
+    
+    * `text` - Text input
+    * `choice` - Choice (radio / select)
+    * `photo` - Photo capture
+    * `video` - Video capture
+    * `scan` - Barcode / QR scan
+    * `file` - File upload
+    * `timer` - Timer (countdown / stopwatch)
+    * `computed` - Computed value (formula)
+     */
+  kind: KindEnum;
+  value_text?: /**
+   * Short text capture: text input, choice selection, scan code.
+   */
+  string | undefined;
+  value_document?:
+    | /**
+     * Photo / video / file capture: FK to the uploaded Documents row.
+     */
+    (string | null)
+    | undefined;
+  value_json?: /**
+   * Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec).
+   */
+  unknown | undefined;
+  /**
+   * Operator who captured the response.
+   */
+  responded_by: number;
+  responded_by_name: string;
+  /**
+   * UTC timestamp when the response was captured.
+   */
+  responded_at: string;
+  created_at: string;
+  updated_at: string;
+};
+export type KindEnum =
+  /**
+   * * `text` - Text input
+   * `choice` - Choice (radio / select)
+   * `photo` - Photo capture
+   * `video` - Video capture
+   * `scan` - Barcode / QR scan
+   * `file` - File upload
+   * `timer` - Timer (countdown / stopwatch)
+   * `computed` - Computed value (formula)
+   *
+   * @enum text, choice, photo, video, scan, file, timer, computed
+   */
+  | "text"
+  | "choice"
+  | "photo"
+  | "video"
+  | "scan"
+  | "file"
+  | "timer"
+  | "computed";
+export type PaginatedSubstepTranslationList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SubstepTranslation>;
+};
+export type SubstepTranslation = {
+  id: string;
+  /**
+   * The substep this translation applies to.
+   */
+  substep: string;
+  /**
+   * BCP 47 language tag (e.g. 'en', 'es-MX', 'pt-BR').
+   *
+   * @maxLength 10
+   */
+  language: string;
+  /**
+   * Translated title.
+   *
+   * @maxLength 200
+   */
+  title: string;
+  body_blocks?: /**
+   * Translated TipTap document JSON; same shape as Substep.body_blocks.
+   */
+  unknown | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
 export type PaginatedTenantGroupList = {
   /**
    * @example 123
@@ -8136,6 +8584,151 @@ export type PatchedStepsRequest = Partial<{
   sequencing_mode: string;
   archived: boolean;
 }>;
+export type PatchedSubstepCompletionRequest = Partial<{
+  /**
+   * The execution record the operator was working when they completed this substep.
+   */
+  step_execution: string;
+  /**
+   * The substep that was completed (or marked N/A).
+   */
+  substep: string;
+  /**
+   * Operator who completed the substep.
+   */
+  completed_by: number;
+  /**
+   * Set when the operator marks an optional substep N/A instead of completing it.
+   */
+  marked_not_applicable: boolean;
+  /**
+   * Operator notes captured at completion; required when marking N/A.
+   */
+  notes: string;
+  /**
+   * Base64 PNG signature blob, matching the ApprovalResponse format.
+   */
+  signature_data: string | null;
+  /**
+   * Short human-readable description of what the signature attests to.
+   *
+   * @maxLength 200
+   */
+  signature_meaning: string | null;
+  /**
+   * When identity verification (password / SSO) succeeded.
+   */
+  verified_at: string | null;
+  /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  verification_method: VerificationMethodEnum;
+  /**
+   * Client IP at signing time; captured for audit defense.
+   *
+   * @minLength 1
+   */
+  ip_address: string | null;
+}>;
+export type PatchedSubstepGateCompletionRequest = Partial<{
+  /**
+   * The execution record where this gate was completed.
+   */
+  step_execution: string;
+  /**
+   * The substep the gate node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+   * Operator who confirmed/signed the gate.
+   */
+  completed_by: number;
+  /**
+   * Base64 PNG signature blob, matching the ApprovalResponse format.
+   */
+  signature_data: string | null;
+  /**
+   * Short human-readable description of what the signature attests to.
+   *
+   * @maxLength 200
+   */
+  signature_meaning: string | null;
+  /**
+   * When identity verification (password / SSO) succeeded.
+   */
+  verified_at: string | null;
+  /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  verification_method: VerificationMethodEnum;
+  /**
+   * Client IP at signing time; captured for audit defense.
+   *
+   * @minLength 1
+   */
+  ip_address: string | null;
+}>;
+export type PatchedSubstepResponseRequest = Partial<{
+  /**
+   * The execution record where this response was captured.
+   */
+  step_execution: string;
+  /**
+   * The substep the capture node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+     * Which kind of capture node produced this response.
+    
+    * `text` - Text input
+    * `choice` - Choice (radio / select)
+    * `photo` - Photo capture
+    * `video` - Video capture
+    * `scan` - Barcode / QR scan
+    * `file` - File upload
+    * `timer` - Timer (countdown / stopwatch)
+    * `computed` - Computed value (formula)
+     */
+  kind: KindEnum;
+  /**
+   * Short text capture: text input, choice selection, scan code.
+   */
+  value_text: string;
+  /**
+   * Photo / video / file capture: FK to the uploaded Documents row.
+   */
+  value_document: string | null;
+  /**
+   * Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec).
+   */
+  value_json: unknown;
+  /**
+   * Operator who captured the response.
+   */
+  responded_by: number;
+}>;
 export type PatchedTenantLLMProviderRequest = Partial<{
   /**
      * LLM provider type
@@ -9457,6 +10050,169 @@ export type SubmitProcessForApprovalResponse = {
   process: ProcessWithSteps;
   approval_request_id: string;
   approval_number: string;
+};
+export type SubstepCompletionRequest = {
+  /**
+   * The execution record the operator was working when they completed this substep.
+   */
+  step_execution: string;
+  /**
+   * The substep that was completed (or marked N/A).
+   */
+  substep: string;
+  /**
+   * Operator who completed the substep.
+   */
+  completed_by: number;
+  marked_not_applicable?: /**
+   * Set when the operator marks an optional substep N/A instead of completing it.
+   */
+  boolean | undefined;
+  notes?: /**
+   * Operator notes captured at completion; required when marking N/A.
+   */
+  string | undefined;
+  signature_data?:
+    | /**
+     * Base64 PNG signature blob, matching the ApprovalResponse format.
+     */
+    (string | null)
+    | undefined;
+  signature_meaning?:
+    | /**
+     * Short human-readable description of what the signature attests to.
+     *
+     * @maxLength 200
+     */
+    (string | null)
+    | undefined;
+  verified_at?:
+    | /**
+     * When identity verification (password / SSO) succeeded.
+     */
+    (string | null)
+    | undefined;
+  verification_method?: /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  VerificationMethodEnum | undefined;
+  ip_address?:
+    | /**
+     * Client IP at signing time; captured for audit defense.
+     *
+     * @minLength 1
+     */
+    (string | null)
+    | undefined;
+};
+export type SubstepGateCompletionRequest = {
+  /**
+   * The execution record where this gate was completed.
+   */
+  step_execution: string;
+  /**
+   * The substep the gate node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node — see src/lib/dwi/node-id.ts.
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+   * Operator who confirmed/signed the gate.
+   */
+  completed_by: number;
+  signature_data?:
+    | /**
+     * Base64 PNG signature blob, matching the ApprovalResponse format.
+     */
+    (string | null)
+    | undefined;
+  signature_meaning?:
+    | /**
+     * Short human-readable description of what the signature attests to.
+     *
+     * @maxLength 200
+     */
+    (string | null)
+    | undefined;
+  verified_at?:
+    | /**
+     * When identity verification (password / SSO) succeeded.
+     */
+    (string | null)
+    | undefined;
+  verification_method?: /**
+     * How the signing operator's identity was verified.
+    
+    * `PASSWORD` - Password
+    * `SSO` - SSO
+    * `NONE` - None
+     */
+  VerificationMethodEnum | undefined;
+  ip_address?:
+    | /**
+     * Client IP at signing time; captured for audit defense.
+     *
+     * @minLength 1
+     */
+    (string | null)
+    | undefined;
+};
+export type SubstepResponseRequest = {
+  /**
+   * The execution record where this response was captured.
+   */
+  step_execution: string;
+  /**
+   * The substep the capture node lives in.
+   */
+  substep: string;
+  /**
+   * UUIDv7 of the capture node in Substep.body_blocks (minted client-side per decision #18).
+   *
+   * @minLength 1
+   * @maxLength 64
+   */
+  node_id: string;
+  /**
+     * Which kind of capture node produced this response.
+    
+    * `text` - Text input
+    * `choice` - Choice (radio / select)
+    * `photo` - Photo capture
+    * `video` - Video capture
+    * `scan` - Barcode / QR scan
+    * `file` - File upload
+    * `timer` - Timer (countdown / stopwatch)
+    * `computed` - Computed value (formula)
+     */
+  kind: KindEnum;
+  value_text?: /**
+   * Short text capture: text input, choice selection, scan code.
+   */
+  string | undefined;
+  value_document?:
+    | /**
+     * Photo / video / file capture: FK to the uploaded Documents row.
+     */
+    (string | null)
+    | undefined;
+  value_json?: /**
+   * Structured payload for kinds that don't fit a single string: Timer (started_at/completed_at/elapsed_seconds/direction), ComputedValue (inputs/result/in_spec).
+   */
+  unknown | undefined;
+  /**
+   * Operator who captured the response.
+   */
+  responded_by: number;
 };
 export type TenantCreate = {
   /**
@@ -13393,6 +14149,291 @@ const StepSamplingRulesUpdateRequest = z.object({
   fallback_threshold: z.number().int().optional(),
   fallback_duration: z.number().int().optional(),
 });
+const SubstepCompletion = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  substep_title: z.string().nullable(),
+  completed_by: z.number().int(),
+  completed_by_name: z.string(),
+  completed_at: z.string().datetime({ offset: true }),
+  marked_not_applicable: z.boolean().optional(),
+  notes: z.string().optional(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  ip_address: z.string().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedSubstepCompletionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SubstepCompletion),
+});
+const SubstepCompletionRequest = z.object({
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  completed_by: z.number().int(),
+  marked_not_applicable: z.boolean().optional(),
+  notes: z.string().optional(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  ip_address: z.string().min(1).nullish(),
+});
+const PatchedSubstepCompletionRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    substep: z.string().uuid(),
+    completed_by: z.number().int(),
+    marked_not_applicable: z.boolean(),
+    notes: z.string(),
+    signature_data: z.string().nullable(),
+    signature_meaning: z.string().max(200).nullable(),
+    verified_at: z.string().datetime({ offset: true }).nullable(),
+    verification_method: VerificationMethodEnum,
+    ip_address: z.string().min(1).nullable(),
+  })
+  .partial();
+const SubstepGateCompletion = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  node_id: z.string().max(64),
+  completed_by: z.number().int(),
+  completed_by_name: z.string(),
+  completed_at: z.string().datetime({ offset: true }),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  ip_address: z.string().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedSubstepGateCompletionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SubstepGateCompletion),
+});
+const SubstepGateCompletionRequest = z.object({
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  node_id: z.string().min(1).max(64),
+  completed_by: z.number().int(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  ip_address: z.string().min(1).nullish(),
+});
+const PatchedSubstepGateCompletionRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    substep: z.string().uuid(),
+    node_id: z.string().min(1).max(64),
+    completed_by: z.number().int(),
+    signature_data: z.string().nullable(),
+    signature_meaning: z.string().max(200).nullable(),
+    verified_at: z.string().datetime({ offset: true }).nullable(),
+    verification_method: VerificationMethodEnum,
+    ip_address: z.string().min(1).nullable(),
+  })
+  .partial();
+const SubstepResource = z.object({
+  id: z.string().uuid(),
+  substep: z.string().uuid(),
+  equipment_type: z.string().uuid().nullish(),
+  equipment_type_name: z.string().nullable(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  notes: z.string().max(200).optional(),
+  required: z.boolean().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedSubstepResourceList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SubstepResource),
+});
+const SubstepResourceRequest = z.object({
+  substep: z.string().uuid(),
+  equipment_type: z.string().uuid().nullish(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  notes: z.string().max(200).optional(),
+  required: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedSubstepResourceRequest = z
+  .object({
+    substep: z.string().uuid(),
+    equipment_type: z.string().uuid().nullable(),
+    quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    notes: z.string().max(200),
+    required: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
+const KindEnum = z.enum([
+  "text",
+  "choice",
+  "photo",
+  "video",
+  "scan",
+  "file",
+  "timer",
+  "computed",
+]);
+const SubstepResponse = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  node_id: z.string().max(64),
+  kind: KindEnum,
+  value_text: z.string().optional(),
+  value_document: z.string().uuid().nullish(),
+  value_json: z.unknown().nullish(),
+  responded_by: z.number().int(),
+  responded_by_name: z.string(),
+  responded_at: z.string().datetime({ offset: true }),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedSubstepResponseList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SubstepResponse),
+});
+const SubstepResponseRequest = z.object({
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  node_id: z.string().min(1).max(64),
+  kind: KindEnum,
+  value_text: z.string().optional(),
+  value_document: z.string().uuid().nullish(),
+  value_json: z.unknown().nullish(),
+  responded_by: z.number().int(),
+});
+const PatchedSubstepResponseRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    substep: z.string().uuid(),
+    node_id: z.string().min(1).max(64),
+    kind: KindEnum,
+    value_text: z.string(),
+    value_document: z.string().uuid().nullable(),
+    value_json: z.unknown().nullable(),
+    responded_by: z.number().int(),
+  })
+  .partial();
+const SubstepTranslation = z.object({
+  id: z.string().uuid(),
+  substep: z.string().uuid(),
+  language: z.string().max(10),
+  title: z.string().max(200),
+  body_blocks: z.unknown().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedSubstepTranslationList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SubstepTranslation),
+});
+const SubstepTranslationRequest = z.object({
+  substep: z.string().uuid(),
+  language: z.string().min(1).max(10),
+  title: z.string().min(1).max(200),
+  body_blocks: z.unknown().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedSubstepTranslationRequest = z
+  .object({
+    substep: z.string().uuid(),
+    language: z.string().min(1).max(10),
+    title: z.string().min(1).max(200),
+    body_blocks: z.unknown(),
+    archived: z.boolean(),
+  })
+  .partial();
+const Substep = z.object({
+  id: z.string().uuid(),
+  step: z.string().uuid(),
+  step_name: z.string().nullable(),
+  order: z.number().int().gte(0).lte(2147483647).optional(),
+  title: z.string().max(200),
+  body_blocks: z.unknown().optional(),
+  is_optional: z.boolean().optional(),
+  requires_signature: z.boolean().optional(),
+  is_inspection_point: z.boolean().optional(),
+  expected_duration: z.string().nullish(),
+  sampling_rule: z.string().uuid().nullish(),
+  source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
+  source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedSubstepList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Substep),
+});
+const SubstepRequest = z.object({
+  step: z.string().uuid(),
+  order: z.number().int().gte(0).lte(2147483647).optional(),
+  title: z.string().min(1).max(200),
+  body_blocks: z.unknown().optional(),
+  is_optional: z.boolean().optional(),
+  requires_signature: z.boolean().optional(),
+  is_inspection_point: z.boolean().optional(),
+  expected_duration: z.string().nullish(),
+  sampling_rule: z.string().uuid().nullish(),
+  source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
+  source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
+  archived: z.boolean().optional(),
+});
+const PatchedSubstepRequest = z
+  .object({
+    step: z.string().uuid(),
+    order: z.number().int().gte(0).lte(2147483647),
+    title: z.string().min(1).max(200),
+    body_blocks: z.unknown(),
+    is_optional: z.boolean(),
+    requires_signature: z.boolean(),
+    is_inspection_point: z.boolean(),
+    expected_duration: z.string().nullable(),
+    sampling_rule: z.string().uuid().nullable(),
+    source_library_substep_id: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
+    source_library_version: z.number().int().gte(0).lte(2147483647).nullable(),
+    archived: z.boolean(),
+  })
+  .partial();
 const TenantGroup = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
@@ -16033,6 +17074,31 @@ export const schemas = {
   CreateStepRevisionInputRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
+  SubstepCompletion,
+  PaginatedSubstepCompletionList,
+  SubstepCompletionRequest,
+  PatchedSubstepCompletionRequest,
+  SubstepGateCompletion,
+  PaginatedSubstepGateCompletionList,
+  SubstepGateCompletionRequest,
+  PatchedSubstepGateCompletionRequest,
+  SubstepResource,
+  PaginatedSubstepResourceList,
+  SubstepResourceRequest,
+  PatchedSubstepResourceRequest,
+  KindEnum,
+  SubstepResponse,
+  PaginatedSubstepResponseList,
+  SubstepResponseRequest,
+  PatchedSubstepResponseRequest,
+  SubstepTranslation,
+  PaginatedSubstepTranslationList,
+  SubstepTranslationRequest,
+  PatchedSubstepTranslationRequest,
+  Substep,
+  PaginatedSubstepList,
+  SubstepRequest,
+  PatchedSubstepRequest,
   TenantGroup,
   PaginatedTenantGroupList,
   TenantGroupRequest,
@@ -31723,6 +32789,846 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepCompletions/",
+    alias: "api_SubstepCompletions_list",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "completed_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "marked_not_applicable",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepCompletionList,
+  },
+  {
+    method: "post",
+    path: "/api/SubstepCompletions/",
+    alias: "api_SubstepCompletions_create",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepCompletionRequest,
+      },
+    ],
+    response: SubstepCompletion,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepCompletions/:id/",
+    alias: "api_SubstepCompletions_retrieve",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepCompletion,
+  },
+  {
+    method: "put",
+    path: "/api/SubstepCompletions/:id/",
+    alias: "api_SubstepCompletions_update",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepCompletionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepCompletion,
+  },
+  {
+    method: "patch",
+    path: "/api/SubstepCompletions/:id/",
+    alias: "api_SubstepCompletions_partial_update",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepCompletionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepCompletion,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepCompletions/:id/",
+    alias: "api_SubstepCompletions_destroy",
+    description: `Per-execution substep completions.
+
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/SubstepGateCompletions/",
+    alias: "api_SubstepGateCompletions_list",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "completed_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "node_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepGateCompletionList,
+  },
+  {
+    method: "post",
+    path: "/api/SubstepGateCompletions/",
+    alias: "api_SubstepGateCompletions_create",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepGateCompletionRequest,
+      },
+    ],
+    response: SubstepGateCompletion,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepGateCompletions/:id/",
+    alias: "api_SubstepGateCompletions_retrieve",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepGateCompletion,
+  },
+  {
+    method: "put",
+    path: "/api/SubstepGateCompletions/:id/",
+    alias: "api_SubstepGateCompletions_update",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepGateCompletionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepGateCompletion,
+  },
+  {
+    method: "patch",
+    path: "/api/SubstepGateCompletions/:id/",
+    alias: "api_SubstepGateCompletions_partial_update",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepGateCompletionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepGateCompletion,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepGateCompletions/:id/",
+    alias: "api_SubstepGateCompletions_destroy",
+    description: `Per-node attestation / signature gate completions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/SubstepResources/",
+    alias: "api_SubstepResources_list",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "required",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepResourceList,
+  },
+  {
+    method: "post",
+    path: "/api/SubstepResources/",
+    alias: "api_SubstepResources_create",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepResourceRequest,
+      },
+    ],
+    response: SubstepResource,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepResources/:id/",
+    alias: "api_SubstepResources_retrieve",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResource,
+  },
+  {
+    method: "put",
+    path: "/api/SubstepResources/:id/",
+    alias: "api_SubstepResources_update",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepResourceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResource,
+  },
+  {
+    method: "patch",
+    path: "/api/SubstepResources/:id/",
+    alias: "api_SubstepResources_partial_update",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepResourceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResource,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepResources/:id/",
+    alias: "api_SubstepResources_destroy",
+    description: `CRUD for SubstepResource rows.
+
+Filter by &#x60;?substep&#x3D;&lt;substep_id&gt;&#x60; to fetch the resource list for a
+substep (the typical authoring-popover query).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/SubstepResponses/",
+    alias: "api_SubstepResponses_list",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "kind",
+        type: "Query",
+        schema: z
+          .enum([
+            "choice",
+            "computed",
+            "file",
+            "photo",
+            "scan",
+            "text",
+            "timer",
+            "video",
+          ])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "node_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "responded_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepResponseList,
+  },
+  {
+    method: "post",
+    path: "/api/SubstepResponses/",
+    alias: "api_SubstepResponses_create",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepResponseRequest,
+      },
+    ],
+    response: SubstepResponse,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepResponses/:id/",
+    alias: "api_SubstepResponses_retrieve",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResponse,
+  },
+  {
+    method: "put",
+    path: "/api/SubstepResponses/:id/",
+    alias: "api_SubstepResponses_update",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepResponseRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResponse,
+  },
+  {
+    method: "patch",
+    path: "/api/SubstepResponses/:id/",
+    alias: "api_SubstepResponses_partial_update",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepResponseRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepResponse,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepResponses/:id/",
+    alias: "api_SubstepResponses_destroy",
+    description: `Per-node operator capture rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Substeps/",
+    alias: "api_Substeps_list",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "is_inspection_point",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "is_optional",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "requires_signature",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepList,
+  },
+  {
+    method: "post",
+    path: "/api/Substeps/",
+    alias: "api_Substeps_create",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepRequest,
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "get",
+    path: "/api/Substeps/:id/",
+    alias: "api_Substeps_retrieve",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "put",
+    path: "/api/Substeps/:id/",
+    alias: "api_Substeps_update",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "patch",
+    path: "/api/Substeps/:id/",
+    alias: "api_Substeps_partial_update",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "delete",
+    path: "/api/Substeps/:id/",
+    alias: "api_Substeps_destroy",
+    description: `CRUD for Substep rows.
+
+Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
+(the typical substep-editor query). Default ordering matches the
+operator&#x27;s working order within the parent Op.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/SubstepTranslations/",
+    alias: "api_SubstepTranslations_list",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "language",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSubstepTranslationList,
+  },
+  {
+    method: "post",
+    path: "/api/SubstepTranslations/",
+    alias: "api_SubstepTranslations_create",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepTranslationRequest,
+      },
+    ],
+    response: SubstepTranslation,
+  },
+  {
+    method: "get",
+    path: "/api/SubstepTranslations/:id/",
+    alias: "api_SubstepTranslations_retrieve",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepTranslation,
+  },
+  {
+    method: "put",
+    path: "/api/SubstepTranslations/:id/",
+    alias: "api_SubstepTranslations_update",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepTranslationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepTranslation,
+  },
+  {
+    method: "patch",
+    path: "/api/SubstepTranslations/:id/",
+    alias: "api_SubstepTranslations_partial_update",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSubstepTranslationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepTranslation,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepTranslations/:id/",
+    alias: "api_SubstepTranslations_destroy",
+    description: `CRUD for SubstepTranslation rows.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "get",

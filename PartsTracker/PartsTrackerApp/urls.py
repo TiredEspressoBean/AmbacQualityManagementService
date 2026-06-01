@@ -301,6 +301,14 @@ router.register(r'Cores', CoreViewSet, basename='Cores')
 router.register(r'HarvestedComponents', HarvestedComponentViewSet, basename='HarvestedComponents')
 router.register(r'DisassemblyBOMLines', DisassemblyBOMLineViewSet, basename='DisassemblyBOMLines')
 
+# ===== DWI VIEWSETS =====
+router.register(r'Substeps', SubstepViewSet, basename='Substeps')
+router.register(r'SubstepResources', SubstepResourceViewSet, basename='SubstepResources')
+router.register(r'SubstepTranslations', SubstepTranslationViewSet, basename='SubstepTranslations')
+router.register(r'SubstepCompletions', SubstepCompletionViewSet, basename='SubstepCompletions')
+router.register(r'SubstepGateCompletions', SubstepGateCompletionViewSet, basename='SubstepGateCompletions')
+router.register(r'SubstepResponses', SubstepResponseViewSet, basename='SubstepResponses')
+
 # ===== TRAINING VIEWSETS =====
 router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')
 router.register(r'TrainingRecords', TrainingRecordViewSet, basename='TrainingRecords')

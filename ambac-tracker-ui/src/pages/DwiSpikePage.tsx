@@ -135,14 +135,14 @@ function NodeCard({
 // `SubstepGateCompletion`, `StepExecutionMeasurement`). For the spike it's just
 // local React state so we can demonstrate the data flow end-to-end visually.
 
-type OperatorResponses = Record<string, unknown>;
+export type OperatorResponses = Record<string, unknown>;
 
-type OperatorResponseContextValue = {
+export type OperatorResponseContextValue = {
     responses: OperatorResponses;
     setResponse: (node_id: string, value: unknown) => void;
 };
 
-const OperatorResponseContext = createContext<OperatorResponseContextValue | null>(null);
+export const OperatorResponseContext = createContext<OperatorResponseContextValue | null>(null);
 
 function useOperatorResponse(node_id: string | undefined) {
     const ctx = useContext(OperatorResponseContext);
@@ -2016,7 +2016,13 @@ function PaneHeader({
 
 // Shared extension list — used by both the engineer (editable) and operator
 // (editable: false) editors so both render the same custom nodes.
-const DWI_EXTENSIONS = [
+//
+// Exported so the production SubstepEditorPage can mount the same set
+// without re-listing them. When per-node refactor lands (per design doc
+// decision #20 — `src/components/dwi/nodes/{NodeName}/`), this list moves
+// to `src/lib/dwi/extensions.ts` and the spike + production page both
+// import from there.
+export const DWI_EXTENSIONS = [
     StarterKit,
     MeasurementSpec,
     Callout,
@@ -2194,7 +2200,7 @@ const SEED_SUBSTEPS: SubstepData[] = [
 // SubstepEditor — engineer editor + live operator preview, side by side
 // ============================================================================
 
-function SubstepEditor({
+export function SubstepEditor({
     body,
     onChange,
 }: {
