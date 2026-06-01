@@ -58,6 +58,7 @@ Adds a substep layer below the existing `Steps` (Op) model to support Dozuki-sty
 | 18 | `node_id` minting | **Client-side via `uuidv7()`**. Frontend mints at insert / paste regenerate / library template import using `uuidv7` (consistent with `SecureModel` PKs across the codebase). Server validates UUID format + intra-document uniqueness on `Substep.save()`. Cut-paste regenerates the ID and silently accepts loss of linkage to prior `SubstepResponse` rows on the old ID. | Authoring preview needs IDs synchronously (the operator-mode preview pane mounts immediately on insert); backend round-trip per insert is wasted latency for zero correctness benefit. UUIDv7 matches the rest of the system. Cut-paste regenerating IDs reflects the author's intent ("this is a new thing now"). |
 | 19 | Mid-execution persistence | **Batch-on-complete.** All operator captures (`SubstepResponse` / `SubstepGateCompletion` / `SubstepCompletion`) stay in client memory while the operator works through the substep, then post in one transaction when **Complete Substep** is hit. Exceptions: photos / files upload eagerly to the existing `Documents` API (returns `document_id`, which lives in client state until batch); `Timer` captures finalize on Stop and batch on Complete. **Complete Substep waits for any in-flight uploads** (button shows a spinner; batch posts only when all `document_id`s exist server-side) — avoids dangling FK references with no reconciliation logic. Close-without-complete discards local state — no partial-substep resume in v1; this is an **authoring constraint**: engineers should size substeps so a typical interruption (5–10 minutes) doesn't represent meaningful work loss. | Simpler client state, atomic server transaction, one server-side validation pass via `can_complete_substep()`, consistent with the v1 "online-only" known limitation. Mid-substep tablet death loses captures — acceptable trade-off matched to existing scope. The "wait for uploads" rule for photo/file is the simplest correct behavior; the alternative (server-side reconciliation of pending document_ids) is more code for no operational benefit. |
 | 20 | Authoring popover pattern | **Hover gear icon → shadcn `Popover` → debounced `updateAttributes` (250ms).** Per-node popover components live at `src/components/dwi/nodes/{NodeName}/edit-popover.tsx`. Linked-spec autocomplete on `MeasurementInput` / `MeasurementSpec` queries `MeasurementDefinition` rows in the tenant; picking one autofills label / unit / nominal / tolerances / characteristic via one atomic `updateAttributes` call. Popovers used uniformly across node types (no Sheet hybrid for big nodes — vertical scroll handles `ComputedValue`). Operator mode (`editable: false`) suppresses the gear entirely. | Hover-gear is predictable, doesn't fight selection/drag UX, matches Notion/Linear idioms. Debounced live-update keeps undo history sane vs. per-keystroke transactions. Per-node components stay simple — 12 nodes is a fixed surface, generic schema-driven form isn't worth the abstraction. Linked-spec picker eliminates re-keying for shops with established spec libraries. |
+| 21 | Measurement data tier separation | **Two tiers, two writers.** DWI numeric captures (`MeasurementInput`) write to **`StepExecutionMeasurement`** (process data — feeds step-advancement gating + SPC after adapter update). When the parent substep has **`is_inspection_point=True`**, the capture service additionally creates `QualityReports` + `MeasurementResult` (inspection record — triggers `record_quality_report_side_effects`: auto-quarantine, `ncr.opened` notification, sampling fallback, NCR audit chain). No auto-promotion of routine captures. Engineer decides at authoring time which substeps are binding inspection events (FAI, hold-points, final inspection); most substeps are False. | Established MES/QMS systems (Plex, SAP QM with PP-PI, Aegis FactoryLogix, Siemens Opcenter, iBASEt) all separate process data from inspection records as first-class concepts. AS9100 §8.5.1 and 21 CFR 820.80 treat them as separate activities — the latter requires documented acceptance authority, the former does not. Auto-promoting every inline capture to a QualityReport would (a) cause auto-quarantine on routine setup adjustments, (b) generate notification spam to QA Manager that destroys the channel's signal-to-noise, and (c) dilute the audit meaning of "quality report" (an auditor reading "this lot had 847 quality reports" is reading garbage). The promotion flag on the substep keeps the meaning sharp. |
 
 ---
 
@@ -175,7 +176,7 @@ The DWI-specific blocks below are built as TipTap custom nodes (`Node.create({ .
 | Node | Captures into | Notes |
 |---|---|---|
 | `AttestationCheckpoint` | `SubstepGateCompletion` (new lightweight model) | `kind: 'confirm' \| 'signature'`; required flag gates substep completion |
-| `MeasurementInput` | `StepExecutionMeasurement` | Optional FK to `MeasurementDefinition`; range validation via existing model |
+| `MeasurementInput` | `StepExecutionMeasurement` (always) + `QualityReports` + `MeasurementResult` (when `substep.is_inspection_point=True`) | Optional FK to `MeasurementDefinition`; range validation via existing model. Routine captures land as process data only — operator can adjust offsets and re-measure without tripping NCR notifications or auto-quarantine. Inspection-point substeps (FAI, hold-points, final) additionally create an inspection record, which fires `record_quality_report_side_effects()` (auto-quarantine on out-of-spec, `ncr.opened` notification to QA Manager, sampling fallback). See architectural decision #21. |
 | `TextInput` | `SubstepResponse` (new lightweight model) | `kind: 'short' \| 'long'` covers Dozuki's Text + Multi-line |
 | `ChoiceInput` | `SubstepResponse` | `kind: 'radio' \| 'select'` covers Dozuki's Radio + Drop-Down |
 | `PhotoCapture` | `Documents` (FK on response row) | Operator-uploaded image |
@@ -247,6 +248,7 @@ class Substep(SecureModel):
     body_blocks = JSONField(default=list)                         # TipTap document JSON — see "Editor & Custom Node Library" above for shape and node vocabulary
     is_optional = BooleanField(default=False)                     # operator may mark N/A
     requires_signature = BooleanField(default=False)              # final operator sign-off on substep completion (distinct from inline AttestationCheckpoint gates — see note below)
+    is_inspection_point = BooleanField(default=False)             # MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult). Default False = process data only. Set True for FAI, in-process hold-points, final inspection. See decision #21.
     expected_duration = DurationField(null=True, blank=True)      # mirrors Steps.expected_duration at substep granularity
     # Sampling-driven applicability (substep-level sampling)
     sampling_rule = ForeignKey('SamplingRule', null=True, blank=True, on_delete=SET_NULL)
@@ -525,7 +527,7 @@ class CompletionBlock:
 
 **Explicit non-gates** (do *not* block completion):
 
-- **Out-of-spec readings** on `MeasurementInput` or `ComputedValue`. Operator captured honestly; downstream SPC / CAPA pipeline handles disposition. Engineers who need "supervisor disposition before proceeding on out-of-spec" author a separate `AttestationCheckpoint(kind='signature')` gated by the deferred Level-2 `applies_when` SPC-state condition.
+- **Out-of-spec readings** on `MeasurementInput` or `ComputedValue` do not block substep completion. Operator captured honestly; downstream SPC / quality pipeline handles disposition. Engineers who need "supervisor disposition before proceeding on out-of-spec" author a separate `AttestationCheckpoint(kind='signature')` gated by the deferred Level-2 `applies_when` SPC-state condition. **Special case for `substep.is_inspection_point=True`** (per decision #21): an out-of-spec reading at an inspection-point substep still doesn't block completion, but it does fire the inspection pipeline — auto-quarantines the part (`PartsStatus.QUARANTINED`), emits `ncr.opened` to QA Manager, triggers sampling fallback. The substep can still be marked complete (operator captured the truth), but the part is now flagged for QA review. This is the audit-defensible behavior for binding inspection points: capture is honest, but the part can't ship until QA reviews.
 - **Optional substeps with no captures** — by definition skippable.
 - **Substeps the sampling rule excluded** — never reach the completion check; their applicability is cached on the `StepExecution` at part entry.
 
@@ -798,6 +800,11 @@ Public functions:
 - `void_substep_completion(completion_id, user_id, reason)` — soft-delete via `VoidableModel.void()`.
 - `can_complete_op(step_execution_id) -> bool` — checks that all required substeps are complete and all measurement gates satisfied; called by existing Step-completion service. ("Op" = `Steps` model in code, per vocabulary alignment at top of doc.)
 
+New module: `Tracker/services/qms/inline_capture.py` (Phase 3 — per architectural decision #21)
+
+Public functions:
+- `record_dwi_measurement(step_execution, substep, measurement_definition, value, recorded_by, equipment=None, value_string=None) -> StepExecutionMeasurement` — the two-tier capture entry point. Always writes a `StepExecutionMeasurement` row (process data — Tier 1). If `substep.is_inspection_point` is True, additionally creates `QualityReports` + `MeasurementResult` (inspection record — Tier 2), which fires `record_quality_report_side_effects()` (auto-quarantine, NCR notification, sampling fallback). Idempotent on the Tier 2 QualityReports lookup: one report per `(step_execution, substep)` — subsequent captures during the same substep attach as additional `MeasurementResult` rows. Returns the Tier 1 row.
+
 No new entry points in `Tracker/services/change_control/` — substep in-flight behavior rides the existing PCO migration disposition flow.
 
 ---
@@ -831,17 +838,29 @@ The scope grew past what one migration should carry. Splitting into focused phas
 
 Can ship alongside Phase 1 or after; depends only on `Substep` and `StepExecution` existing.
 
-### Phase 3 — Substep-aware measurements & requirements
+### Phase 3 — Substep-aware measurements + two-tier capture pipeline
+
+Per architectural decision #21, DWI numeric captures use a two-tier shape:
+
+- **Tier 1 (always written):** `StepExecutionMeasurement` — process data. Feeds the existing step-advancement gate. SPC adapter is extended in this phase to UNION-read this table alongside `MeasurementResult`.
+- **Tier 2 (conditional):** `QualityReports` + `MeasurementResult` — inspection record. Written only when the parent substep has `is_inspection_point=True`. Firing `QualityReports.save()` chains into `record_quality_report_side_effects()` which handles auto-quarantine on FAIL, `ncr.opened` notification, sampling fallback, and analytics updates.
 
 **Modified:**
-- `StepExecutionMeasurement` — add nullable `substep` FK
-- `StepMeasurementRequirement` — add nullable `substep` FK
-- `StepRequirement` — add nullable `substep` FK
+- `Substep` — add `is_inspection_point = BooleanField(default=False)` (the load-bearing field for the inspection promotion)
+- `StepExecutionMeasurement` — add nullable `substep` FK (attribution for DWI captures)
+- `StepMeasurementRequirement` — add nullable `substep` FK (substep-scoped measurement requirements)
+- `StepRequirement` — add nullable `substep` FK (substep-scoped general requirements)
 - `ProcessChangeRequest` — add nullable `target_substep` FK + `CheckConstraint(exactly one of target_process / target_step / target_substep)`
 
-**Backfill:** none — all new FKs are nullable; null means "applies at the parent Step level," matching today's behavior.
+**New service:**
+- `services/qms/inline_capture.py::record_dwi_measurement(step_execution, substep, measurement_definition, value, recorded_by, equipment=None, value_string=None)` — always writes the Tier 1 row; if `substep.is_inspection_point`, additionally creates the Tier 2 chain (idempotent on `QualityReports` lookup — one report per `(step_execution, substep)` inspection event; subsequent captures during that same substep attach as additional `MeasurementResult` rows). Calls `record_quality_report_side_effects()` on the Tier 2 path.
 
-Phase 3 has the only schema change that touches code paths outside DWI (the existing measurement / requirement gate logic now optionally scopes to a substep). Worth a focused PR even if shipping alongside Phase 1.
+**SPC adapter update:**
+- `reports/adapters/spc.py` — extend the query to UNION read from `MeasurementResult` AND `StepExecutionMeasurement` keyed by the same `measurement_definition_id`. Each row contributes one data point to the control chart regardless of which tier it came from. ~30–45 min of careful adapter work + a test that mixes both sources.
+
+**Backfill:** none — all new FKs are nullable; null means "applies at the parent Step level," matching today's behavior. `Substep.is_inspection_point` defaults to False so existing (Phase 1) substeps stay process-data-only.
+
+Phase 3 is the largest single phase by scope because it touches code paths outside DWI — the existing measurement / requirement gate logic now optionally scopes to a substep, and the SPC adapter learns about a second source. Worth a focused PR.
 
 ### Phase 4 — Authoring approval
 
@@ -938,6 +957,7 @@ Explicitly out of v1 scope; design accommodates future addition:
 17. **Mid-execution persistence** — Resolved per decision #19. Batch-on-complete: all captures held in client memory, posted in one transaction when operator hits Complete Substep. Photos / files upload eagerly to the existing `Documents` API. Timer captures finalize on Stop, batch on Complete. Close-without-complete discards local state — no partial-substep resume in v1.
 18. **`can_complete_substep()` contract** — Resolved. Per-node precondition table in Execution Semantics → Substep completion contract. `Substep.requires_ack` removed from the model (only `requires_signature` remains for substep-level gating; `AttestationCheckpoint(kind='confirm')` covers inline checkbox needs). `ComputedValue` completes on "variables filled + formula evaluates" — out-of-spec doesn't block. Error UX: enabled "Complete Substep" button + scroll-to-first-blocked + count banner.
 19. **Permission model** — Resolved. Rides existing `Tracker/groups.py` / `Tracker/presets.py` system. New substep permission codenames defined; preset extensions on `engineering` (full authoring), `qa_manager` (authoring + void), `document_controller` (authoring per existing process-authoring pattern), `production_manager` / `shift_lead` (void + view), `operator` (execute / complete / mark N/A), `auditor` (view only). Voiding is flat-granted on `shift_lead` rather than queryset-restricted — see "Permission model" subsection for rationale.
+20. **Measurement data routing for DWI captures** — Resolved per decision #21. Two-tier with explicit inspection-point promotion. Routine `MeasurementInput` captures write to `StepExecutionMeasurement` only (process data — no auto-quarantine, no NCR event). `Substep.is_inspection_point=True` substeps additionally create `QualityReports` + `MeasurementResult` via `services/qms/inline_capture.py::record_dwi_measurement`, firing the existing `record_quality_report_side_effects()` (auto-quarantine, NCR notification to QA Manager via the Phase 5 notification rules, sampling fallback). The SPC adapter is extended in Phase 3 to UNION-read both `StepExecutionMeasurement` and `MeasurementResult` so every measurement reaches the control chart. This is the shape established MES/QMS systems (Plex / SAP QM / Aegis FactoryLogix) use; avoids the auto-quarantine spam and audit-meaning dilution that would result from promoting every inline capture to an inspection record.
 
 ## Out of scope (belongs to other subsystems)
 
@@ -945,7 +965,7 @@ These are commonly mentioned features in DWI tools / connected-worker platforms 
 
 - **Skill / certification gating** ("only operators with this training can perform this substep") — belongs in the Training tracking architecture. DWI substeps may reference `TrainingType` requirements, but the gating logic, training records, recertification cadence, and the skill matrix UI all live in the Training subsystem. Substep-level enforcement would call into a training service, not implement its own.
 - **Tool / IO integration** (torque wrenches, scanners with feedback, andon lights, pick-to-light, vision-system signals) — belongs in the Equipment / IO integration layer. DWI gates can *consume* signals from this layer when present, but the device drivers, MQTT/OPC bridges, and equipment-state propagation live elsewhere.
-- **Real-time SPC / control charts** — `MeasurementInput` writes to `StepExecutionMeasurement` which already feeds the existing SPC subsystem. Charts and rule alarms are SPC concerns, not DWI.
+- **Real-time SPC / control charts** — `MeasurementInput` writes process data to `StepExecutionMeasurement` (and inspection records to `MeasurementResult` when `substep.is_inspection_point=True`, per decision #21). Phase 3 updates the SPC adapter at `reports/adapters/spc.py` to UNION-read from both tables so every measurement reaches the control chart. Charts and rule alarms themselves remain an SPC subsystem concern, not DWI.
 - **Operator analytics / cycle-time dashboards** — see `DWI_ANALYTICS_DESIGN.md` (deferred). DWI ships raw timestamps on completions and responses; aggregation, dashboards, and operator-comparison views are a separate workstream.
 - **Calibration tracking** (gauges, fixtures) — DWI references equipment by class via `SubstepResource`; calibration state lives in the existing `CalibrationRecord` system.
 
@@ -959,6 +979,7 @@ Acknowledged but not addressed in this scope. Customer-visible if a real use cas
 - **No full-text search across instructions.** Engineers and operators can't ask "which substeps reference part 11782-3?" or "where is the bearing-replacement procedure?" Postgres FTS over `generateHTML(body_blocks, ...)` is the natural path; not v1.
 - **No nested / sub-guide embed.** Dozuki lets a guide reference another guide. We don't. Reuse across substeps is via duplication; eventual answer is the `LibrarySubstep` deferred concept.
 - **No auto-fill from previous run.** Operator types the same lot number across multiple substeps. v1 has no "pre-fill from prior `SubstepResponse` on this WO" mechanism. Cheap to add later via service-layer pre-population.
+- **SPC adapter UNION read is a Phase 3 deliverable.** The existing SPC adapter at `reports/adapters/spc.py:233` reads only `MeasurementResult` today. Phase 3 extends it to also read `StepExecutionMeasurement` so DWI process-data captures populate control charts (per decision #21). Until that adapter change ships, SPC sees only inspection-point captures. If Phase 3 is delayed past M1 demo, the closed-loop "operator captures → SPC chart updates" story only works for substeps with `is_inspection_point=True`.
 
 ---
 
