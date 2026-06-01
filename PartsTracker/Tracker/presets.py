@@ -126,6 +126,11 @@ GROUP_PRESETS = {
             'add_stepexecution', 'change_stepexecution', 'delete_stepexecution', 'view_stepexecution',
             'add_steptransitionlog', 'change_steptransitionlog', 'delete_steptransitionlog', 'view_steptransitionlog',
             'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement', 'view_stepmeasurementrequirement',
+            # DWI substep layer (Phase 1 — model CRUD; custom action perms added in later phases)
+            'add_substep', 'change_substep', 'delete_substep', 'view_substep',
+            'add_substepcompletion', 'change_substepcompletion', 'delete_substepcompletion', 'view_substepcompletion',
+            'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
+            'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
             'add_companies', 'change_companies', 'delete_companies', 'view_companies',
             'add_orderviewer', 'change_orderviewer', 'delete_orderviewer', 'view_orderviewer',
             'add_externalapiorderidentifier', 'change_externalapiorderidentifier', 'delete_externalapiorderidentifier', 'view_externalapiorderidentifier',
@@ -736,6 +741,11 @@ GROUP_PRESETS = {
             # Process flow modeling - full control
             'add_processstep', 'change_processstep', 'delete_processstep', 'view_processstep',
             'add_stepedge', 'change_stepedge', 'delete_stepedge', 'view_stepedge',
+            # DWI substep authoring (Phase 1 — CRUD; custom actions added later)
+            'add_substep', 'change_substep', 'delete_substep', 'view_substep',
+            'view_substepcompletion',  # read-only — engineers review completions but don't create them
+            'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
+            'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
             # Measurement Definitions
             'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition', 'view_measurementdefinition',
             'view_measurementresult',

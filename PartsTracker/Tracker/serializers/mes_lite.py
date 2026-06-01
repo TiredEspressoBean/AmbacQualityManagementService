@@ -855,6 +855,8 @@ class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
             'is_terminal', 'terminal_status',
             # Workflow engine - cycle control
             'max_visits', 'revisit_assignment', 'revisit_role',
+            # DWI substep sequencing (Phase 1)
+            'sequencing_mode',
             # Timestamps
             'created_at', 'updated_at', 'archived',
             # Versioning

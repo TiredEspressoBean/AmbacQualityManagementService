@@ -5748,6 +5748,12 @@ export type Steps = {
      */
     (number | null)
     | undefined;
+  sequencing_mode?: /**
+   * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8115,6 +8121,13 @@ export type PatchedStepsRequest = Partial<{
    * Required role when revisit_assignment='role'
    */
   revisit_role: number | null;
+  /**
+   * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
+   *
+   * @minLength 1
+   * @maxLength 20
+   */
+  sequencing_mode: string;
   archived: boolean;
 }>;
 export type PatchedTenantLLMProviderRequest = Partial<{
@@ -9425,6 +9438,13 @@ export type StepsRequest = {
      */
     (number | null)
     | undefined;
+  sequencing_mode?: /**
+   * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
+   *
+   * @minLength 1
+   * @maxLength 20
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type SubmitProcessForApprovalResponse = {
@@ -13292,6 +13312,7 @@ const Steps = z.object({
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
   revisit_role: z.number().int().nullish(),
+  sequencing_mode: z.string().max(20).optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -13322,6 +13343,7 @@ const StepsRequest = z.object({
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
   revisit_role: z.number().int().nullish(),
+  sequencing_mode: z.string().min(1).max(20).optional(),
   archived: z.boolean().optional(),
 });
 const PatchedStepsRequest = z
@@ -13344,6 +13366,7 @@ const PatchedStepsRequest = z
     max_visits: z.number().int().gte(0).lte(2147483647).nullable(),
     revisit_assignment: RevisitAssignmentEnum,
     revisit_role: z.number().int().nullable(),
+    sequencing_mode: z.string().min(1).max(20),
     archived: z.boolean(),
   })
   .partial();

@@ -39865,6 +39865,13 @@ components:
           type: integer
           nullable: true
           description: Required role when revisit_assignment='role'
+        sequencing_mode:
+          type: string
+          minLength: 1
+          description: How this Op's substeps are ordered for the operator. 'sequential'
+            = substep N requires N-1 complete; 'free_order' = any order. Choices defined
+            in Tracker.models.dwi.SequencingMode.
+          maxLength: 20
         archived:
           type: boolean
     PatchedTenantGroupRequest:
@@ -44811,6 +44818,12 @@ components:
           type: integer
           nullable: true
           description: Required role when revisit_assignment='role'
+        sequencing_mode:
+          type: string
+          description: How this Op's substeps are ordered for the operator. 'sequential'
+            = substep N requires N-1 complete; 'free_order' = any order. Choices defined
+            in Tracker.models.dwi.SequencingMode.
+          maxLength: 20
         created_at:
           type: string
           format: date-time
@@ -44911,6 +44924,13 @@ components:
           type: integer
           nullable: true
           description: Required role when revisit_assignment='role'
+        sequencing_mode:
+          type: string
+          minLength: 1
+          description: How this Op's substeps are ordered for the operator. 'sequential'
+            = substep N requires N-1 complete; 'free_order' = any order. Choices defined
+            in Tracker.models.dwi.SequencingMode.
+          maxLength: 20
         archived:
           type: boolean
       required:

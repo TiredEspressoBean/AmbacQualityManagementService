@@ -18068,6 +18068,8 @@ export interface components {
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
             /** @description Required role when revisit_assignment='role' */
             revisit_role?: number | null;
+            /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
+            sequencing_mode?: string;
             archived?: boolean;
         };
         /** @description Serializer for TenantGroup with permission counts. */
@@ -20628,6 +20630,8 @@ export interface components {
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
             /** @description Required role when revisit_assignment='role' */
             revisit_role?: number | null;
+            /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
+            sequencing_mode?: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -20683,6 +20687,8 @@ export interface components {
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
             /** @description Required role when revisit_assignment='role' */
             revisit_role?: number | null;
+            /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
+            sequencing_mode?: string;
             archived?: boolean;
         };
         SubmitProcessForApprovalRequestRequest: {

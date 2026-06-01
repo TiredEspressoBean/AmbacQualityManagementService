@@ -397,6 +397,19 @@ class Steps(SecureModel):
     description = models.TextField(null=True, blank=True)
     """Optional human-readable explanation of what this step entails."""
 
+    sequencing_mode = models.CharField(
+        max_length=20,
+        default='sequential',
+        help_text=(
+            "How this Op's substeps are ordered for the operator. "
+            "'sequential' = substep N requires N-1 complete; "
+            "'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode."
+        ),
+    )
+    """Substep sequencing mode for DWI (Digital Work Instructions). Values
+    come from `Tracker.models.dwi.SequencingMode` ('sequential' or 'free_order').
+    Default 'sequential' is a no-op for Steps with no substeps."""
+
     part_type = models.ForeignKey(PartTypes, related_name='steps', on_delete=models.PROTECT)
     """Reference to the `PartTypes` this step applies to. Used for filtering and scoping."""
 

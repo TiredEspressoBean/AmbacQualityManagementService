@@ -170,6 +170,15 @@ from .reman import (
     DisassemblyBOMLine,
 )
 
+# Digital Work Instructions (substep layer below Steps)
+from .dwi import (
+    SequencingMode,
+    Substep,
+    SubstepCompletion,
+    SubstepResource,
+    SubstepTranslation,
+)
+
 # Life tracking (unified life-limited parts/materials)
 from .life_tracking import (
     LifeLimitDefinition,
