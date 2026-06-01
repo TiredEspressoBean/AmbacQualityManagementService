@@ -1,15 +1,19 @@
 """
 Tests for the Digital Work Instructions (DWI) subsystem.
 
-Phase 1 scope (this file initially): model layer for Substep core models.
+Phase 1 — substep core models:
 - Substep
 - SubstepCompletion
 - SubstepResource
 - SubstepTranslation
 - Steps.sequencing_mode
 
-Later phases (will be added as they ship):
-- Phase 2 — SubstepGateCompletion + SubstepResponse + per-node capture services
+Phase 2 — per-node operator state:
+- SubstepGateCompletion (inline attestation / signature gates)
+- SubstepResponse (text / choice / photo / video / scan / file / timer / computed)
+- SubstepResponseKind enum
+
+Later phases:
 - Phase 3 — Substep-aware StepExecutionMeasurement / StepMeasurementRequirement
 - Phase 4 — Authoring approval workflow (ProcessStep.approval_status,
   submit_step_for_approval, try_activate_process_version)
@@ -33,7 +37,10 @@ from Tracker.models import (
     Steps,
     Substep,
     SubstepCompletion,
+    SubstepGateCompletion,
     SubstepResource,
+    SubstepResponse,
+    SubstepResponseKind,
     SubstepTranslation,
     Tenant,
     WorkOrder,
@@ -464,3 +471,270 @@ class SubstepExpectedDurationTests(DwiPhase1BaseTestCase):
         )
         substep.refresh_from_db()
         self.assertEqual(substep.expected_duration, timedelta(minutes=12, seconds=30))
+
+
+# =============================================================================
+# Phase 2 — per-node operator state
+# =============================================================================
+
+
+class DwiPhase2BaseTestCase(DwiPhase1BaseTestCase):
+    """Shared setup for Phase 2 tests — adds a substep ready for gate /
+    response captures."""
+
+    def setUp(self):
+        super().setUp()
+        self.substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Run first piece",
+        )
+
+
+class SubstepResponseKindTests(DwiPhase2BaseTestCase):
+    """The discriminator enum covers every non-numeric capture node type."""
+
+    def test_enum_has_expected_values(self):
+        # Keep in sync with CAPTURE_NODE_TYPES in
+        # ambac-tracker-ui/src/lib/dwi/node-id.ts and the SubstepResponse
+        # type union in src/types/dwi.ts. Numeric measurements
+        # (MeasurementInput) route through StepExecutionMeasurement, not
+        # SubstepResponse, so they're absent here.
+        values = {choice[0] for choice in SubstepResponseKind.choices}
+        self.assertSetEqual(
+            values,
+            {'text', 'choice', 'photo', 'video', 'scan', 'file', 'timer', 'computed'},
+        )
+
+
+class SubstepGateCompletionTests(DwiPhase2BaseTestCase):
+    """Per-node attestation / signature gate records."""
+
+    def test_create_confirm_gate(self):
+        # For kind='confirm' gates the row just records that the checkbox
+        # was ticked; signature fields stay null.
+        gate = SubstepGateCompletion.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000001",
+            completed_by=self.user,
+        )
+        self.assertIsNotNone(gate.completed_at)
+        self.assertIsNone(gate.signature_data)
+        self.assertEqual(gate.verification_method, 'NONE')
+
+    def test_create_signature_gate(self):
+        gate = SubstepGateCompletion.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000002",
+            completed_by=self.user,
+            signature_data="data:image/png;base64,iVBORw0KGgo...",
+            signature_meaning="I verified the tool offset before continuing",
+            verification_method='PASSWORD',
+            ip_address="10.0.0.1",
+        )
+        self.assertEqual(gate.verification_method, 'PASSWORD')
+        self.assertEqual(gate.signature_meaning, "I verified the tool offset before continuing")
+        self.assertEqual(gate.ip_address, "10.0.0.1")
+
+    def test_unique_per_execution_substep_node(self):
+        SubstepGateCompletion.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000003",
+            completed_by=self.user,
+        )
+        with self.assertRaises(IntegrityError):
+            SubstepGateCompletion.objects.create(
+                tenant=self.tenant,
+                step_execution=self.step_execution,
+                substep=self.substep,
+                node_id="01984a3f-2b1c-7000-8000-000000000003",
+                completed_by=self.user,
+            )
+
+    def test_different_node_ids_coexist(self):
+        # A single substep can have multiple gate nodes; each gets its own row.
+        SubstepGateCompletion.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000004",
+            completed_by=self.user,
+        )
+        SubstepGateCompletion.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000005",
+            completed_by=self.user,
+        )
+        self.assertEqual(
+            SubstepGateCompletion.objects.filter(step_execution=self.step_execution).count(),
+            2,
+        )
+
+
+class SubstepResponseTests(DwiPhase2BaseTestCase):
+    """Per-node capture rows for text / choice / file / timer / computed."""
+
+    def test_create_text_response(self):
+        resp = SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000010",
+            kind=SubstepResponseKind.TEXT,
+            value_text="LOT-2026-04421",
+            responded_by=self.user,
+        )
+        self.assertEqual(resp.kind, 'text')
+        self.assertEqual(resp.value_text, "LOT-2026-04421")
+        self.assertIsNone(resp.value_document_id)
+        self.assertIsNone(resp.value_json)
+
+    def test_create_choice_response(self):
+        resp = SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000011",
+            kind=SubstepResponseKind.CHOICE,
+            value_text="Light surface scale",
+            responded_by=self.user,
+        )
+        self.assertEqual(resp.kind, 'choice')
+
+    def test_create_scan_response(self):
+        resp = SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000012",
+            kind=SubstepResponseKind.SCAN,
+            value_text="123456789012",  # barcode
+            responded_by=self.user,
+        )
+        self.assertEqual(resp.kind, 'scan')
+
+    def test_create_timer_response_with_json(self):
+        timer_payload = {
+            "started_at": "2026-05-31T15:00:00Z",
+            "completed_at": "2026-05-31T15:00:30Z",
+            "elapsed_seconds": 30.0,
+            "direction": "countdown",
+        }
+        resp = SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000013",
+            kind=SubstepResponseKind.TIMER,
+            value_json=timer_payload,
+            responded_by=self.user,
+        )
+        resp.refresh_from_db()
+        self.assertEqual(resp.value_json, timer_payload)
+        self.assertEqual(resp.value_text, "")  # default for unused field
+
+    def test_create_computed_response_with_json(self):
+        computed_payload = {
+            "inputs": {"X": "0.002", "Y": "0.001"},
+            "result": 0.004472135954999579,
+            "in_spec": True,
+        }
+        resp = SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000014",
+            kind=SubstepResponseKind.COMPUTED,
+            value_json=computed_payload,
+            responded_by=self.user,
+        )
+        resp.refresh_from_db()
+        self.assertEqual(resp.value_json["in_spec"], True)
+        self.assertEqual(resp.value_json["inputs"]["X"], "0.002")
+
+    def test_unique_per_execution_substep_node(self):
+        SubstepResponse.objects.create(
+            tenant=self.tenant,
+            step_execution=self.step_execution,
+            substep=self.substep,
+            node_id="01984a3f-2b1c-7000-8000-000000000015",
+            kind=SubstepResponseKind.TEXT,
+            value_text="first",
+            responded_by=self.user,
+        )
+        with self.assertRaises(IntegrityError):
+            SubstepResponse.objects.create(
+                tenant=self.tenant,
+                step_execution=self.step_execution,
+                substep=self.substep,
+                node_id="01984a3f-2b1c-7000-8000-000000000015",
+                kind=SubstepResponseKind.TEXT,
+                value_text="conflicting second write",
+                responded_by=self.user,
+            )
+
+    def test_different_node_ids_coexist_in_same_substep(self):
+        # A substep with multiple capture nodes gets multiple response rows.
+        for i in range(3):
+            SubstepResponse.objects.create(
+                tenant=self.tenant,
+                step_execution=self.step_execution,
+                substep=self.substep,
+                node_id=f"01984a3f-2b1c-7000-8000-00000000010{i}",
+                kind=SubstepResponseKind.TEXT,
+                value_text=f"capture-{i}",
+                responded_by=self.user,
+            )
+        self.assertEqual(
+            SubstepResponse.objects.filter(step_execution=self.step_execution).count(),
+            3,
+        )
+
+
+class SubstepPhase2FkOnDeleteTests(DwiPhase2BaseTestCase):
+    """Verify FK on_delete is configured correctly on Phase 2 models."""
+
+    def test_gate_step_execution_fk_cascades(self):
+        from django.db import models as dj_models
+        field = SubstepGateCompletion._meta.get_field('step_execution')
+        self.assertEqual(field.remote_field.on_delete, dj_models.CASCADE)
+
+    def test_gate_substep_fk_cascades(self):
+        from django.db import models as dj_models
+        field = SubstepGateCompletion._meta.get_field('substep')
+        self.assertEqual(field.remote_field.on_delete, dj_models.CASCADE)
+
+    def test_gate_completed_by_protects(self):
+        # PROTECT preserves the audit trail — a user who signed gates
+        # can't be hard-deleted without first reassigning / voiding.
+        from django.db import models as dj_models
+        field = SubstepGateCompletion._meta.get_field('completed_by')
+        self.assertEqual(field.remote_field.on_delete, dj_models.PROTECT)
+
+    def test_response_step_execution_fk_cascades(self):
+        from django.db import models as dj_models
+        field = SubstepResponse._meta.get_field('step_execution')
+        self.assertEqual(field.remote_field.on_delete, dj_models.CASCADE)
+
+    def test_response_substep_fk_cascades(self):
+        from django.db import models as dj_models
+        field = SubstepResponse._meta.get_field('substep')
+        self.assertEqual(field.remote_field.on_delete, dj_models.CASCADE)
+
+    def test_response_responded_by_protects(self):
+        from django.db import models as dj_models
+        field = SubstepResponse._meta.get_field('responded_by')
+        self.assertEqual(field.remote_field.on_delete, dj_models.PROTECT)
+
+    def test_response_value_document_set_null(self):
+        # If a Documents row is hard-deleted, the response row keeps its
+        # other fields and just loses the FK link.
+        from django.db import models as dj_models
+        field = SubstepResponse._meta.get_field('value_document')
+        self.assertEqual(field.remote_field.on_delete, dj_models.SET_NULL)

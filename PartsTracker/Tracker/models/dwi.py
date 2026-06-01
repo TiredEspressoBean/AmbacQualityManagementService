@@ -6,15 +6,20 @@ content below the existing `Steps` (Op) model. Each Step can have an ordered
 sequence of Substeps; operators work through them while at the Op, and the
 system tracks per-substep completion, gates, captures, and signatures.
 
-Models defined here (Phase 1):
+Models defined here:
+
+Phase 1 (substep core):
 - Substep: a unit of work instruction within a Step
 - SubstepCompletion: per-execution record (a part visits a Step → completes
   its substeps; one row per substep per execution)
 - SubstepResource: equipment/material/PPE references for a substep
 - SubstepTranslation: localization rows (BCP 47 language)
 
-Models defined in later phases:
-- SubstepGateCompletion + SubstepResponse (Phase 2 — per-node operator state)
+Phase 2 (per-node operator state):
+- SubstepGateCompletion: per-node attestation/signature gate completion
+- SubstepResponse: per-node operator capture (text, choice, file, timer,
+  computed-value, etc.)
+- SubstepResponseKind: enum discriminating the capture node kind
 
 Design reference: `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md`.
 """
@@ -423,3 +428,273 @@ class SubstepTranslation(SecureModel):
 
     def __str__(self) -> str:
         return f"{self.substep_id} [{self.language}]"
+
+
+# =============================================================================
+# Phase 2 — per-node operator state
+# =============================================================================
+#
+# Both Phase 2 models are keyed by the composite (step_execution, substep,
+# node_id). Per decision #18, `node_id` is a UUIDv7 minted client-side at
+# insert time inside the Substep.body_blocks document; the server validates
+# format and intra-document uniqueness on Substep.save(). At execution time
+# these rows are the persistent record of what the operator did at each
+# capture node.
+#
+# `StepExecution` is per-part-per-step-per-visit, so per-part captures already
+# fall out naturally — no `part` FK needed on these tables. The unique
+# constraint on (step_execution, substep, node_id) prevents duplicate writes
+# from the same operator on the same node within one execution.
+
+
+class SubstepResponseKind(models.TextChoices):
+    """Discriminator for SubstepResponse — which capture node produced this row.
+
+    Keep in sync with the capture node types in
+    `ambac-tracker-ui/src/lib/dwi/node-id.ts` (CAPTURE_NODE_TYPES) and
+    `src/types/dwi.ts` (DwiNode union).
+
+    Numeric measurement captures (`MeasurementInput`) are NOT in this enum —
+    they route through the existing `StepExecutionMeasurement` table (Phase 3
+    adds the `substep` FK on that model). This enum covers the non-numeric
+    capture surface only.
+    """
+
+    TEXT = 'text', 'Text input'
+    CHOICE = 'choice', 'Choice (radio / select)'
+    PHOTO = 'photo', 'Photo capture'
+    VIDEO = 'video', 'Video capture'
+    SCAN = 'scan', 'Barcode / QR scan'
+    FILE = 'file', 'File upload'
+    TIMER = 'timer', 'Timer (countdown / stopwatch)'
+    COMPUTED = 'computed', 'Computed value (formula)'
+
+
+class SubstepGateCompletion(SecureModel):
+    """
+    Records that an operator passed through an inline gate node within a
+    substep's body — either `AttestationCheckpoint(kind='confirm')` (a
+    checkbox they ticked) or `AttestationCheckpoint(kind='signature')` (an
+    inline signature they captured before proceeding past that point).
+
+    Distinct from `SubstepCompletion`:
+    - `SubstepCompletion` = the operator finished the substep as a whole
+    - `SubstepGateCompletion` = the operator hit a specific gate inside the
+      substep body and confirmed/signed there. A single substep can have
+      multiple gates; each one gets its own row.
+
+    Signature fields are only populated when the gate node's `kind` is
+    'signature'. For 'confirm' gates the row just records that the checkbox
+    was ticked at the given timestamp.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution',
+        on_delete=models.CASCADE,
+        related_name='substep_gate_completions',
+        help_text="The execution record where this gate was completed.",
+    )
+
+    substep = models.ForeignKey(
+        Substep,
+        on_delete=models.CASCADE,
+        related_name='gate_completions',
+        help_text="The substep the gate node lives in.",
+    )
+
+    node_id = models.CharField(
+        max_length=64,
+        help_text=(
+            "UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks "
+            "(minted client-side per decision #18). Stable across the "
+            "substep's lifetime as long as the engineer doesn't cut-paste "
+            "the node — see src/lib/dwi/node-id.ts."
+        ),
+    )
+
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='substep_gate_completions',
+        help_text="Operator who confirmed/signed the gate.",
+    )
+
+    completed_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="UTC timestamp when the gate was confirmed/signed.",
+    )
+
+    # Signature capture (only populated when the gate node's kind == 'signature').
+    signature_data = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Base64 PNG signature blob, matching the ApprovalResponse format.",
+    )
+
+    signature_meaning = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        help_text="Short human-readable description of what the signature attests to.",
+    )
+
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When identity verification (password / SSO) succeeded.",
+    )
+
+    verification_method = models.CharField(
+        max_length=20,
+        choices=VerificationMethod.choices,
+        default=VerificationMethod.NONE,
+        help_text="How the signing operator's identity was verified.",
+    )
+
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="Client IP at signing time; captured for audit defense.",
+    )
+
+    class Meta:
+        ordering = ['-completed_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['step_execution', 'substep', 'node_id'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='dwi_substepgate_exec_sub_node_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['step_execution', 'substep', 'node_id'],
+                name='dwi_subgate_esn_idx',
+            ),
+            models.Index(
+                fields=['completed_by', '-completed_at'],
+                name='dwi_subgate_user_time_idx',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"gate {self.node_id} @ exec {self.step_execution_id}"
+
+
+class SubstepResponse(SecureModel):
+    """
+    Generic per-node operator capture for non-numeric inputs in a substep's
+    body. One row per capture node per execution.
+
+    Numeric measurement captures (`MeasurementInput`) route through the
+    existing `StepExecutionMeasurement` table; that table gains a nullable
+    `substep` FK in Phase 3. This table covers everything else: text, choice,
+    photo / video / file uploads, scans, timers, computed values.
+
+    Storage shape:
+    - `value_text` — short string or single-line capture (text, choice
+      selection, scan code)
+    - `value_document` — FK to a Documents row (photo, video, file)
+    - `value_json` — structured payload (timer's
+      `{started_at, completed_at, elapsed_seconds, direction}`, computed
+      value's `{inputs, result, in_spec}`)
+
+    At most one of value_text / value_document / value_json should be
+    populated per row, but the storage layer doesn't enforce that —
+    consumers know which field to read based on `kind`.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution',
+        on_delete=models.CASCADE,
+        related_name='substep_responses',
+        help_text="The execution record where this response was captured.",
+    )
+
+    substep = models.ForeignKey(
+        Substep,
+        on_delete=models.CASCADE,
+        related_name='responses',
+        help_text="The substep the capture node lives in.",
+    )
+
+    node_id = models.CharField(
+        max_length=64,
+        help_text=(
+            "UUIDv7 of the capture node in Substep.body_blocks (minted "
+            "client-side per decision #18)."
+        ),
+    )
+
+    kind = models.CharField(
+        max_length=20,
+        choices=SubstepResponseKind.choices,
+        help_text="Which kind of capture node produced this response.",
+    )
+
+    # Storage shape — exactly one of these should be populated per row,
+    # depending on `kind`. The model doesn't enforce that (consumers know
+    # which field to read from the kind discriminator).
+
+    value_text = models.TextField(
+        blank=True,
+        help_text="Short text capture: text input, choice selection, scan code.",
+    )
+
+    value_document = models.ForeignKey(
+        'Tracker.Documents',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='substep_responses',
+        help_text="Photo / video / file capture: FK to the uploaded Documents row.",
+    )
+
+    value_json = models.JSONField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Structured payload for kinds that don't fit a single string: "
+            "Timer (started_at/completed_at/elapsed_seconds/direction), "
+            "ComputedValue (inputs/result/in_spec)."
+        ),
+    )
+
+    responded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='substep_responses',
+        help_text="Operator who captured the response.",
+    )
+
+    responded_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="UTC timestamp when the response was captured.",
+    )
+
+    class Meta:
+        ordering = ['-responded_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['step_execution', 'substep', 'node_id'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='dwi_substepresponse_exec_sub_node_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['step_execution', 'substep', 'node_id'],
+                name='dwi_subresp_esn_idx',
+            ),
+            models.Index(
+                fields=['kind', '-responded_at'],
+                name='dwi_subresp_kind_time_idx',
+            ),
+            models.Index(
+                fields=['responded_by', '-responded_at'],
+                name='dwi_subresp_user_time_idx',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.kind} response {self.node_id} @ exec {self.step_execution_id}"

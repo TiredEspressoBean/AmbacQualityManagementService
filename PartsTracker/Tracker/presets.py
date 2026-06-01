@@ -131,6 +131,8 @@ GROUP_PRESETS = {
             'add_substepcompletion', 'change_substepcompletion', 'delete_substepcompletion', 'view_substepcompletion',
             'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
             'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
+            'add_substepgatecompletion', 'change_substepgatecompletion', 'delete_substepgatecompletion', 'view_substepgatecompletion',
+            'add_substepresponse', 'change_substepresponse', 'delete_substepresponse', 'view_substepresponse',
             'add_companies', 'change_companies', 'delete_companies', 'view_companies',
             'add_orderviewer', 'change_orderviewer', 'delete_orderviewer', 'view_orderviewer',
             'add_externalapiorderidentifier', 'change_externalapiorderidentifier', 'delete_externalapiorderidentifier', 'view_externalapiorderidentifier',
@@ -507,6 +509,12 @@ GROUP_PRESETS = {
             'add_steptransitionlog', 'change_steptransitionlog', 'view_steptransitionlog',
             # Step measurement requirements
             'view_stepmeasurementrequirement',
+            # DWI — read substep instructions; create completions + per-node
+            # responses + gate completions as the operator works through
+            'view_substep', 'view_substepresource', 'view_substeptranslation',
+            'add_substepcompletion', 'change_substepcompletion', 'view_substepcompletion',
+            'add_substepgatecompletion', 'change_substepgatecompletion', 'view_substepgatecompletion',
+            'add_substepresponse', 'change_substepresponse', 'view_substepresponse',
             # Equipment
             'view_equipments', 'view_equipmenttype',
             'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
@@ -594,6 +602,12 @@ GROUP_PRESETS = {
             'add_steptransitionlog', 'change_steptransitionlog', 'view_steptransitionlog',
             # Step measurement requirements
             'view_stepmeasurementrequirement',
+            # DWI — read substep instructions; create completions + per-node
+            # responses + gate completions as the operator works through
+            'view_substep', 'view_substepresource', 'view_substeptranslation',
+            'add_substepcompletion', 'change_substepcompletion', 'view_substepcompletion',
+            'add_substepgatecompletion', 'change_substepgatecompletion', 'view_substepgatecompletion',
+            'add_substepresponse', 'change_substepresponse', 'view_substepresponse',
             # Equipment
             'view_equipments', 'view_equipmenttype',
             'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
@@ -746,6 +760,9 @@ GROUP_PRESETS = {
             'view_substepcompletion',  # read-only — engineers review completions but don't create them
             'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
             'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
+            # DWI per-node operator state (Phase 2) — engineers view only (operators capture these)
+            'view_substepgatecompletion',
+            'view_substepresponse',
             # Measurement Definitions
             'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition', 'view_measurementdefinition',
             'view_measurementresult',

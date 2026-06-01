@@ -177,6 +177,10 @@ from .dwi import (
     SubstepCompletion,
     SubstepResource,
     SubstepTranslation,
+    # Phase 2 — per-node operator state
+    SubstepResponseKind,
+    SubstepGateCompletion,
+    SubstepResponse,
 )
 
 # Life tracking (unified life-limited parts/materials)
