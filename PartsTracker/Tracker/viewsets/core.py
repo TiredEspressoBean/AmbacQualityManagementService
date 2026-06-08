@@ -1,10 +1,11 @@
 # viewsets/core.py - Core infrastructure (Users, Companies, Auth, Approvals, Documents, Mixins)
 import os
+from typing import Any, Dict, List, Optional
 import pandas as pd
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.http import HttpResponse, FileResponse, Http404
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone
@@ -534,6 +535,250 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         return Response({"detail": "Invitation sent successfully", "invitation_id": invitation.id,
                          "user_email": user_to_invite.email, "expires_at": invitation.expires_at},
                         status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="BulkReconcileUsersRequest",
+            fields={
+                "rows": serializers.ListField(
+                    child=serializers.DictField(),
+                    help_text=(
+                        "List of row dicts: "
+                        "{email, first_name, last_name, group, status, message}. "
+                        "Either `rows` (this field) or a `file` upload must be provided."
+                    ),
+                    required=False,
+                ),
+            },
+        ),
+        responses={
+            207: inline_serializer(
+                name="BulkReconcileUsersResponse",
+                fields={
+                    "summary": inline_serializer(
+                        name="BulkReconcileSummary",
+                        fields={
+                            "total": serializers.IntegerField(),
+                            "created": serializers.IntegerField(),
+                            "updated": serializers.IntegerField(),
+                            "unchanged": serializers.IntegerField(),
+                            "errors": serializers.IntegerField(),
+                        },
+                    ),
+                    "results": serializers.ListField(child=serializers.DictField()),
+                },
+            ),
+            400: {"description": "Bad request (no rows, bad file)"},
+        },
+        description=(
+            "Reconcile the tenant's user roster to match a list of row "
+            "descriptors. State-based: each row describes a desired user; "
+            "missing emails are created + invited, existing emails are "
+            "updated to match. Accepts either inline `rows` in JSON, or "
+            "a CSV/Excel file upload via multipart form-data."
+        ),
+        tags=["Users"],
+    )
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="bulk-reconcile",
+        parser_classes=[parsers.MultiPartParser, parsers.JSONParser],
+    )
+    def bulk_reconcile(self, request):
+        """Bulk-reconcile tenant users from either inline rows or a workbook.
+
+        See `Tracker.services.core.user_reconcile.reconcile_user_row` for
+        per-row semantics. Sync if < 25 rows, otherwise the response
+        includes a Celery task id to poll via `bulk-reconcile-status`.
+        """
+        from Tracker.services.core.user_reconcile import reconcile_user_row
+        from Tracker.services.csv_utils import parse_file
+
+        # Resolve tenant scope. Bulk-roster operations are admin-shaped;
+        # the request must be tied to a specific tenant context.
+        tenant = self.tenant or getattr(request.user, "tenant", None)
+        if tenant is None:
+            return Response(
+                {"detail": "No tenant context. Cannot reconcile."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Collect rows from either a file upload or inline JSON.
+        rows: Optional[List[Dict[str, Any]]] = None
+        uploaded = request.FILES.get("file")
+        if uploaded is not None:
+            try:
+                rows, _headers = parse_file(uploaded, uploaded.name)
+            except ValueError as e:
+                return Response(
+                    {"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception as e:  # noqa: BLE001
+                return Response(
+                    {"detail": f"Error reading file: {e}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            inline = request.data.get("rows")
+            if isinstance(inline, list):
+                rows = inline
+
+        if not rows:
+            return Response(
+                {"detail": "Provide a 'file' upload or non-empty 'rows' list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Threshold: synchronous below 25, async above. Matches the
+        # existing CSVImportMixin pattern so behavior is consistent.
+        SYNC_LIMIT = 25
+        if len(rows) >= SYNC_LIMIT:
+            from uuid import uuid4
+            from Tracker.tasks import bulk_reconcile_users_task
+            task_id = str(uuid4())
+            transaction.on_commit(lambda: bulk_reconcile_users_task.apply_async(
+                kwargs={
+                    "rows": rows,
+                    "tenant_id": str(tenant.id),
+                    "acting_user_id": request.user.id,
+                },
+                task_id=task_id,
+            ))
+            return Response(
+                {
+                    "task_id": task_id,
+                    "status": "queued",
+                    "total_rows": len(rows),
+                    "message": (
+                        f"Reconcile queued. Poll "
+                        f"/api/User/bulk-reconcile-status/{task_id}/ for progress."
+                    ),
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        # Synchronous path
+        results: List[Dict[str, Any]] = []
+        for i, row in enumerate(rows, start=1):
+            res = reconcile_user_row(
+                row=row, tenant=tenant, acting_user=request.user,
+            )
+            res["row"] = i
+            results.append(res)
+
+        summary = {
+            "total": len(results),
+            "created": sum(1 for r in results if r.get("outcome") == "created"),
+            "updated": sum(1 for r in results if r.get("outcome") == "updated"),
+            "unchanged": sum(1 for r in results if r.get("outcome") == "unchanged"),
+            "errors": sum(1 for r in results if r.get("outcome") == "error"),
+        }
+        return Response(
+            {"summary": summary, "results": results},
+            status=status.HTTP_207_MULTI_STATUS,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="task_id",
+                location=OpenApiParameter.PATH,
+                type=str,
+                description="Celery task ID from a queued bulk-reconcile",
+                required=True,
+            ),
+        ],
+        responses={200: OpenApiResponse(response=dict, description="Task status + result if done")},
+        tags=["Users"],
+    )
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="populate",
+                location=OpenApiParameter.QUERY,
+                type=bool,
+                required=False,
+                description=(
+                    "If true, pre-fill the Data sheet with the tenant's "
+                    "current users (snapshot-and-edit workflow). Default "
+                    "false returns an empty template (add-new-users workflow)."
+                ),
+            ),
+        ],
+        responses={200: {"type": "string", "format": "binary", "description": "XLSX workbook"}},
+        description=(
+            "Download a multi-sheet Excel template for bulk-reconcile. "
+            "Sheets: Data (editable rows — parsed on import), Instructions, "
+            "Groups (tenant-scoped names — drives Group dropdown), Statuses "
+            "(Active/Inactive — drives Status dropdown). Pass populate=true "
+            "to pre-fill the Data sheet with current users."
+        ),
+        tags=["Users"],
+    )
+    @action(detail=False, methods=["get"], url_path="bulk-reconcile-template")
+    def bulk_reconcile_template(self, request):
+        """Return the Excel workbook template populated with this tenant's groups,
+        optionally pre-filled with the current user roster."""
+        from Tracker.services.core.user_reconcile import build_user_reconcile_template
+
+        tenant = self.tenant or getattr(request.user, "tenant", None)
+        if tenant is None:
+            return Response(
+                {"detail": "No tenant context."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # `?populate=true` produces the snapshot-and-edit workbook. Anything
+        # else (including absent / "false" / "0") returns the empty template.
+        populate_raw = str(request.query_params.get("populate", "")).strip().lower()
+        populate = populate_raw in ("1", "true", "yes", "y")
+
+        content = build_user_reconcile_template(tenant, populate=populate)
+        response = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        filename = (
+            "bulk_user_reconcile_current.xlsx" if populate
+            else "bulk_user_reconcile_template.xlsx"
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="task_id",
+                location=OpenApiParameter.PATH,
+                type=str,
+                description="Celery task ID from a queued bulk-reconcile",
+                required=True,
+            ),
+        ],
+        responses={200: OpenApiResponse(response=dict, description="Task status + result if done")},
+        tags=["Users"],
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"bulk-reconcile-status/(?P<task_id>[^/.]+)",
+    )
+    def bulk_reconcile_status(self, request, task_id=None):
+        """Poll a queued bulk reconcile job. Mirrors the CSV-import status pattern."""
+        from celery.result import AsyncResult
+
+        result = AsyncResult(task_id)
+        payload: Dict[str, Any] = {"task_id": task_id, "status": result.status}
+        if result.status == "PROGRESS":
+            payload["progress"] = result.info or {}
+        elif result.status == "SUCCESS":
+            payload["result"] = result.result
+        elif result.status == "FAILURE":
+            payload["error"] = str(result.result) if result.result else "Unknown error"
+        elif result.status == "PENDING":
+            payload["progress"] = {"current": 0, "total": 0, "percent": 0}
+        return Response(payload)
 
 
 class GroupViewSet(viewsets.ModelViewSet):

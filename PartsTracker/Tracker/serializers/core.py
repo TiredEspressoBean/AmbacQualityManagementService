@@ -211,9 +211,9 @@ class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
-            'parent_company', 'parent_company_id', 'groups', 'group_ids',
+            'last_login', 'parent_company', 'parent_company_id', 'groups', 'group_ids',
             'tenant', 'user_type', 'user_type_display')
-        read_only_fields = ('date_joined', 'full_name', 'tenant', 'user_type', 'user_type_display')
+        read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):

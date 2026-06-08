@@ -1359,6 +1359,51 @@ WORK_ORDER_HOLD_THRESHOLD_HOURS = 48
 WORK_ORDER_OVERDUE_THRESHOLD_HOURS = 0
 
 
+@shared_task(bind=True)
+def bulk_reconcile_users_task(self, rows: List[Dict[str, Any]], tenant_id: str, acting_user_id: int):
+    """Background bulk-reconcile of tenant users from a workbook.
+
+    Mirrors the synchronous path in `UserViewSet.bulk_reconcile`: each row
+    goes through `reconcile_user_row`, results are aggregated, and the
+    Celery result is the same shape the sync endpoint returns (so polling
+    consumers don't need a different parser).
+    """
+    from Tracker.services.core.user_reconcile import reconcile_user_row
+    from Tracker.models import Tenant, User
+    from Tracker.utils.tenant_context import tenant_context
+
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+        acting_user = User.objects.get(id=acting_user_id)
+    except (Tenant.DoesNotExist, User.DoesNotExist) as e:
+        logger.error(f"bulk_reconcile_users_task failed lookup: {e}")
+        return {"status": "error", "message": str(e)}
+
+    results: List[Dict[str, Any]] = []
+    with tenant_context(tenant):
+        for i, row in enumerate(rows, start=1):
+            try:
+                res = reconcile_user_row(row=row, tenant=tenant, acting_user=acting_user)
+            except Exception as e:  # noqa: BLE001 - never let one row sink the batch
+                res = {"outcome": "error", "error": f"unexpected: {e}"}
+            res["row"] = i
+            results.append(res)
+            if i % 10 == 0:
+                self.update_state(
+                    state="PROGRESS",
+                    meta={"current": i, "total": len(rows), "percent": int(i / len(rows) * 100)},
+                )
+
+    summary = {
+        "total": len(results),
+        "created": sum(1 for r in results if r.get("outcome") == "created"),
+        "updated": sum(1 for r in results if r.get("outcome") == "updated"),
+        "unchanged": sum(1 for r in results if r.get("outcome") == "unchanged"),
+        "errors": sum(1 for r in results if r.get("outcome") == "error"),
+    }
+    return {"summary": summary, "results": results}
+
+
 @shared_task
 def scan_work_order_holds_and_overdue():
     """Hourly scan: emit WORK_ORDER_HELD_TOO_LONG for stale holds and WORK_ORDER_OVERDUE for late WOs.
