@@ -47,6 +47,7 @@ export const CAPTURE_NODE_TYPES = new Set<string>([
     "fileCapture",
     "timer",
     "computedValue",
+    "harvestedComponentCapture",
 ]);
 
 /**

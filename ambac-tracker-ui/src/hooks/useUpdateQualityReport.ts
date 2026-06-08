@@ -16,7 +16,7 @@ export const useUpdateQualityReport = () => {
 
     return useMutation<UpdateQualityReportResponse, unknown, UpdateQualityReportVariables>({
         mutationFn: ({ id, data }) =>
-            api.api_ErrorReports_partial_update(data as never, {
+            api.api_QualityReports_partial_update(data as never, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<UpdateQualityReportResponse>,

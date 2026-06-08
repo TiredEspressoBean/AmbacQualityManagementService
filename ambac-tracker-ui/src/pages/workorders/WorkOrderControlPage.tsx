@@ -97,6 +97,10 @@ import { useUpdatePart } from "@/hooks/parts";
 import { useBulkIncrementParts } from "@/hooks/parts";
 import { useBulkRollbackParts } from "@/hooks/parts";
 import { useBulkSetStatusParts } from "@/hooks/parts";
+import { useSplitPartFromLot } from "@/hooks/parts";
+import type { PartSplitReason } from "@/hooks/parts";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { PendingDecisionsPanel } from "@/components/dwi/PendingDecisionsPanel";
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { useSplitWorkOrder } from "@/hooks/useSplitWorkOrder";
@@ -553,22 +557,70 @@ function StepRow({
                 )}
             </div>
 
-            {/* Ready button or placeholder */}
-            <div onClick={(e) => e.stopPropagation()} className="w-[120px] text-right">
-                {readyCount > 0 ? (
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => onAdvanceReady(step.id)}
-                    >
-                        Advance {readyCount}
-                        <ChevronRight className="ml-0.5 h-3 w-3" />
-                    </Button>
-                ) : (
-                    <span className="text-[10px] text-muted-foreground">—</span>
-                )}
-            </div>
+            {/* Ready indicator. The Force-advance button only renders for
+                privileged users; default flow is event-driven. */}
+            <ReadyIndicator readyCount={readyCount} stepId={step.id} onAdvanceReady={onAdvanceReady} />
+        </div>
+    );
+}
+
+function StepStripReadyChip({
+    readyCount,
+    stepId,
+    onAdvanceReady,
+}: {
+    readyCount: number;
+    stepId: string;
+    onAdvanceReady: (stepId: string) => void;
+}) {
+    const { data: authUser } = useAuthUser();
+    const canForceAdvance = userCanForceAdvance(authUser);
+    if (!canForceAdvance) {
+        return <span className="text-[10px] text-muted-foreground">{readyCount} ready</span>;
+    }
+    return (
+        <span
+            className="cursor-pointer font-medium text-primary"
+            onClick={(e) => {
+                e.stopPropagation();
+                onAdvanceReady(stepId);
+            }}
+            title="Force advance — emergency only."
+        >
+            ▶ {readyCount}
+        </span>
+    );
+}
+
+function ReadyIndicator({
+    readyCount,
+    stepId,
+    onAdvanceReady,
+}: {
+    readyCount: number;
+    stepId: string;
+    onAdvanceReady: (stepId: string) => void;
+}) {
+    const { data: authUser } = useAuthUser();
+    const canForceAdvance = userCanForceAdvance(authUser);
+    return (
+        <div onClick={(e) => e.stopPropagation()} className="w-[120px] text-right">
+            {readyCount === 0 ? (
+                <span className="text-[10px] text-muted-foreground">—</span>
+            ) : canForceAdvance ? (
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => onAdvanceReady(stepId)}
+                    title="Force advance — emergency only."
+                >
+                    Force advance {readyCount}
+                    <ChevronRight className="ml-0.5 h-3 w-3" />
+                </Button>
+            ) : (
+                <span className="text-[10px] text-muted-foreground">{readyCount} ready</span>
+            )}
         </div>
     );
 }
@@ -624,15 +676,11 @@ function StepStrip({
                                 {row.oldestHours !== null ? formatAge(row.oldestHours) : "—"}
                             </span>
                             {row.readyCount > 0 && (
-                                <span
-                                    className="cursor-pointer font-medium text-primary"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAdvanceReady(row.step.id);
-                                    }}
-                                >
-                                    ▶ {row.readyCount}
-                                </span>
+                                <StepStripReadyChip
+                                    readyCount={row.readyCount}
+                                    stepId={row.step.id}
+                                    onAdvanceReady={onAdvanceReady}
+                                />
                             )}
                         </div>
                     </button>
@@ -696,7 +744,25 @@ type Action =
     | { kind: "rewind" }
     | { kind: "move"; stepId: string }
     | { kind: "status"; status: MockPartStatus }
-    | { kind: "scrap"; reason: string };
+    | { kind: "scrap"; reason: string }
+    | { kind: "split"; reason: PartSplitReason; reworkTargetStepId?: string };
+
+/** Group names that grant the privileged "Force advance" emergency action.
+ *  Default operator flow is event-driven; this button only appears for
+ *  Production Managers and QA Managers who need to intervene when normal
+ *  advancement is stuck. */
+const FORCE_ADVANCE_GROUPS = new Set([
+    "production_manager", "Production_Manager",
+    "qa_manager", "QA_Manager",
+    "tenant_admin", "Admin",
+]);
+
+function userCanForceAdvance(user: ReturnType<typeof useAuthUser>["data"]): boolean {
+    if (!user) return false;
+    if (user.is_superuser || user.is_staff) return true;
+    const allGroups = [...(user.groups ?? []), ...(user.tenant_groups ?? [])];
+    return allGroups.some((g) => g.name && FORCE_ADVANCE_GROUPS.has(g.name));
+}
 
 function applyAction(part: MockPart, steps: MockStep[], action: Action): MockPart {
     const stepIdx = steps.findIndex((s) => s.id === part.step_id);
@@ -721,6 +787,20 @@ function applyAction(part: MockPart, steps: MockStep[], action: Action): MockPar
     }
     if (action.kind === "scrap") {
         return { ...part, status: "SCRAPPED", updated_at: new Date().toISOString() };
+    }
+    if (action.kind === "split") {
+        // Local visual hint while the API call resolves. The real
+        // split_from_cohort + split_reason fields land on refetch.
+        const statusByReason: Record<PartSplitReason, MockPartStatus> = {
+            quarantine: "QUARANTINED",
+            scrap: "SCRAPPED",
+            rework: "REWORK_NEEDED",
+        };
+        return {
+            ...part,
+            status: statusByReason[action.reason] ?? part.status,
+            updated_at: new Date().toISOString(),
+        };
     }
     return part;
 }
@@ -959,15 +1039,51 @@ export function WorkOrderControlPage() {
     const bulkIncrementMutation = useBulkIncrementParts();
     const bulkRollbackMutation = useBulkRollbackParts();
     const bulkSetStatusMutation = useBulkSetStatusParts();
+    const splitPart = useSplitPartFromLot();
+    const { data: authUser } = useAuthUser();
+    const canForceAdvance = userCanForceAdvance(authUser);
 
     function applyToIds(ids: string[], action: Action) {
         setParts((prev) => prev.map((p) => (ids.includes(p.id) ? applyAction(p, wo?.steps ?? [], action) : p)));
         if (action.kind === "advance") {
+            // Privileged emergency action; the engine is event-driven for the
+            // default operator flow. Guarded at the UI by `canForceAdvance` and
+            // by tenant permissions on the API.
             bulkIncrementMutation.mutate(ids, {
                 onSuccess: (data) => {
                     const failures = (data.results as { ok?: boolean; error?: string; id?: string }[]).filter((r) => !r.ok);
-                    if (failures.length > 0) setBulkErrorBanner(`${failures.length} part(s) failed to advance.`);
+                    if (failures.length === 0) return;
+                    // Surface the actual blocker reasons returned by the
+                    // engine (substep gate, FPI, quarantine, etc.) so
+                    // supervisors know what to resolve. Dedupe identical
+                    // messages so a cohort blocked on the same reason
+                    // doesn't repeat noise.
+                    const reasons = new Set<string>();
+                    failures.forEach((f) => {
+                        if (f.error) reasons.add(f.error);
+                    });
+                    const summary = reasons.size > 0
+                        ? `${failures.length} part(s) blocked: ${[...reasons].join("; ")}`
+                        : `${failures.length} part(s) failed to advance.`;
+                    setBulkErrorBanner(summary);
                 },
+            });
+        } else if (action.kind === "split") {
+            // Lot-cohesion engine: pull part(s) off the cohort so they
+            // advance solo. Quarantine, rework, expedite, customer-pull,
+            // and scrap all flow through here.
+            void Promise.all(
+                ids.map((id) =>
+                    splitPart.mutateAsync({
+                        id,
+                        reason: action.reason,
+                        ...(action.reworkTargetStepId
+                            ? { rework_target_step_id: action.reworkTargetStepId }
+                            : {}),
+                    }),
+                ),
+            ).catch(() => {
+                setBulkErrorBanner(`One or more parts failed to split.`);
             });
         } else if (action.kind === "rewind") {
             bulkRollbackMutation.mutate(ids, {
@@ -1194,6 +1310,12 @@ export function WorkOrderControlPage() {
                     </Button>
                 </div>
             )}
+
+            {/* Surfaces live PENDING SamplingDecisions for this WO. Renders
+                empty-state when there are none; renders an actionable
+                reconciliation panel when LAST_N_PARTS / EXACT_COUNT
+                decisions are outstanding (Flow #11). */}
+            {workOrderId && <PendingDecisionsPanel workOrderId={workOrderId} />}
 
             {currentHold && (
                 <Card className="border-amber-500/50">
@@ -1650,15 +1772,17 @@ export function WorkOrderControlPage() {
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        disabled={isLast}
-                                                        onClick={() => applyToIds([p.id], { kind: "advance" })}
-                                                        title="Advance step"
-                                                    >
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    </Button>
+                                                    {canForceAdvance && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            disabled={isLast}
+                                                            onClick={() => applyToIds([p.id], { kind: "advance" })}
+                                                            title="Force advance step (emergency; default flow is event-driven)"
+                                                        >
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -1681,22 +1805,26 @@ export function WorkOrderControlPage() {
                                                         >
                                                             Mark ready for next step
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        {/* Splits: pull the part off the WO cohort so it advances solo.
+                                                            The engine treats these as the only sanctioned exception
+                                                            actions; status changes don't move the part out of the lot. */}
                                                         <DropdownMenuItem
-                                                            onClick={() => applyToIds([p.id], { kind: "status", status: "REWORK_NEEDED" })}
+                                                            onClick={() => applyToIds([p.id], { kind: "split", reason: "rework" })}
                                                         >
-                                                            Flag for rework
+                                                            Split for rework
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => applyToIds([p.id], { kind: "split", reason: "quarantine" })}
+                                                        >
+                                                            Split — quarantine
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem
-                                                            onClick={() => applyToIds([p.id], { kind: "status", status: "QUARANTINED" })}
-                                                        >
-                                                            Quarantine
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
                                                             variant="destructive"
-                                                            onClick={() => applyToIds([p.id], { kind: "scrap", reason: "manual" })}
+                                                            onClick={() => applyToIds([p.id], { kind: "split", reason: "scrap" })}
                                                         >
-                                                            Scrap
+                                                            Split — scrap
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -1733,10 +1861,17 @@ export function WorkOrderControlPage() {
                                 <ChevronLeft className="mr-1 h-4 w-4" />
                                 Previous step
                             </Button>
-                            <Button size="sm" onClick={() => applyToSelected({ kind: "advance" })}>
-                                Advance step
-                                <ChevronRight className="ml-1 h-4 w-4" />
-                            </Button>
+                            {canForceAdvance && (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => applyToSelected({ kind: "advance" })}
+                                    title="Force advance — emergency only. Default flow advances on captured work."
+                                >
+                                    Force advance
+                                    <ChevronRight className="ml-1 h-4 w-4" />
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="outline"

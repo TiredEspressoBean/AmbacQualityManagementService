@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { DurationInput } from '@/components/ui/duration-input';
-import { Trash2, X, Ruler, Target, Settings, FileText, Eye } from 'lucide-react';
+import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { useSubsteps } from '@/hooks/useSubsteps';
 import type { StepData } from './use-steps-to-flow';
 import { useRetrieveMeasurementDefinitions } from '@/hooks/useRetrieveMeasurementDefinitions';
 import { useRetrieveStepWithSamplingRules } from '@/hooks/useRetrieveStepWithSamplingRules';
@@ -46,9 +48,14 @@ export interface StepEditorPanelProps {
   onDelete: (nodeId: string) => void;
   onClose?: () => void;
   editable: boolean;
+  /** Owning process id — enables navigation into the substep editor.
+   *  Omit (or pass null) when the panel is used in demo mode without a
+   *  persisted process. */
+  processId?: string | null;
 }
 
-export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }: StepEditorPanelProps) {
+export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId }: StepEditorPanelProps) {
+  const navigate = useNavigate();
   // eslint-disable-next-line local/no-as-any -- FlowNodeData is a union type; we use structural access for the step sub-shape here
   const data = node.data as any;
   const stepId = data.step?.id as string | undefined;
@@ -69,6 +76,11 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
     { enabled: !!stepId }
   );
   const measurementCount = measurementsResponse?.count ?? 0;
+
+  // Substep count — enables a "Substeps (N)" affordance that drills into the
+  // DWI substep editor for this step.
+  const { data: substepsResponse } = useSubsteps(stepId ? { step: stepId } : undefined);
+  const substepCount = substepsResponse?.count ?? 0;
 
   // Fetch sampling rules count
   const { data: stepWithRules } = useRetrieveStepWithSamplingRules(
@@ -407,9 +419,37 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable }:
             )}
           </div>
 
+          {/* Substeps — drill-down into the DWI substep editor. Disabled
+              until the step is persisted (needs a real stepId in the URL). */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <ListChecks className="h-4 w-4 text-muted-foreground" />
+              <span>Substeps</span>
+              {substepCount > 0 && (
+                <Badge variant="secondary" className="text-xs">{substepCount}</Badge>
+              )}
+            </div>
+            {stepId && processId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() =>
+                  navigate({
+                    to: '/editor/processes/$processId/steps/$stepId/substeps',
+                    params: { processId, stepId },
+                  })
+                }
+                title={editable ? 'Edit substeps' : 'View substeps'}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
           {!stepId && editable && (
             <p className="text-xs text-muted-foreground">
-              Save process to configure measurements, sampling, and documents
+              Save process to configure measurements, sampling, documents, and substeps
             </p>
           )}
         </div>

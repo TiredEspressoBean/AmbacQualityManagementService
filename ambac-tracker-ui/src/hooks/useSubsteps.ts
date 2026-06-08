@@ -31,7 +31,7 @@ export function useSubstep(id: string | null | undefined) {
     return useQuery({
         queryKey: [QK_BASE, "detail", id] as const,
         queryFn: () =>
-            api.api_Substeps_retrieve({ params: { path: { id: String(id) } } } as never) as Promise<Substep>,
+            api.api_Substeps_retrieve({ params: { id: String(id) } } as never) as Promise<Substep>,
         enabled: Boolean(id),
     });
 }
@@ -59,7 +59,7 @@ export function useUpdateSubstep() {
     >({
         mutationFn: ({ id, data }) =>
             api.api_Substeps_partial_update(data as never, {
-                params: { path: { id } },
+                params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<Substep>,
         onSuccess: (substep) => {
@@ -69,12 +69,72 @@ export function useUpdateSubstep() {
     });
 }
 
+/** Atomic reorder. Body: `{ step, order: [substep_id, ...] }`. Backend runs
+ *  a two-phase update inside a transaction to dodge the `(step, order)`
+ *  unique constraint, so the client just sends the intended final ordering. */
+export function useReorderSubsteps() {
+    const qc = useQueryClient();
+    return useMutation<void, unknown, { step: string; order: string[] }>({
+        mutationFn: (body) =>
+            api.api_Substeps_reorder_create(body as never, {
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            }) as Promise<void>,
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [QK_BASE] });
+        },
+    });
+}
+
+/** Operator-runtime submit: posts every capture for a substep + closes
+ *  with a SubstepCompletion. Body shape lives in the backend service
+ *  module `Tracker/services/dwi/operator_capture.py`. */
+export type OperatorCapture = Record<string, unknown> & {
+    node_id: string;
+    kind: string;
+};
+export type SubmitSubstepRequest = {
+    step_execution: string;
+    captures: OperatorCapture[];
+    notes?: string;
+    signature_data?: string;
+    signature_meaning?: string;
+    verification_method?: string;
+    marked_not_applicable?: boolean;
+    na_reason_code?: string;
+};
+export type SubmitSubstepResponse = {
+    completion_id: string;
+    response_count: number;
+    quality_report_id: string | null;
+    measurement_count: number;
+};
+
+export function useSubmitSubstep() {
+    const qc = useQueryClient();
+    return useMutation<
+        SubmitSubstepResponse,
+        unknown,
+        { id: string; data: SubmitSubstepRequest }
+    >({
+        mutationFn: ({ id, data }) =>
+            api.api_Substeps_submit_create(data as never, {
+                params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            }) as Promise<SubmitSubstepResponse>,
+        onSuccess: () => {
+            // Invalidate substep + completion queries so badges and
+            // operator-side counters refresh.
+            qc.invalidateQueries({ queryKey: [QK_BASE] });
+        },
+    });
+}
+
 export function useDeleteSubstep() {
     const qc = useQueryClient();
     return useMutation<void, unknown, string>({
         mutationFn: (id) =>
             api.api_Substeps_destroy(undefined as never, {
-                params: { path: { id } },
+                params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<void>,
         onSuccess: () => {

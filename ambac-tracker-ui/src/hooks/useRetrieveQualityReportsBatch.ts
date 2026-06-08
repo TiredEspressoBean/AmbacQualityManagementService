@@ -5,7 +5,7 @@ export const retrieveQualityReportsBatchOptions = (ids: string[]) => queryOption
     queryKey: ["quality-reports-batch", ids] as const,
     queryFn: async () => {
         if (ids.length === 0) return [];
-        return Promise.all(ids.map((id) => api.api_ErrorReports_retrieve({ params: { id } })));
+        return Promise.all(ids.map((id) => api.api_QualityReports_retrieve({ params: { id } })));
     },
 });
 

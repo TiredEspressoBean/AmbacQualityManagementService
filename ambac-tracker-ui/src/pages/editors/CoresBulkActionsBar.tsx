@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Tooltip,
@@ -22,6 +30,8 @@ import { toast } from "sonner";
 
 import { useStartTeardownBatch } from "@/hooks/useStartTeardownBatch";
 import { useScrapCore } from "@/hooks/useScrapCore";
+import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses";
+import { useRetrievePartType } from "@/hooks/useRetrievePartType";
 
 export type SelectedCore = {
     id: string;
@@ -54,6 +64,7 @@ export function CoresBulkActionsBar({
     const [teardownOpen, setTeardownOpen] = useState(false);
     const [scrapOpen, setScrapOpen] = useState(false);
     const [scrapReason, setScrapReason] = useState("");
+    const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
 
     const selectedIds = useMemo(() => new Set(selected.map((c) => c.id)), [selected]);
     const selectedOnPage = useMemo(
@@ -76,15 +87,67 @@ export function CoresBulkActionsBar({
         return selected[0]?.core_type_name ?? null;
     }, [selected, sharedCoreType]);
 
+    // Fetch the core_type's default disassembly process preference.
+    const { data: coreTypeData } = useRetrievePartType(
+        { params: { id: sharedCoreType ?? "" } } as never,
+        { enabled: teardownOpen && !!sharedCoreType },
+    );
+    const defaultProcessId = (coreTypeData as { default_disassembly_process?: string | null } | undefined)
+        ?.default_disassembly_process ?? null;
+
+    // Fetch eligible disassembly processes for the shared core_type.
+    const { data: eligibleProcessesData, isLoading: eligibleLoading } = useRetrieveProcesses(
+        sharedCoreType
+            ? {
+                part_type: sharedCoreType,
+                is_disassembly: true,
+                status: "APPROVED",
+                limit: 50,
+            }
+            : undefined,
+        undefined,
+        { enabled: teardownOpen && !!sharedCoreType },
+    );
+    type EligibleProcess = { id: string; name: string };
+    const eligibleProcesses: EligibleProcess[] = useMemo(() => {
+        const results = (eligibleProcessesData as { results?: EligibleProcess[] } | undefined)?.results;
+        return Array.isArray(results) ? results : [];
+    }, [eligibleProcessesData]);
+
+    // Preselect: prefer the default; fall back to the only eligible process if N=1.
+    useEffect(() => {
+        if (!teardownOpen) return;
+        if (selectedProcessId) return;
+        if (defaultProcessId && eligibleProcesses.some((p) => p.id === defaultProcessId)) {
+            setSelectedProcessId(defaultProcessId);
+            return;
+        }
+        if (eligibleProcesses.length === 1) {
+            setSelectedProcessId(eligibleProcesses[0].id);
+        }
+    }, [teardownOpen, defaultProcessId, eligibleProcesses, selectedProcessId]);
+
+    // Reset picker state when dialog closes.
+    useEffect(() => {
+        if (!teardownOpen) {
+            setSelectedProcessId(null);
+        }
+    }, [teardownOpen]);
+
     const canTeardown = allReceived && !!sharedCoreType;
     const canScrap = allReceived;
+    const canSubmitTeardown = canTeardown && !!selectedProcessId;
 
     const teardownMutation = useStartTeardownBatch();
     const scrapMutation = useScrapCore();
 
     function submitTeardown() {
+        if (!selectedProcessId) {
+            toast.error("Pick a disassembly process before submitting");
+            return;
+        }
         teardownMutation.mutate(
-            { core_ids: selected.map((c) => c.id) },
+            { core_ids: selected.map((c) => c.id), process_id: selectedProcessId },
             {
                 onSuccess: (data) => {
                     const wo = (data as { work_order_id?: string; work_order_erp_id?: string }) ?? {};
@@ -217,21 +280,60 @@ export function CoresBulkActionsBar({
                             transitions each to IN_DISASSEMBLY.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-2 text-sm">
-                        <div className="text-muted-foreground">Cores in this batch:</div>
-                        <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2">
-                            <ul className="space-y-0.5 font-mono text-xs">
-                                {selected.map((c) => (
-                                    <li key={c.id}>{c.core_number}</li>
-                                ))}
-                            </ul>
+                    <div className="space-y-3 text-sm">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="teardown-process">Disassembly process</Label>
+                            <Select
+                                value={selectedProcessId ?? ""}
+                                onValueChange={(v) => setSelectedProcessId(v || null)}
+                            >
+                                <SelectTrigger id="teardown-process">
+                                    <SelectValue
+                                        placeholder={
+                                            eligibleLoading
+                                                ? "Loading eligible processes…"
+                                                : eligibleProcesses.length === 0
+                                                  ? "No eligible processes — flag a Process is_disassembly first"
+                                                  : "Pick a disassembly process"
+                                        }
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {eligibleProcesses.map((p) => (
+                                        <SelectItem key={p.id} value={p.id}>
+                                            {p.name}
+                                            {p.id === defaultProcessId ? "  (default)" : ""}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {!eligibleLoading && eligibleProcesses.length === 0 && sharedCoreType && (
+                                <p className="text-xs text-destructive">
+                                    No APPROVED disassembly Processes are configured for this core
+                                    type. An engineer must flag a Process with{" "}
+                                    <code>is_disassembly=True</code> before teardown can start.
+                                </p>
+                            )}
+                        </div>
+                        <div className="space-y-1">
+                            <div className="text-muted-foreground">Cores in this batch:</div>
+                            <div className="max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2">
+                                <ul className="space-y-0.5 font-mono text-xs">
+                                    {selected.map((c) => (
+                                        <li key={c.id}>{c.core_number}</li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setTeardownOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={submitTeardown} disabled={teardownMutation.isPending}>
+                        <Button
+                            onClick={submitTeardown}
+                            disabled={!canSubmitTeardown || teardownMutation.isPending}
+                        >
                             {teardownMutation.isPending ? "Starting…" : "Create WO and start"}
                         </Button>
                     </DialogFooter>

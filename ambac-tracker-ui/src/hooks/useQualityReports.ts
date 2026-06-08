@@ -2,8 +2,8 @@ import { useQuery, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components, operations } from "@/lib/api/generated-types";
 
-type ErrorReportsListQueries = NonNullable<operations["api_ErrorReports_list"]["parameters"]["query"]>;
-type ErrorReportsListResponse = components["schemas"]["PaginatedQualityReportsList"];
+type QualityReportsListQueries = NonNullable<operations["api_QualityReports_list"]["parameters"]["query"]>;
+type QualityReportsListResponse = components["schemas"]["PaginatedQualityReportsList"];
 
 type MeasurementDefinitionsListQueries = NonNullable<operations["api_MeasurementDefinitions_list"]["parameters"]["query"]>;
 type MeasurementDefinitionsListResponse = components["schemas"]["PaginatedMeasurementDefinitionList"];
@@ -12,19 +12,19 @@ type ListHookConfig = {
   headers?: Record<string, string>;
 };
 
-export const qualityReportsOptions = (queries?: ErrorReportsListQueries, config?: ListHookConfig) =>
+export const qualityReportsOptions = (queries?: QualityReportsListQueries, config?: ListHookConfig) =>
   queryOptions({
     queryKey: ["quality-reports", queries, config] as const,
     queryFn: () =>
-      api.api_ErrorReports_list(
+      api.api_QualityReports_list(
         (queries || config ? { queries, ...config } : undefined) as never,
-      ) as Promise<ErrorReportsListResponse>,
+      ) as Promise<QualityReportsListResponse>,
   });
 
 export const qualityReportsMetadataOptions = () =>
   queryOptions({
-    queryKey: ["metadata", "QualityReports", "ErrorReports"] as const,
-    queryFn: () => api.api_ErrorReports_metadata_retrieve(),
+    queryKey: ["metadata", "QualityReports"] as const,
+    queryFn: () => api.api_QualityReports_metadata_retrieve(),
   });
 
 export const measurementDefinitionsOptions = (queries?: MeasurementDefinitionsListQueries, config?: ListHookConfig) =>
@@ -37,7 +37,7 @@ export const measurementDefinitionsOptions = (queries?: MeasurementDefinitionsLi
   });
 
 export function useQualityReports(
-    queries?: ErrorReportsListQueries,
+    queries?: QualityReportsListQueries,
     config?: ListHookConfig,
     options?: Omit<ReturnType<typeof qualityReportsOptions>, "queryKey" | "queryFn">
 ) {

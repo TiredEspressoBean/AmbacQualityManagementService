@@ -1101,6 +1101,7 @@ export default function ProcessFlowPage() {
                     onDelete={handleNodeDelete}
                     onClose={() => setSelectedNode(null)}
                     editable={editMode}
+                    processId={processId}
                   />
                 ) : (
                   <Card>

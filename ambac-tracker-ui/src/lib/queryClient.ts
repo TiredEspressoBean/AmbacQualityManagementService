@@ -1,5 +1,6 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { recordCaughtError } from './error-log'
 
 /**
  * Meta-aware global handlers.
@@ -33,6 +34,7 @@ type MutationMeta = {
 export const queryClient = new QueryClient({
     queryCache: new QueryCache({
         onError: (error, query) => {
+            recordCaughtError("query", JSON.stringify(query.queryKey), error);
             const meta = query.meta as QueryMeta | undefined;
             if (meta?.suppressGlobalError) return;
             toast.error(meta?.errorMessage ?? "Failed to load data", {
@@ -42,6 +44,11 @@ export const queryClient = new QueryClient({
     }),
     mutationCache: new MutationCache({
         onError: (error, _vars, _ctx, mutation) => {
+            recordCaughtError(
+                "mutation",
+                JSON.stringify(mutation.options.mutationKey ?? "anonymous"),
+                error,
+            );
             const meta = mutation.meta as MutationMeta | undefined;
             if (meta?.suppressGlobalError) return;
             toast.error(meta?.errorMessage ?? "Operation failed", {

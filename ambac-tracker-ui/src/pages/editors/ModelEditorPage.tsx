@@ -87,8 +87,7 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     EquipmentTypes: "Equipment-types",
 
     // QMS
-    ErrorReports: "ErrorReports",
-    QualityReports: "ErrorReports",
+    QualityReports: "QualityReports",
     "Error-types": "Error-types",
     ErrorTypes: "Error-types",
     QuarantineDispositions: "QuarantineDispositions",

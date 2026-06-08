@@ -106,6 +106,12 @@ export function SubscribeToEventSheet({ open, onOpenChange, editingRule = null }
     const updateRule = useUpdatePersonalRule();
     const saving = createRule.isPending || updateRule.isPending;
 
+    // Live event catalog. Hoisted to the top of the component because
+    // `coverageSupported` below reads from `catalogEvents` — a later
+    // declaration would trip the TDZ at module init.
+    const { events: catalogEvents } = useNotificationEventCatalog();
+    const event = catalogEvents.find((e) => e.code === eventCode);
+
     // Reset state when the sheet opens or the editing target changes.
     useEffect(() => {
         if (!open) return;
@@ -144,8 +150,6 @@ export function SubscribeToEventSheet({ open, onOpenChange, editingRule = null }
         () => SMART_TOKENS.filter((t) => t.appliesTo(fields)),
         [fields],
     );
-    const {events: catalogEvents} = useNotificationEventCatalog();
-    const event = catalogEvents.find((e) => e.code === eventCode);
 
     // Build a synthetic root group from the selected tokens to drive the
     // English readback and CEL emission. Tokens are joined with AND.

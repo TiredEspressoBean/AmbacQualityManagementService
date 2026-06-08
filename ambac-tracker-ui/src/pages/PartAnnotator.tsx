@@ -1,5 +1,5 @@
 import {type ThreeEvent} from "@react-three/fiber";
-import {useState, useMemo, type ComponentProps} from "react";
+import {useState, useMemo, useEffect, useRef, type ComponentProps} from "react";
 import {Button} from "@/components/ui/button";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Textarea} from "@/components/ui/textarea";
@@ -85,6 +85,13 @@ export function PartAnnotator({
     const [annotationsExpanded, setAnnotationsExpanded] = useState(startExpanded);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Embedded mode (operator runtime): the caller pre-bound the QR via
+    // `qualityReportIds`. Skip the QR picker, auto-link annotations to
+    // the bound QR, and auto-save on dialog close. The standalone QA
+    // review case (route) doesn't set this; it shows the WO's failed QR
+    // picker.
+    const isPreBound = qualityReportIds.length > 0;
+
     // Count of new annotations (not loaded from previous reports)
     const newAnnotationsCount = annotations.filter(a => !a.isExisting && !a.id).length;
 
@@ -98,22 +105,28 @@ export function PartAnnotator({
         enabled: qualityReportIds.length > 0,
     });
 
-    // Load existing annotations into state when data arrives
-    useMemo(() => {
-        if (existingAnnotationsData?.results && annotations.length === 0) {
-            const existingAnns: LocalAnnotation[] = existingAnnotationsData.results.map(ann => ({
-                id: ann.id,
-                position_x: ann.position_x,
-                position_y: ann.position_y,
-                position_z: ann.position_z,
-                defect_type: ann.defect_type || "",
-                severity: ann.severity || "low",
-                notes: ann.notes || "",
-                isExisting: true,
-            }));
-            setAnnotations(existingAnns);
-        }
-    }, [existingAnnotationsData, annotations.length]);
+    // Load existing annotations into local state on first arrival. Use a
+    // ref so we don't re-hydrate after the operator deletes one — without
+    // this guard a delete + cache-refetch race re-inserted the stale row
+    // from the still-warm TanStack cache.
+    const initializedRef = useRef(false);
+    useEffect(() => {
+        if (initializedRef.current) return;
+        if (!existingAnnotationsData?.results) return;
+        initializedRef.current = true;
+        if (existingAnnotationsData.results.length === 0) return;
+        const existingAnns: LocalAnnotation[] = existingAnnotationsData.results.map((ann) => ({
+            id: ann.id,
+            position_x: ann.position_x,
+            position_y: ann.position_y,
+            position_z: ann.position_z,
+            defect_type: ann.defect_type || "",
+            severity: ann.severity || "low",
+            notes: ann.notes || "",
+            isExisting: true,
+        }));
+        setAnnotations(existingAnns);
+    }, [existingAnnotationsData]);
 
     // Fetch failed quality reports for this work order
     const { data: qualityReportsData, isLoading: isLoadingReports } = useQualityReports(
@@ -175,14 +188,15 @@ export function PartAnnotator({
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
         if (mode !== "annotate") return;
 
-        // Don't allow adding annotations if no reports are selected
-        if (workOrderId && selectedReportIds.length === 0) {
+        // Standalone QA review (no pre-binding): must pick a QR first
+        // from the WO's failed reports. Pre-bound (operator runtime)
+        // skips this check because the QR is already known.
+        if (workOrderId && !isPreBound && selectedReportIds.length === 0) {
             toast.error("Please select at least one quality report first");
             return;
         }
 
         const point = e.point;
-
         const newAnnotation: LocalAnnotation = {
             position_x: point.x,
             position_y: point.y,
@@ -192,7 +206,17 @@ export function PartAnnotator({
             notes: "",
         };
 
+        const newIdx = annotations.length;
         setAnnotations([...annotations, newAnnotation]);
+
+        // Pre-bound (operator-runtime) flow: auto-open the edit dialog
+        // so the operator fills in defect_type / severity / notes
+        // immediately. Persistence happens on dialog dismiss via
+        // `handleEditDialogClose` so there's no lurking unsaved state.
+        if (isPreBound) {
+            setSelectedIdx(newIdx);
+            setShowEditDialog(true);
+        }
     };
 
     const handleUpdateAnnotation = async (field: string, value: string) => {
@@ -221,6 +245,54 @@ export function PartAnnotator({
         }
     };
 
+    /**
+     * Persist a single new annotation to the backend. Used by the
+     * auto-save-on-dialog-close flow in embedded mode so operators never
+     * end up with unsaved markers floating in local state.
+     */
+    const persistOne = async (idx: number) => {
+        const ann = annotations[idx];
+        if (!ann || ann.id || ann.isExisting) return;
+        if (activeQrIds.length === 0) return; // safety; shouldn't reach here when pre-bound
+
+        try {
+            const saved = await createAnnotation.mutateAsync({
+                model: modelId,
+                part: partId,
+                quality_reports: activeQrIds,
+                position_x: ann.position_x,
+                position_y: ann.position_y,
+                position_z: ann.position_z,
+                defect_type: ann.defect_type,
+                severity: ann.severity.toUpperCase() as "CRITICAL" | "LOW" | "MEDIUM" | "HIGH",
+                notes: ann.notes,
+            });
+            // Mark the local row as persisted so subsequent field edits
+            // route through update_or_create.
+            setAnnotations((prev) => {
+                const next = [...prev];
+                next[idx] = { ...next[idx], id: saved.id, isExisting: true };
+                return next;
+            });
+        } catch (err) {
+            console.error("Failed to persist annotation:", err);
+            toast.error("Failed to save annotation — try again or remove the marker.");
+        }
+    };
+
+    const handleEditDialogClose = () => {
+        // In embedded (pre-bound) mode, dismissing the dialog without
+        // an id on the annotation means the operator placed a marker
+        // and walked away. Persist it now so nothing's left unsaved.
+        if (isPreBound && selectedIdx !== null) {
+            const ann = annotations[selectedIdx];
+            if (ann && !ann.id) {
+                void persistOne(selectedIdx);
+            }
+        }
+        setShowEditDialog(false);
+    };
+
     const handleDeleteAnnotation = async () => {
         if (selectedIdx === null) return;
 
@@ -244,6 +316,11 @@ export function PartAnnotator({
         setSelectedIdx(null);
     };
 
+    /** Pre-bound QR ids take precedence over the picker selection.
+     *  In embedded mode the substep's QR is the ground truth; the picker
+     *  only matters in the standalone QA review case. */
+    const activeQrIds = isPreBound ? qualityReportIds : selectedReportIds;
+
     const handleSaveAll = async () => {
         // Only save new annotations (not ones loaded from previous reports)
         const newAnnotations = annotations.filter(a => !a.isExisting && !a.id);
@@ -253,7 +330,7 @@ export function PartAnnotator({
             return;
         }
 
-        if (workOrderId && selectedReportIds.length === 0) {
+        if (workOrderId && activeQrIds.length === 0) {
             toast.error("Please select at least one quality report to link annotations to");
             return;
         }
@@ -262,7 +339,7 @@ export function PartAnnotator({
         let successCount = 0;
         let failCount = 0;
 
-        const reportsToLink = workOrderId ? selectedReportIds : qualityReportIds;
+        const reportsToLink = activeQrIds;
 
         try {
             for (const annotation of newAnnotations) {
@@ -336,8 +413,17 @@ export function PartAnnotator({
 
     const modelUrl = normalizeMediaUrl(modelData.file);
 
+    // Sizing: route-mounted (showHeader=true) takes the full viewport
+    // minus chrome. Embedded uses an explicit min-height so the 3D
+    // viewport has room to actually be useful — `h-full` collapses to
+    // nothing inside a TipTap node where the parent has no enforced
+    // height.
+    const containerSizeClass = showHeader
+        ? 'h-[calc(100vh-8rem)]'
+        : 'h-[560px] min-h-[480px]';
+
     return (<div
-            className={`relative flex flex-col ${showHeader ? 'h-[calc(100vh-8rem)]' : 'h-full'} w-full bg-background overflow-hidden ${className}`}>
+            className={`relative flex flex-col ${containerSizeClass} w-full bg-background overflow-hidden ${className}`}>
             {/* Header */}
             {showHeader && (<div className="flex items-center justify-between p-4 border-b bg-card shrink-0">
                     <div>
@@ -379,8 +465,25 @@ export function PartAnnotator({
                     </div>
                 </div>)}
 
-            {/* Quality Report Selector (only shown when workOrderId is provided) */}
-            {workOrderId && (
+            {/* Pre-bound banner: in embedded operator-runtime mode the
+                consumer (substep) already knows which QR this annotation
+                belongs to. Show a small "Linked to" affordance instead
+                of the multi-QR picker. */}
+            {isPreBound && (
+                <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Linked to inspection report:</span>
+                    {qualityReportIds.map((qrid) => (
+                        <Badge key={qrid} variant="secondary" className="font-mono text-[10px]">
+                            {qrid.slice(0, 8)}…
+                        </Badge>
+                    ))}
+                    <span className="ml-auto">Tap the model to add a defect.</span>
+                </div>
+            )}
+
+            {/* Quality Report Selector — only when there's a work order
+                AND no pre-bound QR (standalone QA review case). */}
+            {workOrderId && !isPreBound && (
                 <div className="px-4 py-3 border-b bg-muted/30">
                     {isLoadingReports ? (
                         <div className="flex items-center gap-2">
@@ -427,8 +530,10 @@ export function PartAnnotator({
                 </div>
             )}
 
-            {/* Compact Save Bar (only shown in embedded mode when there are new annotations) */}
-            {!showHeader && newAnnotationsCount > 0 && (
+            {/* Compact Save Bar — only when NOT pre-bound (i.e. standalone
+                QA review embedded without a header). Pre-bound mode
+                auto-saves on dialog dismiss, so no save button needed. */}
+            {!showHeader && !isPreBound && newAnnotationsCount > 0 && (
                 <div className="px-4 py-2 border-b bg-card flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">
@@ -506,7 +611,16 @@ export function PartAnnotator({
             </div>
 
             {/* Edit Annotation Dialog */}
-            <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <Dialog
+                open={showEditDialog}
+                onOpenChange={(next) => {
+                    if (next) {
+                        setShowEditDialog(true);
+                    } else {
+                        handleEditDialogClose();
+                    }
+                }}
+            >
                 <DialogContent className="w-[95vw] max-w-md">
                     <DialogHeader>
                         <DialogTitle>Edit Defect Annotation</DialogTitle>
@@ -534,7 +648,7 @@ export function PartAnnotator({
                                             ))
                                         ) : (
                                             <div className="p-2 text-sm text-muted-foreground text-center">
-                                                {workOrderId
+                                                {workOrderId && !isPreBound
                                                     ? "Select a quality report to see available error types"
                                                     : "No error types require 3D annotation"
                                                 }
@@ -585,7 +699,7 @@ export function PartAnnotator({
                             Delete
                         </Button>
                         <Button
-                            onClick={() => setShowEditDialog(false)}
+                            onClick={handleEditDialogClose}
                             className="w-full sm:w-auto"
                         >
                             Done

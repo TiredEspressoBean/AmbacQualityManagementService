@@ -14,19 +14,32 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 
-// Lighting presets for light/dark themes
+// Lighting presets for light/dark themes.
+//
+// In light mode, the bright background (hsl(var(--muted)) ≈ near-white)
+// made models appear as dark silhouettes because:
+//   1. ambient + mainLight were calibrated for a darker environment
+//   2. the white background gave the model no contrast
+//
+// Fix: bump light-mode lighting AND use a darker neutral background in
+// both modes so models contrast cleanly regardless of theme. The
+// viewport is a 3D inspector, not a layout surface — using a dedicated
+// mid-tone (slate-ish blue-grey) is industry convention (Blender, Three.js
+// editor, glTF viewer all do this).
 const THEME_LIGHTING = {
     light: {
-        ambient: 0.5,
-        mainLight: 1.0,
-        fillLight: 0.4,
-        backgroundColor: "hsl(var(--muted))",
+        ambient: 0.9,
+        mainLight: 1.6,
+        fillLight: 0.6,
+        headlamp: 0.8,
+        backgroundColor: "hsl(220 10% 30%)",
     },
     dark: {
-        ambient: 0.3,
-        mainLight: 0.8,
-        fillLight: 0.2,
-        backgroundColor: "hsl(var(--muted))",
+        ambient: 0.35,
+        mainLight: 0.9,
+        fillLight: 0.25,
+        headlamp: 0.8,
+        backgroundColor: "hsl(220 10% 18%)",
     },
 } as const;
 
@@ -34,6 +47,41 @@ interface LightingSettings {
     ambient: number;
     mainLight: number;
     fillLight: number;
+    headlamp: number;
+}
+
+// Camera-attached "headlamp" — a directional light whose position and
+// target track the active camera each frame, so whatever the operator is
+// looking at is always lit from their point of view. This is the
+// industry-standard inspection-viewer trick (Blender's "MatCap" mode,
+// glTF viewer's headlight, Fusion 360's display).
+function HeadlampLight({ intensity }: { intensity: number }) {
+    const lightRef = useRef<THREE.DirectionalLight>(null);
+    const targetRef = useRef(new THREE.Object3D());
+    const { camera, scene } = useThree();
+
+    useEffect(() => {
+        scene.add(targetRef.current);
+        return () => {
+            scene.remove(targetRef.current);
+        };
+    }, [scene]);
+
+    useFrame(() => {
+        const light = lightRef.current;
+        if (!light) return;
+        // Place the light slightly above the camera so the lighting has a
+        // bit of vertical character instead of being perfectly flat.
+        const offset = new THREE.Vector3(0, 0.5, 0);
+        light.position.copy(camera.position).add(offset);
+        // Aim it at the point the camera is looking at (~2 units ahead).
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        targetRef.current.position.copy(camera.position).add(forward.multiplyScalar(2));
+        light.target = targetRef.current;
+    });
+
+    return <directionalLight ref={lightRef} intensity={intensity} />;
 }
 
 function KeyboardControls({ enabled, controlsRef }: { enabled: boolean; controlsRef: React.RefObject<any> }) {
@@ -370,6 +418,20 @@ function LightingControlsPanel({
                                 step={0.05}
                             />
                         </div>
+
+                        <div className="space-y-1.5">
+                            <div className="flex justify-between">
+                                <Label className="text-xs">Headlamp (camera)</Label>
+                                <span className="text-xs text-muted-foreground">{Math.round(settings.headlamp * 100)}%</span>
+                            </div>
+                            <Slider
+                                value={[settings.headlamp]}
+                                onValueChange={([v]) => updateSetting("headlamp", v)}
+                                min={0}
+                                max={2}
+                                step={0.05}
+                            />
+                        </div>
                     </div>
                 </div>
             </PopoverContent>
@@ -452,6 +514,7 @@ export function ThreeDModelViewer({
             ambient: THEME_LIGHTING[theme].ambient,
             mainLight: THEME_LIGHTING[theme].mainLight,
             fillLight: THEME_LIGHTING[theme].fillLight,
+            headlamp: THEME_LIGHTING[theme].headlamp,
         };
     }, [isDarkTheme]);
 
@@ -515,6 +578,11 @@ export function ThreeDModelViewer({
         );
     }
 
+    // Theme-aware viewport background. Using a mid-tone neutral in both
+    // themes gives the model consistent contrast — light mode no longer
+    // renders models as silhouettes against a white background.
+    const viewportBg = THEME_LIGHTING[isDarkTheme ? 'dark' : 'light'].backgroundColor;
+
     return (
         <div className="relative w-full h-full">
             <ThreeDErrorBoundary>
@@ -523,11 +591,12 @@ export function ThreeDModelViewer({
                     frameloop={mode === "navigate" ? "always" : (enablePerformanceMode ? "demand" : "always")}
                     dpr={[1, 2]} // Limit device pixel ratio for performance on high-res displays
                     onCreated={() => onLoadingComplete?.()}
-                    className="!bg-muted"
+                    style={{ background: viewportBg }}
                 >
                     <ambientLight intensity={lightingSettings.ambient} />
                     <directionalLight position={[10, 10, 5]} intensity={lightingSettings.mainLight} />
                     <directionalLight position={[-10, -10, -5]} intensity={lightingSettings.fillLight} />
+                    <HeadlampLight intensity={lightingSettings.headlamp} />
 
                     <Suspense fallback={null}>
                         <PartModel

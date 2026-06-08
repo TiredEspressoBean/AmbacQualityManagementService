@@ -7,7 +7,7 @@ export function useDeleteQualityReport() {
 
     return useMutation({
         mutationFn: (id: string) =>
-            api.api_ErrorReports_destroy(undefined, {
+            api.api_QualityReports_destroy(undefined, {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),

@@ -152,6 +152,26 @@ export const partsMutationKeys = {
     bulkIncrement: ["parts", "bulk-increment"] as const,
     bulkRollback: ["parts", "bulk-rollback"] as const,
     bulkSetStatus: ["parts", "bulk-set-status"] as const,
+    splitFromLot: ["parts", "split-from-lot"] as const,
+    advanceLot: ["parts", "advance-lot"] as const,
+    completeStep: ["parts", "complete-step"] as const,
+};
+
+export type PartSplitReason =
+    | "quarantine"
+    | "rework"
+    | "scrap";
+
+type SplitFromLotVariables = {
+    id: string;
+    reason: PartSplitReason;
+    rework_target_step_id?: string;
+    notes?: string;
+};
+
+type AdvanceLotVariables = {
+    work_order_id: string;
+    step_id: string;
 };
 
 const csrfHeaders = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" });
@@ -290,4 +310,87 @@ export const useBulkRollbackParts = () => {
 export const useBulkSetStatusParts = () => {
     const queryClient = useQueryClient();
     return useMutation(bulkSetStatusPartsMutationOptions(queryClient));
+};
+
+// -----------------------------------------------------------------------------
+// Lot-cohesion engine — split + privileged advance
+// -----------------------------------------------------------------------------
+
+export const splitPartFromLotMutationOptions = (queryClient: QueryClient) =>
+    mutationOptions<unknown, unknown, SplitFromLotVariables>({
+        mutationKey: partsMutationKeys.splitFromLot,
+        mutationFn: ({ id, reason, rework_target_step_id, notes }) =>
+            api.api_Parts_split_from_lot_create(
+                {
+                    reason,
+                    ...(rework_target_step_id ? { rework_target_step_id } : {}),
+                    ...(notes ? { notes } : {}),
+                } as never,
+                { params: { id }, headers: csrfHeaders() },
+            ),
+        onSuccess: () => invalidateAllParts(queryClient),
+        meta: { errorMessage: "Couldn't split part from lot", successMessage: "Part split from lot" },
+    });
+
+export const useSplitPartFromLot = () => {
+    const queryClient = useQueryClient();
+    return useMutation(splitPartFromLotMutationOptions(queryClient));
+};
+
+export const advanceLotMutationOptions = (queryClient: QueryClient) =>
+    mutationOptions<unknown, unknown, AdvanceLotVariables>({
+        mutationKey: partsMutationKeys.advanceLot,
+        mutationFn: ({ work_order_id, step_id }) =>
+            api.api_Parts_advance_lot_create(
+                { work_order_id, step_id } as never,
+                { headers: csrfHeaders() },
+            ),
+        onSuccess: () => invalidateAllParts(queryClient),
+        meta: {
+            errorMessage: "Couldn't advance lot",
+            successMessage: "Lot advancement evaluated",
+        },
+    });
+
+export const useAdvanceLot = () => {
+    const queryClient = useQueryClient();
+    return useMutation(advanceLotMutationOptions(queryClient));
+};
+
+type AdvanceLotResult = {
+    status: string;
+    reason?: string;
+    parts_advanced?: string[];
+    blockers_by_part?: Record<string, string[]>;
+    split_parts_advanced?: string[];
+    split_parts_blocked?: Record<string, string[]>;
+};
+
+/**
+ * Operator "Complete step" — the canonical advancement trigger.
+ *
+ * Calls `POST /api/Parts/{id}/complete_step/` which synchronously runs
+ * the gate via `try_advance_lot` and returns the result. The operator
+ * sees the outcome (advanced N steps / blocked with reasons) inline.
+ */
+export const completeStepMutationOptions = (queryClient: QueryClient) =>
+    mutationOptions<AdvanceLotResult, unknown, string>({
+        mutationKey: partsMutationKeys.completeStep,
+        mutationFn: (partId) =>
+            api.api_Parts_complete_step_create(undefined as never, {
+                params: { id: partId },
+                headers: csrfHeaders(),
+            }) as Promise<AdvanceLotResult>,
+        onSuccess: () => invalidateAllParts(queryClient),
+        meta: {
+            errorMessage: "Couldn't complete step",
+            // Per-call onSuccess handler surfaces the structured result;
+            // the global meta toast just confirms the request landed.
+            successMessage: "Step submitted",
+        },
+    });
+
+export const useCompleteStep = () => {
+    const queryClient = useQueryClient();
+    return useMutation(completeStepMutationOptions(queryClient));
 };

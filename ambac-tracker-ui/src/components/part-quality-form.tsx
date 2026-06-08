@@ -228,7 +228,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
             // Create the quality report first
             // FormValues includes file/classification used for separate doc upload — cast to API request shape.
             // eslint-disable-next-line local/no-double-cast-via-unknown -- FormValues extends the API shape with file/classification UI fields; cast strips them for the API call
-            const createdReport = await api.api_ErrorReports_create(values as unknown as Parameters<typeof api.api_ErrorReports_create>[0], {
+            const createdReport = await api.api_QualityReports_create(values as unknown as Parameters<typeof api.api_QualityReports_create>[0], {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             });
 

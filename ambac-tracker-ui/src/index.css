@@ -260,3 +260,27 @@
 .react-flow__attribution {
   display: none !important;
 }
+
+/* DWI editor — highlight the currently-selected custom node so the engineer
+   knows which one drives the properties panel. ProseMirror adds the
+   `ProseMirror-selectednode` class to NodeSelections. */
+.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+
+/* Operator runtime — pulse a missing required capture node when the
+   Confirm & next button is tapped with unfilled requireds. The bar
+   button stays enabled (design rec — never silently disable for
+   operators); instead we scroll the first incomplete field into view
+   and pulse it briefly so the operator knows where to look. */
+@keyframes dwi-pulse-missing-kf {
+    0%   { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0.70); }
+    50%  { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0.00); }
+    100% { box-shadow: 0 0 0 0   rgba(245, 158, 11, 0.00); }
+}
+.dwi-pulse-missing {
+    border-radius: 0.5rem;
+    animation: dwi-pulse-missing-kf 0.8s ease-out 2;
+}

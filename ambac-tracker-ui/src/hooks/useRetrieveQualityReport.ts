@@ -6,7 +6,7 @@ type QualityReportsResponse = Schema<"QualityReports">;
 
 export const retrieveQualityReportOptions = (id: string | undefined) => queryOptions({
     queryKey: ["quality-report", id] as const,
-    queryFn: () => api.api_ErrorReports_retrieve({ params: { id: id! } }) as Promise<QualityReportsResponse>,
+    queryFn: () => api.api_QualityReports_retrieve({ params: { id: id! } }) as Promise<QualityReportsResponse>,
 });
 
 export const useRetrieveQualityReport = (id: string | undefined) => {

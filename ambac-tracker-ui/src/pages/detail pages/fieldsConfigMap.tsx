@@ -879,7 +879,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     },
                     createSystemInfoSection(['created_at']),
                 ],
-                apiPath: 'api_ErrorReports_retrieve',
+                apiPath: 'api_QualityReports_retrieve',
                 relatedModels: [
                     {
                         modelType: 'steps',
