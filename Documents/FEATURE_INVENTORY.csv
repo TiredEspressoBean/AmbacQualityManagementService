@@ -29,7 +29,7 @@ QMS,CAPA,Completion percentage,completion_percentage property,GET /api/CAPAs/{id
 QMS,CAPA,CAPA statistics,N/A,GET /api/CAPAs/stats/,capa-stats-cards.tsx + QualityDashboardPage,Complete,100%,Standard,Pro,Partial,Partial,Partial,Partial,No,No,No,Partial,No,Yes,No,Yes,Yes,Yes,Yes,
 QMS,CAPA,Link to quality reports,quality_reports M2M field,Included in serializer,Links in UI,Complete,100%,Standard,Pro,Yes,Yes,Yes,Yes,No,Partial,No,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
 QMS,CAPA,Link to dispositions,dispositions M2M field,Included in serializer,Links in UI,Complete,100%,Standard,Pro,Partial,Yes,Yes,Partial,No,Partial,No,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
-QMS,Quality Records,Create quality report,QualityReports model,POST /api/ErrorReports/,PartQualityForm,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,No,Partial,Partial,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
+QMS,Quality Records,Create quality report,QualityReports model,POST /api/QualityReports/,PartQualityForm,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,No,Partial,Partial,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
 QMS,Quality Records,Pass/Fail status,status field (PASS/FAIL/PENDING),Status updates,Status shown in forms,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,No,Partial,Partial,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
 QMS,Quality Records,Link errors/defects,errors M2M to QualityErrorsList,Error selection in API,Error type picker,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,No,Partial,Partial,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
 QMS,Quality Records,Operator tracking,operator M2M field,Operator assignment,Operator selection,Complete,100%,Core,Lite,Yes,Yes,Yes,Partial,No,Partial,Partial,Yes,No,Yes,No,Yes,Yes,Yes,Yes,
@@ -120,7 +120,7 @@ QMS,PPAP,6. Process FMEA,Can store as document,Document upload,DocumentsEditorPa
 QMS,PPAP,7. Control Plan,Can store as document,Document upload,DocumentsEditorPage,Partial,30%,Stretch,Pro,Yes,Yes,Yes,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,Element 7 - no structured model
 QMS,PPAP,8. MSA / Gage R&R,Missing,Missing,Missing,Missing,0%,Stretch,Enterprise,Partial,Yes,Partial,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,GAP - no study workflow
 QMS,PPAP,9. Dimensional Results,MeasurementResult + SPC,GET /api/spc/data/,SpcPage,Complete,100%,Stretch,Pro,Partial,Yes,Partial,No,No,No,No,No,No,No,No,Yes,Yes,Yes,Yes,Element 9 - full SPC
-QMS,PPAP,10. Material/Performance Test Results,QualityReports exist,CRUD /api/ErrorReports/,QualityReportsEditorPage,Partial,50%,Stretch,Pro,Yes,Yes,Yes,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,Element 10 - no cert linking
+QMS,PPAP,10. Material/Performance Test Results,QualityReports exist,CRUD /api/QualityReports/,QualityReportsEditorPage,Partial,50%,Stretch,Pro,Yes,Yes,Yes,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,Element 10 - no cert linking
 QMS,PPAP,11. Initial Process Studies (Cpk),Full SPC with Cpk/Ppk,GET /api/spc/capability/,SpcPage,Complete,100%,Stretch,Pro,Partial,Yes,Partial,No,No,No,No,No,No,No,No,Yes,Yes,Yes,Yes,Element 11 - complete
 QMS,PPAP,12. Qualified Lab Documentation,Can store as document,Document upload,DocumentsEditorPage,Partial,40%,Stretch,Pro,Yes,Yes,Yes,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,Element 12
 QMS,PPAP,13. Appearance Approval Report,Missing,Missing,Missing,Missing,0%,Stretch,Pro,Partial,Yes,Partial,No,No,No,No,No,No,No,No,No,Yes,Yes,Partial,GAP - no structured AAR form
@@ -197,7 +197,7 @@ MES,Part Types,ID prefix,ID_prefix field,Prefix config,Prefix input,Complete,100
 MES,Part Types,ERP linkage,ERP_id field,ERP ID,ERP input,Complete,100%,Standard,Lite,Yes,Yes,Yes,No,Partial,Yes,Partial,No,Partial,Yes,Partial,Yes,Yes,Yes,Yes,
 MES,Operator Station,QA work order view,N/A,GET /api/WorkOrders/ filtered,QaWorkOrderDetailPage,Complete,100%,Core,Lite,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
 MES,Operator Station,Part selection,Part dropdown/list,Parts by WO endpoint,QaFormSection,Complete,100%,Core,Lite,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
-MES,Operator Station,QA form entry,QualityReports creation,POST /api/ErrorReports/,PartQualityForm,Complete,100%,Core,Standard,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
+MES,Operator Station,QA form entry,QualityReports creation,POST /api/QualityReports/,PartQualityForm,Complete,100%,Core,Standard,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
 MES,Operator Station,Measurement entry,MeasurementResult creation,With QualityReport,Measurement fields,Complete,100%,Core,Standard,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
 MES,Operator Station,Documents at station,Documents by scope,GET /api/scope/,QaRightPanel,Complete,100%,Standard,Standard,Partial,Yes,Yes,No,Partial,Yes,Yes,Yes,Yes,Yes,Partial,Yes,Yes,Yes,Yes,
 MES,Operator Station,3D model at station,ThreeDModel by part type,Model serving,three-d-model-viewer,Complete,100%,Differentiator,Premium,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,DIFFERENTIATOR

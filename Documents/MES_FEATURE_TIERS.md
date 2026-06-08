@@ -1,6 +1,14 @@
 # MES Feature Tiers
 
-**Last Updated:** March 24, 2026
+**Last Updated:** June 1, 2026
+
+> **June 2026 audit note:** Standard and Pro tiers were re-verified per-section against the codebase, and the progress totals were recounted from scratch. Markers updated:
+> - **Standard §5** Step execution measurements: [~] → [x] (full backend + step-level integration).
+> - **Standard §16** ERP integration push: [~] → [ ] (no real-time sync; ERP_id fields alone don't constitute API-complete).
+> - **Pro §19** ECR/ECN change control: [ ] → [~] (Phase 1 `ProcessChangeRequest`/`ProcessChangeOrder`/`ProcessChangeNotice` infrastructure with WO migration disposition shipped May 2026; Phase 2 document-change artifacts deferred).
+> - **Pro §22** Escalation description enriched to reflect Phase 4 stateful escalation engine (June 2026).
+>
+> **Counts correction:** the prior summary table (Standard `51/22/43`, Pro `64/13/20`) understated Done by ~12 in Standard and ~1 in Pro because the totals row hadn't been kept in sync with marker edits over time. The corrected totals shift Standard from 44% → 54% strict (71% including API-ready) and Pro from 66% → 67% strict (80% including API-ready). With scheduling-derived features stripped, Standard reaches ~70% strict / ~81% including API-ready. No individual feature marker changed as a result of the recount — only the row sums were corrected.
 
 This document categorizes Manufacturing Execution System (MES) features by capability level. Each tier is **cumulative** - it includes all features from previous tiers plus new additions.
 
@@ -170,7 +178,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Next step routing - *Decision-based routing via StepEdge with conditions*
 - [x] First Piece Inspection - *FPIRecord with 4 scopes: PER_WORK_ORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR*
 - [~] Step override workflow - *Override types: MISSING_QA, MEASUREMENT_FAIL, FPI_FAIL, TRAINING_EXPIRED*
-- [~] Step execution measurements - *100% capture not tied to sampling*
+- [x] Step execution measurements - *StepExecutionMeasurement model + StepMeasurementRequirement integrated at step level (`qms.py:2390`, `mes_lite.py:342`)*
 - [~] Controlled rollback - *rollback_requires_approval on Steps*
 - [~] Step requirements - *10 types: measurement, document, signoff, training, calibration, fpi, qa_approval, etc.*
 
@@ -465,7 +473,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 
 ### 🔵 Standard (+3 = 5 total)
 *Includes all Lite, plus:*
-- [~] ERP integration - *ERP_id fields exist, no real-time sync*
+- [ ] ERP integration - *ERP_id fields exist on most models, but no real-time sync, no push service, no event subscriber*
 - [ ] Report completions to ERP - *Send WO completion with quantities back*
 - [ ] Webhook on WO events - *Fire webhooks on status changes, completions, quality events*
 
@@ -509,7 +517,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Security classification (5-level: PUBLIC/INTERNAL/CONFIDENTIAL/RESTRICTED/SECRET)
 - [x] Document audit trail
 - [x] Document statistics
-- [ ] ECR/ECN change control
+- [~] ECR/ECN change control - *Phase 1 ships `ProcessChangeRequest` / `ProcessChangeOrder` / `ProcessChangeNotice` (May 2026) — process-change artifacts with approval templates + WO migration disposition. Document-change artifacts (DCR/DCO/DCN) deferred to Phase 2 via the same abstract bases.*
 
 ---
 
@@ -571,7 +579,7 @@ Legend: [x] = Implemented | [~] = API complete, needs UI | [ ] = Not yet impleme
 - [x] Approval responses
 - [x] Delegation
 - [x] Signature capture with meaning
-- [x] Escalation (configurable days + escalation target)
+- [x] Escalation (configurable days + escalation target) - *Phase 4 (June 2026): `EscalationPolicy` / `EscalationStep` / `EscalationInstance` with stateful re-escalation, ack tracking, and NotificationRule chain binding*
 - [x] My pending approvals
 
 ### 🟠 Premium (+2 = 12 total)
@@ -786,15 +794,35 @@ Integration and connectivity features are platform concerns, not MES functionali
 
 ### Progress by Tier (features new at each tier)
 
-| Tier | Done | API Ready | Missing | Total | Progress |
-|------|------|-----------|---------|-------|----------|
-| **Lite** | 80 | 3 | 0 | 83 | 96% |
-| **Standard** | 50 | 24 | 42 | 116 | 43% |
-| **Pro** | 64 | 13 | 20 | 97 | 66% |
-| **Premium** | 18 | 0 | 22 | 40 | 45% |
-| **Enterprise** | 5 | 2 | 29 | 36 | 14% |
+| Tier | Done | API Ready | Missing | Total | Progress (strict) | Progress (incl. API-ready) |
+|------|------|-----------|---------|-------|--------------------|---------------------------|
+| **Lite** | 81 | 2 | 0 | 83 | 98% | 100% |
+| **Standard** | 63 | 19 | 34 | 116 | **54%** | **71%** |
+| **Pro** | 65 | 13 | 19 | 97 | **67%** | **80%** |
+| **Premium** | 18 | 0 | 22 | 40 | 45% | 45% |
+| **Enterprise** | 5 | 2 | 29 | 36 | 14% | 19% |
 
-> Progress = Complete [x] features only. Standard is 43% because expanded scheduling (46 features), labels/scanning (8), WO lifecycle gaps (10), material traceability (5), shop floor execution (3), and reporting (5) are mostly unbuilt. Pro includes outside processing (4), compliance (3), quality reports/certs (4), and audit management (2) as gaps.
+> Progress (strict) = Complete [x] features only. Progress (incl. API-ready) = [x] + [~], treating "API complete, needs UI" as effectively done (frontend remaining).
+
+### Standard with scheduling stripped
+
+Section 14 scheduling contributes 12 features at Standard tier (1 [x], 4 [~], 7 [ ]). But scheduling-derived features — reports that benchmark against a plan (on-time, cycle time, throughput, labor efficiency, schedule vs actual), material pre-release gates (availability check, reservation), and the WAITING_FOR_MATERIAL status — also depend on scheduling existing as a feature. Broader scopes additionally strip downtime / OEE telemetry that feeds the scheduling adherence story.
+
+| Scope | Done | API | Missing | Total | Strict | Incl. API |
+|---|---|---|---|---|---|---|
+| Strip §14 only | 62 | 15 | 27 | 104 | 60% | 74% |
+| Strip §14 + sched-derived reports + material gating + WAITING | 62 | 15 | 19 | 96 | 65% | 80% |
+| Strip §14 + above + downtime/OEE cluster | 62 | 10 | 17 | 89 | 70% | 81% |
+
+Pro's scheduling-adjacent surface is small (just 3 §14 items); Pro stays at ~68% strict / ~82% incl. API across all scopes.
+
+### What remains in Standard (scheduling-stripped, scope C)
+
+The 17 genuinely-missing items: WO cloning, templates, partial close, closure checklist, yield tracking (§1); 5 Label print/scan UI items (§7); operator acknowledgment, add-step-mid-process (§8); full genealogy, incoming material inspection (§12); ERP integration push, report completions to ERP, webhook on WO events (§16). Plus 2 OEE display items stripped under broad C scope but still real work.
+
+The 10 [~] (API-complete, needs UI) items: Section 5 step workflow polish (override, rollback, requirements — 3); Section 6 work center editor (1); skill verification enforcement (§8); material lot tracking + shelf-life UI (§12); Parts genealogy + lot merge (§3); rework loops (§4); plus the §14 [~] items if Section 14 not stripped.
+
+> **June 2026 counts correction:** the table above is from a fresh per-section count. The prior table (`Standard 51/22/43`, `Pro 64/13/20`) understated Done by ~12 in Standard and ~1 in Pro because it hadn't been reverified against the markers when sections were edited. The corrected totals do not change any individual marker — only the totals row sums them correctly.
 
 ### Out of Scope for the MES Module
 
@@ -822,11 +850,11 @@ These capabilities are not part of the MES tier ladder. Some belong permanently 
 ## Positioning
 
 **Today (372 features across 35 sections):**
-- Lite MES: 96% complete (83 features, 80 done) — effectively shippable
-- Standard MES: 43% complete (116 new features; quality/equipment ops mostly done, scheduling/labels/WO lifecycle/material gaps)
-- Pro MES: 66% complete (97 new features; CAPA/SPC/sampling/approvals done, PPAP/audit/outside processing/compliance gaps)
+- Lite MES: 98% complete (83 features, 81 done) — effectively shippable
+- Standard MES: 54% complete strict / 71% including API-ready (116 new features). With scheduling stripped: ~70% strict / ~81% incl. API-ready.
+- Pro MES: 67% complete strict / 80% incl. API-ready (97 new features; CAPA/SPC/sampling/approvals/training/calibration done; PPAP/audit/outside processing/compliance gaps)
 - Premium: 45% complete (40 new features; 3D viz/AI/advanced workflows done, CP-SAT scheduling unbuilt)
-- Enterprise: 14% (36 features, not target market)
+- Enterprise: 14% strict / 19% incl. API-ready (36 features, not target market)
 - Reman Add-on: API complete, needs UI
 - Platform: 5 integrations complete (REST API, Email, Azure Blob, CSV, HubSpot)
 

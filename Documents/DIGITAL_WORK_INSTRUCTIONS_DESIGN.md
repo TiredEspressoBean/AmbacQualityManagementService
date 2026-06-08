@@ -994,3 +994,416 @@ Acknowledged but not addressed in this scope. Customer-visible if a real use cas
 - **`SubstepResponse.unique_together` for team-based steps** — keep `(step_execution, substep, node_id)` as-is. `StepExecution` is per-part (`mes_lite.py:1141`: `part = ForeignKey('Parts')`), so per-part captures already work naturally — each part has its own `StepExecution` row, so different parts never collide on the composite key. The constraint only fires on accidental dual-tab / dual-tablet writes on the same part execution, where first-write-wins + visible 400 is the right behavior. If per-part captures from a single execution are ever needed (e.g. batch operations where one execution row handles multiple parts — not the current model), the fix is adding a nullable `part` FK rather than relaxing the constraint.
 - **`generateHTML()` output quality for PDF / email** — each custom node's `renderHTML()` currently produces minimal text fallback. Either improve `renderHTML()` per node, or accept that PDF rendering goes through a different path. Decide before building the PDF export workstream.
 - **`SubstepResource` UI placement** — equipment / tool / PPE list could be (a) a custom node inside the substep `body_blocks`, or (b) a separate panel rendered alongside the substep view. Data model leaves both options open; pick at production-UI time.
+
+---
+
+## Implementation Status (live state — kept current as work lands)
+
+### Shipped end-to-end (backend + frontend)
+
+**Phase 1 — Substep core models**: Substep, SubstepCompletion, SubstepResource, SubstepTranslation + `Steps.sequencing_mode` ✓
+
+**Phase 2 — Per-node operator state**: SubstepGateCompletion, SubstepResponse ✓
+
+**Phase 3 — Two-tier capture**: `Substep.is_inspection_point` + `services/qms/inline_capture.py::record_dwi_measurement` (Tier 1 always, Tier 2 conditional) + SPC UNION adapter across `MeasurementResult` and `StepExecutionMeasurement`. `ProcessChangeRequest.target_substep` deferred (constraint restructuring; not on critical path) ✓
+
+**DRF surface**: `SubstepViewSet` + 5 sibling viewsets (Resource / Translation / Completion / GateCompletion / Response) registered under `/api/Substeps/` etc. Custom action `POST /api/Substeps/reorder/` does atomic two-phase reorder inside a transaction to dodge the `(step, order)` unique constraint. ✓
+
+**Authoring frontend** (`/editor/processes/$processId/steps/$stepId/substeps`):
+- 12 custom TipTap nodes extracted to `src/components/dwi/nodes/*` (MeasurementSpec, MeasurementInput, Callout, Media, AttestationCheckpoint, TextInput, ChoiceInput, PhotoCapture, ScanInput, FileCapture, Timer, ComputedValue)
+- Shared infrastructure: `OperatorResponseContext`, `NodeCard`, `AuthoringPopover` (legacy compat — pass-through now), `useDebouncedAttrs`, attr-input rows, `FileLikeCapture`, mock `MeasurementDefinitions` (placeholder until autocomplete lands)
+- Extension list at `src/lib/dwi/extensions.ts`; samples at `src/lib/dwi/samples.ts`
+- **Properties-panel pattern** (selection-driven, right pane, sticky, replaces popover) — `src/components/dwi/NodePropertiesPanel.tsx`
+- Save-Draft model (global header button, no autosave); reorder via drag is a draft change folded into the same global save; `beforeunload` warning when unsaved
+- Drag-to-reorder with optimistic UI; commit via `POST /api/Substeps/reorder/`
+- Navigation: React Flow's `StepEditorPanel` now has a "Substeps" row with a drill-down arrow into the substep editor; substep editor has a "Back to process flow" link on the header
+- Diagnostic: `window.__errorLog()` captures both browser-level (`error`, `unhandledrejection`) and React Query queryCache / mutationCache errors with the raw error object stashed for inspection — useful for surfacing Zodios validation failures that otherwise stay inside query state
+
+**DRAFT-only authoring guard** (Phase 4 prep — pulled forward):
+- `Steps.is_editable` property — True iff every consuming Process (via `ProcessStep`) is in DRAFT; empty consumer list also editable. Substep delegates to `step.is_editable`.
+- `SubstepViewSet` enforces via `_assert_step_editable` on create / partial_update / update / destroy / reorder. Returns `PermissionDenied` with a message pointing the user at the PCR flow.
+- `SubstepSerializer.is_editable` exposed read-only so the UI flips to read-only when the parent Process is APPROVED / DEPRECATED.
+- Read-only UX: header shows "Read-only · Process not in DRAFT" badge; Save / Discard / Add / drag / per-row title / flag switches / delete / TipTap body editor are all disabled.
+
+**Naming cleanup**: `/api/ErrorReports/` URL alias renamed to `/api/QualityReports/` across backend router, schema, generated TS client, all frontend hooks (`useQualityReports`, etc.), `ModelEditorPage` model-name map, and `Documents/FEATURE_INVENTORY.csv`. Clean break — no backward-compat redirect (we own all producers and consumers).
+
+### Decisions captured (this iteration, not yet shipped)
+
+**Form-architecture choice for inspection / QA forms: Option A + door open for C.**
+
+The system already has `QualityReports` as the formal inspection record (it's not separately also called "ErrorReports" — that was a naming bug, now fixed). The current DWI capture nodes only cover *some* `QualityReports` fields (measurement values via Tier 2 promotion). To support full QA-form capture inside a substep:
+
+- **Add structured-capture nodes** that map 1:1 to `QualityReports` fields the existing nodes don't cover. The "QA form" then *is* a substep with these nodes + `is_inspection_point=True`. The existing `record_dwi_measurement` service already creates one `QualityReports` per `(step_execution, substep)`, so all these nodes contribute to the same report (idempotent).
+- New node types planned:
+  - `OperatorsField` — multi-select users → `QualityReports.operators` M2M
+  - `MachineField` — FK select → `QualityReports.machine`
+  - `ErrorTypesField` — multi-select with severity / location → `QualityReportDefect` rows
+  - `QualityStatusField` — PASS / FAIL / PENDING → `QualityReports.status`
+  - `InspectionSignatures` — detected_by + verified_by signoff
+  - `PartAnnotation` — embeds the existing `PartAnnotator` 3D widget; writes to `HeatMapAnnotation`, links to the substep's `QualityReports`
+- Templates (option C) are a deferred UX layer on top — engineers will be able to "new substep → from template → QA form" to pre-fill a substep with the right node skeleton. Just don't paint the model into a corner that prevents templates later.
+- The work order page's **QA Forms tab** dissolves: that URL becomes the operator-runtime view, and operators reach inspection captures through DWI substeps rather than a parallel standalone form.
+
+**`Substep.kind` enum was considered and rejected** as architectural over-fitting. Substeps stay composable; the "kind" of a substep is emergent from the nodes it contains + `is_inspection_point`.
+
+**QualityReports equipment + personnel reshaped to M2M-with-role.** The legacy single `machine` FK and `detected_by` / `operators` / `verified_by` trio couldn't express cell ops, multi-station Steps, fixture/tool interactions, or the broader cast (inspector / witness / trainer / trainee). Two new through tables added (migration `0055_add_qualityreport_equipment_personnel_roles`):
+- `QualityReportEquipment(quality_report, equipment, role, notes)` with `role ∈ {PRODUCTION, FIXTURE, TOOL, GAUGE, OTHER}` and a unique `(quality_report, equipment, role)` constraint.
+- `QualityReportPersonnel(quality_report, user, role, signed_at, notes)` with `role ∈ {DETECTED_BY, OPERATOR, VERIFIED_BY, INSPECTOR, WITNESS, TRAINER, TRAINEE}` and a unique `(quality_report, user, role)` constraint.
+
+The migration backfills existing data (machine FK → PRODUCTION row; detected_by → DETECTED_BY; verified_by → VERIFIED_BY; each operators M2M row → OPERATOR). Legacy fields are left in place during the transition window with DEPRECATED help_text so readers can migrate at their own pace; new canonical-read properties (`primary_machine`, `primary_detector`, `primary_verifier`, `operator_users`) prefer the new shape and fall back to the legacy field. Removal of the legacy fields is a follow-up once all readers and writers are switched.
+
+The structured-capture nodes (`MachineField`, `OperatorsField`, `InspectionSignatures`) will write to the new through tables via the inspection capture endpoint when operator runtime lands. Read-only nested serializer fields (`equipment_links`, `personnel_links`) are already on the API so the UI can render the new shape today.
+
+**In-process check cadence = sampling engine.** `Substep.sampling_rule` (already a field) is the runtime visibility gate. No new time-based cadence field — sampling rules carry the semantics. Two-axis model:
+
+| | Always show | Sampled cadence |
+|---|---|---|
+| `is_inspection_point=False` | Work instruction | **In-process check** |
+| `is_inspection_point=True` | Tollgate | Sampled tollgate (AQL) |
+
+Runtime logic to consult `Substep.sampling_rule` for visibility is not yet wired (operator-runtime phase).
+
+**Authoring UX: properties panel, not popover.** Industry analog: Tulip, FactoryLogix, no-code form builders. Selected-node ring + sticky panel are in. `AuthoringPopover` is reduced to a click-affordance wrapper for back-compat — the click selects the atom node, the right pane renders the form.
+
+**SPA-aware navigation guard.** `beforeunload` only catches browser unload. In-app navigation (e.g. the "Back to process flow" link) needs to confirm before discarding unsaved changes. Wire into TanStack Router transitions.
+
+### Day-one work list (ordered)
+
+1. ~~**DRAFT-only guard**~~ ✓ Shipped above.
+2. ~~**In-app SPA nav warning**~~ ✓ `useBlocker` from `@tanstack/react-router` wired in `SubstepEditorPage`; fires a `window.confirm` when `hasUnsavedChanges` and the user tries to navigate away (back link, sidebar, programmatic `navigate()`). Complements the existing `beforeunload` for browser close/refresh.
+3. ~~**Structured-capture nodes**~~ ✓ Five new nodes shipped (`QualityStatusField`, `EquipmentRolesField`, `PersonnelRolesField`, `InspectionSignatures`, `ErrorTypesField`). Each follows the established Node.create + View + EditForm + sample pattern, registered in extensions / samples / NodePropertiesPanel / spike toolbar. Authoring forms use the properties-panel pattern. Operator-side responses land in `OperatorResponseContext` keyed by `node_id`; backend persistence wires up in the operator-runtime phase.
+
+   **Kiosk-mode forward-compatibility (deferred wiring):** the system isn't kiosk-ready yet, but several of these nodes have obvious auto-fill candidates once a session is bound to a kiosk:
+   - `InspectionSignatures` — current logged-in user prefilled (already reads `useAuthUser`)
+   - `EquipmentRolesField` — kiosk's bound machine prefilled with `role=PRODUCTION`
+   - `PersonnelRolesField` — current operator prefilled as `OPERATOR`
+   - `MeasurementInput` — equipment FK on associated measurement auto-bound to kiosk gauge
+   - `QualityStatusField` — could default to PASS pending operator action, depending on workflow
+
+   The runtime layer (not the nodes themselves) will read kiosk session state and pre-seed `OperatorResponseContext` before the substep renders. Nodes don't need to know they're being prefilled — that's a clean separation. When kiosk lands, add a `KioskAutoFillProvider` above the operator-runtime that hydrates the response context from session bindings.
+
+   **One-click QA template ("Insert all required elements"):** an engineer authoring an inspection substep no longer has to drop five nodes by hand. Two new affordances:
+   - **Toolbar bundle insert** in `Toolbar` (spike + production substep editor) — `QUALITY_REPORT_BUNDLE` from `src/lib/dwi/samples.ts` is a pre-composed list of the minimum capture set (`QualityStatusField`, `EquipmentRolesField`, `InspectionSignatures`, `ErrorTypesField`). Inserting clones each entry with a fresh `node_id` to avoid collisions.
+   - **"Add inspection substep" button** in `SubstepEditorPage` next to "Add substep" — creates a new substep with `is_inspection_point=true` and the bundle pre-seeded into the body. One click → a substep ready for QA capture.
+
+   Templates beyond the QA bundle are deferred; the pattern (a named sample list + an "insert template" button) is established so future templates (first-piece inspection, final QA, dimensional check) are mechanical to add.
+4. ~~**Signature node plumbing**~~ ✓ Shared `SignaturePayload` type (`src/components/dwi/shared/signature.ts`): `{ user_id, username, signed_at, data_uri? }`. Both `AttestationCheckpoint` (signature kind) and `InspectionSignatures` now capture this payload via `useAuthUser` rather than a bare timestamp string. The `data_uri` field is reserved for a future canvas widget — when (if) a Base64 PNG stroke is needed, it drops in without schema changes. Operator-runtime persistence writes the same payload to `QualityReportPersonnel` (inspection context) or `SubstepResponse` (non-inspection context) through one code path. Password re-verification (CAPA-style) is still open — design doc "Still Open" #2.
+5. ~~**`PartAnnotation` node**~~ ✓ Wraps the existing `PartAnnotator` 3D widget. Engineer picks the model_id (from `useRetrieveThreeDModels`) + label + required. Operator-side embeds `PartAnnotator` directly when a part is bound — that widget owns its own persistence (writes `HeatMapAnnotation` rows linked to the part and any pending `QualityReports` ids). Authoring spike + any context where no part is bound shows a placeholder card. Operator runtime binds `part_id` / `work_order_id` / `quality_report_id` via the new `PartContext` provider at `src/components/dwi/shared/PartContext.tsx`.
+6. ~~**Operator runtime page (day-one cut)**~~ ✓ New route `/operator/steps/$stepId/substeps?part=&workOrder=&execution=` mounted on `OperatorSubstepRuntimePage`. Lists the step's substeps in order, renders each through the new `SubstepOperatorView` (single-column read-only TipTap with capture nodes interactive), wraps the page in `PartContext` + per-substep `OperatorResponseContext`. Captures aggregate into a side pane for visibility. The existing work order page's QA Forms tab dissolution is follow-up work — the route stands alone for now so we can validate the UX before swapping the tab.
+
+7. ~~**Backend persistence wiring**~~ ✓ Full operator submit path live end-to-end.
+   - Service module `Tracker/services/dwi/operator_capture.py::submit_substep` — one transaction that fans the operator's submit payload out into the right writes per node kind:
+     - All capture kinds → `SubstepResponse` row (upsert on `(step_execution, substep, node_id)` so re-submits replace rather than duplicate)
+     - `MeasurementInput` → existing `record_dwi_measurement` (Tier 1 always, Tier 2 via promotion when inspection-point)
+     - `QualityStatusField` → `QualityReports.status`
+     - `EquipmentRolesField` → `QualityReportEquipment` rows
+     - `PersonnelRolesField` → `QualityReportPersonnel` rows
+     - `InspectionSignatures` → `QualityReportPersonnel` rows with role `DETECTED_BY` / `VERIFIED_BY` + `signed_at`
+     - `AttestationCheckpoint` (signature mode) → `QualityReportPersonnel` row with role `WITNESS`
+     - `ErrorTypesField` → `QualityReportDefect` rows
+     - `PartAnnotation` → marker `SubstepResponse` only (the existing `PartAnnotator` widget already writes `HeatMapAnnotation` directly)
+   - Service closes with an upserted `SubstepCompletion` row marking the substep done.
+   - API: `POST /api/Substeps/{id}/submit/` action on `SubstepViewSet`. Body shape documented in the service module docstring.
+   - Frontend: `useSubmitSubstep` mutation hook + `buildCaptures()` helper at `src/lib/dwi/build-captures.ts` walks the substep's `body_blocks` to translate raw `OperatorResponseContext` values into the typed `captures` array. Operator runtime page calls it when the user hits Submit; toast surfaces `{response_count, measurement_count, quality_report_id}`.
+   - `SubstepResponseKind` enum extended with new kinds: `ATTESTATION`, `STATUS`, `EQUIPMENT_ROLES`, `PERSONNEL_ROLES`, `SIGNATURES`, `DEFECTS`, `ANNOTATION` (migration `0058_extend_substep_response_kinds`).
+   - drf-spectacular schema cleaned: added `@extend_schema_field` + return-type annotations to `SubstepCompletionSerializer.get_completed_by_name`, `SubstepGateCompletionSerializer.get_completed_by_name`, `SubstepResponseSerializer.get_responded_by_name`. **All 9 actionable warnings resolved**; remaining 2 are allauth's own self-emitted deprecation noise (third-party — not ours to fix).
+
+### Subsequent round — QMS shape refactor + operator runtime redesign + polish
+
+The work below landed after the day-one list closed.
+
+**QualityReports schema refactor — M2M-with-role through tables** (migration `0055_add_qualityreport_equipment_personnel_roles`):
+- `QualityReportEquipment(quality_report, equipment, role, notes)` with `role ∈ {PRODUCTION, FIXTURE, TOOL, GAUGE, OTHER}`. Replaces the single `machine` FK so cell ops + multi-station Steps express their equipment-roster correctly. Unique on `(report, equipment, role)`.
+- `QualityReportPersonnel(quality_report, user, role, signed_at, notes)` with `role ∈ {DETECTED_BY, OPERATOR, VERIFIED_BY, INSPECTOR, WITNESS, TRAINER, TRAINEE}`. Replaces the flat `detected_by` / `operators` M2M / `verified_by` trio with one role-tagged shape. Unique on `(report, user, role)`.
+- Migration backfills existing data (legacy `machine` FK → `PRODUCTION` row, `detected_by` → `DETECTED_BY` row, etc.), idempotent via `get_or_create`.
+- Legacy fields kept during transition with DEPRECATED help_text. Canonical-read properties (`primary_machine`, `primary_detector`, `primary_verifier`, `operator_users`) read the new shape with fallback to legacy.
+- Read-only `equipment_links` / `personnel_links` nested fields exposed on `QualityReportsSerializer` so frontend can render the new shape without write-side wiring.
+
+**`ErrorReports` → `QualityReports` URL alias rename**:
+- `router.register(r'QualityReports', QualityReportViewSet, basename='QualityReports')` across both registrar sites.
+- Frontend hooks + components migrated from `api_ErrorReports_*` to `api_QualityReports_*` (8 files).
+- `Documents/FEATURE_INVENTORY.csv` updated to match.
+- Clean break — no backward-compat alias. All producers and consumers are in-house.
+
+**`Substep.scope` + `BatchExecution` model** (migration `0059_dwi_batch_execution_and_substep_scope`):
+- `Substep.scope = SAMPLED | BATCH` (default `SAMPLED`). The realization that simplified the model: PER_PART = PER_SAMPLE with 100% rule. PER_PART, PER_BATCH, and PER_SAMPLE collapsed into two values.
+- `BatchExecution(work_order, step, parts M2M, started_by, started_at, sealed_at, completed_at, notes)`. Per-batch analog of `StepExecution`. Created at runtime when an operator starts a batch on a Step with any BATCH-scope substep. Parts can be added until the first BATCH substep fires (`sealed_at` set), locked after.
+- `SubstepCompletion` and `SubstepResponse` both gained nullable `batch_execution` FK + CheckConstraint enforcing "exactly one of step_execution / batch_execution is set." Unique constraints split by scope path. Per-part and per-batch substep audit rows now coexist cleanly.
+- Backend `submit_substep` service still takes only `step_execution`; **`BatchExecution` write path is the next iteration** (frontend operator runtime is still singleton).
+
+**Operator runtime — Tulip-style player redesign**:
+- One substep per screen with full-bleed center pane (max-width 720px tablet) — replaces the scrolling stacked list
+- Top progress rail with substep dots (filled / current / pending), jumps within step, end-of-step review chip
+- Bottom fixed action bar: `Back` (h-14 ghost) + state caption + primary `Confirm & next` (h-14 wide), `Confirm & review` on last substep
+- Per-substep client confirm (sealed in `confirmedIds` set) + auto-advance; end-of-step review screen lists each substep with capture count and Edit affordance; `Complete step` fires the server flush
+- Required-field validation via `findMissingRequired()` — walks the substep body, applies kind-specific "satisfied" rules (text non-empty, timer ran, computed has all vars, signature signed, status picked, M2M nodes meet `min_rows`, etc.), blocks Confirm and lists missing labels in the action bar
+- URL state: `?at=<idx>` carries current substep position so refresh / kiosk-handoff resume cleanly
+- Debug pane (responses JSON) hidden behind `?debug=1` flag; out of the operator's way by default
+
+**Steps.is_editable loosened** — from "every consuming Process must be DRAFT" to "at least one consuming Process is DRAFT (or no consumers)." With shared Steps across Process versions (lightweight versioning), the strict rule blocked authoring any time an APPROVED version coexisted with a DRAFT version — which is the normal state, not a violation. The change-control flow (PCR/PCO/PCN) remains the right gate for edits that need formal review.
+
+**Properties panel isolation** — three event-isolation fixes on `NodePropertiesPanel`'s root:
+- `draggable=false` + `onDragStart` stopPropagation → text selection in inputs doesn't trigger the parent SubstepRow's drag-to-reorder
+- `onKeyDown` stopPropagation → Backspace/Delete in the form doesn't bubble to ProseMirror as "delete selected atom node"
+- `onMouseDown` stopPropagation → clicks into the form don't flicker Tiptap selection
+- Removed `.focus()` from the `updateAttributes` adapter — was yanking focus back to the editor mid-typing and causing the next keystroke to replace the selected atom node with text
+
+**Authoring affordance trim** — `AuthoringPopover` was reduced months ago to a pure hover-ring wrapper (the popover surface was replaced by the selection-driven properties panel). The dead `form` and `contentClassName` props were still being passed at 10 call sites; both prop signature and call sites now cleaned up. Component is now a 12-line ring-on-hover div.
+
+**`MeasurementInput` wired to real backend** — `MOCK_MEASUREMENT_DEFINITIONS` dropped; the node now calls `useRetrieveMeasurementDefinitions` (the same hook the measurement editor uses). One more piece of demo scaffolding gone.
+
+**`Media` node renders real content** — `<img>` for image, `<video controls>` for video. Width is always 100% of the container; height is author-controlled via a `size` attr preset (`sm` / `md` / `lg` / `xl` / `full`). Empty-src state shows a dashed-border prompt; load-error state shows a red diagnostic card with the offending URL. **Known limit**: cross-origin URLs that 200 with a hotlink-protection placeholder image (Fandom / Wikia) load as a "valid" image from the browser's perspective and bypass `onError`. The fix is the deferred Documents-upload pipeline that lets us serve our own bytes.
+
+**Cleanup landed in this round**:
+- Orphan docstring on `Substep.requires_signature` was floating under `is_inspection_point` — restored to the right field
+- `HarvestedComponentCapture` wired into `NodePropertiesPanel`'s FORMS + NODE_LABELS (was registered in extensions but not in the panel; knip flagged it)
+- 17 stray screenshot PNGs deleted from repo root
+- `part_type_name = CharField(source='part_type.name', read_only=True)` across 6 serializers gained `allow_null=True` — the model field IS nullable so the OpenAPI schema should reflect that; otherwise Zodios rejects the response when the FK is null
+- Demo seeder data aligned: `DEMO_QUALITY_ERRORS` had `'part_type': 'Fuel Injector'` but `DEMO_PART_TYPES` defines `'Common Rail Injector'`. The mismatch was silently nulling `part_type` on every demo error type. Renamed to match.
+
+**drf-spectacular schema warnings cleared**:
+- Added `@extend_schema_field(serializers.CharField(allow_null=True))` + `-> str | None` return-type hints on `get_completed_by_name` (×2) and `get_responded_by_name` SerializerMethodFields
+- 9 → 0 actionable warnings. The remaining 2 are allauth's own self-emitted deprecation noise on `USERNAME_REQUIRED` / `EMAIL_REQUIRED` (third-party — they access their own deprecated attrs internally, not actionable from our settings).
+
+**Demo URLs** that work as of this round:
+- Substep editor: `/editor/processes/019cc953-b939-7893-a318-c6036d0199b2/steps/019cc953-ba7c-7421-a28a-04aa21b57df8/substeps` (process flipped to DRAFT for demo)
+- Operator runtime: `/operator/steps/019cc953-ba7c-7421-a28a-04aa21b57df8/substeps?part=019cc953-c565-7461-9901-bcf07e18ebca&execution=019dd9ad-ff32-7302-ab99-6ba5c432ee51&at=0` (real StepExecution + Part bound so Submit actually persists)
+
+### Deferred (noted, not blocked)
+
+- **First-piece flag** (`QualityReports.is_first_piece`) — modelling TBD; defer until form-shape is settled
+- **Photo / file / video upload to real `Documents` FK** — today PhotoCapture/FileCapture store filenames only; the browser File object is discarded. `SubstepResponse.value_document` exists in the schema but nothing populates it. First customer who attaches a setup photo will find it doesn't survive. ~1 day of work once Documents upload endpoint is confirmed
+- **Drawing / annotation overlay on images** — engineers want to circle bolts and arrow to gaskets on setup photos. Three viable paths: fabric.js modal editor (~1–2 days, +250KB bundle, recommended), custom `<canvas>` toolbar (~1–3 days, no big dep), tldraw/excalidraw embed (~1–2 days, +1–2MB bundle, polished)
+- **Translation picker for operator runtime** — `SubstepTranslation` exists; planned alongside an AI-services workstream that auto-translates `body_blocks` to N target languages (capture nodes don't translate — already separated in the JSON shape)
+- **Signature canvas widget** — placeholder UI is fine; not in regulated industries
+- **`DwiSpikePage` deletion** — delete when production page is rock-solid
+- **CAPA → Substep auto-closure** — pitched as integration win; not designed
+- **`ProcessChangeRequest.target_substep`** — deferred from Phase 3 due to constraint restructuring
+- **Phase 4 (Authoring Approval) vs operator runtime sequencing** — DRAFT guard already shipped (which is the highest-leverage piece of Phase 4); full approval workflow + template seeding can wait until operator runtime tells us what's most useful next
+- **Step-advancement gate consuming `SubstepCompletion`** — today the gate is sampling-driven (parts can't advance until sampling completes); substep-completion-driven gating is a future refinement
+- **Batch operator runtime** — backend (`Substep.scope`, `BatchExecution`, scoped audit FKs) is shipped; frontend page is still singleton-only. Closing the loop is 2–3 days of UX work: "Start batch" gesture, scope-aware traversal (PARTS_FIRST default, SUBSTEPS_FIRST when authored), BATCH substep barriers
+- **`ComputedValue` node sourcing from real measurements / SPC** — today the formula's input variables are typed by the operator. They should be able to bind to actual `MeasurementDefinition` rows on the parent Step (so a "True Position" calc auto-reads X-deviation + Y-deviation from earlier `MeasurementInput` captures in the same substep / step) or to `StepExecutionMeasurement` / SPC data (so derived control-chart values — CPK, range, drift, last-N average — can be displayed live). The variable shape becomes `{ name, source: 'manual' | 'measurement_definition' | 'spc' , source_id?, label, unit }`. ~1 hour of focused work to wire — small node-attr extension + runtime resolver that reads from the existing measurement tables. Useful for closing the loop between operator capture and derived QA checks (True Position, CPK, geometric tolerancing math)
+- **`Steps.batch_traversal = PARTS_FIRST | SUBSTEPS_FIRST`** field — needed alongside the batch operator runtime, not before
+- **`submit_substep` service accepts `batch_execution`** — today only takes `step_execution`; needs the alternative branch for batch capture audit rows. Trivial extension once the frontend payload supports it
+- **Work order page QA Forms tab dissolution** — promised but not done. The standalone `PartQualityForm` should redirect to or embed the operator runtime; out-of-band right now
+- **Test coverage** — the new surface (DRAFT guard, role-tagged through tables, structured-capture node persistence, operator submit service, required-field validation, MediaPreview load handling, AuthoringPopover trim, BatchExecution model + migration backfill) has no automated tests. Worth a focused test-writing pass before declaring "done"
+
+### Batch vs per-part substep scope
+
+Real shop floors need both single-piece flow and batch operations on the same Process. The model that fell out of conversation:
+
+**`Substep.scope = SAMPLED | BATCH`** (default `SAMPLED`):
+- `SAMPLED` substeps run per part. `sampling_rule` controls cadence — null rule means "every part" (100% sample); a set rule means "only the parts the rule selects." Captures bind to the part's `StepExecution`.
+- `BATCH` substeps run once for the whole batch. Captures bind to a new `BatchExecution` row shared by every part in the batch. `sampling_rule` is ignored.
+
+The realization that simplified the model: per-part substeps are just per-sample substeps with a 100% rule. PER_PART, PER_BATCH, and PER_SAMPLE collapse into two: SAMPLED (with cadence via `sampling_rule`) or BATCH.
+
+**`BatchExecution` model** (new in migration `0059`):
+- One row per (WorkOrder, Step) when an operator starts a batch
+- M2M to `Parts` — mutable until the first BATCH substep fires (`sealed_at` set), locked after
+- Owns the audit semantics for batch-level captures: "what was the wash temp for part 17?" joins through the BatchExecution to pick up cycle data, instead of pretending it lives on part 1's StepExecution
+
+**`SubstepCompletion` + `SubstepResponse`** both gained nullable `batch_execution` FKs and a check constraint enforcing "exactly one of step_execution / batch_execution is set." Per-part and per-batch substep audit rows now coexist cleanly.
+
+**Traversal direction** for the operator UX between BATCH barriers (single-piece flow vs station-by-station) lives at the Step level, not the substep — `Steps.batch_traversal` is a follow-up field once the operator runtime is doing real batches. For now the runtime walks parts-first, which is the more common single-piece pattern.
+
+**Mid-batch failure handling is deliberately not a platform concern.** Engineers compose Processes such that per-part inspection substeps catch failures before/after BATCH substeps; the platform doesn't need a `Substep.failure_scope` field. If a heat-treat cycle fails for the whole charge, the engineer's downstream substep (per-part outgoing inspection) catches it on each part naturally.
+
+### Architectural unfair advantages worth leaning on
+
+UQMES bundles DWI + QMS + MES in one schema; competitors sell integration. This unlocks:
+
+- **Single audit chain** from operator gesture → `StepExecution` → `Substep` → `StepExecutionMeasurement` (always) + `QualityReports` (when inspection-point). One query, not a multi-system reconciliation
+- **Two-tier measurement** with same-DB UNION into SPC charts — only possible because process data and inspection records share storage
+- **Sampling rules drive both Tier 1 and Tier 2** from a single rule. Competitors split AQL between QMS and MES
+- **Unified permissions / notifications / tenant scoping** via `SecureModel` + ContextVar across all three subsystems
+- **PCR / PCO / PCN can target MES + QMS in one approval workflow**
+- **Documents and training** plug directly into authoring (supersede a doc → see every Substep using it in one query)
+- **CAPA closure** can validate against floor execution in the same DB (corrective action says "update Substep X" → next passing execution closes the loop automatically)
+- **Reman compounds all of the above** — core teardown / harvest / regrade decisions touch MES routing + QMS judgment + DWI instructions in a single transaction
+
+The user-facing pitch: *competitors sell integration; you don't have to.*
+
+---
+
+## Advancement Engine + Lot Cohesion (2026-06-03 → 2026-06-04)
+
+Major workstream built on top of Phase 1-3 DWI substep persistence. Closes
+the loop between operator capture and part advancement using a lot-cohesion
+model. **Source of truth for behavior is `Documents/MES_BEHAVIOR_FLOWS.md`**
+(13 Mermaid flow charts + audit checklist + deferred-items list).
+
+### Models shipped
+
+Migrations `0060_advancement_engine_phase_1` and
+`0061_drop_expedite_customer_pull_split_reasons`:
+
+- **`Parts.split_from_cohort` / `split_reason` / `split_at`** + `PartSplitReason`
+  enum (`QUARANTINE | REWORK | SCRAP`). EXPEDITE / CUSTOMER_PULL deliberately
+  excluded — those bump `WorkOrder.workorder_priority`, not split parts
+  (avoids downstream packing/shipping pain when an expedited part has to
+  rejoin its siblings at finished goods).
+- **`Substep.is_critical`** (safety-critical; N/A impossible even with
+  `allow_not_applicable=True`).
+- **`Substep.allow_not_applicable`** (engineer-side opt-in for the N/A path).
+- **`SubstepCompletion` inherits `VoidableModel`** + new `na_reason_code` field.
+- **`SamplingDecision`** — append-only per (StepExecution, Substep) with
+  `outcome` enum (SELECTED/DESELECTED/PENDING), `ruleset_version`,
+  `decided_at`, `superseded_by` chain. Live-row uniqueness constraint.
+
+### Services shipped
+
+- `Tracker/services/dwi/sampling_decisions.py` — `evaluate_substep_sampling`
+  writes per-substep decisions on StepExecution creation. Handles
+  EVERY_NTH_PART, FIRST_N_PARTS, PERCENTAGE, RANDOM, LAST_N_PARTS/EXACT_COUNT
+  (→ PENDING). Hooked into all three `advance_part_step` paths.
+- `Tracker/services/dwi/advancement_gate.py` — `substep_completion_blockers`
+  reads decisions + completions + sealed batches. Wired into
+  `Steps.can_advance_from_step` as blocker #7. Re-validates N/A at gate
+  time so retroactive `is_critical=True` edits invalidate prior N/A rows.
+- `Tracker/services/mes/splits.py` — `split_part_from_lot` service. Reason-
+  coded, audit-logged, one-way. Rework flavor closes current StepExecution
+  as ROLLED_BACK, moves Part to `rework_target_step`, creates fresh
+  StepExecution with bumped `visit_number`, writes fresh SamplingDecisions.
+- `Tracker/services/mes/advancement.py` — `try_advance_lot(wo_id, step_id)`
+  evaluates cohort all-or-none + split parts solo, returns structured
+  result with per-part blockers.
+- `Tracker/services/dwi/batch_lifecycle.py` — `seal_batch` validates
+  one-WO invariant + required cohort completions, stamps `sealed_at`,
+  fires advancement.
+
+### Viewsets / endpoints shipped
+
+- `POST /api/Parts/{id}/split_from_lot/` — manual split lever
+- `POST /api/Parts/advance_lot/` — lot-cohesion advance
+- `POST /api/BatchExecutions/{id}/seal/` — seal action
+- `GET /api/BatchExecutions/` — list / retrieve
+- `GET /api/SamplingDecisions/?step_execution=<id>` — read-only; live
+  decisions by default; `?include_superseded=1` for audit trail
+- `submit_substep` extended to accept `na_reason_code`; rejects invalid N/A
+  at API boundary
+
+### Frontend shipped
+
+**Supervisor slice (WorkOrder Control page):**
+- `useSplitPartFromLot` / `useAdvanceLot` hooks
+- Per-part dropdown: Split for rework / Split — quarantine / Split — scrap
+  (replaces the old status-only items)
+- Force-advance affordances perm-gated to production_manager / qa_manager
+  / tenant_admin / is_staff / is_superuser. Default operators see "N ready"
+  chip instead of clickable button.
+- Blocker visibility: failure banner surfaces engine's per-part blocker
+  reasons (substep not completed, quarantine, FPI, etc.) deduplicated.
+
+**Operator runtime slice:**
+- `useSamplingDecisionsForExecution` + `buildOutcomeMap` hook
+- DESELECTED substeps render with "Not in sample" badge + dimmed row
+  (kept VISIBLE per IATF-audit defensibility — the operator sees what
+  they didn't do, but not why they were sampled out; that's documented
+  in the substep body if relevant).
+- N/A reason-code dialog: button in SubstepStage header when
+  `allow_not_applicable=True && !is_critical`; 5 common reason chips +
+  free-text fallback; submits `marked_not_applicable=true` + `na_reason_code`.
+- `BatchPanel` component renders when step has BATCH-scope substeps;
+  shows open + sealed batches; "Start batch with cohort" button;
+  per-batch Seal action.
+- Photo / file uploads create real `Documents` rows via
+  `useDocumentUpload` + `POST /api/Documents/`; SubstepResponse.value_document
+  FK lands on real Documents IDs.
+
+**Authoring slice:**
+- Substep editor properties row: `Critical` + `Allow N/A` switches.
+  Flipping Critical clears + disables Allow N/A so the UI can't contradict.
+
+### Behavior spec — `MES_BEHAVIOR_FLOWS.md`
+
+Source of truth for how UQMES *should* behave. Key design decisions:
+
+1. Advancement is operator-driven and **synchronous** — no Celery
+   cascade, no event fan-out. Operator's "Complete step" runs the gate
+   in the same request and returns the result inline.
+2. **Lot cohesion** by default — non-split parts at (WO, Step) advance
+   together, all-or-none. Splits travel solo.
+3. **Out-of-spec is a flag, not a forced action.** Operator sees toast,
+   continues. System creates QualityReports row only when
+   `is_inspection_point=True`. QA dispositions — operator is not
+   authorized.
+4. **DESELECTED substeps are visible** (badged, dimmed). Hiding them
+   fails IATF audit defensibility.
+5. **One BatchExecution per WO.** Multi-WO oven cycles produce N rows;
+   cycle data is replicated; audit trail stays crisp.
+6. **PENDING blocks at terminal steps only.** Mid-flow non-blocking;
+   at `is_terminal=True` it's a hard blocker — supervisor reconciles
+   before shipment.
+7. **Containment is QA-driven via CAPA + QualityReports list page**,
+   not an automatic cascade. Existing tooling covers it.
+8. **AQL switching is ANSI/ASQ Z1.4** — 2 of 5 lots rejected →
+   Tightened; 5 consecutive accepts → Normal. Modeled via
+   `SamplingRuleSet.fallback_ruleset` + supersession chain.
+
+### Audit findings (against MES_BEHAVIOR_FLOWS.md §13, performed 2026-06-04)
+
+**Over-built (6 strips required) — Celery cascade was v0 over-engineering:**
+- `Tracker/services/mes/advancement_tasks.py` — delete entirely
+- `submit_substep` (`operator_capture.py:238-240`) fires `fire_for_part`
+- `seal_batch` (`batch_lifecycle.py:97`) calls `.delay()` — make synchronous
+- `split_part_from_lot` (`splits.py:133-134`) fires `fire_for_part`
+- `approve_step_override` (`step_override.py:51-52`) fires `fire_for_part`
+- `try_advance_lot_task` recursive cascade (`advancement_tasks.py:51-64`)
+
+**Under-built (5 builds required):**
+- **Flow #2:** Operator "Complete step" doesn't run the gate. Today
+  advancement only happens via the (over-built) Celery cascade. After
+  strip, "Complete step" needs to call `try_advance_lot()` directly.
+- **Flow #3:** No out-of-spec operator toast.
+- **Flow #9 blocker #8:** PENDING-at-terminal-step blocker missing
+  in `advancement_gate.py`.
+- **Flow #10:** No QA void affordance in the UI (model has the field).
+- **Flow #11:** No supervisor-side review UI for PENDING reconciliation
+  / superseded decisions at terminal steps.
+
+**Aligned (verified correct):**
+- Substep submit with N/A validation
+- PartSplitReason enum trimmed correctly
+- Rework split routes + visit_number bump
+- Force-advance perm-gated
+- One-WO-per-batch invariant validated
+- SamplingDecision write logic per rule type; DESELECTED badged (not hidden)
+- Gate blocker order
+- VoidableModel inheritance + `is_voided` filter
+- Append-only `superseded_by` chain
+
+### Deferred items (real customer needs, scoped out)
+
+| Item | Reason |
+|---|---|
+| OOS operator reason-code prompt | Awaiting customer pull |
+| Pre-capture gauge calibration check | Separate calibration-gating push |
+| Part reclassification / substitute PartType | Reman-specialized push |
+| SPC analytics reading both measurement tables | Analytics-layer work |
+| End-of-shift handoff / andon / kanban | Operational, outside DWI |
+| External integrations (ERP, printers, andon broadcast) | Integrations track |
+
+### Next-step plan (~5-6 days to clear audit checklist)
+
+1. **Wire Flow #2** — "Complete step" calls `try_advance_lot()`
+   synchronously; returns blockers inline (½ day)
+2. **Strip 6 Celery cascade points** — replace `.delay()` and
+   `fire_for_part` with synchronous calls; delete `advancement_tasks.py`
+   (½ day)
+3. **Add Flow #9 blocker #8** (PENDING at `is_terminal=True`) (¼ day)
+4. **Add Flow #3 out-of-spec toast** (¼ day)
+5. **Build Flow #10 QA void UI** — button on part traveler / step history;
+   reason field; calls `completion.void(user, reason)` (½ day)
+6. **Build Flow #11 supersession review UI** — supervisor reconciliation
+   screen (1 day)
+7. **Test coverage** — port 28 sandbox cases from
+   `scratch_advancement_gate.py` as Django integration tests (2-3 days)
+
+### Documentation pointers
+
+- **Behavior spec (source of truth):** `Documents/MES_BEHAVIOR_FLOWS.md`
+- **Sandbox (28 design cases):** `PartsTracker/scratch_advancement_gate.py` —
+  throwaway when port lands
+- **Reman integration:** `Documents/REMAN_DWI_INTEGRATION.md`
+- **Feature inventory:** `Documents/FEATURE_INVENTORY.csv`
