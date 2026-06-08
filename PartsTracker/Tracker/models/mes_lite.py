@@ -43,6 +43,27 @@ from .mes_standard import (
 
 # ===== ENUMS =====
 
+class PartSplitReason(models.TextChoices):
+    """Why a Part was split off from its WorkOrder's cohort and now
+    advances independently.
+
+    See `Documents/MES_BEHAVIOR_FLOWS.md` for the lot-cohesion advancement
+    model. Splits are the only manual lever for moving parts out of step
+    with their siblings; reason + permission + audit row enforced at the
+    service layer.
+
+    EXPEDITE / CUSTOMER_PULL are deliberately NOT split reasons — those
+    cases reshuffle WO priority (whole lot moves together, faster) rather
+    than fragmenting a cohort, since splits create downstream packing /
+    shipping pain when the expedited part has to rejoin its siblings at
+    finished goods. Use `WorkOrder.workorder_priority` instead.
+    """
+
+    QUARANTINE = 'quarantine', 'Quarantine'
+    REWORK = 'rework', 'Rework'
+    SCRAP = 'scrap', 'Scrap'
+
+
 class PartsStatus(models.TextChoices):
     """Status values for Parts as they move through manufacturing process"""
     # Before production starts
@@ -120,6 +141,24 @@ class PartTypes(SecureModel):
     - XIX: Gas turbine engines and associated equipment
     """
 
+    # =========================================================================
+    # Reman DWI — canonical disassembly Process preference (Q1 shape D)
+    # =========================================================================
+    default_disassembly_process = models.ForeignKey(
+        'Processes',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='default_for_disassembly',
+        help_text=(
+            "Canonical preference for the teardown picker. When set, the "
+            "operator's bulk-teardown dialog preselects this Process. Optional: "
+            "when null, the picker has no preselection and (for automation paths) "
+            "WO creation refuses to resolve a default."
+        ),
+    )
+    """Per-PartType canonical disassembly Process preference (Reman DWI Q1)."""
+
     class Meta:
         verbose_name_plural = 'Part Types'
         verbose_name = 'Part Type'
@@ -162,6 +201,17 @@ class Processes(SecureModel):
 
     is_remanufactured = models.BooleanField(default=False)
     """Indicates whether this process is for remanufacturing existing parts."""
+
+    is_disassembly = models.BooleanField(
+        default=False,
+        help_text=(
+            "When True, this Process is eligible to be selected as a teardown "
+            "process for Cores of its `part_type`. A single core_type may have "
+            "multiple eligible disassembly Processes (quick teardown, full "
+            "overhaul, failure-analysis); the operator picks at WO creation."
+        ),
+    )
+    """Eligibility flag for the teardown Process picker (Reman DWI R3)."""
 
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE, related_name='processes')
     """ForeignKey to the PartType this process is associated with."""
@@ -591,6 +641,29 @@ class Steps(SecureModel):
         """Get all processes that include this step."""
         return Processes.objects.filter(process_steps__step=self).distinct()
 
+    @property
+    def is_editable(self) -> bool:
+        """A Step (and its Substeps, measurements, etc.) is editable when at
+        least one consuming Process is in DRAFT, OR the Step has no
+        consumers yet.
+
+        Loosened from the original "every consumer must be DRAFT" rule
+        because Steps are shared across Process versions by design
+        (lightweight versioning copies edges, not nodes). With shared Steps,
+        the strict semantic blocks edits any time an APPROVED version
+        exists alongside a DRAFT one — which is the normal versioning
+        workflow, not a violation. Authoring means "at least one DRAFT
+        consumer exists"; the guard fires that.
+
+        The change-control flow (PCR / PCO / PCN) remains the right path
+        for edits that need formal approval review — this guard just stops
+        being the wrong gate.
+        """
+        memberships = self.process_memberships.all()
+        if not memberships.exists():
+            return True
+        return any(m.process.status == ProcessStatus.DRAFT for m in memberships)
+
     def get_resolved_sampling_rules(self):
         """Get complete resolved sampling rules for this step"""
         # Get active primary ruleset
@@ -800,10 +873,10 @@ class Steps(SecureModel):
         from .qms import QaApproval, QualityReports, FPIRecord, StepOverride
 
         blockers = []
-        part = step_execution.part
+        part = step_execution.part  # May be None for Core (teardown) executions.
 
-        # 1. Check quarantine status
-        if part.part_status == PartsStatus.QUARANTINED:
+        # 1. Check quarantine status (Parts-only — Cores don't carry quarantine state).
+        if part is not None and part.part_status == PartsStatus.QUARANTINED:
             if self.block_on_quarantine:
                 blockers.append("Part is quarantined and step blocks on quarantine")
 
@@ -816,14 +889,14 @@ class Steps(SecureModel):
             if not qa_approval:
                 blockers.append("QA signoff required but not received")
 
-        # 3. Check FPI requirement
-        if self.requires_first_piece_inspection:
+        # 3. Check FPI requirement (Parts-only — FPI doesn't apply to teardown).
+        if part is not None and self.requires_first_piece_inspection:
             fpi_status = self.get_fpi_status(work_order)
             if fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
                 blockers.append(f"First Piece Inspection required: {fpi_status['status']}")
 
-        # 4. Check sampling requirement
-        if self.sampling_required and part.requires_sampling:
+        # 4. Check sampling requirement (Parts-only — sampling doesn't apply to teardown).
+        if part is not None and self.sampling_required and part.requires_sampling:
             quality_report = QualityReports.objects.filter(
                 part=part,
                 step=self,
@@ -863,7 +936,14 @@ class Steps(SecureModel):
             if not req.is_satisfied(step_execution):
                 blockers.append(f"Requirement not met: {req.name}")
 
-        # 7. Check for valid overrides that could clear blocks
+        # 7. Check substep completion (Parts-only; behind per-tenant flag).
+        if part is not None:
+            from Tracker.services.dwi.advancement_gate import substep_completion_blockers
+            blockers.extend(
+                substep_completion_blockers(self, step_execution, work_order)
+            )
+
+        # 8. Check for valid overrides that could clear blocks
         if blockers:
             valid_overrides = StepOverride.objects.filter(
                 step_execution=step_execution,
@@ -871,7 +951,16 @@ class Steps(SecureModel):
                 used=False
             )
             # Check each blocker against overrides
-            override_types = set(valid_overrides.values_list('block_type', flat=True))
+            # `block_type` is a TextChoices field storing UPPERCASE enum
+            # values (QA_SIGNOFF, QUARANTINE, …) — lower-case the set so
+            # the human-readable blocker-message matching below works.
+            # (Prior to this fix the comparison always failed and approved
+            # overrides never cleared blockers.)
+            override_types = {
+                bt.lower()
+                for bt in valid_overrides.values_list('block_type', flat=True)
+                if bt
+            }
             remaining_blockers = []
 
             for blocker in blockers:
@@ -1015,13 +1104,18 @@ class StepRequirement(SecureModel):
 
         elif self.requirement_type == RequirementType.QA_APPROVAL:
             # Check if QA approval exists
+            work_order = step_execution.subject_work_order
+            if work_order is None:
+                return False
             return QaApproval.objects.filter(
                 step=step_execution.step,
-                work_order=step_execution.part.work_order
+                work_order=work_order
             ).exists()
 
         elif self.requirement_type == RequirementType.FPI_PASSED:
-            # Check if FPI passed for this work order/step
+            # FPI is Parts-only — Cores don't have first-piece inspection.
+            if step_execution.part_id is None:
+                return True
             fpi = FPIRecord.objects.filter(
                 work_order=step_execution.part.work_order,
                 step=step_execution.step,
@@ -1191,8 +1285,15 @@ class StepExecution(SecureModel):
 
     part = models.ForeignKey(
         'Parts', on_delete=models.CASCADE,
+        null=True, blank=True,
         related_name='step_executions',
-        help_text="The part being tracked through this step"
+        help_text="The part being tracked through this step (mutually exclusive with `core`)."
+    )
+    core = models.ForeignKey(
+        'Tracker.Core', on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='step_executions',
+        help_text="The core being tracked through this teardown step (mutually exclusive with `part`)."
     )
     step = models.ForeignKey(
         Steps, on_delete=models.PROTECT,
@@ -1295,12 +1396,36 @@ class StepExecution(SecureModel):
         verbose_name_plural = 'Step Executions'
         indexes = [
             models.Index(fields=['part', 'step']),
+            models.Index(fields=['core', 'step']),
             models.Index(fields=['status', 'entered_at']),
             models.Index(fields=['assigned_to', 'status']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(part__isnull=False, core__isnull=True)
+                    | models.Q(part__isnull=True, core__isnull=False)
+                ),
+                name='step_execution_one_subject',
+            ),
+        ]
+
+    @property
+    def subject(self):
+        """The Part or Core this execution is tracking (whichever is set)."""
+        return self.part or self.core
+
+    @property
+    def subject_work_order(self):
+        """The WorkOrder linked to this execution's subject, if any."""
+        if self.part_id:
+            return self.part.work_order
+        if self.core_id:
+            return self.core.work_order
+        return None
 
     def __str__(self):
-        return f"{self.part} at {self.step} (visit {self.visit_number})"
+        return f"{self.subject} at {self.step} (visit {self.visit_number})"
 
     @property
     def duration(self):
@@ -2074,6 +2199,9 @@ class WorkOrder(SecureModel):
                                 related_name='work_orders')
     """The manufacturing process this work order follows. Locked at creation for version control."""
 
+    expected_start = models.DateField(null=True, blank=True)
+    """Projected calendar date this work order is scheduled to start."""
+
     expected_completion = models.DateField(null=True, blank=True)
     """Projected calendar date by which the work order should be complete."""
 
@@ -2086,8 +2214,10 @@ class WorkOrder(SecureModel):
     true_duration = models.DurationField(null=True, blank=True)
     """Measured time taken to complete the work order."""
 
-    notes = models.TextField(max_length=500, null=True, blank=True)
-    """Optional notes or remarks logged during execution or review."""
+    notes = models.TextField(null=True, blank=True)
+    """Optional notes or remarks logged during execution or review.
+    Length-uncapped — CSV imports append new lines, so the field grows
+    monotonically over a WO's lifetime (with de-dupe on identical re-imports)."""
 
     parent_workorder = models.ForeignKey(
         'self',
@@ -2429,6 +2559,39 @@ class Parts(SecureModel):
 
     total_rework_count = models.IntegerField(default=0)
     """Total number of times this part has been reworked across all steps."""
+
+    # =========================================================================
+    # Lot-cohesion advancement: per-part split fields
+    # =========================================================================
+    # See `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md` for the lot-cohesion
+    # advancement model. Non-split parts at the same (WorkOrder, Step) advance
+    # as a cohort, all-or-none. Splits remove a part from that cohort so it
+    # advances independently (quarantine, rework, expedite, scrap).
+
+    split_from_cohort = models.BooleanField(
+        default=False,
+        help_text=(
+            "True iff this part has been pulled off its WorkOrder cohort "
+            "and now advances independently. Set via the split_part_from_lot "
+            "service; one-way in v1 (no re-merging)."
+        ),
+    )
+    """When True, the part is excluded from cohort gating in
+    `try_advance_lot()` and evaluated on a per-part basis. Quarantine,
+    rework, and customer-pull all set this flag."""
+
+    split_reason = models.CharField(
+        max_length=20,
+        choices=PartSplitReason.choices,
+        blank=True,
+        help_text="Reason this part was split off; blank when split_from_cohort=False.",
+    )
+
+    split_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="UTC timestamp when the split happened. Set together with split_from_cohort.",
+    )
 
     # =========================================================================
     # ITAR / Export Control Fields

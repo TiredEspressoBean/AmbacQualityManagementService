@@ -156,6 +156,7 @@ class TenantScopingLintTests(SimpleTestCase):
         "equipment", "equipments",
         "training_type", "training_record",
         "execution",
+        "batch_execution", "batch_executions",
         "quality_report", "sampling_ruleset", "sampling_rule",
         "approval", "approval_request",
         "report", "rca_record", "rca",
