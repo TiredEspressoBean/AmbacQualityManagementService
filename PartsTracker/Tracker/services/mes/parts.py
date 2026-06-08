@@ -50,30 +50,53 @@ def _get_operator_for_step(part: Parts, step, previous_operator):
 
 
 def _cascade_work_order_completion(part: Parts) -> None:
-    """
-    Check if all parts in work order have reached terminal status.
-    If so, auto-complete the WorkOrder.
+    """Convenience entry point for Parts-side callers — see _cascade_work_order_completion_for_subject."""
+    _cascade_work_order_completion_for_subject(part.work_order)
 
-    Called after a part reaches a terminal step.
+
+def _cascade_work_order_completion_for_subject(wo) -> None:
     """
-    wo = part.work_order
+    Subject-aware WorkOrder completion cascade.
+
+    A WO is complete when every linked subject (Parts AND Cores) has reached a
+    terminal state. Scrapped subjects count as terminal (the operator did the
+    work even if yield was zero). If a WO has no Parts linked, the cores-only
+    branch decides completion; if it has no Cores linked, the parts-only
+    branch decides. Mixed WOs require both to be terminal.
+
+    When every subject is in a "fully-scrapped" terminal state, the WO is
+    CANCELLED. Otherwise it is COMPLETED.
+    """
     if not wo:
         return
 
-    terminal_statuses = [
+    part_terminal = [
         PartsStatus.COMPLETED,
         PartsStatus.SCRAPPED,
         PartsStatus.CANCELLED,
     ]
+    core_terminal = ['DISASSEMBLED', 'SCRAPPED']
 
-    non_terminal_parts = wo.parts.exclude(part_status__in=terminal_statuses)
-    if non_terminal_parts.exists():
+    parts_qs = wo.parts.all()
+    cores_qs = wo.cores.all()
+
+    parts_count = parts_qs.count()
+    cores_count = cores_qs.count()
+
+    if parts_count == 0 and cores_count == 0:
         return
 
-    all_parts_count = wo.parts.count()
-    scrapped_count = wo.parts.filter(part_status=PartsStatus.SCRAPPED).count()
+    if parts_count and parts_qs.exclude(part_status__in=part_terminal).exists():
+        return
+    if cores_count and cores_qs.exclude(status__in=core_terminal).exists():
+        return
 
-    if scrapped_count == all_parts_count:
+    parts_scrapped = (
+        parts_qs.filter(part_status=PartsStatus.SCRAPPED).count() if parts_count else 0
+    )
+    cores_scrapped = cores_qs.filter(status='SCRAPPED').count() if cores_count else 0
+
+    if (parts_scrapped == parts_count) and (cores_scrapped == cores_count):
         wo.workorder_status = WorkOrderStatus.CANCELLED
     else:
         wo.workorder_status = WorkOrderStatus.COMPLETED
@@ -238,7 +261,12 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
 
         # tenant-safe: each row's part / step FKs constrain it to the same tenant
         StepTransitionLog.objects.bulk_create(transition_logs)
-        StepExecution.objects.bulk_create(step_executions)
+        created_execs = StepExecution.objects.bulk_create(step_executions)
+
+        # Phase 3: write per-substep SamplingDecision rows for each new exec.
+        from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+        for se in created_execs:
+            evaluate_substep_sampling(se)
 
         return "escalated" if was_escalated else "advanced"
 
@@ -246,13 +274,17 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
     visit_number = StepExecution.get_visit_count(part, next_step) + 1
     assigned_operator = _get_operator_for_step(part, next_step, operator)
 
-    StepExecution.objects.create(
+    new_exec = StepExecution.objects.create(
         part=part,
         step=next_step,
         visit_number=visit_number,
         assigned_to=assigned_operator,
         status='PENDING',
     )
+
+    # Phase 3: write per-substep SamplingDecision rows.
+    from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+    evaluate_substep_sampling(new_exec)
 
     part.step = next_step
     part.part_status = PartsStatus.IN_PROGRESS
@@ -373,7 +405,7 @@ def rollback_part_step(
     current_execution.save(update_fields=['status'])
 
     visit_number = StepExecution.get_visit_count(part, previous_step) + 1
-    StepExecution.objects.create(
+    rolled_back_exec = StepExecution.objects.create(
         part=part,
         step=previous_step,
         visit_number=visit_number,
@@ -381,6 +413,11 @@ def rollback_part_step(
         status='IN_PROGRESS',
         started_at=timezone.now(),
     )
+
+    # Phase 3: rollback creates a new StepExecution; its substeps need
+    # fresh decisions since prior-visit decisions don't apply.
+    from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+    evaluate_substep_sampling(rolled_back_exec)
 
     old_step = part.step
     part.step = previous_step

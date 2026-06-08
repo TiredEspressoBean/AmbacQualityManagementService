@@ -1035,7 +1035,7 @@ class WIPSummarySerializer(serializers.Serializer):
 
 class StepSerializer(serializers.ModelSerializer):
     """Step serializer - just the node properties (no process/order/branching)"""
-    part_type_name = serializers.CharField(source="part_type.name", read_only=True)
+    part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
     class Meta:
         model = Steps
@@ -1095,6 +1095,7 @@ class PartTypesSerializer(serializers.ModelSerializer, SecureModelMixin):
             'id', 'tenant', 'external_id', 'created_at', 'updated_at', 'archived',
             'name', 'ID_prefix', 'ERP_id',
             'itar_controlled', 'eccn', 'usml_category',
+            'default_disassembly_process',
             'version', 'is_current_version', 'previous_version',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'version',
@@ -1134,7 +1135,7 @@ class PartTypeSelectSerializer(serializers.ModelSerializer):
 
 class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Processes serializer with graph structure"""
-    part_type_name = serializers.CharField(source="part_type.name", read_only=True)
+    part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     process_steps = ProcessStepSerializer(many=True, read_only=True)
     step_edges = StepEdgeSerializer(many=True, read_only=True)
     num_steps = serializers.SerializerMethodField()
@@ -1143,7 +1144,7 @@ class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
         model = Processes
         fields = [
             'id', 'tenant', 'external_id', 'created_at', 'updated_at',
-            'name', 'is_remanufactured', 'part_type', 'is_batch_process',
+            'name', 'is_remanufactured', 'is_disassembly', 'part_type', 'is_batch_process',
             'status', 'category', 'change_description', 'approved_at', 'approved_by',
             # Serializer-specific fields
             'part_type_name', 'process_steps', 'step_edges', 'num_steps',
@@ -1188,7 +1189,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Processes
         fields = [
-            "id", "name", "is_remanufactured", "part_type", "is_batch_process",
+            "id", "name", "is_remanufactured", "is_disassembly", "part_type", "is_batch_process",
             # Graph structure (read)
             "process_steps", "step_edges",
             # Graph structure (write)

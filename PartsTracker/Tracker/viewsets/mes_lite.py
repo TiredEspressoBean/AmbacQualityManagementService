@@ -396,6 +396,84 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                       part_ids=ids, operator=request.user)
         return Response({"results": [r.to_dict() for r in results]})
 
+    @action(detail=False, methods=["post"], url_path="advance_lot")
+    def advance_lot(self, request):
+        """
+        POST /api/Parts/advance_lot/
+
+        Lot-cohesion advancement: evaluate every non-split part at
+        (work_order_id, step_id) and advance them as a cohort when the
+        gate clears for all of them. Split parts at the same (WO, Step)
+        each advance independently when their own gate clears.
+
+        Body: { "work_order_id": "<uuid>", "step_id": "<uuid>" }
+        """
+        from Tracker.services.mes.advancement import try_advance_lot
+        wo_id = request.data.get("work_order_id")
+        step_id = request.data.get("step_id")
+        if not wo_id or not step_id:
+            return Response(
+                {"detail": "work_order_id and step_id are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = try_advance_lot(
+            work_order_id=wo_id,
+            step_id=step_id,
+            tenant_id=self.tenant.id if self.tenant else None,
+            operator=request.user,
+        )
+        return Response({
+            "status": result.status,
+            "reason": result.reason,
+            "parts_advanced": result.parts_advanced,
+            "blockers_by_part": result.blockers_by_part,
+            "split_parts_advanced": result.split_parts_advanced,
+            "split_parts_blocked": result.split_parts_blocked,
+        })
+
+    @action(detail=True, methods=["post"], url_path="complete_step")
+    def complete_step(self, request, pk=None):
+        """
+        POST /api/Parts/{id}/complete_step/
+
+        Operator "I'm done with this step for this part" — THE canonical
+        advancement trigger. Synchronously runs the gate via
+        `try_advance_lot` for this part's (work_order, step) and returns
+        the result inline.
+
+        If this part's gate clears AND it's the last cohort sibling to
+        clear, the whole cohort advances. If this part is split, it
+        advances solo. Bounded synchronous cascade through pass-through
+        steps walks forward in the same request.
+
+        Response shape matches the advance_lot action — the operator
+        sees parts_advanced / blockers_by_part / etc. in the same
+        request that triggered the gate.
+        """
+        from Tracker.services.mes.advancement import try_advance_lot
+
+        part = self.get_object()
+        if not part.work_order_id or not part.step_id:
+            return Response(
+                {"detail": "Part has no work_order or step; can't advance."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = try_advance_lot(
+            work_order_id=str(part.work_order_id),
+            step_id=str(part.step_id),
+            tenant_id=str(part.tenant_id),
+            operator=request.user,
+        )
+        return Response({
+            "status": result.status,
+            "reason": result.reason,
+            "parts_advanced": result.parts_advanced,
+            "blockers_by_part": result.blockers_by_part,
+            "split_parts_advanced": result.split_parts_advanced,
+            "split_parts_blocked": result.split_parts_blocked,
+        })
+
     @extend_schema(
         request=inline_serializer(
             name="PartsBulkRollbackInput",
@@ -439,6 +517,52 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             fields={"results": serializers.ListField(child=serializers.DictField())},
         )},
     )
+    @action(detail=True, methods=["post"], url_path="split_from_lot")
+    def split_from_lot(self, request, pk=None):
+        """
+        POST /api/Parts/{id}/split_from_lot/
+
+        Pull this part off its WorkOrder cohort so it advances solo.
+        Quarantine, rework, expedite, customer-pull, and scrap all flow
+        through this endpoint. Body:
+            { "reason": "rework", "rework_target_step_id": "<uuid?>",
+              "notes": "<optional>" }
+        """
+        from Tracker.services.mes.splits import split_part_from_lot
+        from Tracker.models import Steps
+
+        part = self.get_object()
+        reason = request.data.get("reason")
+        if not reason:
+            return Response({"detail": "reason is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        target_step = None
+        target_id = request.data.get("rework_target_step_id")
+        if target_id:
+            target_step = Steps.objects.filter(id=target_id).first()
+            if target_step is None:
+                return Response({"detail": "rework_target_step_id not found"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = split_part_from_lot(
+                part=part,
+                reason=reason,
+                user=request.user,
+                rework_target_step=target_step,
+                notes=request.data.get("notes") or "",
+            )
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "part_id": result.part_id,
+            "reason": result.reason,
+            "moved_to_step_id": result.moved_to_step_id,
+            "already_split": result.already_split,
+        })
+
     @action(detail=False, methods=["post"], url_path="bulk_set_status")
     def bulk_set_status(self, request):
         from Tracker.services.mes.parts import bulk_set_status as svc
@@ -2103,7 +2227,7 @@ class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
     queryset = Processes.unscoped.all()
     serializer_class = ProcessesSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["part_type", "status"]
+    filterset_fields = ["part_type", "status", "is_disassembly", "is_remanufactured"]
     search_fields = ["name", "part_type__name"]
     ordering_fields = ["created_at", "updated_at", "name", "status"]
     ordering = ["-created_at"]

@@ -27,6 +27,7 @@ Design reference: `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md`.
 from django.db import models
 
 from .core import SecureModel, User, VerificationMethod
+from .qms import VoidableModel
 
 
 # =============================================================================
@@ -50,6 +51,32 @@ class SequencingMode(models.TextChoices):
 
     SEQUENTIAL = 'sequential', 'Sequential'
     FREE_ORDER = 'free_order', 'Free order'
+
+
+class SubstepScope(models.TextChoices):
+    """How a substep maps onto a batch of parts at the parent Step.
+
+    SAMPLED: the substep runs per part. If `sampling_rule` is null it
+             runs for every part (100% sample); if `sampling_rule` is
+             set, only the parts that rule selects. Captures bind to a
+             specific `StepExecution`. This is the default.
+
+    BATCH:   the substep runs once for the whole batch — heat-treat
+             cycles, plating baths, wash tanks, oven cures. Captures
+             bind to a `BatchExecution` shared by every part in the
+             batch. The cycle either succeeded for the lot or it
+             didn't; per-part failures get caught by SAMPLED substeps
+             before or after the BATCH one.
+
+    The split lives at the substep level (not the Step) so a single
+    Step can mix both — e.g. "scan in each part (SAMPLED) → start wash
+    cycle (BATCH) → final visual on each part (SAMPLED)". Engineers
+    decide per-substep at authoring time which captures are per-part vs
+    per-batch.
+    """
+
+    SAMPLED = 'sampled', 'Per part (sampling)'
+    BATCH = 'batch', 'Per batch'
 
 
 # =============================================================================
@@ -116,6 +143,34 @@ class Substep(SecureModel):
     """If True, the operator may mark this substep `marked_not_applicable=True`
     on the SubstepCompletion row instead of working through it."""
 
+    is_critical = models.BooleanField(
+        default=False,
+        help_text=(
+            "Safety-critical substep. When True, N/A is impossible regardless "
+            "of `allow_not_applicable` or `is_optional`; the gate will reject "
+            "any SubstepCompletion with marked_not_applicable=True for this "
+            "substep, even at gate-time re-check."
+        ),
+    )
+    """Safety-critical flag. Some substeps (torque on a safety-critical
+    fastener, witnessed sign-off) can never be skipped via N/A, no matter
+    what flags say. `is_critical=True` makes that invariant explicit and
+    enforced both at write time and at gate time."""
+
+    allow_not_applicable = models.BooleanField(
+        default=False,
+        help_text=(
+            "Engineer authoring concern: when True, an operator may mark "
+            "this substep N/A (must provide na_reason_code on the "
+            "SubstepCompletion row). When False, N/A is rejected at write "
+            "time. Ignored when is_critical=True."
+        ),
+    )
+    """Authoring-side opt-in for the N/A path. Distinct from `is_optional`:
+    optional means "can be skipped without recording anything"; N/A means
+    "operator explicitly decides this substep doesn't apply, with a reason
+    code captured for audit."""
+
     requires_signature = models.BooleanField(
         default=False,
         help_text=(
@@ -124,6 +179,10 @@ class Substep(SecureModel):
             "which are gates inside the substep flow."
         ),
     )
+    """If True, the SubstepCompletion row must carry signature_data when the
+    operator marks the substep complete. Inline signature gates inside the
+    substep body use SubstepGateCompletion (Phase 2) — different storage,
+    different intent."""
 
     is_inspection_point = models.BooleanField(
         default=False,
@@ -144,10 +203,6 @@ class Substep(SecureModel):
     records as first-class concepts. Routine captures stay process-data-only
     (no auto-quarantine, no NCR spam); inspection-point substeps fire the
     full inspection pipeline."""
-    """If True, the SubstepCompletion row must carry signature_data when the
-    operator marks the substep complete. Inline signature gates inside the
-    substep body use SubstepGateCompletion (Phase 2) — different storage,
-    different intent."""
 
     expected_duration = models.DurationField(
         null=True,
@@ -157,6 +212,23 @@ class Substep(SecureModel):
     """Mirrors `Steps.expected_duration` at substep granularity. Informational
     for now; downstream OEE / cycle-time analytics may consume it later."""
 
+    scope = models.CharField(
+        max_length=10,
+        choices=SubstepScope.choices,
+        default=SubstepScope.SAMPLED,
+        help_text=(
+            "Whether the substep runs per part (SAMPLED, default — uses "
+            "sampling_rule for cadence, null rule = 100%) or once for the "
+            "whole batch (BATCH — oven cycles, wash tanks, plating baths). "
+            "BATCH substeps write captures against a `BatchExecution` "
+            "shared by every part in the batch, instead of per-part "
+            "`StepExecution`."
+        ),
+    )
+    """Scope of the substep relative to a batch of parts. See `SubstepScope`
+    for the semantics. SAMPLED is the right default — every shop has way
+    more per-part work than per-batch cycle work."""
+
     sampling_rule = models.ForeignKey(
         'Tracker.SamplingRule',
         null=True,
@@ -164,8 +236,10 @@ class Substep(SecureModel):
         on_delete=models.SET_NULL,
         related_name='applicable_substeps',
         help_text=(
-            "If set, the substep only applies to parts this rule selects. "
-            "Null = substep always applies to every part visiting the step."
+            "Only meaningful when scope=SAMPLED. If set, the substep only "
+            "applies to parts this rule selects. Null = substep always "
+            "applies to every part visiting the step (100% sample). "
+            "Ignored when scope=BATCH."
         ),
     )
     """When non-null, the substep is only live for parts the SamplingRule
@@ -203,16 +277,128 @@ class Substep(SecureModel):
     def __str__(self) -> str:
         return f"{self.step_id}#{self.order} — {self.title}"
 
+    @property
+    def is_editable(self) -> bool:
+        """Delegates to the parent Step. A Substep is editable iff every
+        Process consuming its parent Step is in DRAFT."""
+        return self.step.is_editable
+
+
+# =============================================================================
+# BatchExecution — per-batch analog of StepExecution
+# =============================================================================
+#
+# Lives here in dwi.py because it only exists to support BATCH-scope substeps.
+# Without DWI batch substeps there's no reason for a batch-level execution
+# row — `StepExecution` per part is the right granularity for part-major work.
+
+
+class BatchExecution(SecureModel):
+    """
+    A batch of parts moving through a Step together for one or more
+    BATCH-scope substeps (heat-treat cycle, wash tank, plating bath).
+
+    Created at runtime when an operator starts a batch on a Step that has at
+    least one BATCH-scope substep. The batch is mutable (parts can be added)
+    up to the first BATCH-scope substep firing; after that it's sealed.
+
+    Captures on BATCH-scope substeps write `SubstepCompletion` and
+    `SubstepResponse` rows against this BatchExecution rather than against
+    any individual `StepExecution` — the wash temp belongs to the cycle, not
+    to part 1 of the batch. Per-part audit queries join through `parts` to
+    pick up the relevant BatchExecution rows.
+
+    Why a separate model instead of "attach to a representative
+    StepExecution": the latter creates audit lies. Querying "what was the
+    wash temp for part 17?" should not return data that secretly lives on
+    part 1's execution. A dedicated BatchExecution + a Parts M2M keeps the
+    semantic right.
+    """
+
+    work_order = models.ForeignKey(
+        'Tracker.WorkOrder',
+        on_delete=models.CASCADE,
+        related_name='batch_executions',
+        help_text="The WorkOrder whose parts make up this batch.",
+    )
+    """The WorkOrder whose parts make up this batch."""
+
+    step = models.ForeignKey(
+        'Tracker.Steps',
+        on_delete=models.CASCADE,
+        related_name='batch_executions',
+        help_text="The Step the batch is running through.",
+    )
+    """The Step the batch is running through."""
+
+    parts = models.ManyToManyField(
+        'Tracker.Parts',
+        related_name='batch_executions',
+        blank=True,
+        help_text="Parts that are members of this batch.",
+    )
+    """Parts in the batch. Mutable until the first BATCH substep fires
+    (`sealed_at` set); after that, locked. Per-part audit queries join
+    through this M2M to pick up batch-level captures."""
+
+    started_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='batch_executions_started',
+        help_text="Operator who started the batch.",
+    )
+
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the operator started the batch.",
+    )
+
+    sealed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "When the batch was sealed (first BATCH-scope substep fired). "
+            "Parts can be added freely before this; locked after."
+        ),
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When every BATCH-scope substep on the Step was completed.",
+    )
+
+    notes = models.TextField(
+        blank=True,
+        help_text="Operator notes captured at batch start / during the run.",
+    )
+
+    class Meta:
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['work_order', 'step'], name='dwi_batchexec_wo_step_idx'),
+            models.Index(fields=['-started_at'], name='dwi_batchexec_started_idx'),
+        ]
+
+    def __str__(self) -> str:
+        return f"Batch on Step {self.step_id} (WO {self.work_order_id})"
+
 
 # =============================================================================
 # SubstepCompletion — per-execution completion record
 # =============================================================================
 
 
-class SubstepCompletion(SecureModel):
+class SubstepCompletion(SecureModel, VoidableModel):
     """
     Records that an operator completed a substep (or marked it N/A) during a
     specific StepExecution.
+
+    Inherits `VoidableModel` so QA can void an erroneous completion (e.g.
+    operator discovered the torque wrench was out of calibration) without
+    deleting the audit row. The advancement gate ignores voided completions
+    — a voided row no longer satisfies its substep, so the part is blocked
+    again until a fresh completion lands.
 
     One row per (StepExecution × Substep). `StepExecution` is per-part-per-
     visit (`mes_lite.py:StepExecution`), so for a batch of N parts going
@@ -229,7 +415,25 @@ class SubstepCompletion(SecureModel):
         'Tracker.StepExecution',
         on_delete=models.CASCADE,
         related_name='substep_completions',
-        help_text="The execution record the operator was working when they completed this substep.",
+        null=True,
+        blank=True,
+        help_text=(
+            "Set when the substep is per-part (scope=SAMPLED). Exactly one "
+            "of step_execution / batch_execution should be set; check "
+            "constraint enforces this at the DB level."
+        ),
+    )
+
+    batch_execution = models.ForeignKey(
+        'BatchExecution',
+        on_delete=models.CASCADE,
+        related_name='substep_completions',
+        null=True,
+        blank=True,
+        help_text=(
+            "Set when the substep is per-batch (scope=BATCH). Exactly one "
+            "of step_execution / batch_execution should be set."
+        ),
     )
 
     substep = models.ForeignKey(
@@ -255,9 +459,22 @@ class SubstepCompletion(SecureModel):
         default=False,
         help_text="Set when the operator marks an optional substep N/A instead of completing it.",
     )
-    """Only valid when `substep.is_optional=True`. The completion still gets a
-    row (so we have an audit trail of "operator decided this didn't apply"),
-    just with this flag set."""
+    """Only valid when `substep.allow_not_applicable=True` and `is_critical=False`.
+    The completion still gets a row (so we have an audit trail of "operator
+    decided this didn't apply"), just with this flag set."""
+
+    na_reason_code = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text=(
+            "Reason code captured when `marked_not_applicable=True`. Required "
+            "by the advancement gate; free-text 'skipped' is how QMS findings "
+            "happen, so an enumerated reason is mandatory at the data layer."
+        ),
+    )
+    """Reason code for N/A completions. The set of valid codes is configured
+    per tenant (e.g. 'not_torqued_in_this_assembly', 'no_disposition_required').
+    Empty string when `marked_not_applicable=False`."""
 
     notes = models.TextField(
         blank=True,
@@ -301,20 +518,43 @@ class SubstepCompletion(SecureModel):
     class Meta:
         ordering = ['-completed_at']
         constraints = [
+            # Exactly one of step_execution / batch_execution must be set.
+            models.CheckConstraint(
+                check=(
+                    models.Q(step_execution__isnull=False, batch_execution__isnull=True)
+                    | models.Q(step_execution__isnull=True, batch_execution__isnull=False)
+                ),
+                name='dwi_subcomp_exactly_one_exec_fk',
+            ),
+            # Per-part completion uniqueness (scope=SAMPLED path).
             models.UniqueConstraint(
                 fields=['step_execution', 'substep'],
-                condition=models.Q(deleted_at__isnull=True),
+                condition=models.Q(
+                    deleted_at__isnull=True,
+                    step_execution__isnull=False,
+                ),
                 name='dwi_substepcompletion_exec_substep_uniq',
+            ),
+            # Per-batch completion uniqueness (scope=BATCH path).
+            models.UniqueConstraint(
+                fields=['batch_execution', 'substep'],
+                condition=models.Q(
+                    deleted_at__isnull=True,
+                    batch_execution__isnull=False,
+                ),
+                name='dwi_substepcompletion_batch_substep_uniq',
             ),
         ]
         indexes = [
             models.Index(fields=['step_execution', 'substep'], name='dwi_subcomp_exec_subs_idx'),
+            models.Index(fields=['batch_execution', 'substep'], name='dwi_subcomp_batch_subs_idx'),
             models.Index(fields=['completed_by', '-completed_at'], name='dwi_subcomp_user_time_idx'),
         ]
 
     def __str__(self) -> str:
         suffix = ' (N/A)' if self.marked_not_applicable else ''
-        return f"{self.substep_id} @ exec {self.step_execution_id}{suffix}"
+        scope_id = self.step_execution_id or f"batch:{self.batch_execution_id}"
+        return f"{self.substep_id} @ {scope_id}{suffix}"
 
 
 # =============================================================================
@@ -489,6 +729,23 @@ class SubstepResponseKind(models.TextChoices):
     TIMER = 'timer', 'Timer (countdown / stopwatch)'
     COMPUTED = 'computed', 'Computed value (formula)'
 
+    # Structured-capture nodes — these also drive `QualityReports` writes
+    # when the parent substep is an inspection point. The SubstepResponse
+    # row preserves the per-substep audit trail; QualityReports + its
+    # through tables are the queryable inspection record.
+    ATTESTATION = 'attestation', 'Attestation (confirm / signature)'
+    STATUS = 'status', 'Quality status (PASS / FAIL / PENDING)'
+    EQUIPMENT_ROLES = 'equipment_roles', 'Equipment + roles'
+    PERSONNEL_ROLES = 'personnel_roles', 'Personnel + roles'
+    SIGNATURES = 'signatures', 'Inspection signatures (detected / verified)'
+    DEFECTS = 'defects', 'Defect findings'
+    ANNOTATION = 'annotation', 'Part annotation (3D)'
+
+    # Reman DWI — teardown-specific capture. Persists the row IDs created by
+    # `services.dwi.harvested_component_capture` in `value_json` so the substep
+    # response carries an audit pointer back to the HarvestedComponent rows.
+    HARVESTED_COMPONENTS = 'harvested_components', 'Harvested components (teardown)'
+
 
 class SubstepGateCompletion(SecureModel):
     """
@@ -628,7 +885,24 @@ class SubstepResponse(SecureModel):
         'Tracker.StepExecution',
         on_delete=models.CASCADE,
         related_name='substep_responses',
-        help_text="The execution record where this response was captured.",
+        null=True,
+        blank=True,
+        help_text=(
+            "Set when the substep is per-part (scope=SAMPLED). Exactly one "
+            "of step_execution / batch_execution should be set."
+        ),
+    )
+
+    batch_execution = models.ForeignKey(
+        'BatchExecution',
+        on_delete=models.CASCADE,
+        related_name='substep_responses',
+        null=True,
+        blank=True,
+        help_text=(
+            "Set when the substep is per-batch (scope=BATCH). Exactly one "
+            "of step_execution / batch_execution should be set."
+        ),
     )
 
     substep = models.ForeignKey(
@@ -695,16 +969,41 @@ class SubstepResponse(SecureModel):
     class Meta:
         ordering = ['-responded_at']
         constraints = [
+            # Exactly one of step_execution / batch_execution must be set.
+            models.CheckConstraint(
+                check=(
+                    models.Q(step_execution__isnull=False, batch_execution__isnull=True)
+                    | models.Q(step_execution__isnull=True, batch_execution__isnull=False)
+                ),
+                name='dwi_subresp_exactly_one_exec_fk',
+            ),
+            # Per-part response uniqueness (scope=SAMPLED path).
             models.UniqueConstraint(
                 fields=['step_execution', 'substep', 'node_id'],
-                condition=models.Q(deleted_at__isnull=True),
+                condition=models.Q(
+                    deleted_at__isnull=True,
+                    step_execution__isnull=False,
+                ),
                 name='dwi_substepresponse_exec_sub_node_uniq',
+            ),
+            # Per-batch response uniqueness (scope=BATCH path).
+            models.UniqueConstraint(
+                fields=['batch_execution', 'substep', 'node_id'],
+                condition=models.Q(
+                    deleted_at__isnull=True,
+                    batch_execution__isnull=False,
+                ),
+                name='dwi_substepresponse_batch_sub_node_uniq',
             ),
         ]
         indexes = [
             models.Index(
                 fields=['step_execution', 'substep', 'node_id'],
                 name='dwi_subresp_esn_idx',
+            ),
+            models.Index(
+                fields=['batch_execution', 'substep', 'node_id'],
+                name='dwi_subresp_bsn_idx',
             ),
             models.Index(
                 fields=['kind', '-responded_at'],
@@ -718,3 +1017,131 @@ class SubstepResponse(SecureModel):
 
     def __str__(self) -> str:
         return f"{self.kind} response {self.node_id} @ exec {self.step_execution_id}"
+
+# =============================================================================
+# SamplingDecision — persisted per-substep sampling outcome
+# =============================================================================
+#
+# The contract between the sampling subsystem and the advancement gate:
+# - Sampling evaluates rules and writes one decision row per
+#   (StepExecution, Substep) when a part enters a Step.
+# - The gate reads decisions and treats the outcome as gospel.
+# - Rule edits (AQL escalation, fallback ruleset trigger) supersede prior
+#   decisions via `superseded_by` — never overwrite in place. This
+#   preserves the audit trail of "what did the rule say on June 4."
+
+
+class SamplingOutcome(models.TextChoices):
+    """Outcome of evaluating a substep's sampling_rule for a specific
+    (StepExecution, Substep) pair.
+
+    SELECTED:   the rule says this part is in the sample for this substep;
+                the operator must complete the substep before advancement.
+    DESELECTED: the rule says this part is not in the sample; gate treats
+                the substep as satisfied without a completion.
+    PENDING:    the rule needs more data (cohort size, end-of-shift,
+                end-of-WO) and can't decide yet. Non-blocking at the gate
+                — the part advances tentatively. Re-evaluated on cohort
+                close; if it flips to SELECTED on a part that already
+                advanced past the step, a non-blocking nonconformance
+                gets opened against that part.
+    """
+    SELECTED = 'selected', 'Selected'
+    DESELECTED = 'deselected', 'Deselected'
+    PENDING = 'pending', 'Pending'
+
+
+class SamplingDecision(SecureModel):
+    """
+    Append-only record of a sampling rule evaluation for a single
+    (StepExecution, Substep) pair.
+
+    Written by the sampling subsystem when a part enters a Step. Read by
+    the advancement gate. Never updated in place — rule changes
+    (supersession, AQL escalation, fallback trigger) write a new row and
+    point the old row's `superseded_by` at the new one.
+
+    The gate queries `live` decisions (those with `superseded_by IS NULL`).
+    Audit queries can walk the supersession chain to reconstruct historical
+    decisions.
+
+    See `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md` for the architectural
+    decision and `scratch_advancement_gate.py` for the design sandbox.
+    """
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution',
+        on_delete=models.CASCADE,
+        related_name='sampling_decisions',
+        help_text="The (part, step, visit) this decision applies to.",
+    )
+
+    substep = models.ForeignKey(
+        Substep,
+        on_delete=models.CASCADE,
+        related_name='sampling_decisions',
+        help_text="The substep whose sampling_rule produced this decision.",
+    )
+
+    outcome = models.CharField(
+        max_length=12,
+        choices=SamplingOutcome.choices,
+        help_text="What the rule decided — SELECTED, DESELECTED, or PENDING.",
+    )
+
+    ruleset_version = models.PositiveIntegerField(
+        default=1,
+        help_text=(
+            "Version of the SamplingRuleSet that produced this decision. "
+            "Audit can answer 'what rule was active when this was decided' "
+            "via this field; rule edits bump the version on supersession."
+        ),
+    )
+
+    decided_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="UTC timestamp the decision was written.",
+    )
+
+    superseded_by = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='supersedes',
+        help_text=(
+            "When a rule change invalidates this decision, the new "
+            "SamplingDecision row's id goes here. Null = this decision "
+            "is live."
+        ),
+    )
+
+    class Meta:
+        ordering = ['step_execution', 'substep', '-decided_at']
+        constraints = [
+            # One LIVE decision per (StepExecution, Substep). Supersession
+            # writes a new row; only the latest with superseded_by IS NULL
+            # is the live one.
+            models.UniqueConstraint(
+                fields=['step_execution', 'substep'],
+                condition=models.Q(
+                    deleted_at__isnull=True,
+                    superseded_by__isnull=True,
+                ),
+                name='dwi_samplingdecision_live_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['step_execution', 'substep'],
+                name='dwi_samplingdec_exec_sub_idx',
+            ),
+            models.Index(
+                fields=['outcome', 'decided_at'],
+                name='dwi_samplingdec_outcome_idx',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        suffix = ' (superseded)' if self.superseded_by_id else ''
+        return f"{self.outcome} for substep {self.substep_id} @ exec {self.step_execution_id}{suffix}"

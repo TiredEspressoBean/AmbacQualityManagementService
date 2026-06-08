@@ -1,0 +1,551 @@
+"""
+DWI operator-submit service.
+
+When an operator completes a substep at runtime, the frontend POSTs a
+single payload describing every capture they made (text, choice, photo,
+measurement, status, signatures, defect findings, …). This service fans
+that payload out into the right writes:
+
+- Always writes a `SubstepResponse` row per capture (per-substep audit
+  trail, keyed by `node_id`).
+- For `MeasurementInput` captures: routes through `record_dwi_measurement`
+  so the existing two-tier (StepExecutionMeasurement + optional
+  QualityReports/MeasurementResult) logic fires.
+- For QA-bundle captures (status / equipment_roles / personnel_roles /
+  signatures / defects) when `substep.is_inspection_point=True`: finds or
+  creates the substep's `QualityReports` row and populates the matching
+  through tables (`QualityReportEquipment`, `QualityReportPersonnel`,
+  `QualityReportDefect`).
+- `PartAnnotation` is a marker — the existing `PartAnnotator` widget
+  writes `HeatMapAnnotation` rows directly, so we only persist a
+  `SubstepResponse` to record that the capture happened.
+- Closes with a `SubstepCompletion` row marking the substep done.
+
+Everything runs in a single transaction so partial submits don't leave the
+substep half-captured.
+
+Submit shape (frontend → backend):
+
+    {
+        "step_execution": "<uuid>",
+        "notes": "optional operator notes",
+        "signature_data": "base64png",          # if substep.requires_signature
+        "verification_method": "PASSWORD",       # optional
+        "marked_not_applicable": false,
+        "captures": [
+            {"node_id": "...", "kind": "text", "value_text": "..."},
+            {"node_id": "...", "kind": "choice", "value_text": "..."},
+            {"node_id": "...", "kind": "scan", "value_text": "..."},
+            {"node_id": "...", "kind": "timer", "value_json": {...}},
+            {"node_id": "...", "kind": "computed", "value_json": {...}},
+            {"node_id": "...", "kind": "photo", "document_id": <id>},
+            {"node_id": "...", "kind": "video", "document_id": <id>},
+            {"node_id": "...", "kind": "file", "document_id": <id>},
+
+            {"node_id": "...", "kind": "measurement",
+                "measurement_definition_id": <id>,
+                "value_numeric": 1.247, "value_string": "",
+                "equipment_id": <id|null>},
+
+            {"node_id": "...", "kind": "attestation",
+                "confirm": true,
+                "signature": {"user_id": .., "username": .., "signed_at": ..,
+                              "data_uri": ".."}},
+
+            {"node_id": "...", "kind": "status", "status": "PASS"},
+            {"node_id": "...", "kind": "equipment_roles",
+                "rows": [{"equipment_id": .., "role": "PRODUCTION", "notes": ".."}]},
+            {"node_id": "...", "kind": "personnel_roles",
+                "rows": [{"user_id": .., "role": "OPERATOR", "notes": ".."}]},
+            {"node_id": "...", "kind": "signatures",
+                "detected": {...}, "verified": {...}},
+            {"node_id": "...", "kind": "defects",
+                "rows": [{"error_type_id": .., "severity": "MAJOR",
+                          "location": "..", "notes": "..", "count": 1}]},
+            {"node_id": "...", "kind": "annotation",
+                "model_id": "..", "annotation_count": 3}
+        ]
+    }
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Optional
+
+from django.db import transaction
+from django.utils import timezone
+
+from Tracker.models import (
+    EquipmentRole,
+    MeasurementDefinition,
+    PersonnelRole,
+    QualityReportDefect,
+    QualityReportEquipment,
+    QualityReportPersonnel,
+    QualityReports,
+    QualityErrorsList,
+    StepExecution,
+    Substep,
+    SubstepCompletion,
+    SubstepResponse,
+    SubstepResponseKind,
+)
+from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+
+# -------------------------------------------------------------------------
+# Public entrypoint
+# -------------------------------------------------------------------------
+
+@dataclass
+class SubmitResult:
+    """Lightweight return shape so callers (viewsets) don't need to import
+    every model. Frontend rarely needs the full objects back — just
+    confirmation that everything landed."""
+
+    completion_id: str
+    response_count: int
+    quality_report_id: Optional[str]
+    measurement_count: int
+
+
+def submit_substep(
+    *,
+    substep: Substep,
+    step_execution: StepExecution,
+    user,
+    captures: list[dict[str, Any]],
+    notes: str = "",
+    signature_data: Optional[str] = None,
+    signature_meaning: Optional[str] = None,
+    verification_method: Optional[str] = None,
+    marked_not_applicable: bool = False,
+    na_reason_code: str = "",
+    ip_address: Optional[str] = None,
+) -> SubmitResult:
+    """Persist an operator's submission for a single substep.
+
+    See module docstring for the `captures` payload shape. All writes run in
+    a single transaction.
+
+    N/A validation: when `marked_not_applicable=True`, the substep config and
+    the reason code are checked at the API boundary. Failures raise
+    `ValidationError` so the operator gets a 400 instead of a silently-
+    blocked lot at advancement time.
+    """
+    from django.core.exceptions import ValidationError
+
+    if marked_not_applicable:
+        if substep.is_critical:
+            raise ValidationError(
+                f"Substep '{substep.title}' is critical; N/A is not permitted."
+            )
+        if not substep.allow_not_applicable:
+            raise ValidationError(
+                f"Substep '{substep.title}' is not configured to allow N/A."
+            )
+        if not (na_reason_code and na_reason_code.strip()):
+            raise ValidationError(
+                f"Substep '{substep.title}' requires an N/A reason code."
+            )
+
+    with transaction.atomic():
+        report = ensure_quality_report(substep, step_execution, user) if substep.is_inspection_point else None
+        response_count = 0
+        measurement_count = 0
+
+        for cap in captures:
+            kind = cap.get("kind")
+            node_id = cap.get("node_id", "")
+            if not node_id or not kind:
+                continue
+
+            if kind == "measurement":
+                _handle_measurement(cap, substep, step_execution, user)
+                # MeasurementInput doesn't write SubstepResponse — its row
+                # lives in StepExecutionMeasurement (+ MeasurementResult via
+                # promotion). We still count it for the response total so
+                # the API caller sees what was processed.
+                measurement_count += 1
+                continue
+
+            if kind == "harvested_components":
+                # Reman teardown capture — write HarvestedComponent rows via
+                # the dedicated service, then enrich the cap payload so the
+                # SubstepResponse persists the created IDs for traceability.
+                from Tracker.services.dwi.harvested_component_capture import (
+                    create_harvested_components_from_capture,
+                )
+                result = create_harvested_components_from_capture(
+                    step_execution=step_execution,
+                    substep=substep,
+                    rows=cap.get("rows") or [],
+                    user=user,
+                )
+                cap = {**cap, **result}
+                sr = _write_substep_response(
+                    substep=substep,
+                    step_execution=step_execution,
+                    user=user,
+                    cap=cap,
+                )
+                if sr is not None:
+                    response_count += 1
+                continue
+
+            sr = _write_substep_response(
+                substep=substep,
+                step_execution=step_execution,
+                user=user,
+                cap=cap,
+            )
+            if sr is not None:
+                response_count += 1
+
+            # Inspection-point side effects: structured-capture nodes
+            # additionally populate the QualityReports / through tables.
+            if report is not None:
+                if kind == "status":
+                    _apply_status(report, cap)
+                elif kind == "equipment_roles":
+                    _apply_equipment_roles(report, cap)
+                elif kind == "personnel_roles":
+                    _apply_personnel_roles(report, cap)
+                elif kind == "signatures":
+                    _apply_inspection_signatures(report, cap)
+                elif kind == "defects":
+                    _apply_defects(report, cap)
+                elif kind == "attestation":
+                    # Attestation signatures contribute to the QR personnel
+                    # roster too — generic AttestationCheckpoint signatures
+                    # land as WITNESS rows so we have an audit lineage.
+                    _apply_attestation_signature(report, cap)
+
+        # If the inspection-point QR is still PENDING after the capture
+        # loop (i.e. no explicit InspectionStatus capture was submitted),
+        # derive the status from annotation findings: any linked
+        # HeatMapAnnotation rows → FAIL, else PASS. This keeps the
+        # one-QR-per-substep "inspection session" model consistent — the
+        # operator drops findings on the part and the report's pass/fail
+        # falls out of the data instead of requiring a separate toggle.
+        if report is not None and report.status == "PENDING":
+            has_findings = (
+                report.annotations.exists()
+                or QualityReportDefect.objects.filter(quality_report=report).exists()
+            )
+            QualityReports.objects.filter(pk=report.pk).update(
+                status="FAIL" if has_findings else "PASS",
+            )
+
+        completion = _record_completion(
+            substep=substep,
+            step_execution=step_execution,
+            user=user,
+            notes=notes,
+            signature_data=signature_data,
+            signature_meaning=signature_meaning,
+            verification_method=verification_method,
+            marked_not_applicable=marked_not_applicable,
+            na_reason_code=na_reason_code,
+            ip_address=ip_address,
+        )
+
+        # NOTE: substep submit does NOT trigger advancement. Per the
+        # MES behavior spec (Flow #1 + #12), captures are recorded and
+        # this call returns. The operator's deliberate "Complete step"
+        # action is THE advancement trigger — it runs the gate via
+        # `try_advance_lot` synchronously from the complete_step viewset
+        # action.
+
+        return SubmitResult(
+            completion_id=str(completion.id),
+            response_count=response_count,
+            quality_report_id=str(report.id) if report else None,
+            measurement_count=measurement_count,
+        )
+
+
+# -------------------------------------------------------------------------
+# QualityReports lifecycle
+# -------------------------------------------------------------------------
+
+def ensure_quality_report(substep, step_execution, user) -> QualityReports:
+    """Find or create the QualityReports for this (step_execution, substep)
+    inspection event. The existing `record_dwi_measurement` service uses a
+    description-tag idempotency pattern; we match it so both paths converge
+    on the same report row.
+
+    Exposed via `POST /api/Substeps/{id}/ensure_inspection_qr/` so the
+    operator runtime can pre-bind a QR to capture nodes (PartAnnotation,
+    EquipmentRolesField, etc.) that need a known QR id before the
+    operator finishes the substep. Idempotent — safe to call eagerly on
+    substep open.
+    """
+    from Tracker.services.qms.inline_capture import _build_substep_tag  # type: ignore[attr-defined]
+
+    if step_execution.part_id is None:
+        # Cores don't have a QualityReports promotion path; just no-op.
+        return None  # type: ignore[return-value]
+
+    description_tag = _build_substep_tag(step_execution.id, substep.id)
+
+    report = (
+        QualityReports.objects
+        .filter(
+            step=step_execution.step,
+            part=step_execution.part,
+            description__startswith=description_tag,
+        )
+        .first()
+    )
+
+    if report is None:
+        report = QualityReports.objects.create(
+            step=step_execution.step,
+            part=step_execution.part,
+            detected_by=user,
+            sampling_method="dwi_substep_submit",
+            status="PENDING",
+            description=description_tag,
+        )
+
+    return report
+
+
+# -------------------------------------------------------------------------
+# Per-kind handlers
+# -------------------------------------------------------------------------
+
+def _handle_measurement(cap, substep, step_execution, user):
+    """Route MeasurementInput captures through the existing two-tier service
+    so Tier 1 (StepExecutionMeasurement) and Tier 2 (QualityReports +
+    MeasurementResult) stay in lockstep with non-substep capture paths."""
+    md_id = cap.get("measurement_definition_id")
+    if not md_id:
+        return
+    md = MeasurementDefinition.objects.filter(pk=md_id).first()
+    if md is None:
+        return
+
+    value = cap.get("value_numeric")
+    value_string = cap.get("value_string") or ""
+    equipment_id = cap.get("equipment_id")
+    equipment = None
+    if equipment_id:
+        from Tracker.models import Equipments
+        equipment = Equipments.objects.filter(pk=equipment_id).first()
+
+    record_dwi_measurement(
+        step_execution=step_execution,
+        substep=substep,
+        measurement_definition=md,
+        value=value,
+        value_string=value_string,
+        recorded_by=user,
+        equipment=equipment,
+    )
+
+
+def _write_substep_response(*, substep, step_execution, user, cap) -> Optional[SubstepResponse]:
+    """Generic per-node audit row. Upserts on (step_execution, substep,
+    node_id) so re-submits replace the prior capture rather than
+    duplicating."""
+    kind_raw = cap.get("kind")
+    kind = _normalize_kind(kind_raw)
+    if kind is None:
+        return None
+
+    document_id = cap.get("document_id")
+    value_text = cap.get("value_text", "") or ""
+    value_json: Optional[dict[str, Any]] = None
+
+    # Structured captures store the full payload as JSON.
+    if kind in {
+        SubstepResponseKind.TIMER,
+        SubstepResponseKind.COMPUTED,
+        SubstepResponseKind.ATTESTATION,
+        SubstepResponseKind.STATUS,
+        SubstepResponseKind.EQUIPMENT_ROLES,
+        SubstepResponseKind.PERSONNEL_ROLES,
+        SubstepResponseKind.SIGNATURES,
+        SubstepResponseKind.DEFECTS,
+        SubstepResponseKind.ANNOTATION,
+        SubstepResponseKind.HARVESTED_COMPONENTS,
+    }:
+        # Drop bookkeeping fields the model doesn't need; keep everything
+        # else as a generic blob.
+        value_json = {k: v for k, v in cap.items() if k not in {"node_id", "kind"}}
+
+    sr, _ = SubstepResponse.objects.update_or_create(
+        step_execution=step_execution,
+        substep=substep,
+        node_id=cap.get("node_id"),
+        defaults={
+            "kind": kind.value,
+            "value_text": value_text,
+            "value_document_id": document_id,
+            "value_json": value_json,
+            "responded_by": user,
+        },
+    )
+    return sr
+
+
+def _apply_status(report: QualityReports, cap) -> None:
+    raw = (cap.get("status") or "").upper()
+    if raw in {"PASS", "FAIL", "PENDING"}:
+        QualityReports.objects.filter(pk=report.pk).update(status=raw)
+
+
+def _apply_equipment_roles(report: QualityReports, cap) -> None:
+    rows = cap.get("rows") or []
+    valid_roles = {r.value for r in EquipmentRole}
+    for row in rows:
+        equipment_id = row.get("equipment_id")
+        role = row.get("role")
+        if not equipment_id or role not in valid_roles:
+            continue
+        QualityReportEquipment.objects.update_or_create(
+            quality_report=report,
+            equipment_id=equipment_id,
+            role=role,
+            defaults={"notes": row.get("notes") or ""},
+        )
+
+
+def _apply_personnel_roles(report: QualityReports, cap) -> None:
+    rows = cap.get("rows") or []
+    valid_roles = {r.value for r in PersonnelRole}
+    for row in rows:
+        user_id = row.get("user_id")
+        role = row.get("role")
+        if not user_id or role not in valid_roles:
+            continue
+        QualityReportPersonnel.objects.update_or_create(
+            quality_report=report,
+            user_id=user_id,
+            role=role,
+            defaults={
+                "signed_at": row.get("signed_at"),
+                "notes": row.get("notes") or "",
+            },
+        )
+
+
+def _apply_inspection_signatures(report: QualityReports, cap) -> None:
+    """Map the InspectionSignatures payload (detected / verified) to
+    QualityReportPersonnel rows with the matching role + signed_at."""
+    for which, role in (("detected", PersonnelRole.DETECTED_BY),
+                        ("verified", PersonnelRole.VERIFIED_BY)):
+        sig = cap.get(which)
+        if not isinstance(sig, dict):
+            continue
+        user_id = sig.get("user_id")
+        signed_at = sig.get("signed_at")
+        if not user_id or not signed_at:
+            continue
+        QualityReportPersonnel.objects.update_or_create(
+            quality_report=report,
+            user_id=user_id,
+            role=role.value,
+            defaults={
+                "signed_at": signed_at,
+                # `data_uri` (signature stroke) stays in the SubstepResponse
+                # JSON blob; we don't have a column for it on the through
+                # table by design — keeps the role table light.
+            },
+        )
+
+
+def _apply_attestation_signature(report: QualityReports, cap) -> None:
+    """AttestationCheckpoint in signature mode contributes a WITNESS row.
+    Confirm-mode attestations stay in SubstepResponse only — they're a
+    boolean acknowledgement, not a personnel role."""
+    sig = cap.get("signature")
+    if not isinstance(sig, dict):
+        return
+    user_id = sig.get("user_id")
+    signed_at = sig.get("signed_at")
+    if not user_id or not signed_at:
+        return
+    QualityReportPersonnel.objects.update_or_create(
+        quality_report=report,
+        user_id=user_id,
+        role=PersonnelRole.WITNESS.value,
+        defaults={"signed_at": signed_at},
+    )
+
+
+def _apply_defects(report: QualityReports, cap) -> None:
+    rows = cap.get("rows") or []
+    for row in rows:
+        error_type_id = row.get("error_type_id")
+        if not error_type_id:
+            continue
+        if not QualityErrorsList.objects.filter(pk=error_type_id).exists():
+            continue
+        QualityReportDefect.objects.update_or_create(
+            quality_report=report,
+            error_type_id=error_type_id,
+            defaults={
+                "severity": row.get("severity") or "MAJOR",
+                "location": row.get("location") or "",
+                "notes": row.get("notes") or "",
+                "count": row.get("count") or 1,
+            },
+        )
+
+
+# -------------------------------------------------------------------------
+# SubstepCompletion
+# -------------------------------------------------------------------------
+
+def _record_completion(
+    *,
+    substep,
+    step_execution,
+    user,
+    notes,
+    signature_data,
+    signature_meaning,
+    verification_method,
+    marked_not_applicable,
+    na_reason_code="",
+    ip_address,
+) -> SubstepCompletion:
+    """Upsert the substep's completion row. Idempotent — re-submitting
+    just updates the existing row in place rather than duplicating."""
+    defaults = {
+        "completed_by": user,
+        "marked_not_applicable": marked_not_applicable,
+        "na_reason_code": na_reason_code or "",
+        "notes": notes or "",
+    }
+    if signature_data:
+        defaults["signature_data"] = signature_data
+        defaults["signature_meaning"] = signature_meaning or ""
+        defaults["verified_at"] = timezone.now()
+        if verification_method:
+            defaults["verification_method"] = verification_method
+        if ip_address:
+            defaults["ip_address"] = ip_address
+
+    completion, _ = SubstepCompletion.objects.update_or_create(
+        step_execution=step_execution,
+        substep=substep,
+        defaults=defaults,
+    )
+    return completion
+
+
+# -------------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------------
+
+_KIND_MAP = {k.value: k for k in SubstepResponseKind}
+
+
+def _normalize_kind(raw) -> Optional[SubstepResponseKind]:
+    if not isinstance(raw, str):
+        return None
+    return _KIND_MAP.get(raw)

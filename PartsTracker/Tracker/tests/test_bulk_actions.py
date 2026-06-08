@@ -68,6 +68,7 @@ class BulkActionsBaseTestCase(TestCase):
             tenant=cls.tenant,
             status=ProcessStatus.APPROVED,
             is_remanufactured=True,
+            is_disassembly=True,
         )
 
         cls.step1 = Steps.objects.create(

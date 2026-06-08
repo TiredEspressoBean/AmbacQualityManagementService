@@ -45,6 +45,20 @@ def approve_step_override(
     override.save(update_fields=[
         'status', 'approved_by', 'approved_at', 'expires_at',
     ])
+
+    # Override clears a specific blocker. Synchronously re-evaluate
+    # advancement in the same request so the QA manager sees the
+    # outcome inline.
+    part = override.step_execution.part if override.step_execution else None
+    if part and part.work_order_id and part.step_id:
+        from Tracker.services.mes.advancement import try_advance_lot
+        try_advance_lot(
+            work_order_id=str(part.work_order_id),
+            step_id=str(part.step_id),
+            tenant_id=str(part.tenant_id),
+            operator=user,
+        )
+
     return override
 
 

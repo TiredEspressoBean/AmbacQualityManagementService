@@ -194,6 +194,8 @@ from .dwi import (
     SubstepCompletionViewSet,
     SubstepGateCompletionViewSet,
     SubstepResponseViewSet,
+    BatchExecutionViewSet,
+    SamplingDecisionViewSet,
 )
 
 # Life Tracking ViewSets
@@ -390,6 +392,8 @@ __all__ = [
     'SubstepCompletionViewSet',
     'SubstepGateCompletionViewSet',
     'SubstepResponseViewSet',
+    'BatchExecutionViewSet',
+    'SamplingDecisionViewSet',
 
     # Training
     'TrainingTypeViewSet',
@@ -454,7 +458,7 @@ def register_viewsets(router):
     router.register(r'Equipment-Options', EquipmentSelectViewSet, basename='Equipment-Options')
 
     # ===== QMS VIEWSETS =====
-    router.register(r'ErrorReports', QualityReportViewSet, basename='ErrorReports')
+    router.register(r'QualityReports', QualityReportViewSet, basename='QualityReports')
     router.register(r'Error-types', ErrorTypeViewSet, basename='errortype')
     router.register(r'QuarantineDispositions', QuarantineDispositionViewSet, basename='QuarantineDispositions')
     router.register(r'Sampling-rule-sets', SamplingRuleSetViewSet, basename='sampling-rule-sets')

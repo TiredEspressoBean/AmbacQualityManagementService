@@ -5,6 +5,7 @@ from rest_framework import serializers
 from Tracker.models import (
     # QMS models
     QualityErrorsList, MeasurementResult, QualityReports,
+    QualityReportEquipment, QualityReportPersonnel,
     QuarantineDisposition,
     # CAPA models
     CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification,
@@ -33,7 +34,10 @@ class QualityErrorsListSerializer(serializers.ModelSerializer, SecureModelMixin)
     `create_new_version` so changes are auditable. Archiving goes through
     a plain save because it is a soft-delete, not a content change.
     """
-    part_type_name = serializers.CharField(source="part_type.name", read_only=True)
+    # `part_type` FK is nullable on the model (tenant-wide error types are
+    # part-type-agnostic), so the derived `part_type_name` must allow null
+    # or zodios rejects the response on the frontend.
+    part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
     class Meta:
         model = QualityErrorsList
@@ -54,7 +58,7 @@ class QualityErrorsListSerializer(serializers.ModelSerializer, SecureModelMixin)
 
 class ErrorTypeSerializer(serializers.ModelSerializer):
     """Legacy error type serializer"""
-    part_type_name = serializers.CharField(source="part_type.name", read_only=True)
+    part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
     class Meta:
         model = QualityErrorsList
@@ -114,9 +118,38 @@ class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin)
 
 # ===== QUALITY REPORTS SERIALIZERS =====
 
+class QualityReportEquipmentSerializer(serializers.ModelSerializer):
+    """Nested row of (equipment, role) on a QualityReports record."""
+
+    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+
+    class Meta:
+        model = QualityReportEquipment
+        fields = ['id', 'equipment', 'equipment_name', 'role', 'notes']
+
+
+class QualityReportPersonnelSerializer(serializers.ModelSerializer):
+    """Nested row of (user, role, signed_at) on a QualityReports record."""
+
+    username = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = QualityReportPersonnel
+        fields = ['id', 'user', 'username', 'full_name', 'role', 'signed_at', 'notes']
+
+    @extend_schema_field(serializers.CharField())
+    def get_full_name(self, obj) -> str:
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
+
+
 class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
+    # New role-tagged shapes (read-only for now — operator-runtime phase
+    # will accept them on write through dedicated capture endpoints).
+    equipment_links = QualityReportEquipmentSerializer(many=True, read_only=True)
+    personnel_links = QualityReportPersonnelSerializer(many=True, read_only=True)
 
     # Display fields for related models
     part_info = serializers.SerializerMethodField()
@@ -136,6 +169,7 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
                   "status_display", "description", "file", "created_at", "errors", "measurements", "sampling_audit_log",
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
+                  "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
         read_only_fields = ("report_number", "created_at")
 

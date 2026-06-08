@@ -174,7 +174,7 @@ router = DefaultRouter()
 router.register(r'TrackerOrders', TrackerOrderViewSet, basename="TrackerOrders")
 router.register(r'Parts', PartsViewSet, basename="Parts")
 router.register(r'Orders', OrdersViewSet, basename="Orders")
-router.register(r'ErrorReports', QualityReportViewSet, basename="ErrorReports")
+router.register(r'QualityReports', QualityReportViewSet, basename="QualityReports")
 router.register(r"Employees-Options", EmployeeSelectViewSet, basename="Employees-Options")
 router.register(r"Equipment-Options", EquipmentSelectViewSet, basename="Equipment-Options")
 router.register(r"MilestoneTemplates", MilestoneTemplateViewSet, basename="MilestoneTemplates")
@@ -308,6 +308,8 @@ router.register(r'SubstepTranslations', SubstepTranslationViewSet, basename='Sub
 router.register(r'SubstepCompletions', SubstepCompletionViewSet, basename='SubstepCompletions')
 router.register(r'SubstepGateCompletions', SubstepGateCompletionViewSet, basename='SubstepGateCompletions')
 router.register(r'SubstepResponses', SubstepResponseViewSet, basename='SubstepResponses')
+router.register(r'BatchExecutions', BatchExecutionViewSet, basename='BatchExecutions')
+router.register(r'SamplingDecisions', SamplingDecisionViewSet, basename='SamplingDecisions')
 
 # ===== TRAINING VIEWSETS =====
 router.register(r'TrainingTypes', TrainingTypeViewSet, basename='TrainingTypes')

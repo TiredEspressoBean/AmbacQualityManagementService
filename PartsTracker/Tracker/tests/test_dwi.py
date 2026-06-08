@@ -501,7 +501,15 @@ class SubstepResponseKindTests(DwiPhase2BaseTestCase):
         values = {choice[0] for choice in SubstepResponseKind.choices}
         self.assertSetEqual(
             values,
-            {'text', 'choice', 'photo', 'video', 'scan', 'file', 'timer', 'computed'},
+            {
+                # Generic per-node captures
+                'text', 'choice', 'photo', 'video', 'scan', 'file', 'timer', 'computed',
+                # Structured inspection captures (Phase 2+)
+                'attestation', 'status', 'equipment_roles', 'personnel_roles',
+                'signatures', 'defects', 'annotation',
+                # Reman teardown capture (R4)
+                'harvested_components',
+            },
         )
 
 

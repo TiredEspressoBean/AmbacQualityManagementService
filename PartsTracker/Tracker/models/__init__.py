@@ -109,6 +109,7 @@ from .mes_lite import (
     WorkOrderHoldReason,
     WorkOrderSplitReason,
     Parts,
+    PartSplitReason,
 
     # Status and type enums
     PartsStatus,
@@ -173,7 +174,9 @@ from .reman import (
 # Digital Work Instructions (substep layer below Steps)
 from .dwi import (
     SequencingMode,
+    SubstepScope,
     Substep,
+    BatchExecution,
     SubstepCompletion,
     SubstepResource,
     SubstepTranslation,
@@ -181,6 +184,9 @@ from .dwi import (
     SubstepResponseKind,
     SubstepGateCompletion,
     SubstepResponse,
+    # Advancement engine phase 1 — sampling decision persistence
+    SamplingOutcome,
+    SamplingDecision,
 )
 
 # Life tracking (unified life-limited parts/materials)
@@ -203,6 +209,10 @@ from .qms import (
     DefectSeverity,
     QualityReportDefect,
     QualityReports,
+    EquipmentRole,
+    QualityReportEquipment,
+    PersonnelRole,
+    QualityReportPersonnel,
     MeasurementResult,
     EquipmentUsage,
     QaApproval,
@@ -445,6 +455,10 @@ __all__ = [
     'DefectSeverity',
     'QualityReportDefect',
     'QualityReports',
+    'EquipmentRole',
+    'QualityReportEquipment',
+    'PersonnelRole',
+    'QualityReportPersonnel',
     'MeasurementResult',
     'EquipmentUsage',
     'QaApproval',

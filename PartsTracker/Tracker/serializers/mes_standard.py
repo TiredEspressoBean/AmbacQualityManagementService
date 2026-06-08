@@ -319,7 +319,7 @@ class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
     RELEASED and OBSOLETE BOMs are immutable via PATCH — callers must POST
     to /api/boms/{id}/revisions/ to start a new DRAFT.
     """
-    part_type_name = serializers.CharField(source='part_type.name', read_only=True)
+    part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
     lines = BOMLineSerializer(many=True, read_only=True)
     line_count = serializers.SerializerMethodField()
 
@@ -352,7 +352,7 @@ class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 class BOMListSerializer(serializers.ModelSerializer):
     """Lightweight BOM serializer for lists"""
-    part_type_name = serializers.CharField(source='part_type.name', read_only=True)
+    part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
     line_count = serializers.SerializerMethodField()
 
     class Meta:
