@@ -454,7 +454,34 @@ class OrdersCSVImportSerializer(BaseCSVImportSerializer):
 
 
 class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
-    """CSV import serializer for WorkOrders."""
+    """CSV import serializer for WorkOrders.
+
+    Build-plan-aware. Maps planner spreadsheet columns to WorkOrder fields,
+    silently drops known-legacy ERP columns (PC, Dept, WC Desc., Line, …)
+    that don't map to anything in UQMES yet, and warns on truly unknown
+    columns so typos get caught instead of silently failing the import.
+
+    On upsert, the `notes` field is *appended* to rather than overwritten;
+    identical lines are de-duped so re-importing the same plan doesn't
+    bloat the field.
+    """
+
+    # Legacy ERP / build-plan columns we know about but deliberately don't
+    # map to WorkOrder fields. Dropped silently — no warning, no metadata
+    # bucket. Keys are in their *normalized* form (lower-snake-case as
+    # produced by `normalize_header`).
+    KNOWN_IGNORED_COLUMNS = {
+        'pc',
+        'description',
+        'dept',
+        'wc_desc',
+        'wc_desc.',
+        'op/area',
+        'op_area',
+        'last_op',
+        'oh',
+        'line',
+    }
 
     class Meta:
         from Tracker.models import WorkOrder, Orders, PartTypes, Processes
@@ -464,6 +491,9 @@ class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
             'wo_number': 'ERP_id',
             'item': 'part_type_erp_id',  # Special handling
             'due_date': 'expected_completion',
+            'start_date': 'expected_start',
+            'req/note': 'notes',
+            'req_note': 'notes',
         }
         fk_fields = {
             'related_order': (Orders, ['name', 'order_number', 'id']),
@@ -473,7 +503,35 @@ class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
 
     def transform_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Additional transformations for WorkOrders."""
+        # Drop known-legacy columns silently. They land in `data` because the
+        # parse-time field_mapping didn't recognize them. Stripping here keeps
+        # them out of `create(**data)` and out of the unknown-column warning.
+        data = {
+            k: v for k, v in data.items()
+            if k not in self.KNOWN_IGNORED_COLUMNS
+        }
+
+        # Warn on columns that aren't on the model AND aren't known-ignored.
+        # These are typos or columns we haven't been told about — surface
+        # them so the planner can fix the source before the next import.
+        from Tracker.models import WorkOrder as _WO
+        model_field_names = {f.name for f in _WO._meta.get_fields()}
+        # `part_type_erp_id` is consumed below for FK resolution, not a model
+        # field. fk_fields kwargs are also acceptable transport keys.
+        fk_fields = getattr(self.Meta, 'fk_fields', {})
+        allowed_transport_keys = (
+            model_field_names
+            | set(fk_fields.keys())
+            | {'part_type_erp_id'}
+        )
+        for key in list(data.keys()):
+            if key not in allowed_transport_keys:
+                self.warnings.append(f"Unknown column '{key}' — ignored")
+
         result = super().transform_data(data)
+        # `part_type_erp_id` is a transport-only key; remove from result so
+        # `create(**result)` doesn't fail with an unexpected kwarg.
+        result.pop('part_type_erp_id', None)
 
         # Handle part_type_erp_id -> find process for part type
         part_type_ref = data.get('part_type_erp_id') or data.get('part_type')
@@ -517,6 +575,28 @@ class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
             instance.create_parts(quantity, user=self.user)
 
         return instance
+
+    def update_instance(self, instance, data: Dict[str, Any]):
+        """Override notes-write to append-and-dedupe instead of overwriting.
+
+        Re-importing the same plan over the same WO should *grow* the notes
+        field with new lines, not replace the existing one. Identical lines
+        are skipped so repeat imports don't bloat the field.
+        """
+        if 'notes' in data:
+            new_line = (data['notes'] or '').strip()
+            if new_line:
+                existing = (instance.notes or '').rstrip()
+                existing_lines = {ln.strip() for ln in existing.splitlines()}
+                if new_line in existing_lines:
+                    # Already present — leave notes untouched.
+                    data.pop('notes')
+                else:
+                    data['notes'] = f"{existing}\n{new_line}" if existing else new_line
+            else:
+                # Empty CSV cell: don't blow away existing notes.
+                data.pop('notes')
+        return super().update_instance(instance, data)
 
 
 class EquipmentCSVImportSerializer(BaseCSVImportSerializer):

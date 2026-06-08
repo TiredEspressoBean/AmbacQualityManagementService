@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Upload } from "lucide-react";
+import { DataImportDialog } from "@/components/data-import-dialog";
 import {
     Table,
     TableBody,
@@ -154,6 +157,7 @@ export function WorkOrdersControlCenterPage() {
     const [bulkError, setBulkError] = useState<string | null>(null);
     const [addPartsOpen, setAddPartsOpen] = useState(false);
 
+    const queryClient = useQueryClient();
     const { data: woData, isLoading: woLoading, error: woError } = useRetrieveWorkOrders({ limit: 200 });
     const workOrders = useMemo(
         () => (woData?.results ?? []).map(adaptWorkOrder),
@@ -366,11 +370,33 @@ export function WorkOrdersControlCenterPage() {
                             Fleet view. Filter, select, act across multiple work orders.
                         </p>
                     </div>
-                    <ReportButton
-                        reportType="dispatch_list"
-                        label="Dispatch List"
-                        params={{}}
-                    />
+                    <div className="flex items-center gap-2">
+                        {/* Build-plan import: spawns multiple WOs (and their
+                            parts) from a planner spreadsheet. Reuses the
+                            generic CSV import dialog; build-plan column
+                            mapping + known-ignored columns + notes-append
+                            behavior live on the backend serializer. */}
+                        <DataImportDialog
+                            modelName="WorkOrders"
+                            displayName="Build Plan"
+                            trigger={
+                                <Button variant="outline" size="sm" className="gap-2">
+                                    <Upload className="h-4 w-4" />
+                                    Import Build Plan
+                                </Button>
+                            }
+                            onImportComplete={() => {
+                                queryClient.invalidateQueries({
+                                    predicate: (q) => q.queryKey[0] === "work-order",
+                                });
+                            }}
+                        />
+                        <ReportButton
+                            reportType="dispatch_list"
+                            label="Dispatch List"
+                            params={{}}
+                        />
+                    </div>
                 </div>
 
                 {(woError || exError) && (
