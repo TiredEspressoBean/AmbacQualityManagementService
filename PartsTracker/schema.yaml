@@ -1775,6 +1775,266 @@ paths:
               schema:
                 $ref: '#/components/schemas/BOM'
           description: ''
+  /api/BatchExecutions/:
+    get:
+      operationId: api_BatchExecutions_list
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: sealed_at
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBatchExecutionList'
+          description: ''
+    post:
+      operationId: api_BatchExecutions_create
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchExecution'
+          description: ''
+  /api/BatchExecutions/{id}/:
+    get:
+      operationId: api_BatchExecutions_retrieve
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchExecution'
+          description: ''
+    put:
+      operationId: api_BatchExecutions_update
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchExecution'
+          description: ''
+    patch:
+      operationId: api_BatchExecutions_partial_update
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchExecution'
+          description: ''
+    delete:
+      operationId: api_BatchExecutions_destroy
+      description: |-
+        BatchExecution rows + seal lifecycle action.
+
+        GET endpoints expose membership / status; the only state-changing
+        action in this iteration is `POST {id}/seal/` which closes the batch
+        for advancement.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/BatchExecutions/{id}/seal/:
+    post:
+      operationId: api_BatchExecutions_seal_create
+      description: |-
+        POST /api/BatchExecutions/{id}/seal/
+
+        Locks the batch (timestamps `sealed_at`) and fires the
+        advancement retry. ValidationError if required cohort substeps
+        aren't all completed, or if membership crosses WO boundaries.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchExecutionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchExecution'
+          description: ''
   /api/CAPAs/:
     get:
       operationId: api_CAPAs_list
@@ -7181,415 +7441,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
-  /api/ErrorReports/:
-    get:
-      operationId: api_ErrorReports_list
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      parameters:
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - in: query
-        name: machine
-        schema:
-          type: string
-          format: uuid
-      - name: offset
-        required: false
-        in: query
-        description: The initial index from which to return the results.
-        schema:
-          type: integer
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      - in: query
-        name: part
-        schema:
-          type: string
-          format: uuid
-      - in: query
-        name: part__work_order
-        schema:
-          type: string
-          format: uuid
-      - name: search
-        required: false
-        in: query
-        description: A search term.
-        schema:
-          type: string
-      - in: query
-        name: status
-        schema:
-          type: string
-          enum:
-          - FAIL
-          - PASS
-          - PENDING
-        description: |-
-          * `PASS` - Pass
-          * `FAIL` - Fail
-          * `PENDING` - Pending
-      - in: query
-        name: step
-        schema:
-          type: string
-          format: uuid
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaginatedQualityReportsList'
-          description: ''
-    post:
-      operationId: api_ErrorReports_create
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityReports'
-          description: ''
-  /api/ErrorReports/{id}/:
-    get:
-      operationId: api_ErrorReports_retrieve
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Error Report.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityReports'
-          description: ''
-    put:
-      operationId: api_ErrorReports_update
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Error Report.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/QualityReportsRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityReports'
-          description: ''
-    patch:
-      operationId: api_ErrorReports_partial_update
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Error Report.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedQualityReportsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedQualityReportsRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedQualityReportsRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityReports'
-          description: ''
-    delete:
-      operationId: api_ErrorReports_destroy
-      description: |-
-        Mixin that filters all querysets to the current tenant and applies user permissions.
-
-        This is the primary mixin for most ViewSets. It:
-        - Enforces tenant-scoped permissions (TenantModelPermissions)
-        - Filters queryset to current tenant
-        - Applies for_user() filtering (permission-based data scoping)
-        - Auto-assigns tenant on create
-        - Prevents cross-tenant access
-
-        Permission Enforcement:
-        - GET/HEAD/OPTIONS -> view_{model} permission
-        - POST -> add_{model} permission
-        - PUT/PATCH -> change_{model} permission
-        - DELETE -> delete_{model} permission
-
-        Superusers bypass both permission checks and tenant filtering.
-
-        Query parameters:
-        - include_archived=true: Include soft-deleted records (default: false)
-        - tenant=<uuid>: (superuser only) Filter to specific tenant
-
-        Usage:
-            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-                queryset = Order.objects.all()
-                serializer_class = OrderSerializer
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Error Report.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/ErrorReports/export-excel/:
-    get:
-      operationId: api_ErrorReports_export_excel_retrieve
-      description: Export the current queryset to Excel format. Respects all filters,
-        search, and ordering applied to the list view.
-      parameters:
-      - in: query
-        name: fields
-        schema:
-          type: string
-        description: Comma-separated list of field names to export (e.g., id,name,status)
-      - in: query
-        name: filename
-        schema:
-          type: string
-        description: Custom filename for the download (e.g., my_export.xlsx)
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: string
-                format: binary
-                description: Excel file download
-          description: ''
-  /api/ErrorReports/metadata/:
-    get:
-      operationId: api_ErrorReports_metadata_retrieve
-      description: Return searchable/filterable/orderable field information with filter
-        options.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListMetadataResponse'
-          description: ''
   /api/FPIRecords/:
     get:
       operationId: api_FPIRecords_list
@@ -12224,6 +12075,66 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Parts/{id}/complete_step/:
+    post:
+      operationId: api_Parts_complete_step_create
+      description: |-
+        POST /api/Parts/{id}/complete_step/
+
+        Operator "I'm done with this step for this part" — THE canonical
+        advancement trigger. Synchronously runs the gate via
+        `try_advance_lot` for this part's (work_order, step) and returns
+        the result inline.
+
+        If this part's gate clears AND it's the last cohort sibling to
+        clear, the whole cohort advances. If this part is split, it
+        advances solo. Bounded synchronous cascade through pass-through
+        steps walks forward in the same request.
+
+        Response shape matches the advance_lot action — the operator
+        sees parts_advanced / blockers_by_part / etc. in the same
+        request that triggered the gate.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parts'
+          description: ''
   /api/Parts/{id}/increment/:
     post:
       operationId: api_Parts_increment_create
@@ -12324,6 +12235,58 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Parts/{id}/split_from_lot/:
+    post:
+      operationId: api_Parts_split_from_lot_create
+      description: |-
+        POST /api/Parts/{id}/split_from_lot/
+
+        Pull this part off its WorkOrder cohort so it advances solo.
+        Quarantine, rework, expedite, customer-pull, and scrap all flow
+        through this endpoint. Body:
+            { "reason": "rework", "rework_target_step_id": "<uuid?>",
+              "notes": "<optional>" }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkSetStatusResponse'
+          description: ''
   /api/Parts/{id}/traveler/:
     get:
       operationId: api_Parts_traveler_retrieve
@@ -12357,6 +12320,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PartTravelerResponse'
+          description: ''
+  /api/Parts/advance_lot/:
+    post:
+      operationId: api_Parts_advance_lot_create
+      description: |-
+        POST /api/Parts/advance_lot/
+
+        Lot-cohesion advancement: evaluate every non-split part at
+        (work_order_id, step_id) and advance them as a cohort when the
+        gate clears for all of them. Split parts at the same (WO, Step)
+        each advance independently when their own gate clears.
+
+        Body: { "work_order_id": "<uuid>", "step_id": "<uuid>" }
+      parameters:
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parts'
           description: ''
   /api/Parts/bulk_increment/:
     post:
@@ -12466,13 +12475,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
+              $ref: '#/components/schemas/PartsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -12482,7 +12491,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BulkSetStatusResponse'
+                $ref: '#/components/schemas/Parts'
           description: ''
   /api/Parts/export/{export_format}/:
     get:
@@ -12856,6 +12865,14 @@ paths:
                 queryset = Order.objects.all()
                 serializer_class = OrderSerializer
       parameters:
+      - in: query
+        name: is_disassembly
+        schema:
+          type: boolean
+      - in: query
+        name: is_remanufactured
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -13825,6 +13842,415 @@ paths:
                 type: string
                 format: binary
                 description: Excel file download
+          description: ''
+  /api/QualityReports/:
+    get:
+      operationId: api_QualityReports_list
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: machine
+        schema:
+          type: string
+          format: uuid
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: part__work_order
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - FAIL
+          - PASS
+          - PENDING
+        description: |-
+          * `PASS` - Pass
+          * `FAIL` - Fail
+          * `PENDING` - Pending
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQualityReportsList'
+          description: ''
+    post:
+      operationId: api_QualityReports_create
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/QualityReports/{id}/:
+    get:
+      operationId: api_QualityReports_retrieve
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Error Report.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+    put:
+      operationId: api_QualityReports_update
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Error Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QualityReportsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+    patch:
+      operationId: api_QualityReports_partial_update
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Error Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQualityReportsRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+    delete:
+      operationId: api_QualityReports_destroy
+      description: |-
+        Mixin that filters all querysets to the current tenant and applies user permissions.
+
+        This is the primary mixin for most ViewSets. It:
+        - Enforces tenant-scoped permissions (TenantModelPermissions)
+        - Filters queryset to current tenant
+        - Applies for_user() filtering (permission-based data scoping)
+        - Auto-assigns tenant on create
+        - Prevents cross-tenant access
+
+        Permission Enforcement:
+        - GET/HEAD/OPTIONS -> view_{model} permission
+        - POST -> add_{model} permission
+        - PUT/PATCH -> change_{model} permission
+        - DELETE -> delete_{model} permission
+
+        Superusers bypass both permission checks and tenant filtering.
+
+        Query parameters:
+        - include_archived=true: Include soft-deleted records (default: false)
+        - tenant=<uuid>: (superuser only) Filter to specific tenant
+
+        Usage:
+            class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+                queryset = Order.objects.all()
+                serializer_class = OrderSerializer
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Error Report.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/QualityReports/export-excel/:
+    get:
+      operationId: api_QualityReports_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/QualityReports/metadata/:
+    get:
+      operationId: api_QualityReports_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/QuarantineDispositions/:
     get:
@@ -15375,6 +15801,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/SamplingDecisions/:
+    get:
+      operationId: api_SamplingDecisions_list
+      description: |-
+        Read-only access to live SamplingDecision rows.
+
+        Operator runtime queries `?step_execution=<id>` to discover which
+        substeps are SELECTED / DESELECTED / PENDING for this part and skip
+        sampled-out work. Decisions are written by the sampling subsystem
+        on step entry (`Tracker.services.dwi.sampling_decisions`); they're
+        not editable through the API.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: outcome
+        schema:
+          type: string
+          enum:
+          - deselected
+          - pending
+          - selected
+        description: |-
+          What the rule decided — SELECTED, DESELECTED, or PENDING.
+
+          * `selected` - Selected
+          * `deselected` - Deselected
+          * `pending` - Pending
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: substep
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSamplingDecisionList'
+          description: ''
+  /api/SamplingDecisions/{id}/:
+    get:
+      operationId: api_SamplingDecisions_retrieve
+      description: |-
+        Read-only access to live SamplingDecision rows.
+
+        Operator runtime queries `?step_execution=<id>` to discover which
+        substeps are SELECTED / DESELECTED / PENDING for this part and skip
+        sampled-out work. Decisions are written by the sampling subsystem
+        on step entry (`Tracker.services.dwi.sampling_decisions`); they're
+        not editable through the API.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sampling decision.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplingDecision'
+          description: ''
+  /api/SamplingDecisions/reconcile/:
+    post:
+      operationId: api_SamplingDecisions_reconcile_create
+      description: |-
+        POST /api/SamplingDecisions/reconcile/
+
+        Supervisor-triggered reconciliation of PENDING decisions for a
+        WorkOrder (optionally narrowed to a step). Resolves rules like
+        LAST_N_PARTS / EXACT_COUNT now that the cohort is closed.
+
+        Body: { "work_order_id": "<uuid>", "step_id"?: "<uuid>" }
+
+        Returns a summary: { reconciled, now_selected, now_deselected,
+        still_pending }. Supervisor UI uses this to surface what flipped.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplingDecision'
           description: ''
   /api/ScheduleSlots/:
     get:
@@ -18017,6 +18566,54 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/SubstepCompletions/{id}/void/:
+    post:
+      operationId: api_SubstepCompletions_void_create
+      description: |-
+        POST /api/SubstepCompletions/{id}/void/
+
+        QA voids an erroneous completion (gauge out of cal, wrong test
+        method, calculator error, etc.). The gate ignores voided rows,
+        so the next advancement attempt for the affected part will
+        block on the missing completion until a fresh one lands.
+
+        For parts already past the step, the void is audit-only — the
+        containment investigation happens through the existing
+        QualityReports list + CAPA tooling (Flow #10).
+
+        Body: { "reason": "<text>" } — required.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep completion.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepCompletionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepCompletion'
+          description: ''
   /api/SubstepGateCompletions/:
     get:
       operationId: api_SubstepGateCompletions_list
@@ -18431,11 +19028,19 @@ paths:
         schema:
           type: string
           enum:
+          - annotation
+          - attestation
           - choice
           - computed
+          - defects
+          - equipment_roles
           - file
+          - harvested_components
+          - personnel_roles
           - photo
           - scan
+          - signatures
+          - status
           - text
           - timer
           - video
@@ -18450,6 +19055,14 @@ paths:
           * `file` - File upload
           * `timer` - Timer (countdown / stopwatch)
           * `computed` - Computed value (formula)
+          * `attestation` - Attestation (confirm / signature)
+          * `status` - Quality status (PASS / FAIL / PENDING)
+          * `equipment_roles` - Equipment + roles
+          * `personnel_roles` - Personnel + roles
+          * `signatures` - Inspection signatures (detected / verified)
+          * `defects` - Defect findings
+          * `annotation` - Part annotation (3D)
+          * `harvested_components` - Harvested components (teardown)
       - name: limit
         required: false
         in: query
@@ -19047,6 +19660,143 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Substeps/{id}/ensure_inspection_qr/:
+    post:
+      operationId: api_Substeps_ensure_inspection_qr_create
+      description: |-
+        POST /api/Substeps/{id}/ensure_inspection_qr/
+
+        Eagerly find-or-create the `QualityReports` row that this
+        inspection-point substep would create on submit. Lets the
+        operator runtime pre-bind a QR id into `PartContext` before the
+        operator finishes the substep — required by capture nodes like
+        `PartAnnotation` that need a known QR id to attach annotations
+        to as the operator works.
+
+        Idempotent: returns the existing QR id when the runtime calls
+        it on subsequent opens of the same (step_execution, substep)
+        pair.
+
+        Body: { "step_execution": "<uuid>" }
+        Returns: { "quality_report_id": "<uuid>", "created": <bool> }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+  /api/Substeps/{id}/submit/:
+    post:
+      operationId: api_Substeps_submit_create
+      description: |-
+        Operator-runtime submit endpoint.
+
+        Persists everything an operator captured on a single substep:
+        per-node `SubstepResponse` rows, `MeasurementInput` captures via
+        the existing two-tier service, structured-capture rows on
+        `QualityReports` + through tables (when the substep is an
+        inspection point), and a closing `SubstepCompletion`.
+
+        Body shape: see `services/dwi/operator_capture.py` docstring.
+
+        Returns:
+            ``{ completion_id, response_count, quality_report_id,
+                 measurement_count }``
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
+  /api/Substeps/reorder/:
+    post:
+      operationId: api_Substeps_reorder_create
+      description: |-
+        Atomically reorder substeps within a step.
+
+        Body shape: ``{"step": "<uuid>", "order": ["<substep_id>", ...]}``.
+
+        Why a dedicated action: the ``(step, order)`` UniqueConstraint
+        rejects naive per-row PATCHes from the client because intermediate
+        states collide mid-swap. We do a two-phase update inside a single
+        transaction — first shift all involved rows to a non-conflicting
+        negative range, then assign the final positive values.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Substep'
+          description: ''
   /api/TenantGroups/:
     get:
       operationId: api_TenantGroups_list
@@ -22187,6 +22937,64 @@ paths:
                 type: object
                 additionalProperties: {}
           description: Bulk company assignment response
+  /api/User/bulk-reconcile/:
+    post:
+      operationId: api_User_bulk_reconcile_create
+      description: 'Reconcile the tenant''s user roster to match a list of row descriptors.
+        State-based: each row describes a desired user; missing emails are created
+        + invited, existing emails are updated to match. Accepts either inline `rows`
+        in JSON, or a CSV/Excel file upload via multipart form-data.'
+      tags:
+      - Users
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkReconcileUsersRequestRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReconcileUsersRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReconcileUsersResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (no rows, bad file)
+          description: ''
+  /api/User/bulk-reconcile-status/{task_id}/:
+    get:
+      operationId: api_User_bulk_reconcile_status_retrieve
+      description: Poll a queued bulk reconcile job. Mirrors the CSV-import status
+        pattern.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from a queued bulk-reconcile
+        required: true
+      tags:
+      - Users
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Task status + result if done
   /api/User/debug-filter/:
     get:
       operationId: api_User_debug_filter_retrieve
@@ -29921,6 +30729,7 @@ components:
         part_type_name:
           type: string
           readOnly: true
+          nullable: true
         revision:
           type: string
           maxLength: 10
@@ -30102,6 +30911,7 @@ components:
         part_type_name:
           type: string
           readOnly: true
+          nullable: true
         revision:
           type: string
           maxLength: 10
@@ -30171,6 +30981,98 @@ components:
       description: |-
         * `ACTIVE` - Active
         * `SUPERSEDED` - Superseded
+    BatchExecution:
+      type: object
+      description: |-
+        Minimal BatchExecution shape for the lifecycle viewset.
+
+        The viewset only exposes list/retrieve + the seal action in this
+        iteration; write semantics live on the seal service, not on the
+        serializer.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        work_order:
+          type: string
+          format: uuid
+          description: The WorkOrder whose parts make up this batch.
+        step:
+          type: string
+          format: uuid
+          description: The Step the batch is running through.
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Parts that are members of this batch.
+        started_by:
+          type: integer
+          description: Operator who started the batch.
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the operator started the batch.
+        sealed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the batch was sealed (first BATCH-scope substep fired).
+            Parts can be added freely before this; locked after.
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When every BATCH-scope substep on the Step was completed.
+        notes:
+          type: string
+          description: Operator notes captured at batch start / during the run.
+      required:
+      - completed_at
+      - id
+      - sealed_at
+      - started_at
+      - started_by
+      - step
+      - work_order
+    BatchExecutionRequest:
+      type: object
+      description: |-
+        Minimal BatchExecution shape for the lifecycle viewset.
+
+        The viewset only exposes list/retrieve + the seal action in this
+        iteration; write semantics live on the seal service, not on the
+        serializer.
+      properties:
+        work_order:
+          type: string
+          format: uuid
+          description: The WorkOrder whose parts make up this batch.
+        step:
+          type: string
+          format: uuid
+          description: The Step the batch is running through.
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Parts that are members of this batch.
+        started_by:
+          type: integer
+          description: Operator who started the batch.
+        notes:
+          type: string
+          description: Operator notes captured at batch start / during the run.
+      required:
+      - started_by
+      - step
+      - work_order
     BlankEnum:
       enum:
       - ''
@@ -30239,6 +31141,48 @@ components:
       required:
       - company_id
       - user_ids
+    BulkReconcileSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        created:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        errors:
+          type: integer
+      required:
+      - created
+      - errors
+      - total
+      - unchanged
+      - updated
+    BulkReconcileUsersRequestRequest:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'List of row dicts: {email, first_name, last_name, group, status,
+            message}. Either `rows` (this field) or a `file` upload must be provided.'
+    BulkReconcileUsersResponse:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/BulkReconcileSummary'
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - results
+      - summary
     BulkRemovePartsInputRequest:
       type: object
       properties:
@@ -32488,6 +33432,10 @@ components:
         notes:
           type: string
           description: Special handling instructions or notes
+        positions:
+          description: Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl
+            2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's
+            position field per row. Free-text when empty.
         line_number:
           type: integer
           maximum: 2147483647
@@ -32547,6 +33495,10 @@ components:
         notes:
           type: string
           description: Special handling instructions or notes
+        positions:
+          description: Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl
+            2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's
+            position field per row. Free-text when empty.
         line_number:
           type: integer
           maximum: 2147483647
@@ -35370,6 +36322,14 @@ components:
       - file
       - timer
       - computed
+      - attestation
+      - status
+      - equipment_roles
+      - personnel_roles
+      - signatures
+      - defects
+      - annotation
+      - harvested_components
       type: string
       description: |-
         * `text` - Text input
@@ -35380,6 +36340,14 @@ components:
         * `file` - File upload
         * `timer` - Timer (countdown / stopwatch)
         * `computed` - Computed value (formula)
+        * `attestation` - Attestation (confirm / signature)
+        * `status` - Quality status (PASS / FAIL / PENDING)
+        * `equipment_roles` - Equipment + roles
+        * `personnel_roles` - Personnel + roles
+        * `signatures` - Inspection signatures (detected / verified)
+        * `defects` - Defect findings
+        * `annotation` - Part annotation (3D)
+        * `harvested_components` - Harvested components (teardown)
     LLMConfigResponse:
       type: object
       properties:
@@ -36371,6 +37339,16 @@ components:
         * `COMPLETED` - Completed
         * `ON_HOLD` - On hold
         * `CANCELLED` - Cancelled
+    OutcomeEnum:
+      enum:
+      - selected
+      - deselected
+      - pending
+      type: string
+      description: |-
+        * `selected` - Selected
+        * `deselected` - Deselected
+        * `pending` - Pending
     PaginatedApprovalRequestList:
       type: object
       required:
@@ -36555,6 +37533,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BOMList'
+    PaginatedBatchExecutionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchExecution'
     PaginatedCAPAList:
       type: object
       required:
@@ -37636,6 +38637,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SPCBaselineList'
+    PaginatedSamplingDecisionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SamplingDecision'
     PaginatedSamplingRuleList:
       type: object
       required:
@@ -38516,6 +39540,14 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
+        default_disassembly_process:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Canonical preference for the teardown picker. When set, the
+            operator''s bulk-teardown dialog preselects this Process. Optional: when
+            null, the picker has no preselection and (for automation paths) WO creation
+            refuses to resolve a default.'
         version:
           type: integer
           readOnly: true
@@ -38579,6 +39611,14 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
+        default_disassembly_process:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Canonical preference for the teardown picker. When set, the
+            operator''s bulk-teardown dialog preselects this Process. Optional: when
+            null, the picker has no preselection and (for automation paths) WO creation
+            refuses to resolve a default.'
       required:
       - name
     Parts:
@@ -39104,6 +40144,35 @@ components:
           type: string
         archived:
           type: boolean
+    PatchedBatchExecutionRequest:
+      type: object
+      description: |-
+        Minimal BatchExecution shape for the lifecycle viewset.
+
+        The viewset only exposes list/retrieve + the seal action in this
+        iteration; write semantics live on the seal service, not on the
+        serializer.
+      properties:
+        work_order:
+          type: string
+          format: uuid
+          description: The WorkOrder whose parts make up this batch.
+        step:
+          type: string
+          format: uuid
+          description: The Step the batch is running through.
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Parts that are members of this batch.
+        started_by:
+          type: integer
+          description: Operator who started the batch.
+        notes:
+          type: string
+          description: Operator notes captured at batch start / during the run.
     PatchedCAPARequest:
       type: object
       description: CAPA main serializer
@@ -39545,6 +40614,10 @@ components:
         notes:
           type: string
           description: Special handling instructions or notes
+        positions:
+          description: Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl
+            2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's
+            position field per row. Free-text when empty.
         line_number:
           type: integer
           maximum: 2147483647
@@ -40245,6 +41318,14 @@ components:
           type: string
           description: USML Category if ITAR-controlled (e.g., IV, XI, XIX)
           maxLength: 10
+        default_disassembly_process:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Canonical preference for the teardown picker. When set, the
+            operator''s bulk-teardown dialog preselects this Process. Optional: when
+            null, the picker has no preselection and (for automation paths) WO creation
+            refuses to resolve a default.'
     PatchedPartsRequest:
       type: object
       description: Enhanced parts serializer using model methods
@@ -40483,6 +41564,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -40536,6 +41623,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -40613,8 +41706,7 @@ components:
           type: array
           items:
             type: integer
-          description: Operators running the process when defect occurred (for root
-            cause)
+          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           minLength: 1
@@ -40641,12 +41733,11 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: Inspector/operator who detected the defect (required for new
-            reports)
+          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
         verified_by:
           type: integer
           nullable: true
-          description: Second signature for critical inspections (aerospace/medical)
+          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         is_first_piece:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
@@ -41102,7 +42193,9 @@ components:
         part:
           type: string
           format: uuid
-          description: The part being tracked through this step
+          nullable: true
+          description: The part being tracked through this step (mutually exclusive
+            with `core`).
         step:
           type: string
           format: uuid
@@ -41286,8 +42379,10 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record the operator was working when they completed
-            this substep.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set; check constraint enforces
+            this at the DB level.
         substep:
           type: string
           format: uuid
@@ -41412,6 +42507,16 @@ components:
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
+        is_critical:
+          type: boolean
+          description: Safety-critical substep. When True, N/A is impossible regardless
+            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
+            with marked_not_applicable=True for this substep, even at gate-time re-check.
+        allow_not_applicable:
+          type: boolean
+          description: 'Engineer authoring concern: when True, an operator may mark
+            this substep N/A (must provide na_reason_code on the SubstepCompletion
+            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
           description: Operator must sign at substep completion. Distinct from inline
@@ -41433,8 +42538,9 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: If set, the substep only applies to parts this rule selects.
-            Null = substep always applies to every part visiting the step.
+          description: Only meaningful when scope=SAMPLED. If set, the substep only
+            applies to parts this rule selects. Null = substep always applies to every
+            part visiting the step (100% sample). Ignored when scope=BATCH.
         source_library_substep_id:
           type: integer
           maximum: 2147483647
@@ -41489,7 +42595,9 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record where this response was captured.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid
@@ -41514,6 +42622,14 @@ components:
             * `file` - File upload
             * `timer` - Timer (countdown / stopwatch)
             * `computed` - Computed value (formula)
+            * `attestation` - Attestation (confirm / signature)
+            * `status` - Quality status (PASS / FAIL / PENDING)
+            * `equipment_roles` - Equipment + roles
+            * `personnel_roles` - Personnel + roles
+            * `signatures` - Inspection signatures (detected / verified)
+            * `defects` - Defect findings
+            * `annotation` - Part annotation (3D)
+            * `harvested_components` - Harvested components (teardown)
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -42165,7 +43281,6 @@ components:
         notes:
           type: string
           nullable: true
-          maxLength: 500
         archived:
           type: boolean
     PermissionListResponse:
@@ -43024,6 +44139,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -43114,6 +44235,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -43181,6 +44308,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -43225,6 +44358,7 @@ components:
         part_type_name:
           type: string
           readOnly: true
+          nullable: true
         process_steps:
           type: array
           items:
@@ -43284,6 +44418,12 @@ components:
           maxLength: 50
         is_remanufactured:
           type: boolean
+        is_disassembly:
+          type: boolean
+          description: When True, this Process is eligible to be selected as a teardown
+            process for Cores of its `part_type`. A single core_type may have multiple
+            eligible disassembly Processes (quick teardown, full overhaul, failure-analysis);
+            the operator picks at WO creation.
         part_type:
           type: string
           format: uuid
@@ -43384,6 +44524,7 @@ components:
         part_type_name:
           type: string
           readOnly: true
+          nullable: true
         requires_3d_annotation:
           type: boolean
         archived:
@@ -43447,6 +44588,168 @@ components:
       - total_failed
       - total_inspected
       - use_as_is_rate
+    QualityReportEquipment:
+      type: object
+      description: Nested row of (equipment, role) on a QualityReports record.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        equipment:
+          type: string
+          format: uuid
+        equipment_name:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/QualityReportEquipmentRoleEnum'
+          description: |-
+            What role this equipment played for this report.
+
+            * `PRODUCTION` - Production machine
+            * `FIXTURE` - Fixture / hold-down
+            * `TOOL` - Cutting / forming tool
+            * `GAUGE` - Inspection gauge / instrument
+            * `OTHER` - Other
+        notes:
+          type: string
+          description: Optional context (e.g. which station in a multi-station cell).
+          maxLength: 200
+      required:
+      - equipment
+      - equipment_name
+      - id
+    QualityReportEquipmentRequest:
+      type: object
+      description: Nested row of (equipment, role) on a QualityReports record.
+      properties:
+        equipment:
+          type: string
+          format: uuid
+        role:
+          allOf:
+          - $ref: '#/components/schemas/QualityReportEquipmentRoleEnum'
+          description: |-
+            What role this equipment played for this report.
+
+            * `PRODUCTION` - Production machine
+            * `FIXTURE` - Fixture / hold-down
+            * `TOOL` - Cutting / forming tool
+            * `GAUGE` - Inspection gauge / instrument
+            * `OTHER` - Other
+        notes:
+          type: string
+          description: Optional context (e.g. which station in a multi-station cell).
+          maxLength: 200
+      required:
+      - equipment
+    QualityReportEquipmentRoleEnum:
+      enum:
+      - PRODUCTION
+      - FIXTURE
+      - TOOL
+      - GAUGE
+      - OTHER
+      type: string
+      description: |-
+        * `PRODUCTION` - Production machine
+        * `FIXTURE` - Fixture / hold-down
+        * `TOOL` - Cutting / forming tool
+        * `GAUGE` - Inspection gauge / instrument
+        * `OTHER` - Other
+    QualityReportPersonnel:
+      type: object
+      description: Nested row of (user, role, signed_at) on a QualityReports record.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        username:
+          type: string
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/QualityReportPersonnelRoleEnum'
+          description: |-
+            What role this user played on this report.
+
+            * `DETECTED_BY` - Detected by
+            * `OPERATOR` - Operator on the job
+            * `VERIFIED_BY` - Verified by (second sig)
+            * `INSPECTOR` - Inspector
+            * `WITNESS` - Witness
+            * `TRAINER` - Trainer / supervisor
+            * `TRAINEE` - Trainee under supervision
+        signed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the user attested to their role (signature timestamp).
+            Null for non-signing roles like OPERATOR.
+        notes:
+          type: string
+          maxLength: 200
+      required:
+      - full_name
+      - id
+      - role
+      - user
+      - username
+    QualityReportPersonnelRequest:
+      type: object
+      description: Nested row of (user, role, signed_at) on a QualityReports record.
+      properties:
+        user:
+          type: integer
+        role:
+          allOf:
+          - $ref: '#/components/schemas/QualityReportPersonnelRoleEnum'
+          description: |-
+            What role this user played on this report.
+
+            * `DETECTED_BY` - Detected by
+            * `OPERATOR` - Operator on the job
+            * `VERIFIED_BY` - Verified by (second sig)
+            * `INSPECTOR` - Inspector
+            * `WITNESS` - Witness
+            * `TRAINER` - Trainer / supervisor
+            * `TRAINEE` - Trainee under supervision
+        signed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the user attested to their role (signature timestamp).
+            Null for non-signing roles like OPERATOR.
+        notes:
+          type: string
+          maxLength: 200
+      required:
+      - role
+      - user
+    QualityReportPersonnelRoleEnum:
+      enum:
+      - DETECTED_BY
+      - OPERATOR
+      - VERIFIED_BY
+      - INSPECTOR
+      - WITNESS
+      - TRAINER
+      - TRAINEE
+      type: string
+      description: |-
+        * `DETECTED_BY` - Detected by
+        * `OPERATOR` - Operator on the job
+        * `VERIFIED_BY` - Verified by (second sig)
+        * `INSPECTOR` - Inspector
+        * `WITNESS` - Witness
+        * `TRAINER` - Trainer / supervisor
+        * `TRAINEE` - Trainee under supervision
     QualityReportStatusEnum:
       enum:
       - PASS
@@ -43485,8 +44788,7 @@ components:
           type: array
           items:
             type: integer
-          description: Operators running the process when defect occurred (for root
-            cause)
+          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           maxLength: 50
@@ -43525,8 +44827,7 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: Inspector/operator who detected the defect (required for new
-            reports)
+          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
         detected_by_info:
           type: object
           additionalProperties: {}
@@ -43535,7 +44836,7 @@ components:
         verified_by:
           type: integer
           nullable: true
-          description: Second signature for critical inspections (aerospace/medical)
+          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         verified_by_info:
           type: object
           additionalProperties: {}
@@ -43545,6 +44846,16 @@ components:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
             for setup verification
+        equipment_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityReportEquipment'
+          readOnly: true
+        personnel_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityReportPersonnel'
+          readOnly: true
         part_info:
           type: object
           additionalProperties: {}
@@ -43582,6 +44893,7 @@ components:
       required:
       - created_at
       - detected_by_info
+      - equipment_links
       - errors
       - errors_info
       - file_info
@@ -43590,6 +44902,7 @@ components:
       - operators_info
       - part_display
       - part_info
+      - personnel_links
       - report_number
       - status
       - status_display
@@ -43615,8 +44928,7 @@ components:
           type: array
           items:
             type: integer
-          description: Operators running the process when defect occurred (for root
-            cause)
+          description: DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
         sampling_method:
           type: string
           minLength: 1
@@ -43643,12 +44955,11 @@ components:
         detected_by:
           type: integer
           nullable: true
-          description: Inspector/operator who detected the defect (required for new
-            reports)
+          description: DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
         verified_by:
           type: integer
           nullable: true
-          description: Second signature for critical inspections (aerospace/medical)
+          description: DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
         is_first_piece:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
@@ -44223,14 +45534,6 @@ components:
         * `SAME` - Same as Previous
         * `DIFFERENT` - Different Operator
         * `ROLE` - Specific Role
-    RoleEnum:
-      enum:
-      - PRIMARY
-      - CONTRIBUTING
-      type: string
-      description: |-
-        * `PRIMARY` - Primary
-        * `CONTRIBUTING` - Contributing
     RootCause:
       type: object
       description: Root cause serializer
@@ -44255,7 +45558,7 @@ components:
           type: string
           readOnly: true
         role:
-          $ref: '#/components/schemas/RoleEnum'
+          $ref: '#/components/schemas/RootCauseRoleEnum'
         role_display:
           type: string
           readOnly: true
@@ -44315,7 +45618,7 @@ components:
         category:
           $ref: '#/components/schemas/RootCauseCategoryEnum'
         role:
-          $ref: '#/components/schemas/RoleEnum'
+          $ref: '#/components/schemas/RootCauseRoleEnum'
         sequence:
           type: integer
           maximum: 2147483647
@@ -44327,6 +45630,14 @@ components:
       - category
       - description
       - rca_record
+    RootCauseRoleEnum:
+      enum:
+      - PRIMARY
+      - CONTRIBUTING
+      type: string
+      description: |-
+        * `PRIMARY` - Primary
+        * `CONTRIBUTING` - Contributing
     RootCauseVerificationStatusEnum:
       enum:
       - UNVERIFIED
@@ -44886,6 +46197,64 @@ components:
       - process_name
       - statistics
       - step_name
+    SamplingDecision:
+      type: object
+      description: |-
+        Append-only sampling decision per (StepExecution, Substep). The
+        operator runtime queries `?step_execution=<id>` to discover which
+        substeps are SELECTED / DESELECTED / PENDING and grey out the
+        sampled-out ones.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+          readOnly: true
+          description: The (part, step, visit) this decision applies to.
+        substep:
+          type: string
+          format: uuid
+          readOnly: true
+          description: The substep whose sampling_rule produced this decision.
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          readOnly: true
+          description: |-
+            What the rule decided — SELECTED, DESELECTED, or PENDING.
+
+            * `selected` - Selected
+            * `deselected` - Deselected
+            * `pending` - Pending
+        ruleset_version:
+          type: integer
+          readOnly: true
+          description: Version of the SamplingRuleSet that produced this decision.
+            Audit can answer 'what rule was active when this was decided' via this
+            field; rule edits bump the version on supersession.
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: UTC timestamp the decision was written.
+        superseded_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: When a rule change invalidates this decision, the new SamplingDecision
+            row's id goes here. Null = this decision is live.
+      required:
+      - decided_at
+      - id
+      - outcome
+      - ruleset_version
+      - step_execution
+      - substep
+      - superseded_by
     SamplingRule:
       type: object
       description: Enhanced sampling rule serializer
@@ -45516,6 +46885,7 @@ components:
         part_type_name:
           type: string
           readOnly: true
+          nullable: true
         expected_duration:
           type: string
           nullable: true
@@ -45695,7 +47065,9 @@ components:
         part:
           type: string
           format: uuid
-          description: The part being tracked through this step
+          nullable: true
+          description: The part being tracked through this step (mutually exclusive
+            with `core`).
         step:
           type: string
           format: uuid
@@ -45779,7 +47151,6 @@ components:
       - entered_at
       - id
       - is_active
-      - part
       - part_info
       - step
       - step_info
@@ -45795,7 +47166,9 @@ components:
         part:
           type: string
           format: uuid
-          description: The part being tracked through this step
+          nullable: true
+          description: The part being tracked through this step (mutually exclusive
+            with `core`).
         part_erp_id:
           type: string
           readOnly: true
@@ -45845,7 +47218,6 @@ components:
       - assigned_to_name
       - entered_at
       - id
-      - part
       - part_erp_id
       - part_status
       - step
@@ -45996,7 +47368,9 @@ components:
         part:
           type: string
           format: uuid
-          description: The part being tracked through this step
+          nullable: true
+          description: The part being tracked through this step (mutually exclusive
+            with `core`).
         step:
           type: string
           format: uuid
@@ -46033,7 +47407,6 @@ components:
         archived:
           type: boolean
       required:
-      - part
       - step
     StepExecutionStatusEnum:
       enum:
@@ -46686,6 +48059,16 @@ components:
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
+        is_critical:
+          type: boolean
+          description: Safety-critical substep. When True, N/A is impossible regardless
+            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
+            with marked_not_applicable=True for this substep, even at gate-time re-check.
+        allow_not_applicable:
+          type: boolean
+          description: 'Engineer authoring concern: when True, an operator may mark
+            this substep N/A (must provide na_reason_code on the SubstepCompletion
+            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
           description: Operator must sign at substep completion. Distinct from inline
@@ -46707,8 +48090,9 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: If set, the substep only applies to parts this rule selects.
-            Null = substep always applies to every part visiting the step.
+          description: Only meaningful when scope=SAMPLED. If set, the substep only
+            applies to parts this rule selects. Null = substep always applies to every
+            part visiting the step (100% sample). Ignored when scope=BATCH.
         source_library_substep_id:
           type: integer
           maximum: 2147483647
@@ -46723,6 +48107,9 @@ components:
           nullable: true
           description: 'Forward-compatible: version of the LibrarySubstep at insert
             time.'
+        is_editable:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -46736,6 +48123,7 @@ components:
       required:
       - created_at
       - id
+      - is_editable
       - step
       - step_name
       - title
@@ -46751,8 +48139,10 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record the operator was working when they completed
-            this substep.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set; check constraint enforces
+            this at the DB level.
         substep:
           type: string
           format: uuid
@@ -46766,6 +48156,7 @@ components:
           description: Operator who completed the substep.
         completed_by_name:
           type: string
+          nullable: true
           readOnly: true
         completed_at:
           type: string
@@ -46822,7 +48213,6 @@ components:
       - completed_by_name
       - created_at
       - id
-      - step_execution
       - substep
       - substep_title
       - updated_at
@@ -46833,8 +48223,10 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record the operator was working when they completed
-            this substep.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set; check constraint enforces
+            this at the DB level.
         substep:
           type: string
           format: uuid
@@ -46881,7 +48273,6 @@ components:
           description: Client IP at signing time; captured for audit defense.
       required:
       - completed_by
-      - step_execution
       - substep
     SubstepGateCompletion:
       type: object
@@ -46910,6 +48301,7 @@ components:
           description: Operator who confirmed/signed the gate.
         completed_by_name:
           type: string
+          nullable: true
           readOnly: true
         completed_at:
           type: string
@@ -47047,6 +48439,16 @@ components:
         is_optional:
           type: boolean
           description: Operator may mark this substep N/A instead of completing it.
+        is_critical:
+          type: boolean
+          description: Safety-critical substep. When True, N/A is impossible regardless
+            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
+            with marked_not_applicable=True for this substep, even at gate-time re-check.
+        allow_not_applicable:
+          type: boolean
+          description: 'Engineer authoring concern: when True, an operator may mark
+            this substep N/A (must provide na_reason_code on the SubstepCompletion
+            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
           description: Operator must sign at substep completion. Distinct from inline
@@ -47068,8 +48470,9 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: If set, the substep only applies to parts this rule selects.
-            Null = substep always applies to every part visiting the step.
+          description: Only meaningful when scope=SAMPLED. If set, the substep only
+            applies to parts this rule selects. Null = substep always applies to every
+            part visiting the step (100% sample). Ignored when scope=BATCH.
         source_library_substep_id:
           type: integer
           maximum: 2147483647
@@ -47184,7 +48587,9 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record where this response was captured.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid
@@ -47208,6 +48613,14 @@ components:
             * `file` - File upload
             * `timer` - Timer (countdown / stopwatch)
             * `computed` - Computed value (formula)
+            * `attestation` - Attestation (confirm / signature)
+            * `status` - Quality status (PASS / FAIL / PENDING)
+            * `equipment_roles` - Equipment + roles
+            * `personnel_roles` - Personnel + roles
+            * `signatures` - Inspection signatures (detected / verified)
+            * `defects` - Defect findings
+            * `annotation` - Part annotation (3D)
+            * `harvested_components` - Harvested components (teardown)
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -47227,6 +48640,7 @@ components:
           description: Operator who captured the response.
         responded_by_name:
           type: string
+          nullable: true
           readOnly: true
         responded_at:
           type: string
@@ -47249,7 +48663,6 @@ components:
       - responded_at
       - responded_by
       - responded_by_name
-      - step_execution
       - substep
       - updated_at
     SubstepResponseRequest:
@@ -47261,7 +48674,9 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record where this response was captured.
+          nullable: true
+          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
+            of step_execution / batch_execution should be set.
         substep:
           type: string
           format: uuid
@@ -47286,6 +48701,14 @@ components:
             * `file` - File upload
             * `timer` - Timer (countdown / stopwatch)
             * `computed` - Computed value (formula)
+            * `attestation` - Attestation (confirm / signature)
+            * `status` - Quality status (PASS / FAIL / PENDING)
+            * `equipment_roles` - Equipment + roles
+            * `personnel_roles` - Personnel + roles
+            * `signatures` - Inspection signatures (detected / verified)
+            * `defects` - Defect findings
+            * `annotation` - Part annotation (3D)
+            * `harvested_components` - Harvested components (teardown)
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -47307,7 +48730,6 @@ components:
       - kind
       - node_id
       - responded_by
-      - step_execution
       - substep
     SubstepTranslation:
       type: object
@@ -49316,6 +50738,11 @@ components:
           type: string
           format: date-time
           readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         parent_company:
           allOf:
           - $ref: '#/components/schemas/Company'
@@ -49343,6 +50770,7 @@ components:
       - full_name
       - groups
       - id
+      - last_login
       - parent_company
       - tenant
       - user_type
@@ -49996,7 +51424,6 @@ components:
         notes:
           type: string
           nullable: true
-          maxLength: 500
         parts_summary:
           type: object
           additionalProperties: {}
@@ -50230,7 +51657,6 @@ components:
         notes:
           type: string
           nullable: true
-          maxLength: 500
         parts_count:
           type: integer
           readOnly: true
@@ -50371,7 +51797,6 @@ components:
         notes:
           type: string
           nullable: true
-          maxLength: 500
         archived:
           type: boolean
       required:

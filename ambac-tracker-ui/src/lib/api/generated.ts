@@ -452,7 +452,7 @@ export type ActionEnum =
 export type BOM = {
   id: string;
   part_type: string;
-  part_type_name: string;
+  part_type_name: string | null;
   /**
    * @maxLength 10
    */
@@ -531,7 +531,7 @@ export type BOMLine = {
 export type BOMList = {
   id: string;
   part_type: string;
-  part_type_name: string;
+  part_type_name: string | null;
   /**
    * @maxLength 10
    */
@@ -601,6 +601,17 @@ export type PartsStatusEnum =
   | "AWAITING_PICKUP"
   | "CORE_BANKED"
   | "RMA_CLOSED";
+export type BulkReconcileUsersResponse = {
+  summary: BulkReconcileSummary;
+  results: Array<{}>;
+};
+export type BulkReconcileSummary = {
+  total: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+};
 export type CAPA = {
   id: string;
   capa_number: string;
@@ -846,7 +857,7 @@ export type RootCause = {
   description: string;
   category: RootCauseCategoryEnum;
   category_display: string;
-  role?: RoleEnum | undefined;
+  role?: RootCauseRoleEnum | undefined;
   role_display: string;
   sequence?: /**
    * Order in causal chain
@@ -878,7 +889,7 @@ export type RootCauseCategoryEnum =
   | "MEASUREMENT"
   | "ENVIRONMENT"
   | "OTHER";
-export type RoleEnum =
+export type RootCauseRoleEnum =
   /**
    * * `PRIMARY` - Primary
    * `CONTRIBUTING` - Contributing
@@ -3035,6 +3046,60 @@ export type PaginatedBOMListList = {
     | undefined;
   results: Array<BOMList>;
 };
+export type PaginatedBatchExecutionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<BatchExecution>;
+};
+export type BatchExecution = {
+  id: string;
+  /**
+   * The WorkOrder whose parts make up this batch.
+   */
+  work_order: string;
+  /**
+   * The Step the batch is running through.
+   */
+  step: string;
+  parts?: /**
+   * Parts that are members of this batch.
+   */
+  Array<string> | undefined;
+  /**
+   * Operator who started the batch.
+   */
+  started_by: number;
+  /**
+   * When the operator started the batch.
+   */
+  started_at: string;
+  /**
+   * When the batch was sealed (first BATCH-scope substep fired). Parts can be added freely before this; locked after.
+   */
+  sealed_at: string | null;
+  /**
+   * When every BATCH-scope substep on the Step was completed.
+   */
+  completed_at: string | null;
+  notes?: /**
+   * Operator notes captured at batch start / during the run.
+   */
+  string | undefined;
+};
 export type PaginatedCAPAList = {
   /**
    * @example 123
@@ -3329,6 +3394,10 @@ export type DisassemblyBOMLine = {
    * Special handling instructions or notes
    */
   string | undefined;
+  positions?: /**
+   * Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl 2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's position field per row. Free-text when empty.
+   */
+  unknown | undefined;
   line_number?: /**
    * @minimum 0
    * @maximum 2147483647
@@ -4003,6 +4072,12 @@ export type PartTypes = {
    * @maxLength 10
    */
   string | undefined;
+  default_disassembly_process?:
+    | /**
+     * Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+     */
+    (string | null)
+    | undefined;
   version: number;
   is_current_version: boolean;
   previous_version: string | null;
@@ -4481,6 +4556,10 @@ export type ProcessWithSteps = {
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  is_disassembly?: /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  boolean | undefined;
   part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
@@ -4532,7 +4611,7 @@ export type Step = {
   name: string;
   description?: (string | null) | undefined;
   part_type: string;
-  part_type_name: string;
+  part_type_name: string | null;
   expected_duration?: (string | null) | undefined;
   requires_qa_signoff?: boolean | undefined;
   sampling_required?: boolean | undefined;
@@ -4713,6 +4792,10 @@ export type Processes = {
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  is_disassembly?: /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  boolean | undefined;
   part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
@@ -4745,7 +4828,7 @@ export type Processes = {
     | undefined;
   approved_at: string | null;
   approved_by: number | null;
-  part_type_name: string;
+  part_type_name: string | null;
   process_steps: Array<ProcessStep>;
   step_edges: Array<StepEdge>;
   num_steps: number;
@@ -4788,7 +4871,7 @@ export type QualityErrorsList = {
   error_name: string;
   error_example: string;
   part_type?: (string | null) | undefined;
-  part_type_name: string;
+  part_type_name: string | null;
   requires_3d_annotation?: boolean | undefined;
   archived?: boolean | undefined;
   version: number;
@@ -4822,7 +4905,7 @@ export type QualityReports = {
   part?: (string | null) | undefined;
   machine?: (string | null) | undefined;
   operators?: /**
-   * Operators running the process when defect occurred (for root cause)
+   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   Array<number> | undefined;
   sampling_method?: /**
@@ -4849,14 +4932,14 @@ export type QualityReports = {
     | undefined;
   detected_by?:
     | /**
-     * Inspector/operator who detected the defect (required for new reports)
+     * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
   detected_by_info: {};
   verified_by?:
     | /**
-     * Second signature for critical inspections (aerospace/medical)
+     * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
@@ -4865,6 +4948,8 @@ export type QualityReports = {
    * If True, this inspection is a First Piece Inspection (FPI) for setup verification
    */
   boolean | undefined;
+  equipment_links: Array<QualityReportEquipment>;
+  personnel_links: Array<QualityReportPersonnel>;
   part_info: {};
   part_display: string | null;
   step_info: {};
@@ -4883,6 +4968,85 @@ export type QualityReportStatusEnum =
    * @enum PASS, FAIL, PENDING
    */
   "PASS" | "FAIL" | "PENDING";
+export type QualityReportEquipment = {
+  id: number;
+  equipment: string;
+  equipment_name: string;
+  role?: /**
+     * What role this equipment played for this report.
+    
+    * `PRODUCTION` - Production machine
+    * `FIXTURE` - Fixture / hold-down
+    * `TOOL` - Cutting / forming tool
+    * `GAUGE` - Inspection gauge / instrument
+    * `OTHER` - Other
+     */
+  QualityReportEquipmentRoleEnum | undefined;
+  notes?: /**
+   * Optional context (e.g. which station in a multi-station cell).
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+};
+export type QualityReportEquipmentRoleEnum =
+  /**
+   * * `PRODUCTION` - Production machine
+   * `FIXTURE` - Fixture / hold-down
+   * `TOOL` - Cutting / forming tool
+   * `GAUGE` - Inspection gauge / instrument
+   * `OTHER` - Other
+   *
+   * @enum PRODUCTION, FIXTURE, TOOL, GAUGE, OTHER
+   */
+  "PRODUCTION" | "FIXTURE" | "TOOL" | "GAUGE" | "OTHER";
+export type QualityReportPersonnel = {
+  id: number;
+  user: number;
+  username: string;
+  full_name: string;
+  /**
+     * What role this user played on this report.
+    
+    * `DETECTED_BY` - Detected by
+    * `OPERATOR` - Operator on the job
+    * `VERIFIED_BY` - Verified by (second sig)
+    * `INSPECTOR` - Inspector
+    * `WITNESS` - Witness
+    * `TRAINER` - Trainer / supervisor
+    * `TRAINEE` - Trainee under supervision
+     */
+  role: QualityReportPersonnelRoleEnum;
+  signed_at?:
+    | /**
+     * When the user attested to their role (signature timestamp). Null for non-signing roles like OPERATOR.
+     */
+    (string | null)
+    | undefined;
+  notes?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+};
+export type QualityReportPersonnelRoleEnum =
+  /**
+   * * `DETECTED_BY` - Detected by
+   * `OPERATOR` - Operator on the job
+   * `VERIFIED_BY` - Verified by (second sig)
+   * `INSPECTOR` - Inspector
+   * `WITNESS` - Witness
+   * `TRAINER` - Trainer / supervisor
+   * `TRAINEE` - Trainee under supervision
+   *
+   * @enum DETECTED_BY, OPERATOR, VERIFIED_BY, INSPECTOR, WITNESS, TRAINER, TRAINEE
+   */
+  | "DETECTED_BY"
+  | "OPERATOR"
+  | "VERIFIED_BY"
+  | "INSPECTOR"
+  | "WITNESS"
+  | "TRAINER"
+  | "TRAINEE";
 export type PaginatedQuarantineDispositionList = {
   /**
    * @example 123
@@ -5086,6 +5250,65 @@ export type BaselineStatusEnum =
    * @enum ACTIVE, SUPERSEDED
    */
   "ACTIVE" | "SUPERSEDED";
+export type PaginatedSamplingDecisionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SamplingDecision>;
+};
+export type SamplingDecision = {
+  id: string;
+  /**
+   * The (part, step, visit) this decision applies to.
+   */
+  step_execution: string;
+  /**
+   * The substep whose sampling_rule produced this decision.
+   */
+  substep: string;
+  /**
+     * What the rule decided — SELECTED, DESELECTED, or PENDING.
+    
+    * `selected` - Selected
+    * `deselected` - Deselected
+    * `pending` - Pending
+     */
+  outcome: OutcomeEnum;
+  /**
+   * Version of the SamplingRuleSet that produced this decision. Audit can answer 'what rule was active when this was decided' via this field; rule edits bump the version on supersession.
+   */
+  ruleset_version: number;
+  /**
+   * UTC timestamp the decision was written.
+   */
+  decided_at: string;
+  /**
+   * When a rule change invalidates this decision, the new SamplingDecision row's id goes here. Null = this decision is live.
+   */
+  superseded_by: string | null;
+};
+export type OutcomeEnum =
+  /**
+   * * `selected` - Selected
+   * `deselected` - Deselected
+   * `pending` - Pending
+   *
+   * @enum selected, deselected, pending
+   */
+  "selected" | "deselected" | "pending";
 export type PaginatedSamplingRuleList = {
   /**
    * @example 123
@@ -5359,10 +5582,12 @@ export type PaginatedStepExecutionList = {
 };
 export type StepExecution = {
   id: string;
-  /**
-   * The part being tracked through this step
-   */
-  part: string;
+  part?:
+    | /**
+     * The part being tracked through this step (mutually exclusive with `core`).
+     */
+    (string | null)
+    | undefined;
   /**
    * The step being executed
    */
@@ -5451,10 +5676,12 @@ export type PaginatedStepExecutionListList = {
 };
 export type StepExecutionList = {
   id: string;
-  /**
-   * The part being tracked through this step
-   */
-  part: string;
+  part?:
+    | /**
+     * The part being tracked through this step (mutually exclusive with `core`).
+     */
+    (string | null)
+    | undefined;
   part_erp_id: string;
   part_status: string;
   /**
@@ -5786,10 +6013,12 @@ export type PaginatedSubstepCompletionList = {
 };
 export type SubstepCompletion = {
   id: string;
-  /**
-   * The execution record the operator was working when they completed this substep.
-   */
-  step_execution: string;
+  step_execution?:
+    | /**
+     * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep that was completed (or marked N/A).
    */
@@ -5799,7 +6028,7 @@ export type SubstepCompletion = {
    * Operator who completed the substep.
    */
   completed_by: number;
-  completed_by_name: string;
+  completed_by_name: string | null;
   /**
    * UTC timestamp when the completion was recorded.
    */
@@ -5888,7 +6117,7 @@ export type SubstepGateCompletion = {
    * Operator who confirmed/signed the gate.
    */
   completed_by: number;
-  completed_by_name: string;
+  completed_by_name: string | null;
   /**
    * UTC timestamp when the gate was confirmed/signed.
    */
@@ -5977,6 +6206,14 @@ export type Substep = {
    * Operator may mark this substep N/A instead of completing it.
    */
   boolean | undefined;
+  is_critical?: /**
+   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
+   */
+  boolean | undefined;
+  allow_not_applicable?: /**
+   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
+   */
+  boolean | undefined;
   requires_signature?: /**
    * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
    */
@@ -5993,7 +6230,7 @@ export type Substep = {
     | undefined;
   sampling_rule?:
     | /**
-     * If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+     * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
      */
     (string | null)
     | undefined;
@@ -6015,6 +6252,7 @@ export type Substep = {
      */
     (number | null)
     | undefined;
+  is_editable: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -6094,10 +6332,12 @@ export type PaginatedSubstepResponseList = {
 };
 export type SubstepResponse = {
   id: string;
-  /**
-   * The execution record where this response was captured.
-   */
-  step_execution: string;
+  step_execution?:
+    | /**
+     * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep the capture node lives in.
    */
@@ -6119,6 +6359,14 @@ export type SubstepResponse = {
     * `file` - File upload
     * `timer` - Timer (countdown / stopwatch)
     * `computed` - Computed value (formula)
+    * `attestation` - Attestation (confirm / signature)
+    * `status` - Quality status (PASS / FAIL / PENDING)
+    * `equipment_roles` - Equipment + roles
+    * `personnel_roles` - Personnel + roles
+    * `signatures` - Inspection signatures (detected / verified)
+    * `defects` - Defect findings
+    * `annotation` - Part annotation (3D)
+    * `harvested_components` - Harvested components (teardown)
      */
   kind: KindEnum;
   value_text?: /**
@@ -6139,7 +6387,7 @@ export type SubstepResponse = {
    * Operator who captured the response.
    */
   responded_by: number;
-  responded_by_name: string;
+  responded_by_name: string | null;
   /**
    * UTC timestamp when the response was captured.
    */
@@ -6157,8 +6405,16 @@ export type KindEnum =
    * `file` - File upload
    * `timer` - Timer (countdown / stopwatch)
    * `computed` - Computed value (formula)
+   * `attestation` - Attestation (confirm / signature)
+   * `status` - Quality status (PASS / FAIL / PENDING)
+   * `equipment_roles` - Equipment + roles
+   * `personnel_roles` - Personnel + roles
+   * `signatures` - Inspection signatures (detected / verified)
+   * `defects` - Defect findings
+   * `annotation` - Part annotation (3D)
+   * `harvested_components` - Harvested components (teardown)
    *
-   * @enum text, choice, photo, video, scan, file, timer, computed
+   * @enum text, choice, photo, video, scan, file, timer, computed, attestation, status, equipment_roles, personnel_roles, signatures, defects, annotation, harvested_components
    */
   | "text"
   | "choice"
@@ -6167,7 +6423,15 @@ export type KindEnum =
   | "scan"
   | "file"
   | "timer"
-  | "computed";
+  | "computed"
+  | "attestation"
+  | "status"
+  | "equipment_roles"
+  | "personnel_roles"
+  | "signatures"
+  | "defects"
+  | "annotation"
+  | "harvested_components";
 export type PaginatedSubstepTranslationList = {
   /**
    * @example 123
@@ -6915,6 +7179,7 @@ export type User = {
    */
   boolean | undefined;
   date_joined: string;
+  last_login: string | null;
   parent_company: Company;
   groups: Array<{}>;
   tenant: TenantMinimal;
@@ -7108,12 +7373,7 @@ export type WorkOrderList = {
   true_completion?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   true_duration?: (string | null) | undefined;
-  notes?:
-    | /**
-     * @maxLength 500
-     */
-    (string | null)
-    | undefined;
+  notes?: (string | null) | undefined;
   parts_count: number;
   qa_progress: {};
   completed_parts_count: number;
@@ -8096,6 +8356,10 @@ export type PatchedProcessWithStepsRequest = Partial<{
    */
   name: string;
   is_remanufactured: boolean;
+  /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  is_disassembly: boolean;
   part_type: string;
   /**
    * If True, UI treats work order parts as a batch unit
@@ -8134,6 +8398,10 @@ export type PatchedProcessesRequest = Partial<{
    */
   name: string;
   is_remanufactured: boolean;
+  /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  is_disassembly: boolean;
   part_type: string;
   /**
    * If True, UI treats work order parts as a batch unit
@@ -8168,7 +8436,7 @@ export type PatchedQualityReportsRequest = Partial<{
   part: string | null;
   machine: string | null;
   /**
-   * Operators running the process when defect occurred (for root cause)
+   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   operators: Array<number>;
   /**
@@ -8188,11 +8456,11 @@ export type PatchedQualityReportsRequest = Partial<{
    */
   sampling_audit_log: string | null;
   /**
-   * Inspector/operator who detected the defect (required for new reports)
+   * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
    */
   detected_by: number | null;
   /**
-   * Second signature for critical inspections (aerospace/medical)
+   * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
    */
   verified_by: number | null;
   /**
@@ -8443,9 +8711,9 @@ export type PatchedScheduleSlotRequest = Partial<{
 }>;
 export type PatchedStepExecutionRequest = Partial<{
   /**
-   * The part being tracked through this step
+   * The part being tracked through this step (mutually exclusive with `core`).
    */
-  part: string;
+  part: string | null;
   /**
    * The step being executed
    */
@@ -8586,9 +8854,9 @@ export type PatchedStepsRequest = Partial<{
 }>;
 export type PatchedSubstepCompletionRequest = Partial<{
   /**
-   * The execution record the operator was working when they completed this substep.
+   * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
    */
-  step_execution: string;
+  step_execution: string | null;
   /**
    * The substep that was completed (or marked N/A).
    */
@@ -8685,9 +8953,9 @@ export type PatchedSubstepGateCompletionRequest = Partial<{
 }>;
 export type PatchedSubstepResponseRequest = Partial<{
   /**
-   * The execution record where this response was captured.
+   * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
    */
-  step_execution: string;
+  step_execution: string | null;
   /**
    * The substep the capture node lives in.
    */
@@ -8710,6 +8978,14 @@ export type PatchedSubstepResponseRequest = Partial<{
     * `file` - File upload
     * `timer` - Timer (countdown / stopwatch)
     * `computed` - Computed value (formula)
+    * `attestation` - Attestation (confirm / signature)
+    * `status` - Quality status (PASS / FAIL / PENDING)
+    * `equipment_roles` - Equipment + roles
+    * `personnel_roles` - Personnel + roles
+    * `signatures` - Inspection signatures (detected / verified)
+    * `defects` - Defect findings
+    * `annotation` - Part annotation (3D)
+    * `harvested_components` - Harvested components (teardown)
      */
   kind: KindEnum;
   /**
@@ -8975,9 +9251,6 @@ export type PatchedWorkOrderRequest = Partial<{
   expected_duration: string | null;
   true_completion: string | null;
   true_duration: string | null;
-  /**
-   * @maxLength 500
-   */
   notes: string | null;
   archived: boolean;
 }>;
@@ -9133,6 +9406,10 @@ export type ProcessWithStepsRequest = {
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  is_disassembly?: /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  boolean | undefined;
   part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
@@ -9177,6 +9454,10 @@ export type ProcessesRequest = {
    */
   name: string;
   is_remanufactured?: boolean | undefined;
+  is_disassembly?: /**
+   * When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation.
+   */
+  boolean | undefined;
   part_type: string;
   is_batch_process?: /**
    * If True, UI treats work order parts as a batch unit
@@ -9215,12 +9496,56 @@ export type QADocumentsResponse = {
   current_step_id: string | null;
   parts_in_qa: number;
 };
+export type QualityReportEquipmentRequest = {
+  equipment: string;
+  role?: /**
+     * What role this equipment played for this report.
+    
+    * `PRODUCTION` - Production machine
+    * `FIXTURE` - Fixture / hold-down
+    * `TOOL` - Cutting / forming tool
+    * `GAUGE` - Inspection gauge / instrument
+    * `OTHER` - Other
+     */
+  QualityReportEquipmentRoleEnum | undefined;
+  notes?: /**
+   * Optional context (e.g. which station in a multi-station cell).
+   *
+   * @maxLength 200
+   */
+  string | undefined;
+};
+export type QualityReportPersonnelRequest = {
+  user: number;
+  /**
+     * What role this user played on this report.
+    
+    * `DETECTED_BY` - Detected by
+    * `OPERATOR` - Operator on the job
+    * `VERIFIED_BY` - Verified by (second sig)
+    * `INSPECTOR` - Inspector
+    * `WITNESS` - Witness
+    * `TRAINER` - Trainer / supervisor
+    * `TRAINEE` - Trainee under supervision
+     */
+  role: QualityReportPersonnelRoleEnum;
+  signed_at?:
+    | /**
+     * When the user attested to their role (signature timestamp). Null for non-signing roles like OPERATOR.
+     */
+    (string | null)
+    | undefined;
+  notes?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+};
 export type QualityReportsRequest = {
   step?: (string | null) | undefined;
   part?: (string | null) | undefined;
   machine?: (string | null) | undefined;
   operators?: /**
-   * Operators running the process when defect occurred (for root cause)
+   * DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.
    */
   Array<number> | undefined;
   sampling_method?: /**
@@ -9245,13 +9570,13 @@ export type QualityReportsRequest = {
     | undefined;
   detected_by?:
     | /**
-     * Inspector/operator who detected the defect (required for new reports)
+     * DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
   verified_by?:
     | /**
-     * Second signature for critical inspections (aerospace/medical)
+     * DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.
      */
     (number | null)
     | undefined;
@@ -9331,7 +9656,7 @@ export type RootCauseRequest = {
    */
   description: string;
   category: RootCauseCategoryEnum;
-  role?: RoleEnum | undefined;
+  role?: RootCauseRoleEnum | undefined;
   sequence?: /**
    * Order in causal chain
    *
@@ -9825,10 +10150,12 @@ export type StepEdgeRequest = {
     | undefined;
 };
 export type StepExecutionRequest = {
-  /**
-   * The part being tracked through this step
-   */
-  part: string;
+  part?:
+    | /**
+     * The part being tracked through this step (mutually exclusive with `core`).
+     */
+    (string | null)
+    | undefined;
   /**
    * The step being executed
    */
@@ -10052,10 +10379,12 @@ export type SubmitProcessForApprovalResponse = {
   approval_number: string;
 };
 export type SubstepCompletionRequest = {
-  /**
-   * The execution record the operator was working when they completed this substep.
-   */
-  step_execution: string;
+  step_execution?:
+    | /**
+     * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep that was completed (or marked N/A).
    */
@@ -10167,10 +10496,12 @@ export type SubstepGateCompletionRequest = {
     | undefined;
 };
 export type SubstepResponseRequest = {
-  /**
-   * The execution record where this response was captured.
-   */
-  step_execution: string;
+  step_execution?:
+    | /**
+     * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep the capture node lives in.
    */
@@ -10193,6 +10524,14 @@ export type SubstepResponseRequest = {
     * `file` - File upload
     * `timer` - Timer (countdown / stopwatch)
     * `computed` - Computed value (formula)
+    * `attestation` - Attestation (confirm / signature)
+    * `status` - Quality status (PASS / FAIL / PENDING)
+    * `equipment_roles` - Equipment + roles
+    * `personnel_roles` - Personnel + roles
+    * `signatures` - Inspection signatures (detected / verified)
+    * `defects` - Defect findings
+    * `annotation` - Part annotation (3D)
+    * `harvested_components` - Harvested components (teardown)
      */
   kind: KindEnum;
   value_text?: /**
@@ -10569,12 +10908,7 @@ export type WorkOrder = {
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
   true_duration?: (string | null) | undefined;
-  notes?:
-    | /**
-     * @maxLength 500
-     */
-    (string | null)
-    | undefined;
+  notes?: (string | null) | undefined;
   parts_summary: {};
   is_batch_work_order: boolean;
   current_hold: {};
@@ -10638,12 +10972,7 @@ export type WorkOrderRequest = {
   expected_duration?: (string | null) | undefined;
   true_completion?: (string | null) | undefined;
   true_duration?: (string | null) | undefined;
-  notes?:
-    | /**
-     * @maxLength 500
-     */
-    (string | null)
-    | undefined;
+  notes?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
 export type WorkOrderStepHistoryResponse = {
@@ -11022,7 +11351,7 @@ const BOMStatusEnum = z.enum(["DRAFT", "RELEASED", "OBSOLETE"]);
 const BOMList = z.object({
   id: z.string().uuid(),
   part_type: z.string().uuid(),
-  part_type_name: z.string(),
+  part_type_name: z.string().nullable(),
   revision: z.string().max(10),
   bom_type: BOMTypeEnum.optional(),
   status: BOMStatusEnum.optional(),
@@ -11045,7 +11374,7 @@ const BOMRequest = z.object({
 const BOM = z.object({
   id: z.string().uuid(),
   part_type: z.string().uuid(),
-  part_type_name: z.string(),
+  part_type_name: z.string().nullable(),
   revision: z.string().max(10),
   bom_type: BOMTypeEnum.optional(),
   status: BOMStatusEnum.optional(),
@@ -11074,6 +11403,39 @@ const PatchedBOMRequest = z
 const CreateBOMRevisionInputRequest = z.object({
   change_description: z.string().min(1),
 });
+const BatchExecution = z.object({
+  id: z.string().uuid(),
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  parts: z.array(z.string().uuid()).optional(),
+  started_by: z.number().int(),
+  started_at: z.string().datetime({ offset: true }),
+  sealed_at: z.string().datetime({ offset: true }).nullable(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
+  notes: z.string().optional(),
+});
+const PaginatedBatchExecutionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(BatchExecution),
+});
+const BatchExecutionRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  parts: z.array(z.string().uuid()).optional(),
+  started_by: z.number().int(),
+  notes: z.string().optional(),
+});
+const PatchedBatchExecutionRequest = z
+  .object({
+    work_order: z.string().uuid(),
+    step: z.string().uuid(),
+    parts: z.array(z.string().uuid()),
+    started_by: z.number().int(),
+    notes: z.string(),
+  })
+  .partial();
 const CapaTypeEnum = z.enum([
   "CORRECTIVE",
   "PREVENTIVE",
@@ -11151,7 +11513,7 @@ const RootCauseCategoryEnum = z.enum([
   "ENVIRONMENT",
   "OTHER",
 ]);
-const RoleEnum = z.enum(["PRIMARY", "CONTRIBUTING"]);
+const RootCauseRoleEnum = z.enum(["PRIMARY", "CONTRIBUTING"]);
 const RootCause = z.object({
   id: z.string().uuid(),
   rca_record: z.string().uuid(),
@@ -11159,7 +11521,7 @@ const RootCause = z.object({
   description: z.string(),
   category: RootCauseCategoryEnum,
   category_display: z.string(),
-  role: RoleEnum.optional(),
+  role: RootCauseRoleEnum.optional(),
   role_display: z.string(),
   sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -11752,6 +12114,7 @@ const DisassemblyBOMLine = z.object({
     .optional(),
   expected_usable_qty: z.number(),
   notes: z.string().optional(),
+  positions: z.unknown().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -11773,6 +12136,7 @@ const DisassemblyBOMLineRequest = z.object({
     .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
     .optional(),
   notes: z.string().optional(),
+  positions: z.unknown().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
   archived: z.boolean().optional(),
 });
@@ -11783,6 +12147,7 @@ const PatchedDisassemblyBOMLineRequest = z
     expected_qty: z.number().int().gte(0).lte(2147483647),
     expected_fallout_rate: z.string().regex(/^-?\d{0,3}(?:\.\d{0,2})?$/),
     notes: z.string(),
+    positions: z.unknown(),
     line_number: z.number().int().gte(0).lte(2147483647),
     archived: z.boolean(),
   })
@@ -12142,7 +12507,7 @@ const QualityErrorsList = z.object({
   error_name: z.string().max(50),
   error_example: z.string(),
   part_type: z.string().uuid().nullish(),
-  part_type_name: z.string(),
+  part_type_name: z.string().nullable(),
   requires_3d_annotation: z.boolean().optional(),
   archived: z.boolean().optional(),
   version: z.number().int(),
@@ -12166,94 +12531,6 @@ const PatchedQualityErrorsListRequest = z
     error_example: z.string().min(1),
     part_type: z.string().uuid().nullable(),
     requires_3d_annotation: z.boolean(),
-    archived: z.boolean(),
-  })
-  .partial();
-const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
-const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
-const BlankEnum = z.unknown();
-const MeasurementResult = z.object({
-  report: z.string(),
-  definition: z.string().uuid(),
-  value_numeric: z.number().nullish(),
-  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
-  is_within_spec: z.boolean(),
-  created_by: z.number().int(),
-  archived: z.boolean().optional(),
-});
-const QualityReports = z.object({
-  id: z.string().uuid(),
-  report_number: z.string(),
-  step: z.string().uuid().nullish(),
-  part: z.string().uuid().nullish(),
-  machine: z.string().uuid().nullish(),
-  operators: z.array(z.number().int()).optional(),
-  sampling_method: z.string().max(50).optional(),
-  status: QualityReportStatusEnum,
-  status_display: z.string(),
-  description: z.string().max(300).nullish(),
-  file: z.string().uuid().nullish(),
-  created_at: z.string().datetime({ offset: true }),
-  errors: z.array(z.string().uuid()),
-  measurements: z.array(MeasurementResult).optional(),
-  sampling_audit_log: z.string().uuid().nullish(),
-  detected_by: z.number().int().nullish(),
-  detected_by_info: z.object({}).partial().passthrough().nullable(),
-  verified_by: z.number().int().nullish(),
-  verified_by_info: z.object({}).partial().passthrough().nullable(),
-  is_first_piece: z.boolean().optional(),
-  part_info: z.object({}).partial().passthrough().nullable(),
-  part_display: z.string().nullable(),
-  step_info: z.object({}).partial().passthrough().nullable(),
-  machine_info: z.object({}).partial().passthrough().nullable(),
-  operators_info: z.array(z.unknown()),
-  errors_info: z.array(z.unknown()),
-  file_info: z.object({}).partial().passthrough().nullable(),
-  archived: z.boolean().optional(),
-});
-const PaginatedQualityReportsList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(QualityReports),
-});
-const MeasurementResultRequest = z.object({
-  definition: z.string().uuid(),
-  value_numeric: z.number().nullish(),
-  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
-  archived: z.boolean().optional(),
-});
-const QualityReportsRequest = z.object({
-  step: z.string().uuid().nullish(),
-  part: z.string().uuid().nullish(),
-  machine: z.string().uuid().nullish(),
-  operators: z.array(z.number().int()).optional(),
-  sampling_method: z.string().min(1).max(50).optional(),
-  status: QualityReportStatusEnum,
-  description: z.string().max(300).nullish(),
-  file: z.string().uuid().nullish(),
-  measurements: z.array(MeasurementResultRequest).optional(),
-  sampling_audit_log: z.string().uuid().nullish(),
-  detected_by: z.number().int().nullish(),
-  verified_by: z.number().int().nullish(),
-  is_first_piece: z.boolean().optional(),
-  archived: z.boolean().optional(),
-});
-const PatchedQualityReportsRequest = z
-  .object({
-    step: z.string().uuid().nullable(),
-    part: z.string().uuid().nullable(),
-    machine: z.string().uuid().nullable(),
-    operators: z.array(z.number().int()),
-    sampling_method: z.string().min(1).max(50),
-    status: QualityReportStatusEnum,
-    description: z.string().max(300).nullable(),
-    file: z.string().uuid().nullable(),
-    measurements: z.array(MeasurementResultRequest),
-    sampling_audit_log: z.string().uuid().nullable(),
-    detected_by: z.number().int().nullable(),
-    verified_by: z.number().int().nullable(),
-    is_first_piece: z.boolean(),
     archived: z.boolean(),
   })
   .partial();
@@ -12502,6 +12779,7 @@ const HeatMapAnnotationsSeverityEnum = z.enum([
   "HIGH",
   "CRITICAL",
 ]);
+const BlankEnum = z.unknown();
 const HeatMapAnnotations = z.object({
   id: z.string().uuid(),
   model: z.string().uuid(),
@@ -12991,6 +13269,7 @@ const PartTypes = z.object({
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
+  default_disassembly_process: z.string().uuid().nullish(),
   version: z.number().int(),
   is_current_version: z.boolean(),
   previous_version: z.string().uuid().nullable(),
@@ -13011,6 +13290,7 @@ const PartTypesRequest = z.object({
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
+  default_disassembly_process: z.string().uuid().nullish(),
 });
 const PatchedPartTypesRequest = z
   .object({
@@ -13023,6 +13303,7 @@ const PatchedPartTypesRequest = z
     itar_controlled: z.boolean(),
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
+    default_disassembly_process: z.string().uuid().nullable(),
   })
   .partial();
 const PartTypeSelect = z.object({
@@ -13105,6 +13386,14 @@ const PartIncrementInputRequest = z
 const api_Parts_rollback_create_Body = z
   .object({ reason: z.string(), override_id: z.string().uuid() })
   .partial();
+const PartsBulkSetStatusInputRequest = z.object({
+  ids: z.array(z.string().uuid()),
+  status: PartsStatusEnum,
+  reason: z.string().optional(),
+});
+const BulkSetStatusResponse = z.object({
+  results: z.array(z.object({}).partial().passthrough()),
+});
 const TravelerStepStatusEnum = z.enum([
   "COMPLETED",
   "IN_PROGRESS",
@@ -13199,14 +13488,6 @@ const PartsBulkRollbackInputRequest = z.object({
 const BulkRollbackResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
-const PartsBulkSetStatusInputRequest = z.object({
-  ids: z.array(z.string().uuid()),
-  status: PartsStatusEnum,
-  reason: z.string().optional(),
-});
-const BulkSetStatusResponse = z.object({
-  results: z.array(z.object({}).partial().passthrough()),
-});
 const PartSelect = z.object({
   id: z.string().uuid(),
   ERP_id: z.string().max(50),
@@ -13258,7 +13539,7 @@ const Step = z.object({
   name: z.string().max(50),
   description: z.string().nullish(),
   part_type: z.string().uuid(),
-  part_type_name: z.string(),
+  part_type_name: z.string().nullable(),
   expected_duration: z.string().nullish(),
   requires_qa_signoff: z.boolean().optional(),
   sampling_required: z.boolean().optional(),
@@ -13303,6 +13584,7 @@ const Processes = z.object({
   updated_at: z.string().datetime({ offset: true }),
   name: z.string().max(50),
   is_remanufactured: z.boolean().optional(),
+  is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
   is_batch_process: z.boolean().optional(),
   status: ProcessStatusEnum.optional(),
@@ -13310,7 +13592,7 @@ const Processes = z.object({
   change_description: z.string().nullish(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
   approved_by: z.number().int().nullable(),
-  part_type_name: z.string(),
+  part_type_name: z.string().nullable(),
   process_steps: z.array(ProcessStep),
   step_edges: z.array(StepEdge),
   num_steps: z.number().int(),
@@ -13326,6 +13608,7 @@ const ProcessesRequest = z.object({
   external_id: z.string().max(255).nullish(),
   name: z.string().min(1).max(50),
   is_remanufactured: z.boolean().optional(),
+  is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
   is_batch_process: z.boolean().optional(),
   status: ProcessStatusEnum.optional(),
@@ -13338,6 +13621,7 @@ const PatchedProcessesRequest = z
     external_id: z.string().max(255).nullable(),
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
+    is_disassembly: z.boolean(),
     part_type: z.string().uuid(),
     is_batch_process: z.boolean(),
     status: ProcessStatusEnum,
@@ -13349,6 +13633,7 @@ const ProcessWithSteps = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
   is_remanufactured: z.boolean().optional(),
+  is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
   is_batch_process: z.boolean().optional(),
   process_steps: z.array(ProcessStep),
@@ -13370,6 +13655,7 @@ const PaginatedProcessWithStepsList = z.object({
 const ProcessWithStepsRequest = z.object({
   name: z.string().min(1).max(50),
   is_remanufactured: z.boolean().optional(),
+  is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
   is_batch_process: z.boolean().optional(),
   nodes: z.array(z.object({}).partial().passthrough()).optional(),
@@ -13381,6 +13667,7 @@ const PatchedProcessWithStepsRequest = z
   .object({
     name: z.string().min(1).max(50),
     is_remanufactured: z.boolean(),
+    is_disassembly: z.boolean(),
     part_type: z.string().uuid(),
     is_batch_process: z.boolean(),
     nodes: z.array(z.object({}).partial().passthrough()),
@@ -13400,6 +13687,127 @@ const SubmitProcessForApprovalResponse = z.object({
   approval_request_id: z.string().uuid(),
   approval_number: z.string(),
 });
+const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
+const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
+const MeasurementResult = z.object({
+  report: z.string(),
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
+  is_within_spec: z.boolean(),
+  created_by: z.number().int(),
+  archived: z.boolean().optional(),
+});
+const QualityReportEquipmentRoleEnum = z.enum([
+  "PRODUCTION",
+  "FIXTURE",
+  "TOOL",
+  "GAUGE",
+  "OTHER",
+]);
+const QualityReportEquipment = z.object({
+  id: z.number().int(),
+  equipment: z.string().uuid(),
+  equipment_name: z.string(),
+  role: QualityReportEquipmentRoleEnum.optional(),
+  notes: z.string().max(200).optional(),
+});
+const QualityReportPersonnelRoleEnum = z.enum([
+  "DETECTED_BY",
+  "OPERATOR",
+  "VERIFIED_BY",
+  "INSPECTOR",
+  "WITNESS",
+  "TRAINER",
+  "TRAINEE",
+]);
+const QualityReportPersonnel = z.object({
+  id: z.number().int(),
+  user: z.number().int(),
+  username: z.string(),
+  full_name: z.string(),
+  role: QualityReportPersonnelRoleEnum,
+  signed_at: z.string().datetime({ offset: true }).nullish(),
+  notes: z.string().max(200).optional(),
+});
+const QualityReports = z.object({
+  id: z.string().uuid(),
+  report_number: z.string(),
+  step: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  machine: z.string().uuid().nullish(),
+  operators: z.array(z.number().int()).optional(),
+  sampling_method: z.string().max(50).optional(),
+  status: QualityReportStatusEnum,
+  status_display: z.string(),
+  description: z.string().max(300).nullish(),
+  file: z.string().uuid().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  errors: z.array(z.string().uuid()),
+  measurements: z.array(MeasurementResult).optional(),
+  sampling_audit_log: z.string().uuid().nullish(),
+  detected_by: z.number().int().nullish(),
+  detected_by_info: z.object({}).partial().passthrough().nullable(),
+  verified_by: z.number().int().nullish(),
+  verified_by_info: z.object({}).partial().passthrough().nullable(),
+  is_first_piece: z.boolean().optional(),
+  equipment_links: z.array(QualityReportEquipment),
+  personnel_links: z.array(QualityReportPersonnel),
+  part_info: z.object({}).partial().passthrough().nullable(),
+  part_display: z.string().nullable(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  machine_info: z.object({}).partial().passthrough().nullable(),
+  operators_info: z.array(z.unknown()),
+  errors_info: z.array(z.unknown()),
+  file_info: z.object({}).partial().passthrough().nullable(),
+  archived: z.boolean().optional(),
+});
+const PaginatedQualityReportsList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(QualityReports),
+});
+const MeasurementResultRequest = z.object({
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
+  archived: z.boolean().optional(),
+});
+const QualityReportsRequest = z.object({
+  step: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  machine: z.string().uuid().nullish(),
+  operators: z.array(z.number().int()).optional(),
+  sampling_method: z.string().min(1).max(50).optional(),
+  status: QualityReportStatusEnum,
+  description: z.string().max(300).nullish(),
+  file: z.string().uuid().nullish(),
+  measurements: z.array(MeasurementResultRequest).optional(),
+  sampling_audit_log: z.string().uuid().nullish(),
+  detected_by: z.number().int().nullish(),
+  verified_by: z.number().int().nullish(),
+  is_first_piece: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedQualityReportsRequest = z
+  .object({
+    step: z.string().uuid().nullable(),
+    part: z.string().uuid().nullable(),
+    machine: z.string().uuid().nullable(),
+    operators: z.array(z.number().int()),
+    sampling_method: z.string().min(1).max(50),
+    status: QualityReportStatusEnum,
+    description: z.string().max(300).nullable(),
+    file: z.string().uuid().nullable(),
+    measurements: z.array(MeasurementResultRequest),
+    sampling_audit_log: z.string().uuid().nullable(),
+    detected_by: z.number().int().nullable(),
+    verified_by: z.number().int().nullable(),
+    is_first_piece: z.boolean(),
+    archived: z.boolean(),
+  })
+  .partial();
 const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
 const DispositionTypeEnum = z.enum([
   "REWORK",
@@ -13705,6 +14113,22 @@ const PatchedSamplingRuleRequest = z
     archived: z.boolean(),
   })
   .partial();
+const OutcomeEnum = z.enum(["selected", "deselected", "pending"]);
+const SamplingDecision = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  substep: z.string().uuid(),
+  outcome: OutcomeEnum,
+  ruleset_version: z.number().int(),
+  decided_at: z.string().datetime({ offset: true }),
+  superseded_by: z.string().uuid().nullable(),
+});
+const PaginatedSamplingDecisionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SamplingDecision),
+});
 const ScheduleSlotStatusEnum = z.enum([
   "SCHEDULED",
   "IN_PROGRESS",
@@ -13886,7 +14310,7 @@ const StepExecutionStatusEnum = z.enum([
 ]);
 const StepExecutionList = z.object({
   id: z.string().uuid(),
-  part: z.string().uuid(),
+  part: z.string().uuid().nullish(),
   part_erp_id: z.string(),
   part_status: z.string(),
   step: z.string().uuid(),
@@ -13907,7 +14331,7 @@ const PaginatedStepExecutionListList = z.object({
   results: z.array(StepExecutionList),
 });
 const StepExecutionRequest = z.object({
-  part: z.string().uuid(),
+  part: z.string().uuid().nullish(),
   step: z.string().uuid(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
   exited_at: z.string().datetime({ offset: true }).nullish(),
@@ -13920,7 +14344,7 @@ const StepExecutionRequest = z.object({
 });
 const StepExecution = z.object({
   id: z.string().uuid(),
-  part: z.string().uuid(),
+  part: z.string().uuid().nullish(),
   step: z.string().uuid(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
   part_info: z.object({}).partial().passthrough().nullable(),
@@ -13942,7 +14366,7 @@ const StepExecution = z.object({
 });
 const PatchedStepExecutionRequest = z
   .object({
-    part: z.string().uuid(),
+    part: z.string().uuid().nullable(),
     step: z.string().uuid(),
     visit_number: z.number().int().gte(0).lte(2147483647),
     exited_at: z.string().datetime({ offset: true }).nullable(),
@@ -14151,11 +14575,11 @@ const StepSamplingRulesUpdateRequest = z.object({
 });
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   substep_title: z.string().nullable(),
   completed_by: z.number().int(),
-  completed_by_name: z.string(),
+  completed_by_name: z.string().nullable(),
   completed_at: z.string().datetime({ offset: true }),
   marked_not_applicable: z.boolean().optional(),
   notes: z.string().optional(),
@@ -14174,7 +14598,7 @@ const PaginatedSubstepCompletionList = z.object({
   results: z.array(SubstepCompletion),
 });
 const SubstepCompletionRequest = z.object({
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   completed_by: z.number().int(),
   marked_not_applicable: z.boolean().optional(),
@@ -14187,7 +14611,7 @@ const SubstepCompletionRequest = z.object({
 });
 const PatchedSubstepCompletionRequest = z
   .object({
-    step_execution: z.string().uuid(),
+    step_execution: z.string().uuid().nullable(),
     substep: z.string().uuid(),
     completed_by: z.number().int(),
     marked_not_applicable: z.boolean(),
@@ -14205,7 +14629,7 @@ const SubstepGateCompletion = z.object({
   substep: z.string().uuid(),
   node_id: z.string().max(64),
   completed_by: z.number().int(),
-  completed_by_name: z.string(),
+  completed_by_name: z.string().nullable(),
   completed_at: z.string().datetime({ offset: true }),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
@@ -14299,10 +14723,18 @@ const KindEnum = z.enum([
   "file",
   "timer",
   "computed",
+  "attestation",
+  "status",
+  "equipment_roles",
+  "personnel_roles",
+  "signatures",
+  "defects",
+  "annotation",
+  "harvested_components",
 ]);
 const SubstepResponse = z.object({
   id: z.string().uuid(),
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().max(64),
   kind: KindEnum,
@@ -14310,7 +14742,7 @@ const SubstepResponse = z.object({
   value_document: z.string().uuid().nullish(),
   value_json: z.unknown().nullish(),
   responded_by: z.number().int(),
-  responded_by_name: z.string(),
+  responded_by_name: z.string().nullable(),
   responded_at: z.string().datetime({ offset: true }),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14322,7 +14754,7 @@ const PaginatedSubstepResponseList = z.object({
   results: z.array(SubstepResponse),
 });
 const SubstepResponseRequest = z.object({
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().min(1).max(64),
   kind: KindEnum,
@@ -14333,7 +14765,7 @@ const SubstepResponseRequest = z.object({
 });
 const PatchedSubstepResponseRequest = z
   .object({
-    step_execution: z.string().uuid(),
+    step_execution: z.string().uuid().nullable(),
     substep: z.string().uuid(),
     node_id: z.string().min(1).max(64),
     kind: KindEnum,
@@ -14383,12 +14815,15 @@ const Substep = z.object({
   title: z.string().max(200),
   body_blocks: z.unknown().optional(),
   is_optional: z.boolean().optional(),
+  is_critical: z.boolean().optional(),
+  allow_not_applicable: z.boolean().optional(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   expected_duration: z.string().nullish(),
   sampling_rule: z.string().uuid().nullish(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
   source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
+  is_editable: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -14405,6 +14840,8 @@ const SubstepRequest = z.object({
   title: z.string().min(1).max(200),
   body_blocks: z.unknown().optional(),
   is_optional: z.boolean().optional(),
+  is_critical: z.boolean().optional(),
+  allow_not_applicable: z.boolean().optional(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   expected_duration: z.string().nullish(),
@@ -14420,6 +14857,8 @@ const PatchedSubstepRequest = z
     title: z.string().min(1).max(200),
     body_blocks: z.unknown(),
     is_optional: z.boolean(),
+    is_critical: z.boolean(),
+    allow_not_applicable: z.boolean(),
     requires_signature: z.boolean(),
     is_inspection_point: z.boolean(),
     expected_duration: z.string().nullable(),
@@ -14914,6 +15353,7 @@ const User = z.object({
   is_staff: z.boolean().optional(),
   is_active: z.boolean().optional(),
   date_joined: z.string().datetime({ offset: true }),
+  last_login: z.string().datetime({ offset: true }).nullable(),
   parent_company: Company.nullable(),
   groups: z.array(z.object({}).partial().passthrough()),
   tenant: TenantMinimal.nullable(),
@@ -14963,6 +15403,20 @@ const BulkUserActivationInputRequest = z.object({
 const BulkCompanyAssignmentInputRequest = z.object({
   user_ids: z.array(z.number().int()),
   company_id: z.string().uuid().nullable(),
+});
+const BulkReconcileUsersRequestRequest = z
+  .object({ rows: z.array(z.object({}).partial().passthrough()) })
+  .partial();
+const BulkReconcileSummary = z.object({
+  total: z.number().int(),
+  created: z.number().int(),
+  updated: z.number().int(),
+  unchanged: z.number().int(),
+  errors: z.number().int(),
+});
+const BulkReconcileUsersResponse = z.object({
+  summary: BulkReconcileSummary,
+  results: z.array(z.object({}).partial().passthrough()),
 });
 const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
 const UserInvitation = z.object({
@@ -15101,7 +15555,7 @@ const WorkOrderList = z.object({
   true_completion: z.string().nullish(),
   expected_duration: z.string().nullish(),
   true_duration: z.string().nullish(),
-  notes: z.string().max(500).nullish(),
+  notes: z.string().nullish(),
   parts_count: z.number().int(),
   qa_progress: z.object({}).partial().passthrough(),
   completed_parts_count: z.number().int(),
@@ -15132,7 +15586,7 @@ const WorkOrderRequest = z.object({
   expected_duration: z.string().nullish(),
   true_completion: z.string().nullish(),
   true_duration: z.string().nullish(),
-  notes: z.string().max(500).nullish(),
+  notes: z.string().nullish(),
   archived: z.boolean().optional(),
 });
 const WorkOrder = z.object({
@@ -15150,7 +15604,7 @@ const WorkOrder = z.object({
   expected_duration: z.string().nullish(),
   true_completion: z.string().nullish(),
   true_duration: z.string().nullish(),
-  notes: z.string().max(500).nullish(),
+  notes: z.string().nullish(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
   is_batch_work_order: z.boolean(),
   current_hold: z.object({}).partial().passthrough().nullable(),
@@ -15174,7 +15628,7 @@ const PatchedWorkOrderRequest = z
     expected_duration: z.string().nullable(),
     true_completion: z.string().nullable(),
     true_duration: z.string().nullable(),
-    notes: z.string().max(500).nullable(),
+    notes: z.string().nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -16696,11 +17150,22 @@ const ProcessStepRequest = z.object({
   order: z.number().int().gte(-2147483648).lte(2147483647),
   is_entry_point: z.boolean().optional(),
 });
+const QualityReportEquipmentRequest = z.object({
+  equipment: z.string().uuid(),
+  role: QualityReportEquipmentRoleEnum.optional(),
+  notes: z.string().max(200).optional(),
+});
+const QualityReportPersonnelRequest = z.object({
+  user: z.number().int(),
+  role: QualityReportPersonnelRoleEnum,
+  signed_at: z.string().datetime({ offset: true }).nullish(),
+  notes: z.string().max(200).optional(),
+});
 const RootCauseRequest = z.object({
   rca_record: z.string().uuid(),
   description: z.string().min(1),
   category: RootCauseCategoryEnum,
-  role: RoleEnum.optional(),
+  role: RootCauseRoleEnum.optional(),
   sequence: z.number().int().gte(-2147483648).lte(2147483647).optional(),
   archived: z.boolean().optional(),
 });
@@ -16772,6 +17237,10 @@ export const schemas = {
   BOM,
   PatchedBOMRequest,
   CreateBOMRevisionInputRequest,
+  BatchExecution,
+  PaginatedBatchExecutionList,
+  BatchExecutionRequest,
+  PatchedBatchExecutionRequest,
   CapaTypeEnum,
   SeverityEnum,
   TaskTypeEnum,
@@ -16783,7 +17252,7 @@ export const schemas = {
   RcaReviewStatusEnum,
   RootCauseVerificationStatusEnum,
   RootCauseCategoryEnum,
-  RoleEnum,
+  RootCauseRoleEnum,
   RootCause,
   FiveWhys,
   Fishbone,
@@ -16870,15 +17339,6 @@ export const schemas = {
   PaginatedQualityErrorsListList,
   QualityErrorsListRequest,
   PatchedQualityErrorsListRequest,
-  QualityReportStatusEnum,
-  ValuePassFailEnum,
-  BlankEnum,
-  MeasurementResult,
-  QualityReports,
-  PaginatedQualityReportsList,
-  MeasurementResultRequest,
-  QualityReportsRequest,
-  PatchedQualityReportsRequest,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
   FPIRecord,
@@ -16915,6 +17375,7 @@ export const schemas = {
   AcceptToInventoryResponse,
   HarvestedComponentScrapRequest,
   HeatMapAnnotationsSeverityEnum,
+  BlankEnum,
   HeatMapAnnotations,
   PaginatedHeatMapAnnotationsList,
   HeatMapAnnotationsRequest,
@@ -16976,6 +17437,8 @@ export const schemas = {
   PatchedPartsRequest,
   PartIncrementInputRequest,
   api_Parts_rollback_create_Body,
+  PartsBulkSetStatusInputRequest,
+  BulkSetStatusResponse,
   TravelerStepStatusEnum,
   TravelerOperator,
   TravelerApproval,
@@ -16991,8 +17454,6 @@ export const schemas = {
   BulkResultResponse,
   PartsBulkRollbackInputRequest,
   BulkRollbackResponse,
-  PartsBulkSetStatusInputRequest,
-  BulkSetStatusResponse,
   PartSelect,
   PaginatedPartSelectList,
   ProcessStatusEnum,
@@ -17017,6 +17478,18 @@ export const schemas = {
   DuplicateProcessRequestRequest,
   SubmitProcessForApprovalRequestRequest,
   SubmitProcessForApprovalResponse,
+  QualityReportStatusEnum,
+  ValuePassFailEnum,
+  MeasurementResult,
+  QualityReportEquipmentRoleEnum,
+  QualityReportEquipment,
+  QualityReportPersonnelRoleEnum,
+  QualityReportPersonnel,
+  QualityReports,
+  PaginatedQualityReportsList,
+  MeasurementResultRequest,
+  QualityReportsRequest,
+  PatchedQualityReportsRequest,
   CurrentStateEnum,
   DispositionTypeEnum,
   QuarantineDisposition,
@@ -17037,6 +17510,9 @@ export const schemas = {
   PaginatedSamplingRuleList,
   SamplingRuleRequest,
   PatchedSamplingRuleRequest,
+  OutcomeEnum,
+  SamplingDecision,
+  PaginatedSamplingDecisionList,
   ScheduleSlotStatusEnum,
   ScheduleSlot,
   PaginatedScheduleSlotList,
@@ -17155,6 +17631,9 @@ export const schemas = {
   PatchedUserRequest,
   BulkUserActivationInputRequest,
   BulkCompanyAssignmentInputRequest,
+  BulkReconcileUsersRequestRequest,
+  BulkReconcileSummary,
+  BulkReconcileUsersResponse,
   SendInvitationInputRequest,
   UserInvitation,
   PaginatedUserInvitationList,
@@ -17353,6 +17832,8 @@ export const schemas = {
   FishboneNested,
   FiveWhysNested,
   ProcessStepRequest,
+  QualityReportEquipmentRequest,
+  QualityReportPersonnelRequest,
   RootCauseRequest,
   StepEdgeRequest,
   StepRequest,
@@ -18393,6 +18874,179 @@ identity verification, and delegation support.`,
       },
     ],
     response: AuditLog,
+  },
+  {
+    method: "get",
+    path: "/api/BatchExecutions/",
+    alias: "api_BatchExecutions_list",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "sealed_at",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedBatchExecutionList,
+  },
+  {
+    method: "post",
+    path: "/api/BatchExecutions/",
+    alias: "api_BatchExecutions_create",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BatchExecutionRequest,
+      },
+    ],
+    response: BatchExecution,
+  },
+  {
+    method: "get",
+    path: "/api/BatchExecutions/:id/",
+    alias: "api_BatchExecutions_retrieve",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchExecution,
+  },
+  {
+    method: "put",
+    path: "/api/BatchExecutions/:id/",
+    alias: "api_BatchExecutions_update",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BatchExecutionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchExecution,
+  },
+  {
+    method: "patch",
+    path: "/api/BatchExecutions/:id/",
+    alias: "api_BatchExecutions_partial_update",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedBatchExecutionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchExecution,
+  },
+  {
+    method: "delete",
+    path: "/api/BatchExecutions/:id/",
+    alias: "api_BatchExecutions_destroy",
+    description: `BatchExecution rows + seal lifecycle action.
+
+GET endpoints expose membership / status; the only state-changing
+action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
+for advancement.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/BatchExecutions/:id/seal/",
+    alias: "api_BatchExecutions_seal_create",
+    description: `POST /api/BatchExecutions/{id}/seal/
+
+Locks the batch (timestamps &#x60;sealed_at&#x60;) and fires the
+advancement retry. ValidationError if required cohort substeps
+aren&#x27;t all completed, or if membership crosses WO boundaries.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BatchExecutionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchExecution,
   },
   {
     method: "get",
@@ -22953,318 +23607,6 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/ErrorReports/",
-    alias: "api_ErrorReports_list",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "machine",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "part",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "part__work_order",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "search",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "status",
-        type: "Query",
-        schema: z.enum(["FAIL", "PASS", "PENDING"]).optional(),
-      },
-      {
-        name: "step",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-    ],
-    response: PaginatedQualityReportsList,
-  },
-  {
-    method: "post",
-    path: "/api/ErrorReports/",
-    alias: "api_ErrorReports_create",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: QualityReportsRequest,
-      },
-    ],
-    response: QualityReports,
-  },
-  {
-    method: "get",
-    path: "/api/ErrorReports/:id/",
-    alias: "api_ErrorReports_retrieve",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: QualityReports,
-  },
-  {
-    method: "put",
-    path: "/api/ErrorReports/:id/",
-    alias: "api_ErrorReports_update",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: QualityReportsRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: QualityReports,
-  },
-  {
-    method: "patch",
-    path: "/api/ErrorReports/:id/",
-    alias: "api_ErrorReports_partial_update",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedQualityReportsRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: QualityReports,
-  },
-  {
-    method: "delete",
-    path: "/api/ErrorReports/:id/",
-    alias: "api_ErrorReports_destroy",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/api/ErrorReports/export-excel/",
-    alias: "api_ErrorReports_export_excel_retrieve",
-    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "fields",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "filename",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.instanceof(File),
-  },
-  {
-    method: "get",
-    path: "/api/ErrorReports/metadata/",
-    alias: "api_ErrorReports_metadata_retrieve",
-    description: `Return searchable/filterable/orderable field information with filter options.`,
-    requestFormat: "json",
-    response: ListMetadataResponse,
-  },
-  {
-    method: "get",
     path: "/api/Fishbone/",
     alias: "api_Fishbone_list",
     description: `List Fishbone diagrams with filtering`,
@@ -27245,6 +27587,45 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "post",
+    path: "/api/Parts/:id/complete_step/",
+    alias: "api_Parts_complete_step_create",
+    description: `POST /api/Parts/{id}/complete_step/
+
+Operator &quot;I&#x27;m done with this step for this part&quot; — THE canonical
+advancement trigger. Synchronously runs the gate via
+&#x60;try_advance_lot&#x60; for this part&#x27;s (work_order, step) and returns
+the result inline.
+
+If this part&#x27;s gate clears AND it&#x27;s the last cohort sibling to
+clear, the whole cohort advances. If this part is split, it
+advances solo. Bounded synchronous cascade through pass-through
+steps walks forward in the same request.
+
+Response shape matches the advance_lot action — the operator
+sees parts_advanced / blockers_by_part / etc. in the same
+request that triggered the gate.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: Parts,
+  },
+  {
+    method: "post",
     path: "/api/Parts/:id/increment/",
     alias: "api_Parts_increment_create",
     description: `Advance part to next step.
@@ -27301,6 +27682,37 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
     response: z.object({}).partial().passthrough(),
   },
   {
+    method: "post",
+    path: "/api/Parts/:id/split_from_lot/",
+    alias: "api_Parts_split_from_lot_create",
+    description: `POST /api/Parts/{id}/split_from_lot/
+
+Pull this part off its WorkOrder cohort so it advances solo.
+Quarantine, rework, expedite, customer-pull, and scrap all flow
+through this endpoint. Body:
+    { &quot;reason&quot;: &quot;rework&quot;, &quot;rework_target_step_id&quot;: &quot;&lt;uuid?&gt;&quot;,
+      &quot;notes&quot;: &quot;&lt;optional&gt;&quot; }`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsBulkSetStatusInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: BulkSetStatusResponse,
+  },
+  {
     method: "get",
     path: "/api/Parts/:id/traveler/",
     alias: "api_Parts_traveler_retrieve",
@@ -27319,6 +27731,33 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
       },
     ],
     response: PartTravelerResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Parts/advance_lot/",
+    alias: "api_Parts_advance_lot_create",
+    description: `POST /api/Parts/advance_lot/
+
+Lot-cohesion advancement: evaluate every non-split part at
+(work_order_id, step_id) and advance them as a cohort when the
+gate clears for all of them. Split parts at the same (WO, Step)
+each advance independently when their own gate clears.
+
+Body: { &quot;work_order_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;step_id&quot;: &quot;&lt;uuid&gt;&quot; }`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartsRequest,
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: Parts,
   },
   {
     method: "post",
@@ -27380,7 +27819,7 @@ Import/Export endpoints (auto-configured from model):
       {
         name: "body",
         type: "Body",
-        schema: PartsBulkSetStatusInputRequest,
+        schema: PartsRequest,
       },
       {
         name: "status__in",
@@ -27388,7 +27827,7 @@ Import/Export endpoints (auto-configured from model):
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: BulkSetStatusResponse,
+    response: Parts,
   },
   {
     method: "get",
@@ -28921,6 +29360,16 @@ Usage:
     requestFormat: "json",
     parameters: [
       {
+        name: "is_disassembly",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "is_remanufactured",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -29204,6 +29653,318 @@ Usage:
     method: "get",
     path: "/api/Processes/metadata/",
     alias: "api_Processes_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/QualityReports/",
+    alias: "api_QualityReports_list",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "machine",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "part__work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["FAIL", "PASS", "PENDING"]).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedQualityReportsList,
+  },
+  {
+    method: "post",
+    path: "/api/QualityReports/",
+    alias: "api_QualityReports_create",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: QualityReportsRequest,
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "get",
+    path: "/api/QualityReports/:id/",
+    alias: "api_QualityReports_retrieve",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "put",
+    path: "/api/QualityReports/:id/",
+    alias: "api_QualityReports_update",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: QualityReportsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "patch",
+    path: "/api/QualityReports/:id/",
+    alias: "api_QualityReports_partial_update",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedQualityReportsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "delete",
+    path: "/api/QualityReports/:id/",
+    alias: "api_QualityReports_destroy",
+    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
+
+This is the primary mixin for most ViewSets. It:
+- Enforces tenant-scoped permissions (TenantModelPermissions)
+- Filters queryset to current tenant
+- Applies for_user() filtering (permission-based data scoping)
+- Auto-assigns tenant on create
+- Prevents cross-tenant access
+
+Permission Enforcement:
+- GET/HEAD/OPTIONS -&gt; view_{model} permission
+- POST -&gt; add_{model} permission
+- PUT/PATCH -&gt; change_{model} permission
+- DELETE -&gt; delete_{model} permission
+
+Superusers bypass both permission checks and tenant filtering.
+
+Query parameters:
+- include_archived&#x3D;true: Include soft-deleted records (default: false)
+- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
+
+Usage:
+    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+        queryset &#x3D; Order.objects.all()
+        serializer_class &#x3D; OrderSerializer`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/QualityReports/export-excel/",
+    alias: "api_QualityReports_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/QualityReports/metadata/",
+    alias: "api_QualityReports_metadata_retrieve",
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
@@ -30437,6 +31198,90 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/SamplingDecisions/",
+    alias: "api_SamplingDecisions_list",
+    description: `Read-only access to live SamplingDecision rows.
+
+Operator runtime queries &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; to discover which
+substeps are SELECTED / DESELECTED / PENDING for this part and skip
+sampled-out work. Decisions are written by the sampling subsystem
+on step entry (&#x60;Tracker.services.dwi.sampling_decisions&#x60;); they&#x27;re
+not editable through the API.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "outcome",
+        type: "Query",
+        schema: z.enum(["deselected", "pending", "selected"]).optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "substep",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSamplingDecisionList,
+  },
+  {
+    method: "get",
+    path: "/api/SamplingDecisions/:id/",
+    alias: "api_SamplingDecisions_retrieve",
+    description: `Read-only access to live SamplingDecision rows.
+
+Operator runtime queries &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; to discover which
+substeps are SELECTED / DESELECTED / PENDING for this part and skip
+sampled-out work. Decisions are written by the sampling subsystem
+on step entry (&#x60;Tracker.services.dwi.sampling_decisions&#x60;); they&#x27;re
+not editable through the API.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SamplingDecision,
+  },
+  {
+    method: "post",
+    path: "/api/SamplingDecisions/reconcile/",
+    alias: "api_SamplingDecisions_reconcile_create",
+    description: `POST /api/SamplingDecisions/reconcile/
+
+Supervisor-triggered reconciliation of PENDING decisions for a
+WorkOrder (optionally narrowed to a step). Resolves rules like
+LAST_N_PARTS / EXACT_COUNT now that the cohort is closed.
+
+Body: { &quot;work_order_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;step_id&quot;?: &quot;&lt;uuid&gt;&quot; }
+
+Returns a summary: { reconciled, now_selected, now_deselected,
+still_pending }. Supervisor UI uses this to surface what flipped.`,
+    requestFormat: "json",
+    response: SamplingDecision,
   },
   {
     method: "get",
@@ -32933,6 +33778,37 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
     response: z.void(),
   },
   {
+    method: "post",
+    path: "/api/SubstepCompletions/:id/void/",
+    alias: "api_SubstepCompletions_void_create",
+    description: `POST /api/SubstepCompletions/{id}/void/
+
+QA voids an erroneous completion (gauge out of cal, wrong test
+method, calculator error, etc.). The gate ignores voided rows,
+so the next advancement attempt for the affected part will
+block on the missing completion until a fresh one lands.
+
+For parts already past the step, the void is audit-only — the
+containment investigation happens through the existing
+QualityReports list + CAPA tooling (Flow #10).
+
+Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepCompletionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SubstepCompletion,
+  },
+  {
     method: "get",
     path: "/api/SubstepGateCompletions/",
     alias: "api_SubstepGateCompletions_list",
@@ -33217,11 +34093,19 @@ substep (the typical authoring-popover query).`,
         type: "Query",
         schema: z
           .enum([
+            "annotation",
+            "attestation",
             "choice",
             "computed",
+            "defects",
+            "equipment_roles",
             "file",
+            "harvested_components",
+            "personnel_roles",
             "photo",
             "scan",
+            "signatures",
+            "status",
             "text",
             "timer",
             "video",
@@ -33509,6 +34393,95 @@ operator&#x27;s working order within the parent Op.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/Substeps/:id/ensure_inspection_qr/",
+    alias: "api_Substeps_ensure_inspection_qr_create",
+    description: `POST /api/Substeps/{id}/ensure_inspection_qr/
+
+Eagerly find-or-create the &#x60;QualityReports&#x60; row that this
+inspection-point substep would create on submit. Lets the
+operator runtime pre-bind a QR id into &#x60;PartContext&#x60; before the
+operator finishes the substep — required by capture nodes like
+&#x60;PartAnnotation&#x60; that need a known QR id to attach annotations
+to as the operator works.
+
+Idempotent: returns the existing QR id when the runtime calls
+it on subsequent opens of the same (step_execution, substep)
+pair.
+
+Body: { &quot;step_execution&quot;: &quot;&lt;uuid&gt;&quot; }
+Returns: { &quot;quality_report_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;created&quot;: &lt;bool&gt; }`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "post",
+    path: "/api/Substeps/:id/submit/",
+    alias: "api_Substeps_submit_create",
+    description: `Operator-runtime submit endpoint.
+
+Persists everything an operator captured on a single substep:
+per-node &#x60;SubstepResponse&#x60; rows, &#x60;MeasurementInput&#x60; captures via
+the existing two-tier service, structured-capture rows on
+&#x60;QualityReports&#x60; + through tables (when the substep is an
+inspection point), and a closing &#x60;SubstepCompletion&#x60;.
+
+Body shape: see &#x60;services/dwi/operator_capture.py&#x60; docstring.
+
+Returns:
+    &#x60;&#x60;{ completion_id, response_count, quality_report_id,
+         measurement_count }&#x60;&#x60;`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Substep,
+  },
+  {
+    method: "post",
+    path: "/api/Substeps/reorder/",
+    alias: "api_Substeps_reorder_create",
+    description: `Atomically reorder substeps within a step.
+
+Body shape: &#x60;&#x60;{&quot;step&quot;: &quot;&lt;uuid&gt;&quot;, &quot;order&quot;: [&quot;&lt;substep_id&gt;&quot;, ...]}&#x60;&#x60;.
+
+Why a dedicated action: the &#x60;&#x60;(step, order)&#x60;&#x60; UniqueConstraint
+rejects naive per-row PATCHes from the client because intermediate
+states collide mid-swap. We do a two-phase update inside a single
+transaction — first shift all involved rows to a non-conflicting
+negative range, then assign the final positive values.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepRequest,
+      },
+    ],
+    response: Substep,
   },
   {
     method: "get",
@@ -35872,6 +36845,42 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/User/bulk-reconcile-status/:task_id/",
+    alias: "api_User_bulk_reconcile_status_retrieve",
+    description: `Poll a queued bulk reconcile job. Mirrors the CSV-import status pattern.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/User/bulk-reconcile/",
+    alias: "api_User_bulk_reconcile_create",
+    description: `Reconcile the tenant&#x27;s user roster to match a list of row descriptors. State-based: each row describes a desired user; missing emails are created + invited, existing emails are updated to match. Accepts either inline &#x60;rows&#x60; in JSON, or a CSV/Excel file upload via multipart form-data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BulkReconcileUsersRequestRequest,
+      },
+    ],
+    response: BulkReconcileUsersResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",

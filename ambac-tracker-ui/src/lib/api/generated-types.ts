@@ -526,6 +526,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/BatchExecutions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        get: operations["api_BatchExecutions_list"];
+        put?: never;
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        post: operations["api_BatchExecutions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BatchExecutions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        get: operations["api_BatchExecutions_retrieve"];
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        put: operations["api_BatchExecutions_update"];
+        post?: never;
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        delete: operations["api_BatchExecutions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description BatchExecution rows + seal lifecycle action.
+         *
+         *     GET endpoints expose membership / status; the only state-changing
+         *     action in this iteration is `POST {id}/seal/` which closes the batch
+         *     for advancement.
+         */
+        patch: operations["api_BatchExecutions_partial_update"];
+        trace?: never;
+    };
+    "/api/BatchExecutions/{id}/seal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/BatchExecutions/{id}/seal/
+         *
+         *     Locks the batch (timestamps `sealed_at`) and fires the
+         *     advancement retry. ValidationError if required cohort substeps
+         *     aren't all completed, or if membership crosses WO boundaries.
+         */
+        post: operations["api_BatchExecutions_seal_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CAPAs/": {
         parameters: {
             query?: never;
@@ -2741,234 +2838,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/ErrorReports/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        get: operations["api_ErrorReports_list"];
-        put?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        post: operations["api_ErrorReports_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ErrorReports/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        get: operations["api_ErrorReports_retrieve"];
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        put: operations["api_ErrorReports_update"];
-        post?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        delete: operations["api_ErrorReports_destroy"];
-        options?: never;
-        head?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
-        patch: operations["api_ErrorReports_partial_update"];
-        trace?: never;
-    };
-    "/api/ErrorReports/export-excel/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
-        get: operations["api_ErrorReports_export_excel_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ErrorReports/metadata/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Return searchable/filterable/orderable field information with filter options. */
-        get: operations["api_ErrorReports_metadata_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/FPIRecords/": {
         parameters: {
             query?: never;
@@ -4715,6 +4584,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/complete_step/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/Parts/{id}/complete_step/
+         *
+         *     Operator "I'm done with this step for this part" — THE canonical
+         *     advancement trigger. Synchronously runs the gate via
+         *     `try_advance_lot` for this part's (work_order, step) and returns
+         *     the result inline.
+         *
+         *     If this part's gate clears AND it's the last cohort sibling to
+         *     clear, the whole cohort advances. If this part is split, it
+         *     advances solo. Bounded synchronous cascade through pass-through
+         *     steps walks forward in the same request.
+         *
+         *     Response shape matches the advance_lot action — the operator
+         *     sees parts_advanced / blockers_by_part / etc. in the same
+         *     request that triggered the gate.
+         */
+        post: operations["api_Parts_complete_step_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/increment/": {
         parameters: {
             query?: never;
@@ -4758,6 +4660,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/split_from_lot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/Parts/{id}/split_from_lot/
+         *
+         *     Pull this part off its WorkOrder cohort so it advances solo.
+         *     Quarantine, rework, expedite, customer-pull, and scrap all flow
+         *     through this endpoint. Body:
+         *         { "reason": "rework", "rework_target_step_id": "<uuid?>",
+         *           "notes": "<optional>" }
+         */
+        post: operations["api_Parts_split_from_lot_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/traveler/": {
         parameters: {
             query?: never;
@@ -4769,6 +4696,32 @@ export interface paths {
         get: operations["api_Parts_traveler_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Parts/advance_lot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/Parts/advance_lot/
+         *
+         *     Lot-cohesion advancement: evaluate every non-split part at
+         *     (work_order_id, step_id) and advance them as a cohort when the
+         *     gate clears for all of them. Split parts at the same (WO, Step)
+         *     each advance independently when their own gate clears.
+         *
+         *     Body: { "work_order_id": "<uuid>", "step_id": "<uuid>" }
+         */
+        post: operations["api_Parts_advance_lot_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5492,6 +5445,234 @@ export interface paths {
         };
         /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
         get: operations["api_Processes_with_steps_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/QualityReports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        get: operations["api_QualityReports_list"];
+        put?: never;
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        post: operations["api_QualityReports_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/QualityReports/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        get: operations["api_QualityReports_retrieve"];
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        put: operations["api_QualityReports_update"];
+        post?: never;
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        delete: operations["api_QualityReports_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
+         *
+         *     This is the primary mixin for most ViewSets. It:
+         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
+         *     - Filters queryset to current tenant
+         *     - Applies for_user() filtering (permission-based data scoping)
+         *     - Auto-assigns tenant on create
+         *     - Prevents cross-tenant access
+         *
+         *     Permission Enforcement:
+         *     - GET/HEAD/OPTIONS -> view_{model} permission
+         *     - POST -> add_{model} permission
+         *     - PUT/PATCH -> change_{model} permission
+         *     - DELETE -> delete_{model} permission
+         *
+         *     Superusers bypass both permission checks and tenant filtering.
+         *
+         *     Query parameters:
+         *     - include_archived=true: Include soft-deleted records (default: false)
+         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
+         *
+         *     Usage:
+         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+         *             queryset = Order.objects.all()
+         *             serializer_class = OrderSerializer
+         */
+        patch: operations["api_QualityReports_partial_update"];
+        trace?: never;
+    };
+    "/api/QualityReports/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_QualityReports_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/QualityReports/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_QualityReports_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6284,6 +6465,84 @@ export interface paths {
         get: operations["api_Sampling_rules_metadata_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingDecisions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only access to live SamplingDecision rows.
+         *
+         *     Operator runtime queries `?step_execution=<id>` to discover which
+         *     substeps are SELECTED / DESELECTED / PENDING for this part and skip
+         *     sampled-out work. Decisions are written by the sampling subsystem
+         *     on step entry (`Tracker.services.dwi.sampling_decisions`); they're
+         *     not editable through the API.
+         */
+        get: operations["api_SamplingDecisions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingDecisions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only access to live SamplingDecision rows.
+         *
+         *     Operator runtime queries `?step_execution=<id>` to discover which
+         *     substeps are SELECTED / DESELECTED / PENDING for this part and skip
+         *     sampled-out work. Decisions are written by the sampling subsystem
+         *     on step entry (`Tracker.services.dwi.sampling_decisions`); they're
+         *     not editable through the API.
+         */
+        get: operations["api_SamplingDecisions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingDecisions/reconcile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/SamplingDecisions/reconcile/
+         *
+         *     Supervisor-triggered reconciliation of PENDING decisions for a
+         *     WorkOrder (optionally narrowed to a step). Resolves rules like
+         *     LAST_N_PARTS / EXACT_COUNT now that the cohort is closed.
+         *
+         *     Body: { "work_order_id": "<uuid>", "step_id"?: "<uuid>" }
+         *
+         *     Returns a summary: { reconciled, now_selected, now_deselected,
+         *     still_pending }. Supervisor UI uses this to surface what flipped.
+         */
+        post: operations["api_SamplingDecisions_reconcile_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7213,6 +7472,36 @@ export interface paths {
         patch: operations["api_SubstepCompletions_partial_update"];
         trace?: never;
     };
+    "/api/SubstepCompletions/{id}/void/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/SubstepCompletions/{id}/void/
+         *
+         *     QA voids an erroneous completion (gauge out of cal, wrong test
+         *     method, calculator error, etc.). The gate ignores voided rows,
+         *     so the next advancement attempt for the affected part will
+         *     block on the missing completion until a fresh one lands.
+         *
+         *     For parts already past the step, the void is audit-only — the
+         *     containment investigation happens through the existing
+         *     QualityReports list + CAPA tooling (Flow #10).
+         *
+         *     Body: { "reason": "<text>" } — required.
+         */
+        post: operations["api_SubstepCompletions_void_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/SubstepGateCompletions/": {
         parameters: {
             query?: never;
@@ -7467,6 +7756,97 @@ export interface paths {
          *     operator's working order within the parent Op.
          */
         patch: operations["api_Substeps_partial_update"];
+        trace?: never;
+    };
+    "/api/Substeps/{id}/ensure_inspection_qr/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/Substeps/{id}/ensure_inspection_qr/
+         *
+         *     Eagerly find-or-create the `QualityReports` row that this
+         *     inspection-point substep would create on submit. Lets the
+         *     operator runtime pre-bind a QR id into `PartContext` before the
+         *     operator finishes the substep — required by capture nodes like
+         *     `PartAnnotation` that need a known QR id to attach annotations
+         *     to as the operator works.
+         *
+         *     Idempotent: returns the existing QR id when the runtime calls
+         *     it on subsequent opens of the same (step_execution, substep)
+         *     pair.
+         *
+         *     Body: { "step_execution": "<uuid>" }
+         *     Returns: { "quality_report_id": "<uuid>", "created": <bool> }
+         */
+        post: operations["api_Substeps_ensure_inspection_qr_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Substeps/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Operator-runtime submit endpoint.
+         *
+         *     Persists everything an operator captured on a single substep:
+         *     per-node `SubstepResponse` rows, `MeasurementInput` captures via
+         *     the existing two-tier service, structured-capture rows on
+         *     `QualityReports` + through tables (when the substep is an
+         *     inspection point), and a closing `SubstepCompletion`.
+         *
+         *     Body shape: see `services/dwi/operator_capture.py` docstring.
+         *
+         *     Returns:
+         *         ``{ completion_id, response_count, quality_report_id,
+         *              measurement_count }``
+         */
+        post: operations["api_Substeps_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Substeps/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Atomically reorder substeps within a step.
+         *
+         *     Body shape: ``{"step": "<uuid>", "order": ["<substep_id>", ...]}``.
+         *
+         *     Why a dedicated action: the ``(step, order)`` UniqueConstraint
+         *     rejects naive per-row PATCHes from the client because intermediate
+         *     states collide mid-swap. We do a two-phase update inside a single
+         *     transaction — first shift all involved rows to a non-conflicting
+         *     negative range, then assign the final positive values.
+         */
+        post: operations["api_Substeps_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/TenantGroups/": {
@@ -8596,6 +8976,40 @@ export interface paths {
         put?: never;
         /** @description Bulk assign users to a company */
         post: operations["api_User_bulk_assign_company_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/User/bulk-reconcile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reconcile the tenant's user roster to match a list of row descriptors. State-based: each row describes a desired user; missing emails are created + invited, existing emails are updated to match. Accepts either inline `rows` in JSON, or a CSV/Excel file upload via multipart form-data. */
+        post: operations["api_User_bulk_reconcile_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/User/bulk-reconcile-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Poll a queued bulk reconcile job. Mirrors the CSV-import status pattern. */
+        get: operations["api_User_bulk_reconcile_status_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12506,7 +12920,7 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             part_type: string;
-            readonly part_type_name: string;
+            readonly part_type_name: string | null;
             revision: string;
             bom_type?: components["schemas"]["BOMTypeEnum"];
             status?: components["schemas"]["BOMStatusEnum"];
@@ -12580,7 +12994,7 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             part_type: string;
-            readonly part_type_name: string;
+            readonly part_type_name: string | null;
             revision: string;
             bom_type?: components["schemas"]["BOMTypeEnum"];
             status?: components["schemas"]["BOMStatusEnum"];
@@ -12621,6 +13035,73 @@ export interface components {
          * @enum {string}
          */
         BaselineStatusEnum: "ACTIVE" | "SUPERSEDED";
+        /**
+         * @description Minimal BatchExecution shape for the lifecycle viewset.
+         *
+         *     The viewset only exposes list/retrieve + the seal action in this
+         *     iteration; write semantics live on the seal service, not on the
+         *     serializer.
+         */
+        BatchExecution: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The WorkOrder whose parts make up this batch.
+             */
+            work_order: string;
+            /**
+             * Format: uuid
+             * @description The Step the batch is running through.
+             */
+            step: string;
+            /** @description Parts that are members of this batch. */
+            parts?: string[];
+            /** @description Operator who started the batch. */
+            started_by: number;
+            /**
+             * Format: date-time
+             * @description When the operator started the batch.
+             */
+            readonly started_at: string;
+            /**
+             * Format: date-time
+             * @description When the batch was sealed (first BATCH-scope substep fired). Parts can be added freely before this; locked after.
+             */
+            readonly sealed_at: string | null;
+            /**
+             * Format: date-time
+             * @description When every BATCH-scope substep on the Step was completed.
+             */
+            readonly completed_at: string | null;
+            /** @description Operator notes captured at batch start / during the run. */
+            notes?: string;
+        };
+        /**
+         * @description Minimal BatchExecution shape for the lifecycle viewset.
+         *
+         *     The viewset only exposes list/retrieve + the seal action in this
+         *     iteration; write semantics live on the seal service, not on the
+         *     serializer.
+         */
+        BatchExecutionRequest: {
+            /**
+             * Format: uuid
+             * @description The WorkOrder whose parts make up this batch.
+             */
+            work_order: string;
+            /**
+             * Format: uuid
+             * @description The Step the batch is running through.
+             */
+            step: string;
+            /** @description Parts that are members of this batch. */
+            parts?: string[];
+            /** @description Operator who started the batch. */
+            started_by: number;
+            /** @description Operator notes captured at batch start / during the run. */
+            notes?: string;
+        };
         /** @enum {unknown} */
         BlankEnum: "";
         /**
@@ -12655,6 +13136,25 @@ export interface components {
             user_ids: number[];
             /** Format: uuid */
             company_id: string | null;
+        };
+        BulkReconcileSummary: {
+            total: number;
+            created: number;
+            updated: number;
+            unchanged: number;
+            errors: number;
+        };
+        BulkReconcileUsersRequestRequest: {
+            /** @description List of row dicts: {email, first_name, last_name, group, status, message}. Either `rows` (this field) or a `file` upload must be provided. */
+            rows?: {
+                [key: string]: unknown;
+            }[];
+        };
+        BulkReconcileUsersResponse: {
+            summary: components["schemas"]["BulkReconcileSummary"];
+            results: {
+                [key: string]: unknown;
+            }[];
         };
         BulkRemovePartsInputRequest: {
             ids: string[];
@@ -13761,6 +14261,8 @@ export interface components {
             readonly expected_usable_qty: number;
             /** @description Special handling instructions or notes */
             notes?: string;
+            /** @description Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl 2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's position field per row. Free-text when empty. */
+            positions?: unknown;
             line_number?: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -13797,6 +14299,8 @@ export interface components {
             expected_fallout_rate?: string;
             /** @description Special handling instructions or notes */
             notes?: string;
+            /** @description Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl 2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's position field per row. Free-text when empty. */
+            positions?: unknown;
             line_number?: number;
             archived?: boolean;
         };
@@ -15117,9 +15621,17 @@ export interface components {
          *     * `file` - File upload
          *     * `timer` - Timer (countdown / stopwatch)
          *     * `computed` - Computed value (formula)
+         *     * `attestation` - Attestation (confirm / signature)
+         *     * `status` - Quality status (PASS / FAIL / PENDING)
+         *     * `equipment_roles` - Equipment + roles
+         *     * `personnel_roles` - Personnel + roles
+         *     * `signatures` - Inspection signatures (detected / verified)
+         *     * `defects` - Defect findings
+         *     * `annotation` - Part annotation (3D)
+         *     * `harvested_components` - Harvested components (teardown)
          * @enum {string}
          */
-        KindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed";
+        KindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components";
         LLMConfigResponse: {
             configured: boolean;
             provider: string;
@@ -15560,6 +16072,13 @@ export interface components {
          * @enum {string}
          */
         OrdersStatusEnum: "RFI" | "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED";
+        /**
+         * @description * `selected` - Selected
+         *     * `deselected` - Deselected
+         *     * `pending` - Pending
+         * @enum {string}
+         */
+        OutcomeEnum: "selected" | "deselected" | "pending";
         PaginatedApprovalRequestList: {
             /** @example 123 */
             count: number;
@@ -15679,6 +16198,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["BOMList"][];
+        };
+        PaginatedBatchExecutionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["BatchExecution"][];
         };
         PaginatedCAPAList: {
             /** @example 123 */
@@ -16385,6 +16919,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["SPCBaselineList"][];
         };
+        PaginatedSamplingDecisionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SamplingDecision"][];
+        };
         PaginatedSamplingRuleList: {
             /** @example 123 */
             count: number;
@@ -16931,6 +17480,11 @@ export interface components {
             eccn?: string;
             /** @description USML Category if ITAR-controlled (e.g., IV, XI, XIX) */
             usml_category?: string;
+            /**
+             * Format: uuid
+             * @description Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+             */
+            default_disassembly_process?: string | null;
             readonly version: number;
             readonly is_current_version: boolean;
             /** Format: uuid */
@@ -16961,6 +17515,11 @@ export interface components {
             eccn?: string;
             /** @description USML Category if ITAR-controlled (e.g., IV, XI, XIX) */
             usml_category?: string;
+            /**
+             * Format: uuid
+             * @description Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+             */
+            default_disassembly_process?: string | null;
         };
         /** @description Enhanced parts serializer using model methods */
         Parts: {
@@ -17203,6 +17762,31 @@ export interface components {
             status?: components["schemas"]["BOMStatusEnum"];
             description?: string;
             archived?: boolean;
+        };
+        /**
+         * @description Minimal BatchExecution shape for the lifecycle viewset.
+         *
+         *     The viewset only exposes list/retrieve + the seal action in this
+         *     iteration; write semantics live on the seal service, not on the
+         *     serializer.
+         */
+        PatchedBatchExecutionRequest: {
+            /**
+             * Format: uuid
+             * @description The WorkOrder whose parts make up this batch.
+             */
+            work_order?: string;
+            /**
+             * Format: uuid
+             * @description The Step the batch is running through.
+             */
+            step?: string;
+            /** @description Parts that are members of this batch. */
+            parts?: string[];
+            /** @description Operator who started the batch. */
+            started_by?: number;
+            /** @description Operator notes captured at batch start / during the run. */
+            notes?: string;
         };
         /** @description CAPA main serializer */
         PatchedCAPARequest: {
@@ -17465,6 +18049,8 @@ export interface components {
             expected_fallout_rate?: string;
             /** @description Special handling instructions or notes */
             notes?: string;
+            /** @description Optional ordered list of position labels (e.g., ['Cyl 1', 'Cyl 2', 'Cyl 3', 'Cyl 4']) of length expected_qty. Pre-fills the capture node's position field per row. Free-text when empty. */
+            positions?: unknown;
             line_number?: number;
             archived?: boolean;
         };
@@ -17858,6 +18444,11 @@ export interface components {
             eccn?: string;
             /** @description USML Category if ITAR-controlled (e.g., IV, XI, XIX) */
             usml_category?: string;
+            /**
+             * Format: uuid
+             * @description Canonical preference for the teardown picker. When set, the operator's bulk-teardown dialog preselects this Process. Optional: when null, the picker has no preselection and (for automation paths) WO creation refuses to resolve a default.
+             */
+            default_disassembly_process?: string | null;
         };
         /** @description Enhanced parts serializer using model methods */
         PatchedPartsRequest: {
@@ -18006,6 +18597,8 @@ export interface components {
         PatchedProcessWithStepsRequest: {
             name?: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type?: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -18039,6 +18632,8 @@ export interface components {
             external_id?: string | null;
             name?: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type?: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -18089,7 +18684,7 @@ export interface components {
             part?: string | null;
             /** Format: uuid */
             machine?: string | null;
-            /** @description Operators running the process when defect occurred (for root cause) */
+            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status?: components["schemas"]["QualityReportStatusEnum"];
@@ -18102,9 +18697,9 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description Inspector/operator who detected the defect (required for new reports) */
+            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
-            /** @description Second signature for critical inspections (aerospace/medical) */
+            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
@@ -18376,9 +18971,9 @@ export interface components {
         PatchedStepExecutionRequest: {
             /**
              * Format: uuid
-             * @description The part being tracked through this step
+             * @description The part being tracked through this step (mutually exclusive with `core`).
              */
-            part?: string;
+            part?: string | null;
             /**
              * Format: uuid
              * @description The step being executed
@@ -18501,9 +19096,9 @@ export interface components {
         PatchedSubstepCompletionRequest: {
             /**
              * Format: uuid
-             * @description The execution record the operator was working when they completed this substep.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
              */
-            step_execution?: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep that was completed (or marked N/A).
@@ -18592,6 +19187,10 @@ export interface components {
             body_blocks?: unknown;
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
+            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            is_critical?: boolean;
+            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
+            allow_not_applicable?: boolean;
             /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -18600,7 +19199,7 @@ export interface components {
             expected_duration?: string | null;
             /**
              * Format: uuid
-             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
             sampling_rule?: string | null;
             /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
@@ -18639,9 +19238,9 @@ export interface components {
         PatchedSubstepResponseRequest: {
             /**
              * Format: uuid
-             * @description The execution record where this response was captured.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
              */
-            step_execution?: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep the capture node lives in.
@@ -18660,6 +19259,14 @@ export interface components {
              *     * `file` - File upload
              *     * `timer` - Timer (countdown / stopwatch)
              *     * `computed` - Computed value (formula)
+             *     * `attestation` - Attestation (confirm / signature)
+             *     * `status` - Quality status (PASS / FAIL / PENDING)
+             *     * `equipment_roles` - Equipment + roles
+             *     * `personnel_roles` - Personnel + roles
+             *     * `signatures` - Inspection signatures (detected / verified)
+             *     * `defects` - Defect findings
+             *     * `annotation` - Part annotation (3D)
+             *     * `harvested_components` - Harvested components (teardown)
              */
             kind?: components["schemas"]["KindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -19453,6 +20060,8 @@ export interface components {
             readonly id: string;
             name: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -19501,6 +20110,8 @@ export interface components {
         ProcessWithStepsRequest: {
             name: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -19540,6 +20151,8 @@ export interface components {
             readonly updated_at: string;
             name: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -19568,7 +20181,7 @@ export interface components {
             /** Format: date-time */
             readonly approved_at: string | null;
             readonly approved_by: number | null;
-            readonly part_type_name: string;
+            readonly part_type_name: string | null;
             readonly process_steps: components["schemas"]["ProcessStep"][];
             readonly step_edges: components["schemas"]["StepEdge"][];
             readonly num_steps: number;
@@ -19593,6 +20206,8 @@ export interface components {
             external_id?: string | null;
             name: string;
             is_remanufactured?: boolean;
+            /** @description When True, this Process is eligible to be selected as a teardown process for Cores of its `part_type`. A single core_type may have multiple eligible disassembly Processes (quick teardown, full overhaul, failure-analysis); the operator picks at WO creation. */
+            is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
             /** @description If True, UI treats work order parts as a batch unit */
@@ -19650,7 +20265,7 @@ export interface components {
             error_example: string;
             /** Format: uuid */
             part_type?: string | null;
-            readonly part_type_name: string;
+            readonly part_type_name: string | null;
             requires_3d_annotation?: boolean;
             archived?: boolean;
             readonly version: number;
@@ -19681,6 +20296,109 @@ export interface components {
             total_inspected: number;
             total_failed: number;
         };
+        /** @description Nested row of (equipment, role) on a QualityReports record. */
+        QualityReportEquipment: {
+            readonly id: number;
+            /** Format: uuid */
+            equipment: string;
+            readonly equipment_name: string;
+            /**
+             * @description What role this equipment played for this report.
+             *
+             *     * `PRODUCTION` - Production machine
+             *     * `FIXTURE` - Fixture / hold-down
+             *     * `TOOL` - Cutting / forming tool
+             *     * `GAUGE` - Inspection gauge / instrument
+             *     * `OTHER` - Other
+             */
+            role?: components["schemas"]["QualityReportEquipmentRoleEnum"];
+            /** @description Optional context (e.g. which station in a multi-station cell). */
+            notes?: string;
+        };
+        /** @description Nested row of (equipment, role) on a QualityReports record. */
+        QualityReportEquipmentRequest: {
+            /** Format: uuid */
+            equipment: string;
+            /**
+             * @description What role this equipment played for this report.
+             *
+             *     * `PRODUCTION` - Production machine
+             *     * `FIXTURE` - Fixture / hold-down
+             *     * `TOOL` - Cutting / forming tool
+             *     * `GAUGE` - Inspection gauge / instrument
+             *     * `OTHER` - Other
+             */
+            role?: components["schemas"]["QualityReportEquipmentRoleEnum"];
+            /** @description Optional context (e.g. which station in a multi-station cell). */
+            notes?: string;
+        };
+        /**
+         * @description * `PRODUCTION` - Production machine
+         *     * `FIXTURE` - Fixture / hold-down
+         *     * `TOOL` - Cutting / forming tool
+         *     * `GAUGE` - Inspection gauge / instrument
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        QualityReportEquipmentRoleEnum: "PRODUCTION" | "FIXTURE" | "TOOL" | "GAUGE" | "OTHER";
+        /** @description Nested row of (user, role, signed_at) on a QualityReports record. */
+        QualityReportPersonnel: {
+            readonly id: number;
+            user: number;
+            readonly username: string;
+            readonly full_name: string;
+            /**
+             * @description What role this user played on this report.
+             *
+             *     * `DETECTED_BY` - Detected by
+             *     * `OPERATOR` - Operator on the job
+             *     * `VERIFIED_BY` - Verified by (second sig)
+             *     * `INSPECTOR` - Inspector
+             *     * `WITNESS` - Witness
+             *     * `TRAINER` - Trainer / supervisor
+             *     * `TRAINEE` - Trainee under supervision
+             */
+            role: components["schemas"]["QualityReportPersonnelRoleEnum"];
+            /**
+             * Format: date-time
+             * @description When the user attested to their role (signature timestamp). Null for non-signing roles like OPERATOR.
+             */
+            signed_at?: string | null;
+            notes?: string;
+        };
+        /** @description Nested row of (user, role, signed_at) on a QualityReports record. */
+        QualityReportPersonnelRequest: {
+            user: number;
+            /**
+             * @description What role this user played on this report.
+             *
+             *     * `DETECTED_BY` - Detected by
+             *     * `OPERATOR` - Operator on the job
+             *     * `VERIFIED_BY` - Verified by (second sig)
+             *     * `INSPECTOR` - Inspector
+             *     * `WITNESS` - Witness
+             *     * `TRAINER` - Trainer / supervisor
+             *     * `TRAINEE` - Trainee under supervision
+             */
+            role: components["schemas"]["QualityReportPersonnelRoleEnum"];
+            /**
+             * Format: date-time
+             * @description When the user attested to their role (signature timestamp). Null for non-signing roles like OPERATOR.
+             */
+            signed_at?: string | null;
+            notes?: string;
+        };
+        /**
+         * @description * `DETECTED_BY` - Detected by
+         *     * `OPERATOR` - Operator on the job
+         *     * `VERIFIED_BY` - Verified by (second sig)
+         *     * `INSPECTOR` - Inspector
+         *     * `WITNESS` - Witness
+         *     * `TRAINER` - Trainer / supervisor
+         *     * `TRAINEE` - Trainee under supervision
+         * @enum {string}
+         */
+        QualityReportPersonnelRoleEnum: "DETECTED_BY" | "OPERATOR" | "VERIFIED_BY" | "INSPECTOR" | "WITNESS" | "TRAINER" | "TRAINEE";
         /**
          * @description * `PASS` - Pass
          *     * `FAIL` - Fail
@@ -19700,7 +20418,7 @@ export interface components {
             part?: string | null;
             /** Format: uuid */
             machine?: string | null;
-            /** @description Operators running the process when defect occurred (for root cause) */
+            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status: components["schemas"]["QualityReportStatusEnum"];
@@ -19717,18 +20435,20 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description Inspector/operator who detected the defect (required for new reports) */
+            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
             readonly detected_by_info: {
                 [key: string]: unknown;
             } | null;
-            /** @description Second signature for critical inspections (aerospace/medical) */
+            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             readonly verified_by_info: {
                 [key: string]: unknown;
             } | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
+            readonly equipment_links: components["schemas"]["QualityReportEquipment"][];
+            readonly personnel_links: components["schemas"]["QualityReportPersonnel"][];
             readonly part_info: {
                 [key: string]: unknown;
             } | null;
@@ -19754,7 +20474,7 @@ export interface components {
             part?: string | null;
             /** Format: uuid */
             machine?: string | null;
-            /** @description Operators running the process when defect occurred (for root cause) */
+            /** @description DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat. */
             operators?: number[];
             sampling_method?: string;
             status: components["schemas"]["QualityReportStatusEnum"];
@@ -19767,9 +20487,9 @@ export interface components {
              * @description Links to the sampling decision that triggered this inspection
              */
             sampling_audit_log?: string | null;
-            /** @description Inspector/operator who detected the defect (required for new reports) */
+            /** @description DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat. */
             detected_by?: number | null;
-            /** @description Second signature for critical inspections (aerospace/medical) */
+            /** @description DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat. */
             verified_by?: number | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
@@ -20013,12 +20733,6 @@ export interface components {
          * @enum {string}
          */
         RevisitAssignmentEnum: "ANY" | "SAME" | "DIFFERENT" | "ROLE";
-        /**
-         * @description * `PRIMARY` - Primary
-         *     * `CONTRIBUTING` - Contributing
-         * @enum {string}
-         */
-        RoleEnum: "PRIMARY" | "CONTRIBUTING";
         /** @description Root cause serializer */
         RootCause: {
             /** Format: uuid */
@@ -20031,7 +20745,7 @@ export interface components {
             description: string;
             category: components["schemas"]["RootCauseCategoryEnum"];
             readonly category_display: string;
-            role?: components["schemas"]["RoleEnum"];
+            role?: components["schemas"]["RootCauseRoleEnum"];
             readonly role_display: string;
             /** @description Order in causal chain */
             sequence?: number;
@@ -20058,11 +20772,17 @@ export interface components {
             rca_record: string;
             description: string;
             category: components["schemas"]["RootCauseCategoryEnum"];
-            role?: components["schemas"]["RoleEnum"];
+            role?: components["schemas"]["RootCauseRoleEnum"];
             /** @description Order in causal chain */
             sequence?: number;
             archived?: boolean;
         };
+        /**
+         * @description * `PRIMARY` - Primary
+         *     * `CONTRIBUTING` - Contributing
+         * @enum {string}
+         */
+        RootCauseRoleEnum: "PRIMARY" | "CONTRIBUTING";
         /**
          * @description * `UNVERIFIED` - Unverified
          *     * `VERIFIED` - Verified
@@ -20403,6 +21123,46 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description Append-only sampling decision per (StepExecution, Substep). The
+         *     operator runtime queries `?step_execution=<id>` to discover which
+         *     substeps are SELECTED / DESELECTED / PENDING and grey out the
+         *     sampled-out ones.
+         */
+        SamplingDecision: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description The (part, step, visit) this decision applies to.
+             */
+            readonly step_execution: string;
+            /**
+             * Format: uuid
+             * @description The substep whose sampling_rule produced this decision.
+             */
+            readonly substep: string;
+            /**
+             * @description What the rule decided — SELECTED, DESELECTED, or PENDING.
+             *
+             *     * `selected` - Selected
+             *     * `deselected` - Deselected
+             *     * `pending` - Pending
+             */
+            readonly outcome: components["schemas"]["OutcomeEnum"];
+            /** @description Version of the SamplingRuleSet that produced this decision. Audit can answer 'what rule was active when this was decided' via this field; rule edits bump the version on supersession. */
+            readonly ruleset_version: number;
+            /**
+             * Format: date-time
+             * @description UTC timestamp the decision was written.
+             */
+            readonly decided_at: string;
+            /**
+             * Format: uuid
+             * @description When a rule change invalidates this decision, the new SamplingDecision row's id goes here. Null = this decision is live.
+             */
+            readonly superseded_by: string | null;
+        };
         /** @description Enhanced sampling rule serializer */
         SamplingRule: {
             /** Format: uuid */
@@ -20694,7 +21454,7 @@ export interface components {
             description?: string | null;
             /** Format: uuid */
             part_type: string;
-            readonly part_type_name: string;
+            readonly part_type_name: string | null;
             expected_duration?: string | null;
             requires_qa_signoff?: boolean;
             sampling_required?: boolean;
@@ -20794,9 +21554,9 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The part being tracked through this step
+             * @description The part being tracked through this step (mutually exclusive with `core`).
              */
-            part: string;
+            part?: string | null;
             /**
              * Format: uuid
              * @description The step being executed
@@ -20847,9 +21607,9 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The part being tracked through this step
+             * @description The part being tracked through this step (mutually exclusive with `core`).
              */
-            part: string;
+            part?: string | null;
             readonly part_erp_id: string;
             readonly part_status: string;
             /**
@@ -20958,9 +21718,9 @@ export interface components {
         StepExecutionRequest: {
             /**
              * Format: uuid
-             * @description The part being tracked through this step
+             * @description The part being tracked through this step (mutually exclusive with `core`).
              */
-            part: string;
+            part?: string | null;
             /**
              * Format: uuid
              * @description The step being executed
@@ -21352,6 +22112,10 @@ export interface components {
             body_blocks?: unknown;
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
+            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            is_critical?: boolean;
+            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
+            allow_not_applicable?: boolean;
             /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -21360,13 +22124,14 @@ export interface components {
             expected_duration?: string | null;
             /**
              * Format: uuid
-             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
             sampling_rule?: string | null;
             /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
             source_library_substep_id?: number | null;
             /** @description Forward-compatible: version of the LibrarySubstep at insert time. */
             source_library_version?: number | null;
+            readonly is_editable: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -21379,9 +22144,9 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The execution record the operator was working when they completed this substep.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
              */
-            step_execution: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep that was completed (or marked N/A).
@@ -21390,7 +22155,7 @@ export interface components {
             readonly substep_title: string | null;
             /** @description Operator who completed the substep. */
             completed_by: number;
-            readonly completed_by_name: string;
+            readonly completed_by_name: string | null;
             /**
              * Format: date-time
              * @description UTC timestamp when the completion was recorded.
@@ -21428,9 +22193,9 @@ export interface components {
         SubstepCompletionRequest: {
             /**
              * Format: uuid
-             * @description The execution record the operator was working when they completed this substep.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
              */
-            step_execution: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep that was completed (or marked N/A).
@@ -21480,7 +22245,7 @@ export interface components {
             node_id: string;
             /** @description Operator who confirmed/signed the gate. */
             completed_by: number;
-            readonly completed_by_name: string;
+            readonly completed_by_name: string | null;
             /**
              * Format: date-time
              * @description UTC timestamp when the gate was confirmed/signed.
@@ -21567,6 +22332,10 @@ export interface components {
             body_blocks?: unknown;
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
+            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            is_critical?: boolean;
+            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
+            allow_not_applicable?: boolean;
             /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -21575,7 +22344,7 @@ export interface components {
             expected_duration?: string | null;
             /**
              * Format: uuid
-             * @description If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step.
+             * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
             sampling_rule?: string | null;
             /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
@@ -21646,9 +22415,9 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The execution record where this response was captured.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
              */
-            step_execution: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep the capture node lives in.
@@ -21667,6 +22436,14 @@ export interface components {
              *     * `file` - File upload
              *     * `timer` - Timer (countdown / stopwatch)
              *     * `computed` - Computed value (formula)
+             *     * `attestation` - Attestation (confirm / signature)
+             *     * `status` - Quality status (PASS / FAIL / PENDING)
+             *     * `equipment_roles` - Equipment + roles
+             *     * `personnel_roles` - Personnel + roles
+             *     * `signatures` - Inspection signatures (detected / verified)
+             *     * `defects` - Defect findings
+             *     * `annotation` - Part annotation (3D)
+             *     * `harvested_components` - Harvested components (teardown)
              */
             kind: components["schemas"]["KindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -21680,7 +22457,7 @@ export interface components {
             value_json?: unknown;
             /** @description Operator who captured the response. */
             responded_by: number;
-            readonly responded_by_name: string;
+            readonly responded_by_name: string | null;
             /**
              * Format: date-time
              * @description UTC timestamp when the response was captured.
@@ -21698,9 +22475,9 @@ export interface components {
         SubstepResponseRequest: {
             /**
              * Format: uuid
-             * @description The execution record where this response was captured.
+             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
              */
-            step_execution: string;
+            step_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep the capture node lives in.
@@ -21719,6 +22496,14 @@ export interface components {
              *     * `file` - File upload
              *     * `timer` - Timer (countdown / stopwatch)
              *     * `computed` - Computed value (formula)
+             *     * `attestation` - Attestation (confirm / signature)
+             *     * `status` - Quality status (PASS / FAIL / PENDING)
+             *     * `equipment_roles` - Equipment + roles
+             *     * `personnel_roles` - Personnel + roles
+             *     * `signatures` - Inspection signatures (detected / verified)
+             *     * `defects` - Defect findings
+             *     * `annotation` - Part annotation (3D)
+             *     * `harvested_components` - Harvested components (teardown)
              */
             kind: components["schemas"]["KindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -22714,6 +23499,8 @@ export interface components {
             is_active?: boolean;
             /** Format: date-time */
             readonly date_joined: string;
+            /** Format: date-time */
+            readonly last_login: string | null;
             readonly parent_company: components["schemas"]["Company"] | null;
             readonly groups: {
                 [key: string]: unknown;
@@ -24670,6 +25457,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BOM"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                sealed_at?: string;
+                step?: string;
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBatchExecutionList"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchExecutionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
+                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchExecution"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchExecution"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchExecutionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
+                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchExecution"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_BatchExecutions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedBatchExecutionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedBatchExecutionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedBatchExecutionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchExecution"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_seal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchExecutionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
+                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchExecution"];
                 };
             };
         };
@@ -28554,211 +29522,6 @@ export interface operations {
             };
         };
     };
-    api_ErrorReports_list: {
-        parameters: {
-            query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                machine?: string;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                part?: string;
-                part__work_order?: string;
-                /** @description A search term. */
-                search?: string;
-                /**
-                 * @description * `PASS` - Pass
-                 *     * `FAIL` - Fail
-                 *     * `PENDING` - Pending
-                 */
-                status?: "FAIL" | "PASS" | "PENDING";
-                step?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedQualityReportsList"];
-                };
-            };
-        };
-    };
-    api_ErrorReports_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["QualityReportsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["QualityReportsRequest"];
-                "multipart/form-data": components["schemas"]["QualityReportsRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QualityReports"];
-                };
-            };
-        };
-    };
-    api_ErrorReports_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Error Report. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QualityReports"];
-                };
-            };
-        };
-    };
-    api_ErrorReports_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Error Report. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["QualityReportsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["QualityReportsRequest"];
-                "multipart/form-data": components["schemas"]["QualityReportsRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QualityReports"];
-                };
-            };
-        };
-    };
-    api_ErrorReports_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Error Report. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_ErrorReports_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Error Report. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedQualityReportsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedQualityReportsRequest"];
-                "multipart/form-data": components["schemas"]["PatchedQualityReportsRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QualityReports"];
-                };
-            };
-        };
-    };
-    api_ErrorReports_export_excel_retrieve: {
-        parameters: {
-            query?: {
-                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
-                fields?: string;
-                /** @description Custom filename for the download (e.g., my_export.xlsx) */
-                filename?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                };
-            };
-        };
-    };
-    api_ErrorReports_metadata_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ListMetadataResponse"];
-                };
-            };
-        };
-    };
     api_FPIRecords_list: {
         parameters: {
             query?: {
@@ -32203,6 +32966,37 @@ export interface operations {
             };
         };
     };
+    api_Parts_complete_step_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
+                "multipart/form-data": components["schemas"]["PartsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Parts"];
+                };
+            };
+        };
+    };
     api_Parts_increment_create: {
         parameters: {
             query?: {
@@ -32275,6 +33069,37 @@ export interface operations {
             };
         };
     };
+    api_Parts_split_from_lot_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "multipart/form-data": components["schemas"]["PartsBulkSetStatusInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkSetStatusResponse"];
+                };
+            };
+        };
+    };
     api_Parts_traveler_retrieve: {
         parameters: {
             query?: {
@@ -32296,6 +33121,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartTravelerResponse"];
+                };
+            };
+        };
+    };
+    api_Parts_advance_lot_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
+                "multipart/form-data": components["schemas"]["PartsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Parts"];
                 };
             };
         };
@@ -32368,9 +33221,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PartsBulkSetStatusInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartsBulkSetStatusInputRequest"];
-                "multipart/form-data": components["schemas"]["PartsBulkSetStatusInputRequest"];
+                "application/json": components["schemas"]["PartsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
+                "multipart/form-data": components["schemas"]["PartsRequest"];
             };
         };
         responses: {
@@ -32379,7 +33232,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BulkSetStatusResponse"];
+                    "application/json": components["schemas"]["Parts"];
                 };
             };
         };
@@ -32621,6 +33474,8 @@ export interface operations {
     api_Processes_list: {
         parameters: {
             query?: {
+                is_disassembly?: boolean;
+                is_remanufactured?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -33173,6 +34028,211 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_QualityReports_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                machine?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part?: string;
+                part__work_order?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `PASS` - Pass
+                 *     * `FAIL` - Fail
+                 *     * `PENDING` - Pending
+                 */
+                status?: "FAIL" | "PASS" | "PENDING";
+                step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedQualityReportsList"];
+                };
+            };
+        };
+    };
+    api_QualityReports_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QualityReportsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["QualityReportsRequest"];
+                "multipart/form-data": components["schemas"]["QualityReportsRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_QualityReports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Error Report. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_QualityReports_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Error Report. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QualityReportsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["QualityReportsRequest"];
+                "multipart/form-data": components["schemas"]["QualityReportsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_QualityReports_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Error Report. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_QualityReports_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Error Report. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedQualityReportsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedQualityReportsRequest"];
+                "multipart/form-data": components["schemas"]["PatchedQualityReportsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_QualityReports_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_QualityReports_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -34051,6 +35111,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_SamplingDecisions_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description What the rule decided — SELECTED, DESELECTED, or PENDING.
+                 *
+                 *     * `selected` - Selected
+                 *     * `deselected` - Deselected
+                 *     * `pending` - Pending
+                 */
+                outcome?: "deselected" | "pending" | "selected";
+                step_execution?: string;
+                substep?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSamplingDecisionList"];
+                };
+            };
+        };
+    };
+    api_SamplingDecisions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this sampling decision. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplingDecision"];
+                };
+            };
+        };
+    };
+    api_SamplingDecisions_reconcile_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplingDecision"];
                 };
             };
         };
@@ -35835,6 +36972,34 @@ export interface operations {
             };
         };
     };
+    api_SubstepCompletions_void_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepCompletionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
+                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepCompletion"];
+                };
+            };
+        };
+    };
     api_SubstepGateCompletions_list: {
         parameters: {
             query?: {
@@ -36156,8 +37321,16 @@ export interface operations {
                  *     * `file` - File upload
                  *     * `timer` - Timer (countdown / stopwatch)
                  *     * `computed` - Computed value (formula)
+                 *     * `attestation` - Attestation (confirm / signature)
+                 *     * `status` - Quality status (PASS / FAIL / PENDING)
+                 *     * `equipment_roles` - Equipment + roles
+                 *     * `personnel_roles` - Personnel + roles
+                 *     * `signatures` - Inspection signatures (detected / verified)
+                 *     * `defects` - Defect findings
+                 *     * `annotation` - Part annotation (3D)
+                 *     * `harvested_components` - Harvested components (teardown)
                  */
-                kind?: "choice" | "computed" | "file" | "photo" | "scan" | "text" | "timer" | "video";
+                kind?: "annotation" | "attestation" | "choice" | "computed" | "defects" | "equipment_roles" | "file" | "harvested_components" | "personnel_roles" | "photo" | "scan" | "signatures" | "status" | "text" | "timer" | "video";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 node_id?: string;
@@ -36604,6 +37777,87 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedSubstepRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepRequest"];
                 "multipart/form-data": components["schemas"]["PatchedSubstepRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_ensure_inspection_qr_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
+                "multipart/form-data": components["schemas"]["SubstepRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
+                "multipart/form-data": components["schemas"]["SubstepRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_Substeps_reorder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
+                "multipart/form-data": components["schemas"]["SubstepRequest"];
             };
         };
         responses: {
@@ -38971,6 +40225,63 @@ export interface operations {
         };
         responses: {
             /** @description Bulk company assignment response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_User_bulk_reconcile_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["BulkReconcileUsersRequestRequest"];
+                "application/json": components["schemas"]["BulkReconcileUsersRequestRequest"];
+            };
+        };
+        responses: {
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkReconcileUsersResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_User_bulk_reconcile_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from a queued bulk-reconcile */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Task status + result if done */
             200: {
                 headers: {
                     [name: string]: unknown;
