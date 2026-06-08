@@ -13,6 +13,7 @@ import { QaProgressSection } from "@/components/qa-progress-section";
 import { QaFormSection } from "@/components/qa-form-section";
 import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
+import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -140,12 +141,15 @@ export function WorkOrderDetailPage() {
                 </div>
 
                 {/* Status Actions */}
-                <WorkOrderStatusActions
-                    workOrderId={workOrderId}
-                    currentStatus={currentStatus}
-                    currentNotes={workOrder.notes}
-                    onStatusChange={() => refetchWorkOrder()}
-                />
+                <div className="flex items-center gap-2">
+                    <StartWorkDialog workOrderId={workOrderId} />
+                    <WorkOrderStatusActions
+                        workOrderId={workOrderId}
+                        currentStatus={currentStatus}
+                        currentNotes={workOrder.notes}
+                        onStatusChange={() => refetchWorkOrder()}
+                    />
+                </div>
             </div>
 
             {/* Process Info */}

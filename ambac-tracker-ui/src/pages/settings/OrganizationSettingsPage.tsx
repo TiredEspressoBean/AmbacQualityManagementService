@@ -218,6 +218,24 @@ export function OrganizationSettingsPage() {
                 </div>
             </div>
 
+            {/* Quick links to related admin surfaces */}
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle className="text-lg">Manage Users</CardTitle>
+                    <CardDescription>
+                        Invite, deactivate, and assign groups for users in this organization.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link
+                        to="/admin/users"
+                        className="inline-flex items-center text-sm font-medium text-primary hover:underline"
+                    >
+                        Go to User Management →
+                    </Link>
+                </CardContent>
+            </Card>
+
             {/* Logo Section */}
             <Card className="mb-6">
                 <CardHeader>

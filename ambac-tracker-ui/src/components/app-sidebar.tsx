@@ -22,6 +22,7 @@ import {
     Recycle,
     Settings,
     ShieldCheck,
+    Users,
     Wrench,
     Workflow,
 } from "lucide-react"
@@ -83,6 +84,7 @@ const toolsPages = [
 // Admin - Configuration/CRUD (staff only, collapsible)
 const adminPages = [
     { name: "Settings", url: "/settings", icon: Settings },
+    { name: "User Management", url: "/admin/users", icon: Users },
     { name: "Data Management", url: "/Edit", icon: Database },
     { name: "Audit Log", url: "/admin/audit-log", icon: History },
 ]
