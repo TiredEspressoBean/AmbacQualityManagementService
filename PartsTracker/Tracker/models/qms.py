@@ -119,6 +119,137 @@ class QualityReportDefect(models.Model):
         return f"{self.count}x {self.error_type.error_name} ({self.severity})"
 
 
+class PersonnelRole(models.TextChoices):
+    """Role a user played on a QualityReports record. Replaces the
+    flat-trio of `detected_by` / `operators` / `verified_by` with a single
+    M2M so we can capture more roles (inspector, witness, trainer, trainee)
+    without schema churn, and so Pareto / responsibility queries don't
+    need to UNION three columns."""
+
+    DETECTED_BY = 'DETECTED_BY', 'Detected by'
+    OPERATOR = 'OPERATOR', 'Operator on the job'
+    VERIFIED_BY = 'VERIFIED_BY', 'Verified by (second sig)'
+    INSPECTOR = 'INSPECTOR', 'Inspector'
+    WITNESS = 'WITNESS', 'Witness'
+    TRAINER = 'TRAINER', 'Trainer / supervisor'
+    TRAINEE = 'TRAINEE', 'Trainee under supervision'
+
+
+class QualityReportPersonnel(models.Model):
+    """Through table for QualityReports → User M2M with per-row role.
+
+    A single inspection event often involves multiple users in different
+    capacities (operator + detector + verifier + witness, plus optional
+    trainer/trainee on training shifts). The role field preserves "who
+    did what" cleanly, replacing the legacy `detected_by` / `operators` /
+    `verified_by` triple.
+    """
+
+    quality_report = models.ForeignKey(
+        'QualityReports',
+        on_delete=models.CASCADE,
+        related_name='personnel_links',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='quality_report_personnel_links',
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=PersonnelRole.choices,
+        help_text="What role this user played on this report.",
+    )
+    signed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "When the user attested to their role (signature timestamp). "
+            "Null for non-signing roles like OPERATOR."
+        ),
+    )
+    notes = models.CharField(
+        max_length=200,
+        blank=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['quality_report', 'user', 'role'],
+                name='qrp_report_user_role_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'role'], name='qrp_user_role_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} ({self.role}) → {self.quality_report}"
+
+
+class EquipmentRole(models.TextChoices):
+    """Role an Equipment played in producing / inspecting the part under
+    review. Lets a single QualityReports row attribute a defect to the
+    correct combination of equipment for accurate root-cause analysis."""
+
+    PRODUCTION = 'PRODUCTION', 'Production machine'
+    FIXTURE = 'FIXTURE', 'Fixture / hold-down'
+    TOOL = 'TOOL', 'Cutting / forming tool'
+    GAUGE = 'GAUGE', 'Inspection gauge / instrument'
+    OTHER = 'OTHER', 'Other'
+
+
+class QualityReportEquipment(models.Model):
+    """Through table for QualityReports → Equipments M2M with per-row role.
+
+    A single inspection event (cell op, multi-station Step, fixture + tool
+    interaction) often implicates several pieces of equipment. The role
+    field preserves the "which one did what" signal that a flat M2M would
+    lose, while still letting Pareto / root-cause queries filter by role.
+
+    Not a SecureModel — scoping is inherited from the parent QualityReports
+    via cascade. Treating this as a junction-only table keeps the schema
+    light.
+    """
+
+    quality_report = models.ForeignKey(
+        'QualityReports',
+        on_delete=models.CASCADE,
+        related_name='equipment_links',
+    )
+    equipment = models.ForeignKey(
+        'Equipments',
+        on_delete=models.CASCADE,
+        related_name='quality_report_links',
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=EquipmentRole.choices,
+        default=EquipmentRole.PRODUCTION,
+        help_text="What role this equipment played for this report.",
+    )
+    notes = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Optional context (e.g. which station in a multi-station cell).",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['quality_report', 'equipment', 'role'],
+                name='qreq_report_equipment_role_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['equipment', 'role'], name='qreq_equipment_role_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.equipment} ({self.role}) → {self.quality_report}"
+
+
 class QualityReports(SecureModel):
     """
     Records an instance of a quality issue or operational anomaly identified during part production.
@@ -155,32 +286,64 @@ class QualityReports(SecureModel):
     """The specific part associated with this error report (if known)."""
 
     machine = models.ForeignKey("Equipments", on_delete=models.SET_NULL, null=True, blank=True)
-    """The equipment or machine used when the error was encountered (if applicable)."""
+    """DEPRECATED — superseded by `equipments` M2M (through `QualityReportEquipment`)
+    which supports multi-equipment attribution with per-row roles (PRODUCTION /
+    FIXTURE / TOOL / GAUGE / OTHER). Kept for backward compatibility while
+    callers migrate; `primary_machine` property reads the new shape.
+    Remove in a follow-up once all readers are switched."""
+
+    equipments = models.ManyToManyField(
+        "Equipments",
+        through="QualityReportEquipment",
+        through_fields=("quality_report", "equipment"),
+        related_name="quality_reports",
+        blank=True,
+        help_text=(
+            "Equipment implicated in this report, with per-row role "
+            "(production machine, fixture, tool, gauge, other). Replaces "
+            "the single `machine` FK so cell ops and multi-station steps "
+            "are captured accurately for Pareto / root-cause analysis."
+        ),
+    )
 
     # Named operator/inspector roles (replaces M2M for proper QMS tracking)
     detected_by = models.ForeignKey(
         User, on_delete=models.PROTECT,
         null=True, blank=False,  # Nullable for migration, but required in forms
         related_name='defects_detected',
-        help_text="Inspector/operator who detected the defect (required for new reports)"
+        help_text="DEPRECATED — use `personnel` (role=DETECTED_BY). Kept for back-compat.",
     )
-    """Who found and reported this defect. Required for new reports; null for legacy data."""
+    """DEPRECATED — superseded by `personnel` M2M with `role=DETECTED_BY`."""
 
     operators = models.ManyToManyField(
         User,
         blank=True,
         related_name='defects_during_operation',
-        help_text="Operators running the process when defect occurred (for root cause)"
+        help_text="DEPRECATED — use `personnel` (role=OPERATOR). Kept for back-compat.",
     )
-    """Optional: Who was operating when the defect occurred (may differ from detector)."""
+    """DEPRECATED — superseded by `personnel` M2M with `role=OPERATOR`."""
 
     verified_by = models.ForeignKey(
         User, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='defects_verified',
-        help_text="Second signature for critical inspections (aerospace/medical)"
+        help_text="DEPRECATED — use `personnel` (role=VERIFIED_BY). Kept for back-compat.",
     )
-    """Optional: Witness/verifier for critical quality checks."""
+    """DEPRECATED — superseded by `personnel` M2M with `role=VERIFIED_BY`."""
+
+    personnel = models.ManyToManyField(
+        User,
+        through="QualityReportPersonnel",
+        through_fields=("quality_report", "user"),
+        related_name="quality_report_personnel",
+        blank=True,
+        help_text=(
+            "Users involved in this report with per-row role (detected_by, "
+            "operator, verified_by, inspector, witness, trainer, trainee). "
+            "Replaces the legacy `detected_by` / `operators` / `verified_by` "
+            "trio so any user role can be captured without schema churn."
+        ),
+    )
 
     sampling_method = models.CharField(max_length=50, default="manual")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
@@ -272,6 +435,58 @@ class QualityReports(SecureModel):
             from django.core.exceptions import ValidationError
             raise ValidationError("Cannot create quality report for non-sampled part")
 
+    @property
+    def primary_machine(self):
+        """Canonical read for "which machine produced the part on this report."
+
+        Reads from the new equipment_links through table (role=PRODUCTION),
+        falling back to the deprecated `machine` FK during the transition
+        period. Callers should prefer this over `.machine` going forward.
+        """
+        prod_link = self.equipment_links.filter(role=EquipmentRole.PRODUCTION).first()
+        if prod_link:
+            return prod_link.equipment
+        return self.machine
+
+    @property
+    def primary_detector(self):
+        """Canonical read for "who detected the defect."
+
+        Reads role=DETECTED_BY from `personnel_links`, falling back to the
+        deprecated `detected_by` FK. Prefer this over `.detected_by`.
+        """
+        link = self.personnel_links.filter(role=PersonnelRole.DETECTED_BY).first()
+        if link:
+            return link.user
+        return self.detected_by
+
+    @property
+    def primary_verifier(self):
+        """Canonical read for "who verified the inspection (second sig)."
+
+        Reads role=VERIFIED_BY from `personnel_links`, falling back to the
+        deprecated `verified_by` FK.
+        """
+        link = self.personnel_links.filter(role=PersonnelRole.VERIFIED_BY).first()
+        if link:
+            return link.user
+        return self.verified_by
+
+    @property
+    def operator_users(self):
+        """Canonical read for "who was operating when the defect occurred."
+
+        Returns a queryset of Users. Reads role=OPERATOR from
+        `personnel_links` and unions the deprecated `operators` M2M so
+        callers see both old and new rows during the transition.
+        """
+        from django.db.models import Q
+        new_ids = self.personnel_links.filter(
+            role=PersonnelRole.OPERATOR
+        ).values_list('user_id', flat=True)
+        legacy_ids = self.operators.values_list('id', flat=True)
+        return User.objects.filter(Q(pk__in=new_ids) | Q(pk__in=legacy_ids)).distinct()
+
 
 class MeasurementResult(SecureModel):
     """
@@ -359,8 +574,13 @@ class StepTransitionLog(SecureModel):
     """ForeignKey to the `Steps` instance representing the current step reached."""
 
     part = models.ForeignKey("Parts", on_delete=models.SET_NULL, null=True, blank=True,
-                             help_text="The part that transitioned to the step.")
+                             help_text="The part that transitioned to the step (mutually exclusive with `core`).")
     """ForeignKey to the `Parts` instance being tracked."""
+
+    core = models.ForeignKey("Tracker.Core", on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name='step_transition_logs',
+                             help_text="The core that transitioned to the step (mutually exclusive with `part`).")
+    """ForeignKey to the `Core` instance being tracked."""
 
     operator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                  help_text="The user (operator) who performed the step transition.")
@@ -373,12 +593,27 @@ class StepTransitionLog(SecureModel):
     class Meta:
         verbose_name_plural = 'Step Transition Log'
         verbose_name = 'Step Transition Log'
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(part__isnull=False, core__isnull=True)
+                    | models.Q(part__isnull=True, core__isnull=False)
+                ),
+                name='step_transition_log_one_subject',
+            ),
+        ]
+
+    @property
+    def subject(self):
+        """The Part or Core this log entry references (whichever is set)."""
+        return self.part or self.core
 
     def __str__(self):
         """
         Return a human-readable summary of the transition event.
         """
-        return f"Step '{self.step.name}' for {self.part} completed at {self.timestamp}"
+        step_name = self.step.name if self.step else "(unknown step)"
+        return f"Step '{step_name}' for {self.subject} completed at {self.timestamp}"
 
 
 class QaApproval(SecureModel):

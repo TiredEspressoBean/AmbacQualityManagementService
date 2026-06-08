@@ -140,6 +140,12 @@ def _promote_to_inspection_record(
     `ncr.opened` event uses the QualityReports id as its idempotency key so
     repeated emits dedupe).
     """
+    # QualityReports are Parts-only. Cores (teardown) have no equivalent
+    # inspection-record promotion path in v1; HarvestedComponent capture
+    # handles the per-substep persistence instead.
+    if step_execution.part_id is None:
+        return
+
     part = step_execution.part
     step = step_execution.step
 

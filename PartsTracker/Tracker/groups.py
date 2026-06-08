@@ -195,6 +195,64 @@ class GroupSeeder:
         return results
 
     @classmethod
+    def sync_permissions(cls, dry_run=False):
+        """
+        Additively sync preset permissions onto existing TenantGroups.
+
+        Unlike :meth:`backfill_permissions` (which only seeds groups with
+        zero perms), this walks every preset-backed group and adds any
+        preset permissions that are missing. Existing permissions on the
+        group — including admin customisations — are never removed.
+
+        Run this after a release that introduces new permission codenames
+        (e.g. new models, new `action_permissions` entries) so existing
+        tenant groups gain the new defaults without operator action.
+
+        Returns a dict with per-tenant + total counters.
+        """
+        from django.contrib.auth.models import Permission
+        from Tracker.models import TenantGroup
+        from Tracker.presets import GROUP_PRESETS
+
+        preset_by_name = {preset['name']: preset for preset in GROUP_PRESETS.values()}
+        all_perm_ids = set(Permission.objects.values_list('id', flat=True))
+
+        results = {
+            'groups_inspected': 0,
+            'groups_updated': 0,
+            'groups_skipped_custom': 0,
+            'permissions_added': 0,
+        }
+
+        for group in TenantGroup.objects.all():
+            results['groups_inspected'] += 1
+            preset = preset_by_name.get(group.name)
+            if not preset:
+                results['groups_skipped_custom'] += 1
+                continue
+
+            if preset['permissions'] == '__all__':
+                desired_ids = all_perm_ids
+            else:
+                desired_ids = set(
+                    Permission.objects.filter(
+                        codename__in=preset['permissions']
+                    ).values_list('id', flat=True)
+                )
+
+            existing_ids = set(group.permissions.values_list('id', flat=True))
+            missing_ids = desired_ids - existing_ids
+            if not missing_ids:
+                continue
+
+            results['permissions_added'] += len(missing_ids)
+            results['groups_updated'] += 1
+            if not dry_run:
+                group.permissions.add(*missing_ids)
+
+        return results
+
+    @classmethod
     def backfill_permissions(cls):
         """
         Backfill permissions for existing TenantGroups.

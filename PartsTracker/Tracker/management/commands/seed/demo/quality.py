@@ -189,37 +189,37 @@ DEMO_QUALITY_ERRORS = [
     {
         'error_name': 'Asymmetric spray pattern',
         'error_example': 'Spray pattern shows uneven distribution due to partially blocked holes',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
     {
         'error_name': 'Hole blockage',
         'error_example': 'Carbon deposits or debris blocking spray holes',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
     {
         'error_name': 'Flow rate out of spec',
         'error_example': 'Flow rate exceeds control limits (LSL: 100 mL/min, USL: 140 mL/min)',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': False,
     },
     {
         'error_name': 'Spray angle drift',
         'error_example': 'Spray angle outside specification (12-18 degrees)',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
     {
         'error_name': 'Surface porosity',
         'error_example': 'Visible pores in nozzle tip indicating casting defect',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
     {
         'error_name': 'Spray pattern failure',
         'error_example': 'Irregular or asymmetric spray pattern not meeting specification',
-        'part_type': 'Fuel Injector',
+        'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
 ]
@@ -681,7 +681,23 @@ class DemoQualitySeeder(BaseSeeder):
             part_type_map = {pt.name: pt for pt in pts}
 
         for error_data in DEMO_QUALITY_ERRORS:
-            part_type = part_type_map.get(error_data['part_type'])
+            declared_part_type_name = error_data.get('part_type')
+            part_type = part_type_map.get(declared_part_type_name) if declared_part_type_name else None
+
+            # Fail loudly when the seed declares a part_type that doesn't
+            # exist yet — silently nulling part_type was producing demo rows
+            # the frontend's strict Zodios schema then rejected because
+            # part_type_name resolved to undefined. See zodios validation
+            # failure on /api/Error-types/ that surfaced this.
+            if declared_part_type_name and part_type is None:
+                available = ', '.join(sorted(part_type_map.keys())) or '<none>'
+                raise RuntimeError(
+                    f"DemoQualitySeeder: error '{error_data['error_name']}' "
+                    f"declares part_type='{declared_part_type_name}' but no "
+                    f"matching PartTypes row exists in the seed map. "
+                    f"Available part types: {available}. "
+                    f"Ensure the PartTypes seeder runs first."
+                )
 
             error, _ = QualityErrorsList.objects.update_or_create(
                 tenant=self.tenant,

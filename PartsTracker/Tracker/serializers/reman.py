@@ -149,7 +149,7 @@ class DisassemblyBOMLineSerializer(serializers.ModelSerializer, SecureModelMixin
             'id', 'core_type', 'core_type_name',
             'component_type', 'component_type_name',
             'expected_qty', 'expected_fallout_rate', 'expected_usable_qty',
-            'notes', 'line_number',
+            'notes', 'positions', 'line_number',
             'created_at', 'updated_at', 'archived', 'version'
         )
         read_only_fields = ('created_at', 'updated_at', 'expected_usable_qty', 'version')
@@ -157,6 +157,25 @@ class DisassemblyBOMLineSerializer(serializers.ModelSerializer, SecureModelMixin
     # Fields whose edits are soft-delete / metadata only and should NOT
     # trigger a new version.
     _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    def validate(self, attrs):
+        # If both positions and expected_qty are set, their lengths must match
+        # (Q4 — refuse the edit instead of silently truncating/padding labels).
+        positions = attrs.get('positions') if 'positions' in attrs else (
+            self.instance.positions if self.instance else None
+        )
+        expected_qty = attrs.get('expected_qty') if 'expected_qty' in attrs else (
+            self.instance.expected_qty if self.instance else None
+        )
+        if positions and expected_qty is not None and len(positions) != expected_qty:
+            raise serializers.ValidationError({
+                'positions': (
+                    f"positions length ({len(positions)}) must equal expected_qty "
+                    f"({expected_qty}). Clear positions before changing expected_qty, "
+                    "or supply a matching-length list."
+                ),
+            })
+        return super().validate(attrs)
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let

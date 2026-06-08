@@ -51,7 +51,7 @@ class LifeLimitDefinitionSelectSerializer(serializers.ModelSerializer):
 
 class PartTypeLifeLimitSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Part type life limit junction serializer"""
-    part_type_name = serializers.CharField(source='part_type.name', read_only=True)
+    part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
     definition_name = serializers.CharField(source='definition.name', read_only=True)
     definition_unit = serializers.CharField(source='definition.unit_label', read_only=True)
 

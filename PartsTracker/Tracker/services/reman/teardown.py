@@ -17,35 +17,65 @@ from Tracker.services.reman.core import start_core_disassembly
 logger = logging.getLogger(__name__)
 
 
+def eligible_disassembly_processes_for(core_type):
+    """Return APPROVED disassembly Processes eligible for a given core_type.
+
+    Drives the operator-facing teardown Process picker (Q1 shape D). When the
+    list is empty, no teardown WO can be created for this core_type until an
+    engineer flags at least one Process with `is_disassembly=True`.
+    """
+    return (
+        Processes.objects
+        .filter(
+            part_type=core_type,
+            is_disassembly=True,
+            status=ProcessStatus.APPROVED,
+        )
+        .order_by('name')
+    )
+
+
 def _resolve_teardown_process(core_type, explicit: Processes | None) -> Processes:
     """Pick the process to use for the teardown WO.
 
-    Returns `explicit` when provided (after validating part_type matches).
-    Otherwise falls back to the first APPROVED `Processes` row whose
-    `part_type` matches the cores' shared core_type. This fallback is a
-    temporary lookup until `PartTypes.disassembly_process` FK lands per
-    REMAN_DWI_INTEGRATION.md — at that point this function should consult
-    `core_type.disassembly_process` directly.
+    Resolution order (Q1 shape D):
+    1. `explicit` if supplied (after validating eligibility).
+    2. `core_type.default_disassembly_process` if set (canonical preference).
+    3. Single-match shortcut — if exactly one eligible Process exists, use it.
+    4. Otherwise: refuse and ask the caller to pick (automation paths surface
+       a "pick one" task; UI flows route to the picker dialog).
     """
     if explicit is not None:
         if explicit.part_type_id != core_type.id:
             raise ValueError(
                 "Provided process part_type does not match the cores' core_type",
             )
+        if not explicit.is_disassembly:
+            raise ValueError(
+                f"Process {explicit.name} is not flagged as a disassembly process",
+            )
+        if explicit.status != ProcessStatus.APPROVED:
+            raise ValueError(
+                f"Process {explicit.name} is not APPROVED (status={explicit.status})",
+            )
         return explicit
 
-    process = (
-        Processes.objects
-        .filter(part_type=core_type, status=ProcessStatus.APPROVED)
-        .order_by('-is_remanufactured', '-created_at')
-        .first()
-    )
-    if process is None:
+    default = core_type.default_disassembly_process
+    if default is not None and default.is_disassembly and default.status == ProcessStatus.APPROVED:
+        return default
+
+    eligible = list(eligible_disassembly_processes_for(core_type)[:2])
+    if len(eligible) == 1:
+        return eligible[0]
+    if len(eligible) == 0:
         raise ValueError(
-            f"No APPROVED Process found for core_type {core_type.name}; "
-            "pass process_id explicitly",
+            f"No eligible disassembly Process found for core_type {core_type.name}; "
+            "flag a Process with is_disassembly=True or pass process explicitly",
         )
-    return process
+    raise ValueError(
+        f"Multiple eligible disassembly Processes for core_type {core_type.name}; "
+        "operator must pick one or set core_type.default_disassembly_process",
+    )
 
 
 def start_teardown_batch(
