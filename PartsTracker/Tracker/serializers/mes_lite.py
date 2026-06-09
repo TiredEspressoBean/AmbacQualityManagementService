@@ -868,13 +868,44 @@ class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let archive
-        toggles through as a plain save."""
+        toggles through as a plain save.
+
+        When the client supplies `?process=<uuid>` (the PCR-DRAFT editing
+        flow), pass the Process to `create_new_step_version` so it can
+        flip that process's ProcessStep junction to the new Step row.
+        Other process versions referencing the old Step row are
+        unaffected — that's how multi-PCR isolation works.
+        """
         from Tracker.services.core.versioning import apply_versioned_update
+        version_kwargs = {}
+        process = self._resolve_editing_process()
+        if process is not None:
+            version_kwargs['process'] = process
         return apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
+            version_kwargs=version_kwargs,
         )
+
+    def _resolve_editing_process(self):
+        """Read `?process=<uuid>` and return the Process row if it exists
+        and belongs to the caller's tenant. Silently ignores invalid /
+        cross-tenant ids — the absence of a process context is not an
+        error; it just means no junction flip happens.
+        """
+        request = self.context.get('request')
+        if request is None:
+            return None
+        process_id = request.query_params.get('process')
+        if not process_id:
+            return None
+        try:
+            # tenant-safe: SecureManager auto-scopes by ContextVar set
+            # via TenantMiddleware on the current request.
+            return Processes.objects.get(id=process_id)
+        except Processes.DoesNotExist:
+            return None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_type_info(self, obj):

@@ -38,7 +38,7 @@ from Tracker.serializers.mes_lite import (
     # Digital Traveler serializers
     WorkOrderStepHistoryResponseSerializer, PartTravelerResponseSerializer,
 )
-from Tracker.serializers.qms import StepSamplingRulesUpdateSerializer
+from Tracker.serializers.qms import StepSamplingRulesUpdateSerializer, StepWithResolvedRulesSerializer
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ExcelExportMixin, ListMetadataMixin, with_int_pk_schema
 from .base import TenantScopedMixin
@@ -1845,6 +1845,37 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                      description="Filter steps by process UUID (via ProcessStep)"),
     OpenApiParameter(name="part_type", type=str, location=OpenApiParameter.QUERY, required=False,
                      description="Filter steps by process's part type UUID"), ])
+@extend_schema_view(
+    partial_update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='process',
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Process version the edit is scoped to. When supplied, "
+                    "the resulting new Step version is junctioned into "
+                    "that process's ProcessStep row only — the original "
+                    "Step row stays attached to every other process "
+                    "version that references it. Used by the PCR-DRAFT "
+                    "editing flow to keep concurrent PCRs isolated."
+                ),
+            ),
+        ],
+    ),
+    update=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='process',
+                type=OpenApiTypes.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="See partial_update.",
+            ),
+        ],
+    ),
+)
 class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     queryset = Steps.unscoped.all()
     serializer_class = StepsSerializer
@@ -1895,6 +1926,7 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
         step.refresh_from_db()
         return Response(StepsSerializer(step, context={"request": request}).data)
 
+    @extend_schema(responses=StepWithResolvedRulesSerializer)
     @action(detail=True, methods=["get"])
     def resolved_rules(self, request, pk=None):
         """
@@ -1902,8 +1934,7 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
         Returns the active + fallback rulesets for a given step
         """
         step = self.get_object()
-        # Use StepWithResolvedRulesSerializer which returns active_ruleset and fallback_ruleset at top level
-        from ..serializers.qms import StepWithResolvedRulesSerializer
+        # Returns active_ruleset and fallback_ruleset at top level (no version field).
         serializer = StepWithResolvedRulesSerializer(step, context={'request': request})
         return Response(serializer.data)
 
@@ -2364,8 +2395,20 @@ class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mode
     )
     @action(detail=False, methods=['get'])
     def available(self, request):
-        """Get all approved processes available for new work orders."""
-        queryset = self.get_queryset().filter(status=ProcessStatus.APPROVED)
+        """Get all approved processes available for new work orders.
+
+        Limited to the *current* APPROVED row per version chain.
+        Predecessor versions stay in the database for audit (work
+        orders that started against them still resolve), but they
+        carry `archived=True` once a successor is approved and must
+        not appear in the new-WO process picker — otherwise every
+        process line shows N duplicate "Injector Reman" entries.
+        """
+        queryset = self.get_queryset().filter(
+            status=ProcessStatus.APPROVED,
+            is_current_version=True,
+            archived=False,
+        )
 
         # Optional filter by part_type
         part_type_id = request.query_params.get('part_type')

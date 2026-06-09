@@ -7,6 +7,7 @@ live in one place.
 """
 from __future__ import annotations
 
+from django.db import transaction
 from django.utils import timezone
 
 from Tracker.models import (
@@ -17,7 +18,6 @@ from Tracker.models import (
     ProcessStatus,
     StepEdge,
     Steps,
-    StepExecution,
 )
 from Tracker.models.mes_lite import EdgeType
 
@@ -35,10 +35,40 @@ def approve_process(process: Processes, user=None) -> Processes:
     if process.process_steps.count() == 0:
         raise ValueError("Cannot approve process with no steps.")
 
-    process.status = ProcessStatus.APPROVED
-    process.approved_at = timezone.now()
-    process.approved_by = user
-    process.save()
+    with transaction.atomic():
+        # Step the predecessor down. Two things happen in one pass:
+        #   1. `is_current_version` flips to False so list queries that
+        #      filter on the current flag stop returning the old row.
+        #   2. `archived` flips to True so list queries that filter on
+        #      the soft-delete flag also stop returning it. Historical
+        #      APPROVED versions are not "deleted" — WorkOrders that FK
+        #      to them still resolve — but they shouldn't appear in
+        #      live process-picker lists alongside the new current.
+        # Multi-PCR case (`supersede_source=False` DRAFT forks) reaches
+        # the same branch: the baseline that allowed sibling co-forking
+        # finally steps down once one of its proposals is approved.
+        #
+        # Using `.save()` rather than `.update()` so `updated_at` moves,
+        # the auditlog `pre_save` / `post_save` hooks record the
+        # archive event, and any model-level side effects still fire.
+        if process.previous_version_id is not None:
+            # tenant-safe: scoped via the previous_version FK in the
+            # caller's tenant.
+            predecessor = (
+                Processes.all_tenants.filter(pk=process.previous_version_id).first()
+            )
+            if predecessor is not None:
+                predecessor.is_current_version = False
+                predecessor.archived = True
+                predecessor.save(
+                    update_fields=['is_current_version', 'archived', 'updated_at'],
+                )
+
+        process.status = ProcessStatus.APPROVED
+        process.approved_at = timezone.now()
+        process.approved_by = user
+        process.is_current_version = True
+        process.save()
 
     return process
 
@@ -120,6 +150,8 @@ def create_new_process_version(
     *,
     user,
     change_description: str,
+    allow_multiple_drafts: bool = False,
+    supersede_source: bool = True,
     **field_updates,
 ) -> Processes:
     """Create a new version of an APPROVED or DEPRECATED process.
@@ -167,18 +199,24 @@ def create_new_process_version(
             f"can be revised; DRAFT is edited in place."
         )
 
-    # tenant-safe: previous_version FK constrains to processes in the same
-    # tenant as `process` (versioning chains never cross tenants).
-    existing_draft = Processes.all_tenants.filter(
-        previous_version=process,
-        status=ProcessStatus.DRAFT,
-    ).first()
-    if existing_draft:
-        raise ValueError(
-            f"A draft revision (v{existing_draft.version}) already exists "
-            f"for this process. Complete or discard it before creating "
-            f"another revision."
-        )
+    # Single-DRAFT guard. PCR propose flows pass `allow_multiple_drafts=True`
+    # because the change-control system supports multiple open PCRs and
+    # reconciles conflicts at approval time via the rebase service.
+    # Direct callers (admin actions, the deprecated standalone Duplicate
+    # path) keep the safer default.
+    if not allow_multiple_drafts:
+        # tenant-safe: previous_version FK constrains to processes in the same
+        # tenant as `process` (versioning chains never cross tenants).
+        existing_draft = Processes.all_tenants.filter(
+            previous_version=process,
+            status=ProcessStatus.DRAFT,
+        ).first()
+        if existing_draft:
+            raise ValueError(
+                f"A draft revision (v{existing_draft.version}) already exists "
+                f"for this process. Complete or discard it before creating "
+                f"another revision."
+            )
 
     with transaction.atomic():
         # Base handles: row lock, current-version guard, archived guard,
@@ -189,6 +227,7 @@ def create_new_process_version(
         new_version = super(Processes, process).create_new_version(
             user=user,
             change_description=change_description,
+            supersede_source=supersede_source,
             # Reset lifecycle state on the new draft.
             status=ProcessStatus.DRAFT,
             approved_at=None,
@@ -299,10 +338,17 @@ def duplicate_process(
         # No previous_version — standalone copy
     )
 
+    # Re-anchor each Step reference to its current version. The source
+    # process may point at stale Step rows if it predates the
+    # junction-flip fix (or if a sibling process versioned the shared
+    # Step). Forward-walk the chain so the duplicate starts clean.
+    step_remap: dict = {}
     for ps in process.process_steps.all():
+        current_step = _walk_to_current_step(ps.step)
+        step_remap[ps.step_id] = current_step
         ProcessStep.objects.create(
             process=new_process,
-            step=ps.step,
+            step=current_step,
             order=ps.order,
             is_entry_point=ps.is_entry_point,
         )
@@ -310,8 +356,8 @@ def duplicate_process(
     for edge in process.step_edges.all():
         StepEdge.objects.create(
             process=new_process,
-            from_step=edge.from_step,
-            to_step=edge.to_step,
+            from_step=step_remap.get(edge.from_step_id, edge.from_step),
+            to_step=step_remap.get(edge.to_step_id, edge.to_step),
             edge_type=edge.edge_type,
             condition_measurement=edge.condition_measurement,
             condition_operator=edge.condition_operator,
@@ -319,6 +365,22 @@ def duplicate_process(
         )
 
     return new_process
+
+
+def _walk_to_current_step(step):
+    """Return the current Step row for `step`'s identity line. Uses the
+    indexed `identity_id` lookup — O(1) regardless of chain depth.
+    Returns the input step unchanged if it's already current, or if
+    there's no current sibling (defensive fallback for stale chains).
+    """
+    if step.is_current_version:
+        return step
+    # tenant-safe: identity_id is tenant-scoped via the Step model's tenant FK.
+    current = Steps.objects.filter(
+        identity_id=step.identity_id,
+        is_current_version=True,
+    ).first()
+    return current or step
 
 
 # ---------------------------------------------------------------------------
@@ -419,16 +481,53 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         order = node.pop("order", None)
         is_entry_point = node.pop("is_entry_point", False)
 
-        if node_id and node_id > 0:
+        # Existing step: node_id is a UUID matching a Steps row. New
+        # step: node_id is None, a negative int legacy sentinel, or any
+        # value that doesn't resolve to an existing Step. The legacy
+        # `> 0` integer check is dead under UUIDs; resolve by lookup.
+        qs = Steps.objects.for_user(user) if user else Steps.objects
+        existing_step = None
+        if node_id:
+            try:
+                existing_step = qs.get(id=node_id)
+            except (Steps.DoesNotExist, ValueError, TypeError):
+                existing_step = None
+
+        if existing_step is not None:
             incoming_step_ids.add(node_id)
-            qs = Steps.objects.for_user(user) if user else Steps.objects
-            step = qs.get(id=node_id)
-            for attr, value in node.items():
-                setattr(step, attr, value)
-            step.save()
+            step = existing_step
+
+            # Content edits MUST route through `create_new_step_version`
+            # so a new Step row is minted and ONLY this process's
+            # ProcessStep junction is repointed at it. Direct `step.save()`
+            # used to mutate the shared row globally — which silently
+            # changed every process version (including APPROVED) that
+            # referenced the same Step.
+            #
+            # Diff against the persisted row and forward only changed
+            # fields. If nothing material changed (e.g. the editor
+            # re-sent the whole node payload but the engineer only moved
+            # the node on canvas), skip versioning.
+            from Tracker.services.mes.steps import create_new_step_version
+            diffed = {k: v for k, v in node.items() if getattr(step, k, None) != v}
+            if diffed:
+                step = create_new_step_version(
+                    step,
+                    user=user,
+                    change_description=(
+                        f"Process editor save for {instance.name} v{instance.version}"
+                    ),
+                    process=instance,
+                    **diffed,
+                )
 
             if node_id in existing_process_steps:
-                ps = existing_process_steps[node_id]
+                # Junction may have just been repointed to the new Step
+                # version by `create_new_step_version` above. Re-fetch
+                # to grab the row that now binds this process to the
+                # current Step row (old OR new, depending on whether we
+                # versioned).
+                ps = ProcessStep.objects.get(process=instance, step=step)
                 ps.order = order or ps.order
                 ps.is_entry_point = is_entry_point
                 ps.save()
@@ -440,36 +539,28 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                     is_entry_point=is_entry_point,
                 )
 
-            temp_id_map[node_id] = node_id
+            # Edges reference Step rows directly. When a Step versioned
+            # above, edges must rebuild against the new Step id —
+            # `_build_edges` reads `temp_id_map` so we stamp the new id
+            # under the frontend's original node_id key.
+            temp_id_map[node_id] = step.id
         else:
-            step = Steps.objects.create(part_type=instance.part_type, **node)
-            incoming_step_ids.add(step.id)
-            ProcessStep.objects.create(
-                process=instance,
-                step=step,
+            from Tracker.services.mes.steps import add_step_to_process
+            step = add_step_to_process(
+                instance,
                 order=order or 1,
                 is_entry_point=is_entry_point,
+                **node,
             )
+            incoming_step_ids.add(step.id)
             if node_id is not None:
                 temp_id_map[node_id] = step.id
             temp_id_map[step.id] = step.id
 
     steps_to_unlink = set(existing_process_steps.keys()) - incoming_step_ids
     if steps_to_unlink:
-        protected = list(
-            # tenant-safe: step_ids sourced from existing_process_steps (already tenant-scoped)
-            StepExecution.objects.filter(step_id__in=steps_to_unlink)
-            .values_list("step_id", flat=True)
-            .distinct()
-        )
-        if protected:
-            protected_names = list(
-                Steps.objects.filter(id__in=protected).values_list("name", flat=True)
-            )
-            raise ValueError(
-                f"Cannot remove steps with execution history: {', '.join(protected_names)}."
-            )
-        ProcessStep.objects.filter(process=instance, step_id__in=steps_to_unlink).delete()
+        from Tracker.services.mes.steps import remove_step_from_process
+        remove_step_from_process(instance, list(steps_to_unlink))
 
     instance.step_edges.all().delete()
     _build_edges(instance, edges_data, temp_id_map)
