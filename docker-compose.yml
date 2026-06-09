@@ -411,7 +411,7 @@ services:
       - VITE_API_TARGET=
     volumes:
       - frontend-dist:/app/dist
-    command: ["npm", "run", "build"]
+    command: ["bun", "run", "build"]
 
   # Build frontend for production
   frontend-builder:
@@ -427,7 +427,7 @@ services:
       - .env.docker
     volumes:
       - frontend-dist:/app/dist
-    command: ["npm", "run", "build"]
+    command: ["bun", "run", "build"]
 
   # Caddy for local development (auto self-signed cert)
   caddy-local:
