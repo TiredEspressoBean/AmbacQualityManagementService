@@ -22009,6 +22009,11 @@ Response:
         schema: z.number().int().optional(),
       },
       {
+        name: "document_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "is_image",
         type: "Query",
         schema: z.boolean().optional(),
@@ -22318,6 +22323,11 @@ Returns documents where review_date &lt;&#x3D; today.`,
         name: "content_type",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "document_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
       {
         name: "is_image",

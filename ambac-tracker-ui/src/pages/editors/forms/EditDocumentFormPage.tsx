@@ -23,7 +23,7 @@ import {
     FileUploaderContent,
     FileUploaderItem,
 } from "@/components/ui/file-upload";
-import { CloudUpload, Paperclip, Check, ChevronsUpDown, Loader2, FileType, Download, Eye } from "lucide-react";
+import { CloudUpload, Paperclip, Check, ChevronsUpDown, Loader2, FileType, Download, Eye, Plus } from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -64,6 +64,7 @@ import {
 import { useUpdateDocument } from "@/hooks/useUpdateDocument";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
+import { NewDocumentTypeDialog } from "@/components/documents/NewDocumentTypeDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isFieldRequired } from "@/lib/zod-config";
 
@@ -159,6 +160,8 @@ export default function DocumentFormPage() {
     const [objectSearch, setObjectSearch] = useState("");
     const [rawObjectSearch, setRawObjectSearch] = useState("");
     const [documentTypeSearch, setDocumentTypeSearch] = useState("");
+    const [documentTypeDialogOpen, setDocumentTypeDialogOpen] = useState(false);
+    const [documentTypePopoverOpen, setDocumentTypePopoverOpen] = useState(false);
 
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
@@ -459,7 +462,7 @@ export default function DocumentFormPage() {
                             return (
                                 <FormItem>
                                     <FormLabel>Document Type</FormLabel>
-                                    <Popover>
+                                    <Popover open={documentTypePopoverOpen} onOpenChange={setDocumentTypePopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
@@ -477,16 +480,21 @@ export default function DocumentFormPage() {
                                                 <CommandInput
                                                     value={documentTypeSearch}
                                                     onValueChange={setDocumentTypeSearch}
-                                                    placeholder="Search document types..."
+                                                    placeholder="Search or type a new name..."
                                                 />
                                                 <CommandList>
-                                                    <CommandEmpty>No document types found.</CommandEmpty>
+                                                    <CommandEmpty>
+                                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                                            No document types match.
+                                                        </div>
+                                                    </CommandEmpty>
                                                     <CommandGroup>
                                                         <CommandItem
                                                             value="none"
                                                             onSelect={() => {
                                                                 form.setValue("document_type", null);
                                                                 setDocumentTypeSearch("");
+                                                                setDocumentTypePopoverOpen(false);
                                                             }}
                                                         >
                                                             <Check
@@ -504,6 +512,7 @@ export default function DocumentFormPage() {
                                                                 onSelect={() => {
                                                                     form.setValue("document_type", dt.id);
                                                                     setDocumentTypeSearch("");
+                                                                    setDocumentTypePopoverOpen(false);
                                                                 }}
                                                             >
                                                                 <Check
@@ -519,16 +528,46 @@ export default function DocumentFormPage() {
                                                             </CommandItem>
                                                         ))}
                                                     </CommandGroup>
+                                                    <CommandGroup heading="Actions">
+                                                        <CommandItem
+                                                            value="__create_new_document_type__"
+                                                            onSelect={() => {
+                                                                setDocumentTypePopoverOpen(false);
+                                                                setDocumentTypeDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Plus className="mr-2 h-4 w-4" />
+                                                            <span className="font-medium">
+                                                                Create new document type
+                                                                {documentTypeSearch.trim() ? ` "${documentTypeSearch.trim()}"` : ""}
+                                                            </span>
+                                                        </CommandItem>
+                                                    </CommandGroup>
                                                 </CommandList>
                                             </Command>
                                         </PopoverContent>
                                     </Popover>
                                     <FormDescription>
-                                        Categorize this document (e.g., SOP, Work Instruction, Drawing)
+                                        Categorize this document (e.g., SOP, Work Instruction, Drawing).
+                                        Don't see what you need? Use "Create new" inside the picker.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             );
+                        }}
+                    />
+                    <NewDocumentTypeDialog
+                        open={documentTypeDialogOpen}
+                        onOpenChange={setDocumentTypeDialogOpen}
+                        initialName={documentTypeSearch}
+                        onCreated={(dt) => {
+                            // Auto-select the freshly-created type so the
+                            // user lands back on the form with it already
+                            // picked — the documentTypes query was
+                            // invalidated by the create hook so the list
+                            // re-fetches and the new id resolves.
+                            form.setValue("document_type", dt.id);
+                            setDocumentTypeSearch("");
                         }}
                     />
 

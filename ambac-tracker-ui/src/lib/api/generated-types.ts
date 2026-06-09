@@ -28648,6 +28648,7 @@ export interface operations {
         parameters: {
             query?: {
                 content_type?: number;
+                document_type?: string;
                 is_image?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -29044,6 +29045,7 @@ export interface operations {
         parameters: {
             query?: {
                 content_type?: number;
+                document_type?: string;
                 is_image?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;

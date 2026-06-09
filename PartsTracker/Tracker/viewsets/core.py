@@ -1302,7 +1302,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     serializer_class = DocumentsSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["content_type", "object_id", "is_image", "status"]
+    filterset_fields = ["content_type", "object_id", "is_image", "status", "document_type"]
     search_fields = ["file_name", "uploaded_by__email"]
     ordering_fields = ["upload_date", "version", "file_name"]
     ordering = ["-upload_date"]

@@ -5276,6 +5276,11 @@ paths:
         schema:
           type: integer
       - in: query
+        name: document_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: is_image
         schema:
           type: boolean
@@ -5762,6 +5767,11 @@ paths:
         name: content_type
         schema:
           type: integer
+      - in: query
+        name: document_type
+        schema:
+          type: string
+          format: uuid
       - in: query
         name: is_image
         schema:
