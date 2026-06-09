@@ -41,7 +41,6 @@ backend/.idea/
 /ambac-tracker-ui/dist/
 /ambac-tracker-ui/.vite/
 /ambac-tracker-ui/.bun/
-/ambac-tracker-ui/bun.lock
 /ambac-tracker-ui/.env
 /ambac-tracker-ui/.env.*
 
