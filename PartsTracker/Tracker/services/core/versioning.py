@@ -31,6 +31,7 @@ def apply_versioned_update(
     *,
     non_versioning_fields,
     default_update,
+    version_kwargs: dict | None = None,
 ):
     """Route a serializer update through either `default_update` or
     `create_new_version()` depending on which fields are being edited.
@@ -43,9 +44,9 @@ def apply_versioned_update(
       for archive toggles and similar metadata/operational flips that
       shouldn't version.
     - Any edited key is a content field → route through
-      `instance.create_new_version(**validated_data)`. The model's
-      override (or the base) handles atomic copy, child migration, and
-      the `revision_created` signal.
+      `instance.create_new_version(**validated_data, **version_kwargs)`.
+      The model's override (or the base) handles atomic copy, child
+      migration, and the `revision_created` signal.
 
     Args:
         instance: The model instance being updated. Must support
@@ -58,6 +59,12 @@ def apply_versioned_update(
         default_update: Callable `(instance, validated_data) -> instance`
             applied when only non-versioning fields are touched.
             Typically `super().update` from the calling serializer.
+        version_kwargs: Extra keyword arguments forwarded to
+            `create_new_version` when versioning is invoked. Used by
+            callers that need to pass non-field context (e.g. the
+            editing `process` for Step junction-flip in PCR flows).
+            Not forwarded to `default_update` since non-versioning
+            paths don't need them.
 
     Returns:
         The instance (either the same row, if only non-versioning
@@ -69,7 +76,7 @@ def apply_versioned_update(
     if set(validated_data.keys()) <= frozenset(non_versioning_fields):
         return default_update(instance, validated_data)
 
-    return instance.create_new_version(**validated_data)
+    return instance.create_new_version(**validated_data, **(version_kwargs or {}))
 
 
 def raise_not_versioned(self, **_):

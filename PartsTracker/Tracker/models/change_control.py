@@ -377,6 +377,34 @@ class ProcessChangeRequest(BaseChangeRequest):
     # affected WorkOrders for migration disposition.
     affected_workorders_snapshot = models.JSONField(default=list, blank=True)
 
+    # DRAFT process version forked when the PCR is created (via the
+    # "Propose Change" action on the process editor). The engineer makes
+    # actual node-level edits to this draft, then submits the PCR with
+    # the diff attached. PCO inherits this FK at PCR approval — see
+    # `create_pco_from_approved_pcr`. Null only for legacy PCRs created
+    # before this column existed; new PCRs always have a draft attached.
+    draft_process_version = models.ForeignKey(
+        'Tracker.Processes',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='+',
+        help_text='DRAFT process version the engineer is authoring against. '
+                  'Forked at PCR creation; PCO inherits this at approval.',
+    )
+
+    # Structured JSON diff between target_process (the APPROVED baseline)
+    # and draft_process_version (the engineer's edits). Computed and
+    # stored at PCR submission so approvers see a tangible diff rather
+    # than just `proposed_change` prose. Shape documented in
+    # `services/change_control/diff.py`.
+    proposed_change_diff = models.JSONField(
+        null=True,
+        blank=True,
+        help_text='Structured diff between target_process and '
+                  'draft_process_version, populated at submit time.',
+    )
+
     class Meta:
         verbose_name = 'Process Change Request'
         verbose_name_plural = 'Process Change Requests'
@@ -385,18 +413,12 @@ class ProcessChangeRequest(BaseChangeRequest):
             models.Index(fields=['tenant', 'status', 'created_at']),
             models.Index(fields=['target_process', 'status']),
         ]
-        constraints = [
-            # Serial: at most one open PCR per target_process.
-            # Drop this constraint to enable Phase 5 parallel mode.
-            models.UniqueConstraint(
-                fields=['target_process'],
-                condition=models.Q(
-                    status__in=['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED'],
-                    is_voided=False,
-                ),
-                name='processchangerequest_one_open_per_process',
-            ),
-        ]
+        constraints = []
+        # Multiple open PCRs against the same target_process are
+        # permitted. Conflicts are detected at PCR approval time by
+        # comparing intent diffs against the diff that produced the
+        # current approved baseline — see
+        # `services/change_control/rebase.py`.
 
     def __str__(self):
         return f"{self.artifact_number}: {self.title}"

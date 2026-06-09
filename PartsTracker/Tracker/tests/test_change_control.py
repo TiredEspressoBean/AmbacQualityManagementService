@@ -98,19 +98,24 @@ def _make_workorder(tenant, process, *, status=WorkOrderStatus.IN_PROGRESS, erp=
 
 
 def _make_pcr_template(tenant):
-    return ApprovalTemplate.objects.create(
+    # Tenant signal seeds PCR_APPROVAL via defaults_service. Reuse the
+    # existing row instead of creating a duplicate (unique constraint on
+    # tenant + template_name).
+    tpl, _ = ApprovalTemplate.objects.get_or_create(
         tenant=tenant,
-        template_name='PCR Approval',
         approval_type=Approval_Type.PCR_APPROVAL,
+        defaults={'template_name': 'PCR Approval'},
     )
+    return tpl
 
 
 def _make_pco_template(tenant):
-    return ApprovalTemplate.objects.create(
+    tpl, _ = ApprovalTemplate.objects.get_or_create(
         tenant=tenant,
-        template_name='PCO Approval',
         approval_type=Approval_Type.PCO_APPROVAL,
+        defaults={'template_name': 'PCO Approval'},
     )
+    return tpl
 
 
 def _make_pcn_template(tenant):
@@ -364,8 +369,12 @@ class PcrLifecycleTestCase(TenantTestCase):
 # Serial constraint — one open PCR per target_process
 # ---------------------------------------------------------------------------
 
-class PcrSerialConstraintTestCase(TenantTestCase):
-    """Partial unique constraint enforces serial PCRs per process."""
+class PcrParallelOpenTestCase(TenantTestCase):
+    """Multiple open PCRs against the same target_process are permitted.
+
+    Conflicts between concurrent drafts are resolved at approval time
+    by the rebase service, not by a database constraint.
+    """
 
     def setUp(self):
         super().setUp()
@@ -375,11 +384,11 @@ class PcrSerialConstraintTestCase(TenantTestCase):
         )
         _make_pcr_template(self.tenant_a)
 
-    def test_second_open_pcr_blocked(self):
-        _make_pcr(self.tenant_a, self.user_a, self.process, title='First')
-        from django.db import IntegrityError
-        with self.assertRaises(IntegrityError):
-            _make_pcr(self.tenant_a, self.user_a, self.process, title='Second')
+    def test_second_open_pcr_allowed(self):
+        first = _make_pcr(self.tenant_a, self.user_a, self.process, title='First')
+        second = _make_pcr(self.tenant_a, self.user_a, self.process, title='Second')
+        self.assertNotEqual(first.id, second.id)
+        self.assertEqual(first.target_process, second.target_process)
 
     def test_new_pcr_after_rejection_allowed(self):
         first = _make_pcr(self.tenant_a, self.user_a, self.process, title='First')
@@ -391,6 +400,158 @@ class PcrSerialConstraintTestCase(TenantTestCase):
             self.tenant_a, self.user_a, self.process, title='Second',
         )
         self.assertEqual(second.target_process, self.process)
+
+
+# ---------------------------------------------------------------------------
+# Rebase + conflict detection at approval (multi-PCR)
+# ---------------------------------------------------------------------------
+
+class PcrRebaseTestCase(TenantTestCase):
+    """Two PCRs against the same process: the second is rebased onto the
+    first's approved version at approval time, with conflict detection
+    on overlapping field changes.
+
+    The rebase scenarios require real draft Process versions with their
+    own Steps — built via `propose_process_change` so the fork chain is
+    populated (target → draft, with `previous_version` linking back).
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='PT', ID_prefix='PT-')
+        # Build a baseline APPROVED process with 2 steps so we have
+        # somewhere to place disjoint edits.
+        self.baseline = Processes.objects.create(
+            name='Injector Reman',
+            part_type=self.part_type,
+            status=ProcessStatus.APPROVED,
+            approved_by=self.user_a,
+            is_current_version=True,
+        )
+        self.cleaning = Steps.objects.create(
+            name='Cleaning', part_type=self.part_type,
+            pass_threshold=1.0,
+        )
+        self.milling = Steps.objects.create(
+            name='Milling', part_type=self.part_type,
+            pass_threshold=1.0,
+        )
+        ProcessStep.objects.create(
+            process=self.baseline, step=self.cleaning, order=1,
+        )
+        ProcessStep.objects.create(
+            process=self.baseline, step=self.milling, order=2,
+        )
+        _make_pcr_template(self.tenant_a)
+        _make_pco_template(self.tenant_a)
+
+    def _propose(self, *, title):
+        from Tracker.services.change_control.process_change import (
+            propose_process_change,
+        )
+        pcr, draft = propose_process_change(
+            self.baseline,
+            user=self.user_a,
+            title=title,
+            proposed_change='Edit',
+            justification='Quality issue',
+            risk_analysis='Low',
+        )
+        return pcr, draft
+
+    def _edit_step_on_draft(self, draft, step_identity, **field_overrides):
+        """Mimic an engineer's PCR-DRAFT step edit — versions the Step
+        on the draft via the canonical service so the junction flips."""
+        from Tracker.services.mes.steps import create_new_step_version
+        ps = ProcessStep.objects.filter(
+            process=draft, step__identity_id=step_identity,
+        ).first()
+        create_new_step_version(
+            ps.step, user=self.user_a,
+            change_description='Test edit',
+            process=draft,
+            **field_overrides,
+        )
+
+    def _approve_and_implement(self, pcr):
+        """Drive a PCR all the way through implementation — only after
+        `implement_pco` runs does the PCR's draft become the new
+        APPROVED Process. Until then, the baseline hasn't shifted."""
+        submit_pcr(pcr, user=self.user_a)
+        pco = approve_pcr(pcr, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+        implement_pco(
+            pco, user=self.user_b,  # SoD: implementer != approver
+            migration_disposition=ProcessChangeMigrationDisposition.KEEP_ALL,
+            mode=ChangeControlMode.SIMPLIFIED,
+        )
+
+    def test_disjoint_edits_both_approve_cleanly(self):
+        # PCR-A edits Cleaning.description; PCR-B edits Milling.description.
+        # Different steps → no overlap. PCR-A implements (new baseline),
+        # then PCR-B rebases onto the new baseline and approves.
+        cleaning_identity = self.cleaning.identity_id
+        milling_identity = self.milling.identity_id
+
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(
+            draft_a, cleaning_identity, description='Updated cleaning notes',
+        )
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(
+            draft_b, milling_identity, description='Updated milling notes',
+        )
+
+        self._approve_and_implement(pcr_a)
+        # PCR-A's draft is now the new APPROVED baseline.
+
+        submit_pcr(pcr_b, user=self.user_a)
+        # Rebase should detect no overlap and lift PCR-B's intent onto
+        # the new baseline silently.
+        approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        pcr_b.refresh_from_db()
+        self.assertEqual(pcr_b.status, ProcessChangeRequest.Status.APPROVED)
+
+    def test_overlapping_edits_block_second_approval(self):
+        # Both PCRs edit Cleaning.description. PCR-A implements first;
+        # PCR-B's approval surfaces a RebaseConflict because the same
+        # field was modified by both.
+        from Tracker.services.change_control.process_change import (
+            PcrRebaseConflict,
+        )
+        cleaning_identity = self.cleaning.identity_id
+
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(
+            draft_a, cleaning_identity, description='Cleaning A',
+        )
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(
+            draft_b, cleaning_identity, description='Cleaning B',
+        )
+
+        self._approve_and_implement(pcr_a)
+
+        submit_pcr(pcr_b, user=self.user_a)
+        with self.assertRaises(PcrRebaseConflict) as ctx:
+            approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        conflict = ctx.exception.conflict
+        self.assertEqual(len(conflict.conflicts), 1)
+        c = conflict.conflicts[0]
+        self.assertEqual(c.step_identity_id, str(cleaning_identity))
+        self.assertEqual(c.field, 'description')
+
+    def test_single_pcr_approves_with_no_rebase(self):
+        # Sanity: when there's nothing to rebase against, approval is
+        # the normal flow. Refresh-from-db inside approve_pcr was the
+        # subtle gotcha during implementation.
+        pcr, _ = self._propose(title='Single')
+        submit_pcr(pcr, user=self.user_a)
+        approve_pcr(pcr, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        pcr.refresh_from_db()
+        self.assertEqual(pcr.status, ProcessChangeRequest.Status.APPROVED)
 
 
 # ---------------------------------------------------------------------------

@@ -1360,6 +1360,38 @@ WORK_ORDER_OVERDUE_THRESHOLD_HOURS = 0
 
 
 @shared_task(bind=True)
+def regenerate_demo_data_task(self, tenant_id: str, acting_user_id: int):
+    """Background regenerate-demo-data trigger.
+
+    Hard-refuses on any tenant whose slug isn't 'demo'. The service
+    layer also enforces this — defense in depth.
+    """
+    from Tracker.models import Tenant, User
+    from Tracker.services.core.demo_regenerate import (
+        regenerate_demo_data,
+        DemoRegenerationRefused,
+    )
+
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+        acting_user = User.objects.get(id=acting_user_id)
+    except (Tenant.DoesNotExist, User.DoesNotExist) as e:
+        logger.error(f"regenerate_demo_data_task failed lookup: {e}")
+        return {"status": "error", "message": str(e)}
+
+    try:
+        result = regenerate_demo_data(tenant, acting_user=acting_user)
+    except DemoRegenerationRefused as e:
+        logger.error(f"regenerate_demo_data_task refused: {e}")
+        return {"status": "refused", "message": str(e)}
+    except Exception as e:  # noqa: BLE001 — log and surface
+        logger.exception("regenerate_demo_data_task crashed")
+        return {"status": "error", "message": str(e)}
+
+    return {"status": "ok", **result}
+
+
+@shared_task(bind=True)
 def bulk_reconcile_users_task(self, rows: List[Dict[str, Any]], tenant_id: str, acting_user_id: int):
     """Background bulk-reconcile of tenant users from a workbook.
 

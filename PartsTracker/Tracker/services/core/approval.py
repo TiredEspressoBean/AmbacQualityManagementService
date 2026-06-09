@@ -16,11 +16,14 @@ consumed by `check_approval_status`. Not re-exported.
 """
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from Tracker.models import (
     Approval_Status_Type,
@@ -254,12 +257,20 @@ def trigger_content_object_update(request: ApprovalRequest, status):
 def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
     """Cascade an APPROVED or REJECTED decision to the content object.
 
-    Handles three content-object types:
+    Handles content-object types:
     - Documents: sets status/approved_by/approved_at or reverts to DRAFT.
     - CAPA: sets approval_status/approved_by/approved_at or resets to
       REJECTED and clears approval_required so re-submission is possible.
     - Processes: delegates to the model's approve()/reject_approval()
       methods (those models manage their own state machine).
+    - ProcessChangeRequest: fires `approve_pcr` (which runs rebase +
+      creates PCO) on APPROVED; `reject_pcr` on REJECTED. This is the
+      load-bearing path for REGULATED-mode change control —
+      `/api/process-change-requests/{id}/approve/` becomes a finalizer
+      that only succeeds after signatures complete, but the actual
+      state transition is automatic on signature completion.
+    - ProcessChangeOrder: fires `mark_pco_approved` on APPROVED. PCN
+      release follows on PCO implementation, which is a separate gate.
 
     No-op when `content_object` is None or an unrecognised type.
     """
@@ -295,6 +306,62 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
             obj.approve(user=request.get_primary_approver())
         elif status == Approval_Status_Type.REJECTED:
             obj.reject_approval()
+
+    elif obj_type == 'ProcessChangeRequest':
+        # Lazy import to avoid a circular dependency with change_control
+        # services (which import from core).
+        from Tracker.services.change_control.process_change import (
+            approve_pcr, reject_pcr, PcrRebaseConflict,
+        )
+        approver = request.get_primary_approver()
+        if status == Approval_Status_Type.APPROVED:
+            try:
+                approve_pcr(obj, user=approver)
+            except PcrRebaseConflict:
+                # Baseline shifted while signatures were being collected.
+                # Roll BOTH the PCR back to UNDER_REVIEW and the
+                # ApprovalRequest back to PENDING — leaving the AR at
+                # APPROVED would let the REGULATED `/approve/` gate
+                # immediately re-fire `approve_pcr` and loop on the
+                # same conflict with no escape path for the engineer.
+                # Resetting the AR forces a fresh approval cycle once
+                # the rebase is resolved manually, which is also the
+                # right audit outcome since signatures collected
+                # against the prior baseline shouldn't carry over to a
+                # different proposed intent.
+                obj.status = obj.Status.UNDER_REVIEW
+                obj.save(update_fields=['status', 'updated_at'])
+                request.status = Approval_Status_Type.PENDING
+                request.completed_at = None
+                request.save(update_fields=['status', 'completed_at', 'updated_at'])
+            except ValueError:
+                # PCR isn't in a valid state for approval — the
+                # ApprovalRequest decision still records cleanly, but
+                # the downstream transition can't proceed. Log so the
+                # state mismatch is visible in observability, not just
+                # silently dropped.
+                logger.exception(
+                    "PCR cascade transition failed for AR %s / PCR %s",
+                    request.pk, obj.pk,
+                )
+        elif status == Approval_Status_Type.REJECTED:
+            reject_pcr(obj, user=approver, reason='Rejected during signature collection.')
+
+    elif obj_type == 'ProcessChangeOrder':
+        from Tracker.services.change_control.process_change import (
+            mark_pco_approved, cancel_pco,
+        )
+        approver = request.get_primary_approver()
+        if status == Approval_Status_Type.APPROVED:
+            try:
+                mark_pco_approved(obj, user=approver)
+            except ValueError:
+                logger.exception(
+                    "PCO cascade transition failed for AR %s / PCO %s",
+                    request.pk, obj.pk,
+                )
+        elif status == Approval_Status_Type.REJECTED:
+            cancel_pco(obj, user=approver, reason='Rejected during signature collection.')
 
 
 # =========================================================================

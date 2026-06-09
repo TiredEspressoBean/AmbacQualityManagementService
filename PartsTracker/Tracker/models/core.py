@@ -1154,12 +1154,18 @@ class SecureModel(models.Model):
     # hit the gate.
     _is_versioned: bool = False
 
-    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+    def create_new_version(self, *, user=None, change_description=None, supersede_source=True, **field_updates):
         """Create a new version of this row and return it.
 
         Atomic: the old row's `is_current_version` flip and the new row's
         insert happen in one transaction, with a `SELECT FOR UPDATE` lock
         on the old row to block write-skew under concurrent calls.
+
+        `supersede_source=True` (default) flips the source row's
+        `is_current_version=False` — the new row replaces the old. Pass
+        `False` when forking a DRAFT proposal that doesn't yet replace
+        the source (multi-PCR change-control flow); the source stays
+        live until a downstream "promote" step actually supersedes it.
 
         Fires the `revision_created` signal on success so downstream
         consumers (webhooks, analytics, training-requirement auto-creation,
@@ -1203,13 +1209,19 @@ class SecureModel(models.Model):
             # creating a new v2.
             locked = type(self).all_tenants.select_for_update().get(pk=self.pk)
 
-            if not locked.is_current_version:
+            # The "must be current" guard applies to superseding forks
+            # — when the new version actually replaces the old. For
+            # non-superseding forks (sibling proposals against a still-
+            # live baseline, multi-PCR change-control flow), forking
+            # from a non-current row is intentional.
+            if supersede_source and not locked.is_current_version:
                 raise ValueError("Can only create new versions from the current version")
             if locked.archived:
                 raise ValueError("Cannot create a new version from an archived record")
 
-            locked.is_current_version = False
-            locked.save(update_fields=['is_current_version', 'updated_at'])
+            if supersede_source:
+                locked.is_current_version = False
+                locked.save(update_fields=['is_current_version', 'updated_at'])
 
             new_data = {}
             for field in self._meta.fields:
@@ -1238,8 +1250,9 @@ class SecureModel(models.Model):
                 new_data['change_description'] = change_description
 
             # Sync our in-memory copy so the caller's `self` reflects the
-            # now-historical state.
-            self.is_current_version = False
+            # now-historical state — only when we actually flipped it.
+            if supersede_source:
+                self.is_current_version = False
 
             new_version = type(self).objects.create(**new_data)
 
@@ -2185,6 +2198,7 @@ class NotificationTask(SecureModel):
 
 class Approval_Type(models.TextChoices):
     DOCUMENT_RELEASE = 'DOCUMENT_RELEASE', 'Document Release'
+    CAPA_APPROVAL = 'CAPA_APPROVAL', 'CAPA Approval'
     CAPA_CRITICAL = 'CAPA_CRITICAL', 'CAPA Critical'
     CAPA_MAJOR = 'CAPA_MAJOR', 'CAPA Major'
     ECO = 'ECO', 'Engineering Change Order'

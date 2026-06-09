@@ -35,11 +35,13 @@ class ProcessChangeRequestSerializer(serializers.ModelSerializer, SecureModelMix
         source='created_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     submitted_by_username = serializers.CharField(
         source='submitted_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)
     affected_workorders_count = serializers.SerializerMethodField()
@@ -48,6 +50,7 @@ class ProcessChangeRequestSerializer(serializers.ModelSerializer, SecureModelMix
     order_id = serializers.PrimaryKeyRelatedField(
         source='order',
         read_only=True,
+        allow_null=True,
     )
 
     class Meta:
@@ -79,6 +82,8 @@ class ProcessChangeRequestSerializer(serializers.ModelSerializer, SecureModelMix
             'is_open',
             'order_id',
             'data_origin',
+            'draft_process_version',
+            'proposed_change_diff',
         ]
         read_only_fields = [
             'id',
@@ -132,16 +137,19 @@ class ProcessChangeOrderSerializer(serializers.ModelSerializer, SecureModelMixin
         source='approved_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     implemented_by_username = serializers.CharField(
         source='implemented_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)
     notice_id = serializers.PrimaryKeyRelatedField(
         source='notice',
         read_only=True,
+        allow_null=True,
     )
 
     class Meta:
@@ -215,11 +223,13 @@ class ProcessChangeNoticeSerializer(serializers.ModelSerializer, SecureModelMixi
         source='released_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     closed_by_username = serializers.CharField(
         source='closed_by.username',
         read_only=True,
         default=None,
+        allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)
 

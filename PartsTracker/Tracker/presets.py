@@ -210,6 +210,10 @@ GROUP_PRESETS = {
             # Full AI Chat & Embeddings
             'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
             'add_docchunk', 'change_docchunk', 'delete_docchunk', 'view_docchunk',
+            # Process Change Control - full PCR/PCO/PCN lifecycle
+            'add_processchangerequest', 'change_processchangerequest', 'delete_processchangerequest', 'view_processchangerequest',
+            'add_processchangeorder', 'change_processchangeorder', 'delete_processchangeorder', 'view_processchangeorder',
+            'add_processchangenotice', 'change_processchangenotice', 'delete_processchangenotice', 'view_processchangenotice',
         ],
     },
 
@@ -304,6 +308,10 @@ GROUP_PRESETS = {
             'add_userinvitation', 'change_userinvitation', 'delete_userinvitation', 'view_userinvitation',
             # Archive reasons - full control
             'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
+            # Process Change Control - approve PCRs, manage PCO/PCN lifecycle
+            'add_processchangerequest', 'change_processchangerequest', 'delete_processchangerequest', 'view_processchangerequest',
+            'add_processchangeorder', 'change_processchangeorder', 'delete_processchangeorder', 'view_processchangeorder',
+            'add_processchangenotice', 'change_processchangenotice', 'delete_processchangenotice', 'view_processchangenotice',
         ],
     },
 
@@ -379,6 +387,10 @@ GROUP_PRESETS = {
             'add_facility', 'change_facility', 'view_facility',
             # Archive reasons
             'view_archivereason',
+            # Process Change Control - view PCR/PCO/PCN (read-only, can't propose changes)
+            'view_processchangerequest',
+            'view_processchangeorder',
+            'view_processchangenotice',
         ],
     },
 
@@ -481,6 +493,10 @@ GROUP_PRESETS = {
             'add_userinvitation', 'change_userinvitation', 'delete_userinvitation', 'view_userinvitation',
             # Archive reasons
             'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
+            # Process Change Control - engineers propose + author changes; PCO/PCN read-only
+            'add_processchangerequest', 'change_processchangerequest', 'view_processchangerequest',
+            'view_processchangeorder',
+            'view_processchangenotice',
         ],
     },
 

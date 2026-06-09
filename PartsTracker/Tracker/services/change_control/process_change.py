@@ -17,8 +17,10 @@ Mode-conditional behavior:
 
 Mode is passed as a parameter — the viewset layer reads tenant config
 to determine which to pass. Tenants in REGULATED mode that haven't
-configured PCO_APPROVAL / PCN_RELEASE templates will get a clear
-ValueError at the affected lifecycle transition.
+configured PCO_APPROVAL templates will get a clear ValueError at the
+PCO approval transition. PCN release is currently a state flip — no
+approval template required — but the REGULATED contract allows a
+future PCN_RELEASE workflow without changing call sites.
 """
 from __future__ import annotations
 
@@ -37,8 +39,10 @@ from Tracker.models import (
     ProcessChangeOrder,
     ProcessChangeNotice,
     ProcessChangeMigrationDisposition,
+    ProcessStatus,
     WorkOrder,
 )
+from Tracker.services.change_control.diff import compute_process_diff
 from Tracker.services.change_control.impact_analysis import (
     list_affected_workorders,
     snapshot_affected_workorders,
@@ -103,17 +107,30 @@ def submit_pcr(
     with transaction.atomic():
         pcr.affected_workorders_snapshot = snapshot_affected_workorders(pcr.target_process)
         pcr.baseline_version_id = pcr.target_process_id
-        pcr.submitted_at = timezone.now()
-        pcr.submitted_by = user
-        pcr.status = ProcessChangeRequest.Status.SUBMITTED
-        pcr.save(update_fields=[
+
+        update_fields = [
             'affected_workorders_snapshot',
             'baseline_version_id',
             'submitted_at',
             'submitted_by',
             'status',
             'updated_at',
-        ])
+        ]
+
+        # Compute + persist the structured diff against the engineer's
+        # DRAFT, if one is attached (new "Propose Change" flow). Legacy
+        # text-only PCRs without a draft attached skip this step.
+        if pcr.draft_process_version_id is not None:
+            pcr.proposed_change_diff = compute_process_diff(
+                pcr.target_process,
+                pcr.draft_process_version,
+            )
+            update_fields.append('proposed_change_diff')
+
+        pcr.submitted_at = timezone.now()
+        pcr.submitted_by = user
+        pcr.status = ProcessChangeRequest.Status.SUBMITTED
+        pcr.save(update_fields=update_fields)
 
         approval_request = ApprovalRequest.create_from_template(
             content_object=pcr,
@@ -138,8 +155,24 @@ def approve_pcr(
     (auto-approved + DRAFT version pre-created in SIMPLIFIED mode;
     DRAFT-only in REGULATED mode awaiting explicit author).
 
+    Performs a lazy rebase at approval time: if another PCR has been
+    approved against the same process line since this PCR was opened,
+    the draft is re-anchored against the new baseline. Non-overlapping
+    changes are carried forward automatically; overlapping field
+    changes raise a `PcrRebaseConflict` so the caller can return a
+    structured 409 with the conflicting (step, field) tuples.
+
+    Rebase metadata (when the draft was actually re-anchored) is
+    attached to the returned PCO as `_rebase_metadata` so the viewset
+    can surface a "your draft was re-anchored" notice without changing
+    the return signature.
+
     Raises:
-        ValueError: PCR is not in SUBMITTED status.
+        ValueError: PCR is not in SUBMITTED or UNDER_REVIEW status.
+        PcrRebaseConflict: the PCR conflicts with intervening approved
+            changes and cannot be lifted onto the current baseline. The
+            engineer must reconcile manually before approval can
+            proceed. Exception carries the conflict list.
     """
     valid_pre_states = (
         ProcessChangeRequest.Status.SUBMITTED,
@@ -151,13 +184,53 @@ def approve_pcr(
             f"Must be SUBMITTED or UNDER_REVIEW."
         )
 
+    from Tracker.services.change_control.rebase import (
+        rebase_pcr_draft,
+        RebaseConflict,
+        RebaseSuccess,
+    )
+
     with transaction.atomic():
+        rebase_result = rebase_pcr_draft(pcr, user=user)
+        if isinstance(rebase_result, RebaseConflict):
+            raise PcrRebaseConflict(rebase_result)
+
+        # `pcr.draft_process_version` may have been swapped if the
+        # rebase produced a fresh DRAFT. Refresh in case.
+        pcr.refresh_from_db()
+
         pcr.status = ProcessChangeRequest.Status.APPROVED
         pcr.save(update_fields=['status', 'updated_at'])
 
         pco = create_pco_from_approved_pcr(pcr, user=user, mode=mode)
 
+    rebased = (
+        isinstance(rebase_result, RebaseSuccess)
+        and rebase_result.previous_draft_id != rebase_result.new_draft_id
+        and rebase_result.previous_draft_id != ''
+    )
+    pco._rebase_metadata = {
+        'rebased': rebased,
+        'previous_draft_id': rebase_result.previous_draft_id if rebased else None,
+        'new_draft_id': rebase_result.new_draft_id if rebased else None,
+    }
     return pco
+
+
+class PcrRebaseConflict(Exception):
+    """Raised when `approve_pcr` cannot rebase a PCR onto the current
+    baseline because the PCR's intent overlaps with intervening approved
+    changes. Carries the structured conflict from the rebase service so
+    the viewset can surface it as a 409 response.
+    """
+
+    def __init__(self, conflict):
+        self.conflict = conflict
+        super().__init__(
+            f"PCR {conflict.pcr_id} cannot be approved: "
+            f"{len(conflict.conflicts)} field conflict(s) with intervening "
+            f"approved changes. Resolve manually before re-submitting."
+        )
 
 
 def reject_pcr(
@@ -190,6 +263,7 @@ def reject_pcr(
     pcr.status = ProcessChangeRequest.Status.REJECTED
     pcr.rejected_reason = reason.strip()
     pcr.save(update_fields=['status', 'rejected_reason', 'updated_at'])
+    _archive_attached_draft(pcr.draft_process_version)
 
     return pcr
 
@@ -221,8 +295,29 @@ def cancel_pcr(
     if reason and reason.strip():
         pcr.rejected_reason = f"Cancelled: {reason.strip()}"
     pcr.save(update_fields=['status', 'rejected_reason', 'updated_at'])
+    _archive_attached_draft(pcr.draft_process_version)
 
     return pcr
+
+
+def _archive_attached_draft(draft) -> None:
+    """Archive a DRAFT Process attached to a terminated PCR/PCO.
+
+    Keeps the row in place for audit (FKs from any pre-existing
+    children still resolve) but flips `archived` + `is_current_version`
+    so live-process pickers stop surfacing it. No-op when there is no
+    draft or the draft is no longer DRAFT (e.g. PCR cancelled after
+    the draft was already promoted by some other path).
+    """
+    if draft is None:
+        return
+    if draft.status != ProcessStatus.DRAFT:
+        return
+    if draft.archived:
+        return
+    draft.archived = True
+    draft.is_current_version = False
+    draft.save(update_fields=['archived', 'is_current_version', 'updated_at'])
 
 
 # ---------------------------------------------------------------------------
@@ -263,15 +358,25 @@ def create_pco_from_approved_pcr(
         )
 
     with transaction.atomic():
-        draft_version = create_new_process_version(
-            pcr.target_process,
-            user=user,
-            change_description=(
-                f"PCR {pcr.artifact_number}: {pcr.title}\n\n"
-                f"{pcr.proposed_change}\n\n"
-                f"Justification: {pcr.justification}"
-            ),
-        )
+        # Reuse the DRAFT process the engineer already authored against
+        # (created at PCR-propose time via `propose_process_change`).
+        # Legacy text-only PCRs without a draft attached get one forked
+        # here on the fly and the FK is stamped back onto the PCR so any
+        # retry / double-approve replay is idempotent.
+        if pcr.draft_process_version_id is not None:
+            draft_version = pcr.draft_process_version
+        else:
+            draft_version = create_new_process_version(
+                pcr.target_process,
+                user=user,
+                change_description=(
+                    f"PCR {pcr.artifact_number}: {pcr.title}\n\n"
+                    f"{pcr.proposed_change}\n\n"
+                    f"Justification: {pcr.justification}"
+                ),
+            )
+            pcr.draft_process_version = draft_version
+            pcr.save(update_fields=['draft_process_version', 'updated_at'])
 
         artifact_number = next_artifact_number(
             tenant_id=pcr.tenant_id,
@@ -519,9 +624,9 @@ def cancel_pco(
 ) -> ProcessChangeOrder:
     """Cancel a DRAFT or APPROVED PCO before implementation. Terminal.
 
-    Does NOT delete the linked DRAFT process version — that remains in
-    the database for audit. Cleanup of orphan DRAFTs (if desired) is a
-    separate concern.
+    The linked DRAFT process version (if any) is archived so it stops
+    appearing in live process-picker lists, but is preserved for audit
+    so any child rows that already FK to it still resolve.
 
     Raises:
         ValueError: PCO already implemented or already in a terminal state.
@@ -538,6 +643,7 @@ def cancel_pco(
 
     pco.status = ProcessChangeOrder.Status.CANCELLED
     pco.save(update_fields=['status', 'updated_at'])
+    _archive_attached_draft(pco.draft_process_version)
     return pco
 
 
@@ -614,8 +720,7 @@ def release_pcn(
     who approved the upstream PCO.
 
     Raises:
-        ValueError: PCN not in DRAFT, separation-of-duties violated,
-            or PCN_RELEASE template not configured.
+        ValueError: PCN not in DRAFT, or separation-of-duties violated.
     """
     if pcn.status != ProcessChangeNotice.Status.DRAFT:
         raise ValueError(
@@ -733,3 +838,94 @@ def _apply_workorder_migrations(
         migrated.append(wo.id)
 
     return migrated
+
+
+# ---------------------------------------------------------------------------
+# Propose Change — the engineer-driven PCR creation entry point
+# ---------------------------------------------------------------------------
+
+def propose_process_change(
+    target_process: Processes,
+    *,
+    user,
+    title: str = "",
+    proposed_change: str = "",
+    justification: str = "",
+    risk_analysis: str = "",
+    priority: str = "NORMAL",
+    customer_notification_required: bool = False,
+) -> tuple[ProcessChangeRequest, Processes]:
+    """Start a PCR by forking a DRAFT process version up-front.
+
+    Replaces the prior "file a text-only PCR then wait for approval to
+    get a draft" flow. Matches how engineers actually work: click
+    "Propose Change" on an approved process → DRAFT forks immediately
+    → engineer edits the DRAFT → submits the PCR with the diff attached.
+
+    Args:
+        target_process: the APPROVED process the engineer wants to change.
+        user: engineer triggering the proposal.
+        title/proposed_change/justification/risk_analysis/priority/
+        customer_notification_required: optional PCR fields the engineer
+            can populate up-front; defaults are blank/NORMAL and the
+            engineer fills them in on the submit modal at the end.
+
+    Returns:
+        (pcr, draft_process) tuple. The PCR is in DRAFT status with
+        `draft_process_version` linked to the forked process. The
+        engineer should be redirected to the DRAFT's editor.
+
+    Raises:
+        ValueError: target_process is not APPROVED, or `create_new_
+            process_version` rejects (e.g. existing DRAFT successor).
+    """
+    if target_process.status != ProcessStatus.APPROVED:
+        raise ValueError(
+            f"Cannot propose change against process in status "
+            f"{target_process.status}. Must be APPROVED."
+        )
+
+    with transaction.atomic():
+        # Fork the DRAFT first — `create_new_process_version` handles
+        # version chain (previous_version FK), step + edge copies, and
+        # signal dispatch. Requires a non-empty change_description for
+        # IATF audit; we use the title as a placeholder. Engineer can
+        # refine this at submit time.
+        draft_version = create_new_process_version(
+            target_process,
+            user=user,
+            change_description=(
+                title.strip()
+                or f"PCR proposal against {target_process.name} v{target_process.version}"
+            ),
+            # Multiple open PCRs against the same target are permitted.
+            # Conflicts resolved at approval time by the rebase service.
+            allow_multiple_drafts=True,
+            # The DRAFT proposal doesn't replace the baseline — both
+            # coexist until something actually approves and implements.
+            # Leaving is_current_version=True on the source means sibling
+            # PCR forks can still be created.
+            supersede_source=False,
+        )
+
+        artifact_number = next_artifact_number(
+            tenant_id=target_process.tenant_id,
+            artifact_type='PCR',
+        )
+
+        pcr = ProcessChangeRequest.objects.create(
+            tenant=target_process.tenant,
+            artifact_number=artifact_number,
+            target_process=target_process,
+            draft_process_version=draft_version,
+            title=title,
+            proposed_change=proposed_change,
+            justification=justification,
+            risk_analysis=risk_analysis,
+            priority=priority,
+            customer_notification_required=customer_notification_required,
+            status=ProcessChangeRequest.Status.DRAFT,
+            created_by=user,
+        )
+
+    return pcr, draft_version
