@@ -50,6 +50,9 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.WARNING(f'Superuser "{username}" already exists')
                     )
+                # Always ensure the role binding in dedicated mode — heals
+                # the case where the user existed without a UserRole row.
+                self._ensure_tenant_admin_role(existing, tenant)
                 return
 
             user = User.objects.create_superuser(
@@ -77,10 +80,59 @@ class Command(BaseCommand):
                     )
                 )
 
+            self._ensure_tenant_admin_role(user, tenant)
+
         except IntegrityError as e:
             self.stdout.write(self.style.ERROR(f'Error creating superuser: {e}'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Unexpected error: {e}'))
+
+    def _ensure_tenant_admin_role(self, user, tenant):
+        """Bind the user to the tenant's `Tenant Admin` group via UserRole.
+
+        Dedicated-mode only. In SaaS the superuser is typically a
+        platform-vendor staff account, not a customer's tenant admin —
+        auto-binding them would silently grant them tenant-admin-level
+        UI access on whichever tenant gets resolved.
+
+        Without this binding, `/api/users/me/effective-permissions/`
+        returns empty (it enumerates UserRoles, not Django's
+        `is_superuser` flag), and the frontend sidebar hides nav groups
+        that gate on specific permission codenames. The user can do
+        anything at the model level via `is_superuser=True` but the UI
+        gates make it look like they can't.
+        """
+        if tenant is None:
+            return
+        if not getattr(settings, 'DEDICATED_MODE', False):
+            self.stdout.write(
+                self.style.NOTICE(
+                    'SaaS mode: skipping Tenant Admin role auto-bind. '
+                    'Bind manually with setup_tenant or admin if needed.'
+                )
+            )
+            return
+
+        from Tracker.models import TenantGroup, UserRole
+
+        group = TenantGroup.objects.filter(tenant=tenant, name='Tenant Admin').first()
+        if group is None:
+            self.stdout.write(
+                self.style.WARNING(
+                    f'Tenant Admin group missing on tenant {tenant.slug}. '
+                    'Run `setup_defaults` or trigger tenant cold-start so '
+                    '`seed_tenant_defaults` populates the default groups, '
+                    'then re-run this command.'
+                )
+            )
+            return
+
+        _, created = UserRole.objects.get_or_create(user=user, group=group)
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'{"Bound" if created else "Already bound"}: {user.email} -> Tenant Admin @ {tenant.slug}'
+            )
+        )
 
     def _resolve_tenant(self):
         """Pick the tenant to attach the temp admin to.
