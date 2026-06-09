@@ -128,10 +128,18 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
     )
     @action(detail=False, methods=['get'], url_path='my-training')
     def my_training(self, request):
-        """Return all training records for the current user."""
+        """Return all training records for the current user.
+
+        Routed through the viewset's pagination class so the response
+        shape matches the schema-generated `PaginatedTrainingRecordList`.
+        Without this the bare-list response trips Zodios's response
+        validation on the frontend.
+        """
         qs = self.get_queryset().filter(user=request.user)
-        serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
     @extend_schema(
         description="Get training records expiring within N days (default 30)",
@@ -152,8 +160,10 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
             expires_date__gte=today
         ).order_by('expires_date')
 
-        serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
     @extend_schema(
         description="Get all expired training records",
@@ -164,8 +174,10 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMix
         """Return all expired training records."""
         today = timezone.now().date()
         qs = self.get_queryset().filter(expires_date__lt=today).order_by('-expires_date')
-        serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            return self.get_paginated_response(self.get_serializer(page, many=True).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
     @extend_schema(
         description="Get training statistics summary",
