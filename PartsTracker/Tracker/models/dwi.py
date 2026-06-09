@@ -24,6 +24,8 @@ Phase 2 (per-node operator state):
 Design reference: `Documents/DIGITAL_WORK_INSTRUCTIONS_DESIGN.md`.
 """
 
+import uuid
+
 from django.db import models
 
 from .core import SecureModel, User, VerificationMethod
@@ -102,6 +104,18 @@ class Substep(SecureModel):
     Evaluation happens at part entry to the step; result is cached on the
     StepExecution.
     """
+
+    # Stable identity across versions — when the parent Step is forked
+    # via `create_new_step_version`, the cloned Substep inherits this
+    # UUID. Lets the change-control diff match "the same logical
+    # substep" across two process versions even though the row ids
+    # differ. Default value used at row creation; clone path copies the
+    # source's value explicitly.
+    identity_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
+    )
 
     step = models.ForeignKey(
         'Tracker.Steps',

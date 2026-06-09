@@ -12,6 +12,10 @@ from django.db import transaction
 from Tracker.models.mes_lite import (
     Parts,
     PartsStatus,
+    ProcessStep,
+    Processes,
+    ProcessStatus,
+    StepExecution,
     Steps,
     StepMeasurementRequirement,
     StepRequirement,
@@ -21,11 +25,68 @@ from Tracker.models.qms import TrainingRequirement
 from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
 
+def add_step_to_process(
+    process: Processes,
+    *,
+    order: int = 1,
+    is_entry_point: bool = False,
+    **step_fields,
+) -> Steps:
+    """Create a new Step and attach it to `process` via ProcessStep.
+
+    Canonical entry point for adding a step to a process. Use this from
+    every editor surface (process flow canvas, CLI imports, bulk seeders)
+    so the rules for creating a step + junction are written once.
+
+    `step_fields` is forwarded to `Steps.objects.create`. `part_type`
+    defaults to the process's part_type — explicit override allowed.
+    """
+    step_fields.setdefault('part_type', process.part_type)
+    with transaction.atomic():
+        step = Steps.objects.create(**step_fields)
+        ProcessStep.objects.create(
+            process=process,
+            step=step,
+            order=order,
+            is_entry_point=is_entry_point,
+        )
+    return step
+
+
+def remove_step_from_process(process: Processes, step_ids: list) -> None:
+    """Detach steps from `process` after verifying none have execution
+    history. Step rows themselves are preserved — they may be shared
+    with other process versions.
+
+    Raises:
+        ValueError: any step has StepExecution rows. The names of the
+            offending steps are included in the message.
+    """
+    if not step_ids:
+        return
+    # tenant-safe: step_ids sourced from a tenant-scoped ProcessStep set.
+    protected = list(
+        StepExecution.objects.filter(step_id__in=step_ids)
+        .values_list('step_id', flat=True)
+        .distinct()
+    )
+    if protected:
+        names = list(
+            Steps.objects.filter(id__in=protected).values_list('name', flat=True)
+        )
+        raise ValueError(
+            f"Cannot remove steps with execution history: {', '.join(names)}."
+        )
+    ProcessStep.objects.filter(process=process, step_id__in=step_ids).delete()
+
+
 def create_new_step_version(
     step: Steps,
     *,
     user,
     change_description: str,
+    process: Processes | None = None,
+    supersede_source: bool | None = None,
     **field_updates,
 ) -> Steps:
     """Create a new version of a Step, copying all child rows to the new version.
@@ -82,19 +143,83 @@ def create_new_step_version(
             "(ISO 9001 4.4 / IATF 16949 8.5.6.1 audit trail)."
         )
 
+    # When the edit is scoped to a DRAFT process (PCR flow), the Step
+    # version is a proposal — don't supersede the baseline. Sibling
+    # PCRs need the baseline Step to stay available for their own
+    # forks. For non-PCR edits (admin form, direct StepsViewSet PATCH
+    # outside a PCR), keep the legacy supersede-on-fork behavior.
+    if supersede_source is None:
+        supersede_source = process is None or process.status != ProcessStatus.DRAFT
+
     with transaction.atomic():
         # Base handles: row lock, current-version guard, archived guard,
         # scalar field copy (all non-excluded fields including tenant,
         # part_type, name, pass_threshold, etc.), version increment,
-        # previous_version link, flipping old row's is_current_version,
-        # and scheduling the revision_created signal post-commit.
+        # previous_version link, optionally flipping old row's
+        # is_current_version, and scheduling the revision_created signal
+        # post-commit.
         new_version = super(Steps, step).create_new_version(
             user=user,
             change_description=change_description,
+            supersede_source=supersede_source,
             **field_updates,
         )
 
-        # --- Child copy 1: StepMeasurementRequirement ---
+        # Identity propagation — the new row inherits the source's
+        # identity_id so it remains part of the same logical step chain.
+        # Without this, the default=uuid.uuid4 fires on the new row and
+        # the chain breaks for identity lookups.
+        if new_version.identity_id != step.identity_id:
+            new_version.identity_id = step.identity_id
+            new_version.save(update_fields=['identity_id'])
+
+        # --- Child copy 1: Substeps (and their per-substep children) ---
+        # Substeps belong to a parent Step (FK). For each version of the
+        # parent Step, the substeps fork too — so a PCR DRAFT editing
+        # the Step's substep content doesn't leak across other process
+        # versions that still reference the prior Step row.
+        #
+        # Child rows of each Substep (SubstepResource, SubstepTranslation)
+        # are copied with the cloned Substep so the content stays
+        # complete on the new Step row.
+        from Tracker.models.dwi import Substep, SubstepResource, SubstepTranslation
+        for sub in Substep.objects.filter(step=step):
+            new_sub = Substep.objects.create(
+                step=new_version,
+                identity_id=sub.identity_id,
+                order=sub.order,
+                title=sub.title,
+                body_blocks=sub.body_blocks,
+                is_optional=sub.is_optional,
+                is_critical=sub.is_critical,
+                is_inspection_point=getattr(sub, 'is_inspection_point', False),
+                requires_signature=getattr(sub, 'requires_signature', False),
+                allow_not_applicable=getattr(sub, 'allow_not_applicable', False),
+                scope=getattr(sub, 'scope', None) or 'PER_PART',
+                expected_duration=sub.expected_duration,
+                sampling_rule=getattr(sub, 'sampling_rule', None),
+            )
+            for res in SubstepResource.objects.filter(substep=sub):
+                SubstepResource.objects.create(
+                    substep=new_sub,
+                    kind=res.kind,
+                    document=res.document,
+                    threed_model=res.threed_model,
+                    annotation_filter=res.annotation_filter,
+                    order=res.order,
+                    caption=res.caption,
+                )
+            # tenant-safe: filtered by substep (FK chain to in-tenant Step).
+            for tr in SubstepTranslation.objects.filter(substep=sub):
+                # tenant-safe: cloned from in-tenant SubstepTranslation row.
+                SubstepTranslation.objects.create(
+                    substep=new_sub,
+                    locale=tr.locale,
+                    title=tr.title,
+                    body_blocks=tr.body_blocks,
+                )
+
+        # --- Child copy 2: StepMeasurementRequirement ---
         # No related_name set; Django default reverse accessor is used via
         # direct model query to be explicit and avoid any accessor surprises.
         for smr in StepMeasurementRequirement.objects.filter(step=step):
@@ -160,7 +285,26 @@ def create_new_step_version(
             }
             clone_data['object_id'] = new_version.pk
             clone_data['status'] = 'DRAFT'
+            # tenant-safe: cloned from in-tenant Documents row (tenant FK carried in clone_data).
             Documents.objects.create(**clone_data)
+
+        # Junction-flip: if the caller scoped this edit to a specific
+        # Process version (the PCR-DRAFT editing flow), repoint that
+        # process's ProcessStep junction at the new Step version. Other
+        # process versions (the still-APPROVED baseline, sibling open
+        # DRAFTs) keep pointing at the old Step row — that's how
+        # multi-PCR isolation works.
+        #
+        # When `process` is None we leave junctions alone — legacy
+        # editing surfaces (StepsEditor without process context) still
+        # version the Step row but no process version is updated to use
+        # it. That's the bug; the fix lands at the call site by
+        # supplying `process`.
+        if process is not None:
+            ProcessStep.objects.filter(
+                process=process,
+                step=step,
+            ).update(step=new_version)
 
     return new_version
 

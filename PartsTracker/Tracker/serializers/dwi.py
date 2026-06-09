@@ -67,6 +67,74 @@ class SubstepSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
         read_only_fields = ('created_at', 'updated_at', 'is_editable')
 
+    def update(self, instance, validated_data):
+        """When editing from a PCR DRAFT process (`?process=<uuid>`),
+        version the parent Step first so the substep change is isolated
+        to that draft. Substeps from `create_new_step_version` carry
+        their `identity_id` forward, so we look up the cloned substep
+        on the new Step row by identity and apply the update there.
+
+        Without `?process=`, falls back to in-place update for legacy
+        substep editors that don't supply context. That path still
+        leaks substep changes across all Process versions referencing
+        the same parent Step — to fix, callers must supply process.
+        """
+        process = self._resolve_editing_process()
+        if process is None:
+            return super().update(instance, validated_data)
+
+        # Check: is the parent Step the canonical version for this
+        # process's ProcessStep junction? If not, abort — caller is
+        # editing a stale Step row.
+        from Tracker.models import ProcessStep
+        # tenant-safe: SecureManager auto-scopes the lookup.
+        ps = ProcessStep.objects.filter(process=process, step=instance.step).first()
+        if ps is None:
+            # The substep's parent Step isn't part of this process —
+            # fall back to plain update. This shouldn't normally happen.
+            return super().update(instance, validated_data)
+
+        # Fork the parent Step into a per-process version. The Step
+        # service copies substeps too — find the cloned substep with
+        # the same identity_id on the new Step and apply the update to
+        # that row.
+        from Tracker.services.mes.steps import create_new_step_version
+        new_step = create_new_step_version(
+            instance.step,
+            user=self.context['request'].user if 'request' in self.context else None,
+            change_description=(
+                f"Substep edit '{instance.title}' on {process.name} "
+                f"v{process.version}"
+            ),
+            process=process,
+        )
+        # tenant-safe: filtered by identity_id, tenant-scoped via FK chain.
+        cloned = Substep.objects.filter(
+            step=new_step, identity_id=instance.identity_id,
+        ).first()
+        if cloned is None:
+            # Substep wasn't on the new Step (newly added during the
+            # fork itself, or copy gap). Fall back to plain update.
+            return super().update(instance, validated_data)
+        return super().update(cloned, validated_data)
+
+    def _resolve_editing_process(self):
+        """Read `?process=<uuid>` from the request, return the matching
+        Process row in the caller's tenant. None when absent or invalid.
+        """
+        request = self.context.get('request')
+        if request is None:
+            return None
+        process_id = request.query_params.get('process')
+        if not process_id:
+            return None
+        from Tracker.models import Processes
+        try:
+            # tenant-safe: SecureManager auto-scopes via ContextVar.
+            return Processes.objects.get(id=process_id)
+        except Processes.DoesNotExist:
+            return None
+
 
 class SubstepResourceSerializer(serializers.ModelSerializer, SecureModelMixin):
     """Equipment / material / PPE references attached to a substep."""

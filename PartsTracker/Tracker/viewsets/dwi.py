@@ -10,6 +10,7 @@ when Phase 4 frontend wires them.
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -39,12 +40,37 @@ from Tracker.services.dwi.operator_capture import submit_substep
 from .base import TenantScopedMixin
 
 
+_substep_process_param = OpenApiParameter(
+    name='process',
+    type=OpenApiTypes.UUID,
+    location=OpenApiParameter.QUERY,
+    required=False,
+    description=(
+        "Process version this substep edit is scoped to. When supplied "
+        "and the process is DRAFT, the parent Step is versioned, all "
+        "substeps are copied to the new Step row (preserving each "
+        "substep's identity_id), and the edit applies to the cloned "
+        "substep on that new Step. Sibling PCR drafts referencing the "
+        "old Step row are unaffected."
+    ),
+)
+
+
+@extend_schema_view(
+    partial_update=extend_schema(parameters=[_substep_process_param]),
+    update=extend_schema(parameters=[_substep_process_param]),
+)
 class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """CRUD for Substep rows.
 
     Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
     (the typical substep-editor query). Default ordering matches the
     operator's working order within the parent Op.
+
+    Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+    DRAFT. The serializer detects the DRAFT context and routes through
+    `create_new_step_version` so the substep edit is isolated to that
+    process's version of the parent Step.
     """
 
     queryset = Substep.unscoped.select_related('step', 'sampling_rule')

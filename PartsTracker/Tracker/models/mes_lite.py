@@ -17,6 +17,7 @@ Note: Documents, ThreeDModel, and HeatMapAnnotations are in qms.py/dms.py
 """
 
 import random
+import uuid
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
@@ -443,6 +444,18 @@ class Steps(SecureModel):
 
     _is_versioned = True  # ISO 9001 4.4, MIL-STD-31000
 
+    # Identity line — every row in the same `previous_version` chain
+    # shares this UUID. Lets us find "the current version of this
+    # logical step" via a single indexed lookup
+    # (`Steps.objects.filter(identity_id=x, is_current_version=True)`)
+    # instead of walking the chain. Copied unchanged by
+    # `create_new_step_version`; auto-generated for new roots.
+    identity_id = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        db_index=True,
+    )
+
     name = models.CharField(max_length=50)
     """Name of the step, e.g., 'Inspection', 'Assembly'."""
 
@@ -683,11 +696,12 @@ class Steps(SecureModel):
                         fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
                                                             'order')) if fallback_ruleset else []} if fallback_ruleset else None}
 
-    def create_new_version(self, *, user=None, change_description=None, **field_updates):
+    def create_new_version(self, *, user=None, change_description=None, process=None, **field_updates):
         """Thin wrapper — delegates to `services.mes.steps.create_new_step_version`."""
         from Tracker.services.mes.steps import create_new_step_version
         return create_new_step_version(
-            self, user=user, change_description=change_description, **field_updates,
+            self, user=user, change_description=change_description,
+            process=process, **field_updates,
         )
 
     def apply_sampling_rules_update(self, rules_data, process=None, fallback_rules_data=None, fallback_threshold=None,
