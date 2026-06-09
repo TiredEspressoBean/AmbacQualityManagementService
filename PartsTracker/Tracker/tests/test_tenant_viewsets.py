@@ -1133,6 +1133,62 @@ class DedicatedModeTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.headers.get('X-Tenant-Source'), 'default')
 
+    def test_slug_rename_visible_to_subsequent_requests(self):
+        """A slug change to the resolved tenant surfaces on the next request.
+
+        Regression: the middleware used to cache the default Tenant model
+        instance on its singleton, so a slug rename via the ORM didn't
+        propagate until gunicorn cycled. The frontend Zod schema then
+        rejected the response (since the cached object still had the old
+        slug) and the sidebar fell back to the default branding.
+        """
+        self.client.force_authenticate(user=self.user)
+        first = self.client.get('/api/tenant/current/')
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        original_slug = first.data['tenant']['slug']
+
+        # Rename via .update() to bypass the immutability guard on save().
+        from Tracker.models import Tenant
+        new_slug = 'renamed-by-test'
+        n = Tenant.objects.filter(pk=self.default_tenant.pk).update(slug=new_slug)
+        self.assertEqual(n, 1)
+
+        second = self.client.get('/api/tenant/current/')
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            second.data['tenant']['slug'], new_slug,
+            f'Middleware returned stale slug {second.data["tenant"]["slug"]!r}; '
+            f'before rename was {original_slug!r}',
+        )
+
+    def test_sole_tenant_fallback_when_default_slug_misses(self):
+        """`_get_default_tenant()` falls back to the sole tenant when the
+        configured DEFAULT_TENANT_SLUG doesn't match anything.
+
+        Covers the case where an admin renamed the tenant slug in the DB
+        but didn't update the env var — without the fallback the
+        middleware would `get_or_create` a brand-new tenant and split
+        the data.
+        """
+        from Tracker.middleware import TenantMiddleware
+        from Tracker.models import Tenant
+
+        # Force the env mismatch: rename so the configured slug misses,
+        # but the sole-tenant fallback should still find the renamed row.
+        new_slug = 'env-mismatch-test'
+        Tenant.objects.filter(pk=self.default_tenant.pk).update(slug=new_slug)
+        self.assertEqual(Tenant.objects.count(), 1)
+
+        middleware = TenantMiddleware(lambda r: None)
+        resolved = middleware._get_default_tenant()
+
+        self.assertEqual(
+            resolved.pk, self.default_tenant.pk,
+            'Sole-tenant fallback should return the renamed row instead '
+            'of creating a new one.',
+        )
+        self.assertEqual(Tenant.objects.count(), 1, 'Fallback must not auto-create a duplicate.')
+
 
 @unittest.skipUnless(settings.SAAS_MODE, "Only runs in SaaS mode")
 class SaaSModeTestCase(TenantTestCase):

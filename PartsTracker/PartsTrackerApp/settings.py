@@ -636,7 +636,7 @@ CELERY_BEAT_SCHEDULE = {
 # - saas: Multi-tenant with subdomain routing, self-service signup
 #         Demo tenants are just tenants with is_demo=True
 # - dedicated: Single tenant, simplified UX, no tenant selection
-DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "saas")  # Temporarily changed from "dedicated" for multi-tenant testing
+DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "saas")
 
 # Derived convenience flags
 SAAS_MODE = DEPLOYMENT_MODE == "saas"

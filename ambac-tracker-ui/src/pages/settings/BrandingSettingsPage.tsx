@@ -56,6 +56,7 @@ const formSchema = z.object({
     secondary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal("")),
     theme_mode: z.enum(["light", "dark", "system"]),
     tint_strength: z.number().min(0).max(1),
+    tagline: z.string().max(120).optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -84,6 +85,7 @@ export function BrandingSettingsPage() {
             secondary_color: branding?.secondary_color || "",
             theme_mode: (branding?.theme_mode as "light" | "dark" | "system") || "system",
             tint_strength: storedTintStrength,
+            tagline: branding?.tagline || "",
         },
     });
 
@@ -117,6 +119,7 @@ export function BrandingSettingsPage() {
                         secondary_color: values.secondary_color || undefined,
                         theme_mode: values.theme_mode,
                         tint_strength: values.tint_strength,
+                        tagline: values.tagline?.trim() || undefined,
                     },
                 },
             });
@@ -298,6 +301,29 @@ export function BrandingSettingsPage() {
                     ) : (
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="tagline"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Tagline</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="text"
+                                                    value={field.value ?? ""}
+                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    placeholder={DEFAULT_BRANDING.tagline}
+                                                    maxLength={120}
+                                                />
+                                            </FormControl>
+                                            <p className="text-xs text-muted-foreground">
+                                                Subtitle shown under your organization name on the login screen and elsewhere.
+                                                Leave blank to use the default ({DEFAULT_BRANDING.tagline}).
+                                            </p>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="primary_color"

@@ -23200,6 +23200,7 @@ export interface components {
             readonly logo_url: string | null;
             readonly primary_color: string | null;
             readonly secondary_color: string | null;
+            readonly tagline: string | null;
             readonly default_timezone: string;
             readonly tier: string | null;
             readonly status: string | null;

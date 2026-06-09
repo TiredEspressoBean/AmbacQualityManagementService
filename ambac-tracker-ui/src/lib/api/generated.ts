@@ -1427,6 +1427,7 @@ export type TenantInfo = {
   logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  tagline: string | null;
   default_timezone: string;
   tier: string | null;
   status: string | null;
@@ -17053,6 +17054,7 @@ const TenantInfo = z.object({
   logo_url: z.string().nullable(),
   primary_color: z.string().nullable(),
   secondary_color: z.string().nullable(),
+  tagline: z.string().nullable(),
   default_timezone: z.string(),
   tier: z.string().nullable(),
   status: z.string().nullable(),

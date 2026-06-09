@@ -18,7 +18,8 @@ export function getAppName(tenantName?: string | null): string {
 
 /**
  * Get the application tagline to display in the UI.
+ * Falls back to the default if the tenant hasn't configured one.
  */
-export function getAppTagline(): string {
-    return DEFAULT_BRANDING.tagline;
+export function getAppTagline(tenantTagline?: string | null): string {
+    return (tenantTagline ?? "").trim() || DEFAULT_BRANDING.tagline;
 }

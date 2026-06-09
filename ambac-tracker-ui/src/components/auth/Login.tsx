@@ -29,7 +29,8 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { api, schemas } from '@/lib/api/generated'
 import { getCookie } from '@/lib/utils'
 import { isFieldRequired } from '@/lib/zod-config'
-import { DEFAULT_BRANDING } from '@/lib/branding'
+import { getAppName, getAppTagline } from '@/lib/branding'
+import { useTenantContext } from '@/components/tenant-provider'
 
 // Make sure you've done this somewhere globally:
 api.axios.defaults.withCredentials = true
@@ -43,6 +44,8 @@ const required = {
 
 export default function LoginPreview() {
     const router = useRouter()
+    const { tenant } = useTenantContext()
+    const tenantTagline = (tenant as { tagline?: string | null } | null)?.tagline
     const form = useForm<z.infer<typeof Login>>({
         resolver: zodResolver(Login),
         defaultValues: {
@@ -96,9 +99,9 @@ export default function LoginPreview() {
         <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
             <Card className="mx-auto max-w-sm">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">{DEFAULT_BRANDING.appName}</CardTitle>
+                    <CardTitle className="text-2xl">{getAppName(tenant?.name)}</CardTitle>
                     <CardDescription>
-                        {DEFAULT_BRANDING.tagline}
+                        {getAppTagline(tenantTagline)}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

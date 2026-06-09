@@ -58,7 +58,6 @@ class TenantMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self._default_tenant = None  # Cached for dedicated/demo modes
 
     def __call__(self, request):
         from Tracker.utils.tenant_context import (
@@ -205,20 +204,44 @@ class TenantMiddleware:
 
     def _get_default_tenant(self):
         """
-        Get or create the default tenant for dedicated mode.
+        Resolve the default tenant for dedicated mode.
 
-        Caches the tenant instance to avoid repeated DB queries.
+        Returns a fresh `Tenant` instance per request. We used to cache
+        the model object on the middleware instance, but Django
+        middleware lives for the worker's lifetime — so any mutation
+        to the tenant row (slug rename, branding update, status flip)
+        wouldn't surface until gunicorn cycled. A single indexed
+        lookup on a 1-row table is cheap; not worth the staleness.
+
+        Resolution order:
+        1. By configured `DEFAULT_TENANT_SLUG`.
+        2. If that misses AND exactly one Tenant exists in the DB,
+           use it — covers the case where an admin renamed the slug
+           but forgot to update the env. Logs a warning so the drift
+           is visible.
+        3. Otherwise `get_or_create` with the configured slug — the
+           cold-start path that auto-bootstraps a brand-new install.
         """
         from Tracker.models import Tenant
-
-        # Return cached tenant if available
-        if self._default_tenant is not None:
-            return self._default_tenant
 
         slug = getattr(settings, 'DEFAULT_TENANT_SLUG', 'default')
         name = getattr(settings, 'DEFAULT_TENANT_NAME', 'My Company')
 
-        # Get or create the default tenant
+        tenant = Tenant.objects.filter(slug=slug).first()
+        if tenant is not None:
+            return tenant
+
+        existing = list(Tenant.objects.all()[:2])
+        if len(existing) == 1:
+            sole = existing[0]
+            logger.warning(
+                "DEFAULT_TENANT_SLUG=%r doesn't match the sole tenant in the DB "
+                "(slug=%r). Falling back to that tenant — update the env to "
+                "match so cold-start auto-create doesn't fork the data later.",
+                slug, sole.slug,
+            )
+            return sole
+
         tenant, created = Tenant.objects.get_or_create(
             slug=slug,
             defaults={
@@ -227,14 +250,10 @@ class TenantMiddleware:
                 'status': Tenant.Status.ACTIVE,
                 'is_active': True,
                 'is_demo': False,
-            }
+            },
         )
-
         if created:
             logger.info(f"Auto-created default tenant: {tenant.slug} (dedicated mode)")
-
-        # Cache for subsequent requests
-        self._default_tenant = tenant
         return tenant
 
     def _get_tenant_by_id_or_slug(self, identifier):

@@ -43,6 +43,7 @@ class TenantInfoSerializer(serializers.Serializer):
     logo_url = serializers.CharField(read_only=True, allow_null=True)
     primary_color = serializers.CharField(read_only=True, allow_null=True)
     secondary_color = serializers.CharField(read_only=True, allow_null=True)
+    tagline = serializers.CharField(read_only=True, allow_null=True)
     default_timezone = serializers.CharField(read_only=True)
     tier = serializers.CharField(read_only=True, allow_null=True)
     status = serializers.CharField(read_only=True, allow_null=True)
@@ -111,6 +112,7 @@ class CurrentTenantView(APIView):
                 'logo_url': logo_url,
                 'primary_color': branding.get('primary_color'),
                 'secondary_color': branding.get('secondary_color'),
+                'tagline': branding.get('tagline') or None,
                 'default_timezone': tenant.default_timezone,
                 # Auth-gated: only expose plan/status/trial metadata to
                 # authenticated callers. Unauthenticated (pre-login) callers
