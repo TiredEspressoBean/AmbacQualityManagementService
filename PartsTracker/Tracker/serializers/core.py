@@ -501,6 +501,14 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
     default_groups_info = serializers.SerializerMethodField()
     default_approvers_info = serializers.SerializerMethodField()
     escalate_to_info = serializers.SerializerMethodField()
+    # Write-only narrative forwarded to `create_new_version` so PATCH
+    # edits satisfy the ISO 9001 4.4 audit-trail check without forcing
+    # the UI to expose a separate "reason" textarea. Falls back to a
+    # generic descriptor when omitted.
+    change_description = serializers.CharField(
+        write_only=True, required=False, allow_blank=True,
+        help_text="Reason for edit (audit trail). Defaults to a generic descriptor when omitted.",
+    )
 
     class Meta:
         model = ApprovalTemplate
@@ -514,7 +522,7 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
             'approval_sequence', 'approval_sequence_display',
             'allow_self_approval',
             'default_due_days', 'escalation_days', 'escalate_to', 'escalate_to_info',
-            'deactivated_at',
+            'deactivated_at', 'change_description',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')
@@ -541,10 +549,14 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
         """Route content edits through `create_new_version`; let
         archive toggles through as a plain save."""
         from Tracker.services.core.versioning import apply_versioned_update
+        change_description = validated_data.pop(
+            'change_description', None
+        ) or "Edited via Approval Template form"
         return apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
+            version_kwargs={'change_description': change_description},
         )
 
 

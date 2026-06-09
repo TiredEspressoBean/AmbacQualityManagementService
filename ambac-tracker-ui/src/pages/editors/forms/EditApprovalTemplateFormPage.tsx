@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { useRetrieveApprovalTemplate } from "@/hooks/useRetrieveApprovalTemplate";
 import { useCreateApprovalTemplate } from "@/hooks/useCreateApprovalTemplate";
@@ -48,6 +48,8 @@ import { useUpdateApprovalTemplate } from "@/hooks/useUpdateApprovalTemplate";
 import { useRetrieveGroups } from "@/hooks/useRetrieveGroups";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
+import { RequiredApproversField } from "@/components/approval-templates/RequiredApproversField";
+import { EscalationTargetField } from "@/components/approval-templates/EscalationTargetField";
 
 // Pull enum options from generated schema
 const APPROVAL_TYPES = schemas.ApprovalTypeEnum.options;
@@ -71,9 +73,44 @@ const formSchema = schemas.ApprovalTemplateRequest.pick({
     escalation_days: true,
     default_threshold: true,
     auto_assign_by_role: true,
+}).extend({
+    // M2M + FK fields the underlying serializer accepts but the
+    // generated schema's `ApprovalTemplateRequest` lists with various
+    // optional/nullable shapes. Coerce to local form values that we
+    // control directly.
+    default_approvers: z.array(z.number()).default([]),
+    default_groups: z.array(z.string()).default([]),
+    escalate_to: z.number().nullable().default(null),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+/**
+ * Small bridge that turns the two flat M2M form fields
+ * (`default_approvers`, `default_groups`) into the unified value the
+ * RequiredApproversField widget expects. Uses `useWatch` so the widget
+ * re-renders when the form values change (e.g. after `form.reset()`
+ * fires on template load).
+ */
+function ApproversFormBridge({ form }: { form: UseFormReturn<FormValues> }) {
+    const approvers = useWatch({ control: form.control, name: "default_approvers" });
+    const groups = useWatch({ control: form.control, name: "default_groups" });
+    return (
+        <>
+            <RequiredApproversField
+                value={{
+                    approvers: approvers ?? [],
+                    groups: groups ?? [],
+                }}
+                onChange={(next) => {
+                    form.setValue("default_approvers", next.approvers, { shouldDirty: true });
+                    form.setValue("default_groups", next.groups, { shouldDirty: true });
+                }}
+            />
+        </>
+    );
+}
+
 
 // Pre-compute required fields for labels
 const required = {
@@ -91,6 +128,7 @@ const required = {
 
 export default function ApprovalTemplateFormPage() {
     const params = useParams({ strict: false });
+    const navigate = useNavigate();
     const mode = params.id ? "edit" : "create";
     const templateId = params.id;
 
@@ -124,23 +162,34 @@ export default function ApprovalTemplateFormPage() {
             escalation_days: null,
             default_threshold: null,
             auto_assign_by_role: null,
+            default_approvers: [],
+            default_groups: [],
+            escalate_to: null,
         },
     });
 
     // Reset form when template data loads
     useEffect(() => {
         if (mode === "edit" && template) {
+            const t = template as typeof template & {
+                default_approvers?: number[];
+                default_groups?: string[];
+                escalate_to?: number | null;
+            };
             form.reset({
-                template_name: template.template_name || "",
-                approval_type: template.approval_type,
-                approval_flow_type: template.approval_flow_type || "ALL_REQUIRED",
-                approval_sequence: template.approval_sequence || "PARALLEL",
-                delegation_policy: template.delegation_policy || "DISABLED",
-                allow_self_approval: template.allow_self_approval || false,
-                default_due_days: template.default_due_days || 5,
-                escalation_days: template.escalation_days ?? null,
-                default_threshold: template.default_threshold ?? null,
-                auto_assign_by_role: template.auto_assign_by_role ?? null,
+                template_name: t.template_name || "",
+                approval_type: t.approval_type,
+                approval_flow_type: t.approval_flow_type || "ALL_REQUIRED",
+                approval_sequence: t.approval_sequence || "PARALLEL",
+                delegation_policy: t.delegation_policy || "DISABLED",
+                allow_self_approval: t.allow_self_approval || false,
+                default_due_days: t.default_due_days || 5,
+                escalation_days: t.escalation_days ?? null,
+                default_threshold: t.default_threshold ?? null,
+                auto_assign_by_role: t.auto_assign_by_role ?? null,
+                default_approvers: t.default_approvers ?? [],
+                default_groups: t.default_groups ?? [],
+                escalate_to: t.escalate_to ?? null,
             });
         }
     }, [mode, template, form]);
@@ -160,8 +209,20 @@ export default function ApprovalTemplateFormPage() {
             updateTemplate.mutate(
                 { id: templateId, data: submitData },
                 {
-                    onSuccess: () => {
+                    onSuccess: (updated) => {
                         toast.success("Approval template updated successfully!");
+                        // The backend versions on every content edit — the
+                        // response is a freshly created row with a new id.
+                        // Navigate to it so the URL doesn't leave the user
+                        // pointing at the now-stale prior version.
+                        const newId = (updated as { id?: string })?.id;
+                        if (newId && newId !== templateId) {
+                            navigate({
+                                to: "/ApprovalTemplateForm/edit/$id",
+                                params: { id: newId },
+                                replace: true,
+                            });
+                        }
                     },
                     onError: (err) => {
                         console.error("Update failed:", err);
@@ -240,7 +301,16 @@ export default function ApprovalTemplateFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel required={required.approval_type}>Approval Type</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                    {/* Re-key on the field value so Radix Select shows
+                                        the loaded value after `form.reset()` fires on
+                                        template load. Without this, the trigger renders
+                                        with the placeholder even though `value` is set. */}
+                                    <Select
+                                        key={`approval-type-${field.value ?? "empty"}`}
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                        defaultValue={field.value}
+                                    >
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select approval type" />
@@ -261,6 +331,20 @@ export default function ApprovalTemplateFormPage() {
                                 </FormItem>
                             )}
                         />
+                    </div>
+
+                    {/* Required Approvers — who has to sign off */}
+                    <div className="space-y-3 border-t pt-6">
+                        <div>
+                            <h2 className="text-lg font-semibold">Required Approvers</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Specific people, role groups, or both. Applies in both
+                                simplified and regulated change-control modes — the mode
+                                only affects whether signatures must be collected before
+                                state advances.
+                            </p>
+                        </div>
+                        <ApproversFormBridge form={form} />
                     </div>
 
                     {/* Workflow Rules */}
@@ -525,6 +609,26 @@ export default function ApprovalTemplateFormPage() {
                                 )}
                             />
                         </div>
+
+                        <FormField
+                            control={form.control}
+                            name="escalate_to"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Escalation Target</FormLabel>
+                                    <FormControl>
+                                        <EscalationTargetField
+                                            value={field.value ?? null}
+                                            onChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        User who gets notified when escalation triggers.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
 
                     <div className="flex gap-4 pt-4">

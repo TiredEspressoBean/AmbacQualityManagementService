@@ -63,6 +63,12 @@ def create_new_approval_template_version(
             "ApprovalTemplate version (ISO 9001 4.4 / MIL-HDBK-61A CCB audit trail)."
         )
 
+    # M2M overrides can't be forwarded as `field_updates` to the base
+    # `create_new_version` (Django raises on direct M2M assignment) —
+    # pop them here and apply via `.set()` after the new row exists.
+    approvers_override = field_updates.pop('default_approvers', None)
+    groups_override = field_updates.pop('default_groups', None)
+
     with transaction.atomic():
         # Base handles: row lock, current-version guard, archived guard,
         # scalar field copy (tenant, template_name, approval_type,
@@ -78,12 +84,19 @@ def create_new_approval_template_version(
             **field_updates,
         )
 
-        # Copy M2M: default_approvers
-        # .set(queryset) inserts new through-table rows pointing at the
-        # same User PKs; the old version's through rows are undisturbed.
-        new_version.default_approvers.set(template.default_approvers.all())
-
-        # Copy M2M: default_groups
-        new_version.default_groups.set(template.default_groups.all())
+        # M2M assignment. When the caller passed explicit overrides
+        # (PATCH from the editor with the full intended membership), use
+        # them. Otherwise carry the existing membership forward from the
+        # source version.
+        new_version.default_approvers.set(
+            approvers_override
+            if approvers_override is not None
+            else template.default_approvers.all()
+        )
+        new_version.default_groups.set(
+            groups_override
+            if groups_override is not None
+            else template.default_groups.all()
+        )
 
     return new_version
