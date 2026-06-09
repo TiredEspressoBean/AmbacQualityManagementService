@@ -1,5 +1,5 @@
-import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
-import { z } from "zod";
+import { makeApi, Zodios, ZodiosError, type ZodiosOptions } from "@zodios/core";
+import { z, ZodError } from "zod";
 import qs from "qs";
 
 {{#if imports}}
@@ -127,6 +127,40 @@ headers: {
   }
   return config;
 });
+
+// Surface Zodios response-validation failures in the browser console.
+//
+// Without this hook, schema mismatches (frontend Zod schema rejects a
+// shape the backend actually returned) bubble up to React Query as an
+// opaque rejected promise. The data appears "missing" with no clue
+// why — the failing endpoint and the offending field never make it
+// to the console unless a caller specifically logs them.
+//
+// `ZodiosError` is thrown when response validation fails. Its `cause`
+// is the underlying `ZodError` with the path + reason, and `config`
+// has the request URL. Log both so the failing endpoint is obvious.
+function logZodiosResponseValidation(error: unknown): void {
+  if (error instanceof ZodiosError && error.cause instanceof ZodError) {
+    const method = (error.config?.method ?? "get").toUpperCase();
+    const url = error.config?.url ?? "<unknown>";
+    // eslint-disable-next-line no-console
+    console.error(
+      `[Zodios] Response validation failed for ${method} ${url}`,
+      {
+        issues: error.cause.issues,
+        received: (error as { data?: unknown }).data,
+      },
+    );
+  }
+}
+
+{{options.apiClientName}}.axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    logZodiosResponseValidation(error);
+    return Promise.reject(error);
+  },
+);
 
 export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
 return new Zodios(baseUrl, endpoints, {
