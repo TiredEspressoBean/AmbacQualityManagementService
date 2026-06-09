@@ -572,6 +572,115 @@ class TenantViewSet(viewsets.ModelViewSet):
         )
         return Response(list(users))
 
+    @extend_schema(
+        request=None,
+        responses={
+            202: inline_serializer(
+                name="RegenerateDemoQueued",
+                fields={
+                    "task_id": serializers.CharField(),
+                    "status": serializers.CharField(),
+                    "message": serializers.CharField(),
+                },
+            ),
+            403: {"description": "Refused — slug is not 'demo'."},
+        },
+        description=(
+            "Hard-destructive: wipe the demo tenant's data and reseed from the "
+            "seed_demo command's preset state. Refuses on any tenant whose "
+            "slug isn't 'demo' — defense in depth both here and in the "
+            "service layer. Tenant admins only. Async via Celery; poll "
+            "/regenerate-demo-status/{task_id}/ for completion."
+        ),
+        tags=["Tenants"],
+    )
+    @action(detail=True, methods=["post"], url_path="regenerate-demo-data")
+    def regenerate_demo_data(self, request, slug=None):
+        """Wipe + reseed the demo tenant. Refuses on any other tenant."""
+        from Tracker.services.core.demo_regenerate import DEMO_TENANT_SLUG
+
+        tenant = self.get_object()
+        if tenant.slug != DEMO_TENANT_SLUG:
+            return Response(
+                {"detail": f"Refused: regeneration only supported on slug='{DEMO_TENANT_SLUG}'."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Permission gate: tenant admin or platform staff. The demo
+        # tenant has its own "Tenant Admin" group; staff bypass.
+        user = request.user
+        if not (user.is_staff or user.is_superuser):
+            user_group_names = (
+                user.get_tenant_group_names(tenant)
+                if hasattr(user, "get_tenant_group_names")
+                else set()
+            )
+            if "Tenant Admin" not in user_group_names:
+                return Response(
+                    {"detail": "Tenant Admin role required."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        from uuid import uuid4
+        from django.db import transaction
+        from Tracker.tasks import regenerate_demo_data_task
+
+        task_id = str(uuid4())
+        transaction.on_commit(lambda: regenerate_demo_data_task.apply_async(
+            kwargs={
+                "tenant_id": str(tenant.id),
+                "acting_user_id": user.id,
+            },
+            task_id=task_id,
+        ))
+
+        return Response(
+            {
+                "task_id": task_id,
+                "status": "queued",
+                "message": (
+                    "Demo regeneration queued. Poll "
+                    f"/api/Tenants/{tenant.slug}/regenerate-demo-status/{task_id}/ "
+                    "for completion."
+                ),
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="task_id",
+                location=OpenApiParameter.PATH,
+                type=str,
+                required=True,
+                description="Celery task id from a queued regenerate-demo-data call",
+            ),
+        ],
+        responses={200: {"description": "Task status payload."}},
+        tags=["Tenants"],
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"regenerate-demo-status/(?P<task_id>[^/.]+)",
+    )
+    def regenerate_demo_status(self, request, slug=None, task_id=None):
+        """Poll the status of a queued demo-regeneration job."""
+        from celery.result import AsyncResult
+
+        result = AsyncResult(task_id)
+        payload = {"task_id": task_id, "status": result.status}
+        if result.status == "SUCCESS":
+            payload["result"] = result.result
+        elif result.status == "FAILURE":
+            payload["error"] = str(result.result) if result.result else "Unknown error"
+        elif result.status == "PROGRESS":
+            payload["progress"] = result.info or {}
+        elif result.status == "PENDING":
+            payload["progress"] = {"current": 0, "total": 0, "percent": 0}
+        return Response(payload)
+
 
 # =============================================================================
 # SELF-SERVICE SIGNUP (SaaS)

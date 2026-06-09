@@ -32,6 +32,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useTenant } from "@/hooks/useTenant";
+import { RegenerateDemoCard } from "./RegenerateDemoCard";
 
 const TIMEZONES = [
     { value: "UTC", label: "UTC" },
@@ -217,6 +219,11 @@ export function OrganizationSettingsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Demo-tenant-only tools: regenerate fixture data on demand.
+                The card hides on every other tenant; the backend separately
+                refuses to run on any slug !== 'demo'. */}
+            <DemoToolsSection />
 
             {/* Quick links to related admin surfaces */}
             <Card className="mb-6">
@@ -525,4 +532,14 @@ export function OrganizationSettingsPage() {
             </Card>
         </div>
     );
+}
+
+/** Renders demo-tenant tools only when the current tenant is the demo
+ *  tenant. Gates on slug='demo' to match the backend (and because the
+ *  Tenant.is_demo flag in the schema isn't currently populated on the
+ *  seed row). If is_demo starts getting set, this could relax to either. */
+function DemoToolsSection() {
+    const { data } = useTenant();
+    if (data?.tenant?.slug !== "demo") return null;
+    return <RegenerateDemoCard />;
 }

@@ -35,6 +35,12 @@ function getApprovalDetailLink(approval: any): string {
             return `/quality/capas/${objectId}`;
         case "process":
             return `/process-flow?processId=${objectId}`;
+        case "processchangerequest":
+            return `/quality/change-control/pcrs/${objectId}`;
+        case "processchangeorder":
+            return `/quality/change-control/pcos/${objectId}`;
+        case "processchangenotice":
+            return `/quality/change-control/pcns/${objectId}`;
         default:
             // Fallback - try to construct from content type name
             return `/details/${contentType}/${objectId}`;
@@ -52,7 +58,8 @@ function formatApprovalType(type: string): string {
 export function ApprovalsOverviewPage() {
     const { data: user } = useAuthUser()
     const { data: pendingApprovals, isLoading: pendingLoading } = useMyPendingApprovals()
-    const { data: myRequestsData, isLoading: requestsLoading } = useMySubmittedRequests(user?.id)
+    const userId = user?.id ?? (user as { pk?: number } | undefined)?.pk
+    const { data: myRequestsData, isLoading: requestsLoading } = useMySubmittedRequests(userId)
 
     const myRequests = myRequestsData?.results ?? []
 

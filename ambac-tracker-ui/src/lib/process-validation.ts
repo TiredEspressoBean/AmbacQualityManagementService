@@ -19,10 +19,10 @@ export type ValidationResult = {
   all: ValidationIssue[];
 };
 
-const DECISION_NODE_TYPES = new Set(['decision', 'DecisionNode']);
-const TERMINAL_NODE_TYPES = new Set(['terminal', 'TerminalNode']);
-const START_NODE_TYPES = new Set(['start', 'StartNode']);
-const REWORK_NODE_TYPES = new Set(['rework', 'ReworkNode']);
+const DECISION_NODE_TYPES = new Set(['decision', 'DECISION', 'DecisionNode']);
+const TERMINAL_NODE_TYPES = new Set(['terminal', 'TERMINAL', 'TerminalNode']);
+const START_NODE_TYPES = new Set(['start', 'START', 'StartNode']);
+const REWORK_NODE_TYPES = new Set(['rework', 'REWORK', 'ReworkNode']);
 
 /**
  * Get node name for display in validation messages
@@ -124,38 +124,39 @@ function allPathsTerminate(
   nodeId: string,
   adj: Map<string, Set<string>>,
   terminalIds: Set<string>,
-  memo: Map<string, boolean>
+  memo: Map<string, boolean>,
+  visiting: Set<string> = new Set(),
 ): boolean {
-  // Check memo first
   if (memo.has(nodeId)) {
     return memo.get(nodeId)!;
   }
 
-  // Terminal nodes terminate
   if (terminalIds.has(nodeId)) {
     memo.set(nodeId, true);
     return true;
   }
 
-  const neighbors = adj.get(nodeId);
+  // Cycle back-edge: don't disqualify the path. The loop's actual exit
+  // is checked through the other outgoing edges from cycle members.
+  if (visiting.has(nodeId)) {
+    return true;
+  }
 
-  // No outgoing edges and not terminal = doesn't terminate
+  const neighbors = adj.get(nodeId);
   if (!neighbors || neighbors.size === 0) {
     memo.set(nodeId, false);
     return false;
   }
 
-  // All paths must terminate
-  // Mark as visiting to detect cycles
-  memo.set(nodeId, false);
-
+  visiting.add(nodeId);
   let allTerminate = true;
   for (const neighbor of neighbors) {
-    if (!allPathsTerminate(neighbor, adj, terminalIds, memo)) {
+    if (!allPathsTerminate(neighbor, adj, terminalIds, memo, visiting)) {
       allTerminate = false;
       break;
     }
   }
+  visiting.delete(nodeId);
 
   memo.set(nodeId, allTerminate);
   return allTerminate;

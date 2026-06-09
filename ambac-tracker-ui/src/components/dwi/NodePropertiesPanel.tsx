@@ -16,6 +16,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 
 import { MeasurementSpecEditForm } from "./nodes/MeasurementSpec";
 import { MediaEditForm } from "./nodes/Media";
+import { DocumentLinkEditForm } from "./nodes/DocumentLink";
 import { AttestationCheckpointEditForm } from "./nodes/AttestationCheckpoint";
 import { MeasurementInputEditForm } from "./nodes/MeasurementInput";
 import { TextInputEditForm } from "./nodes/TextInput";
@@ -35,6 +36,7 @@ import { HarvestedComponentCaptureEditForm } from "./nodes/HarvestedComponentCap
 const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
     measurementSpec: MeasurementSpecEditForm,
     media: MediaEditForm,
+    documentLink: DocumentLinkEditForm,
     attestationCheckpoint: AttestationCheckpointEditForm,
     measurementInput: MeasurementInputEditForm,
     textInput: TextInputEditForm,
@@ -56,6 +58,7 @@ const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
 const NODE_LABELS: Record<string, string> = {
     measurementSpec: "Measurement spec",
     media: "Media",
+    documentLink: "Document link",
     attestationCheckpoint: "Attestation",
     measurementInput: "Measurement input",
     textInput: "Text input",

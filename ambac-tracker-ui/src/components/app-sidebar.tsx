@@ -51,10 +51,9 @@ const portalPages: Page[] = [
 
 // Production - MES / shop floor (staff only, collapsible)
 const productionPages = [
-    { name: "WO Control Center", url: "/workorders", icon: LayoutDashboard },
     { name: "Work Orders", url: "/production/work-orders", icon: Factory },
+    { name: "WO Control Center", url: "/workorders", icon: LayoutDashboard },
     { name: "Processes", url: "/editor/processes", icon: Workflow },
-    { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
 ]
 
 // Reman - Remanufacturing operations (staff only, collapsible)
@@ -69,6 +68,8 @@ const qualityPages = [
     { name: "Dashboard", url: "/quality", icon: ShieldCheck },
     { name: "CAPAs", url: "/quality/capas", icon: ClipboardList },
     { name: "Quality Reports", url: "/editor/qualityReports", icon: ClipboardCheck },
+    { name: "Change Control", url: "/quality/change-control", icon: FileSignature },
+    { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },
     { name: "Calibrations", url: "/quality/calibrations", icon: Gauge },
     { name: "Heat Map", url: "/heatmap", icon: Flame },

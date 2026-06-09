@@ -329,6 +329,7 @@ paths:
         schema:
           type: string
           enum:
+          - CAPA_APPROVAL
           - CAPA_CRITICAL
           - CAPA_MAJOR
           - DOCUMENT_RELEASE
@@ -340,6 +341,7 @@ paths:
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
           * `CAPA_CRITICAL` - CAPA Critical
           * `CAPA_MAJOR` - CAPA Major
           * `ECO` - Engineering Change Order
@@ -18010,7 +18012,8 @@ paths:
         name: process
         schema:
           type: string
-        description: Filter steps by process UUID (via ProcessStep)
+          format: uuid
+        description: See partial_update.
       tags:
       - api
       requestBody:
@@ -18080,7 +18083,12 @@ paths:
         name: process
         schema:
           type: string
-        description: Filter steps by process UUID (via ProcessStep)
+          format: uuid
+        description: Process version the edit is scoped to. When supplied, the resulting
+          new Step version is junctioned into that process's ProcessStep row only
+          — the original Step row stays attached to every other process version that
+          references it. Used by the PCR-DRAFT editing flow to keep concurrent PCRs
+          isolated.
       tags:
       - api
       requestBody:
@@ -18192,7 +18200,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Steps'
+                $ref: '#/components/schemas/StepWithResolvedRules'
           description: ''
   /api/Steps/{id}/revisions/:
     post:
@@ -19442,6 +19450,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       parameters:
       - in: query
         name: is_inspection_point
@@ -19504,6 +19517,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       tags:
       - api
       requestBody:
@@ -19537,6 +19555,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       parameters:
       - in: path
         name: id
@@ -19565,6 +19588,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       parameters:
       - in: path
         name: id
@@ -19573,6 +19601,16 @@ paths:
           format: uuid
         description: A UUID string identifying this substep.
         required: true
+      - in: query
+        name: process
+        schema:
+          type: string
+          format: uuid
+        description: Process version this substep edit is scoped to. When supplied
+          and the process is DRAFT, the parent Step is versioned, all substeps are
+          copied to the new Step row (preserving each substep's identity_id), and
+          the edit applies to the cloned substep on that new Step. Sibling PCR drafts
+          referencing the old Step row are unaffected.
       tags:
       - api
       requestBody:
@@ -19605,6 +19643,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       parameters:
       - in: path
         name: id
@@ -19613,6 +19656,16 @@ paths:
           format: uuid
         description: A UUID string identifying this substep.
         required: true
+      - in: query
+        name: process
+        schema:
+          type: string
+          format: uuid
+        description: Process version this substep edit is scoped to. When supplied
+          and the process is DRAFT, the parent Step is versioned, all substeps are
+          copied to the new Step row (preserving each substep's identity_id), and
+          the edit applies to the cloned substep on that new Step. Sibling PCR drafts
+          referencing the old Step row are unaffected.
       tags:
       - api
       requestBody:
@@ -19644,6 +19697,11 @@ paths:
         Filter by `?step=<step_id>` to fetch all substeps belonging to a Step
         (the typical substep-editor query). Default ordering matches the
         operator's working order within the parent Op.
+
+        Multi-PCR isolation: pass `?process=<uuid>` when editing from a PCR
+        DRAFT. The serializer detects the DRAFT context and routes through
+        `create_new_step_version` so the substep edit is isolated to that
+        process's version of the parent Step.
       parameters:
       - in: path
         name: id
@@ -20852,6 +20910,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Tenant'
+          description: ''
+  /api/Tenants/{slug}/regenerate-demo-data/:
+    post:
+      operationId: api_Tenants_regenerate_demo_data_create
+      description: 'Hard-destructive: wipe the demo tenant''s data and reseed from
+        the seed_demo command''s preset state. Refuses on any tenant whose slug isn''t
+        ''demo'' — defense in depth both here and in the service layer. Tenant admins
+        only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion.'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          description: URL-safe identifier, immutable after creation
+        required: true
+      tags:
+      - Tenants
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegenerateDemoQueued'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                description: Refused — slug is not 'demo'.
+          description: ''
+  /api/Tenants/{slug}/regenerate-demo-status/{task_id}/:
+    get:
+      operationId: api_Tenants_regenerate_demo_status_retrieve
+      description: Poll the status of a queued demo-regeneration job.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          description: URL-safe identifier, immutable after creation
+        required: true
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task id from a queued regenerate-demo-data call
+        required: true
+      tags:
+      - Tenants
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Task status payload.
           description: ''
   /api/Tenants/{slug}/suspend/:
     post:
@@ -22976,6 +23095,40 @@ paths:
       description: Poll a queued bulk reconcile job. Mirrors the CSV-import status
         pattern.
       parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from a queued bulk-reconcile
+        required: true
+      tags:
+      - Users
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Task status + result if done
+  /api/User/bulk-reconcile-template/:
+    get:
+      operationId: api_User_bulk_reconcile_template_retrieve
+      description: 'Download a multi-sheet Excel template for bulk-reconcile. Sheets:
+        Data (editable rows — parsed on import), Instructions, Groups (tenant-scoped
+        names — drives Group dropdown), Statuses (Active/Inactive — drives Status
+        dropdown). Pass populate=true to pre-fill the Data sheet with current users.'
+      parameters:
+      - in: query
+        name: populate
+        schema:
+          type: boolean
+        description: If true, pre-fill the Data sheet with the tenant's current users
+          (snapshot-and-edit workflow). Default false returns an empty template (add-new-users
+          workflow).
       - in: path
         name: task_id
         schema:
@@ -27591,6 +27744,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedProcessChangeNoticeList'
           description: ''
+    post:
+      operationId: api_process_change_notices_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
   /api/process-change-notices/{id}/:
     get:
       operationId: api_process_change_notices_retrieve
@@ -27612,6 +27799,48 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+    put:
+      operationId: api_process_change_notices_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27653,6 +27882,118 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/PatchedProcessChangeNoticeRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+    delete:
+      operationId: api_process_change_notices_destroy
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/process-change-notices/{id}/close/:
+    post:
+      operationId: api_process_change_notices_close_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeNotice'
+          description: ''
+  /api/process-change-notices/{id}/release/:
+    post:
+      operationId: api_process_change_notices_release_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeNotice.
+
+        PCNs are created indirectly via PCO implementation — direct POST
+        is disallowed. Lifecycle endpoints:
+
+            POST /api/process-change-notices/{id}/release/  (REGULATED)
+            POST /api/process-change-notices/{id}/close/    {closure_evidence}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Notice.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeNoticeRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27745,6 +28086,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedProcessChangeOrderList'
           description: ''
+    post:
+      operationId: api_process_change_orders_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
   /api/process-change-orders/{id}/:
     get:
       operationId: api_process_change_orders_retrieve
@@ -27771,6 +28151,53 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+    put:
+      operationId: api_process_change_orders_update
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -27827,6 +28254,287 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProcessChangeOrder'
           description: ''
+    delete:
+      operationId: api_process_change_orders_destroy
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/process-change-orders/{id}/affected-workorders/:
+    get:
+      operationId: api_process_change_orders_affected_workorders_retrieve
+      description: |-
+        Per-WO impact summary for the PCO migration picker.
+
+        Returns a list of in-flight WOs with metadata (status, priority,
+        total in-flight parts, parts whose current step is touched by
+        the PCR diff). Drives the `MIGRATE_SELECTED` picker.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-orders/{id}/approve/:
+    post:
+      operationId: api_process_change_orders_approve_create
+      description: |-
+        Submit PCO for approval (REGULATED mode — creates an
+        ApprovalRequest). Once signatures are collected, call
+        `mark-approved` to flip the PCO state.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-orders/{id}/author/:
+    post:
+      operationId: api_process_change_orders_author_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-orders/{id}/cancel/:
+    post:
+      operationId: api_process_change_orders_cancel_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-orders/{id}/implement/:
+    post:
+      operationId: api_process_change_orders_implement_create
+      description: |-
+        CRUD + lifecycle actions for ProcessChangeOrder.
+
+        POs are created indirectly via PCR approval — the POST endpoint
+        is disallowed; PCO comes into existence as a side-effect of
+        approving its parent PCR.
+
+        Lifecycle endpoints:
+            POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+            POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+            POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+            POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+            POST /api/process-change-orders/{id}/cancel/    {reason?}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
+  /api/process-change-orders/{id}/mark-approved/:
+    post:
+      operationId: api_process_change_orders_mark_approved_create
+      description: |-
+        Finalize PCO approval after signatures are collected.
+        Enforces separation of duties (approver != PCO author).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProcessChangeOrderRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeOrder'
+          description: ''
   /api/process-change-requests/:
     get:
       operationId: api_process_change_requests_list
@@ -27839,6 +28547,11 @@ paths:
             POST /api/process-change-requests/{id}/reject/   {reason}
             POST /api/process-change-requests/{id}/cancel/   {reason?}
       parameters:
+      - in: query
+        name: draft_process_version
+        schema:
+          type: string
+          format: uuid
       - name: limit
         required: false
         in: query
@@ -28251,6 +28964,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+  /api/process-change-requests/propose/:
+    post:
+      operationId: api_process_change_requests_propose_create
+      description: Start a PCR by forking a DRAFT process version up-front. The engineer
+        is then redirected to the DRAFT's editor; they make node-level edits and submit
+        the PCR with the diff attached. Replaces the legacy text-only PCR-first flow.
+      tags:
+      - Change Control
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposeProcessChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProposeProcessChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProposeProcessChangeRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposeProcessChangeResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Target process is not in APPROVED status — only approved
+                  processes can be forked into a PCR draft.
           description: ''
   /api/reports/download/:
     post:
@@ -30475,6 +31225,11 @@ components:
           format: date-time
           nullable: true
           description: Null = currently active
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for edit (audit trail). Defaults to a generic descriptor
+            when omitted.
         archived:
           type: boolean
       required:
@@ -30483,6 +31238,7 @@ components:
     ApprovalTypeEnum:
       enum:
       - DOCUMENT_RELEASE
+      - CAPA_APPROVAL
       - CAPA_CRITICAL
       - CAPA_MAJOR
       - ECO
@@ -30494,6 +31250,7 @@ components:
       type: string
       description: |-
         * `DOCUMENT_RELEASE` - Document Release
+        * `CAPA_APPROVAL` - CAPA Approval
         * `CAPA_CRITICAL` - CAPA Critical
         * `CAPA_MAJOR` - CAPA Major
         * `ECO` - Engineering Change Order
@@ -40053,6 +40810,11 @@ components:
           format: date-time
           nullable: true
           description: Null = currently active
+        change_description:
+          type: string
+          writeOnly: true
+          description: Reason for edit (audit trail). Defaults to a generic descriptor
+            when omitted.
         archived:
           type: boolean
     PatchedAssemblyUsageRequest:
@@ -41536,6 +42298,16 @@ components:
           type: boolean
           description: Flag PPAP / customer-flow-down triggers. The actual submission
             is handled outside this system.
+        draft_process_version:
+          type: string
+          format: uuid
+          nullable: true
+          description: DRAFT process version the engineer is authoring against. Forked
+            at PCR creation; PCO inherits this at approval.
+        proposed_change_diff:
+          nullable: true
+          description: Structured diff between target_process and draft_process_version,
+            populated at submit time.
     PatchedProcessWithStepsRequest:
       type: object
       description: |-
@@ -43614,6 +44386,7 @@ components:
         released_by_username:
           type: string
           readOnly: true
+          nullable: true
         closure_evidence:
           type: string
           description: Effectiveness verification narrative recorded at closure. Phase
@@ -43630,6 +44403,7 @@ components:
         closed_by_username:
           type: string
           readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -43670,6 +44444,21 @@ components:
       - target_process_name
       - tenant
       - updated_at
+    ProcessChangeNoticeRequest:
+      type: object
+      description: Read/write serializer for PCNs.
+      properties:
+        notice_content:
+          type: string
+          minLength: 1
+          description: Distributable description of what changed, when it takes effect,
+            and what affected parties need to do.
+        closure_evidence:
+          type: string
+          description: Effectiveness verification narrative recorded at closure. Phase
+            5 will add structured metrics.
+      required:
+      - notice_content
     ProcessChangeNoticeStatusEnum:
       enum:
       - DRAFT
@@ -43751,6 +44540,7 @@ components:
         approved_by_username:
           type: string
           readOnly: true
+          nullable: true
         implemented_at:
           type: string
           format: date-time
@@ -43763,6 +44553,7 @@ components:
         implemented_by_username:
           type: string
           readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -43782,6 +44573,7 @@ components:
           type: string
           format: uuid
           readOnly: true
+          nullable: true
         data_origin:
           allOf:
           - $ref: '#/components/schemas/DataOriginEnum'
@@ -43810,6 +44602,31 @@ components:
       - target_process_name
       - tenant
       - updated_at
+    ProcessChangeOrderRequest:
+      type: object
+      description: |-
+        Read/write serializer for PCOs.
+
+        Implementation actions (author, approve, implement, cancel) flow
+        through @action endpoints. PATCH is limited to authoring fields
+        while in DRAFT status.
+      properties:
+        implementation_plan:
+          type: string
+          minLength: 1
+          description: How the change will be carried out, who is responsible, what
+            artifacts will be modified.
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+          description: Calendar date the change takes effect.
+        migration_disposition:
+          $ref: '#/components/schemas/MigrationDispositionEnum'
+        migration_reason:
+          type: string
+      required:
+      - implementation_plan
     ProcessChangeOrderStatusEnum:
       enum:
       - DRAFT
@@ -43902,6 +44719,7 @@ components:
         submitted_by_username:
           type: string
           readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -43913,6 +44731,7 @@ components:
         created_by_username:
           type: string
           readOnly: true
+          nullable: true
         updated_at:
           type: string
           format: date-time
@@ -43924,10 +44743,21 @@ components:
           type: string
           format: uuid
           readOnly: true
+          nullable: true
         data_origin:
           allOf:
           - $ref: '#/components/schemas/DataOriginEnum'
           readOnly: true
+        draft_process_version:
+          type: string
+          format: uuid
+          nullable: true
+          description: DRAFT process version the engineer is authoring against. Forked
+            at PCR creation; PCO inherits this at approval.
+        proposed_change_diff:
+          nullable: true
+          description: Structured diff between target_process and draft_process_version,
+            populated at submit time.
       required:
       - affected_workorders_count
       - affected_workorders_snapshot
@@ -43987,6 +44817,16 @@ components:
           type: boolean
           description: Flag PPAP / customer-flow-down triggers. The actual submission
             is handled outside this system.
+        draft_process_version:
+          type: string
+          format: uuid
+          nullable: true
+          description: DRAFT process version the engineer is authoring against. Forked
+            at PCR creation; PCO inherits this at approval.
+        proposed_change_diff:
+          nullable: true
+          description: Structured diff between target_process and draft_process_version,
+            populated at submit time.
       required:
       - justification
       - proposed_change
@@ -44471,6 +45311,42 @@ components:
         * `PROCESSING` - Processing
         * `COMPLETED` - Completed
         * `FAILED` - Failed
+    ProposeProcessChangeRequestRequest:
+      type: object
+      properties:
+        target_process_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        proposed_change:
+          type: string
+        justification:
+          type: string
+        risk_analysis:
+          type: string
+        priority:
+          type: string
+          minLength: 1
+        customer_notification_required:
+          type: boolean
+      required:
+      - target_process_id
+    ProposeProcessChangeResponse:
+      type: object
+      properties:
+        pcr_id:
+          type: string
+          format: uuid
+        draft_process_id:
+          type: string
+          format: uuid
+        artifact_number:
+          type: string
+      required:
+      - artifact_number
+      - draft_process_id
+      - pcr_id
     QADocumentsResponse:
       type: object
       properties:
@@ -45441,6 +46317,19 @@ components:
         * `static` - Static — recipients from this rule only
         * `from_payload` - From event — recipients from the event payload
         * `union` - Union — combine event-payload recipients with this rule's
+    RegenerateDemoQueued:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+      required:
+      - message
+      - status
+      - task_id
     RegisterRequest:
       type: object
       properties:
@@ -47794,6 +48683,123 @@ components:
         * `REWORK` - Rework
         * `TIMER` - Timer/Wait
         * `TERMINAL` - Terminal
+    StepWithResolvedRules:
+      type: object
+      description: Step with resolved sampling rules (for flow editor)
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          nullable: true
+        expected_duration:
+          type: string
+          nullable: true
+        part_type:
+          type: string
+          format: uuid
+        part_type_name:
+          type: string
+          readOnly: true
+        part_type_info:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+          readOnly: true
+        active_ruleset:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              nullable: true
+            name:
+              type: string
+              nullable: true
+            rules:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  rule_type:
+                    type: string
+                  value:
+                    type: integer
+                    nullable: true
+                  order:
+                    type: integer
+            fallback_threshold:
+              type: integer
+              nullable: true
+            fallback_duration:
+              type: integer
+              nullable: true
+          readOnly: true
+        fallback_ruleset:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+              nullable: true
+            name:
+              type: string
+              nullable: true
+            rules:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  rule_type:
+                    type: string
+                  value:
+                    type: integer
+                    nullable: true
+                  order:
+                    type: integer
+          readOnly: true
+        sampling_required:
+          type: boolean
+        min_sampling_rate:
+          type: number
+          format: double
+          description: Minimum % of parts that must be sampled at this step
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - active_ruleset
+      - created_at
+      - fallback_ruleset
+      - id
+      - name
+      - part_type
+      - part_type_info
+      - part_type_name
+      - updated_at
     Steps:
       type: object
       description: |-

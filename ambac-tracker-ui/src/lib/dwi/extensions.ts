@@ -18,6 +18,7 @@ import { InspectionSignatures } from "@/components/dwi/nodes/InspectionSignature
 import { ErrorTypesField } from "@/components/dwi/nodes/ErrorTypesField";
 import { PartAnnotation } from "@/components/dwi/nodes/PartAnnotation";
 import { HarvestedComponentCapture } from "@/components/dwi/nodes/HarvestedComponentCapture";
+import { DocumentLink } from "@/components/dwi/nodes/DocumentLink";
 
 /** Shared TipTap extension list — used by both engineer (editable) and
  * operator (editable: false) editors. */
@@ -26,6 +27,7 @@ export const DWI_EXTENSIONS = [
     MeasurementSpec,
     Callout,
     Media,
+    DocumentLink,
     AttestationCheckpoint,
     MeasurementInput,
     TextInput,

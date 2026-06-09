@@ -10,7 +10,6 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { QaProgressSection } from "@/components/qa-progress-section";
-import { QaFormSection } from "@/components/qa-form-section";
 import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
@@ -39,21 +38,12 @@ export function WorkOrderDetailPage() {
         refetch: refetchWorkOrder,
     } = useRetrieveWorkOrder(workOrderId);
 
-    // Fetch parts needing QA (for QA Forms tab)
-    const { data: qaPartsData, isLoading: isLoadingQaParts } = useRetrieveParts({
-        work_order: workOrderId,
-        needs_qa: true,
-        status__in: ["PENDING", "IN_PROGRESS", "AWAITING_QA", "REWORK_NEEDED", "REWORK_IN_PROGRESS", "READY_FOR_NEXT_STEP"],
-        limit: 100,
-    });
-
     // Fetch all parts for overview stats
     const { data: allPartsData, isLoading: isLoadingAllParts } = useRetrieveParts({
         work_order: workOrderId,
         limit: 200,
     });
 
-    const qaParts = qaPartsData?.results || [];
     const allParts = allPartsData?.results || [];
     const isBatchProcess = workOrder?.is_batch_work_order || false;
 
@@ -169,10 +159,9 @@ export function WorkOrderDetailPage() {
                 {/* Left Panel - Work Order Info & Forms */}
                 <ResizablePanel defaultSize={40} minSize={30} className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="overview">Overview</TabsTrigger>
                             <TabsTrigger value="parts">Parts</TabsTrigger>
-                            <TabsTrigger value="qa-forms">QA Forms</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="mt-6 h-full overflow-auto">
@@ -188,17 +177,6 @@ export function WorkOrderDetailPage() {
                                 workOrderId={workOrderId}
                                 onPartSelect={setSelectedPart}
                                 selectedPartId={selectedPart?.id}
-                            />
-                        </TabsContent>
-
-                        <TabsContent value="qa-forms" className="mt-6 h-full overflow-auto">
-                            <QaFormSection
-                                workOrder={workOrder}
-                                parts={qaParts}
-                                isLoadingParts={isLoadingQaParts}
-                                isBatchProcess={isBatchProcess}
-                                selectedPart={selectedPart}
-                                onPartSelect={setSelectedPart}
                             />
                         </TabsContent>
                     </Tabs>

@@ -25,7 +25,11 @@ import { useRetrievePartTypes } from '@/hooks/useRetrievePartTypes';
 import { useApproveProcess } from '@/hooks/useApproveProcess';
 import { useDeprecateProcess } from '@/hooks/useDeprecateProcess';
 import { useDuplicateProcess } from '@/hooks/useDuplicateProcess';
-import { useSearch } from '@tanstack/react-router';
+import { useProposeProcessChange } from '@/hooks/useProposeProcessChange';
+import { usePcrForDraftProcess } from '@/hooks/usePcrForDraftProcess';
+import { SubmitPcrDialog } from '@/components/change-control/SubmitPcrDialog';
+import { usePermissionSet } from '@/hooks/useMyPermissions';
+import { useSearch, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import {
   DEMO_REMANUFACTURING_PROCESS,
@@ -57,6 +61,7 @@ import {
   CheckCircle,
   MoreVertical,
   Copy,
+  FileEdit,
   Archive,
   ShieldCheck,
   Settings,
@@ -103,6 +108,7 @@ function formatDuration(ms: number): string {
 export default function ProcessFlowPage() {
   // Read process ID from URL query param (e.g., /process-flow?id=5)
   const searchParams = useSearch({ strict: false }) as { id?: string };
+  const navigate = useNavigate();
   const initialProcessId = searchParams.id || 'demo';
 
   const [selectedProcessId, setSelectedProcessId] = useState<string>(initialProcessId);
@@ -512,6 +518,34 @@ export default function ProcessFlowPage() {
     }
   }, [processId, duplicateProcess]);
 
+  // "Propose Change" — the PCR-mediated path. Forks a DRAFT process
+  // version and creates a linked PCR row in one transaction; the
+  // engineer edits the DRAFT and submits the PCR with the diff
+  // attached at the end. Different from Duplicate as Template
+  // (which makes an unparented DRAFT with no change-control trail).
+  const proposeChange = useProposeProcessChange();
+  const handleProposeChange = useCallback(async () => {
+    if (!processId) return;
+    try {
+      const resp = await proposeChange.mutateAsync({
+        targetProcessId: processId,
+        // PCR text fields are left blank up-front — the engineer fills
+        // them in on the Submit Change Request modal at the end of
+        // editing, when they can see what they actually changed.
+      });
+      toast.success(`${resp.artifact_number} created — opening draft`, {
+        description: 'Make your changes, then submit the PCR for approval.',
+      });
+      // Navigate to the new DRAFT process editor.
+      setSelectedProcessId(resp.draft_process_id);
+    } catch (error) {
+      console.error('Failed to propose change:', error);
+      toast.error('Could not propose change', {
+        description: error instanceof Error ? error.message : undefined,
+      });
+    }
+  }, [processId, proposeChange]);
+
   const processes = processesData?.results || processesData || [];
 
   // Get current mode info
@@ -520,6 +554,17 @@ export default function ProcessFlowPage() {
   // Get process status and check if editable
   const processStatus = processWithSteps?.status as string | undefined;
   const isProcessEditable = isDemo || processStatus === 'DRAFT';
+
+  // Provenance: is this DRAFT the working copy of an open PCR?
+  const { data: linkedPcr } = usePcrForDraftProcess(
+    processStatus === 'DRAFT' && !isDemo ? processId : undefined,
+  );
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const { has: hasPerm } = usePermissionSet();
+  // Forking a DRAFT + creating a PCR requires both perms (matches
+  // viewset `action_permissions`).
+  const canProposeChange = hasPerm('add_processchangerequest') && hasPerm('add_processes');
+  const canSubmitPcr = hasPerm('change_processchangerequest');
 
   // Allow editing in template mode (both demo and real DRAFT processes)
   const canEdit = (demoMode === 'template' || !isDemo) && isProcessEditable;
@@ -964,16 +1009,36 @@ export default function ProcessFlowPage() {
                       </DropdownMenuItem>
                     )}
 
-                    {/* Duplicate - always available */}
+                    {/* Propose Change - PCR-mediated edit path. Only
+                        offered against APPROVED processes; on DRAFTs the
+                        engineer is already editing freely. */}
+                    {processStatus === 'APPROVED' && canProposeChange && (
+                      <DropdownMenuItem
+                        onClick={handleProposeChange}
+                        disabled={proposeChange.isPending}
+                      >
+                        <FileEdit className="h-4 w-4 mr-2 text-primary" />
+                        <div className="flex flex-col">
+                          <span>Propose Change</span>
+                          <span className="text-xs text-muted-foreground">
+                            File a PCR + fork an editable draft
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    )}
+
+                    {/* Duplicate as Template - free clone, no PCR.
+                        For making a new process based on this one
+                        (e.g., new part_type, new product variant). */}
                     <DropdownMenuItem
                       onClick={handleDuplicate}
                       disabled={duplicateProcess.isPending}
                     >
                       <Copy className="h-4 w-4 mr-2 text-blue-600" />
                       <div className="flex flex-col">
-                        <span>Duplicate</span>
+                        <span>Duplicate as Template</span>
                         <span className="text-xs text-muted-foreground">
-                          Create editable copy
+                          Clone for a new product (no change trail)
                         </span>
                       </div>
                     </DropdownMenuItem>
@@ -1000,6 +1065,53 @@ export default function ProcessFlowPage() {
                 </TabsList>
               </Tabs>
             </div>
+          )}
+
+          {/* PCR provenance banner */}
+          {linkedPcr && (
+            <div className="mt-2 p-3 border rounded-md bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span>
+                  Working draft for{' '}
+                  <span className="font-mono font-medium">
+                    {(linkedPcr as { artifact_number?: string }).artifact_number}
+                  </span>
+                  {(linkedPcr as { status?: string }).status && (
+                    <Badge variant="outline" className="ml-2">
+                      {(linkedPcr as { status: string }).status}
+                    </Badge>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {(linkedPcr as { status?: string }).status === 'DRAFT' && canSubmitPcr && (
+                  <Button
+                    size="sm"
+                    onClick={() => setSubmitDialogOpen(true)}
+                  >
+                    Submit for approval
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const id = (linkedPcr as { id?: string }).id;
+                    if (id) navigate({ to: `/quality/change-control/pcrs/${id}` as never });
+                  }}
+                >
+                  View PCR
+                </Button>
+              </div>
+            </div>
+          )}
+          {linkedPcr && (
+            <SubmitPcrDialog
+              open={submitDialogOpen}
+              onOpenChange={setSubmitDialogOpen}
+              pcr={linkedPcr as Parameters<typeof SubmitPcrDialog>[0]['pcr']}
+            />
           )}
 
           {/* Mode Info Panel */}

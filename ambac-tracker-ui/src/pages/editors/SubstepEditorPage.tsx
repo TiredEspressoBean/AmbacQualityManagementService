@@ -67,6 +67,7 @@ import {
 } from "lucide-react";
 import { QUALITY_REPORT_BUNDLE } from "@/lib/dwi/samples";
 import { withFreshNodeId } from "@/lib/dwi/node-id";
+import { SubstepAuthoringProvider } from "@/components/dwi/shared/SubstepAuthoringContext";
 
 type RouteParams = {
     processId: string;
@@ -91,6 +92,30 @@ type PendingEdits = {
     is_critical?: boolean;
     allow_not_applicable?: boolean;
 };
+
+/**
+ * A new substep the engineer has added but not yet saved. Held purely in
+ * page state until Save Draft creates it server-side. This is the fix for
+ * the bug where "Add substep" was POSTing immediately and leaving empty
+ * substeps behind in the backend when the engineer abandoned the page.
+ *
+ * `tempId` is only used to key the React list and route per-row edits;
+ * it never leaves the client.
+ */
+type PendingCreate = {
+    tempId: string;
+    order: number;
+    title: string;
+    body_blocks: object;
+    is_optional: boolean;
+    requires_signature: boolean;
+    is_inspection_point: boolean;
+    is_critical: boolean;
+    allow_not_applicable: boolean;
+};
+
+let _tempIdCounter = 0;
+const nextTempId = () => `__new_${Date.now()}_${++_tempIdCounter}`;
 
 export function SubstepEditorPage() {
     const params = useParams({ strict: false }) as Partial<RouteParams>;
@@ -121,6 +146,16 @@ export function SubstepEditorPage() {
         Record<string, PendingEdits>
     >({});
 
+    // Locally-staged new substeps. These don't exist on the server until
+    // Save Draft. Editing one mutates the entry in-place; on save we POST
+    // them in order.
+    const [pendingCreates, setPendingCreates] = useState<PendingCreate[]>([]);
+
+    // Substep ids the engineer has marked for deletion. Backend is not
+    // touched until Save Draft. The row stays visible but rendered with a
+    // strikethrough so the change is reviewable before committing.
+    const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+
     // Drag-to-reorder. Same Save-Draft compliance model as body/title/flags:
     // dragging accumulates a `pendingOrder` (string[] of substep ids) and
     // persists only when the engineer clicks Save draft in the header.
@@ -132,10 +167,12 @@ export function SubstepEditorPage() {
     const hasUnsavedChanges = useMemo(
         () =>
             hasPendingOrder ||
+            pendingCreates.length > 0 ||
+            pendingDeletes.size > 0 ||
             Object.values(pendingBySubstepId).some(
                 (p) => p && Object.keys(p).length > 0,
             ),
-        [hasPendingOrder, pendingBySubstepId],
+        [hasPendingOrder, pendingBySubstepId, pendingCreates.length, pendingDeletes],
     );
 
     // beforeunload warning when there are unsaved changes anywhere on the page.
@@ -182,6 +219,17 @@ export function SubstepEditorPage() {
     const create = useCreateSubstep();
     const update = useUpdateSubstep();
     const reorder = useReorderSubsteps();
+    const remove = useDeleteSubstep();
+
+    /** Toggle a substep's "pending delete" state. No backend call. */
+    const togglePendingDelete = useCallback((substepId: string) => {
+        setPendingDeletes((prev) => {
+            const next = new Set(prev);
+            if (next.has(substepId)) next.delete(substepId);
+            else next.add(substepId);
+            return next;
+        });
+    }, []);
 
     if (!stepId) {
         return (
@@ -244,25 +292,69 @@ export function SubstepEditorPage() {
         }
     };
 
-    /** Save everything: per-row pending edits (parallel PATCHes) + the
-     * pending reorder (one POST) in a single user action. */
+    /** Save everything: pending creates (POST), per-row pending edits
+     *  (parallel PATCHes), and the pending reorder (POST) in a single
+     *  user action.
+     *
+     *  Order matters: we POST the new substeps first so their server-side
+     *  ids exist before any reorder that might reference them. Reorder of
+     *  *only* pre-existing substeps is unaffected. */
     const [isSaving, setIsSaving] = useState(false);
     const handleSaveAll = async () => {
         if (!hasUnsavedChanges || !stepId) return;
         setIsSaving(true);
         try {
+            // 1. DELETE pending deletes first so freed order slots are
+            //    available for any subsequent inserts/reorders.
+            const deleteIds = Array.from(pendingDeletes);
+            await Promise.all(deleteIds.map((id) => remove.mutateAsync(id)));
+
+            // 2. POST pending creates sequentially in order. Server enforces
+            //    the (step, order) unique constraint; sending them one at a
+            //    time keeps us out of races with the local order numbers.
+            for (const draft of pendingCreates) {
+                await create.mutateAsync({
+                    step: stepId,
+                    order: draft.order,
+                    title: draft.title,
+                    body_blocks: draft.body_blocks as never,
+                    is_optional: draft.is_optional,
+                    requires_signature: draft.requires_signature,
+                    is_inspection_point: draft.is_inspection_point,
+                    is_critical: draft.is_critical,
+                    allow_not_applicable: draft.allow_not_applicable,
+                } as never);
+            }
+
+            // 3. PATCH per-row edits on still-alive existing substeps. Skip
+            //    any row that's been staged for delete — no point sending an
+            //    edit for a row we're about to drop.
             const rowEntries = Object.entries(pendingBySubstepId).filter(
-                ([, p]) => p && Object.keys(p).length > 0,
+                ([id, p]) =>
+                    p && Object.keys(p).length > 0 && !pendingDeletes.has(id),
             );
             await Promise.all(
                 rowEntries.map(([id, data]) =>
                     update.mutateAsync({ id, data: data as never }),
                 ),
             );
+
+            // 4. Reorder (existing-only — pending creates haven't joined
+            //    pendingOrder since dragging temp rows is disabled). Drop
+            //    any ids that were just deleted so the server payload is
+            //    consistent with the new world.
             if (pendingOrder) {
-                await reorder.mutateAsync({ step: stepId, order: pendingOrder });
+                const finalOrder = pendingOrder.filter(
+                    (id) => !pendingDeletes.has(id),
+                );
+                if (finalOrder.length) {
+                    await reorder.mutateAsync({ step: stepId, order: finalOrder });
+                }
             }
+
             setPendingBySubstepId({});
+            setPendingCreates([]);
+            setPendingDeletes(new Set());
             setPendingOrder(null);
         } finally {
             setIsSaving(false);
@@ -273,69 +365,105 @@ export function SubstepEditorPage() {
         if (!hasUnsavedChanges) return;
         if (
             !window.confirm(
-                "Discard all unsaved changes (substep edits and reorder)? This cannot be undone.",
+                "Discard all unsaved changes (new substeps, edits, deletions, and reorder)? This cannot be undone.",
             )
         )
             return;
         setPendingBySubstepId({});
+        setPendingCreates([]);
+        setPendingDeletes(new Set());
         setPendingOrder(null);
     };
 
+    /** Stage a new substep in local state. Nothing hits the backend until
+     *  Save Draft. Editing the staged row before save mutates the entry
+     *  in pendingCreates directly. */
+    const stageCreate = (
+        seed: Partial<PendingCreate> & Pick<PendingCreate, "title" | "body_blocks">,
+    ) => {
+        const existingOrders = [
+            ...sortedSubsteps.map((s) => s.order),
+            ...pendingCreates.map((p) => p.order),
+        ];
+        const nextOrder = existingOrders.length ? Math.max(...existingOrders) + 1 : 0;
+        const draft: PendingCreate = {
+            tempId: nextTempId(),
+            order: nextOrder,
+            is_optional: false,
+            requires_signature: false,
+            is_inspection_point: false,
+            is_critical: false,
+            allow_not_applicable: false,
+            ...seed,
+        };
+        setPendingCreates((prev) => [...prev, draft]);
+        setExpandedId(draft.tempId);
+    };
+
     const handleAdd = () => {
-        const nextOrder = sortedSubsteps.length
-            ? Math.max(...sortedSubsteps.map((s) => s.order)) + 1
-            : 0;
-        create.mutate(
-            {
-                step: stepId,
-                order: nextOrder,
-                title: `New substep ${nextOrder + 1}`,
-                body_blocks: {
-                    type: "doc",
-                    content: [{ type: "paragraph" }],
-                } as never,
-            },
-            {
-                onSuccess: (created) => setExpandedId(created.id),
-            },
-        );
+        const order =
+            (sortedSubsteps.length || pendingCreates.length
+                ? Math.max(
+                      ...sortedSubsteps.map((s) => s.order),
+                      ...pendingCreates.map((p) => p.order),
+                  ) + 1
+                : 0);
+        stageCreate({
+            title: `New substep ${order + 1}`,
+            body_blocks: { type: "doc", content: [{ type: "paragraph" }] },
+        });
     };
 
     /** Template: a substep configured as an inspection point with the
-     *  minimum capture set seeded. One-click way to author "a substep
-     *  that produces a complete QualityReport." */
+     *  minimum capture set seeded. */
     const handleAddInspection = () => {
-        const nextOrder = sortedSubsteps.length
-            ? Math.max(...sortedSubsteps.map((s) => s.order)) + 1
-            : 0;
-        create.mutate(
-            {
-                step: stepId,
-                order: nextOrder,
-                title: `Inspection ${nextOrder + 1}`,
-                is_inspection_point: true,
-                body_blocks: {
-                    type: "doc",
-                    content: [
-                        {
-                            type: "paragraph",
-                            content: [
-                                { type: "text", text: "Capture the inspection result." },
-                            ],
-                        },
-                        ...QUALITY_REPORT_BUNDLE.map((n) => withFreshNodeId(n)),
-                    ],
-                } as never,
+        const order =
+            (sortedSubsteps.length || pendingCreates.length
+                ? Math.max(
+                      ...sortedSubsteps.map((s) => s.order),
+                      ...pendingCreates.map((p) => p.order),
+                  ) + 1
+                : 0);
+        stageCreate({
+            title: `Inspection ${order + 1}`,
+            is_inspection_point: true,
+            body_blocks: {
+                type: "doc",
+                content: [
+                    {
+                        type: "paragraph",
+                        content: [
+                            { type: "text", text: "Capture the inspection result." },
+                        ],
+                    },
+                    ...QUALITY_REPORT_BUNDLE.map((n) => withFreshNodeId(n)),
+                ],
             },
-            {
-                onSuccess: (created) => setExpandedId(created.id),
-            },
-        );
+        });
     };
 
-    const unsavedCount = Object.keys(pendingBySubstepId).length;
+    /** Apply a patch to a staged (not-yet-saved) substep. */
+    const updatePendingCreate = useCallback(
+        (tempId: string, patch: Partial<PendingCreate>) => {
+            setPendingCreates((prev) =>
+                prev.map((d) => (d.tempId === tempId ? { ...d, ...patch } : d)),
+            );
+        },
+        [],
+    );
+
+    /** Remove a staged substep without ever touching the backend. */
+    const removePendingCreate = useCallback((tempId: string) => {
+        setPendingCreates((prev) => prev.filter((d) => d.tempId !== tempId));
+    }, []);
+
+    const unsavedCount =
+        Object.keys(pendingBySubstepId).length +
+        pendingCreates.length +
+        pendingDeletes.size;
 
     return (
+        <SubstepAuthoringProvider value={{ stepId, processId }}>
         <OperatorResponseContext.Provider value={previewContextValue}>
             <div className="flex h-[calc(100vh-4rem)] flex-col">
                 {/* Header */}
@@ -427,6 +555,8 @@ export function SubstepEditorPage() {
                                     substep={s}
                                     expanded={expandedId === s.id}
                                     pending={pendingBySubstepId[s.id]}
+                                    isPendingDelete={pendingDeletes.has(s.id)}
+                                    onTogglePendingDelete={() => togglePendingDelete(s.id)}
                                     isDragging={draggingId === s.id}
                                     isDragOver={dragOverId === s.id && draggingId !== s.id}
                                     editable={isEditable}
@@ -454,6 +584,27 @@ export function SubstepEditorPage() {
                                         setDraggingId(null);
                                         setDragOverId(null);
                                     }}
+                                />
+                            ))}
+                            {/* Staged (not-yet-saved) substeps. Render at
+                                the bottom, in creation order. Dragging is
+                                disabled for these rows — engineer can save
+                                first, then reorder. */}
+                            {pendingCreates.map((draft) => (
+                                <PendingCreateRow
+                                    key={draft.tempId}
+                                    draft={draft}
+                                    expanded={expandedId === draft.tempId}
+                                    editable={isEditable}
+                                    onToggle={() =>
+                                        setExpandedId(
+                                            expandedId === draft.tempId ? null : draft.tempId,
+                                        )
+                                    }
+                                    onChange={(patch) =>
+                                        updatePendingCreate(draft.tempId, patch)
+                                    }
+                                    onRemove={() => removePendingCreate(draft.tempId)}
                                 />
                             ))}
                             {isEditable && (
@@ -490,6 +641,7 @@ export function SubstepEditorPage() {
                 </div>
             </div>
         </OperatorResponseContext.Provider>
+        </SubstepAuthoringProvider>
     );
 }
 
@@ -501,6 +653,8 @@ function SubstepRow({
     substep,
     expanded,
     pending,
+    isPendingDelete,
+    onTogglePendingDelete,
     isDragging,
     isDragOver,
     editable,
@@ -515,6 +669,8 @@ function SubstepRow({
     substep: Substep;
     expanded: boolean;
     pending: PendingEdits | undefined;
+    isPendingDelete: boolean;
+    onTogglePendingDelete: () => void;
     isDragging: boolean;
     isDragOver: boolean;
     editable: boolean;
@@ -559,7 +715,9 @@ function SubstepRow({
             onDragEnd={onDragEnd}
             className={`rounded-md border bg-card transition ${
                 isDragging ? "opacity-40" : ""
-            } ${isDragOver ? "ring-2 ring-primary" : ""}`}
+            } ${isDragOver ? "ring-2 ring-primary" : ""} ${
+                isPendingDelete ? "border-destructive/60 bg-destructive/5" : ""
+            }`}
         >
             <button
                 type="button"
@@ -570,12 +728,22 @@ function SubstepRow({
                 <span className="w-6 shrink-0 text-sm font-medium text-muted-foreground tabular-nums">
                     {substep.order}.
                 </span>
-                <span className="flex-1 text-sm font-medium">
+                <span
+                    className={
+                        "flex-1 text-sm font-medium " +
+                        (isPendingDelete ? "text-muted-foreground line-through" : "")
+                    }
+                >
                     {displayTitle || (
                         <span className="text-muted-foreground italic">Untitled</span>
                     )}
                 </span>
-                {hasPending && (
+                {isPendingDelete && (
+                    <Badge variant="outline" className="border-destructive/60 text-[10px] text-destructive">
+                        Will delete on save
+                    </Badge>
+                )}
+                {hasPending && !isPendingDelete && (
                     <Badge variant="outline" className="border-amber-500/60 text-[10px] text-amber-600">
                         Unsaved
                     </Badge>
@@ -611,6 +779,8 @@ function SubstepRow({
                     substep={substep}
                     pending={pending}
                     editable={editable}
+                    isPendingDelete={isPendingDelete}
+                    onTogglePendingDelete={onTogglePendingDelete}
                     onPendingChange={onPendingChange}
                 />
             )}
@@ -626,14 +796,17 @@ function SubstepExpandedBody({
     substep,
     pending,
     editable,
+    isPendingDelete,
+    onTogglePendingDelete,
     onPendingChange,
 }: {
     substep: Substep;
     pending: PendingEdits | undefined;
     editable: boolean;
+    isPendingDelete: boolean;
+    onTogglePendingDelete: () => void;
     onPendingChange: (patch: PendingEdits | null) => void;
 }) {
-    const remove = useDeleteSubstep();
 
     // Working copies (show backend value when no pending edit is present).
     const workingTitle = pending?.title ?? substep.title;
@@ -680,18 +853,18 @@ function SubstepExpandedBody({
         [pending, substep, onPendingChange],
     );
 
-    const handleDelete = () => {
-        if (
-            !window.confirm(
-                `Delete substep "${substep.title}"? This cannot be undone.`,
-            )
-        )
-            return;
-        remove.mutate(substep.id, {
-            onSuccess: () => {
+    /** Toggle the row's pending-delete flag. No backend call here — the
+     *  page commits the delete on Save Draft along with all other edits. */
+    const handleToggleDelete = () => {
+        if (!isPendingDelete) {
+            // Marking for delete — drop any pending edits since they're
+            // about to be moot. Reversible (re-clicking restores nothing
+            // but the edit state was already lost on this confirmation).
+            if (pending && Object.keys(pending).length > 0) {
                 onPendingChange(null);
-            },
-        });
+            }
+        }
+        onTogglePendingDelete();
     };
 
     return (
@@ -798,18 +971,24 @@ function SubstepExpandedBody({
                 </div>
 
                 <Button
-                    variant="ghost"
+                    variant={isPendingDelete ? "outline" : "ghost"}
                     size="sm"
-                    onClick={handleDelete}
-                    disabled={remove.isPending || !editable}
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    title={editable ? "Delete substep" : "Locked — Process not in DRAFT"}
+                    onClick={handleToggleDelete}
+                    disabled={!editable}
+                    className={
+                        isPendingDelete
+                            ? "border-destructive/60 text-destructive hover:bg-destructive/10"
+                            : "text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    }
+                    title={
+                        editable
+                            ? isPendingDelete
+                                ? "Undo delete (still pending save)"
+                                : "Mark for deletion (commits on Save draft)"
+                            : "Locked — Process not in DRAFT"
+                    }
                 >
-                    {remove.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Trash2 className="h-4 w-4" />
-                    )}
+                    <Trash2 className="h-4 w-4" />
                 </Button>
             </div>
 
@@ -820,7 +999,7 @@ function SubstepExpandedBody({
             <SubstepEditor
                 key={substep.id /* remount on substep change */}
                 body={workingBody}
-                editable={editable}
+                editable={editable && !isPendingDelete}
                 onChange={(next) => mergePending({ body_blocks: next })}
             />
 
@@ -828,10 +1007,202 @@ function SubstepExpandedBody({
                 page header so one click persists everything as a single
                 logical draft commit (matches authoring compliance model). */}
             <div className="flex items-center justify-end rounded-md border bg-background px-2 py-1 text-xs">
-                <span className={hasPending ? "text-amber-600" : "text-muted-foreground"}>
-                    {hasPending ? "Unsaved changes — Save draft in header" : "Saved"}
+                <span
+                    className={
+                        isPendingDelete
+                            ? "text-destructive"
+                            : hasPending
+                              ? "text-amber-600"
+                              : "text-muted-foreground"
+                    }
+                >
+                    {isPendingDelete
+                        ? "Marked for deletion — Save draft in header to commit"
+                        : hasPending
+                          ? "Unsaved changes — Save draft in header"
+                          : "Saved"}
                 </span>
             </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// PendingCreateRow — staged (not-yet-saved) new substep
+// ============================================================================
+
+/**
+ * Renders a substep that exists only in client state (not on the backend).
+ * Visually similar to SubstepRow but every change is applied directly to
+ * the PendingCreate entry; nothing is PATCHed. On save the parent posts the
+ * draft and this row collapses (replaced by the resulting real Substep).
+ */
+function PendingCreateRow({
+    draft,
+    expanded,
+    editable,
+    onToggle,
+    onChange,
+    onRemove,
+}: {
+    draft: PendingCreate;
+    expanded: boolean;
+    editable: boolean;
+    onToggle: () => void;
+    onChange: (patch: Partial<PendingCreate>) => void;
+    onRemove: () => void;
+}) {
+    return (
+        <div className="rounded-md border border-dashed border-emerald-500/50 bg-emerald-500/5">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-emerald-500/10"
+            >
+                <GripVertical className="h-4 w-4 shrink-0 cursor-not-allowed text-muted-foreground/40" />
+                <span className="w-6 shrink-0 text-sm font-medium text-muted-foreground tabular-nums">
+                    {draft.order}.
+                </span>
+                <span className="flex-1 text-sm font-medium">
+                    {draft.title || (
+                        <span className="text-muted-foreground italic">Untitled</span>
+                    )}
+                </span>
+                <Badge variant="outline" className="border-emerald-500/60 text-[10px] text-emerald-700">
+                    New — unsaved
+                </Badge>
+                {!draft.is_optional && (
+                    <Badge variant="secondary" className="text-[10px]">
+                        Required
+                    </Badge>
+                )}
+                {draft.is_optional && (
+                    <Badge variant="outline" className="text-[10px]">
+                        Optional
+                    </Badge>
+                )}
+                {draft.requires_signature && (
+                    <Badge variant="outline" className="text-[10px]">
+                        <PenLine className="mr-1 h-3 w-3" /> Sign-off
+                    </Badge>
+                )}
+                {draft.is_inspection_point && (
+                    <Badge variant="default" className="bg-amber-600 text-[10px] text-white">
+                        <FlaskConical className="mr-1 h-3 w-3" /> Inspection
+                    </Badge>
+                )}
+                {expanded ? (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                ) : (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+            </button>
+            {expanded && (
+                <div className="space-y-3 border-t bg-muted/10 p-3">
+                    <div className="flex flex-wrap items-center gap-3 rounded-md border bg-background p-2 text-sm">
+                        <div className="flex flex-1 items-center gap-2">
+                            <Label htmlFor={`title-${draft.tempId}`} className="text-xs">
+                                Title
+                            </Label>
+                            <Input
+                                id={`title-${draft.tempId}`}
+                                value={draft.title}
+                                onChange={(e) => onChange({ title: e.target.value })}
+                                disabled={!editable}
+                                className="h-8 text-sm"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`optional-${draft.tempId}`}
+                                checked={draft.is_optional}
+                                disabled={!editable}
+                                onCheckedChange={(v) => onChange({ is_optional: v })}
+                            />
+                            <Label htmlFor={`optional-${draft.tempId}`} className="text-xs">
+                                Optional
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`signature-${draft.tempId}`}
+                                checked={draft.requires_signature}
+                                disabled={!editable}
+                                onCheckedChange={(v) => onChange({ requires_signature: v })}
+                            />
+                            <Label htmlFor={`signature-${draft.tempId}`} className="text-xs">
+                                Sign-off
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`inspection-${draft.tempId}`}
+                                checked={draft.is_inspection_point}
+                                disabled={!editable}
+                                onCheckedChange={(v) => onChange({ is_inspection_point: v })}
+                            />
+                            <Label htmlFor={`inspection-${draft.tempId}`} className="text-xs">
+                                Inspection point
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`critical-${draft.tempId}`}
+                                checked={draft.is_critical}
+                                disabled={!editable}
+                                onCheckedChange={(v) => {
+                                    const patch: Partial<PendingCreate> = { is_critical: v };
+                                    if (v) patch.allow_not_applicable = false;
+                                    onChange(patch);
+                                }}
+                            />
+                            <Label htmlFor={`critical-${draft.tempId}`} className="text-xs">
+                                Critical
+                            </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Switch
+                                id={`allow-na-${draft.tempId}`}
+                                checked={draft.allow_not_applicable}
+                                disabled={!editable || draft.is_critical}
+                                onCheckedChange={(v) => onChange({ allow_not_applicable: v })}
+                            />
+                            <Label
+                                htmlFor={`allow-na-${draft.tempId}`}
+                                className={
+                                    "text-xs " +
+                                    (draft.is_critical ? "text-muted-foreground line-through" : "")
+                                }
+                            >
+                                Allow N/A
+                            </Label>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onRemove}
+                            disabled={!editable}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            title="Discard this unsaved substep"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    <SubstepEditor
+                        key={draft.tempId}
+                        body={draft.body_blocks}
+                        editable={editable}
+                        onChange={(next) => onChange({ body_blocks: next as object })}
+                    />
+
+                    <div className="flex items-center justify-end rounded-md border bg-background px-2 py-1 text-xs">
+                        <span className="text-emerald-700">
+                            New — will be created on Save draft
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

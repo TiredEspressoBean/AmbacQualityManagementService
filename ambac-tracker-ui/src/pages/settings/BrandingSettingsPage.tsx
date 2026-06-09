@@ -4,10 +4,10 @@ import { z } from "zod";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Palette, Upload, X, Loader2, RotateCcw } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTenantSettings } from "@/hooks/useTenantSettings";
-import { generateBrandPalette } from "@/lib/color-utils";
+import { applyBrandingColors, DEFAULT_TINT_STRENGTH, generateBrandPalette } from "@/lib/color-utils";
 import { useUpdateTenantSettings } from "@/hooks/useUpdateTenantSettings";
 import { useUploadTenantLogo, useDeleteTenantLogo } from "@/hooks/useUploadTenantLogo";
 import { DEFAULT_BRANDING } from "@/lib/branding";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 import {
     Form,
     FormControl,
@@ -54,6 +55,7 @@ const formSchema = z.object({
     primary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color"),
     secondary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color").optional().or(z.literal("")),
     theme_mode: z.enum(["light", "dark", "system"]),
+    tint_strength: z.number().min(0).max(1),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -69,22 +71,40 @@ export function BrandingSettingsPage() {
     // Extract branding from settings
     const branding = (settings?.settings as Record<string, unknown>)?.branding as Record<string, string> | undefined;
 
+    const storedTintStrength = (() => {
+        const raw = branding?.tint_strength as unknown;
+        const num = typeof raw === "number" ? raw : typeof raw === "string" ? parseFloat(raw) : NaN;
+        return Number.isFinite(num) ? Math.max(0, Math.min(1, num)) : DEFAULT_TINT_STRENGTH;
+    })();
+
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         values: {
             primary_color: branding?.primary_color || DEFAULT_PRIMARY_COLOR,
             secondary_color: branding?.secondary_color || "",
             theme_mode: (branding?.theme_mode as "light" | "dark" | "system") || "system",
+            tint_strength: storedTintStrength,
         },
     });
 
     const watchedPrimaryColor = form.watch("primary_color");
     const watchedSecondaryColor = form.watch("secondary_color");
+    const watchedTintStrength = form.watch("tint_strength");
 
     // Generate palette preview from the watched colors
     const palette = useMemo(() => {
         return generateBrandPalette(watchedPrimaryColor, watchedSecondaryColor || undefined);
     }, [watchedPrimaryColor, watchedSecondaryColor]);
+
+    // Live-apply branding to the whole app while the user is editing so they
+    // see warm/cool atmospheric tints on every surface, not just the preview card.
+    useEffect(() => {
+        applyBrandingColors(
+            watchedPrimaryColor,
+            watchedSecondaryColor || undefined,
+            watchedTintStrength,
+        );
+    }, [watchedPrimaryColor, watchedSecondaryColor, watchedTintStrength]);
 
     const onSubmit = async (values: FormValues) => {
         try {
@@ -96,6 +116,7 @@ export function BrandingSettingsPage() {
                         primary_color: values.primary_color,
                         secondary_color: values.secondary_color || undefined,
                         theme_mode: values.theme_mode,
+                        tint_strength: values.tint_strength,
                     },
                 },
             });
@@ -149,6 +170,7 @@ export function BrandingSettingsPage() {
     const handleResetColors = () => {
         form.setValue("primary_color", DEFAULT_PRIMARY_COLOR);
         form.setValue("secondary_color", "");
+        form.setValue("tint_strength", DEFAULT_TINT_STRENGTH);
     };
 
     if (isError) {
@@ -204,7 +226,7 @@ export function BrandingSettingsPage() {
                                 <img
                                     src={currentLogoUrl}
                                     alt="Organization logo"
-                                    className="h-20 w-20 rounded-lg object-contain border bg-white"
+                                    className="h-20 w-20 rounded-lg object-contain border"
                                 />
                                 {(uploadLogo.isPending || deleteLogo.isPending) && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
@@ -377,6 +399,34 @@ export function BrandingSettingsPage() {
                                             </div>
                                             <FormDescription>
                                                 Used for secondary buttons and accents. Leave empty to auto-generate from primary.
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="tint_strength"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel>Surface Tint</FormLabel>
+                                                <span className="text-xs font-mono text-muted-foreground">
+                                                    {Math.round(field.value * 100)}%
+                                                </span>
+                                            </div>
+                                            <FormControl>
+                                                <Slider
+                                                    min={0}
+                                                    max={100}
+                                                    step={1}
+                                                    value={[Math.round(field.value * 100)]}
+                                                    onValueChange={(v) => field.onChange((v[0] ?? 0) / 100)}
+                                                />
+                                            </FormControl>
+                                            <FormDescription>
+                                                How much your brand hue bleeds into atmospheric surfaces — page background, cards, sidebar, borders. 0% = pure gray neutrals. 100% = maximum warm/cool feel.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

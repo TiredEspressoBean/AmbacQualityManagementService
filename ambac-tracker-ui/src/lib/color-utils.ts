@@ -261,7 +261,20 @@ const BRAND_VARIABLES = [
     "--brand-secondary-foreground-dark",
     "--brand-secondary-accent-light",
     "--brand-secondary-accent-dark",
+    // Tinted neutrals (atmospheric surfaces — keyed off brand hue)
+    "--brand-bg-light",
+    "--brand-bg-dark",
+    "--brand-card-light",
+    "--brand-card-dark",
+    "--brand-sidebar-light",
+    "--brand-sidebar-dark",
+    "--brand-muted-light",
+    "--brand-muted-dark",
+    "--brand-border-light",
+    "--brand-border-dark",
 ] as const;
+
+export const DEFAULT_TINT_STRENGTH = 0.5;
 
 /**
  * Apply tenant branding colors to CSS variables.
@@ -269,7 +282,8 @@ const BRAND_VARIABLES = [
  */
 export function applyBrandingColors(
     primaryColor: string | undefined,
-    secondaryColor?: string | undefined
+    secondaryColor?: string | undefined,
+    tintStrength: number = DEFAULT_TINT_STRENGTH,
 ): void {
     if (!primaryColor) return;
 
@@ -277,6 +291,21 @@ export function applyBrandingColors(
     if (!palette) return;
 
     const root = document.documentElement;
+    const t = Math.max(0, Math.min(1, tintStrength));
+    const hue = palette.hue;
+
+    // Tinted neutrals — atmospheric surfaces (background, card, sidebar, muted, border)
+    // Low chroma scaled by tint strength. At t=0 these are effectively gray.
+    root.style.setProperty("--brand-bg-light",      formatOklch(0.99, 0.012 * t, hue));
+    root.style.setProperty("--brand-card-light",    formatOklch(0.98, 0.018 * t, hue));
+    root.style.setProperty("--brand-sidebar-light", formatOklch(0.97, 0.024 * t, hue));
+    root.style.setProperty("--brand-muted-light",   formatOklch(0.96, 0.030 * t, hue));
+    root.style.setProperty("--brand-border-light",  formatOklch(0.92, 0.036 * t, hue));
+    root.style.setProperty("--brand-bg-dark",       formatOklch(0.14, 0.018 * t, hue));
+    root.style.setProperty("--brand-card-dark",     formatOklch(0.21, 0.024 * t, hue));
+    root.style.setProperty("--brand-sidebar-dark",  formatOklch(0.21, 0.030 * t, hue));
+    root.style.setProperty("--brand-muted-dark",    formatOklch(0.27, 0.036 * t, hue));
+    root.style.setProperty("--brand-border-dark",   formatOklch(0.35, 0.042 * t, hue));
 
     // Set primary brand variables
     root.style.setProperty("--brand-primary-light", palette.light.primary);

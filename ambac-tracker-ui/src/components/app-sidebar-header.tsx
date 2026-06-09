@@ -48,7 +48,7 @@ export function AppSidebarHeader() {
         <img
             src={tenant.logo_url}
             alt={tenant.name}
-            className="size-9 rounded-lg object-contain bg-white p-0.5"
+            className="size-9 rounded-lg object-contain"
         />
     ) : (
         <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-9 items-center justify-center rounded-lg">
@@ -137,7 +137,7 @@ export function AppSidebarHeader() {
                                 <img
                                     src={t.logo_url}
                                     alt={t.name}
-                                    className="size-6 rounded object-contain bg-white"
+                                    className="size-6 rounded object-contain"
                                 />
                             ) : (
                                 <div className="size-6 rounded bg-muted flex items-center justify-center">

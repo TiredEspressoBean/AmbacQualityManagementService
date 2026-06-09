@@ -139,6 +139,7 @@ export type ApprovalStatusEnum =
 export type ApprovalTypeEnum =
   /**
    * * `DOCUMENT_RELEASE` - Document Release
+   * `CAPA_APPROVAL` - CAPA Approval
    * `CAPA_CRITICAL` - CAPA Critical
    * `CAPA_MAJOR` - CAPA Major
    * `ECO` - Engineering Change Order
@@ -148,9 +149,10 @@ export type ApprovalTypeEnum =
    * `PCO_APPROVAL` - Process Change Order Approval
    * `PCN_RELEASE` - Process Change Notice Release
    *
-   * @enum DOCUMENT_RELEASE, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE
+   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE
    */
   | "DOCUMENT_RELEASE"
+  | "CAPA_APPROVAL"
   | "CAPA_CRITICAL"
   | "CAPA_MAJOR"
   | "ECO"
@@ -417,6 +419,10 @@ export type ApprovalTemplateRequest = {
      */
     (string | null)
     | undefined;
+  change_description?: /**
+   * Reason for edit (audit trail). Defaults to a generic descriptor when omitted.
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type AuditLog = {
@@ -4319,14 +4325,14 @@ export type ProcessChangeNotice = {
   notice_content: string;
   released_at: string | null;
   released_by: number | null;
-  released_by_username: string;
+  released_by_username: string | null;
   closure_evidence?: /**
    * Effectiveness verification narrative recorded at closure. Phase 5 will add structured metrics.
    */
   string | undefined;
   closed_at: string | null;
   closed_by: number | null;
-  closed_by_username: string;
+  closed_by_username: string | null;
   created_at: string;
   created_by: number | null;
   updated_at: string;
@@ -4400,15 +4406,15 @@ export type ProcessChangeOrder = {
   migrated_workorder_ids: unknown;
   approved_at: string | null;
   approved_by: number | null;
-  approved_by_username: string;
+  approved_by_username: string | null;
   implemented_at: string | null;
   implemented_by: number | null;
-  implemented_by_username: string;
+  implemented_by_username: string | null;
   created_at: string;
   created_by: number | null;
   updated_at: string;
   is_open: boolean;
-  notice_id: string;
+  notice_id: string | null;
   data_origin: DataOriginEnum;
 };
 export type ProcessChangeOrderStatusEnum =
@@ -4494,14 +4500,24 @@ export type ProcessChangeRequest = {
   rejected_reason: string;
   submitted_at: string | null;
   submitted_by: number | null;
-  submitted_by_username: string;
+  submitted_by_username: string | null;
   created_at: string;
   created_by: number | null;
-  created_by_username: string;
+  created_by_username: string | null;
   updated_at: string;
   is_open: boolean;
-  order_id: string;
+  order_id: string | null;
   data_origin: DataOriginEnum;
+  draft_process_version?:
+    | /**
+     * DRAFT process version the engineer is authoring against. Forked at PCR creation; PCO inherits this at approval.
+     */
+    (string | null)
+    | undefined;
+  proposed_change_diff?: /**
+   * Structured diff between target_process and draft_process_version, populated at submit time.
+   */
+  unknown | undefined;
 };
 export type ProcessChangeStatusEnum =
   /**
@@ -7630,6 +7646,10 @@ export type PatchedApprovalTemplateRequest = Partial<{
    * Null = currently active
    */
   deactivated_at: string | null;
+  /**
+   * Reason for edit (audit trail). Defaults to a generic descriptor when omitted.
+   */
+  change_description: string;
   archived: boolean;
 }>;
 export type PatchedBOMRequest = Partial<{
@@ -8348,6 +8368,14 @@ export type PatchedProcessChangeRequestRequest = Partial<{
    * Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system.
    */
   customer_notification_required: boolean;
+  /**
+   * DRAFT process version the engineer is authoring against. Forked at PCR creation; PCO inherits this at approval.
+   */
+  draft_process_version: string | null;
+  /**
+   * Structured diff between target_process and draft_process_version, populated at submit time.
+   */
+  proposed_change_diff: unknown;
 }>;
 export type PatchedProcessWithStepsRequest = Partial<{
   /**
@@ -9353,6 +9381,22 @@ export type PersonalScheduleRequest = {
    */
   unknown | undefined;
 };
+export type ProcessChangeOrderRequest = {
+  /**
+   * How the change will be carried out, who is responsible, what artifacts will be modified.
+   *
+   * @minLength 1
+   */
+  implementation_plan: string;
+  effective_date?:
+    | /**
+     * Calendar date the change takes effect.
+     */
+    (string | null)
+    | undefined;
+  migration_disposition?: MigrationDispositionEnum | undefined;
+  migration_reason?: string | undefined;
+};
 export type ProcessChangeRequestRequest = {
   priority?: ChangeControlPriorityEnum | undefined;
   /**
@@ -9383,6 +9427,16 @@ export type ProcessChangeRequestRequest = {
    * Flag PPAP / customer-flow-down triggers. The actual submission is handled outside this system.
    */
   boolean | undefined;
+  draft_process_version?:
+    | /**
+     * DRAFT process version the engineer is authoring against. Forked at PCR creation; PCO inherits this at approval.
+     */
+    (string | null)
+    | undefined;
+  proposed_change_diff?: /**
+   * Structured diff between target_process and draft_process_version, populated at submit time.
+   */
+  unknown | undefined;
 };
 export type ProcessSPC = {
   id: string;
@@ -10991,6 +11045,7 @@ const ApprovalStatusEnum = z.enum([
 ]);
 const ApprovalTypeEnum = z.enum([
   "DOCUMENT_RELEASE",
+  "CAPA_APPROVAL",
   "CAPA_CRITICAL",
   "CAPA_MAJOR",
   "ECO",
@@ -11211,6 +11266,7 @@ const ApprovalTemplateRequest = z.object({
   escalation_days: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
   escalate_to: z.number().int().nullish(),
   deactivated_at: z.string().datetime({ offset: true }).nullish(),
+  change_description: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedApprovalTemplateRequest = z
@@ -11239,6 +11295,7 @@ const PatchedApprovalTemplateRequest = z
       .nullable(),
     escalate_to: z.number().int().nullable(),
     deactivated_at: z.string().datetime({ offset: true }).nullable(),
+    change_description: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -14559,6 +14616,57 @@ const PatchedStepsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const StepWithResolvedRules = z.object({
+  id: z.string().uuid(),
+  name: z.string().max(50),
+  description: z.string().nullish(),
+  expected_duration: z.string().nullish(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  part_type_info: z
+    .object({ id: z.string().uuid(), name: z.string() })
+    .partial(),
+  active_ruleset: z
+    .object({
+      id: z.string().uuid().nullable(),
+      name: z.string().nullable(),
+      rules: z.array(
+        z
+          .object({
+            id: z.string().uuid(),
+            rule_type: z.string(),
+            value: z.number().int().nullable(),
+            order: z.number().int(),
+          })
+          .partial()
+      ),
+      fallback_threshold: z.number().int().nullable(),
+      fallback_duration: z.number().int().nullable(),
+    })
+    .partial(),
+  fallback_ruleset: z
+    .object({
+      id: z.string().uuid().nullable(),
+      name: z.string().nullable(),
+      rules: z.array(
+        z
+          .object({
+            id: z.string().uuid(),
+            rule_type: z.string(),
+            value: z.number().int().nullable(),
+            order: z.number().int(),
+          })
+          .partial()
+      ),
+    })
+    .partial()
+    .nullable(),
+  sampling_required: z.boolean().optional(),
+  min_sampling_rate: z.number().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
 const CreateStepRevisionInputRequest = z.object({
   change_description: z.string().min(1),
 });
@@ -15050,6 +15158,11 @@ const PatchedTenantRequest = z
     default_timezone: z.string().min(1).max(50),
   })
   .partial();
+const RegenerateDemoQueued = z.object({
+  task_id: z.string(),
+  status: z.string(),
+  message: z.string(),
+});
 const ProcessingStatusEnum = z.enum([
   "PENDING",
   "PROCESSING",
@@ -16446,11 +16559,11 @@ const ProcessChangeNotice = z.object({
   notice_content: z.string(),
   released_at: z.string().datetime({ offset: true }).nullable(),
   released_by: z.number().int().nullable(),
-  released_by_username: z.string(),
+  released_by_username: z.string().nullable(),
   closure_evidence: z.string().optional(),
   closed_at: z.string().datetime({ offset: true }).nullable(),
   closed_by: z.number().int().nullable(),
-  closed_by_username: z.string(),
+  closed_by_username: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   created_by: z.number().int().nullable(),
   updated_at: z.string().datetime({ offset: true }),
@@ -16462,6 +16575,10 @@ const PaginatedProcessChangeNoticeList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(ProcessChangeNotice),
+});
+const ProcessChangeNoticeRequest = z.object({
+  notice_content: z.string().min(1),
+  closure_evidence: z.string().optional(),
 });
 const PatchedProcessChangeNoticeRequest = z
   .object({ notice_content: z.string().min(1), closure_evidence: z.string() })
@@ -16496,15 +16613,15 @@ const ProcessChangeOrder = z.object({
   migrated_workorder_ids: z.unknown(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
   approved_by: z.number().int().nullable(),
-  approved_by_username: z.string(),
+  approved_by_username: z.string().nullable(),
   implemented_at: z.string().datetime({ offset: true }).nullable(),
   implemented_by: z.number().int().nullable(),
-  implemented_by_username: z.string(),
+  implemented_by_username: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   created_by: z.number().int().nullable(),
   updated_at: z.string().datetime({ offset: true }),
   is_open: z.boolean(),
-  notice_id: z.string().uuid(),
+  notice_id: z.string().uuid().nullable(),
   data_origin: DataOriginEnum,
 });
 const PaginatedProcessChangeOrderList = z.object({
@@ -16512,6 +16629,12 @@ const PaginatedProcessChangeOrderList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(ProcessChangeOrder),
+});
+const ProcessChangeOrderRequest = z.object({
+  implementation_plan: z.string().min(1),
+  effective_date: z.string().nullish(),
+  migration_disposition: MigrationDispositionEnum.optional(),
+  migration_reason: z.string().optional(),
 });
 const PatchedProcessChangeOrderRequest = z
   .object({
@@ -16549,14 +16672,16 @@ const ProcessChangeRequest = z.object({
   rejected_reason: z.string(),
   submitted_at: z.string().datetime({ offset: true }).nullable(),
   submitted_by: z.number().int().nullable(),
-  submitted_by_username: z.string(),
+  submitted_by_username: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   created_by: z.number().int().nullable(),
-  created_by_username: z.string(),
+  created_by_username: z.string().nullable(),
   updated_at: z.string().datetime({ offset: true }),
   is_open: z.boolean(),
-  order_id: z.string().uuid(),
+  order_id: z.string().uuid().nullable(),
   data_origin: DataOriginEnum,
+  draft_process_version: z.string().uuid().nullish(),
+  proposed_change_diff: z.unknown().nullish(),
 });
 const PaginatedProcessChangeRequestList = z.object({
   count: z.number().int(),
@@ -16572,6 +16697,8 @@ const ProcessChangeRequestRequest = z.object({
   risk_analysis: z.string().min(1),
   target_process: z.string().uuid(),
   customer_notification_required: z.boolean().optional(),
+  draft_process_version: z.string().uuid().nullish(),
+  proposed_change_diff: z.unknown().nullish(),
 });
 const PatchedProcessChangeRequestRequest = z
   .object({
@@ -16582,8 +16709,24 @@ const PatchedProcessChangeRequestRequest = z
     risk_analysis: z.string().min(1),
     target_process: z.string().uuid(),
     customer_notification_required: z.boolean(),
+    draft_process_version: z.string().uuid().nullable(),
+    proposed_change_diff: z.unknown().nullable(),
   })
   .partial();
+const ProposeProcessChangeRequestRequest = z.object({
+  target_process_id: z.string().uuid(),
+  title: z.string().optional(),
+  proposed_change: z.string().optional(),
+  justification: z.string().optional(),
+  risk_analysis: z.string().optional(),
+  priority: z.string().min(1).optional(),
+  customer_notification_required: z.boolean().optional(),
+});
+const ProposeProcessChangeResponse = z.object({
+  pcr_id: z.string().uuid(),
+  draft_process_id: z.string().uuid(),
+  artifact_number: z.string(),
+});
 const GenerateReportRequest = z.object({
   report_type: z.string().min(1),
   params: z.object({}).partial().passthrough().optional(),
@@ -17547,6 +17690,7 @@ export const schemas = {
   PaginatedStepsList,
   StepsRequest,
   PatchedStepsRequest,
+  StepWithResolvedRules,
   CreateStepRevisionInputRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
@@ -17594,6 +17738,7 @@ export const schemas = {
   TenantCreate,
   TenantRequest,
   PatchedTenantRequest,
+  RegenerateDemoQueued,
   ProcessingStatusEnum,
   ThreeDModel,
   PaginatedThreeDModelList,
@@ -17763,11 +17908,13 @@ export const schemas = {
   DataOriginEnum,
   ProcessChangeNotice,
   PaginatedProcessChangeNoticeList,
+  ProcessChangeNoticeRequest,
   PatchedProcessChangeNoticeRequest,
   ProcessChangeOrderStatusEnum,
   MigrationDispositionEnum,
   ProcessChangeOrder,
   PaginatedProcessChangeOrderList,
+  ProcessChangeOrderRequest,
   PatchedProcessChangeOrderRequest,
   ProcessChangeStatusEnum,
   ChangeControlPriorityEnum,
@@ -17775,6 +17922,8 @@ export const schemas = {
   PaginatedProcessChangeRequestList,
   ProcessChangeRequestRequest,
   PatchedProcessChangeRequestRequest,
+  ProposeProcessChangeRequestRequest,
+  ProposeProcessChangeResponse,
   GenerateReportRequest,
   GenerateReportResponse,
   GeneratedReportStatusEnum,
@@ -18193,6 +18342,7 @@ POST: Executes the query.`,
         type: "Query",
         schema: z
           .enum([
+            "CAPA_APPROVAL",
             "CAPA_CRITICAL",
             "CAPA_MAJOR",
             "DOCUMENT_RELEASE",
@@ -28485,6 +28635,27 @@ is disallowed. Lifecycle endpoints:
     response: PaginatedProcessChangeNoticeList,
   },
   {
+    method: "post",
+    path: "/api/process-change-notices/",
+    alias: "api_process_change_notices_create",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeNoticeRequest,
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
     method: "get",
     path: "/api/process-change-notices/:id/",
     alias: "api_process_change_notices_retrieve",
@@ -28497,6 +28668,32 @@ is disallowed. Lifecycle endpoints:
     POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
+    method: "put",
+    path: "/api/process-change-notices/:id/",
+    alias: "api_process_change_notices_update",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeNoticeRequest,
+      },
       {
         name: "id",
         type: "Path",
@@ -28522,6 +28719,79 @@ is disallowed. Lifecycle endpoints:
         name: "body",
         type: "Body",
         schema: PatchedProcessChangeNoticeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
+    method: "delete",
+    path: "/api/process-change-notices/:id/",
+    alias: "api_process_change_notices_destroy",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/process-change-notices/:id/close/",
+    alias: "api_process_change_notices_close_create",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeNoticeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeNotice,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-notices/:id/release/",
+    alias: "api_process_change_notices_release_create",
+    description: `CRUD + lifecycle actions for ProcessChangeNotice.
+
+PCNs are created indirectly via PCO implementation — direct POST
+is disallowed. Lifecycle endpoints:
+
+    POST /api/process-change-notices/{id}/release/  (REGULATED)
+    POST /api/process-change-notices/{id}/close/    {closure_evidence}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeNoticeRequest,
       },
       {
         name: "id",
@@ -28593,6 +28863,32 @@ Lifecycle endpoints:
     response: PaginatedProcessChangeOrderList,
   },
   {
+    method: "post",
+    path: "/api/process-change-orders/",
+    alias: "api_process_change_orders_create",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
     method: "get",
     path: "/api/process-change-orders/:id/",
     alias: "api_process_change_orders_retrieve",
@@ -28610,6 +28906,37 @@ Lifecycle endpoints:
     POST /api/process-change-orders/{id}/cancel/    {reason?}`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "put",
+    path: "/api/process-change-orders/:id/",
+    alias: "api_process_change_orders_update",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
       {
         name: "id",
         type: "Path",
@@ -28650,6 +28977,187 @@ Lifecycle endpoints:
     response: ProcessChangeOrder,
   },
   {
+    method: "delete",
+    path: "/api/process-change-orders/:id/",
+    alias: "api_process_change_orders_destroy",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/process-change-orders/:id/affected-workorders/",
+    alias: "api_process_change_orders_affected_workorders_retrieve",
+    description: `Per-WO impact summary for the PCO migration picker.
+
+Returns a list of in-flight WOs with metadata (status, priority,
+total in-flight parts, parts whose current step is touched by
+the PCR diff). Drives the &#x60;MIGRATE_SELECTED&#x60; picker.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-orders/:id/approve/",
+    alias: "api_process_change_orders_approve_create",
+    description: `Submit PCO for approval (REGULATED mode — creates an
+ApprovalRequest). Once signatures are collected, call
+&#x60;mark-approved&#x60; to flip the PCO state.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-orders/:id/author/",
+    alias: "api_process_change_orders_author_create",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-orders/:id/cancel/",
+    alias: "api_process_change_orders_cancel_create",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-orders/:id/implement/",
+    alias: "api_process_change_orders_implement_create",
+    description: `CRUD + lifecycle actions for ProcessChangeOrder.
+
+POs are created indirectly via PCR approval — the POST endpoint
+is disallowed; PCO comes into existence as a side-effect of
+approving its parent PCR.
+
+Lifecycle endpoints:
+    POST /api/process-change-orders/{id}/author/    {implementation_plan?, effective_date?}
+    POST /api/process-change-orders/{id}/approve/   (REGULATED — creates ApprovalRequest)
+    POST /api/process-change-orders/{id}/mark-approved/  (used post-signature collection)
+    POST /api/process-change-orders/{id}/implement/ {migration_disposition, ...}
+    POST /api/process-change-orders/{id}/cancel/    {reason?}`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-orders/:id/mark-approved/",
+    alias: "api_process_change_orders_mark_approved_create",
+    description: `Finalize PCO approval after signatures are collected.
+Enforces separation of duties (approver !&#x3D; PCO author).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProcessChangeOrderRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeOrder,
+  },
+  {
     method: "get",
     path: "/api/process-change-requests/",
     alias: "api_process_change_requests_list",
@@ -28662,6 +29170,11 @@ Lifecycle endpoints:
     POST /api/process-change-requests/{id}/cancel/   {reason?}`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "draft_process_version",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
       {
         name: "limit",
         type: "Query",
@@ -28922,6 +29435,27 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/propose/",
+    alias: "api_process_change_requests_propose_create",
+    description: `Start a PCR by forking a DRAFT process version up-front. The engineer is then redirected to the DRAFT&#x27;s editor; they make node-level edits and submit the PCR with the diff attached. Replaces the legacy text-only PCR-first flow.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ProposeProcessChangeRequestRequest,
+      },
+    ],
+    response: ProposeProcessChangeResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -33391,7 +33925,7 @@ Usage:
       {
         name: "process",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.string().uuid().optional(),
       },
     ],
     response: Steps,
@@ -33445,7 +33979,7 @@ Usage:
       {
         name: "process",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.string().uuid().optional(),
       },
     ],
     response: Steps,
@@ -33523,7 +34057,7 @@ Returns the active + fallback rulesets for a given step`,
         schema: z.string().optional(),
       },
     ],
-    response: Steps,
+    response: StepWithResolvedRules,
   },
   {
     method: "post",
@@ -34243,7 +34777,12 @@ substep (the typical authoring-popover query).`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34297,7 +34836,12 @@ operator&#x27;s working order within the parent Op.`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34316,7 +34860,12 @@ operator&#x27;s working order within the parent Op.`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34335,7 +34884,12 @@ operator&#x27;s working order within the parent Op.`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34348,6 +34902,11 @@ operator&#x27;s working order within the parent Op.`,
         type: "Path",
         schema: z.string().uuid(),
       },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
     ],
     response: Substep,
   },
@@ -34359,7 +34918,12 @@ operator&#x27;s working order within the parent Op.`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34372,6 +34936,11 @@ operator&#x27;s working order within the parent Op.`,
         type: "Path",
         schema: z.string().uuid(),
       },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
     ],
     response: Substep,
   },
@@ -34383,7 +34952,12 @@ operator&#x27;s working order within the parent Op.`,
 
 Filter by &#x60;?step&#x3D;&lt;step_id&gt;&#x60; to fetch all substeps belonging to a Step
 (the typical substep-editor query). Default ordering matches the
-operator&#x27;s working order within the parent Op.`,
+operator&#x27;s working order within the parent Op.
+
+Multi-PCR isolation: pass &#x60;?process&#x3D;&lt;uuid&gt;&#x60; when editing from a PCR
+DRAFT. The serializer detects the DRAFT context and routes through
+&#x60;create_new_step_version&#x60; so the substep edit is isolated to that
+process&#x27;s version of the parent Step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -35388,6 +35962,47 @@ Only available in SaaS mode and requires superuser/staff.`,
       },
     ],
     response: Tenant,
+  },
+  {
+    method: "post",
+    path: "/api/Tenants/:slug/regenerate-demo-data/",
+    alias: "api_Tenants_regenerate_demo_data_create",
+    description: `Hard-destructive: wipe the demo tenant&#x27;s data and reseed from the seed_demo command&#x27;s preset state. Refuses on any tenant whose slug isn&#x27;t &#x27;demo&#x27; — defense in depth both here and in the service layer. Tenant admins only. Async via Celery; poll /regenerate-demo-status/{task_id}/ for completion.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "slug",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: RegenerateDemoQueued,
+    errors: [
+      {
+        status: 403,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Tenants/:slug/regenerate-demo-status/:task_id/",
+    alias: "api_Tenants_regenerate_demo_status_retrieve",
+    description: `Poll the status of a queued demo-regeneration job.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "slug",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: z.unknown(),
   },
   {
     method: "post",
@@ -36853,6 +37468,26 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Poll a queued bulk reconcile job. Mirrors the CSV-import status pattern.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/User/bulk-reconcile-template/",
+    alias: "api_User_bulk_reconcile_template_retrieve",
+    description: `Download a multi-sheet Excel template for bulk-reconcile. Sheets: Data (editable rows — parsed on import), Instructions, Groups (tenant-scoped names — drives Group dropdown), Statuses (Active/Inactive — drives Status dropdown). Pass populate&#x3D;true to pre-fill the Data sheet with current users.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "populate",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
       {
         name: "task_id",
         type: "Path",

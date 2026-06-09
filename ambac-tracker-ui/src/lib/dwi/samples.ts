@@ -6,6 +6,7 @@ export {
     SAMPLE_CALLOUT_NOTE,
 } from "@/components/dwi/nodes/Callout";
 export { SAMPLE_MEDIA } from "@/components/dwi/nodes/Media";
+export { SAMPLE_DOCUMENT_LINK } from "@/components/dwi/nodes/DocumentLink";
 export {
     SAMPLE_ATTESTATION_CONFIRM,
     SAMPLE_ATTESTATION_SIGNATURE,

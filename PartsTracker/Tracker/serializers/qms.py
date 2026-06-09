@@ -370,6 +370,41 @@ class ResolvedSamplingRuleSetSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "rules", "fallback_threshold", "fallback_duration"]
 
 
+# Schema shape for Step.get_resolved_sampling_rules() output. The model method
+# returns a stub object with null fields when there is no bound ruleset, so the
+# shape diverges from the model-backed serializer above (which assumes a real row).
+_RESOLVED_RULE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "rule_type": {"type": "string"},
+        "value": {"type": "integer", "nullable": True},
+        "order": {"type": "integer"},
+    },
+}
+
+_RESOLVED_ACTIVE_RULESET_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string", "format": "uuid", "nullable": True},
+        "name": {"type": "string", "nullable": True},
+        "rules": {"type": "array", "items": _RESOLVED_RULE_SCHEMA},
+        "fallback_threshold": {"type": "integer", "nullable": True},
+        "fallback_duration": {"type": "integer", "nullable": True},
+    },
+}
+
+_RESOLVED_FALLBACK_RULESET_SCHEMA = {
+    "type": "object",
+    "nullable": True,
+    "properties": {
+        "id": {"type": "string", "format": "uuid", "nullable": True},
+        "name": {"type": "string", "nullable": True},
+        "rules": {"type": "array", "items": _RESOLVED_RULE_SCHEMA},
+    },
+}
+
+
 class StepWithResolvedRulesSerializer(serializers.ModelSerializer):
     """Step with resolved sampling rules (for flow editor)"""
     active_ruleset = serializers.SerializerMethodField()
@@ -383,19 +418,26 @@ class StepWithResolvedRulesSerializer(serializers.ModelSerializer):
                   "part_type_info", "active_ruleset", "fallback_ruleset", "sampling_required",
                   "min_sampling_rate", "created_at", "updated_at", "archived"]
 
+    @extend_schema_field({
+        "type": "object",
+        "properties": {
+            "id": {"type": "string", "format": "uuid"},
+            "name": {"type": "string"},
+        },
+    })
     def get_part_type_info(self, obj):
         """Return basic part type info"""
         if obj.part_type:
             return {"id": obj.part_type.id, "name": obj.part_type.name}
         return {}
 
-    @extend_schema_field(ResolvedSamplingRuleSetSerializer)
+    @extend_schema_field(_RESOLVED_ACTIVE_RULESET_SCHEMA)
     def get_active_ruleset(self, step):
         """Use model method for resolved sampling rules"""
         resolved = step.get_resolved_sampling_rules()
         return resolved.get('active_ruleset')
 
-    @extend_schema_field(ResolvedSamplingRuleSetSerializer)
+    @extend_schema_field(_RESOLVED_FALLBACK_RULESET_SCHEMA)
     def get_fallback_ruleset(self, step):
         """Use model method for resolved sampling rules"""
         resolved = step.get_resolved_sampling_rules()

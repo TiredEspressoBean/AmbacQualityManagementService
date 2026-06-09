@@ -37,6 +37,7 @@ import {
     Heading1,
     Heading2,
     Image as ImageIcon,
+    FileText,
     Italic,
     List,
     ListChecks,
@@ -80,6 +81,7 @@ import {
     SAMPLE_MEASUREMENT_INPUT,
     SAMPLE_MEASUREMENT_SPEC,
     SAMPLE_MEDIA,
+    SAMPLE_DOCUMENT_LINK,
     SAMPLE_PHOTO,
     SAMPLE_SCAN,
     SAMPLE_TEXT_INPUT_LONG,
@@ -165,6 +167,7 @@ function Toolbar({ editor }: { editor: Editor | null }) {
             <ToolbarDivider />
             <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_CALLOUT_CAUTION).run()} icon={<AlertTriangle className="h-4 w-4" />} label="Insert callout" />
             <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_MEDIA).run()} icon={<ImageIcon className="h-4 w-4" />} label="Insert media" />
+            <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_DOCUMENT_LINK).run()} icon={<FileText className="h-4 w-4" />} label="Insert document link" />
             <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_MEASUREMENT_SPEC)).run()} icon={<Gauge className="h-4 w-4" />} label="Insert measurement spec" />
             <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_MEASUREMENT_INPUT)).run()} icon={<Ruler className="h-4 w-4" />} label="Insert measurement input" />
             <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_ATTESTATION_CONFIRM)).run()} icon={<CheckSquare className="h-4 w-4" />} label="Insert attestation" />
