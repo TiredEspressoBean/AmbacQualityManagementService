@@ -295,6 +295,14 @@ def create_new_step_version(
         # DRAFTs) keep pointing at the old Step row — that's how
         # multi-PCR isolation works.
         #
+        # StepEdge incidence is also process-scoped (each Process row
+        # owns its own set of edges), so the same flip applies — any
+        # edge in this process whose endpoint is the old Step row needs
+        # to be repointed at the new version. Without this, ELK layout
+        # fails with "Referenced shape does not exist" because the
+        # process_steps junction now reports the new Step id while the
+        # step_edges still cite the old one.
+        #
         # When `process` is None we leave junctions alone — legacy
         # editing surfaces (StepsEditor without process context) still
         # version the Step row but no process version is updated to use
@@ -305,6 +313,13 @@ def create_new_step_version(
                 process=process,
                 step=step,
             ).update(step=new_version)
+            from Tracker.models import StepEdge
+            StepEdge.objects.filter(
+                process=process, from_step=step,
+            ).update(from_step=new_version)
+            StepEdge.objects.filter(
+                process=process, to_step=step,
+            ).update(to_step=new_version)
 
     return new_version
 
