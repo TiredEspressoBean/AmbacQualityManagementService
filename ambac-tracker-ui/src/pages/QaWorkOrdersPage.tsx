@@ -269,8 +269,6 @@ export default function QaWorkOrdersPage() {
         </div>
     );
 
-    const isBatchWorkOrder = selectedWorkOrder?.is_batch_work_order || false;
-
     return (
         <div className="space-y-6">
             <div>
@@ -287,11 +285,6 @@ export default function QaWorkOrdersPage() {
                     <SheetHeader>
                         <SheetTitle>
                             {selectedWorkOrder?.ERP_id} - Quality Review
-                            {isBatchWorkOrder && (
-                                <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                    Batch Process
-                                </span>
-                            )}
                         </SheetTitle>
                         {selectedWorkOrder && (
                             <div className="text-sm text-muted-foreground space-y-1">
@@ -307,34 +300,10 @@ export default function QaWorkOrdersPage() {
                     </SheetHeader>
 
                     <div className="mt-6">
-                        {isBatchWorkOrder ? (
-                            <div className="space-y-4">
-                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <h3 className="font-medium text-blue-900 mb-2">Batch Processing Mode</h3>
-                                    <p className="text-sm text-blue-700 mb-4">
-                                        This work order contains parts from a batch step. You can either review individual parts 
-                                        or perform bulk QA actions on the entire batch.
-                                    </p>
-                                    <div className="flex gap-2">
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                                            Pass Entire Batch
-                                        </Button>
-                                        <Button size="sm" variant="destructive">
-                                            Report Batch Issues
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="font-medium mb-2">Individual Parts in Batch:</h4>
-                                    {renderPartsTable()}
-                                </div>
-                            </div>
-                        ) : (
-                            <div>
-                                <h4 className="font-medium mb-4">Parts Requiring QA ({parts.length})</h4>
-                                {renderPartsTable()}
-                            </div>
-                        )}
+                        <div>
+                            <h4 className="font-medium mb-4">Parts Requiring QA ({parts.length})</h4>
+                            {renderPartsTable()}
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

@@ -221,7 +221,7 @@ def create_new_process_version(
     with transaction.atomic():
         # Base handles: row lock, current-version guard, archived guard,
         # scalar field copy (tenant, category, part_type, is_remanufactured,
-        # is_batch_process, name), version increment, previous_version link,
+        # name), version increment, previous_version link,
         # flipping old row's is_current_version, and firing the
         # revision_created signal post-commit.
         new_version = super(Processes, process).create_new_version(
@@ -333,7 +333,6 @@ def duplicate_process(
         name=f"{process.name}{name_suffix}",
         part_type=process.part_type,
         is_remanufactured=process.is_remanufactured,
-        is_batch_process=process.is_batch_process,
         status=ProcessStatus.DRAFT,
         # No previous_version — standalone copy
     )

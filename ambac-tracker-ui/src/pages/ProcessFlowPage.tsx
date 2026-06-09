@@ -126,7 +126,6 @@ export default function ProcessFlowPage() {
     name: string;
     part_type: string | null;
     is_remanufactured: boolean;
-    is_batch_process: boolean;
   };
   const [localProcessProps, setLocalProcessProps] = useState<ProcessProps | null>(null);
 
@@ -251,7 +250,6 @@ export default function ProcessFlowPage() {
         name: processWithSteps.name || '',
         part_type: (processWithSteps.part_type as string | null) ?? null,
         is_remanufactured: processWithSteps.is_remanufactured || false,
-        is_batch_process: processWithSteps.is_batch_process || false,
       });
     }
   }, [baseStepsFromSource, localSteps, localProcessProps, processWithSteps]);
@@ -424,7 +422,6 @@ export default function ProcessFlowPage() {
             name: localProcessProps.name,
             part_type: localProcessProps.part_type,
             is_remanufactured: localProcessProps.is_remanufactured,
-            is_batch_process: localProcessProps.is_batch_process,
           }),
           nodes: nodesPayload,
           edges: edgesPayload,
@@ -452,7 +449,6 @@ export default function ProcessFlowPage() {
           name: processWithSteps?.name || '',
           part_type: (processWithSteps?.part_type as string | null) ?? null,
           is_remanufactured: processWithSteps?.is_remanufactured || false,
-          is_batch_process: processWithSteps?.is_batch_process || false,
         };
         return { ...initial, [prop]: value };
       }
@@ -1298,19 +1294,6 @@ export default function ProcessFlowPage() {
                         id="is-reman"
                         checked={localProcessProps?.is_remanufactured ?? processWithSteps?.is_remanufactured ?? false}
                         onCheckedChange={(checked) => handleProcessPropChange('is_remanufactured', checked)}
-                      />
-                    </div>
-
-                    {/* Is Batch Process */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="is-batch">Batch Processing</Label>
-                        <p className="text-xs text-muted-foreground">Parts move through steps together</p>
-                      </div>
-                      <Switch
-                        id="is-batch"
-                        checked={localProcessProps?.is_batch_process ?? processWithSteps?.is_batch_process ?? false}
-                        onCheckedChange={(checked) => handleProcessPropChange('is_batch_process', checked)}
                       />
                     </div>
 

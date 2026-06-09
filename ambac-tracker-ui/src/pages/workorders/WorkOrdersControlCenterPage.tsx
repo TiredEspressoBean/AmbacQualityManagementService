@@ -110,7 +110,6 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
         process_name: proc.name ?? "—",
         customer: order.company_name ?? order.name ?? "—",
         part_type: proc.part_type_name ?? "—",
-        is_batch: w.is_batch_work_order,
         parent_workorder_id: w.parent_workorder_id ?? null,
         split_reason: null,
         steps: [],
@@ -598,11 +597,6 @@ export function WorkOrdersControlCenterPage() {
                                                                         {r.childCount} child WO{r.childCount === 1 ? "" : "s"} split from this one
                                                                     </TooltipContent>
                                                                 </Tooltip>
-                                                            )}
-                                                            {r.is_batch && (
-                                                                <Badge variant="outline" className="text-[10px]">
-                                                                    Batch
-                                                                </Badge>
                                                             )}
                                                             {r.expedited && (
                                                                 <Tooltip>

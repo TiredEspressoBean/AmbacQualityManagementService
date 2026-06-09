@@ -13,8 +13,6 @@ type QaProgressSectionProps = {
 };
 
 export const QaProgressSection = memo(function QaProgressSection({ workOrder, parts, isLoadingParts }: QaProgressSectionProps) {
-    const isBatchProcess = workOrder?.is_batch_work_order || false;
-
     // Calculate progress stats
     const totalParts = parts.length;
     const completedParts = parts.filter(p =>
@@ -40,11 +38,6 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                         {workOrder.ERP_id}
-                        {isBatchProcess && (
-                            <Badge variant="outline" className="text-xs">
-                                Batch Process
-                            </Badge>
-                        )}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">

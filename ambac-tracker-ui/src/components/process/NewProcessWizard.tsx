@@ -45,7 +45,6 @@ export function NewProcessWizard({ open, onOpenChange }: Props) {
     const [name, setName] = useState("");
     const [partTypeId, setPartTypeId] = useState<string>("");
     const [isRemanufactured, setIsRemanufactured] = useState(false);
-    const [isBatchProcess, setIsBatchProcess] = useState(false);
 
     const { data: partTypesResp } = useRetrievePartTypes();
     const partTypes = (partTypesResp?.results ?? []) as Array<{
@@ -59,7 +58,6 @@ export function NewProcessWizard({ open, onOpenChange }: Props) {
         setName("");
         setPartTypeId("");
         setIsRemanufactured(false);
-        setIsBatchProcess(false);
         onOpenChange(false);
     };
 
@@ -73,7 +71,6 @@ export function NewProcessWizard({ open, onOpenChange }: Props) {
                 name: name.trim(),
                 part_type: partTypeId,
                 is_remanufactured: isRemanufactured,
-                is_batch_process: isBatchProcess,
                 nodes: [],
                 edges: [],
             } as Parameters<typeof createProcess.mutateAsync>[0]);
@@ -149,21 +146,6 @@ export function NewProcessWizard({ open, onOpenChange }: Props) {
                                     </Label>
                                     <p className="text-xs text-muted-foreground">
                                         Process handles used or core parts.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <Checkbox
-                                    id="process-batch"
-                                    checked={isBatchProcess}
-                                    onCheckedChange={(v) => setIsBatchProcess(v === true)}
-                                />
-                                <div className="grid gap-0.5 leading-none">
-                                    <Label htmlFor="process-batch" className="font-normal cursor-pointer">
-                                        Batch processing
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Parts move through steps together.
                                     </p>
                                 </div>
                             </div>

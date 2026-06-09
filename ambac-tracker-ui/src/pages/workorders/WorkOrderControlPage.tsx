@@ -139,7 +139,6 @@ function adaptWorkOrderDetail(w: WorkOrder): MockWorkOrder {
         process_name: proc.name ?? "—",
         customer: order.company_name ?? order.name ?? "—",
         part_type: proc.part_type_name ?? "—",
-        is_batch: w.is_batch_work_order ?? false,
         parent_workorder_id: w.parent_workorder_id ?? null,
         split_reason: null,
         steps: [],
@@ -1229,11 +1228,6 @@ export function WorkOrderControlPage() {
                         <h1 className="text-2xl font-semibold">{wo.erp_id}</h1>
                         <WoStatusBadge status={wo.status} />
                         <Badge className={cn("text-xs", priorityCfg.className)}>{priorityCfg.label}</Badge>
-                        {wo.is_batch && (
-                            <Badge variant="outline" className="text-xs">
-                                Batch
-                            </Badge>
-                        )}
                         {isOverdue && (
                             <Badge variant="destructive" className="flex items-center gap-1 text-xs">
                                 <AlertTriangle className="h-3 w-3" />

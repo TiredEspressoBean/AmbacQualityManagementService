@@ -1265,15 +1265,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
         # Optimize for list view - select related order, customer, company to avoid N+1
         if self.action == 'list':
-            from django.db.models import Count, Q, Exists, OuterRef, Prefetch
+            from django.db.models import Count, Q, Prefetch
             from Tracker.models import WorkOrderHold
             completed_statuses = (
                 PartsStatus.COMPLETED, PartsStatus.SHIPPED, PartsStatus.IN_STOCK,
                 PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED, PartsStatus.RMA_CLOSED,
-            )
-            batch_parts = Parts.unscoped.filter(
-                work_order=OuterRef('pk'),
-                part_type__processes__is_batch_process=True,
             )
             # tenant-safe: used as a Prefetch on a tenant-scoped parent (WorkOrder)
             open_holds = WorkOrderHold.objects.filter(
@@ -1291,7 +1287,6 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                     filter=Q(parts__part_status__in=completed_statuses),
                     distinct=True,
                 ),
-                _is_batch_work_order=Exists(batch_parts),
                 _child_count=Count('child_workorders', distinct=True),
             )
 
@@ -1305,7 +1300,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
     @action(detail=True, methods=['get'])
     def qa_summary(self, request, pk=None):
-        """Get QA summary for work order including batch status"""
+        """Get QA summary for work order."""
         work_order = self.get_object()
 
         parts = work_order.parts.all()
@@ -1316,8 +1311,6 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         ).exclude(error_reports__status='PASS')
 
         return Response({'work_order': self.get_serializer(work_order).data,
-                         'is_batch_work_order': work_order.parts.filter(
-                             part_type__processes__is_batch_process=True).exists(),
                          'parts_summary': {'total': parts.count(), 'needing_qa': parts_needing_qa.count(),
                                            'completed': parts.filter(part_status='COMPLETED').count(),
                                            'quarantined': parts.filter(part_status='QUARANTINED').count(),

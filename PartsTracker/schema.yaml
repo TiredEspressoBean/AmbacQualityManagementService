@@ -24218,7 +24218,7 @@ paths:
   /api/WorkOrders/{id}/qa_summary/:
     get:
       operationId: api_WorkOrders_qa_summary_retrieve
-      description: Get QA summary for work order including batch status
+      description: Get QA summary for work order.
       parameters:
       - in: path
         name: id
@@ -40464,9 +40464,6 @@ components:
           type: string
           nullable: true
           readOnly: true
-        is_from_batch_process:
-          type: boolean
-          readOnly: true
         sampling_rule:
           type: string
           format: uuid
@@ -40491,7 +40488,6 @@ components:
       - created_at
       - has_error
       - id
-      - is_from_batch_process
       - needs_qa
       - order_name
       - part_type
@@ -42345,9 +42341,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         nodes:
           type: array
           items:
@@ -42404,9 +42397,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         status:
           allOf:
           - $ref: '#/components/schemas/ProcessStatusEnum'
@@ -44988,9 +44978,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         process_steps:
           type: array
           items:
@@ -45084,9 +45071,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         nodes:
           type: array
           items:
@@ -45157,9 +45141,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         status:
           allOf:
           - $ref: '#/components/schemas/ProcessStatusEnum'
@@ -45267,9 +45248,6 @@ components:
         part_type:
           type: string
           format: uuid
-        is_batch_process:
-          type: boolean
-          description: If True, UI treats work order parts as a batch unit
         status:
           allOf:
           - $ref: '#/components/schemas/ProcessStatusEnum'
@@ -52435,9 +52413,6 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
-        is_batch_work_order:
-          type: boolean
-          readOnly: true
         current_hold:
           type: object
           additionalProperties: {}
@@ -52478,7 +52453,6 @@ components:
       - created_at
       - current_hold
       - id
-      - is_batch_work_order
       - parent_workorder_id
       - parts_summary
       - process_info
@@ -52673,9 +52647,6 @@ components:
         completed_parts_count:
           type: integer
           readOnly: true
-        is_batch_work_order:
-          type: boolean
-          readOnly: true
         current_hold:
           type: object
           additionalProperties: {}
@@ -52717,7 +52688,6 @@ components:
       - created_at
       - current_hold
       - id
-      - is_batch_work_order
       - parent_workorder_id
       - parts_count
       - process_info

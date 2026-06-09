@@ -27,7 +27,6 @@ interface Part {
     quality_info: QualityInfo;
     total_rework_count: number;
     has_error: boolean;
-    is_from_batch_process: boolean;
     created_at: string;
     updated_at: string;
     requires_sampling: boolean;
@@ -204,11 +203,6 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                                     {part.requires_sampling && (
                                         <Badge variant="secondary" className="text-xs">
                                             Requires Sampling
-                                        </Badge>
-                                    )}
-                                    {part.is_from_batch_process && (
-                                        <Badge variant="secondary" className="text-xs">
-                                            Batch Process
                                         </Badge>
                                     )}
                                     {part.quality_info?.latest_status && (

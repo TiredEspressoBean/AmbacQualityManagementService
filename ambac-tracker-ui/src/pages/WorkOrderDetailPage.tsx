@@ -45,7 +45,6 @@ export function WorkOrderDetailPage() {
     });
 
     const allParts = allPartsData?.results || [];
-    const isBatchProcess = workOrder?.is_batch_work_order || false;
 
     // Check if work order is overdue
     const isOverdue = workOrder?.expected_completion
@@ -116,11 +115,6 @@ export function WorkOrderDetailPage() {
                         <Badge className={cn("text-xs", priorityConfig.className)}>
                             {priorityConfig.label}
                         </Badge>
-                        {isBatchProcess && (
-                            <Badge variant="outline" className="text-xs">
-                                Batch
-                            </Badge>
-                        )}
                         {isOverdue && currentStatus !== "COMPLETED" && currentStatus !== "CANCELLED" && (
                             <Badge variant="destructive" className="text-xs flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3" />

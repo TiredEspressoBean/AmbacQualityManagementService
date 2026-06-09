@@ -9568,7 +9568,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get QA summary for work order including batch status */
+        /** @description Get QA summary for work order. */
         get: operations["api_WorkOrders_qa_summary_retrieve"];
         put?: never;
         post?: never;
@@ -17932,7 +17932,6 @@ export interface components {
             readonly step_name: string | null;
             readonly step_description: string | null;
             readonly work_order_erp_id: string | null;
-            readonly is_from_batch_process: boolean;
             /** Format: uuid */
             sampling_rule?: string | null;
             /** Format: uuid */
@@ -18984,8 +18983,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type?: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             nodes?: {
                 [key: string]: unknown;
             }[];
@@ -19019,8 +19016,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type?: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             /**
              * @description Controls editability and availability for work orders
              *
@@ -20486,8 +20481,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             readonly process_steps: components["schemas"]["ProcessStep"][];
             readonly step_edges: components["schemas"]["StepEdge"][];
             /**
@@ -20536,8 +20529,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             nodes?: {
                 [key: string]: unknown;
             }[];
@@ -20577,8 +20568,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             /**
              * @description Controls editability and availability for work orders
              *
@@ -20632,8 +20621,6 @@ export interface components {
             is_disassembly?: boolean;
             /** Format: uuid */
             part_type: string;
-            /** @description If True, UI treats work order parts as a batch unit */
-            is_batch_process?: boolean;
             /**
              * @description Controls editability and availability for work orders
              *
@@ -24316,7 +24303,6 @@ export interface components {
             readonly parts_summary: {
                 [key: string]: unknown;
             } | null;
-            readonly is_batch_work_order: boolean;
             readonly current_hold: {
                 [key: string]: unknown;
             } | null;
@@ -24415,7 +24401,6 @@ export interface components {
                 [key: string]: unknown;
             };
             readonly completed_parts_count: number;
-            readonly is_batch_work_order: boolean;
             readonly current_hold: {
                 [key: string]: unknown;
             } | null;

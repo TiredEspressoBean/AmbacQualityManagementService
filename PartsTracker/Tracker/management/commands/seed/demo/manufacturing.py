@@ -33,7 +33,7 @@ DEMO_PART_TYPES = [
 ]
 
 # Demo process with steps
-# Processes model fields: name, is_remanufactured, part_type (FK), is_batch_process,
+# Processes model fields: name, is_remanufactured, part_type (FK),
 # status, category, change_description, approved_at/by
 # NOTE: There is NO 'description' field on Processes - removed invalid field
 # Steps within use: name, order, requires_qa_signoff, description (Steps model has description)
@@ -434,7 +434,6 @@ class DemoManufacturingSeeder(BaseSeeder):
             part_type=part_type,
             defaults={
                 'is_remanufactured': DEMO_PROCESS.get('is_remanufactured', False),
-                'is_batch_process': False,
                 'category': 'MANUFACTURING',  # UPPERCASE enum value
                 'status': ProcessStatus.APPROVED,  # Use enum member for status
                 'change_description': 'Initial demo process setup',

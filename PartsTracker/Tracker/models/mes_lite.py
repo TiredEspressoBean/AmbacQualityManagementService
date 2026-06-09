@@ -217,10 +217,6 @@ class Processes(SecureModel):
     part_type = models.ForeignKey(PartTypes, on_delete=models.CASCADE, related_name='processes')
     """ForeignKey to the PartType this process is associated with."""
 
-    is_batch_process = models.BooleanField(default=False,
-                                           help_text="If True, UI treats work order parts as a batch unit")
-    """Indicates whether this process should be handled as batch-level tracking in the UI."""
-
     # ===== APPROVAL WORKFLOW (Phase 2 Workflow Engine) =====
 
     status = models.CharField(

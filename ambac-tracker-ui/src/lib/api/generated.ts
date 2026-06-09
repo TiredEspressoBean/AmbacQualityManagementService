@@ -4133,7 +4133,6 @@ export type Parts = {
   step_name: string | null;
   step_description: string | null;
   work_order_erp_id: string | null;
-  is_from_batch_process: boolean;
   sampling_rule?: (string | null) | undefined;
   sampling_ruleset?: (string | null) | undefined;
   sampling_context?: unknown | undefined;
@@ -4577,10 +4576,6 @@ export type ProcessWithSteps = {
    */
   boolean | undefined;
   part_type: string;
-  is_batch_process?: /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  boolean | undefined;
   process_steps: Array<ProcessStep>;
   step_edges: Array<StepEdge>;
   status?: /**
@@ -4813,10 +4808,6 @@ export type Processes = {
    */
   boolean | undefined;
   part_type: string;
-  is_batch_process?: /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  boolean | undefined;
   status?: /**
      * Controls editability and availability for work orders
     
@@ -7393,7 +7384,6 @@ export type WorkOrderList = {
   parts_count: number;
   qa_progress: {};
   completed_parts_count: number;
-  is_batch_work_order: boolean;
   current_hold: {};
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
@@ -8389,10 +8379,6 @@ export type PatchedProcessWithStepsRequest = Partial<{
    */
   is_disassembly: boolean;
   part_type: string;
-  /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  is_batch_process: boolean;
   nodes: Array<{}>;
   edges: Array<{}>;
   /**
@@ -8431,10 +8417,6 @@ export type PatchedProcessesRequest = Partial<{
    */
   is_disassembly: boolean;
   part_type: string;
-  /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  is_batch_process: boolean;
   /**
      * Controls editability and availability for work orders
     
@@ -9465,10 +9447,6 @@ export type ProcessWithStepsRequest = {
    */
   boolean | undefined;
   part_type: string;
-  is_batch_process?: /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  boolean | undefined;
   nodes?: Array<{}> | undefined;
   edges?: Array<{}> | undefined;
   status?: /**
@@ -9513,10 +9491,6 @@ export type ProcessesRequest = {
    */
   boolean | undefined;
   part_type: string;
-  is_batch_process?: /**
-   * If True, UI treats work order parts as a batch unit
-   */
-  boolean | undefined;
   status?: /**
      * Controls editability and availability for work orders
     
@@ -10964,7 +10938,6 @@ export type WorkOrder = {
   true_duration?: (string | null) | undefined;
   notes?: (string | null) | undefined;
   parts_summary: {};
-  is_batch_work_order: boolean;
   current_hold: {};
   parent_workorder_id: string | null;
   split_reason: SplitReasonEnum | NullEnum | null;
@@ -13397,7 +13370,6 @@ const Parts = z.object({
   step_name: z.string().nullable(),
   step_description: z.string().nullable(),
   work_order_erp_id: z.string().nullable(),
-  is_from_batch_process: z.boolean(),
   sampling_rule: z.string().uuid().nullish(),
   sampling_ruleset: z.string().uuid().nullish(),
   sampling_context: z.unknown().optional(),
@@ -13643,7 +13615,6 @@ const Processes = z.object({
   is_remanufactured: z.boolean().optional(),
   is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
-  is_batch_process: z.boolean().optional(),
   status: ProcessStatusEnum.optional(),
   category: ProcessesCategoryEnum.optional(),
   change_description: z.string().nullish(),
@@ -13667,7 +13638,6 @@ const ProcessesRequest = z.object({
   is_remanufactured: z.boolean().optional(),
   is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
-  is_batch_process: z.boolean().optional(),
   status: ProcessStatusEnum.optional(),
   category: ProcessesCategoryEnum.optional(),
   change_description: z.string().nullish(),
@@ -13680,7 +13650,6 @@ const PatchedProcessesRequest = z
     is_remanufactured: z.boolean(),
     is_disassembly: z.boolean(),
     part_type: z.string().uuid(),
-    is_batch_process: z.boolean(),
     status: ProcessStatusEnum,
     category: ProcessesCategoryEnum,
     change_description: z.string().nullable(),
@@ -13692,7 +13661,6 @@ const ProcessWithSteps = z.object({
   is_remanufactured: z.boolean().optional(),
   is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
-  is_batch_process: z.boolean().optional(),
   process_steps: z.array(ProcessStep),
   step_edges: z.array(StepEdge),
   status: ProcessStatusEnum.optional(),
@@ -13714,7 +13682,6 @@ const ProcessWithStepsRequest = z.object({
   is_remanufactured: z.boolean().optional(),
   is_disassembly: z.boolean().optional(),
   part_type: z.string().uuid(),
-  is_batch_process: z.boolean().optional(),
   nodes: z.array(z.object({}).partial().passthrough()).optional(),
   edges: z.array(z.object({}).partial().passthrough()).optional(),
   status: ProcessStatusEnum.optional(),
@@ -13726,7 +13693,6 @@ const PatchedProcessWithStepsRequest = z
     is_remanufactured: z.boolean(),
     is_disassembly: z.boolean(),
     part_type: z.string().uuid(),
-    is_batch_process: z.boolean(),
     nodes: z.array(z.object({}).partial().passthrough()),
     edges: z.array(z.object({}).partial().passthrough()),
     status: ProcessStatusEnum,
@@ -15672,7 +15638,6 @@ const WorkOrderList = z.object({
   parts_count: z.number().int(),
   qa_progress: z.object({}).partial().passthrough(),
   completed_parts_count: z.number().int(),
-  is_batch_work_order: z.boolean(),
   current_hold: z.object({}).partial().passthrough().nullable(),
   parent_workorder_id: z.string().uuid().nullable(),
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
@@ -15719,7 +15684,6 @@ const WorkOrder = z.object({
   true_duration: z.string().nullish(),
   notes: z.string().nullish(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
-  is_batch_work_order: z.boolean(),
   current_hold: z.object({}).partial().passthrough().nullable(),
   parent_workorder_id: z.string().uuid().nullable(),
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
@@ -38277,7 +38241,7 @@ Import/Export endpoints (auto-configured from model):
     method: "get",
     path: "/api/WorkOrders/:id/qa_summary/",
     alias: "api_WorkOrders_qa_summary_retrieve",
-    description: `Get QA summary for work order including batch status`,
+    description: `Get QA summary for work order.`,
     requestFormat: "json",
     parameters: [
       {

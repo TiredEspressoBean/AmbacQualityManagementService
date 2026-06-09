@@ -17,7 +17,6 @@ Shape:
         "process": {
             # Top-level field diffs on the Process row itself
             "name": {"from": "Foo", "to": "Bar"},
-            "is_batch_process": {"from": false, "to": true},
             ...
         },
         "steps": {
@@ -57,7 +56,6 @@ if TYPE_CHECKING:
 # Process-level scalar fields we diff. Skip identity / lifecycle fields.
 _PROCESS_DIFF_FIELDS = (
     "name",
-    "is_batch_process",
     "is_remanufactured",
     "category",
 )

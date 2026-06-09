@@ -317,9 +317,6 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
     step_description = serializers.SerializerMethodField(read_only=True)
     work_order_erp_id = serializers.SerializerMethodField()
 
-    # Batch process info
-    is_from_batch_process = serializers.SerializerMethodField(read_only=True)
-
     # Write fields
     step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all())
     part_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all())
@@ -331,12 +328,12 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
         fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'needs_qa', 'qa_completed',
                   'order', 'part_type', 'part_type_info', 'step', 'step_info', 'work_order', 'quality_info',
                   'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
-                  'step_name', 'step_description', 'work_order_erp_id', 'is_from_batch_process', 'sampling_rule',
+                  'step_name', 'step_description', 'work_order_erp_id', 'sampling_rule',
                   'sampling_ruleset', 'sampling_context', 'process', 'total_rework_count', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-            'step_name', 'step_description', 'work_order_erp_id', 'is_from_batch_process', 'process',
+            'step_name', 'step_description', 'work_order_erp_id', 'process',
             'total_rework_count', 'step')  # Step changes must go through increment action for validation
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -431,13 +428,6 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
                 return process.name
         return None
 
-    @extend_schema_field(serializers.BooleanField())
-    def get_is_from_batch_process(self, obj):
-        """Check if this part comes from a batch process"""
-        if obj.part_type and obj.part_type.processes.exists():
-            return obj.part_type.processes.filter(is_batch_process=True).exists()
-        return False
-
 
 class PartSelectSerializer(serializers.ModelSerializer):
     """Lightweight part serializer for dropdown/combobox selections"""
@@ -502,7 +492,6 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
     qa_progress = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
     completed_parts_count = serializers.SerializerMethodField()
-    is_batch_work_order = serializers.SerializerMethodField()
     current_hold = serializers.SerializerMethodField()
     parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
     child_count = serializers.SerializerMethodField()
@@ -513,13 +502,13 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
             'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info',
             'process', 'process_info', 'expected_completion', 'true_completion',
             'expected_duration', 'true_duration', 'notes', 'parts_count', 'qa_progress',
-            'completed_parts_count', 'is_batch_work_order', 'current_hold',
+            'completed_parts_count', 'current_hold',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_count', 'qa_progress', 'process_info',
-            'completed_parts_count', 'is_batch_work_order', 'current_hold',
+            'completed_parts_count', 'current_hold',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
         )
 
@@ -541,12 +530,6 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
             PartsStatus.COMPLETED, PartsStatus.SHIPPED, PartsStatus.IN_STOCK,
             PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED, PartsStatus.RMA_CLOSED,
         )).count()
-
-    @extend_schema_field(serializers.BooleanField())
-    def get_is_batch_work_order(self, obj):
-        if hasattr(obj, '_is_batch_work_order'):
-            return obj._is_batch_work_order
-        return obj.parts.filter(part_type__processes__is_batch_process=True).exists()
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_process_info(self, obj):
@@ -621,7 +604,6 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     related_order_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
     related_order_detail = serializers.SerializerMethodField()
-    is_batch_work_order = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
     current_hold = serializers.SerializerMethodField()
     parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
@@ -634,12 +616,12 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         fields = (
         'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
-        'notes', 'parts_summary', 'is_batch_work_order', 'current_hold',
+        'notes', 'parts_summary', 'current_hold',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
-            'is_batch_work_order', 'process_info', 'current_hold',
+            'process_info', 'current_hold',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count')
 
     @extend_schema_field(serializers.IntegerField())
@@ -675,7 +657,6 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_parts_summary(self, obj):
         parts = obj.parts.all()
-        has_batch_parts = parts.filter(part_type__processes__is_batch_process=True).exists()
 
         # Parts needing QA = requires_sampling but no PASS report yet (mirrors Parts.needs_qa property)
         needs_qa_parts = parts.filter(
@@ -686,12 +667,7 @@ class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOpe
         return {'total': parts.count(), 'requiring_qa': needs_qa_parts.count(),
                 'completed': parts.filter(part_status=PartsStatus.COMPLETED).count(),
                 'in_progress': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
-                'pending': parts.filter(part_status=PartsStatus.PENDING).count(), 'has_batch_parts': has_batch_parts}
-
-    @extend_schema_field(serializers.BooleanField())
-    def get_is_batch_work_order(self, obj):
-        """Check if any parts in this work order come from batch processes"""
-        return obj.parts.filter(part_type__processes__is_batch_process=True).exists()
+                'pending': parts.filter(part_status=PartsStatus.PENDING).count()}
 
 
 # ===== DIGITAL TRAVELER SERIALIZERS =====
@@ -1175,7 +1151,7 @@ class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
         model = Processes
         fields = [
             'id', 'tenant', 'external_id', 'created_at', 'updated_at',
-            'name', 'is_remanufactured', 'is_disassembly', 'part_type', 'is_batch_process',
+            'name', 'is_remanufactured', 'is_disassembly', 'part_type',
             'status', 'category', 'change_description', 'approved_at', 'approved_by',
             # Serializer-specific fields
             'part_type_name', 'process_steps', 'step_edges', 'num_steps',
@@ -1220,7 +1196,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Processes
         fields = [
-            "id", "name", "is_remanufactured", "is_disassembly", "part_type", "is_batch_process",
+            "id", "name", "is_remanufactured", "is_disassembly", "part_type",
             # Graph structure (read)
             "process_steps", "step_edges",
             # Graph structure (write)

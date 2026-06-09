@@ -528,7 +528,7 @@ class QueryViewSet(viewsets.GenericViewSet):
             'is_final', 'created_at', 'updated_at', 'version', 'archived'
         ],
         'Processes': [
-            'id', 'name', 'part_type', 'remanufacturing', 'is_batch_process', 'created_at', 
+            'id', 'name', 'part_type', 'remanufacturing', 'created_at',
             'updated_at', 'version', 'archived'
         ],
         'PartTypes': [

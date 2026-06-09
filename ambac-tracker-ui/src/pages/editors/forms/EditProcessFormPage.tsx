@@ -50,7 +50,6 @@ const formSchema = schemas.ProcessWithStepsRequest.pick({
     name: true,
     is_remanufactured: true,
     part_type: true,
-    is_batch_process: true,
 }).extend({
     // Override part_type to be string (ID value from select)
     part_type: z.string(),
@@ -78,7 +77,6 @@ type Step = {
 export type FormSchema = {
     name: string;
     is_remanufactured?: boolean;
-    is_batch_process?: boolean;
     part_type: string;
     num_steps: number;
     steps: Step[];
@@ -110,7 +108,6 @@ export default function ProcessFormPage() {
             is_remanufactured: false,
             part_type: "",
             num_steps: 5,
-            is_batch_process: false,
             steps: Array.from({length: 5}, () => ({
                 name: "",
                 description: "",
@@ -188,7 +185,6 @@ export default function ProcessFormPage() {
                 name: data.name ?? "",
                 is_remanufactured: data.is_remanufactured ?? false,
                 part_type: data.part_type,
-                is_batch_process: data.is_batch_process ?? false,
                 num_steps: numSteps,
             };
 
@@ -233,7 +229,6 @@ export default function ProcessFormPage() {
             is_remanufactured: values.is_remanufactured,
             part_type: values.part_type,
             num_steps: values.num_steps,
-            is_batch_process: values.is_batch_process,
             nodes,
             edges,
         };
@@ -356,28 +351,6 @@ export default function ProcessFormPage() {
                             <FormDescription>How many steps should this process have?</FormDescription>
                             <FormMessage/>
                         </FormItem>)}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="is_batch_process"
-                        render={({field}) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value ?? false}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel>
-                                        Batched Process
-                                    </FormLabel>
-                                    <FormDescription>
-                                        For this process, are we tracking for the batch instead of tracking each individual part?
-                                    </FormDescription>
-                                </div>
-                            </FormItem>)}
                     />
 
                     {fields.map((field, index) => {
