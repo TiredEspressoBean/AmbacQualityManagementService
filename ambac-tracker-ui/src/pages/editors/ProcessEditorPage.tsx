@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useRetrieveProcesses, processesOptions, processesMetadataOptions } from "@/hooks/useRetrieveProcesses";
-import { useNavigate } from "@tanstack/react-router";
 import {ModelEditorPage, createColumnHelper} from "@/pages/editors/ModelEditorPage.tsx";
 import {EditProcessActionsCell} from "@/components/edit-process-action-cell.tsx";
 import { Badge } from "@/components/ui/badge";
+import { NewProcessWizard } from "@/components/process/NewProcessWizard";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
@@ -66,22 +67,25 @@ function useProcessList({
 }
 
 export function ProcessEditorPage() {
-    const navigate = useNavigate();
+    const [wizardOpen, setWizardOpen] = useState(false);
     return (
-        <ModelEditorPage
-            title="Process"
-            modelName="Processes"
-            showDetailsLink={true}
-            useList={useProcessList}
-            columns={[
-                col({ header: "Name", renderCell: (p) => p.name, priority: 1 }),
-                col({ header: "Status", renderCell: (p) => <ProcessStatusBadge status={p.status || 'DRAFT'} />, priority: 1 }),
-                col({ header: "Updated At", renderCell: (p) => new Date(p.updated_at).toLocaleString(), priority: 4 }),
-                col({ header: "Number of Steps", renderCell: (p) => p.num_steps, priority: 2 }),
-                col({ header: "Reman Process", renderCell: (p) => p.is_remanufactured ? "Yes" : "No", priority: 3 }),
-            ]}
-            renderActions={(process) => <EditProcessActionsCell processId={process.id} />}
-            onCreate={() => navigate({ to: "/ProcessForm/create" })}
-        />
+        <>
+            <ModelEditorPage
+                title="Process"
+                modelName="Processes"
+                showDetailsLink={true}
+                useList={useProcessList}
+                columns={[
+                    col({ header: "Name", renderCell: (p) => p.name, priority: 1 }),
+                    col({ header: "Status", renderCell: (p) => <ProcessStatusBadge status={p.status || 'DRAFT'} />, priority: 1 }),
+                    col({ header: "Updated At", renderCell: (p) => new Date(p.updated_at).toLocaleString(), priority: 4 }),
+                    col({ header: "Number of Steps", renderCell: (p) => p.num_steps, priority: 2 }),
+                    col({ header: "Reman Process", renderCell: (p) => p.is_remanufactured ? "Yes" : "No", priority: 3 }),
+                ]}
+                renderActions={(process) => <EditProcessActionsCell processId={process.id} />}
+                onCreate={() => setWizardOpen(true)}
+            />
+            <NewProcessWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+        </>
     );
 }
