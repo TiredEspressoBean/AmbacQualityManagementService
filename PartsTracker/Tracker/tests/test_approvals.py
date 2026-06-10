@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.db import connection
 from rest_framework.test import APIClient
 from rest_framework import status
-from unittest import skipIf
+from unittest import expectedFailure, skipIf
 from Tracker.models import (
     ApprovalTemplate, ApprovalRequest, ApprovalResponse,
     Documents, CAPA, Tenant,
@@ -739,19 +739,24 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
 
     # ---------- approval template versioning hazard ----------
 
-    def test_multiple_template_versions_raise_until_filtered(self):
-        """ApprovalTemplate is versioned. If more than one row matches
-        `approval_type='DOCUMENT_RELEASE'` in the tenant (e.g. an admin
-        edited the template, creating a new version), the unscoped
-        fetch in `submit_document_for_approval` raises
-        `MultipleObjectsReturned`. This test pins the current behavior
-        so a future filter-by-`is_current_version=True` fix can flip
-        the assertion to a positive case."""
-        from django.core.exceptions import MultipleObjectsReturned
+    @expectedFailure
+    def test_multiple_template_versions_does_not_block_submit(self):
+        """`submit_document_for_approval` must resolve to the current
+        DOCUMENT_RELEASE template even when a historical version of
+        the same approval_type exists in the tenant.
 
-        # Create a sibling template version that isn't current. The
-        # service should ignore it and only resolve the current one;
-        # today it does not, which is the bug we're capturing.
+        Today the service runs `ApprovalTemplate.objects.get(
+        approval_type='DOCUMENT_RELEASE', tenant=…)` without an
+        `is_current_version=True` filter, so two rows match and the
+        ORM raises `MultipleObjectsReturned` — this test fails as
+        expected.
+
+        Fix: add `is_current_version=True` to the lookup (or use
+        `default_approval_template_for(tenant, approval_type)` once
+        it exists). Once landed, this test will pass and the
+        `@expectedFailure` decorator should be removed.
+        """
+        # Sibling historical version.
         ApprovalTemplate.objects.create(
             approval_type='DOCUMENT_RELEASE',
             tenant=self.tenant,
@@ -762,8 +767,6 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
             is_current_version=False,
             version=1,
         )
-        # Ensure self.template's `is_current_version` is True so we
-        # have one current + one historical row.
         ApprovalTemplate.objects.filter(pk=self.template.pk).update(
             is_current_version=True, version=2,
         )
@@ -772,17 +775,33 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
             file_name='conflict.pdf', uploaded_by=self.user,
             status='DRAFT', tenant=self.tenant,
         )
-        with self.assertRaises(MultipleObjectsReturned):
-            document.submit_for_approval(self.user)
+        ar = document.submit_for_approval(self.user)
+        # The CURRENT template should win, not the historical one.
+        self.assertEqual(ar.approval_type, 'DOCUMENT_RELEASE')
+        document.refresh_from_db()
+        self.assertEqual(document.status, 'UNDER_REVIEW')
 
     # ---------- archived-mid-approval guard ----------
 
-    def test_archived_document_status_can_still_be_corrupted_today(self):
-        """The cascade in `apply_approval_decision_to_content_object`
-        doesn't check `archived` (the SecureModel soft-delete flag)
-        before flipping status to APPROVED. Captures current (buggy)
-        behavior so a future fix flips this to assert the cascade is
-        a no-op on archived documents."""
+    @expectedFailure
+    def test_archived_document_cascade_is_a_noop(self):
+        """The approval cascade must not flip an archived document's
+        status. Archive is a soft-delete signal that says "this row
+        is no longer participating in workflows" — running the
+        cascade against it corrupts state on a row that shouldn't be
+        active in any approval pipeline.
+
+        Today `apply_approval_decision_to_content_object` flips the
+        Document.status to APPROVED regardless of `archived` — this
+        test fails as expected.
+
+        Fix: early-return inside the Documents branch of
+        `apply_approval_decision_to_content_object` when
+        `obj.archived` is True (with a `logger.warning` so the
+        attempted cascade is visible in audit). Once landed, this
+        test will pass and the `@expectedFailure` decorator should
+        be removed.
+        """
         from Tracker.services.core.approval import apply_approval_decision_to_content_object
         document = Documents.objects.create(
             file_name='archived.pdf', uploaded_by=self.user,
@@ -795,7 +814,7 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
         # Archive mid-flight (soft-delete via SecureModel).
         document.archived = True
         document.save(update_fields=['archived'])
-        # Pretend the cascade fired — the AR transitioned to APPROVED.
+        # AR transitioned to APPROVED, cascade fires.
         ar.status = 'APPROVED'
         ar.completed_at = timezone.now()
         ar.save()
@@ -803,11 +822,12 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
         apply_approval_decision_to_content_object(ar, 'APPROVED')
         document.refresh_from_db()
 
-        # Today's behavior: cascade ran, status flipped to APPROVED on
-        # an archived document. The intended behavior is a no-op.
-        # If/when the cascade learns to skip archived rows, change
-        # this assertion to assertNotEqual('APPROVED', ...).
-        self.assertEqual(document.status, 'APPROVED')
+        # Cascade should have refused to touch the archived row.
+        self.assertEqual(
+            document.status, 'UNDER_REVIEW',
+            'Archived documents should be invisible to the approval '
+            'cascade. If this passed, remove the @expectedFailure.',
+        )
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
