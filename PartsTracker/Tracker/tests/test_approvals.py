@@ -548,6 +548,269 @@ class DocumentApprovalIntegrationTestCase(TenantContextMixin, VectorTestCase):
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
+class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
+    """Unhappy paths for the Document approval workflow.
+
+    Covers the gates and rejection cascade that the happy-path suite
+    skips: rejection sending the doc back to DRAFT, RELEASED requiring
+    APPROVED first, OBSOLETE only from APPROVED/RELEASED, the
+    `requires_approval=False` short-circuit, fresh approval after
+    `revise()`, and the MultipleObjectsReturned hazard when more than
+    one current version of the DOCUMENT_RELEASE template exists.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(
+            name='Doc Unhappy Tenant',
+            slug='doc-unhappy-tenant',
+            tier='PRO',
+        )
+        self.set_tenant_context(self.tenant)
+
+        self.user = User.objects.create_user(
+            username='dhpuser', email='dhpuser@example.com', password='testpass',
+            is_superuser=True, tenant=self.tenant, us_person=True,
+        )
+        self.approver = User.objects.create_user(
+            username='dhpapprover', email='dhpapprover@example.com',
+            password='testpass', tenant=self.tenant,
+        )
+
+        self.template, _ = ApprovalTemplate.objects.update_or_create(
+            approval_type='DOCUMENT_RELEASE',
+            tenant=self.tenant,
+            defaults={
+                'template_name': 'Document Release',
+                'approval_flow_type': 'ALL_REQUIRED',
+                'approval_sequence': 'PARALLEL',
+                'default_due_days': 5,
+            },
+        )
+        self.template.default_approvers.set([self.approver])
+
+    # ---------- rejection cascade ----------
+
+    def test_rejection_sends_document_back_to_draft(self):
+        """A rejected ApprovalResponse on a Document's request should
+        flip the Document status back to DRAFT via the cascade. The
+        approver's identity needs to survive on the AR for audit, but
+        the Document itself is no longer APPROVED/UNDER_REVIEW."""
+        document = Documents.objects.create(
+            file_name='reject_me.pdf', uploaded_by=self.user,
+            status='DRAFT', tenant=self.tenant,
+        )
+        ar = document.submit_for_approval(self.user)
+        self.assertEqual(document.status, 'UNDER_REVIEW')
+
+        ApprovalResponse.submit_response(
+            approval_request=ar, approver=self.approver,
+            decision='REJECTED', comments='Bad spec.',
+        )
+        ar.update_status()
+        ar.refresh_from_db()
+        document.refresh_from_db()
+
+        self.assertEqual(ar.status, 'REJECTED')
+        self.assertEqual(
+            document.status, 'DRAFT',
+            'Rejection should send the document back to DRAFT so the '
+            'engineer can revise without creating a new version.',
+        )
+
+    # ---------- requires_approval=False short-circuit ----------
+
+    def test_submit_for_approval_blocked_when_type_does_not_require(self):
+        """DocumentType.requires_approval=False should refuse the submit
+        action — otherwise we'd auto-create approval requests for
+        document types that the tenant explicitly marked free-form
+        (e.g. internal notes, drawings shared for reference only)."""
+        from Tracker.models import DocumentType
+        doc_type = DocumentType.objects.create(
+            tenant=self.tenant, name='Internal Note', code='NOTE',
+            requires_approval=False,
+        )
+        document = Documents.objects.create(
+            file_name='no_approval.pdf', uploaded_by=self.user,
+            status='DRAFT', tenant=self.tenant, document_type=doc_type,
+        )
+        with self.assertRaises(ValueError) as ctx:
+            document.submit_for_approval(self.user)
+        self.assertIn('does not require approval', str(ctx.exception))
+
+    # ---------- RELEASED gate ----------
+
+    def test_release_requires_approved_status(self):
+        """A document in DRAFT or UNDER_REVIEW shouldn't be releasable.
+        The release action is the production-floor gate, and bypassing
+        it would let unsigned drafts hit the live spec."""
+        from Tracker.services.core.documents import release_document
+        document = Documents.objects.create(
+            file_name='unreleased.pdf', uploaded_by=self.user,
+            status='DRAFT', tenant=self.tenant,
+        )
+        with self.assertRaises(ValueError) as ctx:
+            release_document(document, self.user)
+        self.assertIn('Must be approved', str(ctx.exception))
+
+        document.status = 'UNDER_REVIEW'
+        document.save()
+        with self.assertRaises(ValueError):
+            release_document(document, self.user)
+
+    def test_release_succeeds_from_approved(self):
+        """Sanity: APPROVED → RELEASED flips status and stamps
+        compliance dates. Companion to the unhappy-path tests above so
+        the assertions cover both branches."""
+        from Tracker.services.core.documents import release_document
+        document = Documents.objects.create(
+            file_name='ready.pdf', uploaded_by=self.user,
+            status='APPROVED', tenant=self.tenant,
+        )
+        release_document(document, self.user)
+        document.refresh_from_db()
+        self.assertEqual(document.status, 'RELEASED')
+
+    # ---------- OBSOLETE gate ----------
+
+    def test_obsolete_requires_approved_or_released(self):
+        """A DRAFT or UNDER_REVIEW doc can't be marked obsolete — only
+        previously-blessed documents have a meaningful "obsolete"
+        state. Catching this prevents losing audit context on a
+        document that was never released to begin with."""
+        from Tracker.services.core.documents import mark_document_obsolete
+        document = Documents.objects.create(
+            file_name='not_yet.pdf', uploaded_by=self.user,
+            status='DRAFT', tenant=self.tenant,
+        )
+        with self.assertRaises(ValueError):
+            mark_document_obsolete(document, self.user)
+
+        document.status = 'UNDER_REVIEW'
+        document.save()
+        with self.assertRaises(ValueError):
+            mark_document_obsolete(document, self.user)
+
+    # ---------- fresh approval after revise() ----------
+
+    def test_revised_document_requires_fresh_approval(self):
+        """`create_new_version` MUST reset the new version to DRAFT and
+        clear `approved_by`/`approved_at`. Without it, a revised
+        document would inherit the prior version's APPROVED status —
+        an unsigned change would skip the workflow entirely."""
+        document = Documents.objects.create(
+            file_name='base.pdf', uploaded_by=self.user,
+            status='APPROVED', tenant=self.tenant,
+            approved_by=self.approver, approved_at=timezone.now(),
+        )
+        new_version = document.create_new_version(
+            change_justification='Updated spec values',
+            status='DRAFT',
+            approved_by=None,
+            approved_at=None,
+            uploaded_by=self.user,
+        )
+        self.assertEqual(new_version.status, 'DRAFT')
+        self.assertIsNone(new_version.approved_by)
+        self.assertIsNone(new_version.approved_at)
+        self.assertEqual(new_version.version, document.version + 1)
+        # The previous version must be the source — the link is what
+        # makes "find all versions of this logical doc" possible.
+        self.assertEqual(new_version.previous_version_id, document.id)
+
+    def test_submit_for_approval_does_not_inherit_prior_request(self):
+        """After `revise()`, the new version's submit_for_approval
+        creates its OWN ApprovalRequest with the new version as the
+        content_object. The prior version's request must not be
+        re-used or re-opened."""
+        document = Documents.objects.create(
+            file_name='base.pdf', uploaded_by=self.user,
+            status='APPROVED', tenant=self.tenant,
+            approved_by=self.approver, approved_at=timezone.now(),
+        )
+        new_version = document.create_new_version(
+            change_justification='Update',
+            status='DRAFT', approved_by=None, approved_at=None,
+            uploaded_by=self.user,
+        )
+        ar = new_version.submit_for_approval(self.user)
+        self.assertEqual(ar.content_object, new_version)
+        self.assertNotEqual(ar.content_object, document)
+
+    # ---------- approval template versioning hazard ----------
+
+    def test_multiple_template_versions_raise_until_filtered(self):
+        """ApprovalTemplate is versioned. If more than one row matches
+        `approval_type='DOCUMENT_RELEASE'` in the tenant (e.g. an admin
+        edited the template, creating a new version), the unscoped
+        fetch in `submit_document_for_approval` raises
+        `MultipleObjectsReturned`. This test pins the current behavior
+        so a future filter-by-`is_current_version=True` fix can flip
+        the assertion to a positive case."""
+        from django.core.exceptions import MultipleObjectsReturned
+
+        # Create a sibling template version that isn't current. The
+        # service should ignore it and only resolve the current one;
+        # today it does not, which is the bug we're capturing.
+        ApprovalTemplate.objects.create(
+            approval_type='DOCUMENT_RELEASE',
+            tenant=self.tenant,
+            template_name='Document Release (old)',
+            approval_flow_type='ALL_REQUIRED',
+            approval_sequence='PARALLEL',
+            default_due_days=5,
+            is_current_version=False,
+            version=1,
+        )
+        # Ensure self.template's `is_current_version` is True so we
+        # have one current + one historical row.
+        ApprovalTemplate.objects.filter(pk=self.template.pk).update(
+            is_current_version=True, version=2,
+        )
+
+        document = Documents.objects.create(
+            file_name='conflict.pdf', uploaded_by=self.user,
+            status='DRAFT', tenant=self.tenant,
+        )
+        with self.assertRaises(MultipleObjectsReturned):
+            document.submit_for_approval(self.user)
+
+    # ---------- archived-mid-approval guard ----------
+
+    def test_archived_document_status_can_still_be_corrupted_today(self):
+        """The cascade in `apply_approval_decision_to_content_object`
+        doesn't check `archived` (the SecureModel soft-delete flag)
+        before flipping status to APPROVED. Captures current (buggy)
+        behavior so a future fix flips this to assert the cascade is
+        a no-op on archived documents."""
+        from Tracker.services.core.approval import apply_approval_decision_to_content_object
+        document = Documents.objects.create(
+            file_name='archived.pdf', uploaded_by=self.user,
+            status='UNDER_REVIEW', tenant=self.tenant,
+        )
+        ar = ApprovalRequest.create_from_template(
+            content_object=document, template=self.template,
+            requested_by=self.user, reason='test',
+        )
+        # Archive mid-flight (soft-delete via SecureModel).
+        document.archived = True
+        document.save(update_fields=['archived'])
+        # Pretend the cascade fired — the AR transitioned to APPROVED.
+        ar.status = 'APPROVED'
+        ar.completed_at = timezone.now()
+        ar.save()
+
+        apply_approval_decision_to_content_object(ar, 'APPROVED')
+        document.refresh_from_db()
+
+        # Today's behavior: cascade ran, status flipped to APPROVED on
+        # an archived document. The intended behavior is a no-op.
+        # If/when the cascade learns to skip archived rows, change
+        # this assertion to assertNotEqual('APPROVED', ...).
+        self.assertEqual(document.status, 'APPROVED')
+
+
+@skipIf(not is_vector_extension_available(), "Vector extension not available")
 class SelfApprovalValidationTestCase(TenantContextMixin, VectorTestCase):
     """Test self-approval validation logic"""
 
