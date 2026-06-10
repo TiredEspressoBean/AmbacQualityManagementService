@@ -240,16 +240,49 @@ def rebase_pcr_draft(pcr: ProcessChangeRequest, *, user) -> RebaseSuccess | Reba
             new_draft_id=str(draft.id),
         )
 
+    # Two safeguards run here, in order:
+    #
+    # 1. Approved-sibling check. Another PCR against the same baseline
+    #    that's already past the approval gate is "claiming" its
+    #    intended diff — its PCO will eventually implement and shift
+    #    the baseline. We want the conflict to surface at *this PCR's*
+    #    approve time, not after the sibling silently implements. If
+    #    intents don't overlap, both PCRs can legitimately co-approve
+    #    and the later implementation order is harmless.
+    #
+    # 2. Implemented-baseline check (the original rebase). If a PCO
+    #    has already implemented since this PCR started, walk the
+    #    chain to the current approved version and run the overlap
+    #    check against the already-shipped fields.
+    intent_diff = compute_process_diff(baseline, draft)
+
+    for sibling in _approved_siblings_targeting(pcr):
+        if sibling.draft_process_version_id is None:
+            continue
+        sibling_intent = compute_process_diff(baseline, sibling.draft_process_version)
+        conflicts = find_overlapping_fields(intent_diff, sibling_intent, sibling.draft_process_version)
+        if conflicts:
+            return RebaseConflict(
+                pcr_id=str(pcr.id),
+                baseline_version_id=str(baseline.id),
+                # Point the dialog at the sibling's draft so the
+                # approver can see whose intent claimed the field
+                # first. UI labels this as "current approved" because
+                # that's what the sibling is about to become.
+                current_approved_id=str(sibling.draft_process_version_id),
+                conflicts=conflicts,
+            )
+
     current_approved = find_current_approved(baseline)
     if current_approved.id == baseline.id:
-        # Baseline is still current — no rebase needed.
+        # Baseline is still current and no approved sibling claimed
+        # any of this PCR's fields — no rebase needed.
         return RebaseSuccess(
             pcr_id=str(pcr.id),
             previous_draft_id=str(draft.id),
             new_draft_id=str(draft.id),
         )
 
-    intent_diff = compute_process_diff(baseline, draft)
     gap_diff = compute_process_diff(baseline, current_approved)
 
     conflicts = find_overlapping_fields(intent_diff, gap_diff, current_approved)
@@ -408,6 +441,32 @@ def _apply_intent_to_process(
                 to_step=to_ps.step,
                 edge_type=edge.get('edge_type', 'DEFAULT'),
             )
+
+
+def _approved_siblings_targeting(pcr: ProcessChangeRequest):
+    """Return PCRs against the same target_process that have already
+    passed approval but whose proposed diff hasn't yet shipped.
+
+    Used by `rebase_pcr_draft` to detect the case where two PCRs were
+    forked from the same baseline, the first approved cleanly because
+    nothing had shifted yet, and the second is now coming up for
+    approval. Without this check the second approve sails through too
+    and the conflict only surfaces — silently — when the *second*
+    implementation overwrites the first's value.
+
+    Excludes the input PCR itself. Returns a queryset, not a list, so
+    callers can iterate without materializing the full set.
+    """
+    return (
+        ProcessChangeRequest.objects
+        .filter(
+            target_process_id=pcr.target_process_id,
+            status=ProcessChangeRequest.Status.APPROVED,
+        )
+        .exclude(pk=pcr.pk)
+        .select_related('draft_process_version')
+        .order_by('updated_at')
+    )
 
 
 def _step_identity_for(step_id: Optional[str], source_draft: Processes) -> Optional[str]:

@@ -553,6 +553,76 @@ class PcrRebaseTestCase(TenantTestCase):
         pcr.refresh_from_db()
         self.assertEqual(pcr.status, ProcessChangeRequest.Status.APPROVED)
 
+    def test_approved_sibling_blocks_second_approval_pre_implement(self):
+        # The Maria/Jen story: PCR-A and PCR-B both fork from the same
+        # baseline and edit Cleaning.description differently. PCR-A
+        # approves (no rebase needed — baseline hasn't shifted). Then
+        # PCR-B comes up for approval BEFORE PCR-A's PCO has been
+        # implemented. Without the approved-sibling check this used to
+        # sail through, leaving the implementation order to silently
+        # decide whose value won. With it, PCR-B's approval raises
+        # `PcrRebaseConflict` against the sibling's intended diff so a
+        # human reconciles before either ships.
+        from Tracker.services.change_control.process_change import (
+            PcrRebaseConflict,
+        )
+        cleaning_identity = self.cleaning.identity_id
+
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(
+            draft_a, cleaning_identity, description='Cleaning A intent',
+        )
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(
+            draft_b, cleaning_identity, description='Cleaning B intent',
+        )
+
+        # Approve PCR-A only — do NOT implement. This is the gap the
+        # earlier rebase code missed: baseline is still v1, no shift
+        # has happened in the version chain.
+        submit_pcr(pcr_a, user=self.user_a)
+        approve_pcr(pcr_a, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+        pcr_a.refresh_from_db()
+        self.assertEqual(pcr_a.status, ProcessChangeRequest.Status.APPROVED)
+
+        submit_pcr(pcr_b, user=self.user_a)
+        with self.assertRaises(PcrRebaseConflict) as ctx:
+            approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        conflict = ctx.exception.conflict
+        self.assertEqual(len(conflict.conflicts), 1)
+        c = conflict.conflicts[0]
+        self.assertEqual(c.step_identity_id, str(cleaning_identity))
+        self.assertEqual(c.field, 'description')
+        # The sibling's intent value is what the dialog surfaces as
+        # "current approved" — points the approver at the other PCR's
+        # claim so they can reconcile.
+        self.assertEqual(c.intent_value, 'Cleaning B intent')
+        self.assertEqual(c.approved_value, 'Cleaning A intent')
+
+    def test_approved_sibling_with_disjoint_edits_does_not_block(self):
+        # PCR-A and PCR-B both forked from the same baseline but edit
+        # *different* steps. The approved-sibling check should be a
+        # no-op since intents don't overlap — both must approve cleanly
+        # to preserve the multi-PCR-per-baseline design.
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(
+            draft_a, self.cleaning.identity_id, description='Cleaning A',
+        )
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(
+            draft_b, self.milling.identity_id, description='Milling B',
+        )
+
+        submit_pcr(pcr_a, user=self.user_a)
+        approve_pcr(pcr_a, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        submit_pcr(pcr_b, user=self.user_a)
+        approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        pcr_b.refresh_from_db()
+        self.assertEqual(pcr_b.status, ProcessChangeRequest.Status.APPROVED)
+
 
 # ---------------------------------------------------------------------------
 # PCO lifecycle
