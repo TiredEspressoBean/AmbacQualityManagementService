@@ -92,10 +92,14 @@ def submit_pcr(
     if pcr.target_process_id is None:
         raise ValueError("PCR must reference a target process.")
 
+    # `is_current_version=True` is load-bearing — ApprovalTemplate is
+    # versioned, so editing the template creates a new row with the
+    # same approval_type. Without this filter the lookup raises
+    # `MultipleObjectsReturned` the moment any admin edits the template.
     try:
         template = ApprovalTemplate.objects.get(
             approval_type='PCR_APPROVAL',
-            tenant=pcr.tenant,
+            is_current_version=True,
             archived=False,
         )
     except ApprovalTemplate.DoesNotExist:
@@ -475,7 +479,7 @@ def approve_pco(
     try:
         template = ApprovalTemplate.objects.get(
             approval_type='PCO_APPROVAL',
-            tenant=pco.tenant,
+            is_current_version=True,
             archived=False,
         )
     except ApprovalTemplate.DoesNotExist:

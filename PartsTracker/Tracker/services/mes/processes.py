@@ -91,7 +91,7 @@ def submit_process_for_approval(process: Processes, user) -> ApprovalRequest:
     try:
         template = ApprovalTemplate.objects.get(
             approval_type='PROCESS_APPROVAL',
-            tenant=process.tenant,
+            is_current_version=True,
         )
     except ApprovalTemplate.DoesNotExist:
         raise ValueError(

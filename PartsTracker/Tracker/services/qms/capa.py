@@ -288,7 +288,7 @@ def auto_request_capa_approval(capa: CAPA) -> ApprovalRequest | None:
     try:
         template = ApprovalTemplate.objects.get(
             approval_type='CAPA_APPROVAL',
-            tenant=capa.tenant,
+            is_current_version=True,
         )
     except ApprovalTemplate.DoesNotExist:
         return None
@@ -326,7 +326,7 @@ def request_capa_approval(capa: CAPA, user) -> ApprovalRequest:
     try:
         template = ApprovalTemplate.objects.get(
             approval_type='CAPA_APPROVAL',
-            tenant=capa.tenant,
+            is_current_version=True,
         )
     except ApprovalTemplate.DoesNotExist:
         raise ValueError(

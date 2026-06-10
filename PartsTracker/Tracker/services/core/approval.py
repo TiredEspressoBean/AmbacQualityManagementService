@@ -278,6 +278,18 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
     if not obj:
         return
 
+    # Archive is the soft-delete signal that says "this row is no
+    # longer participating in workflows". Running the cascade against
+    # it would corrupt the state of a record that shouldn't be active
+    # in any approval pipeline. Skip uniformly across content types,
+    # logging so the attempted cascade is visible in observability.
+    if getattr(obj, 'archived', False):
+        logger.warning(
+            "Skipping approval cascade for archived %s id=%s (AR=%s)",
+            type(obj).__name__, getattr(obj, 'pk', None), request.pk,
+        )
+        return
+
     obj_type = type(obj).__name__
 
     if obj_type == 'Documents':

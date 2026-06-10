@@ -94,10 +94,15 @@ def submit_document_for_approval(document, user):
     if document.document_type and document.document_type.approval_template:
         template = document.document_type.approval_template
     else:
+        # `is_current_version=True` is load-bearing — ApprovalTemplate
+        # is versioned, so editing the template creates a new row with
+        # the same `approval_type`. Without this filter the lookup
+        # raises `MultipleObjectsReturned` the moment any admin edits
+        # the template.
         try:
             template = ApprovalTemplate.objects.get(
                 approval_type='DOCUMENT_RELEASE',
-                tenant=document.tenant,
+                is_current_version=True,
             )
         except ApprovalTemplate.DoesNotExist:
             raise ValueError(

@@ -740,18 +740,15 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
     # ---------- approval template versioning hazard ----------
 
     def test_multiple_template_versions_does_not_block_submit(self):
-        """`submit_document_for_approval` must resolve to the current
+        """`submit_document_for_approval` resolves to the current
         DOCUMENT_RELEASE template even when a historical version of
         the same approval_type exists in the tenant.
 
-        FAILS TODAY — known bug. The service runs
-        `ApprovalTemplate.objects.get(approval_type='DOCUMENT_RELEASE',
-        tenant=…)` without an `is_current_version=True` filter, so
-        two rows match and the ORM raises `MultipleObjectsReturned`.
-
-        Fix: add `is_current_version=True` to the lookup in
-        `services/core/documents.py:97-101`. Once landed, this test
-        will pass on its own.
+        Regression guard: the service used to fetch without an
+        `is_current_version=True` filter, so two rows matched and the
+        ORM raised `MultipleObjectsReturned` the moment any admin
+        edited the template. Lookup in `services/core/documents.py`
+        now narrows to current-version rows.
         """
         # Sibling historical version.
         ApprovalTemplate.objects.create(
@@ -781,21 +778,16 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
     # ---------- archived-mid-approval guard ----------
 
     def test_archived_document_cascade_is_a_noop(self):
-        """The approval cascade must not flip an archived document's
+        """The approval cascade does not flip an archived document's
         status. Archive is a soft-delete signal that says "this row
         is no longer participating in workflows" — running the
-        cascade against it corrupts state on a row that shouldn't be
-        active in any approval pipeline.
+        cascade against it would corrupt the state of a row that
+        shouldn't be active in any approval pipeline.
 
-        FAILS TODAY — known bug.
-        `apply_approval_decision_to_content_object` flips
-        Document.status to APPROVED regardless of `archived`.
-
-        Fix: early-return inside the Documents branch of
-        `apply_approval_decision_to_content_object` when
-        `obj.archived` is True (with a `logger.warning` so the
-        attempted cascade is visible in audit). Once landed, this
-        test will pass on its own.
+        Regression guard for the archived-row skip in
+        `apply_approval_decision_to_content_object`, which applies
+        uniformly across all content types (Documents, CAPA,
+        Processes, PCR, PCO).
         """
         from Tracker.services.core.approval import apply_approval_decision_to_content_object
         document = Documents.objects.create(

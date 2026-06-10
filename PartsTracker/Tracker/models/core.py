@@ -2599,7 +2599,7 @@ class ApprovalRequest(SecureModel):
         try:
             return ApprovalTemplate.objects.get(
                 approval_type=self.approval_type,
-                tenant=self.tenant
+                is_current_version=True,
             )
         except ApprovalTemplate.DoesNotExist:
             return None
