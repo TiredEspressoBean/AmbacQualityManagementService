@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.db import connection
 from rest_framework.test import APIClient
 from rest_framework import status
-from unittest import expectedFailure, skipIf
+from unittest import skipIf
 from Tracker.models import (
     ApprovalTemplate, ApprovalRequest, ApprovalResponse,
     Documents, CAPA, Tenant,
@@ -739,22 +739,19 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
 
     # ---------- approval template versioning hazard ----------
 
-    @expectedFailure
     def test_multiple_template_versions_does_not_block_submit(self):
         """`submit_document_for_approval` must resolve to the current
         DOCUMENT_RELEASE template even when a historical version of
         the same approval_type exists in the tenant.
 
-        Today the service runs `ApprovalTemplate.objects.get(
-        approval_type='DOCUMENT_RELEASE', tenant=…)` without an
-        `is_current_version=True` filter, so two rows match and the
-        ORM raises `MultipleObjectsReturned` — this test fails as
-        expected.
+        FAILS TODAY — known bug. The service runs
+        `ApprovalTemplate.objects.get(approval_type='DOCUMENT_RELEASE',
+        tenant=…)` without an `is_current_version=True` filter, so
+        two rows match and the ORM raises `MultipleObjectsReturned`.
 
-        Fix: add `is_current_version=True` to the lookup (or use
-        `default_approval_template_for(tenant, approval_type)` once
-        it exists). Once landed, this test will pass and the
-        `@expectedFailure` decorator should be removed.
+        Fix: add `is_current_version=True` to the lookup in
+        `services/core/documents.py:97-101`. Once landed, this test
+        will pass on its own.
         """
         # Sibling historical version.
         ApprovalTemplate.objects.create(
@@ -783,7 +780,6 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
 
     # ---------- archived-mid-approval guard ----------
 
-    @expectedFailure
     def test_archived_document_cascade_is_a_noop(self):
         """The approval cascade must not flip an archived document's
         status. Archive is a soft-delete signal that says "this row
@@ -791,16 +787,15 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
         cascade against it corrupts state on a row that shouldn't be
         active in any approval pipeline.
 
-        Today `apply_approval_decision_to_content_object` flips the
-        Document.status to APPROVED regardless of `archived` — this
-        test fails as expected.
+        FAILS TODAY — known bug.
+        `apply_approval_decision_to_content_object` flips
+        Document.status to APPROVED regardless of `archived`.
 
         Fix: early-return inside the Documents branch of
         `apply_approval_decision_to_content_object` when
         `obj.archived` is True (with a `logger.warning` so the
         attempted cascade is visible in audit). Once landed, this
-        test will pass and the `@expectedFailure` decorator should
-        be removed.
+        test will pass on its own.
         """
         from Tracker.services.core.approval import apply_approval_decision_to_content_object
         document = Documents.objects.create(
@@ -825,8 +820,7 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
         # Cascade should have refused to touch the archived row.
         self.assertEqual(
             document.status, 'UNDER_REVIEW',
-            'Archived documents should be invisible to the approval '
-            'cascade. If this passed, remove the @expectedFailure.',
+            'Archived documents should be invisible to the approval cascade.',
         )
 
 
