@@ -14,6 +14,8 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+
+from Tracker.permissions import TenantAccessPermission
 from Tracker.permissions import AllowAnyWithTenantAccess
 from Tracker.exceptions import TenantContextRequired, TenantAccessDenied, ResourceNotFound
 from rest_framework.response import Response
@@ -48,6 +50,7 @@ class TenantInfoSerializer(serializers.Serializer):
     tier = serializers.CharField(read_only=True, allow_null=True)
     status = serializers.CharField(read_only=True, allow_null=True)
     trial_ends_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    change_control_mode = serializers.CharField(read_only=True, allow_null=True)
     is_demo = serializers.BooleanField(read_only=True)
 
 
@@ -124,6 +127,10 @@ class CurrentTenantView(APIView):
                     tenant.trial_ends_at.isoformat()
                     if user and tenant.trial_ends_at else None
                 ),
+                # Auth-gated like tier/status — the mode hints at the
+                # org's regulatory posture, which shouldn't leak to
+                # unauthenticated X-Tenant-ID probes.
+                'change_control_mode': tenant.change_control_mode if user else None,
                 'is_demo': tenant.is_demo,
             }
 
@@ -219,6 +226,7 @@ class TenantSettingsView(APIView):
                 'website': serializers.URLField(allow_blank=True, allow_null=True),
                 'address': serializers.CharField(allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(),
+                'change_control_mode': serializers.CharField(),
                 'logo_url': serializers.CharField(allow_null=True),
                 'allowed_domains': serializers.ListField(child=serializers.CharField()),
             }
@@ -247,6 +255,7 @@ class TenantSettingsView(APIView):
             'website': tenant.website or None,
             'address': tenant.address or None,
             'default_timezone': tenant.default_timezone,
+            'change_control_mode': tenant.change_control_mode,
             'logo_url': logo_url,
             'allowed_domains': tenant.allowed_domains or [],
         })
@@ -262,6 +271,9 @@ class TenantSettingsView(APIView):
                 'website': serializers.URLField(required=False, allow_blank=True, allow_null=True),
                 'address': serializers.CharField(required=False, allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(required=False),
+                'change_control_mode': serializers.ChoiceField(
+                    choices=['SIMPLIFIED', 'REGULATED'], required=False,
+                ),
                 'allowed_domains': serializers.ListField(child=serializers.CharField(), required=False),
             }
         ),
@@ -277,6 +289,7 @@ class TenantSettingsView(APIView):
                 'website': serializers.URLField(allow_blank=True, allow_null=True),
                 'address': serializers.CharField(allow_blank=True, allow_null=True),
                 'default_timezone': serializers.CharField(),
+                'change_control_mode': serializers.CharField(),
                 'logo_url': serializers.CharField(allow_null=True),
                 'allowed_domains': serializers.ListField(child=serializers.CharField()),
             }
@@ -311,6 +324,17 @@ class TenantSettingsView(APIView):
         if 'default_timezone' in request.data:
             tenant.default_timezone = request.data['default_timezone']
 
+        if 'change_control_mode' in request.data:
+            from Tracker.models import Tenant as TenantModel
+            requested_mode = request.data['change_control_mode']
+            valid_modes = TenantModel.ChangeControlMode.values
+            if requested_mode not in valid_modes:
+                return Response(
+                    {'detail': f"change_control_mode must be one of {valid_modes}."},
+                    status=400,
+                )
+            tenant.change_control_mode = requested_mode
+
         # Update SSO allowed domains
         if 'allowed_domains' in request.data:
             domains = request.data['allowed_domains']
@@ -336,6 +360,7 @@ class TenantSettingsView(APIView):
             'website': tenant.website or None,
             'address': tenant.address or None,
             'default_timezone': tenant.default_timezone,
+            'change_control_mode': tenant.change_control_mode,
             'logo_url': logo_url,
             'allowed_domains': tenant.allowed_domains or [],
         })
@@ -895,7 +920,7 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
     - Clone groups and create from presets
     """
     serializer_class = TenantGroupSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -1697,7 +1722,7 @@ class TenantLLMProviderViewSet(viewsets.ModelViewSet):
     - POST /api/tenant/llm-providers/{id}/set-default/ - Set as default provider
     """
     serializer_class = TenantLLMProviderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     lookup_field = 'id'
 
     def get_queryset(self):

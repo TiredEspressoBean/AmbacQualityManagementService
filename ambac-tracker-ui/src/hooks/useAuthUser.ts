@@ -2,9 +2,11 @@
 import { useQuery, queryOptions } from '@tanstack/react-query'
 import { api } from '@/lib/api/generated'
 
-// Group type for both Django groups and tenant groups
+// Tenant-group shape on the auth payload. Ids are TenantGroup UUIDs
+// (strings); `number` stays in the union for any legacy Django-group
+// consumers.
 export type AuthUserGroup = {
-    id: number;
+    id: string | number;
     name: string;
     role_type?: string;
 };

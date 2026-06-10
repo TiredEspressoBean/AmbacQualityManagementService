@@ -968,3 +968,128 @@ class PcnLifecycleTestCase(TenantTestCase):
         # PCN is in DRAFT, not RELEASED — close should fail.
         with self.assertRaises(ValueError):
             close_pcn(pcn, user=self.user_a, closure_evidence='x')
+
+# ---------------------------------------------------------------------------
+# REGULATED mode — end-to-end multi-signature lifecycle
+# ---------------------------------------------------------------------------
+
+class RegulatedModeEndToEndTestCase(TenantTestCase):
+    """Tenant-field-driven REGULATED flow, end to end.
+
+    Unlike the service-level tests above (which pass `mode=` directly),
+    this exercises the real resolution chain: the tenant's
+    `change_control_mode` field → `resolve_change_control_mode` → the
+    approval-signature cascade. Reproduces the deferred Phase 3 smoke
+    test: a PCR requiring TWO signatures, where the PCO must NOT
+    auto-approve when the second signature lands.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Tenant, User
+
+        Tenant.objects.filter(pk=self.tenant_a.pk).update(
+            change_control_mode=Tenant.ChangeControlMode.REGULATED,
+        )
+        self.tenant_a.refresh_from_db()
+
+        self.approver_1 = User.objects.create_user(
+            username='reg_approver_1', email='reg1@test.com',
+            password='x', tenant=self.tenant_a,
+        )
+        self.approver_2 = User.objects.create_user(
+            username='reg_approver_2', email='reg2@test.com',
+            password='x', tenant=self.tenant_a,
+        )
+
+        self.part_type = PartTypes.objects.create(name='RPT', ID_prefix='RPT-')
+        self.baseline = Processes.objects.create(
+            name='Regulated Proc',
+            part_type=self.part_type,
+            status=ProcessStatus.APPROVED,
+            approved_by=self.user_a,
+            is_current_version=True,
+        )
+        step = Steps.objects.create(name='S1', part_type=self.part_type, pass_threshold=1.0)
+        ProcessStep.objects.create(process=self.baseline, step=step, order=1)
+
+        tpl = _make_pcr_template(self.tenant_a)
+        tpl.approval_flow_type = 'ALL_REQUIRED'
+        tpl.save(update_fields=['approval_flow_type'])
+        tpl.default_approvers.set([self.approver_1, self.approver_2])
+        _make_pco_template(self.tenant_a)
+
+    def _submitted_pcr(self):
+        from Tracker.services.change_control.process_change import propose_process_change
+        pcr, _draft = propose_process_change(
+            self.baseline, user=self.user_a,
+            title='Regulated change', proposed_change='c',
+            justification='c', risk_analysis='c',
+        )
+        return pcr, submit_pcr(pcr, user=self.user_a)
+
+    def test_two_signatures_required_pco_stays_draft(self):
+        from Tracker.models import Approval_Status_Type, ApprovalResponse
+
+        pcr, ar = self._submitted_pcr()
+        self.assertEqual(ar.status, Approval_Status_Type.PENDING)
+
+        # First signature: not enough — nothing transitions.
+        ApprovalResponse.submit_response(
+            approval_request=ar, approver=self.approver_1,
+            decision='APPROVED', comments='LGTM (1/2)',
+        )
+        ar.refresh_from_db()
+        pcr.refresh_from_db()
+        self.assertEqual(ar.status, Approval_Status_Type.PENDING)
+        self.assertEqual(pcr.status, ProcessChangeRequest.Status.SUBMITTED)
+
+        # Second signature: AR completes, cascade fires with the
+        # tenant's REGULATED mode.
+        ApprovalResponse.submit_response(
+            approval_request=ar, approver=self.approver_2,
+            decision='APPROVED', comments='LGTM (2/2)',
+        )
+        ar.refresh_from_db()
+        pcr.refresh_from_db()
+        self.assertEqual(ar.status, Approval_Status_Type.APPROVED)
+        self.assertEqual(pcr.status, ProcessChangeRequest.Status.APPROVED)
+
+        # The load-bearing REGULATED assertion: the PCO exists but is
+        # DRAFT — awaiting its own author/approve signature cycle. The
+        # old cascade defaulted to SIMPLIFIED and auto-approved it.
+        pco = pcr.order
+        self.assertIsNotNone(pco)
+        self.assertEqual(pco.status, ProcessChangeOrder.Status.DRAFT)
+
+        # The dangling-AR cleanup must not have clobbered the
+        # legitimately-APPROVED request.
+        ar.refresh_from_db()
+        self.assertEqual(ar.status, Approval_Status_Type.APPROVED)
+
+    def test_simplified_single_click_cancels_pending_ar(self):
+        from Tracker.models import Tenant, Approval_Status_Type, ApprovalRequest
+
+        Tenant.objects.filter(pk=self.tenant_a.pk).update(
+            change_control_mode=Tenant.ChangeControlMode.SIMPLIFIED,
+        )
+        self.tenant_a.refresh_from_db()
+
+        pcr, ar = self._submitted_pcr()
+        self.assertEqual(ar.status, Approval_Status_Type.PENDING)
+
+        # SIMPLIFIED single-click: no signatures collected; the manual
+        # approve path resolves the dangling AR as CANCELLED and the
+        # PCO auto-approves.
+        pco = approve_pcr(pcr, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+        pcr.refresh_from_db()
+        ar.refresh_from_db()
+
+        self.assertEqual(pcr.status, ProcessChangeRequest.Status.APPROVED)
+        self.assertEqual(pco.status, ProcessChangeOrder.Status.APPROVED)
+        self.assertEqual(
+            ar.status, Approval_Status_Type.CANCELLED,
+            'Single-click approval should cancel the pending AR so it '
+            'stops haunting approver inboxes.',
+        )
+        self.assertIsNotNone(ar.completed_at)

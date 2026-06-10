@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useProcessChangeOrder, useProcessChangeRequest } from "@/hooks/useProcessChangeRequest";
 import { PcrDiffViewer, type ProcessDiff } from "@/components/change-control/PcrDiffViewer";
 import { PcoActions } from "@/components/change-control/PcoActions";
+import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
 import { FileEdit, FileText } from "lucide-react";
 
 type PcoRow = {
@@ -157,6 +158,16 @@ export function PcoDetailPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Signature collection — renders only once the PCO has been
+                submitted for signatures (REGULATED). The cascade flips the
+                PCO to APPROVED when the last required signature lands. */}
+            <ApprovalSignaturePanel
+                contentTypeModel="processchangeorder"
+                objectId={pco.id}
+                contentTitle={pco.artifact_number ?? pco.id}
+                contentKind="Process Change Order"
+            />
 
             <Card>
                 <CardHeader>

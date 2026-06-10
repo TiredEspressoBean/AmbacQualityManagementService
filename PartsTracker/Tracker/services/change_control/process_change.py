@@ -63,6 +63,24 @@ class ChangeControlMode:
     REGULATED = 'REGULATED'
 
 
+def resolve_change_control_mode(tenant) -> str:
+    """Resolve the change-control mode for a tenant.
+
+    Single source of truth consumed by both the viewset layer (HTTP
+    requests) and the approval-signature cascade (which runs from a
+    post_save signal with no request in scope). Without sharing this,
+    the cascade defaulted to SIMPLIFIED and auto-approved PCOs for
+    REGULATED tenants — silently bypassing the PCO author/approve
+    separation-of-duties chain.
+
+    Defaults to SIMPLIFIED when the tenant is None (e.g. requests on
+    tenant-exempt paths) or predates the field.
+    """
+    if tenant is None:
+        return ChangeControlMode.SIMPLIFIED
+    return getattr(tenant, 'change_control_mode', None) or ChangeControlMode.SIMPLIFIED
+
+
 # ---------------------------------------------------------------------------
 # PCR — ProcessChangeRequest lifecycle
 # ---------------------------------------------------------------------------
@@ -205,6 +223,25 @@ def approve_pcr(
 
         pcr.status = ProcessChangeRequest.Status.APPROVED
         pcr.save(update_fields=['status', 'updated_at'])
+
+        # Resolve any still-PENDING ApprovalRequests for this PCR.
+        # The SIMPLIFIED single-click path approves the PCR without
+        # the AR ever transitioning, which used to leave a PENDING AR
+        # dangling in approvers' inboxes forever. In the REGULATED
+        # cascade path the AR is already APPROVED (terminal) and is
+        # left untouched. `.update()` deliberately bypasses signals so
+        # the approval cascade doesn't re-fire on this bookkeeping.
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import Approval_Status_Type
+        pcr_ct = ContentType.objects.get_for_model(ProcessChangeRequest)
+        ApprovalRequest.objects.filter(
+            content_type=pcr_ct,
+            object_id=str(pcr.id),
+            status=Approval_Status_Type.PENDING,
+        ).update(
+            status=Approval_Status_Type.CANCELLED,
+            completed_at=timezone.now(),
+        )
 
         pco = create_pco_from_approved_pcr(pcr, user=user, mode=mode)
 

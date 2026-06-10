@@ -59,17 +59,16 @@ from Tracker.viewsets.base import TenantScopedMixin
 def _resolve_mode(request) -> str:
     """Pick SIMPLIFIED vs REGULATED for lifecycle services.
 
-    Reads the tenant's configured mode. Defaults to SIMPLIFIED until the
-    `Tenant.change_control_mode` field lands — at which point this
-    becomes `request.tenant.change_control_mode`.
+    Reads `Tenant.change_control_mode` via the shared resolver so the
+    viewset layer and the approval-signature cascade always agree.
 
     No query-param override: SIMPLIFIED auto-approves PCOs at PCR
     approval, so accepting a client-supplied mode flag would let any
     tenant user bypass the REGULATED signature workflow simply by
     appending `?mode=SIMPLIFIED` to a request.
     """
-    # TODO: return request.tenant.change_control_mode once the field exists.
-    return ChangeControlMode.SIMPLIFIED
+    from Tracker.services.change_control import resolve_change_control_mode
+    return resolve_change_control_mode(getattr(request, 'tenant', None))
 
 
 def _bad_request(message: str) -> Response:
@@ -446,6 +445,32 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         """Finalize PCO approval after signatures are collected.
         Enforces separation of duties (approver != PCO author)."""
         pco = self.get_object()
+
+        # REGULATED mode: signatures are the gate, this endpoint only
+        # finalizes. Without this check, a user could skip `approve`
+        # (which creates the ApprovalRequest) and flip the PCO state
+        # directly — bypassing signature collection entirely. Mirrors
+        # the PCR `/approve/` gate.
+        if _resolve_mode(request) == ChangeControlMode.REGULATED:
+            ar = _latest_approval_request_for(pco)
+            if ar is None:
+                return Response(
+                    {'detail': 'No approval request exists for this PCO. Submit it via /approve/ first.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if ar.status != 'APPROVED':
+                return Response(
+                    {
+                        'detail': (
+                            'Approval signatures are still pending. '
+                            'Wait for all required approvers to respond.'
+                        ),
+                        'approval_request_id': str(ar.id),
+                        'approval_request_status': ar.status,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         try:
             mark_pco_approved(pco, user=request.user)
         except ValueError as exc:

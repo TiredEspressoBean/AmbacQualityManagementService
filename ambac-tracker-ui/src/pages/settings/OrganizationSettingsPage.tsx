@@ -60,6 +60,7 @@ const formSchema = z.object({
     website: z.string().url("Invalid URL").or(z.literal("")),
     address: z.string().max(500).optional(),
     default_timezone: z.string(),
+    change_control_mode: z.enum(["SIMPLIFIED", "REGULATED"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -91,6 +92,10 @@ export function OrganizationSettingsPage() {
             website: settings.website || "",
             address: settings.address || "",
             default_timezone: settings.default_timezone || "UTC",
+            change_control_mode:
+                ((settings as { change_control_mode?: string }).change_control_mode === "REGULATED"
+                    ? "REGULATED"
+                    : "SIMPLIFIED") as "SIMPLIFIED" | "REGULATED",
         } : undefined,
     });
 
@@ -411,7 +416,17 @@ export function OrganizationSettingsPage() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Default Timezone</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            {/* Re-key on the value so Radix Select shows the loaded
+                                                value after the async settings fetch populates the
+                                                form — without this the trigger sticks on the
+                                                placeholder. Same workaround as the approval-template
+                                                form. */}
+                                            <Select
+                                                key={`tz-${field.value ?? "empty"}`}
+                                                onValueChange={field.onChange}
+                                                value={field.value}
+                                                defaultValue={field.value}
+                                            >
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select timezone" />
@@ -427,6 +442,48 @@ export function OrganizationSettingsPage() {
                                             </Select>
                                             <FormDescription>
                                                 Used for scheduling and report timestamps
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="change_control_mode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Change Control Mode</FormLabel>
+                                            <Select
+                                                key={`ccm-${field.value ?? "empty"}`}
+                                                onValueChange={field.onChange}
+                                                value={field.value}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select mode" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="SIMPLIFIED">
+                                                        Simplified — single-approver flow (ISO 9001)
+                                                    </SelectItem>
+                                                    <SelectItem value="REGULATED">
+                                                        Regulated — signature-gated flow (IATF 16949 / AS9100D)
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                Simplified: approving a process change request
+                                                auto-approves the change order, and the change notice
+                                                releases automatically at implementation. Regulated:
+                                                every change request and change order requires its own
+                                                round of collected signatures, with separation of duties
+                                                — the person who authors a change order cannot approve
+                                                it, and the person who approves it cannot release the
+                                                notice. Applies to actions taken after the switch; open
+                                                changes continue under the mode at their next action.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

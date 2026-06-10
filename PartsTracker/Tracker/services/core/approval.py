@@ -324,11 +324,19 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
         # services (which import from core).
         from Tracker.services.change_control.process_change import (
             approve_pcr, reject_pcr, PcrRebaseConflict,
+            resolve_change_control_mode,
         )
         approver = request.get_primary_approver()
         if status == Approval_Status_Type.APPROVED:
             try:
-                approve_pcr(obj, user=approver)
+                # Mode must come from the tenant, not the SIMPLIFIED
+                # default — for REGULATED tenants the PCO created here
+                # must stay DRAFT awaiting its own author/approve
+                # cycle, not auto-approve.
+                approve_pcr(
+                    obj, user=approver,
+                    mode=resolve_change_control_mode(obj.tenant),
+                )
             except PcrRebaseConflict:
                 # Baseline shifted while signatures were being collected.
                 # Roll BOTH the PCR back to UNDER_REVIEW and the
@@ -389,9 +397,22 @@ def notify_approvers(request: ApprovalRequest):
 
 
 def notify_status_change(request: ApprovalRequest, new_status):
-    """Notify the requester that a decision has been made."""
+    """Notify the requester that a decision has been made.
+
+    No-op when the request has no requester on record (the FK is
+    nullable — e.g. the requesting account was deleted, or the AR was
+    created by a system process). Without this guard the
+    NotificationTask insert hits a NOT NULL constraint and the raw DB
+    error aborts the approver's response submission.
+    """
     from Tracker.services.core.notification import enqueue_decision_notification
 
+    if request.requested_by_id is None:
+        logger.info(
+            "Skipping decision notification for AR %s — no requester on record",
+            request.pk,
+        )
+        return
     enqueue_decision_notification(request.requested_by, request)
 
 

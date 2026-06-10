@@ -19,10 +19,13 @@ import {
     useMarkPcoApproved,
     useImplementPco,
     useCancelPco,
+    useSubmitPcoForApproval,
     type MigrationDisposition,
 } from "@/hooks/useChangeControlActions";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useAffectedWorkorders, type AffectedWorkorderRow } from "@/hooks/useAffectedWorkorders";
+import { useTenantContext } from "@/components/tenant-provider";
+import { useApprovalRequestsFor } from "@/hooks/useApprovalRequestsFor";
 
 type Props = {
     pcoId: string;
@@ -40,13 +43,27 @@ export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }:
     const markApproved = useMarkPcoApproved();
     const implement = useImplementPco();
     const cancel = useCancelPco();
+    const submitForApproval = useSubmitPcoForApproval();
     const { has } = usePermissionSet();
+    const { isRegulated } = useTenantContext();
+    const { data: approvalRequests } = useApprovalRequestsFor("processchangeorder", pcoId);
 
     const canChange = has("change_processchangeorder");
     const canAuthor = canChange && status === "DRAFT";
     const canMarkApproved = canChange && (status === "DRAFT" || status === "UNDER_APPROVAL");
     const canImplement = canChange && status === "APPROVED";
     const canCancel = canChange && (status === "DRAFT" || status === "UNDER_APPROVAL" || status === "APPROVED");
+
+    // REGULATED mode: the PCO needs its own signature cycle. "Submit
+    // for signatures" creates the ApprovalRequest; "Mark approved" is
+    // then only a finalizer (backend 403s while signatures pend — the
+    // cascade normally fires it automatically when the last lands).
+    const latestAr = approvalRequests?.[0] ?? null;
+    const canSubmitForSignatures =
+        isRegulated && canChange && status === "DRAFT" &&
+        (latestAr === null || (latestAr.status !== "PENDING" && latestAr.status !== "APPROVED"));
+    const regulatedSignaturesPending =
+        isRegulated && latestAr !== null && latestAr.status === "PENDING";
 
     if (!canAuthor && !canMarkApproved && !canImplement && !canCancel) return null;
 
@@ -57,7 +74,26 @@ export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }:
                     <FileEdit className="h-4 w-4 mr-2" /> Edit plan
                 </Button>
             )}
-            {canMarkApproved && (
+            {canSubmitForSignatures && (
+                <Button
+                    size="sm"
+                    onClick={async () => {
+                        try {
+                            await submitForApproval.mutateAsync({ id: pcoId });
+                            toast.success("Submitted for signatures", {
+                                description: "Approvers from the PCO approval template have been assigned.",
+                            });
+                        } catch (e) {
+                            toast.error("Submit failed", { description: e instanceof Error ? e.message : undefined });
+                        }
+                    }}
+                    disabled={submitForApproval.isPending}
+                >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    {submitForApproval.isPending ? "…" : "Submit for signatures"}
+                </Button>
+            )}
+            {canMarkApproved && !canSubmitForSignatures && (
                 <Button
                     size="sm"
                     onClick={async () => {
@@ -68,10 +104,19 @@ export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }:
                             toast.error("Approve failed", { description: e instanceof Error ? e.message : undefined });
                         }
                     }}
-                    disabled={markApproved.isPending}
+                    disabled={markApproved.isPending || regulatedSignaturesPending}
+                    title={
+                        regulatedSignaturesPending
+                            ? "Regulated mode: approval finalizes automatically once all required signatures are collected."
+                            : undefined
+                    }
                 >
                     <CheckCircle2 className="h-4 w-4 mr-2" />
-                    {markApproved.isPending ? "…" : "Mark approved"}
+                    {markApproved.isPending
+                        ? "…"
+                        : regulatedSignaturesPending
+                            ? "Awaiting signatures"
+                            : "Mark approved"}
                 </Button>
             )}
             {canImplement && (

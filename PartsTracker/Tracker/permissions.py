@@ -651,17 +651,27 @@ class TenantModelPermissions(TenantPermission):
         if not super().has_permission(request, view):
             return False
 
-        # CRUD gate (HTTP method → view/add/change/delete_{model})
-        perm = self.get_required_permission(request, view)
-        if perm and not request.user.has_tenant_perm(perm):
-            return False
-
-        # Action-specific gate, additive on top of CRUD. Viewsets opt in by
-        # declaring `action_permissions = {'action_name': ['perm', ...]}`.
-        # Actions not listed fall through to CRUD-only.
         action = getattr(view, 'action', None)
         action_permissions = getattr(view, 'action_permissions', None) or {}
         required = action_permissions.get(action) or []
+
+        # CRUD gate (HTTP method → view/add/change/delete_{model}).
+        #
+        # Skipped for actions in `crud_exempt_actions`: some custom
+        # @action endpoints don't map cleanly onto the model's CRUD
+        # perms. e.g. POST /submit-response/ would demand
+        # `add_approvalrequest` (because POST → add), but an approver
+        # responding to a request is NOT creating one — they
+        # legitimately lack that perm. For those, the declarative
+        # `action_permissions` entry is the sole, sufficient gate.
+        crud_exempt = getattr(view, 'crud_exempt_actions', None) or set()
+        if action not in crud_exempt:
+            perm = self.get_required_permission(request, view)
+            if perm and not request.user.has_tenant_perm(perm):
+                return False
+
+        # Action-specific gate. Additive on top of CRUD for normal
+        # actions; the only gate for crud-exempt ones.
         if required and not request.user.has_tenant_perms(required):
             return False
 

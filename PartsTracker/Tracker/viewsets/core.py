@@ -21,9 +21,11 @@ from auditlog.models import LogEntry
 from dj_rest_auth.views import UserDetailsView as BaseUserDetailsView
 
 from Tracker.filters import UserFilter
+from Tracker.permissions import TenantAccessPermission
 from Tracker.models.core import User, Companies, UserInvitation, ApprovalTemplate, ApprovalRequest, ApprovalResponse, Documents, DocumentType
 from Tracker.serializers.core import (
     UserSerializer, UserSelectSerializer, UserDetailSerializer,
+    TenantAwareUserDetailsSerializer,
     CompanySerializer, GroupSerializer, UserInvitationSerializer,
     ContentTypeSerializer, AuditLogSerializer,
     ApprovalTemplateSerializer, ApprovalRequestSerializer, ApprovalResponseSerializer
@@ -1075,16 +1077,13 @@ class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
 
 
 class UserDetailsView(BaseUserDetailsView):
-    """Enhanced user details view with staff and group info"""
-    def retrieve(self, request, *args, **kwargs):
-        response = super().retrieve(request, *args, **kwargs)
-        response.data['is_staff'] = request.user.is_staff
-        response.data['is_superuser'] = request.user.is_superuser
-        response.data['is_active'] = request.user.is_active
-        # Add user groups to the response (tenant-scoped)
-        tenant_groups = request.user.get_tenant_groups() if hasattr(request.user, 'get_tenant_groups') else []
-        response.data['groups'] = [{'id': group.id, 'name': group.name} for group in tenant_groups]
-        return response
+    """User details with staff flags + tenant-scoped groups.
+
+    Fields are declared on the serializer (not injected post-hoc into
+    `response.data`) so drf-spectacular emits them and the generated
+    frontend client's response validation lets them through.
+    """
+    serializer_class = TenantAwareUserDetailsSerializer
 
 
 class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
@@ -1702,7 +1701,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
 
         return Response(stats)
 
-    @action(detail=False, methods=['get'], url_path='my-uploads', permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='my-uploads', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_uploads(self, request):
         """Get documents uploaded by the current user"""
         queryset = self.get_queryset().filter(uploaded_by=request.user)
@@ -1750,6 +1749,16 @@ class ContentTypeViewSet(ReadOnlyModelViewSet):
     queryset = ContentType.objects.all()
     serializer_class = ContentTypeSerializer
     pagination_class = None  # Content types are a small fixed set, no need to paginate
+
+    # Content types are framework metadata (model name → numeric id),
+    # not tenant data — the ids already appear in every GFK field of
+    # every API response. The default permission stack's
+    # TenantModelPermissions would demand `view_contenttype`, which
+    # only admin groups carry; that silently broke the frontend's
+    # content-type mapping (and with it the approval signature panels)
+    # for every non-admin user. Authenticated + tenant access is the
+    # right gate.
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1928,6 +1937,12 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     action_permissions = {
         'submit_response': ['respond_to_approval'],
     }
+    # Responding to an approval is not creating an ApprovalRequest, so
+    # the POST→add_approvalrequest CRUD gate must not apply here — an
+    # eligible approver legitimately lacks `add_approvalrequest`.
+    # `respond_to_approval` (above) + the per-instance `can_approve`
+    # check inside the action are the real gates.
+    crud_exempt_actions = {'submit_response'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1975,9 +1990,38 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         from Tracker.serializers import UserSelectSerializer
         return Response(UserSelectSerializer(pending, many=True).data)
 
+    @extend_schema(
+        description="Submit an approval response (approve/reject/delegate) with optional signature + password identity verification.",
+        request=inline_serializer(
+            name='ApprovalResponseSubmitRequest',
+            fields={
+                'decision': serializers.ChoiceField(choices=['APPROVED', 'REJECTED', 'DELEGATED']),
+                'comments': serializers.CharField(required=False, allow_blank=True),
+                'signature_data': serializers.CharField(
+                    required=False, allow_blank=True,
+                    help_text='Base64 PNG of the drawn signature.',
+                ),
+                'signature_meaning': serializers.CharField(required=False, allow_blank=True),
+                'password': serializers.CharField(
+                    required=False, allow_blank=True,
+                    help_text='Re-entered account password for identity verification.',
+                ),
+                'delegate_to': serializers.IntegerField(required=False, allow_null=True),
+            },
+        ),
+        responses={200: ApprovalResponseSerializer},
+    )
     @action(detail=True, methods=['post'], url_path='submit-response')
     def submit_response(self, request, pk=None):
-        """Submit an approval response (approve/reject/delegate)"""
+        """Submit an approval response (approve/reject/delegate).
+
+        The explicit `@extend_schema(request=...)` matters: without it,
+        spectacular defaults the request body to the viewset's
+        ApprovalRequestRequest serializer, whose required fields the
+        real payload doesn't carry — the generated frontend client then
+        rejects every legitimate submit with a request-validation error
+        before it leaves the browser.
+        """
         # `respond_to_approval` enforced declaratively via action_permissions.
         # Per-instance assignment check (can_approve) remains inline — it's
         # template-binding logic that depends on the specific approval row.
@@ -2023,7 +2067,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         description="Get all approval requests pending for current user",
         responses={200: ApprovalRequestSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'], url_path='my-pending', permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='my-pending', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_pending(self, request):
         """Get all approval requests pending for current user"""
         user = request.user
@@ -2082,6 +2126,10 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportM
     action_permissions = {
         'delegate': ['respond_to_approval'],
     }
+    # Delegating is a respond-type action by an approver, not creation
+    # of an ApprovalResponse row in the CRUD sense — gate on
+    # `respond_to_approval` alone, not POST→add_approvalresponse.
+    crud_exempt_actions = {'delegate'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

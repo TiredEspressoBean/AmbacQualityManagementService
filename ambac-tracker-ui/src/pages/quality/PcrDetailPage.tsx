@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useProcessChangeRequest } from "@/hooks/useProcessChangeRequest";
 import { PcrDiffViewer, type ProcessDiff } from "@/components/change-control/PcrDiffViewer";
 import { PcrActions } from "@/components/change-control/PcrActions";
+import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
 import { FileEdit } from "lucide-react";
 
 type PcrRow = {
@@ -153,6 +154,17 @@ export function PcrDetailPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Signature collection — renders only when an ApprovalRequest
+                exists for this PCR (i.e. it has been submitted). Drives the
+                REGULATED-mode workflow; harmless in SIMPLIFIED where the AR
+                is resolved by the single-click approve. */}
+            <ApprovalSignaturePanel
+                contentTypeModel="processchangerequest"
+                objectId={pcr.id}
+                contentTitle={pcr.artifact_number ?? pcr.id}
+                contentKind="Process Change Request"
+            />
 
             <Card>
                 <CardHeader>

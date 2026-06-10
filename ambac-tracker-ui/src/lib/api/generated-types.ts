@@ -68,7 +68,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Submit an approval response (approve/reject/delegate) */
+        /** @description Submit an approval response (approve/reject/delegate) with optional signature + password identity verification. */
         post: operations["api_ApprovalRequests_submit_response_create"];
         delete?: never;
         options?: never;
@@ -12871,15 +12871,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Enhanced user details view with staff and group info */
+        /**
+         * @description User details with staff flags + tenant-scoped groups.
+         *
+         *     Fields are declared on the serializer (not injected post-hoc into
+         *     `response.data`) so drf-spectacular emits them and the generated
+         *     frontend client's response validation lets them through.
+         */
         get: operations["auth_user_retrieve"];
-        /** @description Enhanced user details view with staff and group info */
+        /**
+         * @description User details with staff flags + tenant-scoped groups.
+         *
+         *     Fields are declared on the serializer (not injected post-hoc into
+         *     `response.data`) so drf-spectacular emits them and the generated
+         *     frontend client's response validation lets them through.
+         */
         put: operations["auth_user_update"];
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** @description Enhanced user details view with staff and group info */
+        /**
+         * @description User details with staff flags + tenant-scoped groups.
+         *
+         *     Fields are declared on the serializer (not injected post-hoc into
+         *     `response.data`) so drf-spectacular emits them and the generated
+         *     frontend client's response validation lets them through.
+         */
         patch: operations["auth_user_partial_update"];
         trace?: never;
     };
@@ -13031,7 +13049,7 @@ export interface components {
             readonly approver_info: {
                 [key: string]: unknown;
             } | null;
-            decision: components["schemas"]["DecisionEnum"];
+            decision: components["schemas"]["ApprovalResponseDecisionEnum"];
             readonly decision_display: string;
             /** Format: date-time */
             readonly decision_date: string;
@@ -13060,12 +13078,19 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        /**
+         * @description * `APPROVED` - Approved
+         *     * `REJECTED` - Rejected
+         *     * `DELEGATED` - Delegated
+         * @enum {string}
+         */
+        ApprovalResponseDecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED";
         /** @description Approval response serializer */
         ApprovalResponseRequest: {
             /** Format: uuid */
             approval_request: string;
             approver: number;
-            decision: components["schemas"]["DecisionEnum"];
+            decision: components["schemas"]["ApprovalResponseDecisionEnum"];
             comments?: string | null;
             /** @description Base64 encoded signature image (PNG) */
             signature_data?: string | null;
@@ -13074,6 +13099,23 @@ export interface components {
             verification_method?: components["schemas"]["VerificationMethodEnum"];
             delegated_to?: number | null;
             archived?: boolean;
+        };
+        /**
+         * @description * `APPROVED` - APPROVED
+         *     * `REJECTED` - REJECTED
+         *     * `DELEGATED` - DELEGATED
+         * @enum {string}
+         */
+        ApprovalResponseSubmitRequestDecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED";
+        ApprovalResponseSubmitRequestRequest: {
+            decision: components["schemas"]["ApprovalResponseSubmitRequestDecisionEnum"];
+            comments?: string;
+            /** @description Base64 PNG of the drawn signature. */
+            signature_data?: string;
+            signature_meaning?: string;
+            /** @description Re-entered account password for identity verification. */
+            password?: string;
+            delegate_to?: number | null;
         };
         /**
          * @description * `PARALLEL` - Parallel
@@ -13267,6 +13309,12 @@ export interface components {
             action: components["schemas"]["ActionEnum"];
             /** Change message */
             changes?: unknown;
+        };
+        /** @description Brief TenantGroup shape embedded in the auth-user payload. */
+        AuthUserTenantGroup: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
         };
         AvailablePermissionResponse: {
             id: number;
@@ -13948,6 +13996,12 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description * `SIMPLIFIED` - SIMPLIFIED
+         *     * `REGULATED` - REGULATED
+         * @enum {string}
+         */
+        ChangeControlModeEnum: "SIMPLIFIED" | "REGULATED";
+        /**
          * @description * `LOW` - Low
          *     * `NORMAL` - Normal
          *     * `HIGH` - High
@@ -14515,13 +14569,6 @@ export interface components {
          * @enum {string}
          */
         DataOriginEnum: "NATIVE" | "IMPORTED";
-        /**
-         * @description * `APPROVED` - Approved
-         *     * `REJECTED` - Rejected
-         *     * `DELEGATED` - Delegated
-         * @enum {string}
-         */
-        DecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED";
         /**
          * @description * `QA_RESULT` - Based on QA Pass/Fail
          *     * `MEASUREMENT` - Based on Measurement Threshold
@@ -18037,7 +18084,7 @@ export interface components {
             /** Format: uuid */
             approval_request?: string;
             approver?: number;
-            decision?: components["schemas"]["DecisionEnum"];
+            decision?: components["schemas"]["ApprovalResponseDecisionEnum"];
             comments?: string | null;
             /** @description Base64 encoded signature image (PNG) */
             signature_data?: string | null;
@@ -19674,6 +19721,24 @@ export interface components {
             body_blocks?: unknown;
             archived?: boolean;
         };
+        /**
+         * @description dj-rest-auth user-details payload + the fields the frontend needs.
+         *
+         *     `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+         *     / `is_active` / `groups` into the response dict AFTER serialization,
+         *     so drf-spectacular never emitted them and the generated frontend
+         *     Zod schema stripped them during response validation — `authUser.
+         *     groups` was always undefined in app code, silently breaking every
+         *     group-based eligibility check (approval signature panels, staff
+         *     affordances). Declaring them here puts them in the schema, which
+         *     puts them in the Zod shape, which lets them through.
+         */
+        PatchedTenantAwareUserDetailsRequest: {
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            username?: string;
+            first_name?: string | null;
+            last_name?: string | null;
+        };
         /** @description Serializer for TenantGroup with permission counts. */
         PatchedTenantGroupRequest: {
             /** @description Display name */
@@ -19813,6 +19878,7 @@ export interface components {
             website?: string | null;
             address?: string | null;
             default_timezone?: string;
+            change_control_mode?: components["schemas"]["ChangeControlModeEnum"];
             allowed_domains?: string[];
         };
         /**
@@ -19944,13 +20010,6 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string;
-        };
-        /** @description User model w/o password */
-        PatchedUserDetailsRequest: {
-            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
-            username?: string;
-            first_name?: string | null;
-            last_name?: string | null;
         };
         /** @description Serializer for user invitations */
         PatchedUserInvitationRequest: {
@@ -23114,6 +23173,53 @@ export interface components {
             /** @description Default timezone for the organization (IANA format, e.g., 'America/New_York') */
             default_timezone?: string;
         };
+        /**
+         * @description dj-rest-auth user-details payload + the fields the frontend needs.
+         *
+         *     `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+         *     / `is_active` / `groups` into the response dict AFTER serialization,
+         *     so drf-spectacular never emitted them and the generated frontend
+         *     Zod schema stripped them during response validation — `authUser.
+         *     groups` was always undefined in app code, silently breaking every
+         *     group-based eligibility check (approval signature panels, staff
+         *     affordances). Declaring them here puts them in the schema, which
+         *     puts them in the Zod shape, which lets them through.
+         */
+        TenantAwareUserDetails: {
+            /** ID */
+            readonly pk: number;
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            username: string;
+            /**
+             * Email address
+             * Format: email
+             */
+            readonly email: string;
+            first_name?: string | null;
+            last_name?: string | null;
+            readonly is_staff: boolean;
+            readonly is_superuser: boolean;
+            readonly is_active: boolean;
+            readonly groups: components["schemas"]["AuthUserTenantGroup"][];
+        };
+        /**
+         * @description dj-rest-auth user-details payload + the fields the frontend needs.
+         *
+         *     `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+         *     / `is_active` / `groups` into the response dict AFTER serialization,
+         *     so drf-spectacular never emitted them and the generated frontend
+         *     Zod schema stripped them during response validation — `authUser.
+         *     groups` was always undefined in app code, silently breaking every
+         *     group-based eligibility check (approval signature panels, staff
+         *     affordances). Declaring them here puts them in the schema, which
+         *     puts them in the Zod shape, which lets them through.
+         */
+        TenantAwareUserDetailsRequest: {
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            username: string;
+            first_name?: string | null;
+            last_name?: string | null;
+        };
         /** @description Serializer for creating a new tenant with admin user. */
         TenantCreate: {
             /** @description Display name of the organization */
@@ -23206,6 +23312,7 @@ export interface components {
             readonly status: string | null;
             /** Format: date-time */
             readonly trial_ends_at: string | null;
+            readonly change_control_mode: string | null;
             readonly is_demo: boolean;
         };
         /**
@@ -23468,6 +23575,7 @@ export interface components {
             website: string | null;
             address: string | null;
             default_timezone: string;
+            change_control_mode: string;
             logo_url: string | null;
             allowed_domains: string[];
         };
@@ -23485,6 +23593,7 @@ export interface components {
             website: string | null;
             address: string | null;
             default_timezone: string;
+            change_control_mode: string;
             logo_url: string | null;
             allowed_domains: string[];
         };
@@ -24045,27 +24154,6 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string;
-        };
-        /** @description User model w/o password */
-        UserDetails: {
-            /** ID */
-            readonly pk: number;
-            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
-            username: string;
-            /**
-             * Email address
-             * Format: email
-             */
-            readonly email: string;
-            first_name?: string | null;
-            last_name?: string | null;
-        };
-        /** @description User model w/o password */
-        UserDetailsRequest: {
-            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
-            username: string;
-            first_name?: string | null;
-            last_name?: string | null;
         };
         /** @description Serializer for user invitations */
         UserInvitation: {
@@ -24733,9 +24821,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ApprovalRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalRequestRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalRequestRequest"];
+                "application/json": components["schemas"]["ApprovalResponseSubmitRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApprovalResponseSubmitRequestRequest"];
+                "multipart/form-data": components["schemas"]["ApprovalResponseSubmitRequestRequest"];
             };
         };
         responses: {
@@ -24744,7 +24832,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApprovalRequest"];
+                    "application/json": components["schemas"]["ApprovalResponse"];
                 };
             };
         };
@@ -46163,7 +46251,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserDetails"];
+                    "application/json": components["schemas"]["TenantAwareUserDetails"];
                 };
             };
         };
@@ -46177,9 +46265,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UserDetailsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["UserDetailsRequest"];
-                "multipart/form-data": components["schemas"]["UserDetailsRequest"];
+                "application/json": components["schemas"]["TenantAwareUserDetailsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TenantAwareUserDetailsRequest"];
+                "multipart/form-data": components["schemas"]["TenantAwareUserDetailsRequest"];
             };
         };
         responses: {
@@ -46188,7 +46276,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserDetails"];
+                    "application/json": components["schemas"]["TenantAwareUserDetails"];
                 };
             };
         };
@@ -46202,9 +46290,9 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedUserDetailsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedUserDetailsRequest"];
-                "multipart/form-data": components["schemas"]["PatchedUserDetailsRequest"];
+                "application/json": components["schemas"]["PatchedTenantAwareUserDetailsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTenantAwareUserDetailsRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTenantAwareUserDetailsRequest"];
             };
         };
         responses: {
@@ -46213,7 +46301,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserDetails"];
+                    "application/json": components["schemas"]["TenantAwareUserDetails"];
                 };
             };
         };

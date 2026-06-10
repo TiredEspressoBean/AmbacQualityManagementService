@@ -136,6 +136,20 @@ export function useMarkPcoApproved() {
     });
 }
 
+/**
+ * REGULATED-mode: submit the PCO for signature collection. Creates the
+ * PCO's ApprovalRequest from the tenant's PCO_APPROVAL template. The
+ * PCO state doesn't change until signatures complete (the cascade
+ * fires mark-approved automatically).
+ */
+export function useSubmitPcoForApproval() {
+    const qc = useQueryClient();
+    return useMutation<unknown, Error, { id: string }>({
+        mutationFn: ({ id }) => post("process-change-orders", id, "approve"),
+        onSuccess: makeInvalidator(qc),
+    });
+}
+
 export type MigrationDisposition = "MIGRATE_ALL" | "MIGRATE_SELECTED" | "KEEP_ALL";
 
 export function useImplementPco() {

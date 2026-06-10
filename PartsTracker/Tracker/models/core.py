@@ -90,6 +90,24 @@ class Tenant(models.Model):
         help_text="Default timezone for the organization (IANA format, e.g., 'America/New_York')"
     )
 
+    class ChangeControlMode(models.TextChoices):
+        SIMPLIFIED = 'SIMPLIFIED', 'Simplified'
+        REGULATED = 'REGULATED', 'Regulated'
+
+    change_control_mode = models.CharField(
+        max_length=20,
+        choices=ChangeControlMode.choices,
+        default=ChangeControlMode.SIMPLIFIED,
+        help_text=(
+            "SIMPLIFIED: PCO auto-approves at PCR approval and PCN "
+            "auto-releases at implementation (ISO 9001 8.5.6). "
+            "REGULATED: PCO requires explicit author + approve with "
+            "separation of duties, PCR approval requires collected "
+            "signatures, PCN requires explicit release "
+            "(IATF 16949 8.5.6.1 / AS9100D 8.5.6)."
+        ),
+    )
+
     # Status tracking
     status_changed_at = models.DateTimeField(null=True, blank=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True, help_text="Trial expiration date")

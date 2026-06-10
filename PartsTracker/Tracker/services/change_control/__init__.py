@@ -9,6 +9,7 @@ from .impact_analysis import (
 )
 from .process_change import (
     ChangeControlMode,
+    resolve_change_control_mode,
     # PCR lifecycle
     submit_pcr,
     approve_pcr,
@@ -30,6 +31,7 @@ from .sequencing import next_artifact_number
 
 __all__ = [
     'ChangeControlMode',
+    'resolve_change_control_mode',
     'IN_FLIGHT_WORKORDER_STATUSES',
     'list_affected_workorders',
     'snapshot_affected_workorders',

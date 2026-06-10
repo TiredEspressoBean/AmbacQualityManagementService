@@ -2,6 +2,7 @@
 from auditlog.models import LogEntry
 from dj_rest_auth.forms import AllAuthPasswordResetForm
 from dj_rest_auth.serializers import PasswordResetSerializer as BasePasswordResetSerializer
+from dj_rest_auth.serializers import UserDetailsSerializer as BaseUserDetailsSerializer
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
@@ -26,8 +27,26 @@ if 'allauth' in settings.INSTALLED_APPS:
 
 # ===== BASE MIXINS =====
 
-class SecureModelMixin:
-    """Mixin for serializers that work with SecureModel instances"""
+class SecureModelMixin(serializers.ModelSerializer):
+    """Base serializer for SecureModel instances.
+
+    Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+    FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+    lookup queryset to the current-request tenant, so a request body can't
+    reference another tenant's row by PK. The scoped field no-ops on
+    non-tenant target models (User, ContentType, …), so those are unaffected.
+
+    This is why serializers should inherit ``SecureModelMixin`` instead of
+    ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+    guards against FK fields that bypass this.
+
+    NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+    mixin — declare it as the FIRST/sole serializer base. Listing
+    ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+    before it) an MRO error.
+    """
+
+    serializer_related_field = TenantScopedPrimaryKeyRelatedField
 
     def get_user_filtered_queryset(self, model_class):
         """Get queryset filtered for the requesting user"""
@@ -101,6 +120,44 @@ class DynamicFieldsMixin:
 
 # ===== USER & COMPANY SERIALIZERS =====
 
+class AuthUserTenantGroupSerializer(serializers.Serializer):
+    """Brief TenantGroup shape embedded in the auth-user payload."""
+    id = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(read_only=True)
+
+
+class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
+    """dj-rest-auth user-details payload + the fields the frontend needs.
+
+    `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+    / `is_active` / `groups` into the response dict AFTER serialization,
+    so drf-spectacular never emitted them and the generated frontend
+    Zod schema stripped them during response validation — `authUser.
+    groups` was always undefined in app code, silently breaking every
+    group-based eligibility check (approval signature panels, staff
+    affordances). Declaring them here puts them in the schema, which
+    puts them in the Zod shape, which lets them through.
+    """
+    is_staff = serializers.BooleanField(read_only=True)
+    is_superuser = serializers.BooleanField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+    groups = serializers.SerializerMethodField()
+
+    class Meta(BaseUserDetailsSerializer.Meta):
+        fields = BaseUserDetailsSerializer.Meta.fields + (
+            'is_staff', 'is_superuser', 'is_active', 'groups',
+        )
+        read_only_fields = BaseUserDetailsSerializer.Meta.read_only_fields + (
+            'is_staff', 'is_superuser', 'is_active', 'groups',
+        )
+
+    @extend_schema_field(AuthUserTenantGroupSerializer(many=True))
+    def get_groups(self, obj):
+        """Tenant-scoped groups (UserRole memberships), not Django auth groups."""
+        tenant_groups = obj.get_tenant_groups() if hasattr(obj, 'get_tenant_groups') else []
+        return [{'id': str(g.id), 'name': g.name} for g in tenant_groups]
+
+
 class UserSelectSerializer(serializers.ModelSerializer):
     """Simplified user serializer for dropdowns and selections"""
     full_name = serializers.SerializerMethodField()
@@ -124,7 +181,7 @@ class EmployeeSelectSerializer(serializers.ModelSerializer):
         fields = ('id', 'first_name', 'last_name', 'email')
 
 
-class CompanySerializer(serializers.ModelSerializer, SecureModelMixin):
+class CompanySerializer(SecureModelMixin):
     """Company serializer with secure filtering.
 
     Companies is a VERSIONED controlled record. Any content edit
@@ -192,7 +249,7 @@ class TenantMinimalSerializer(serializers.Serializer):
     slug = serializers.SlugField(read_only=True)
 
 
-class UserSerializer(serializers.ModelSerializer, SecureModelMixin):
+class UserSerializer(SecureModelMixin):
     """Enhanced user serializer with company and permission info"""
     full_name = serializers.SerializerMethodField()
     parent_company = CompanySerializer(read_only=True, allow_null=True)
@@ -486,7 +543,7 @@ class BulkRestoreSerializer(serializers.Serializer, BulkOperationsMixin):
 
 # ===== APPROVAL WORKFLOW SERIALIZERS =====
 
-class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ApprovalTemplateSerializer(SecureModelMixin):
     """Approval template serializer.
 
     ApprovalTemplate is a VERSIONED controlled record. Any content edit
@@ -560,7 +617,7 @@ class ApprovalTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
 
 
-class ApprovalResponseSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ApprovalResponseSerializer(SecureModelMixin):
     """Approval response serializer"""
     approver_info = serializers.SerializerMethodField()
     delegated_to_info = serializers.SerializerMethodField()
@@ -621,7 +678,7 @@ class ApproverAssignmentSerializer(serializers.ModelSerializer):
         return None
 
 
-class ApprovalRequestSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ApprovalRequestSerializer(SecureModelMixin):
     """Approval request serializer"""
     approval_number = serializers.CharField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)

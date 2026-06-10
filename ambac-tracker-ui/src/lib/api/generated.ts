@@ -191,7 +191,7 @@ export type ApprovalResponse = {
   approval_request: string;
   approver: number;
   approver_info: {};
-  decision: DecisionEnum;
+  decision: ApprovalResponseDecisionEnum;
   decision_display: string;
   decision_date: string;
   comments?: (string | null) | undefined;
@@ -226,7 +226,7 @@ export type ApprovalResponse = {
   updated_at: string;
   archived?: boolean | undefined;
 };
-export type DecisionEnum =
+export type ApprovalResponseDecisionEnum =
   /**
    * * `APPROVED` - Approved
    * `REJECTED` - Rejected
@@ -279,7 +279,7 @@ export type ApprovalRequestRequest = {
 export type ApprovalResponseRequest = {
   approval_request: string;
   approver: number;
-  decision: DecisionEnum;
+  decision: ApprovalResponseDecisionEnum;
   comments?: (string | null) | undefined;
   signature_data?:
     | /**
@@ -299,6 +299,29 @@ export type ApprovalResponseRequest = {
   delegated_to?: (number | null) | undefined;
   archived?: boolean | undefined;
 };
+export type ApprovalResponseSubmitRequestRequest = {
+  decision: ApprovalResponseSubmitRequestDecisionEnum;
+  comments?: string | undefined;
+  signature_data?: /**
+   * Base64 PNG of the drawn signature.
+   */
+  string | undefined;
+  signature_meaning?: string | undefined;
+  password?: /**
+   * Re-entered account password for identity verification.
+   */
+  string | undefined;
+  delegate_to?: (number | null) | undefined;
+};
+export type ApprovalResponseSubmitRequestDecisionEnum =
+  /**
+   * * `APPROVED` - APPROVED
+   * `REJECTED` - REJECTED
+   * `DELEGATED` - DELEGATED
+   *
+   * @enum APPROVED, REJECTED, DELEGATED
+   */
+  "APPROVED" | "REJECTED" | "DELEGATED";
 export type ApprovalTemplate = {
   id: string;
   /**
@@ -1432,6 +1455,7 @@ export type TenantInfo = {
   tier: string | null;
   status: string | null;
   trial_ends_at: string | null;
+  change_control_mode: string | null;
   is_demo: boolean;
 };
 export type DeploymentInfo = {
@@ -7575,7 +7599,7 @@ export type PatchedApprovalRequestRequest = Partial<{
 export type PatchedApprovalResponseRequest = Partial<{
   approval_request: string;
   approver: number;
-  decision: DecisionEnum;
+  decision: ApprovalResponseDecisionEnum;
   comments: string | null;
   /**
    * Base64 encoded signature image (PNG)
@@ -9215,6 +9239,34 @@ export type PatchedTenantScheduleRequest = Partial<{
   recipient_users: Array<number>;
   recipient_groups: Array<string>;
 }>;
+export type PatchedTenantSettingsUpdateRequestRequest = Partial<{
+  /**
+   * @minLength 1
+   */
+  name: string;
+  settings: {};
+  contact_email: string | null;
+  contact_phone: string | null;
+  website: string | null;
+  address: string | null;
+  /**
+   * @minLength 1
+   */
+  default_timezone: string;
+  change_control_mode: ChangeControlModeEnum;
+  allowed_domains: Array</**
+   * @minLength 1
+   */
+  string>;
+}>;
+export type ChangeControlModeEnum =
+  /**
+   * * `SIMPLIFIED` - SIMPLIFIED
+   * `REGULATED` - REGULATED
+   *
+   * @enum SIMPLIFIED, REGULATED
+   */
+  "SIMPLIFIED" | "REGULATED";
 export type PatchedTimeEntryRequest = Partial<{
   entry_type: TimeEntryTypeEnum;
   start_time: string;
@@ -10582,6 +10634,37 @@ export type SubstepResponseRequest = {
    */
   responded_by: number;
 };
+export type TenantAwareUserDetails = {
+  pk: number;
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   *
+   * @maxLength 150
+   * @pattern ^[\w.@+-]+$
+   */
+  username: string;
+  email: string;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  is_staff: boolean;
+  is_superuser: boolean;
+  is_active: boolean;
+  groups: Array<AuthUserTenantGroup>;
+};
+export type AuthUserTenantGroup = {
+  id: string;
+  name: string;
+};
 export type TenantCreate = {
   /**
    * Display name of the organization
@@ -11032,14 +11115,18 @@ const ApprovalTypeEnum = z.enum([
 const ApprovalFlowTypeEnum = z.enum(["ALL_REQUIRED", "THRESHOLD", "ANY"]);
 const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
 const DelegationPolicyEnum = z.enum(["OPTIONAL", "DISABLED"]);
-const DecisionEnum = z.enum(["APPROVED", "REJECTED", "DELEGATED"]);
+const ApprovalResponseDecisionEnum = z.enum([
+  "APPROVED",
+  "REJECTED",
+  "DELEGATED",
+]);
 const VerificationMethodEnum = z.enum(["PASSWORD", "SSO", "NONE"]);
 const ApprovalResponse = z.object({
   id: z.string().uuid(),
   approval_request: z.string().uuid(),
   approver: z.number().int(),
   approver_info: z.object({}).partial().passthrough().nullable(),
-  decision: DecisionEnum,
+  decision: ApprovalResponseDecisionEnum,
   decision_display: z.string(),
   decision_date: z.string().datetime({ offset: true }),
   comments: z.string().nullish(),
@@ -11133,6 +11220,19 @@ const PatchedApprovalRequestRequest = z
     due_date: z.string().datetime({ offset: true }).nullable(),
   })
   .partial();
+const ApprovalResponseSubmitRequestDecisionEnum = z.enum([
+  "APPROVED",
+  "REJECTED",
+  "DELEGATED",
+]);
+const ApprovalResponseSubmitRequestRequest = z.object({
+  decision: ApprovalResponseSubmitRequestDecisionEnum,
+  comments: z.string().optional(),
+  signature_data: z.string().optional(),
+  signature_meaning: z.string().optional(),
+  password: z.string().optional(),
+  delegate_to: z.number().int().nullish(),
+});
 const ListMetadataResponse = z.object({
   search_fields: z.array(z.string()),
   search_fields_display: z.array(z.string()),
@@ -11150,7 +11250,7 @@ const PaginatedApprovalResponseList = z.object({
 const ApprovalResponseRequest = z.object({
   approval_request: z.string().uuid(),
   approver: z.number().int(),
-  decision: DecisionEnum,
+  decision: ApprovalResponseDecisionEnum,
   comments: z.string().nullish(),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
@@ -11162,7 +11262,7 @@ const PatchedApprovalResponseRequest = z
   .object({
     approval_request: z.string().uuid(),
     approver: z.number().int(),
-    decision: DecisionEnum,
+    decision: ApprovalResponseDecisionEnum,
     comments: z.string().nullable(),
     signature_data: z.string().nullable(),
     signature_meaning: z.string().max(200).nullable(),
@@ -17059,6 +17159,7 @@ const TenantInfo = z.object({
   tier: z.string().nullable(),
   status: z.string().nullable(),
   trial_ends_at: z.string().datetime({ offset: true }).nullable(),
+  change_control_mode: z.string().nullable(),
   is_demo: z.boolean(),
 });
 const ModeEnum = z.enum(["saas", "dedicated"]);
@@ -17096,9 +17197,11 @@ const TenantSettingsResponse = z.object({
   website: z.string().url().nullable(),
   address: z.string().nullable(),
   default_timezone: z.string(),
+  change_control_mode: z.string(),
   logo_url: z.string().nullable(),
   allowed_domains: z.array(z.string()),
 });
+const ChangeControlModeEnum = z.enum(["SIMPLIFIED", "REGULATED"]);
 const PatchedTenantSettingsUpdateRequestRequest = z
   .object({
     name: z.string().min(1),
@@ -17108,6 +17211,7 @@ const PatchedTenantSettingsUpdateRequestRequest = z
     website: z.string().url().nullable(),
     address: z.string().nullable(),
     default_timezone: z.string().min(1),
+    change_control_mode: ChangeControlModeEnum,
     allowed_domains: z.array(z.string().min(1)),
   })
   .partial();
@@ -17121,6 +17225,7 @@ const TenantSettingsUpdateResponse = z.object({
   website: z.string().url().nullable(),
   address: z.string().nullable(),
   default_timezone: z.string(),
+  change_control_mode: z.string(),
   logo_url: z.string().nullable(),
   allowed_domains: z.array(z.string()),
 });
@@ -17190,7 +17295,11 @@ const ResendEmailVerificationRequest = z.object({
   email: z.string().min(1).email(),
 });
 const VerifyEmailRequest = z.object({ key: z.string().min(1) });
-const UserDetails = z.object({
+const AuthUserTenantGroup = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+});
+const TenantAwareUserDetails = z.object({
   pk: z.number().int(),
   username: z
     .string()
@@ -17199,8 +17308,12 @@ const UserDetails = z.object({
   email: z.string().email(),
   first_name: z.string().max(150).nullish(),
   last_name: z.string().max(150).nullish(),
+  is_staff: z.boolean(),
+  is_superuser: z.boolean(),
+  is_active: z.boolean(),
+  groups: z.array(AuthUserTenantGroup),
 });
-const UserDetailsRequest = z.object({
+const TenantAwareUserDetailsRequest = z.object({
   username: z
     .string()
     .min(1)
@@ -17209,7 +17322,7 @@ const UserDetailsRequest = z.object({
   first_name: z.string().max(150).nullish(),
   last_name: z.string().max(150).nullish(),
 });
-const PatchedUserDetailsRequest = z
+const PatchedTenantAwareUserDetailsRequest = z
   .object({
     username: z
       .string()
@@ -17314,13 +17427,15 @@ export const schemas = {
   ApprovalFlowTypeEnum,
   ApprovalSequenceEnum,
   DelegationPolicyEnum,
-  DecisionEnum,
+  ApprovalResponseDecisionEnum,
   VerificationMethodEnum,
   ApprovalResponse,
   ApprovalRequest,
   PaginatedApprovalRequestList,
   ApprovalRequestRequest,
   PatchedApprovalRequestRequest,
+  ApprovalResponseSubmitRequestDecisionEnum,
+  ApprovalResponseSubmitRequestRequest,
   ListMetadataResponse,
   PaginatedApprovalResponseList,
   ApprovalResponseRequest,
@@ -17923,6 +18038,7 @@ export const schemas = {
   TenantLogoResponse,
   TenantLogoDeleteResponse,
   TenantSettingsResponse,
+  ChangeControlModeEnum,
   PatchedTenantSettingsUpdateRequestRequest,
   TenantSettingsUpdateResponse,
   SignupRequest,
@@ -17940,9 +18056,10 @@ export const schemas = {
   RegisterRequest,
   ResendEmailVerificationRequest,
   VerifyEmailRequest,
-  UserDetails,
-  UserDetailsRequest,
-  PatchedUserDetailsRequest,
+  AuthUserTenantGroup,
+  TenantAwareUserDetails,
+  TenantAwareUserDetailsRequest,
+  PatchedTenantAwareUserDetailsRequest,
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
@@ -18252,13 +18369,13 @@ POST: Executes the query.`,
     method: "post",
     path: "/api/ApprovalRequests/:id/submit-response/",
     alias: "api_ApprovalRequests_submit_response_create",
-    description: `Submit an approval response (approve/reject/delegate)`,
+    description: `Submit an approval response (approve/reject/delegate) with optional signature + password identity verification.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: ApprovalRequestRequest,
+        schema: ApprovalResponseSubmitRequestRequest,
       },
       {
         name: "id",
@@ -18266,7 +18383,7 @@ POST: Executes the query.`,
         schema: z.string().uuid(),
       },
     ],
-    response: ApprovalRequest,
+    response: ApprovalResponse,
   },
   {
     method: "get",
@@ -38636,39 +38753,51 @@ Accepts the following POST parameter: key.`,
     method: "get",
     path: "/auth/user/",
     alias: "auth_user_retrieve",
-    description: `Enhanced user details view with staff and group info`,
+    description: `User details with staff flags + tenant-scoped groups.
+
+Fields are declared on the serializer (not injected post-hoc into
+&#x60;response.data&#x60;) so drf-spectacular emits them and the generated
+frontend client&#x27;s response validation lets them through.`,
     requestFormat: "json",
-    response: UserDetails,
+    response: TenantAwareUserDetails,
   },
   {
     method: "put",
     path: "/auth/user/",
     alias: "auth_user_update",
-    description: `Enhanced user details view with staff and group info`,
+    description: `User details with staff flags + tenant-scoped groups.
+
+Fields are declared on the serializer (not injected post-hoc into
+&#x60;response.data&#x60;) so drf-spectacular emits them and the generated
+frontend client&#x27;s response validation lets them through.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: UserDetailsRequest,
+        schema: TenantAwareUserDetailsRequest,
       },
     ],
-    response: UserDetails,
+    response: TenantAwareUserDetails,
   },
   {
     method: "patch",
     path: "/auth/user/",
     alias: "auth_user_partial_update",
-    description: `Enhanced user details view with staff and group info`,
+    description: `User details with staff flags + tenant-scoped groups.
+
+Fields are declared on the serializer (not injected post-hoc into
+&#x60;response.data&#x60;) so drf-spectacular emits them and the generated
+frontend client&#x27;s response validation lets them through.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: PatchedUserDetailsRequest,
+        schema: PatchedTenantAwareUserDetailsRequest,
       },
     ],
-    response: UserDetails,
+    response: TenantAwareUserDetails,
   },
   {
     method: "post",

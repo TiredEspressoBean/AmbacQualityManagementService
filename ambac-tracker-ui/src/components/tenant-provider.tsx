@@ -15,6 +15,12 @@ type TenantContextValue = {
     isSaas: boolean;
     isDedicated: boolean;
     isDemo: boolean;
+    // Change-control posture. SIMPLIFIED single-click flows vs
+    // REGULATED signature-gated flows. Defaults to SIMPLIFIED when
+    // tenant info hasn't loaded so UI affordances fail open to the
+    // simpler (but still backend-guarded) experience.
+    changeControlMode: "SIMPLIFIED" | "REGULATED";
+    isRegulated: boolean;
 };
 
 const TenantContext = createContext<TenantContextValue | null>(null);
@@ -70,6 +76,14 @@ export function TenantProvider({ children }: TenantProviderProps) {
         isSaas: data?.deployment?.is_saas ?? false,
         isDedicated: data?.deployment?.is_dedicated ?? false,
         isDemo: data?.tenant?.is_demo ?? false,
+        changeControlMode:
+            (data?.tenant as { change_control_mode?: string | null } | null | undefined)
+                ?.change_control_mode === "REGULATED"
+                ? "REGULATED"
+                : "SIMPLIFIED",
+        isRegulated:
+            (data?.tenant as { change_control_mode?: string | null } | null | undefined)
+                ?.change_control_mode === "REGULATED",
     };
 
     return (

@@ -9,6 +9,8 @@ import {
     PcrRebaseConflictError, type RebaseConflict,
 } from "@/hooks/useChangeControlActions";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { useTenantContext } from "@/components/tenant-provider";
+import { useApprovalRequestsFor } from "@/hooks/useApprovalRequestsFor";
 
 type Props = { pcrId: string; status: string };
 
@@ -21,6 +23,8 @@ export function PcrActions({ pcrId, status }: Props) {
     const reject = useRejectPcr();
     const cancel = useCancelPcr();
     const { has } = usePermissionSet();
+    const { isRegulated } = useTenantContext();
+    const { data: approvalRequests } = useApprovalRequestsFor("processchangerequest", pcrId);
 
     // All PCR lifecycle transitions are state changes on the PCR row, so
     // `change_processchangerequest` is the canonical gate — matches
@@ -28,6 +32,16 @@ export function PcrActions({ pcrId, status }: Props) {
     const canChange = has("change_processchangerequest");
     const isApprovable = canChange && (status === "SUBMITTED" || status === "UNDER_REVIEW");
     const isCancellable = canChange && (status === "DRAFT" || status === "SUBMITTED" || status === "UNDER_REVIEW");
+
+    // REGULATED mode: the manual approve endpoint is a finalizer, not
+    // an override. While the ApprovalRequest is still collecting
+    // signatures the backend would 403 — disable the button up front
+    // and say why. The signature cascade auto-finalizes when the last
+    // signature lands, so for most flows this button never gets used
+    // in REGULATED; it exists for confirm/retry after a cascade hiccup.
+    const latestAr = approvalRequests?.[0] ?? null;
+    const regulatedSignaturesPending =
+        isRegulated && latestAr !== null && latestAr.status === "PENDING";
 
     if (!isApprovable && !isCancellable) return null;
 
@@ -55,10 +69,21 @@ export function PcrActions({ pcrId, status }: Props) {
                                 toast.error("Approve failed", { description: e instanceof Error ? e.message : undefined });
                             }
                         }}
-                        disabled={approve.isPending}
+                        disabled={approve.isPending || regulatedSignaturesPending}
+                        title={
+                            regulatedSignaturesPending
+                                ? "Regulated mode: approval finalizes automatically once all required signatures are collected."
+                                : undefined
+                        }
                     >
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {approve.isPending ? "Approving…" : "Approve"}
+                        {approve.isPending
+                            ? "Approving…"
+                            : regulatedSignaturesPending
+                                ? "Awaiting signatures"
+                                : isRegulated && latestAr?.status === "APPROVED"
+                                    ? "Finalize approval"
+                                    : "Approve"}
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => setRejectOpen(true)}>
                         <XCircle className="h-4 w-4 mr-2" />

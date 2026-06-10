@@ -239,7 +239,8 @@ paths:
   /api/ApprovalRequests/{id}/submit-response/:
     post:
       operationId: api_ApprovalRequests_submit_response_create
-      description: Submit an approval response (approve/reject/delegate)
+      description: Submit an approval response (approve/reject/delegate) with optional
+        signature + password identity verification.
       parameters:
       - in: path
         name: id
@@ -254,13 +255,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApprovalRequestRequest'
+              $ref: '#/components/schemas/ApprovalResponseSubmitRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ApprovalRequestRequest'
+              $ref: '#/components/schemas/ApprovalResponseSubmitRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ApprovalRequestRequest'
+              $ref: '#/components/schemas/ApprovalResponseSubmitRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -270,7 +271,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApprovalRequest'
+                $ref: '#/components/schemas/ApprovalResponse'
           description: ''
   /api/ApprovalRequests/export-excel/:
     get:
@@ -30516,7 +30517,12 @@ paths:
   /auth/user/:
     get:
       operationId: auth_user_retrieve
-      description: Enhanced user details view with staff and group info
+      description: |-
+        User details with staff flags + tenant-scoped groups.
+
+        Fields are declared on the serializer (not injected post-hoc into
+        `response.data`) so drf-spectacular emits them and the generated
+        frontend client's response validation lets them through.
       tags:
       - auth
       security:
@@ -30527,24 +30533,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserDetails'
+                $ref: '#/components/schemas/TenantAwareUserDetails'
           description: ''
     put:
       operationId: auth_user_update
-      description: Enhanced user details view with staff and group info
+      description: |-
+        User details with staff flags + tenant-scoped groups.
+
+        Fields are declared on the serializer (not injected post-hoc into
+        `response.data`) so drf-spectacular emits them and the generated
+        frontend client's response validation lets them through.
       tags:
       - auth
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserDetailsRequest'
+              $ref: '#/components/schemas/TenantAwareUserDetailsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserDetailsRequest'
+              $ref: '#/components/schemas/TenantAwareUserDetailsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserDetailsRequest'
+              $ref: '#/components/schemas/TenantAwareUserDetailsRequest'
         required: true
       security:
       - cookieAuth: []
@@ -30554,24 +30565,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserDetails'
+                $ref: '#/components/schemas/TenantAwareUserDetails'
           description: ''
     patch:
       operationId: auth_user_partial_update
-      description: Enhanced user details view with staff and group info
+      description: |-
+        User details with staff flags + tenant-scoped groups.
+
+        Fields are declared on the serializer (not injected post-hoc into
+        `response.data`) so drf-spectacular emits them and the generated
+        frontend client's response validation lets them through.
       tags:
       - auth
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedUserDetailsRequest'
+              $ref: '#/components/schemas/PatchedTenantAwareUserDetailsRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedUserDetailsRequest'
+              $ref: '#/components/schemas/PatchedTenantAwareUserDetailsRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedUserDetailsRequest'
+              $ref: '#/components/schemas/PatchedTenantAwareUserDetailsRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -30580,7 +30596,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserDetails'
+                $ref: '#/components/schemas/TenantAwareUserDetails'
           description: ''
   /password/reset/confirm/{uidb64}/{token}/:
     post:
@@ -30926,7 +30942,7 @@ components:
           nullable: true
           readOnly: true
         decision:
-          $ref: '#/components/schemas/DecisionEnum'
+          $ref: '#/components/schemas/ApprovalResponseDecisionEnum'
         decision_display:
           type: string
           readOnly: true
@@ -30998,6 +31014,16 @@ components:
       - updated_at
       - verification_method_display
       - verified_at
+    ApprovalResponseDecisionEnum:
+      enum:
+      - APPROVED
+      - REJECTED
+      - DELEGATED
+      type: string
+      description: |-
+        * `APPROVED` - Approved
+        * `REJECTED` - Rejected
+        * `DELEGATED` - Delegated
     ApprovalResponseRequest:
       type: object
       description: Approval response serializer
@@ -31008,7 +31034,7 @@ components:
         approver:
           type: integer
         decision:
-          $ref: '#/components/schemas/DecisionEnum'
+          $ref: '#/components/schemas/ApprovalResponseDecisionEnum'
         comments:
           type: string
           nullable: true
@@ -31031,6 +31057,36 @@ components:
       required:
       - approval_request
       - approver
+      - decision
+    ApprovalResponseSubmitRequestDecisionEnum:
+      enum:
+      - APPROVED
+      - REJECTED
+      - DELEGATED
+      type: string
+      description: |-
+        * `APPROVED` - APPROVED
+        * `REJECTED` - REJECTED
+        * `DELEGATED` - DELEGATED
+    ApprovalResponseSubmitRequestRequest:
+      type: object
+      properties:
+        decision:
+          $ref: '#/components/schemas/ApprovalResponseSubmitRequestDecisionEnum'
+        comments:
+          type: string
+        signature_data:
+          type: string
+          description: Base64 PNG of the drawn signature.
+        signature_meaning:
+          type: string
+        password:
+          type: string
+          description: Re-entered account password for identity verification.
+        delegate_to:
+          type: integer
+          nullable: true
+      required:
       - decision
     ApprovalSequenceEnum:
       enum:
@@ -31439,6 +31495,20 @@ components:
       - object_pk
       - object_repr
       - timestamp
+    AuthUserTenantGroup:
+      type: object
+      description: Brief TenantGroup shape embedded in the auth-user payload.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+      required:
+      - id
+      - name
     AvailablePermissionResponse:
       type: object
       properties:
@@ -32848,6 +32918,14 @@ components:
       - capa
       - verification_criteria
       - verification_method
+    ChangeControlModeEnum:
+      enum:
+      - SIMPLIFIED
+      - REGULATED
+      type: string
+      description: |-
+        * `SIMPLIFIED` - SIMPLIFIED
+        * `REGULATED` - REGULATED
     ChangeControlPriorityEnum:
       enum:
       - LOW
@@ -33988,16 +34066,6 @@ components:
       description: |-
         * `NATIVE` - Native
         * `IMPORTED` - Imported
-    DecisionEnum:
-      enum:
-      - APPROVED
-      - REJECTED
-      - DELEGATED
-      type: string
-      description: |-
-        * `APPROVED` - Approved
-        * `REJECTED` - Rejected
-        * `DELEGATED` - Delegated
     DecisionTypeEnum:
       enum:
       - QA_RESULT
@@ -40733,7 +40801,7 @@ components:
         approver:
           type: integer
         decision:
-          $ref: '#/components/schemas/DecisionEnum'
+          $ref: '#/components/schemas/ApprovalResponseDecisionEnum'
         comments:
           type: string
           nullable: true
@@ -43441,6 +43509,35 @@ components:
           description: Translated TipTap document JSON; same shape as Substep.body_blocks.
         archived:
           type: boolean
+    PatchedTenantAwareUserDetailsRequest:
+      type: object
+      description: |-
+        dj-rest-auth user-details payload + the fields the frontend needs.
+
+        `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+        / `is_active` / `groups` into the response dict AFTER serialization,
+        so drf-spectacular never emitted them and the generated frontend
+        Zod schema stripped them during response validation — `authUser.
+        groups` was always undefined in app code, silently breaking every
+        group-based eligibility check (approval signature panels, staff
+        affordances). Declaring them here puts them in the schema, which
+        puts them in the Zod shape, which lets them through.
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 150
     PatchedTenantGroupRequest:
       type: object
       description: Serializer for TenantGroup with permission counts.
@@ -43687,6 +43784,8 @@ components:
         default_timezone:
           type: string
           minLength: 1
+        change_control_mode:
+          $ref: '#/components/schemas/ChangeControlModeEnum'
         allowed_domains:
           type: array
           items:
@@ -43888,25 +43987,6 @@ components:
           type: string
           format: uuid
           writeOnly: true
-    PatchedUserDetailsRequest:
-      type: object
-      description: User model w/o password
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        first_name:
-          type: string
-          nullable: true
-          maxLength: 150
-        last_name:
-          type: string
-          nullable: true
-          maxLength: 150
     PatchedUserInvitationRequest:
       type: object
       description: Serializer for user invitations
@@ -49921,6 +50001,96 @@ components:
       - slug
       - updated_at
       - user_count
+    TenantAwareUserDetails:
+      type: object
+      description: |-
+        dj-rest-auth user-details payload + the fields the frontend needs.
+
+        `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+        / `is_active` / `groups` into the response dict AFTER serialization,
+        so drf-spectacular never emitted them and the generated frontend
+        Zod schema stripped them during response validation — `authUser.
+        groups` was always undefined in app code, silently breaking every
+        group-based eligibility check (approval signature panels, staff
+        affordances). Declaring them here puts them in the schema, which
+        puts them in the Zod shape, which lets them through.
+      properties:
+        pk:
+          type: integer
+          readOnly: true
+          title: ID
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        is_staff:
+          type: boolean
+          readOnly: true
+        is_superuser:
+          type: boolean
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthUserTenantGroup'
+          readOnly: true
+      required:
+      - email
+      - groups
+      - is_active
+      - is_staff
+      - is_superuser
+      - pk
+      - username
+    TenantAwareUserDetailsRequest:
+      type: object
+      description: |-
+        dj-rest-auth user-details payload + the fields the frontend needs.
+
+        `UserDetailsView.retrieve` used to inject `is_staff` / `is_superuser`
+        / `is_active` / `groups` into the response dict AFTER serialization,
+        so drf-spectacular never emitted them and the generated frontend
+        Zod schema stripped them during response validation — `authUser.
+        groups` was always undefined in app code, silently breaking every
+        group-based eligibility check (approval signature panels, staff
+        affordances). Declaring them here puts them in the schema, which
+        puts them in the Zod shape, which lets them through.
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 150
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 150
+      required:
+      - username
     TenantCreate:
       type: object
       description: Serializer for creating a new tenant with admin user.
@@ -50149,10 +50319,15 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        change_control_mode:
+          type: string
+          readOnly: true
+          nullable: true
         is_demo:
           type: boolean
           readOnly: true
       required:
+      - change_control_mode
       - default_timezone
       - id
       - is_demo
@@ -50671,6 +50846,8 @@ components:
           nullable: true
         default_timezone:
           type: string
+        change_control_mode:
+          type: string
         logo_url:
           type: string
           nullable: true
@@ -50681,6 +50858,7 @@ components:
       required:
       - address
       - allowed_domains
+      - change_control_mode
       - contact_email
       - contact_phone
       - default_timezone
@@ -50718,6 +50896,8 @@ components:
           nullable: true
         default_timezone:
           type: string
+        change_control_mode:
+          type: string
         logo_url:
           type: string
           nullable: true
@@ -50728,6 +50908,7 @@ components:
       required:
       - address
       - allowed_domains
+      - change_control_mode
       - contact_email
       - contact_phone
       - default_timezone
@@ -51869,58 +52050,6 @@ components:
           type: string
           format: uuid
           writeOnly: true
-      required:
-      - username
-    UserDetails:
-      type: object
-      description: User model w/o password
-      properties:
-        pk:
-          type: integer
-          readOnly: true
-          title: ID
-        username:
-          type: string
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          readOnly: true
-          title: Email address
-        first_name:
-          type: string
-          nullable: true
-          maxLength: 150
-        last_name:
-          type: string
-          nullable: true
-          maxLength: 150
-      required:
-      - email
-      - pk
-      - username
-    UserDetailsRequest:
-      type: object
-      description: User model w/o password
-      properties:
-        username:
-          type: string
-          minLength: 1
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        first_name:
-          type: string
-          nullable: true
-          maxLength: 150
-        last_name:
-          type: string
-          nullable: true
-          maxLength: 150
       required:
       - username
     UserInvitation:
