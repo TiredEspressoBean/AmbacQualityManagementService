@@ -189,3 +189,64 @@ register_event(EventType(
     ),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# capa.ready_for_verification — fired when a CAPA's tasks + RCA are all
+# complete and it can move to verification. Routed statically to the QA
+# verifier group (the people who sign off effectiveness), not an individual.
+# Replaces the legacy hardcoded-email task `send_capa_ready_for_verification_notification`.
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class CapaReadyForVerificationPayload:
+    """Payload for `capa.ready_for_verification`. Recipients come from the
+    NotificationRule (static QA group), so there is no per-user list here."""
+
+    id: str                              # CAPA id (used for source GFK)
+    tenant_id: str
+    capa_id: str
+    capa_number: str
+    capa_type: str
+    capa_type_display: str
+    severity: str
+    severity_display: str
+    status: str
+    problem_statement: str
+    initiated_by_id: int | None
+    initiated_by_name: str
+
+    @classmethod
+    def sample(cls) -> 'CapaReadyForVerificationPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000c1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            capa_id='00000000-0000-0000-0000-0000000000c1',
+            capa_number='CAPA-CORR-2026-0042',
+            capa_type='CORRECTIVE',
+            capa_type_display='Corrective',
+            severity='MAJOR',
+            severity_display='Major',
+            status='PENDING_VERIFICATION',
+            problem_statement='Recurring porosity at pressure-test step on PN-77.',
+            initiated_by_id=1,
+            initiated_by_name='Jane Inspector',
+        )
+
+
+register_event(EventType(
+    code='capa.ready_for_verification',
+    label='CAPA Ready for Verification',
+    domain='Quality',
+    payload_schema=CapaReadyForVerificationPayload,
+    default_channels=['in_app', 'email'],
+    default_recipient_groups=['QA Manager'],
+    default_on=True,
+    transactional=True,
+    description=(
+        'A CAPA has completed all tasks and RCA and is ready for effectiveness '
+        'verification. Routed to the QA verifier group via the starter rule.'
+    ),
+    external_routable=False,
+))

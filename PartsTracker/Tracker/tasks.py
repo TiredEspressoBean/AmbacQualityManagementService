@@ -1017,61 +1017,11 @@ Please log in to view details and complete this task.
         return {'status': 'skipped', 'message': 'No email for assigned user'}
 
 
-@shared_task(bind=True, base=RetryableEmailTask)
-def send_capa_ready_for_verification_notification(self, capa_id):
-    """Notify when CAPA is ready for verification.
-    Uses RetryableEmailTask for automatic retry with exponential backoff."""
-    from .models import CAPA
-    from django.core.mail import send_mail
-    from django.conf import settings
-
-    # Initial lookup to get tenant context
-    try:
-        capa = CAPA.objects.get(id=capa_id)
-    except CAPA.DoesNotExist:
-        logger.error(f"CAPA {capa_id} not found")
-        return {'status': 'error', 'message': 'CAPA not found'}
-
-    # Run with tenant context for RLS enforcement
-    tenant_id = get_tenant_for_object(capa)
-    with tenant_context(tenant_id):
-        # Notify initiated_by and QA managers
-        recipients = []
-        if capa.initiated_by and capa.initiated_by.email:
-            recipients.append(capa.initiated_by.email)
-
-        # Add QA managers
-        from django.contrib.auth.models import Group
-        qa_group = Group.objects.filter(name='QA').first()
-        if qa_group:
-            qa_emails = list(qa_group.user_set.filter(email__isnull=False).values_list('email', flat=True))
-            recipients.extend(qa_emails)
-
-        if recipients:
-            subject = f"CAPA Ready for Verification: {capa.capa_number}"
-            message = f"""
-CAPA {capa.capa_number} is ready for verification.
-
-All tasks have been completed and RCA is complete.
-
-CAPA Number: {capa.capa_number}
-Severity: {capa.get_severity_display()}
-Assigned To: {capa.assigned_to.get_full_name() if capa.assigned_to else 'None'}
-
-Please perform effectiveness verification to proceed with closure.
-            """
-
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                list(set(recipients)),  # Remove duplicates
-                fail_silently=False,
-            )
-
-            return {'status': 'success', 'recipients': len(recipients)}
-
-        return {'status': 'skipped', 'message': 'No recipients'}
+# `send_capa_ready_for_verification_notification` was removed: the
+# "CAPA ready for verification" notification now flows through the
+# NotificationRule engine via the `capa.ready_for_verification` event
+# (emitted from signals.check_capa_ready_for_verification, routed to the
+# QA Manager group by a starter rule).
 
 
 @shared_task(bind=True, base=RetryableEmailTask)

@@ -7,6 +7,8 @@ from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
+
+from Tracker.permissions import TenantAccessPermission
 from rest_framework import parsers
 from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter
@@ -288,10 +290,10 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
                     'by_status': {
                         'type': 'object',
                         'properties': {
-                            'open': {'type': 'integer'},
-                            'in_progress': {'type': 'integer'},
-                            'pending_verification': {'type': 'integer'},
-                            'closed': {'type': 'integer'},
+                            'OPEN': {'type': 'integer'},
+                            'IN_PROGRESS': {'type': 'integer'},
+                            'PENDING_VERIFICATION': {'type': 'integer'},
+                            'CLOSED': {'type': 'integer'},
                         }
                     },
                     'by_severity': {
@@ -361,7 +363,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
             'overdue': overdue_count,
         })
 
-    @action(detail=False, methods=['get'], url_path='my-assigned', permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='my-assigned', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_assigned(self, request):
         """Get all CAPAs assigned to current user"""
         user = request.user
@@ -494,7 +496,7 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, v
         description="Get all tasks assigned to current user",
         responses={200: CapaTasksSerializer(many=True)}
     )
-    @action(detail=False, methods=['get'], url_path='my-tasks', permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='my-tasks', permission_classes=[IsAuthenticated, TenantAccessPermission])
     def my_tasks(self, request):
         """Get all tasks assigned to current user"""
         user = request.user

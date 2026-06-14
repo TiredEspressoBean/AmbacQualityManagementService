@@ -252,13 +252,44 @@ def notify_task_assignment(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=CapaTasks)
 def check_capa_ready_for_verification(sender, instance, **kwargs):
-    """Check if CAPA can move to verification after task completion"""
-    if instance.status == 'COMPLETED':
-        capa = instance.capa
-        if capa.all_tasks_completed() and capa.rca_complete():
-            from .tasks import send_capa_ready_for_verification_notification
-            capa_id = capa.id
-            transaction.on_commit(lambda: send_capa_ready_for_verification_notification.delay(capa_id))
+    """Emit `capa.ready_for_verification` when a CAPA's tasks + RCA complete.
+
+    Routed to the QA verifier group via the NotificationRule starter rule
+    (replaces the legacy hardcoded-email task)."""
+    if instance.status != 'COMPLETED':
+        return
+
+    capa = instance.capa
+    if not (capa.all_tasks_completed() and capa.rca_complete()):
+        return
+
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import CapaReadyForVerificationPayload
+
+    payload = CapaReadyForVerificationPayload(
+        id=str(capa.id),
+        tenant_id=str(capa.tenant_id) if capa.tenant_id else '',
+        capa_id=str(capa.id),
+        capa_number=capa.capa_number or '',
+        capa_type=capa.capa_type or '',
+        capa_type_display=capa.get_capa_type_display() if capa.capa_type else '',
+        severity=capa.severity or '',
+        severity_display=capa.get_severity_display() if capa.severity else '',
+        status=capa.status or '',
+        problem_statement=capa.problem_statement or '',
+        initiated_by_id=capa.initiated_by_id,
+        initiated_by_name=(
+            capa.initiated_by.get_full_name() or capa.initiated_by.username
+            if capa.initiated_by else ''
+        ),
+    )
+    tenant = capa.tenant
+    transaction.on_commit(
+        lambda t=tenant, p=payload: emit(
+            'capa.ready_for_verification', tenant=t, payload=p,
+            idempotency_key=f"capa.ready_for_verification:capa:{capa.id}",
+        )
+    )
 
 
 @receiver(post_save, sender=CapaVerification)

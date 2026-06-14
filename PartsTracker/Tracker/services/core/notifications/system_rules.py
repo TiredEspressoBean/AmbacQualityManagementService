@@ -66,6 +66,15 @@ STARTER_RULES = [
         "channels": ["in_app", "email"],
         "min_gap_seconds": 0,
     },
+    {
+        "event_code": "capa.ready_for_verification",
+        "name": "CAPA ready for verification — route to QA Manager",
+        "description": "Default starter rule. QA Manager group is notified when a CAPA's tasks and RCA are complete and it's ready for effectiveness verification.",
+        "recipient_strategy": "static",
+        "recipient_group_names": ["QA Manager"],
+        "channels": ["in_app", "email"],
+        "min_gap_seconds": 0,
+    },
 
     # ---- Work orders -----------------------------------------------------
     {

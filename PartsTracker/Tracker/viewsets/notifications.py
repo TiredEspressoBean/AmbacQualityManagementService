@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
 
+from Tracker.permissions import TenantAccessPermission
 from Tracker.models import ExternalContact, NotificationRule, NotificationSchedule
 from Tracker.serializers.notifications import (
     CustomerRuleSerializer,
@@ -55,7 +56,7 @@ class TenantRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # without a tenant context). Real filtering happens in get_queryset.
     queryset = NotificationRule.all_tenants.none()
     serializer_class = TenantRuleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "event_code"]
     ordering_fields = ["created_at", "updated_at", "name", "priority"]
@@ -74,7 +75,7 @@ class CustomerRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationRule.all_tenants.none()
     serializer_class = CustomerRuleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "event_code"]
     ordering_fields = ["created_at", "updated_at", "name", "priority"]
@@ -96,7 +97,7 @@ class PersonalRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationRule.all_tenants.none()
     serializer_class = PersonalRuleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "event_code"]
     ordering_fields = ["created_at", "updated_at", "name"]
@@ -116,7 +117,7 @@ class ExternalContactViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = ExternalContact.all_tenants.none()
     serializer_class = ExternalContactSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "email", "role"]
     ordering_fields = ["created_at", "updated_at", "name"]
@@ -193,7 +194,7 @@ class TenantScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationSchedule.all_tenants.none()
     serializer_class = TenantScheduleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "provider_kind"]
     ordering_fields = ["created_at", "updated_at", "name", "cadence"]
@@ -211,7 +212,7 @@ class CustomerScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationSchedule.all_tenants.none()
     serializer_class = CustomerScheduleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "provider_kind"]
     ordering_fields = ["created_at", "updated_at", "name", "cadence"]
@@ -238,7 +239,7 @@ class PersonalScheduleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     queryset = NotificationSchedule.all_tenants.none()
     serializer_class = PersonalScheduleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
     search_fields = ["name", "description", "provider_kind"]
     ordering_fields = ["created_at", "updated_at", "name"]
