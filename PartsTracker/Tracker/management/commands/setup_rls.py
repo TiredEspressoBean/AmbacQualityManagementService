@@ -97,6 +97,95 @@ class Command(BaseCommand):
         # Misc
         'Tracker_archivereason',
         'Tracker_externalapiorderidentifier',
+
+        # --- Added 2026-06 (audit: tenant-FK models previously missing a
+        # policy). setup_rls skips any of these lacking a tenant_id column at
+        # runtime, so listing is safe. Keep in sync via test_rls_coverage.py. ---
+
+        # Reman / core units & material
+        'Tracker_core',
+        'Tracker_harvestedcomponent',
+        'Tracker_disassemblybomline',
+        'Tracker_assemblyusage',
+        'Tracker_materiallot',
+        'Tracker_materialusage',
+
+        # BOM
+        'Tracker_bom',
+        'Tracker_bomline',
+
+        # Life tracking
+        'Tracker_lifelimitdefinition',
+        'Tracker_lifetracking',
+        'Tracker_parttypelifelimit',
+
+        # Process change control (PCR/PCO/PCN)
+        'Tracker_processchangenotice',
+        'Tracker_processchangeorder',
+        'Tracker_processchangerequest',
+
+        # Steps / substeps / executions
+        'Tracker_substep',
+        'Tracker_substepcompletion',
+        'Tracker_substepgatecompletion',
+        'Tracker_substepresource',
+        'Tracker_substepresponse',
+        'Tracker_substeptranslation',
+        'Tracker_stepexecutionmeasurement',
+        'Tracker_stepoverride',
+        'Tracker_steprequirement',
+        'Tracker_steprollback',
+        'Tracker_batchexecution',
+        'Tracker_batchrollback',
+        'Tracker_artifactsequence',
+
+        # Milestones
+        'Tracker_milestone',
+        'Tracker_milestonetemplate',
+
+        # QMS extras
+        'Tracker_capastatustransition',
+        'Tracker_fpirecord',
+        'Tracker_samplingdecision',
+
+        # Notifications & escalation
+        'Tracker_notificationoutbox',
+        'Tracker_notificationrule',
+        'Tracker_notificationschedule',
+        'Tracker_notificationtask',
+        'Tracker_notificationtemplate',
+        'Tracker_tenantnotificationbranding',
+        'Tracker_tenantnotificationdefault',
+        'Tracker_usernotificationpreference',
+        'Tracker_externalcontact',
+        'Tracker_escalationinstance',
+        'Tracker_escalationpolicy',
+        'Tracker_escalationstep',
+        'Tracker_scheduleslot',
+
+        # Workforce / scheduling
+        'Tracker_shift',
+        'Tracker_timeentry',
+        'Tracker_workcenter',
+        'Tracker_downtimeevent',
+        'Tracker_workorderhold',
+        'Tracker_trainingrequirement',
+
+        # Audit / admin
+        'Tracker_permissionchangelog',
+        'Tracker_recordedit',
+
+        # Tenant configuration
+        'tracker_facility',
+        'tracker_tenant_group',
+        'tracker_tenant_llm_provider',
+
+        # DMS
+        'chat_sessions',
+
+        # Integrations
+        'integrations_config',
+        'integrations_processed_webhook',
     ]
 
     def add_arguments(self, parser):

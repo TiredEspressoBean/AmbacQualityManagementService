@@ -19,7 +19,7 @@ from .core import SecureModelMixin, UserSelectSerializer
 
 # ===== DOCUMENT TYPE SERIALIZERS =====
 
-class DocumentTypeSerializer(SecureModelMixin, serializers.ModelSerializer):
+class DocumentTypeSerializer(SecureModelMixin):
     """Serializer for document types with DMS compliance settings.
 
     DocumentType is a VERSIONED controlled-document record (DMS
@@ -59,7 +59,7 @@ class DocumentTypeSerializer(SecureModelMixin, serializers.ModelSerializer):
 
 # ===== DOCUMENT SERIALIZERS =====
 
-class DocumentsSerializer(serializers.ModelSerializer, SecureModelMixin):
+class DocumentsSerializer(SecureModelMixin):
     """Enhanced documents serializer using model methods"""
     # Allowed file types for document uploads
     ALLOWED_EXTENSIONS = {
@@ -258,7 +258,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 # ===== 3D MODEL SERIALIZERS =====
 
-class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
+class ThreeDModelSerializer(SecureModelMixin):
     """
     Serializer for 3D model files with versioning support.
 
@@ -380,7 +380,7 @@ class ThreeDModelSerializer(SecureModelMixin, serializers.ModelSerializer):
 
 # ===== HEATMAP ANNOTATION SERIALIZERS =====
 
-class HeatMapAnnotationsSerializer(SecureModelMixin, serializers.ModelSerializer):
+class HeatMapAnnotationsSerializer(SecureModelMixin):
     """Serializer for heatmap annotations"""
     model_display = serializers.CharField(source='model.__str__', read_only=True)
     part_display = serializers.CharField(source='part.__str__', read_only=True)

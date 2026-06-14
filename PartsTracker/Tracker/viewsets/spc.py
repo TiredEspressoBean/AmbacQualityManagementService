@@ -37,6 +37,7 @@ from Tracker.serializers.spc import (
 )
 from .core import ExcelExportMixin, ListMetadataMixin
 from .base import TenantScopedMixin
+from Tracker.permissions import TenantAccessPermission
 
 
 # =============================================================================
@@ -130,7 +131,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         GET /api/spc/data/ - Get measurement data for control charts
         GET /api/spc/capability/ - Get process capability metrics (Cpk/Ppk)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     queryset = MeasurementResult.unscoped.none()  # For drf-spectacular schema generation
     pagination_class = None  # Disable pagination - these endpoints return custom responses
 
@@ -730,7 +731,7 @@ class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin,
     queryset = SPCBaseline.unscoped.all()
     serializer_class = SPCBaselineSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['measurement_definition', 'chart_type', 'status', 'frozen_by']
     search_fields = ['notes', 'measurement_definition__label']

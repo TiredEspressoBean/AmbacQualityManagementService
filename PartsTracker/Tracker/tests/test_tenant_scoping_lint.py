@@ -91,14 +91,21 @@ class TenantScopingLintTests(SimpleTestCase):
         "tenant_context(",
         "get_tenant_for_object(",
         "set_tenant_context(",
-        # DRF field/filter queryset kwargs: these are used for input
-        # validation and relational lookups. Cross-tenant lookup is
-        # prevented by PostgreSQL Row-Level Security (see ENABLE_RLS and
-        # Tracker/utils/tenant_context.py). Flagging every occurrence
-        # creates noise without surfacing real bugs.
-        "PrimaryKeyRelatedField(",
-        "SlugRelatedField(",
-        "HyperlinkedRelatedField(",
+        # Writable serializer relations: only the tenant-scoped variant is
+        # safe. TenantScopedPrimaryKeyRelatedField re-scopes its lookup
+        # queryset to the current tenant at validation time (auto-generated
+        # via SecureModelMixin, or declared explicitly with
+        # `queryset=Model.unscoped.all()`), so a body referencing a foreign-
+        # tenant PK fails validation. A PLAIN PrimaryKeyRelatedField /
+        # SlugRelatedField is deliberately NOT whitelisted — an unscoped
+        # writable relation is a cross-tenant FK write vector. See
+        # test_serializer_fk_coverage.
+        "TenantScopedPrimaryKeyRelatedField(",
+        # django-filter / Django form choice fields: these declare the set of
+        # valid FILTER values, not a writable model relation. Filtering runs
+        # against the viewset's already tenant-scoped queryset, so a foreign-
+        # tenant value simply matches no rows — nothing crosses tenants. (The
+        # base querysets here are `.none()` or populated per-request.)
         "ModelChoiceFilter(",
         "ModelMultipleChoiceFilter(",
         "ModelChoiceField(",

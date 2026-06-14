@@ -19,7 +19,6 @@ from .core import (
     # Auth & Password
     CustomAllAuthPasswordResetForm,
     PasswordResetSerializer,
-    GroupSerializer,
 
     # Audit Logs
     AuditLogSerializer,
@@ -252,7 +251,6 @@ __all__ = [
     'UserInvitationSerializer',
     'CustomAllAuthPasswordResetForm',
     'PasswordResetSerializer',
-    'GroupSerializer',
 
     # Core - Audit Logs & Content Types
     'AuditLogSerializer',

@@ -52,6 +52,10 @@ class HubSpotAdapter(BaseAdapter):
             logging.getLogger(__name__).error(f"Failed to push deal stage: {e}")
             return False
 
+    def verify_webhook(self, request, integration):
+        from integrations.webhooks.views import _verify_hubspot_signature
+        return _verify_hubspot_signature(request, integration)
+
     def handle_webhook(self, request, integration):
         from integrations.webhooks.handlers.hubspot import handle_hubspot_webhook
         return handle_hubspot_webhook(request, integration)

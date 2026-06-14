@@ -1810,9 +1810,10 @@ def generic_table_view(request, model_name):
 
 
 def get_client_ip(request):
-    """Utility to safely extract the client IP address."""
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    return x_forwarded_for.split(",")[0] if x_forwarded_for else request.META.get("REMOTE_ADDR")
+    """Trusted client IP (edge-set header, not spoofable X-Forwarded-For).
+    Delegates to the shared resolver — see Tracker/throttling.py."""
+    from Tracker.throttling import get_client_ip as _trusted_client_ip
+    return _trusted_client_ip(request)
 
 @xframe_options_exempt
 @staff_member_required(login_url="login")

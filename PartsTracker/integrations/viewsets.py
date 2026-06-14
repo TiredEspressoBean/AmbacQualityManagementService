@@ -33,7 +33,7 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return IntegrationConfig.objects.none()
-        return IntegrationConfig.objects.filter(tenant=self.request.user.tenant)
+        return IntegrationConfig.objects.filter(tenant=self.request.tenant)
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -41,7 +41,7 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
         return IntegrationConfigSerializer
 
     def perform_create(self, serializer):
-        serializer.save(tenant=self.request.user.tenant)
+        serializer.save(tenant=self.request.tenant)
 
     @extend_schema(
         responses=inline_serializer(
@@ -92,7 +92,7 @@ class IntegrationConfigViewSet(viewsets.ModelViewSet):
 
         Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
         """
-        tenant = request.user.tenant
+        tenant = request.tenant
         adapters = get_all_adapters()
 
         # Get all configs for this tenant, keyed by provider
@@ -282,7 +282,7 @@ class IntegrationSyncLogViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return IntegrationSyncLog.objects.none()
         return IntegrationSyncLog.objects.filter(
-            integration__tenant=self.request.user.tenant
+            integration__tenant=self.request.tenant
         ).select_related('integration')
 
 
@@ -295,5 +295,5 @@ class HubSpotPipelineStageViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return HubSpotPipelineStage.objects.none()
         return HubSpotPipelineStage.objects.filter(
-            integration__tenant=self.request.user.tenant
+            integration__tenant=self.request.tenant
         ).select_related('mapped_milestone')

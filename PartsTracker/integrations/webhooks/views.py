@@ -18,6 +18,7 @@ from hubspot.exceptions import InvalidSignatureTimestampError
 
 from integrations.models.config import IntegrationConfig, ProcessedWebhook
 from integrations.services.registry import get_adapter
+from Tracker.utils.tenant_context import tenant_context
 
 logger = logging.getLogger(__name__)
 
@@ -89,11 +90,6 @@ def _extract_event_id(request, provider):
     return hashlib.sha256(request.body).hexdigest()
 
 
-SIGNATURE_VERIFIERS = {
-    'hubspot': _verify_hubspot_signature,
-}
-
-
 @csrf_exempt
 def integration_webhook(request, provider, integration_id):
     """
@@ -108,27 +104,30 @@ def integration_webhook(request, provider, integration_id):
         IntegrationConfig, id=integration_id, provider=provider, is_enabled=True
     )
 
-    # Signature verification FIRST
-    verifier = SIGNATURE_VERIFIERS.get(provider)
-    if verifier and not verifier(request, integration):
-        return HttpResponseForbidden('Invalid signature')
+    adapter = get_adapter(provider)
 
-    # Idempotency check
+    # Signature verification FIRST — fails CLOSED. BaseAdapter.verify_webhook
+    # returns False by default, so an adapter that doesn't implement webhook
+    # verification rejects every webhook rather than accepting unauthenticated
+    # ones. A new integration can't accidentally expose an open webhook.
+    if not adapter.verify_webhook(request, integration):
+        return HttpResponseForbidden('Invalid or unverified webhook signature')
+
+    # Idempotency check (ProcessedWebhook is not tenant-scoped).
     event_id = _extract_event_id(request, provider)
     if ProcessedWebhook.objects.filter(
         integration=integration, external_event_id=event_id
     ).exists():
         return JsonResponse({'status': 'already_processed'})
 
-    # Dispatch to provider-specific handler
-    adapter = get_adapter(provider)
-    result = adapter.handle_webhook(request, integration)
-
-    # Record as processed
-    ProcessedWebhook.objects.create(
-        integration=integration,
-        external_event_id=event_id,
-        tenant=integration.tenant,
-    )
+    # Run the handler (and record the event) inside the integration's tenant
+    # context so all SecureManager `.objects` access is correctly scoped.
+    with tenant_context(integration.tenant_id):
+        result = adapter.handle_webhook(request, integration)
+        ProcessedWebhook.objects.create(
+            integration=integration,
+            external_event_id=event_id,
+            tenant=integration.tenant,
+        )
 
     return JsonResponse(result)

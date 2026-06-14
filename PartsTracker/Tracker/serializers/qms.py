@@ -26,7 +26,7 @@ from .core import SecureModelMixin
 
 # ===== QUALITY AND ERROR SERIALIZERS =====
 
-class QualityErrorsListSerializer(serializers.ModelSerializer, SecureModelMixin):
+class QualityErrorsListSerializer(SecureModelMixin):
     """Quality errors list serializer.
 
     QualityErrorsList is a versioned defect-catalog entry. Any content edit
@@ -56,7 +56,7 @@ class QualityErrorsListSerializer(serializers.ModelSerializer, SecureModelMixin)
         )
 
 
-class ErrorTypeSerializer(serializers.ModelSerializer):
+class ErrorTypeSerializer(SecureModelMixin):
     """Legacy error type serializer"""
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
@@ -67,7 +67,7 @@ class ErrorTypeSerializer(serializers.ModelSerializer):
 
 # ===== MEASUREMENT SERIALIZERS =====
 
-class MeasurementDefinitionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MeasurementDefinitionSerializer(SecureModelMixin):
     """Measurement definition serializer with versioning support.
 
     Content edits (label, type, unit, nominal, tolerances, required,
@@ -106,7 +106,7 @@ class MeasurementDefinitionSerializer(serializers.ModelSerializer, SecureModelMi
         )
 
 
-class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MeasurementResultSerializer(SecureModelMixin):
     report = serializers.CharField(read_only=True)
     is_within_spec = serializers.BooleanField(read_only=True)
     created_by = serializers.IntegerField(read_only=True, source='created_by_id')
@@ -118,7 +118,7 @@ class MeasurementResultSerializer(serializers.ModelSerializer, SecureModelMixin)
 
 # ===== QUALITY REPORTS SERIALIZERS =====
 
-class QualityReportEquipmentSerializer(serializers.ModelSerializer):
+class QualityReportEquipmentSerializer(SecureModelMixin):
     """Nested row of (equipment, role) on a QualityReports record."""
 
     equipment_name = serializers.CharField(source='equipment.name', read_only=True)
@@ -143,7 +143,7 @@ class QualityReportPersonnelSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
 
 
-class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
+class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
     # New role-tagged shapes (read-only for now — operator-runtime phase
@@ -287,7 +287,7 @@ class QualityReportsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== SAMPLING RULE SERIALIZERS =====
 
-class SamplingRuleSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SamplingRuleSerializer(SecureModelMixin):
     """Enhanced sampling rule serializer"""
     rule_type_display = serializers.CharField(source='get_rule_type_display', read_only=True)
     ruleset_info = serializers.SerializerMethodField()
@@ -317,7 +317,7 @@ class SamplingRuleSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== SAMPLING RULESET SERIALIZERS =====
 
-class SamplingRuleSetSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SamplingRuleSetSerializer(SecureModelMixin):
     """Enhanced sampling ruleset serializer"""
     rules = serializers.SerializerMethodField()
     part_type_info = serializers.SerializerMethodField()
@@ -405,7 +405,7 @@ _RESOLVED_FALLBACK_RULESET_SCHEMA = {
 }
 
 
-class StepWithResolvedRulesSerializer(serializers.ModelSerializer):
+class StepWithResolvedRulesSerializer(SecureModelMixin):
     """Step with resolved sampling rules (for flow editor)"""
     active_ruleset = serializers.SerializerMethodField()
     fallback_ruleset = serializers.SerializerMethodField()
@@ -509,7 +509,7 @@ class StepSamplingRulesResponseSerializer(serializers.Serializer):
 
 # ===== SAMPLING ANALYTICS SERIALIZERS =====
 
-class SamplingAnalyticsSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SamplingAnalyticsSerializer(SecureModelMixin):
     """Enhanced sampling analytics serializer using model properties"""
     ruleset_info = serializers.SerializerMethodField()
     work_order_info = serializers.SerializerMethodField()
@@ -557,7 +557,7 @@ class SamplingAuditLogSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "timestamp"]
 
 
-class SamplingTriggerStateSerializer(serializers.ModelSerializer):
+class SamplingTriggerStateSerializer(SecureModelMixin):
     """Sampling trigger state serializer"""
     ruleset_name = serializers.CharField(source="ruleset.name", read_only=True)
     work_order_erp = serializers.CharField(source="work_order.ERP_id", read_only=True)
@@ -579,7 +579,7 @@ class SamplingTriggerStateSerializer(serializers.ModelSerializer):
 # `Tracker.serializers.notification_schedule`.
 
 
-class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class QuarantineDispositionSerializer(SecureModelMixin):
     disposition_number = serializers.CharField(read_only=True)
     assignee_name = serializers.SerializerMethodField()
     choices_data = serializers.SerializerMethodField()
@@ -706,7 +706,7 @@ class QuarantineDispositionSerializer(serializers.ModelSerializer, SecureModelMi
 
 # ===== CAPA SERIALIZERS =====
 
-class RootCauseSerializer(serializers.ModelSerializer, SecureModelMixin):
+class RootCauseSerializer(SecureModelMixin):
     """Root cause serializer"""
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
@@ -733,7 +733,7 @@ class RootCauseSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class FiveWhysSerializer(serializers.ModelSerializer, SecureModelMixin):
+class FiveWhysSerializer(SecureModelMixin):
     """5 Whys RCA serializer"""
     rca_record_info = serializers.SerializerMethodField()
 
@@ -761,7 +761,7 @@ class FiveWhysSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class FishboneSerializer(serializers.ModelSerializer, SecureModelMixin):
+class FishboneSerializer(SecureModelMixin):
     """Fishbone diagram RCA serializer"""
     rca_record_info = serializers.SerializerMethodField()
 
@@ -838,7 +838,7 @@ class FishboneNestedSerializer(serializers.ModelSerializer):
         }
 
 
-class RcaRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
+class RcaRecordSerializer(SecureModelMixin):
     """RCA record serializer"""
     rca_method_display = serializers.CharField(source='get_rca_method_display', read_only=True)
     rca_review_status_display = serializers.CharField(source='get_rca_review_status_display', read_only=True)
@@ -944,7 +944,7 @@ class RcaRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class CapaTaskAssigneeSerializer(serializers.ModelSerializer, SecureModelMixin):
+class CapaTaskAssigneeSerializer(SecureModelMixin):
     """CAPA task assignee serializer"""
     user_info = serializers.SerializerMethodField()
     task_info = serializers.SerializerMethodField()
@@ -976,7 +976,7 @@ class CapaTaskAssigneeSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class CapaTasksSerializer(serializers.ModelSerializer, SecureModelMixin):
+class CapaTasksSerializer(SecureModelMixin):
     """CAPA tasks serializer"""
     task_number = serializers.CharField(read_only=True)
     task_type_display = serializers.CharField(source='get_task_type_display', read_only=True)
@@ -1054,7 +1054,7 @@ class CapaTasksSerializer(serializers.ModelSerializer, SecureModelMixin):
         }
 
 
-class CapaVerificationSerializer(serializers.ModelSerializer, SecureModelMixin):
+class CapaVerificationSerializer(SecureModelMixin):
     """CAPA verification serializer"""
     effectiveness_result_display = serializers.CharField(source='get_effectiveness_result_display', read_only=True)
     capa_info = serializers.SerializerMethodField()
@@ -1091,7 +1091,7 @@ class CapaVerificationSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class CAPASerializer(serializers.ModelSerializer, SecureModelMixin):
+class CAPASerializer(SecureModelMixin):
     """CAPA main serializer"""
     capa_number = serializers.CharField(read_only=True)
     capa_type_display = serializers.CharField(source='get_capa_type_display', read_only=True)
@@ -1210,7 +1210,7 @@ class CAPASerializer(serializers.ModelSerializer, SecureModelMixin):
         return status_displays.get(obj.computed_status, obj.computed_status)
 
 
-class StepOverrideSerializer(serializers.ModelSerializer, SecureModelMixin):
+class StepOverrideSerializer(SecureModelMixin):
     """Serializer for step override requests."""
     from Tracker.models import StepOverride
 
@@ -1278,7 +1278,7 @@ class StepOverrideSerializer(serializers.ModelSerializer, SecureModelMixin):
         return obj.expires_at < timezone.now()
 
 
-class FPIRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
+class FPIRecordSerializer(SecureModelMixin):
     """Serializer for First Piece Inspection records."""
     from Tracker.models import FPIRecord
 
@@ -1378,7 +1378,7 @@ class FPIRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class StepExecutionMeasurementSerializer(serializers.ModelSerializer, SecureModelMixin):
+class StepExecutionMeasurementSerializer(SecureModelMixin):
     """Serializer for step execution measurements."""
     from Tracker.models import StepExecutionMeasurement
 

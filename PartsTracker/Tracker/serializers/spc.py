@@ -12,9 +12,10 @@ from drf_spectacular.utils import extend_schema_field
 
 from Tracker.models import SPCBaseline, ChartType, BaselineStatus, MeasurementDefinition
 from Tracker.services.mes.spc_baseline import freeze_spc_baseline
+from Tracker.serializers.core import SecureModelMixin
 
 
-class SPCBaselineSerializer(serializers.ModelSerializer):
+class SPCBaselineSerializer(SecureModelMixin):
     """Full SPC Baseline serializer with all fields and computed properties."""
 
     chart_type_display = serializers.CharField(source='get_chart_type_display', read_only=True)
@@ -63,7 +64,7 @@ class SPCBaselineSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'version', 'frozen_at', 'superseded_at', 'created_at', 'updated_at']
 
 
-class SPCBaselineListSerializer(serializers.ModelSerializer):
+class SPCBaselineListSerializer(SecureModelMixin):
     """Lightweight serializer for listing baselines."""
 
     chart_type_display = serializers.CharField(source='get_chart_type_display', read_only=True)

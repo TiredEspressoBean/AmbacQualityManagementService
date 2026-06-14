@@ -12,7 +12,7 @@ from Tracker.models.integrations.hubspot import HubSpotSyncLog
 from ..core import SecureModelMixin
 
 
-class ExternalAPIOrderIdentifierSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ExternalAPIOrderIdentifierSerializer(SecureModelMixin):
     """
     Serializer for ExternalAPIOrderIdentifier (HubSpot pipeline stages).
 

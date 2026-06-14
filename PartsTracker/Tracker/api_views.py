@@ -1,7 +1,9 @@
 import json
 
+from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_protect
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -10,6 +12,38 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from dj_rest_auth.views import LoginView, PasswordResetView, PasswordResetConfirmView
+from dj_rest_auth.registration.views import RegisterView
+
+from Tracker.throttling import ClientIPScopedRateThrottle
+
+
+# ---------------------------------------------------------------------------
+# Rate-limited auth views — wrap dj-rest-auth's bundled views with a
+# ScopedRateThrottle so the unauthenticated, abuse-prone auth endpoints
+# (credential brute-force, account spam, reset-email bombing, email
+# enumeration) are bounded per client IP. Routed explicitly in urls.py BEFORE
+# the dj_rest_auth includes so they take precedence.
+# ---------------------------------------------------------------------------
+
+class ThrottledLoginView(LoginView):
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'login'
+
+
+class ThrottledPasswordResetView(PasswordResetView):
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+
+class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+
+class ThrottledRegisterView(RegisterView):
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'registration'
 
 
 @ensure_csrf_cookie
@@ -156,8 +190,18 @@ def get_user_api_token(request):
     This endpoint allows frontend to get API tokens for making authenticated API calls.
     """
     try:
-        # Get or create a token for the user
+        # Get or create a token, rotating it once it nears the configured TTL so
+        # the caller always receives a token with a full validity window and old
+        # keys don't linger (ExpiringTokenAuthentication enforces the hard TTL).
         token, created = Token.objects.get_or_create(user=request.user)
+        ttl_seconds = getattr(settings, "API_TOKEN_TTL_SECONDS", 0)
+        if not created and ttl_seconds:
+            from datetime import timedelta
+            renew_after = timedelta(seconds=ttl_seconds) * 0.8
+            if (timezone.now() - token.created) >= renew_after:
+                token.delete()
+                token = Token.objects.create(user=request.user)
+                created = True
 
         return Response({"token": token.key, "created": created}, status=status.HTTP_200_OK)
     except Exception as e:

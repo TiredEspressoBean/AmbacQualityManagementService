@@ -79,8 +79,25 @@ class BaseAdapter:
 
     # --- Optional: Webhooks ---
 
+    def verify_webhook(self, request, integration):
+        """Verify an incoming webhook's authenticity (signature / HMAC).
+
+        SECURITY — defaults to DENY. The framework rejects any webhook whose
+        adapter does not override this, so a new integration that exposes a
+        webhook URL but forgets to implement verification fails CLOSED rather
+        than accepting unauthenticated requests. Override to return True only
+        when the request is cryptographically verified against the integration's
+        secret.
+        """
+        return False
+
     def handle_webhook(self, request, integration):
-        """Process an incoming webhook."""
+        """Process an incoming webhook.
+
+        The framework runs this inside ``tenant_context(integration.tenant_id)``,
+        so SecureManager ``.objects`` access is correctly scoped — do NOT rely
+        on a caller-supplied tenant or pass ``tenant=`` manually.
+        """
         return {'status': 'not_supported'}
 
     # --- Optional: Pipeline stages ---

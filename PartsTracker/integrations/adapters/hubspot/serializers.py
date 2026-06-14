@@ -240,16 +240,35 @@ def resolve_contact(contact_info, company_dict, integration, tenant):
                 customer.parent_company = contact_company
             customer.save(update_fields=['first_name', 'last_name', 'parent_company'])
 
-    # Ensure user has a Customer role in this tenant (supports multi-tenant users)
+    # Ensure user has a Customer role in this tenant (supports multi-tenant
+    # users — e.g. a tenant-A member who is also a portal customer of tenant B).
     from Tracker.models import TenantGroup, UserRole
     customer_group, _ = TenantGroup.objects.get_or_create(
         tenant=tenant,
         name='Customer',
         defaults={'description': 'Customer portal users', 'is_custom': False},
     )
-    UserRole.objects.get_or_create(
-        user=customer,
-        group=customer_group,
-    )
+
+    # Escalation guard: an integration may only ever grant a relationship-scoped
+    # portal role. Cross-tenant contact linking is a feature, but it must never
+    # become cross-tenant data ACCESS — so refuse to grant a 'Customer' group
+    # that has been (mis)configured with full_tenant_access.
+    if customer_group.permissions.filter(codename='full_tenant_access').exists():
+        logger.error(
+            "Refusing to grant portal role: '%s' group in tenant %s has "
+            "full_tenant_access; integration roles must be order-scoped.",
+            customer_group.name, getattr(tenant, 'id', tenant),
+        )
+        return customer
+
+    _, role_created = UserRole.objects.get_or_create(user=customer, group=customer_group)
+    if role_created and customer.tenant_id != getattr(tenant, 'id', tenant):
+        # Visible audit trail: an external/cross-tenant person was granted
+        # portal access to this tenant via the integration.
+        logger.info(
+            "Granted cross-tenant portal access: user %s (home tenant %s) -> "
+            "Customer role in tenant %s via HubSpot.",
+            customer.email, customer.tenant_id, getattr(tenant, 'id', tenant),
+        )
 
     return customer

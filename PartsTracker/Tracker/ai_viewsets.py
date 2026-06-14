@@ -7,6 +7,11 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.response import Response
+from Tracker.permissions import TenantAccessPermission
+from Tracker.authentication import (
+    TenantMembershipTokenAuthentication,
+    TenantMembershipSessionAuthentication,
+)
 from pgvector.django import CosineDistance
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes, inline_serializer
 from auditlog.models import LogEntry
@@ -61,8 +66,8 @@ class EmbedQueryRequestSerializer(serializers.Serializer):
 
 
 class EmbeddingViewSet(viewsets.GenericViewSet):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [TenantMembershipTokenAuthentication, TenantMembershipSessionAuthentication]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
     serializer_class = EmbedQueryRequestSerializer
 
@@ -133,8 +138,8 @@ class VectorSearchRequestSerializer(serializers.Serializer):
 
 
 class AISearchViewSet(viewsets.GenericViewSet):
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [TenantMembershipTokenAuthentication, TenantMembershipSessionAuthentication]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
     serializer_class = VectorSearchRequestSerializer
 
@@ -489,8 +494,8 @@ class QueryViewSet(viewsets.GenericViewSet):
     This viewset provides custom actions only (schema_info, execute).
     Default list/retrieve endpoints are not implemented.
     """
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [TenantMembershipTokenAuthentication, TenantMembershipSessionAuthentication]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     queryset = DocChunk.objects.none()  # For drf-spectacular schema generation
     serializer_class = QueryRequestSerializer  # Default serializer for schema generation
 
@@ -856,11 +861,34 @@ class QueryViewSet(viewsets.GenericViewSet):
         try:
             # Import model dynamically
             from django.apps import apps
+            from django.contrib.auth import get_user_model
             model_class = apps.get_model('Tracker', model_name)
-            
-            # Skip user filtering for now - use all records
-            queryset = model_class.objects.all()
-            
+
+            # Tenant scoping — NEVER a bare .objects.all() here: that returns
+            # cross-tenant rows (and, for User, every tenant's users) to an
+            # LLM-facing query tool. SecureModels go through for_user (tenant +
+            # permission + classification). User is not a SecureModel, so scope
+            # it explicitly to the current tenant's members. Anything else is
+            # refused rather than served unscoped.
+            UserModel = get_user_model()
+            if hasattr(model_class.objects, 'for_user'):
+                queryset = model_class.objects.for_user(request.user)
+            elif model_class is UserModel:
+                tenant = getattr(request, 'tenant', None)
+                if tenant is None:
+                    return Response(
+                        {"detail": "No tenant context for user query"},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                queryset = UserModel.objects.filter(
+                    Q(tenant=tenant) | Q(user_roles__group__tenant=tenant)
+                ).distinct()
+            else:
+                return Response(
+                    {"detail": f"Model '{model_name}' cannot be queried without tenant scoping"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Apply filters
             if filters:
                 queryset = queryset.filter(**filters)
@@ -939,8 +967,8 @@ class LLMConfigViewSet(viewsets.GenericViewSet):
     - Returns config for the user's tenant only
     - API keys are transmitted server-to-server (never to browser)
     """
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [TenantMembershipTokenAuthentication, TenantMembershipSessionAuthentication]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
 
     @extend_schema(
         responses=inline_serializer(

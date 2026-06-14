@@ -14,7 +14,7 @@ from Tracker.models import (
 from .core import SecureModelMixin
 
 
-class LifeLimitDefinitionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class LifeLimitDefinitionSerializer(SecureModelMixin):
     """Life limit definition serializer"""
 
     class Meta:
@@ -49,7 +49,7 @@ class LifeLimitDefinitionSelectSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'unit_label', 'is_calendar_based')
 
 
-class PartTypeLifeLimitSerializer(serializers.ModelSerializer, SecureModelMixin):
+class PartTypeLifeLimitSerializer(SecureModelMixin):
     """Part type life limit junction serializer"""
     part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
     definition_name = serializers.CharField(source='definition.name', read_only=True)
@@ -66,7 +66,7 @@ class PartTypeLifeLimitSerializer(serializers.ModelSerializer, SecureModelMixin)
         read_only_fields = ('created_at', 'updated_at')
 
 
-class LifeTrackingSerializer(serializers.ModelSerializer, SecureModelMixin):
+class LifeTrackingSerializer(SecureModelMixin):
     """Life tracking record serializer"""
     definition_name = serializers.CharField(source='definition.name', read_only=True)
     definition_unit = serializers.CharField(source='definition.unit_label', read_only=True)
@@ -105,7 +105,7 @@ class LifeTrackingSerializer(serializers.ModelSerializer, SecureModelMixin):
         return f"{obj.content_type.app_label}.{obj.content_type.model}"
 
 
-class LifeTrackingListSerializer(serializers.ModelSerializer):
+class LifeTrackingListSerializer(SecureModelMixin):
     """Lightweight serializer for lists"""
     definition_name = serializers.CharField(source='definition.name', read_only=True)
     definition_unit = serializers.CharField(source='definition.unit_label', read_only=True)

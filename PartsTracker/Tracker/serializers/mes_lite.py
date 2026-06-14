@@ -33,7 +33,7 @@ class StageSerializer(serializers.Serializer):
 
 # ===== ORDERS SERIALIZERS =====
 
-class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperationsMixin):
+class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
     """Enhanced orders serializer with user filtering and features"""
     order_status = serializers.ChoiceField(choices=OrdersStatus.choices)
 
@@ -127,7 +127,7 @@ class OrdersSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperat
         return obj.get_notes(customer_view=False)
 
 
-class TrackerPageOrderSerializer(serializers.ModelSerializer):
+class TrackerPageOrderSerializer(SecureModelMixin):
     """Legacy tracker page order serializer"""
     order_status = serializers.ChoiceField(choices=OrdersStatus.choices)
     stages = serializers.SerializerMethodField()
@@ -293,7 +293,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 
 # ===== PARTS SERIALIZERS =====
 
-class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperationsMixin):
+class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     """Enhanced parts serializer using model methods"""
 
     # QA status from model properties (single source of truth)
@@ -429,7 +429,7 @@ class PartsSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperati
         return None
 
 
-class PartSelectSerializer(serializers.ModelSerializer):
+class PartSelectSerializer(SecureModelMixin):
     """Lightweight part serializer for dropdown/combobox selections"""
     part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
 
@@ -485,7 +485,7 @@ def _serialize_current_hold(wo):
     }
 
 
-class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
+class WorkOrderListSerializer(SecureModelMixin):
     """Lightweight serializer for work order list views - avoids N+1 queries."""
     related_order_info = serializers.SerializerMethodField()
     parts_count = serializers.SerializerMethodField()
@@ -599,7 +599,7 @@ class WorkOrderListSerializer(serializers.ModelSerializer, SecureModelMixin):
         }
 
 
-class WorkOrderSerializer(serializers.ModelSerializer, SecureModelMixin, BulkOperationsMixin):
+class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     """Full work order serializer for detail views"""
     related_order_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
@@ -798,7 +798,7 @@ class PartTravelerResponseSerializer(serializers.Serializer):
 
 # ===== STEP AND PROCESS SERIALIZERS =====
 
-class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
+class StepsSerializer(SecureModelMixin):
     """
     Steps serializer - represents step node properties.
 
@@ -893,7 +893,7 @@ class StepsSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== STEP EXECUTION SERIALIZERS =====
 
-class StepExecutionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class StepExecutionSerializer(SecureModelMixin):
     """
     Serializer for step execution tracking (workflow engine).
 
@@ -993,7 +993,7 @@ class StepExecutionSerializer(serializers.ModelSerializer, SecureModelMixin):
         return obj.exited_at is None
 
 
-class StepExecutionListSerializer(serializers.ModelSerializer):
+class StepExecutionListSerializer(SecureModelMixin):
     """Lightweight serializer for list views - avoids N+1 with select_related."""
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True)
     part_status = serializers.CharField(source='part.part_status', read_only=True)
@@ -1040,7 +1040,7 @@ class WIPSummarySerializer(serializers.Serializer):
     total_active = serializers.IntegerField()
 
 
-class StepSerializer(serializers.ModelSerializer):
+class StepSerializer(SecureModelMixin):
     """Step serializer - just the node properties (no process/order/branching)"""
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
 
@@ -1070,7 +1070,7 @@ class ProcessStepSerializer(serializers.ModelSerializer):
         fields = ["id", "step", "step_id", "order", "is_entry_point"]
 
 
-class StepEdgeSerializer(serializers.ModelSerializer):
+class StepEdgeSerializer(SecureModelMixin):
     """StepEdge serializer - DAG edges between steps"""
     from_step_name = serializers.CharField(source="from_step.name", read_only=True)
     to_step_name = serializers.CharField(source="to_step.name", read_only=True)
@@ -1084,7 +1084,7 @@ class StepEdgeSerializer(serializers.ModelSerializer):
         ]
 
 
-class PartTypesSerializer(serializers.ModelSerializer, SecureModelMixin):
+class PartTypesSerializer(SecureModelMixin):
     """Part types serializer with versioning support.
 
     Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
@@ -1140,7 +1140,7 @@ class PartTypeSelectSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'ID_prefix')
 
 
-class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ProcessesSerializer(SecureModelMixin):
     """Processes serializer with graph structure"""
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     process_steps = ProcessStepSerializer(many=True, read_only=True)
@@ -1164,7 +1164,7 @@ class ProcessesSerializer(serializers.ModelSerializer, SecureModelMixin):
         return obj.process_steps.count()
 
 
-class ProcessWithStepsSerializer(serializers.ModelSerializer):
+class ProcessWithStepsSerializer(SecureModelMixin):
     """
     Process with steps serializer for creation/updates.
 
@@ -1231,7 +1231,7 @@ class ProcessWithStepsSerializer(serializers.ModelSerializer):
 
 # ===== EQUIPMENT SERIALIZERS =====
 
-class EquipmentTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
+class EquipmentTypeSerializer(SecureModelMixin):
     """Equipment type serializer.
 
     EquipmentType is a versioned configuration record. Content edits
@@ -1262,7 +1262,7 @@ class EquipmentTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
 
 
-class EquipmentsSerializer(serializers.ModelSerializer, SecureModelMixin):
+class EquipmentsSerializer(SecureModelMixin):
     """Equipment serializer.
 
     Equipments is a versioned asset record. Content edits (name, type,
@@ -1296,7 +1296,7 @@ class EquipmentsSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
 
 
-class EquipmentSerializer(serializers.ModelSerializer):
+class EquipmentSerializer(SecureModelMixin):
     """Legacy equipment serializer"""
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
 
@@ -1327,7 +1327,7 @@ class EquipmentSelectSerializer(serializers.ModelSerializer):
 
 # ===== MILESTONE SERIALIZERS =====
 
-class MilestoneSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MilestoneSerializer(SecureModelMixin):
     """Single milestone within a template."""
     display_name = serializers.SerializerMethodField()
 
@@ -1344,7 +1344,7 @@ class MilestoneSerializer(serializers.ModelSerializer, SecureModelMixin):
         return obj.get_display_name()
 
 
-class MilestoneTemplateSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MilestoneTemplateSerializer(SecureModelMixin):
     """Milestone template with nested milestones."""
     milestones = MilestoneSerializer(many=True, read_only=True)
 
@@ -1371,7 +1371,7 @@ class MilestoneTemplateSerializer(serializers.ModelSerializer, SecureModelMixin)
         )
 
 
-class MilestoneTemplateListSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MilestoneTemplateListSerializer(SecureModelMixin):
     """Lightweight template serializer for list views (no nested milestones)."""
     milestone_count = serializers.SerializerMethodField()
 

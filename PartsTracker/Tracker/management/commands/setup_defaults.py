@@ -21,12 +21,6 @@ from io import StringIO
 # Available setup commands in execution order
 SETUP_COMMANDS = [
     {
-        "name": "permissions",
-        "command": "setup_permissions",
-        "description": "User groups and their permissions (Admin, Manager, Quality, Operator, Customer)",
-        "skip_flag": "skip_permissions",
-    },
-    {
         "name": "document-types",
         "command": "setup_document_types",
         "description": "Document type classifications (SOP, WI, MTR, COC, etc.)",

@@ -25,9 +25,6 @@ from .core import (
     CompanyViewSet,
     CustomerViewSet,
 
-    # Auth & Groups
-    GroupViewSet,
-
     # Audit Logs & Content Types
     LogEntryViewSet,
     ContentTypeViewSet,
@@ -259,8 +256,6 @@ __all__ = [
     'CompanyViewSet',
     'CustomerViewSet',
 
-    # Core - Auth & Groups
-    'GroupViewSet',
 
     # Core - Audit Logs
     'LogEntryViewSet',
@@ -430,7 +425,6 @@ def register_viewsets(router):
     router.register(r'Employees-Options', EmployeeSelectViewSet, basename='Employees-Options')
     router.register(r'Companies', CompanyViewSet, basename='Companies')
     router.register(r'Customers', CustomerViewSet, basename='Customers')
-    router.register(r'Groups', GroupViewSet, basename='Groups')
     router.register(r'auditlog', LogEntryViewSet, basename='auditlog')
     router.register(r'content-types', ContentTypeViewSet, basename='contenttype')
     router.register(r'HubspotGates', HubspotGatesViewSet, basename='HubspotGates')

@@ -6,7 +6,7 @@ from Tracker.models import CalibrationRecord
 from .core import SecureModelMixin
 
 
-class CalibrationRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
+class CalibrationRecordSerializer(SecureModelMixin):
     """
     Serializer for CalibrationRecord model.
 

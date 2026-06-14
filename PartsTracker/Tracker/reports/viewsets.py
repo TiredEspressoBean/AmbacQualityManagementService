@@ -23,6 +23,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from Tracker.permissions import TenantAccessPermission
 from Tracker.models import GeneratedReport
 from Tracker.reports.services.pdf_generator import (
     PdfGenerator,
@@ -135,7 +136,7 @@ class ReportViewSet(viewsets.GenericViewSet):
     API surface for Typst-based PDF reports.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
     queryset = GeneratedReport.unscoped.none()  # drf-spectacular schema
 
     # ---- Async path ------------------------------------------------------

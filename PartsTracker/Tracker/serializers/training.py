@@ -6,7 +6,7 @@ from Tracker.models import TrainingType, TrainingRecord, TrainingRequirement
 from .core import SecureModelMixin
 
 
-class TrainingTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
+class TrainingTypeSerializer(SecureModelMixin):
     """
     Serializer for TrainingType model.
 
@@ -35,7 +35,7 @@ class TrainingTypeSerializer(serializers.ModelSerializer, SecureModelMixin):
         )
 
 
-class TrainingRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
+class TrainingRecordSerializer(SecureModelMixin):
     """
     Serializer for TrainingRecord model.
 
@@ -94,7 +94,7 @@ class TrainingRecordSerializer(serializers.ModelSerializer, SecureModelMixin):
         return None
 
 
-class TrainingRequirementSerializer(serializers.ModelSerializer, SecureModelMixin):
+class TrainingRequirementSerializer(SecureModelMixin):
     """
     Serializer for TrainingRequirement model.
 

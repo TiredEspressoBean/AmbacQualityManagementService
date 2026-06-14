@@ -21,6 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from Tracker.permissions import TenantAccessPermission
 from Tracker.models import (
     CAPA,
     QualityReports,
@@ -46,7 +47,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         GET /api/dashboard/failed-inspections/ - Recent failed QA reports
         GET /api/dashboard/open-dispositions/ - Pending dispositions
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
 
     @extend_schema(
         responses={200: inline_serializer(

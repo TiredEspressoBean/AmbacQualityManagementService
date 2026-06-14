@@ -37,7 +37,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
-from Tracker.permissions import TenantModelPermissions
+from Tracker.permissions import TenantModelPermissions, TenantAccessPermission
 from Tracker.viewsets.mixins import CSVImportMixin, DataExportMixin
 
 logger = logging.getLogger(__name__)
@@ -145,8 +145,10 @@ class TenantScopedMixin(TenantAwareMixin):
             serializer_class = OrderSerializer
     """
 
-    # Permission classes - require authentication and tenant-scoped model permissions
-    permission_classes = [IsAuthenticated, TenantModelPermissions]
+    # Permission classes - require authentication, tenant access (membership
+    # check that also backstops X-Tenant-ID header spoofing for token clients,
+    # since DRF auth runs after TenantMiddleware), and tenant-scoped model perms.
+    permission_classes = [IsAuthenticated, TenantAccessPermission, TenantModelPermissions]
 
     # Set to True to require tenant (return empty queryset if no tenant)
     tenant_required = True

@@ -17,7 +17,7 @@ from .core import SecureModelMixin
 
 # ===== CORE SERIALIZERS =====
 
-class CoreSerializer(serializers.ModelSerializer, SecureModelMixin):
+class CoreSerializer(SecureModelMixin):
     """Remanufacturing core serializer"""
     core_type_name = serializers.CharField(source='core_type.name', read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
@@ -56,7 +56,7 @@ class CoreSerializer(serializers.ModelSerializer, SecureModelMixin):
         return obj.disassembled_by.display_name if obj.disassembled_by else None
 
 
-class CoreListSerializer(serializers.ModelSerializer):
+class CoreListSerializer(SecureModelMixin):
     """Lightweight core serializer for lists.
 
     Includes the fields the cores list page renders as columns
@@ -85,7 +85,7 @@ class CoreScrapSerializer(serializers.Serializer):
 
 # ===== HARVESTED COMPONENT SERIALIZERS =====
 
-class HarvestedComponentSerializer(serializers.ModelSerializer, SecureModelMixin):
+class HarvestedComponentSerializer(SecureModelMixin):
     """Harvested component serializer"""
     core_number = serializers.CharField(source='core.core_number', read_only=True)
     component_type_name = serializers.CharField(source='component_type.name', read_only=True)
@@ -131,7 +131,7 @@ class HarvestedComponentAcceptSerializer(serializers.Serializer):
 
 # ===== DISASSEMBLY BOM LINE SERIALIZERS =====
 
-class DisassemblyBOMLineSerializer(serializers.ModelSerializer, SecureModelMixin):
+class DisassemblyBOMLineSerializer(SecureModelMixin):
     """Disassembly BOM line serializer.
 
     DisassemblyBOMLine is a VERSIONED controlled record. Any content

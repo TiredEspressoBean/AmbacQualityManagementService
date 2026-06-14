@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from Tracker.models.dms import ChatSession
+from Tracker.permissions import TenantAccessPermission
 from Tracker.serializers.dms import ChatSessionSerializer
 from .base import TenantScopedMixin
 
@@ -27,7 +28,7 @@ class ChatSessionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """
     queryset = ChatSession.objects.all()
     serializer_class = ChatSessionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
 
     def get_queryset(self):
         """Return only the current user's chat sessions, ordered by most recent."""

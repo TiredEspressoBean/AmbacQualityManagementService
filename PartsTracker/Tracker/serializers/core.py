@@ -3,7 +3,6 @@ from auditlog.models import LogEntry
 from dj_rest_auth.forms import AllAuthPasswordResetForm
 from dj_rest_auth.serializers import PasswordResetSerializer as BasePasswordResetSerializer
 from dj_rest_auth.serializers import UserDetailsSerializer as BaseUserDetailsSerializer
-from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
 from django.conf import settings
@@ -54,6 +53,54 @@ class SecureModelMixin(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             return model_class.objects.for_user(request.user)
         return model_class.objects.active()
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        self._validate_generic_fk_tenant(attrs)
+        return attrs
+
+    def _validate_generic_fk_tenant(self, attrs):
+        """Block cross-tenant GenericForeignKey references.
+
+        If the model has a `content_type`/`object_id` GFK and this request
+        writes it, the referenced object must live in the current tenant.
+        We look it up through the target's tenant-scoped manager, so an object
+        in another tenant simply isn't found and is rejected — preventing a
+        Document/Approval/etc. in tenant A from pointing at tenant B's row.
+        Cheap no-op for serializers whose model has no GFK.
+        """
+        model_field_names = {f.name for f in self.Meta.model._meta.get_fields()}
+        if 'content_type' not in model_field_names or 'object_id' not in model_field_names:
+            return
+
+        content_type = attrs.get('content_type')
+        object_id = attrs.get('object_id')
+        # On partial update, fall back to the stored values for whichever half
+        # isn't being changed.
+        if content_type is None and self.instance is not None:
+            content_type = getattr(self.instance, 'content_type', None)
+        if object_id in (None, '') and self.instance is not None:
+            object_id = getattr(self.instance, 'object_id', None)
+        if content_type is None or object_id in (None, ''):
+            return
+
+        target_model = content_type.model_class()
+        if target_model is None:
+            return
+        # Only enforce for tenant-scoped targets — global models (User,
+        # ContentType, …) have no tenant to cross.
+        if not any(getattr(f, 'name', None) == 'tenant' for f in target_model._meta.get_fields()):
+            return
+
+        from Tracker.utils.tenant_context import current_tenant_var
+        if current_tenant_var.get() is None:
+            return  # No request/tenant context (management, shell) — skip.
+
+        manager = getattr(target_model, 'objects', target_model._default_manager)
+        if not manager.filter(pk=object_id).exists():
+            raise serializers.ValidationError(
+                {'object_id': 'Referenced object was not found in your tenant.'}
+            )
 
 
 class BulkOperationsMixin:
@@ -256,8 +303,6 @@ class UserSerializer(SecureModelMixin):
     parent_company_id = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all(), source='parent_company',
                                                            write_only=True, required=False, allow_null=True)
     groups = serializers.SerializerMethodField()
-    group_ids = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all(), source='groups',
-                                                   write_only=True, required=False)
     # Tenant info (read-only)
     tenant = TenantMinimalSerializer(read_only=True, allow_null=True)
     # User type (INTERNAL/PORTAL)
@@ -268,7 +313,7 @@ class UserSerializer(SecureModelMixin):
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
-            'last_login', 'parent_company', 'parent_company_id', 'groups', 'group_ids',
+            'last_login', 'parent_company', 'parent_company_id', 'groups',
             'tenant', 'user_type', 'user_type_display')
         read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display')
         extra_kwargs = {'password': {'write_only': True}}
@@ -404,56 +449,6 @@ class PasswordResetSerializer(BasePasswordResetSerializer):
     def password_reset_form_class(self):
         """Force use of our custom form instead of the default AllAuth form"""
         return CustomAllAuthPasswordResetForm
-
-
-class GroupSerializer(serializers.ModelSerializer):
-    """Serializer for Django Groups with user and permission details"""
-    user_count = serializers.SerializerMethodField()
-    users = serializers.SerializerMethodField()
-    permissions = serializers.SerializerMethodField()
-    description = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Group
-        fields = ('id', 'name', 'description', 'user_count', 'users', 'permissions')
-
-    @extend_schema_field({"type": "integer"})
-    def get_user_count(self, obj):
-        return obj.user_set.count()
-
-    @extend_schema_field({"type": "array", "items": {"type": "object"}})
-    def get_users(self, obj):
-        """Return list of users in this group"""
-        return [
-            {
-                'id': user.id,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'is_active': user.is_active,
-            }
-            for user in obj.user_set.all().order_by('email')
-        ]
-
-    @extend_schema_field({"type": "array", "items": {"type": "object"}})
-    def get_permissions(self, obj):
-        """Return list of permissions for this group"""
-        return [
-            {
-                'id': perm.id,
-                'codename': perm.codename,
-                'name': perm.name,
-                'content_type': perm.content_type.model if perm.content_type else None,
-            }
-            for perm in obj.permissions.all().select_related('content_type').order_by('codename')
-        ]
-
-    @extend_schema_field({"type": "string", "nullable": True})
-    def get_description(self, obj):
-        """Get description from GROUP_DEFINITIONS"""
-        from Tracker.permissions import GROUP_DEFINITIONS
-        group_def = GROUP_DEFINITIONS.get(obj.name, {})
-        return group_def.get('description', None)
 
 
 class TenantGroupSerializer(serializers.ModelSerializer):

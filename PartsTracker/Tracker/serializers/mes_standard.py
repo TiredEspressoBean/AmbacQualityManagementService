@@ -23,7 +23,7 @@ from .core import SecureModelMixin, UserSelectSerializer
 
 # ===== WORK CENTER SERIALIZERS =====
 
-class WorkCenterSerializer(serializers.ModelSerializer, SecureModelMixin):
+class WorkCenterSerializer(SecureModelMixin):
     """Work center serializer with equipment list.
 
     WorkCenter is a versioned configuration record. Content edits
@@ -67,7 +67,7 @@ class WorkCenterSelectSerializer(serializers.ModelSerializer):
 
 # ===== SHIFT SERIALIZERS =====
 
-class ShiftSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ShiftSerializer(SecureModelMixin):
     """Shift definition serializer.
 
     Shift is a versioned configuration record. Content edits (name,
@@ -101,7 +101,7 @@ class ShiftSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== SCHEDULE SLOT SERIALIZERS =====
 
-class ScheduleSlotSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ScheduleSlotSerializer(SecureModelMixin):
     """Production schedule slot serializer"""
     work_center_name = serializers.CharField(source='work_center.name', read_only=True)
     shift_name = serializers.CharField(source='shift.name', read_only=True)
@@ -121,7 +121,7 @@ class ScheduleSlotSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== DOWNTIME EVENT SERIALIZERS =====
 
-class DowntimeEventSerializer(serializers.ModelSerializer, SecureModelMixin):
+class DowntimeEventSerializer(SecureModelMixin):
     """Equipment/work center downtime serializer"""
     equipment_name = serializers.CharField(source='equipment.name', read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source='work_center.name', read_only=True, allow_null=True)
@@ -158,7 +158,7 @@ class DowntimeEventSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== MATERIAL LOT SERIALIZERS =====
 
-class MaterialLotSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MaterialLotSerializer(SecureModelMixin):
     """Material lot serializer with hybrid versioning routing.
 
     Spec/content field edits (supplier, material_type, expiration_date,
@@ -231,7 +231,7 @@ class MaterialLotSplitSerializer(serializers.Serializer):
 
 # ===== MATERIAL USAGE SERIALIZERS =====
 
-class MaterialUsageSerializer(serializers.ModelSerializer, SecureModelMixin):
+class MaterialUsageSerializer(SecureModelMixin):
     """Material consumption record serializer"""
     lot_number = serializers.CharField(source='lot.lot_number', read_only=True, allow_null=True)
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True)
@@ -255,7 +255,7 @@ class MaterialUsageSerializer(serializers.ModelSerializer, SecureModelMixin):
 
 # ===== TIME ENTRY SERIALIZERS =====
 
-class TimeEntrySerializer(serializers.ModelSerializer, SecureModelMixin):
+class TimeEntrySerializer(SecureModelMixin):
     """Labor time entry serializer"""
     user_name = serializers.SerializerMethodField()
     duration_hours = serializers.SerializerMethodField()
@@ -297,7 +297,7 @@ class ClockInSerializer(serializers.Serializer):
 
 # ===== BOM SERIALIZERS =====
 
-class BOMLineSerializer(serializers.ModelSerializer, SecureModelMixin):
+class BOMLineSerializer(SecureModelMixin):
     """BOM line item serializer"""
     component_type_name = serializers.CharField(source='component_type.name', read_only=True)
 
@@ -312,7 +312,7 @@ class BOMLineSerializer(serializers.ModelSerializer, SecureModelMixin):
         read_only_fields = ('created_at', 'updated_at')
 
 
-class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
+class BOMSerializer(SecureModelMixin):
     """Bill of Materials serializer.
 
     PATCH semantics: DRAFT BOMs are edited in place via super().update().
@@ -350,7 +350,7 @@ class BOMSerializer(serializers.ModelSerializer, SecureModelMixin):
         return super().update(instance, validated_data)
 
 
-class BOMListSerializer(serializers.ModelSerializer):
+class BOMListSerializer(SecureModelMixin):
     """Lightweight BOM serializer for lists"""
     part_type_name = serializers.CharField(source='part_type.name', read_only=True, allow_null=True)
     line_count = serializers.SerializerMethodField()
@@ -366,7 +366,7 @@ class BOMListSerializer(serializers.ModelSerializer):
 
 # ===== ASSEMBLY USAGE SERIALIZERS =====
 
-class AssemblyUsageSerializer(serializers.ModelSerializer, SecureModelMixin):
+class AssemblyUsageSerializer(SecureModelMixin):
     """Assembly component usage serializer"""
     assembly_erp_id = serializers.CharField(source='assembly.ERP_id', read_only=True)
     component_erp_id = serializers.CharField(source='component.ERP_id', read_only=True)

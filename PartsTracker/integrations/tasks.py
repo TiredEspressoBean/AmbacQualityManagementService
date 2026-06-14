@@ -51,14 +51,19 @@ def sync_hubspot_deals_task(self, integration_id):
     """Sync HubSpot deals for a specific integration."""
     from integrations.models.config import IntegrationConfig
     from integrations.adapters.hubspot.sync import sync_all_deals
+    from Tracker.utils.tenant_context import tenant_context
 
-    # tenant-safe: integration_id dispatched from tenant-scoped caller; downstream ops use integration.tenant
+    # IntegrationConfig is not a SecureModel, so this lookup needs no context.
     integration = IntegrationConfig.objects.get(id=integration_id)
 
     if not integration.is_enabled:
         return {'status': 'skipped', 'reason': 'integration_disabled'}
 
-    return sync_all_deals(integration)
+    # Establish tenant context so SecureManager `.objects` calls inside the sync
+    # path are correctly scoped (and don't raise TenantContextRequired). The
+    # framework owns this so adapters don't have to thread tenant= everywhere.
+    with tenant_context(integration.tenant_id):
+        return sync_all_deals(integration)
 
 
 @shared_task(bind=True, base=RetryableIntegrationTask)
@@ -67,13 +72,18 @@ def push_hubspot_deal_stage_task(self, integration_id, deal_id, stage_id, order_
     from integrations.models.config import IntegrationConfig
     from integrations.models.links.hubspot import HubSpotOrderLink, HubSpotPipelineStage
     from integrations.services.registry import get_adapter
+    from Tracker.utils.tenant_context import tenant_context
 
     integration = IntegrationConfig.objects.get(id=integration_id)
-    link = HubSpotOrderLink.objects.get(integration=integration, deal_id=deal_id)
-    stage = HubSpotPipelineStage.objects.get(id=stage_id)
 
-    adapter = get_adapter(integration.provider)
-    result = adapter.push_order_status(integration, link=link, status=stage)
+    with tenant_context(integration.tenant_id):
+        link = HubSpotOrderLink.objects.get(integration=integration, deal_id=deal_id)
+        # Scope the stage lookup to this integration (not a bare id) so a stage
+        # id can't resolve to another integration's/tenant's row.
+        stage = HubSpotPipelineStage.objects.get(id=stage_id, integration=integration)
+
+        adapter = get_adapter(integration.provider)
+        result = adapter.push_order_status(integration, link=link, status=stage)
 
     if result:
         logger.info(f"Pushed stage '{stage.stage_name}' to HubSpot deal {deal_id}")

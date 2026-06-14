@@ -28,16 +28,60 @@ else:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# In production, DJANGO_SECRET_KEY must be set. Fallback only for local development.
-_secret_key = os.environ.get("DJANGO_SECRET_KEY")
-if not _secret_key and os.environ.get("DJANGO_DEBUG", "").lower() not in ("true", "1", "yes"):
-    raise ValueError("DJANGO_SECRET_KEY environment variable is required in production")
-SECRET_KEY = _secret_key or "dev-secret-key-DO-NOT-USE-IN-PRODUCTION"
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # Defaults to False for safety - must explicitly enable with DJANGO_DEBUG=true
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
+
+# "Real deployment" = anything that isn't a developer's local machine. We do
+# NOT infer this from DEBUG alone — DEBUG gets flipped on to troubleshoot real
+# boxes (and a self-hosted installer might leave it on). A managed-platform
+# signal (Railway) or an explicit DJANGO_ENV marks a real deployment, as does
+# DEBUG=False. On a real deployment we REFUSE to fall back to a generated key:
+# secrets MUST come from the environment. On-prem installs should set
+# DJANGO_ENV=production so a stray DEBUG=true can't downgrade the secret posture.
+IS_REAL_DEPLOYMENT = (
+    not DEBUG
+    or bool(os.environ.get('RAILWAY_ENVIRONMENT'))
+    or os.environ.get('DJANGO_ENV', '').lower() in ('production', 'prod', 'staging')
+)
+
+
+def _resolve_secret(env_value, *, name, is_real_deployment, dev_factory):
+    """Resolve a cryptographic secret with no hardcoded fallback.
+
+    - env value present -> use it (every environment).
+    - real deployment + missing -> FAIL CLOSED (hard error), never a silent
+      insecure fallback.
+    - local dev + missing -> generate an EPHEMERAL value at runtime.
+
+    No secret is committed to source, so there's nothing in the repo to leak,
+    and a stray DEBUG=true on a real box can't downgrade to a known key.
+    """
+    if env_value:
+        return env_value
+    if is_real_deployment:
+        raise ValueError(
+            f"{name} must be set on a real deployment. Set {name} in the "
+            f"environment. (Generated ephemeral dev keys are only used on a "
+            f"local machine: DEBUG=true with no DJANGO_ENV/RAILWAY_ENVIRONMENT.)"
+        )
+    import logging
+    logging.getLogger('django').warning(
+        "%s not set — using an EPHEMERAL generated key for local dev. Sessions "
+        "and encrypted data will NOT survive a restart; set %s for stability.",
+        name, name,
+    )
+    return dev_factory()
+
+
+# SECRET_KEY: env, or an ephemeral random key for local dev. No committed value.
+import secrets as _secrets
+SECRET_KEY = _resolve_secret(
+    os.environ.get("DJANGO_SECRET_KEY"),
+    name="DJANGO_SECRET_KEY",
+    is_real_deployment=IS_REAL_DEPLOYMENT,
+    dev_factory=lambda: _secrets.token_urlsafe(64),
+)
 
 # Product/brand name used in emails, PDF reports, and other customer-facing text.
 # Override per-deployment via SITE_NAME env var (e.g., a white-label install).
@@ -265,10 +309,23 @@ SOCIALACCOUNT_AUTO_SIGNUP = True  # Auto-create user on first SSO login
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # Allow linking by email
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # Auto-link existing users by email
 
+# Trusted source of the REAL client IP, used for IP-based throttling (and any
+# IP audit logging). Behind a proxy, REMOTE_ADDR is the proxy and a raw
+# X-Forwarded-For is client-spoofable, so we read a trusted, edge-set header.
+# Railway sets `X-Real-IP` from the real connection (not client-controllable) —
+# see Railway public-networking docs. On-prem behind a different proxy, set
+# TRUSTED_CLIENT_IP_HEADER='HTTP_X_FORWARDED_FOR' and NUM_PROXIES to the number
+# of trusted proxies so the proxy-appended entry is used, not the spoofable one.
+TRUSTED_CLIENT_IP_HEADER = os.getenv("TRUSTED_CLIENT_IP_HEADER", "HTTP_X_REAL_IP")
+NUM_PROXIES = int(os.getenv("NUM_PROXIES", "1"))
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",  # for browser session login
-        "rest_framework.authentication.TokenAuthentication",  # for API tokens
+        # Tenant-membership-enforcing subclasses (defense-in-depth alongside
+        # TenantAccessPermission): reject a token/session user requesting a
+        # tenant they don't belong to, at the moment identity is resolved.
+        "Tracker.authentication.TenantMembershipSessionAuthentication",  # browser session login
+        "Tracker.authentication.TenantMembershipTokenAuthentication",  # API tokens
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",  # default gate
@@ -281,6 +338,15 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend',
                                 'rest_framework.filters.OrderingFilter', ],
+    # Per-endpoint throttle rates (applied via ScopedRateThrottle on specific
+    # unauthenticated, abuse-prone views — NOT a global throttle). Tunable via
+    # env for on-prem. Anonymous requests are keyed by client IP.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": os.getenv("THROTTLE_LOGIN", "10/min"),
+        "signup": os.getenv("THROTTLE_SIGNUP", "5/hour"),
+        "registration": os.getenv("THROTTLE_REGISTRATION", "5/hour"),
+        "password_reset": os.getenv("THROTTLE_PASSWORD_RESET", "5/hour"),
+    },
 }
 
 SPECTACULAR_SETTINGS = {
@@ -350,34 +416,73 @@ SPECTACULAR_SETTINGS = {
         "ChangeControlPriorityEnum": "Tracker.models.change_control.ChangeControlPriority.choices",
     },
 }
-# CORS: Allow localhost for dev, Railway subdomains for production
+# =============================================================================
+# CORS / CSRF trusted origins
+# =============================================================================
+# Three distinct knobs:
+#   ALLOWED_HOSTS         - Host headers THIS backend answers to
+#   CORS_ALLOWED_ORIGINS  - browser origins allowed to call the API cross-site
+#   CSRF_TRUSTED_ORIGINS  - origins trusted for unsafe methods (the frontend
+#                           origins PLUS this backend's own origin, since Django
+#                           admin / DRF browsable API / allauth pages are served
+#                           from the backend host)
+#
+# SECURITY: never trust the shared `*.railway.app` namespace — anyone can deploy
+# there, and with CORS_ALLOW_CREDENTIALS=True that would hand a victim's session
+# cookie to a stranger's app. We trust only:
+#   - localhost (dev)
+#   - our OWN domain + its subdomains  (CUSTOM_DOMAINS, e.g. uqmes.com/*.uqmes.com)
+#   - the EXACT frontend host Railway injects (RAILWAY_SERVICE_FRONTEND_URL)
+#   - explicit env origins (FRONTEND_URL, CORS_EXTRA_ORIGINS) for on-prem
+import re as _re
+
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
 ]
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.railway\.app$",
-    r"^https://.*\.up\.railway\.app$",
-]
+CORS_ALLOWED_ORIGIN_REGEXES = []  # populated below for our own-domain subdomains
 
-# CSRF: Same pattern
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://*.railway.app",
-    "https://*.up.railway.app",
-]
 
-# Custom domain support (comma-separated list, e.g., "uqmes.com,app.example.com")
-CUSTOM_DOMAINS = os.environ.get('CUSTOM_DOMAINS', '').split(',')
+def _add_cors_origin(origin):
+    origin = (origin or "").strip().rstrip("/")
+    if origin.startswith(("http://", "https://")) and origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(origin)
+
+
+# Frontend's own origin (also used for reset/notification links) + on-prem extras.
+_add_cors_origin(os.environ.get("FRONTEND_URL", ""))
+for _extra in os.environ.get("CORS_EXTRA_ORIGINS", "").split(","):
+    _add_cors_origin(_extra)
+
+# Railway hands us the frontend service's EXACT host — trust that, not *.railway.app.
+_railway_frontend = os.environ.get("RAILWAY_SERVICE_FRONTEND_URL", "").strip().rstrip("/")
+if _railway_frontend:
+    _add_cors_origin(
+        _railway_frontend if _railway_frontend.startswith(("http://", "https://"))
+        else f"https://{_railway_frontend}"
+    )
+
+# Custom domain support (comma-separated bare hosts). These are OUR domains, so
+# trust the apex AND all subdomains (e.g. tenant subdomains acme.uqmes.com).
+CUSTOM_DOMAINS = [d.strip() for d in os.environ.get('CUSTOM_DOMAINS', '').split(',') if d.strip()]
 for domain in CUSTOM_DOMAINS:
-    domain = domain.strip()
-    if domain:
-        if domain not in ALLOWED_HOSTS:
-            ALLOWED_HOSTS.append(domain)
-        CORS_ALLOWED_ORIGINS.append(f"https://{domain}")
-        CSRF_TRUSTED_ORIGINS.append(f"https://{domain}")
-CORS_ALLOW_CREDENTIALS = True
+    if domain not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(domain)
+    _add_cors_origin(f"https://{domain}")
+    CORS_ALLOWED_ORIGIN_REGEXES.append(
+        r"^https://([A-Za-z0-9-]+\.)*" + _re.escape(domain) + r"$"
+    )
+
+# CSRF: frontend origins above + subdomain wildcards for our own domains + THIS
+# backend's own origin (admin / browsable API / allauth are served by it).
+CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS)
+for domain in CUSTOM_DOMAINS:
+    CSRF_TRUSTED_ORIGINS.append(f"https://*.{domain}")
+_backend_public = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip().rstrip("/")
+if _backend_public:
+    CSRF_TRUSTED_ORIGINS.append(f"https://{_backend_public}")
 
 LOGIN_REDIRECT_URL = '/'
 
@@ -453,6 +558,13 @@ REST_AUTH = {
     'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
 
+# API token lifetime (seconds). DRF's stock Token never expires; we enforce a
+# TTL in ExpiringTokenAuthentication so a leaked token can't be used forever.
+# `get_user_api_token` reissues a fresh token before expiry and the frontend
+# refreshes well within the window, so this is transparent to clients.
+# Set to 0 to disable expiry.
+API_TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", str(60 * 60)))  # 1 hour
+
 # FRONTEND_URL — used by password-reset emails, notification links, and
 # any other server-to-client URL construction. No longer used for PDF
 # generation (reports compile via Typst, no browser round-trip).
@@ -483,17 +595,18 @@ AI_EMBED_CHUNK_CHARS    = int(os.getenv("AI_EMBED_CHUNK_CHARS", "1200"))
 AI_EMBED_MAX_CHUNKS     = int(os.getenv("AI_EMBED_MAX_CHUNKS", "40"))
 AI_EMBED_BATCH_SIZE     = int(os.getenv("AI_EMBED_BATCH_SIZE", "8"))
 
-# Encryption key for sensitive fields (LLM API keys, etc.)
-# Required by django-encrypted-model-fields
-# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-_encryption_key = os.getenv("FIELD_ENCRYPTION_KEY")
-if not _encryption_key:
-    if DEBUG:
-        # Dev-only fallback key (valid Fernet key) - DO NOT use in production
-        _encryption_key = "YJL3Y7Fvwl0qAOhVwVNlUlYahNcKrQIr6_P-VEMyrpE="
-    else:
-        raise ValueError("FIELD_ENCRYPTION_KEY environment variable is required in production")
-FIELD_ENCRYPTION_KEY = _encryption_key
+# Encryption key for sensitive fields (LLM API keys, integration secrets).
+# Required by django-encrypted-model-fields. env, or an ephemeral key for local
+# dev — NO committed key (a repo-public key would decrypt every tenant's stored
+# secrets). Generate one with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+from cryptography.fernet import Fernet as _Fernet
+FIELD_ENCRYPTION_KEY = _resolve_secret(
+    os.getenv("FIELD_ENCRYPTION_KEY"),
+    name="FIELD_ENCRYPTION_KEY",
+    is_real_deployment=IS_REAL_DEPLOYMENT,
+    dev_factory=lambda: _Fernet.generate_key().decode(),
+)
 
 # ---------------- Redis cache ----------------
 # Redis cache - use REDIS_URL from Railway, append /1 for cache db
