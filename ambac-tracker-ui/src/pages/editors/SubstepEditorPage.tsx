@@ -78,6 +78,62 @@ type RouteParams = {
 // stays in sync if the process-flow route signature changes.
 const PROCESS_FLOW_PATH = "/process-flow" as const;
 
+// ---------------------------------------------------------------------------
+// Inspection-point coupling
+//
+// QR-aware capture nodes — the defect annotator above all — only reach a
+// QualityReport when the containing substep has is_inspection_point=True. The
+// operator submit service (services/dwi/operator_capture.py) skips all QR
+// population (status, defects, annotation link, signatures) when the flag is
+// off, so a defect annotator on a plain substep is silently inert: the operator
+// can mark defects but they never record to a quality report.
+//
+// The editor previously let an author build exactly that, with no warning. So:
+// any substep whose body contains the annotator is FORCED to be an inspection
+// point, and seeded with the QualityReport capture bundle the first time the
+// annotator appears. Enforced at authoring time (on body change) and reflected
+// in a locked toggle.
+// ---------------------------------------------------------------------------
+
+const ANNOTATOR_NODE_TYPE = "partAnnotation";
+
+/** All node `type`s present anywhere in a TipTap body doc. */
+function bodyNodeTypes(body: object | undefined): Set<string> {
+    const types = new Set<string>();
+    const walk = (n: unknown) => {
+        if (!n || typeof n !== "object") return;
+        const node = n as { type?: unknown; content?: unknown };
+        if (typeof node.type === "string") types.add(node.type);
+        if (Array.isArray(node.content)) node.content.forEach(walk);
+    };
+    walk(body);
+    return types;
+}
+
+function bodyHasAnnotator(body: object | undefined): boolean {
+    return bodyNodeTypes(body).has(ANNOTATOR_NODE_TYPE);
+}
+
+/** Patch to merge alongside a body edit: a substep whose body contains the
+ *  defect annotator is forced to be an inspection point — otherwise its
+ *  Pass/Fail result, defect findings, and annotations never reach a
+ *  QualityReport (operator_capture.py only populates a QR when
+ *  is_inspection_point=True). The QR capture bundle (status, roles, signature,
+ *  defect findings) is pulled in at insert time by node-catalog's insertEntry,
+ *  so here we only flip the flag. */
+function coupleAnnotatorToInspection(
+    nextBody: object,
+    currentInspection: boolean,
+): { body_blocks: object; is_inspection_point?: boolean } {
+    const patch: { body_blocks: object; is_inspection_point?: boolean } = {
+        body_blocks: nextBody,
+    };
+    if (!currentInspection && bodyHasAnnotator(nextBody)) {
+        patch.is_inspection_point = true;
+    }
+    return patch;
+}
+
 /**
  * The shape of a working draft held in page-level state. Each field is
  * present only when it differs from the backend substep — undefined fields
@@ -320,7 +376,10 @@ export function SubstepEditorPage() {
                     body_blocks: draft.body_blocks as never,
                     is_optional: draft.is_optional,
                     requires_signature: draft.requires_signature,
-                    is_inspection_point: draft.is_inspection_point,
+                    // Backstop: a body with the defect annotator is always an
+                    // inspection point (see coupleAnnotatorToInspection).
+                    is_inspection_point:
+                        draft.is_inspection_point || bodyHasAnnotator(draft.body_blocks),
                     is_critical: draft.is_critical,
                     allow_not_applicable: draft.allow_not_applicable,
                 } as never);
@@ -688,8 +747,15 @@ function SubstepRow({
     const displayTitle = pending?.title ?? substep.title;
     const displayOptional = pending?.is_optional ?? substep.is_optional;
     const displaySignature = pending?.requires_signature ?? substep.requires_signature;
+    const displayBody =
+        (pending?.body_blocks as object | undefined) ??
+        (substep.body_blocks as unknown as object | undefined);
+    // Annotator in the body forces inspection-point, so reflect it in the badge
+    // even when the stored flag is stale (legacy substeps authored before the
+    // coupling existed).
     const displayInspection =
-        pending?.is_inspection_point ?? substep.is_inspection_point;
+        (pending?.is_inspection_point ?? substep.is_inspection_point) ||
+        bodyHasAnnotator(displayBody);
 
     return (
         <div
@@ -822,6 +888,12 @@ function SubstepExpandedBody({
         (pending?.body_blocks as object | undefined) ??
         ((substep.body_blocks as unknown as object) ?? { type: "doc", content: [] });
 
+    // A defect annotator in the body forces this substep to be an inspection
+    // point (else its captures never reach a QualityReport). The toggle is
+    // shown on + locked in that case.
+    const annotatorPresent = bodyHasAnnotator(workingBody);
+    const effectiveInspection = workingInspection || annotatorPresent;
+
     const hasPending = pending !== undefined && Object.keys(pending).length > 0;
 
     /** Merge a partial patch into the pending state, normalizing away values
@@ -911,14 +983,18 @@ function SubstepExpandedBody({
                 <div className="flex items-center gap-2">
                     <Switch
                         id={`inspection-${substep.id}`}
-                        checked={workingInspection}
-                        disabled={!editable}
+                        checked={effectiveInspection}
+                        disabled={!editable || annotatorPresent}
                         onCheckedChange={(v) => mergePending({ is_inspection_point: v })}
                     />
                     <Label
                         htmlFor={`inspection-${substep.id}`}
                         className="text-xs"
-                        title="When set, MeasurementInput captures in this substep create binding inspection records (auto-quarantine on out-of-spec, NCR notification). Default off."
+                        title={
+                            annotatorPresent
+                                ? "Locked on: this substep includes a defect annotator, so it must be an inspection point — otherwise the Pass/Fail result, defect findings, and annotations never record to a Quality Report."
+                                : "When set, inspection captures in this substep (Pass/Fail status, defect findings, measurements, signatures) create binding Quality Report records (auto-quarantine on out-of-spec, NCR notification). Default off."
+                        }
                     >
                         Inspection point
                     </Label>
@@ -1000,7 +1076,11 @@ function SubstepExpandedBody({
                 key={substep.id /* remount on substep change */}
                 body={workingBody}
                 editable={editable && !isPendingDelete}
-                onChange={(next) => mergePending({ body_blocks: next })}
+                onChange={(next) =>
+                    mergePending(
+                        coupleAnnotatorToInspection(next as object, workingInspection),
+                    )
+                }
             />
 
             {/* This row's saved/unsaved status — actual save lives in the
@@ -1052,6 +1132,9 @@ function PendingCreateRow({
     onChange: (patch: Partial<PendingCreate>) => void;
     onRemove: () => void;
 }) {
+    // Annotator in the body forces inspection-point (see coupleAnnotatorToInspection).
+    const annotatorPresent = bodyHasAnnotator(draft.body_blocks);
+    const effectiveInspection = draft.is_inspection_point || annotatorPresent;
     return (
         <div className="rounded-md border border-dashed border-emerald-500/50 bg-emerald-500/5">
             <button
@@ -1086,7 +1169,7 @@ function PendingCreateRow({
                         <PenLine className="mr-1 h-3 w-3" /> Sign-off
                     </Badge>
                 )}
-                {draft.is_inspection_point && (
+                {effectiveInspection && (
                     <Badge variant="default" className="bg-amber-600 text-[10px] text-white">
                         <FlaskConical className="mr-1 h-3 w-3" /> Inspection
                     </Badge>
@@ -1137,11 +1220,19 @@ function PendingCreateRow({
                         <div className="flex items-center gap-2">
                             <Switch
                                 id={`inspection-${draft.tempId}`}
-                                checked={draft.is_inspection_point}
-                                disabled={!editable}
+                                checked={effectiveInspection}
+                                disabled={!editable || annotatorPresent}
                                 onCheckedChange={(v) => onChange({ is_inspection_point: v })}
                             />
-                            <Label htmlFor={`inspection-${draft.tempId}`} className="text-xs">
+                            <Label
+                                htmlFor={`inspection-${draft.tempId}`}
+                                className="text-xs"
+                                title={
+                                    annotatorPresent
+                                        ? "Locked on: this substep includes a defect annotator, so it must be an inspection point — otherwise the Pass/Fail result, defect findings, and annotations never record to a Quality Report."
+                                        : "When set, inspection captures (Pass/Fail status, defect findings, measurements, signatures) create binding Quality Report records. Default off."
+                                }
+                            >
                                 Inspection point
                             </Label>
                         </div>
@@ -1193,7 +1284,14 @@ function PendingCreateRow({
                         key={draft.tempId}
                         body={draft.body_blocks}
                         editable={editable}
-                        onChange={(next) => onChange({ body_blocks: next as object })}
+                        onChange={(next) =>
+                            onChange(
+                                coupleAnnotatorToInspection(
+                                    next as object,
+                                    draft.is_inspection_point,
+                                ),
+                            )
+                        }
                     />
 
                     <div className="flex items-center justify-end rounded-md border bg-background px-2 py-1 text-xs">

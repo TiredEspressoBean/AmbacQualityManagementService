@@ -162,9 +162,28 @@ export function rememberRecent(id: string): string[] {
 /** Insert a catalog entry, minting fresh node_ids so each insert is unique. */
 export function insertEntry(editor: Editor, entry: CatalogEntry) {
     const raw = entry.content;
-    const content = Array.isArray(raw)
-        ? raw.map((n) => withFreshNodeId(n as TemplateNode))
-        : withFreshNodeId(raw as TemplateNode);
+    const nodes: TemplateNode[] = (Array.isArray(raw) ? raw : [raw]) as TemplateNode[];
+
+    // The defect annotator only records to a QualityReport when its substep is
+    // an inspection point (the SubstepEditorPage coupling flips that flag on the
+    // body change this insert triggers). Pull in the minimum QR capture set
+    // alongside it so the report that inspection produces is actually populated
+    // — status, equipment roles, inspection signature, defect findings — instead
+    // of annotation-only. Skip any bundle node already present in the document.
+    if (nodes.some((n) => (n as { type?: string }).type === "partAnnotation")) {
+        const present = new Set<string>();
+        editor.state.doc.descendants((node) => {
+            present.add(node.type.name);
+            return true;
+        });
+        nodes.forEach((n) => present.add((n as { type?: string }).type ?? ""));
+        for (const bundleNode of QUALITY_REPORT_BUNDLE) {
+            const t = (bundleNode as { type: string }).type;
+            if (!present.has(t)) nodes.push(bundleNode as TemplateNode);
+        }
+    }
+
+    const content = nodes.map((n) => withFreshNodeId(n));
     editor.chain().focus().insertContent(content as never).run();
 }
 
