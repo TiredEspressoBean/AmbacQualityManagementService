@@ -149,12 +149,9 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        ip_address = (
-            request.META.get('HTTP_X_FORWARDED_FOR') or request.META.get('REMOTE_ADDR')
-        )
-        if ip_address and ',' in ip_address:
-            # X-Forwarded-For can be a chain; take the first.
-            ip_address = ip_address.split(',')[0].strip()
+        # Trusted client IP (edge-set header, not spoofable X-Forwarded-For).
+        from Tracker.throttling import get_client_ip
+        ip_address = get_client_ip(request)
 
         from django.core.exceptions import ValidationError as DjangoValidationError
         try:

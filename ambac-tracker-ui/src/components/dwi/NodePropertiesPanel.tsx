@@ -31,6 +31,7 @@ import { PersonnelRolesFieldEditForm } from "./nodes/PersonnelRolesField";
 import { InspectionSignaturesEditForm } from "./nodes/InspectionSignatures";
 import { ErrorTypesFieldEditForm } from "./nodes/ErrorTypesField";
 import { PartAnnotationEditForm } from "./nodes/PartAnnotation";
+import { PartCalloutEditForm } from "./nodes/PartCallout";
 import { HarvestedComponentCaptureEditForm } from "./nodes/HarvestedComponentCapture";
 
 const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
@@ -52,6 +53,7 @@ const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
     inspectionSignatures: InspectionSignaturesEditForm,
     errorTypesField: ErrorTypesFieldEditForm,
     partAnnotation: PartAnnotationEditForm,
+    partCallout: PartCalloutEditForm,
     harvestedComponentCapture: HarvestedComponentCaptureEditForm,
 };
 
@@ -74,6 +76,7 @@ const NODE_LABELS: Record<string, string> = {
     inspectionSignatures: "Inspection signatures",
     errorTypesField: "Defect findings",
     partAnnotation: "Part annotation (3D)",
+    partCallout: "Part callouts (3D)",
     harvestedComponentCapture: "Harvested components (teardown)",
 };
 

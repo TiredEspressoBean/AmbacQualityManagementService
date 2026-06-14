@@ -2,7 +2,7 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from "@react-three/fiber"
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { Suspense, useRef, useEffect, type ReactNode, useState, useMemo, useCallback } from "react";
 import * as THREE from "three";
-import { Loader2, AlertTriangle, SunDim } from "lucide-react";
+import { Loader2, AlertTriangle, SunDim, Bookmark } from "lucide-react";
 import { ThreeDErrorBoundary } from "./three-d-error-boundary";
 import { Button } from "@/components/ui/button";
 import { createHeatMapMaterial } from "./heatmap-shader";
@@ -218,6 +218,72 @@ function KeyboardControls({ enabled, controlsRef }: { enabled: boolean; controls
             }
         }
     });
+
+    return null;
+}
+
+/** A saved camera framing: where the camera sits + what it orbits around. */
+export type SavedView = {
+    position: [number, number, number];
+    target: [number, number, number];
+};
+
+/** Imperative handle a parent can hold (via `onViewerReady`) to read the
+ *  current framing or fly the camera to a saved one — used for per-item
+ *  ("set view" / focus) flows the single `onSaveView` button can't express. */
+export type ViewerViewApi = {
+    getView: () => SavedView;
+    applyView: (view: SavedView) => void;
+};
+
+/**
+ * Lives inside the Canvas so it can reach the camera + OrbitControls
+ * (`makeDefault` exposes them via `useThree().controls`). Restores
+ * `initialView` once on load, and exposes get/apply-view to the parent.
+ */
+function ViewController({
+    initialView,
+    onReady,
+}: {
+    initialView?: SavedView | null;
+    onReady: (api: ViewerViewApi) => void;
+}) {
+    const { camera, controls, invalidate } = useThree();
+    const appliedRef = useRef(false);
+
+    const getView = useCallback((): SavedView => {
+        const ctrl = controls as unknown as { target?: THREE.Vector3 } | null;
+        const t = ctrl?.target ?? new THREE.Vector3();
+        return {
+            position: [camera.position.x, camera.position.y, camera.position.z],
+            target: [t.x, t.y, t.z],
+        };
+    }, [camera, controls]);
+
+    const applyView = useCallback(
+        (view: SavedView) => {
+            const ctrl = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+            camera.position.set(view.position[0], view.position[1], view.position[2]);
+            if (ctrl?.target) {
+                ctrl.target.set(view.target[0], view.target[1], view.target[2]);
+                ctrl.update?.();
+            }
+            invalidate();
+        },
+        [camera, controls, invalidate],
+    );
+
+    useEffect(() => {
+        onReady({ getView, applyView });
+    }, [onReady, getView, applyView]);
+
+    useEffect(() => {
+        // Apply once. `controls` is null until OrbitControls mounts, so this
+        // effect re-runs (controls is a dep) and applies when it's ready.
+        if (appliedRef.current || !initialView) return;
+        applyView(initialView);
+        appliedRef.current = true;
+    }, [initialView, applyView]);
 
     return null;
 }
@@ -468,6 +534,14 @@ interface ThreeDModelViewerProps {
     heatmapIntensities?: number[];  // Per-annotation intensity weights
     heatmapRadius?: number;
     heatmapIntensity?: number;
+    /** Camera framing to restore on load (saved via `onSaveView`). */
+    initialView?: SavedView | null;
+    /** When provided, a "Save view" button appears; clicking it reports the
+     *  current camera framing so the caller can persist it. */
+    onSaveView?: (view: SavedView) => void;
+    /** Receive an imperative handle to read/apply views on demand (per-item
+     *  "set view" + fly-to-item flows). */
+    onViewerReady?: (api: ViewerViewApi) => void;
 }
 
 export function ThreeDModelViewer({
@@ -487,11 +561,23 @@ export function ThreeDModelViewer({
     heatmapPositions = [],
     heatmapIntensities,
     heatmapRadius = 0.5,
-    heatmapIntensity = 1.0
+    heatmapIntensity = 1.0,
+    initialView,
+    onSaveView,
+    onViewerReady
 }: ThreeDModelViewerProps) {
     const orbitControlsRef = useRef<any>(null);
     const [loadError, setLoadError] = useState<Error | null>(null);
     const isDraggingRef = useRef(false);
+    const viewApiRef = useRef<ViewerViewApi | null>(null);
+    const handleReady = useCallback((api: ViewerViewApi) => {
+        viewApiRef.current = api;
+        onViewerReady?.(api);
+    }, [onViewerReady]);
+    const handleSaveView = () => {
+        const view = viewApiRef.current?.getView();
+        if (view && onSaveView) onSaveView(view);
+    };
 
     // Detect current theme
     const [isDarkTheme, setIsDarkTheme] = useState(() =>
@@ -620,6 +706,8 @@ export function ThreeDModelViewer({
 
                     {children}
 
+                    <ViewController initialView={initialView} onReady={handleReady} />
+
                     <OrbitControls
                         ref={orbitControlsRef}
                         makeDefault
@@ -644,6 +732,22 @@ export function ThreeDModelViewer({
                     onReset={handleLightingReset}
                 />
             </div>
+
+            {/* Save-view — only when the caller wants to capture a framing. */}
+            {onSaveView && (
+                <div className="absolute top-4 right-4 z-10">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-9 gap-1.5 shadow-md"
+                        onClick={handleSaveView}
+                        title="Save the current camera angle as the default view"
+                    >
+                        <Bookmark className="h-4 w-4" />
+                        Save view
+                    </Button>
+                </div>
+            )}
 
             {/* Loading Overlay */}
             {isLoading && (

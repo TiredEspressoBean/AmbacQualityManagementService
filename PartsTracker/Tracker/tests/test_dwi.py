@@ -1072,3 +1072,67 @@ class SpcAdapterUnionReadTests(DwiPhase3BaseTestCase):
         # Rows sorted by timestamp.
         timestamps = [r.timestamp for r in rows]
         self.assertEqual(timestamps, sorted(timestamps))
+
+
+class SubstepBodyBlocksNodeIdValidationTest(TestCase):
+    """`SubstepSerializer.validate_body_blocks` — node_id format + uniqueness.
+
+    Guards the contract that per-node captures (`SubstepResponse` /
+    `SubstepGateCompletion`) rely on: every `node_id` in the doc is a valid
+    UUID and unique within the substep. Pure validator — no DB.
+    """
+
+    def setUp(self):
+        from Tracker.serializers.dwi import SubstepSerializer
+        self.validate = SubstepSerializer().validate_body_blocks
+
+    def test_accepts_unique_uuids_and_plain_content(self):
+        doc = {
+            "type": "doc",
+            "content": [
+                {"type": "paragraph"},  # content node, no node_id
+                {"type": "photoCapture", "attrs": {"node_id": "01984a3f-2b1c-7000-8000-000000000001"}},
+                {"type": "partAnnotation", "attrs": {"node_id": "01984a3f-2b1c-7000-8000-000000000002"}},
+            ],
+        }
+        self.assertEqual(self.validate(doc), doc)
+
+    def test_accepts_empty_default(self):
+        # Model default for a not-yet-authored substep.
+        self.assertEqual(self.validate([]), [])
+
+    def test_rejects_duplicate_node_id(self):
+        from rest_framework import serializers as drf_serializers
+        dup = "01984a3f-2b1c-7000-8000-000000000001"
+        doc = {
+            "type": "doc",
+            "content": [
+                {"type": "partAnnotation", "attrs": {"node_id": dup}},
+                {"type": "scanInput", "attrs": {"node_id": dup}},
+            ],
+        }
+        with self.assertRaises(drf_serializers.ValidationError):
+            self.validate(doc)
+
+    def test_rejects_non_uuid_node_id(self):
+        from rest_framework import serializers as drf_serializers
+        doc = {
+            "type": "doc",
+            "content": [
+                {"type": "partAnnotation", "attrs": {"node_id": "seed-part-annotation-1"}},
+            ],
+        }
+        with self.assertRaises(drf_serializers.ValidationError):
+            self.validate(doc)
+
+    def test_rejects_empty_node_id_on_capture_node(self):
+        # A capture node that never got minted — the exact bug we fixed.
+        from rest_framework import serializers as drf_serializers
+        doc = {
+            "type": "doc",
+            "content": [
+                {"type": "partAnnotation", "attrs": {"node_id": ""}},
+            ],
+        }
+        with self.assertRaises(drf_serializers.ValidationError):
+            self.validate(doc)

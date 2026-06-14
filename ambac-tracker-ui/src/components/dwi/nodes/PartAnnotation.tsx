@@ -6,22 +6,26 @@
  * pending `QualityReports` via the existing `qualityReportIds` prop on
  * `PartAnnotator`.
  *
- * Engineer authoring: pick the 3D model (model_id), label, required flag,
- * optional `defect_type_filter` to restrict which error types operators
- * can pick.
+ * Engineer authoring: pick the 3D model (model_id), label, required flag.
  * Operator capture: handled entirely by `PartAnnotator` (it persists
  * annotations directly via its own hooks). The operator-runtime layer
  * provides `part_id` + `work_order_id` + `quality_report_id` via
  * `PartContext`; when the context is missing (authoring spike) we render
  * a placeholder.
+ *
+ * NOTE: author-time *instructional* callouts live in the separate
+ * `PartCallout` node. This node is operator-runtime defect capture only —
+ * it carries a `node_id` + `required` and participates in the substep's
+ * proceed-gate; `PartCallout` deliberately does neither.
  */
+import { useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
     ReactNodeViewRenderer,
     type NodeViewProps,
 } from "@tiptap/react";
-import { ScanSearch } from "lucide-react";
+import { Loader2, ScanSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -38,6 +42,9 @@ import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { TextAttrRow } from "../shared/AttrInputs";
 import { usePartContext } from "../shared/PartContext";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
+import { useRetrieveThreeDModel } from "@/hooks/useRetrieveThreeDModel";
+import { ThreeDModelViewer, type SavedView } from "@/components/three-d-model-viewer";
+import { normalizeMediaUrl } from "./PartCallout";
 import { PartAnnotator } from "@/pages/PartAnnotator";
 
 type Attrs = {
@@ -45,9 +52,66 @@ type Attrs = {
     label: string;
     model_id: string;
     required: boolean;
+    /** Author-saved camera framing for the operator's defect-capture view. */
+    default_view: SavedView | null;
 };
 
 type ThreeDModel = { id: string | number; name?: string; part_type?: { name?: string } };
+
+/** Compact authoring viewer: the engineer orbits the model and saves a default
+ *  camera framing for the operator's defect-capture view. Framing only — no
+ *  annotation placement happens here (that's operator runtime in PartAnnotator). */
+function AnnotationFramingViewer({
+    modelId,
+    defaultView,
+    onSaveView,
+    instructions,
+}: {
+    modelId: string;
+    defaultView: SavedView | null;
+    /** Omit for a read-only model preview (no Save-view button). */
+    onSaveView?: (view: SavedView) => void;
+    instructions?: string;
+}) {
+    const { data: model, isLoading, error } = useRetrieveThreeDModel(modelId);
+    const [viewerLoading, setViewerLoading] = useState(true);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-24 items-center justify-center text-xs text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading model…
+            </div>
+        );
+    }
+    if (error || !model) {
+        return (
+            <div className="flex h-24 items-center justify-center rounded border border-dashed text-xs text-destructive">
+                Could not load the selected 3D model.
+            </div>
+        );
+    }
+    const modelUrl = normalizeMediaUrl(model.file);
+    if (!modelUrl) {
+        return (
+            <div className="flex h-24 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
+                Model is still processing — no viewable file yet.
+            </div>
+        );
+    }
+    return (
+        <div className="relative h-[320px] w-full overflow-hidden rounded border">
+            <ThreeDModelViewer
+                modelUrl={modelUrl}
+                mode="annotate"
+                isLoading={viewerLoading}
+                onLoadingComplete={() => setViewerLoading(false)}
+                instructions={instructions ?? (onSaveView ? "Orbit to frame the inspection view, then Save view" : undefined)}
+                initialView={defaultView}
+                onSaveView={onSaveView}
+            />
+        </div>
+    );
+}
 
 export function PartAnnotationEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -88,7 +152,7 @@ export function PartAnnotationEditForm({ node, updateAttributes }: NodeViewProps
 }
 
 function View(props: NodeViewProps) {
-    const { node, editor } = props;
+    const { node, editor, updateAttributes } = props;
     const a = node.attrs as Attrs;
     const isOperator = !editor.isEditable;
     const part = usePartContext();
@@ -117,34 +181,45 @@ function View(props: NodeViewProps) {
             }
         >
             <div contentEditable={false}>
-                {isOperator && hasModel && hasPartBinding ? (
-                    // Live embed — PartAnnotator owns persistence (writes
-                    // `HeatMapAnnotation` rows linked to the bound part and
-                    // the pre-bound QualityReport when present). When the
-                    // QR isn't ready yet (substep hasn't been submitted on
-                    // this part yet), the widget falls into its standalone
-                    // QR-picker behavior — which surfaces a list of failed
-                    // QRs on the WO. For most operator-runtime workflows,
-                    // the QR is pre-bound by the runtime's eager
-                    // ensure-inspection-qr call.
-                    <PartAnnotator
+                {isOperator ? (
+                    !hasModel ? (
+                        <div className="flex h-24 flex-col items-center justify-center rounded border border-dashed text-center text-xs text-muted-foreground">
+                            No 3D model selected for this annotation.
+                        </div>
+                    ) : hasPartBinding ? (
+                        // Live embed — PartAnnotator owns persistence (writes
+                        // `HeatMapAnnotation` rows). Opens at the author-saved
+                        // framing (`default_view`) when one exists.
+                        <PartAnnotator
+                            modelId={String(a.model_id)}
+                            partId={String(part.part_id)}
+                            workOrderId={part.work_order_id ? String(part.work_order_id) : undefined}
+                            qualityReportIds={part.quality_report_id ? [String(part.quality_report_id)] : []}
+                            initialView={a.default_view ?? null}
+                            className="rounded border"
+                            showHeader={false}
+                            startExpanded
+                        />
+                    ) : (
+                        // Operator preview without a bound part: show the model
+                        // read-only at the saved framing. Defect capture turns
+                        // on once a part is bound at runtime.
+                        <AnnotationFramingViewer
+                            modelId={String(a.model_id)}
+                            defaultView={a.default_view ?? null}
+                            instructions="Preview — operators place defects here once a part is bound."
+                        />
+                    )
+                ) : hasModel ? (
+                    // Authoring: frame the inspection view + save it as default.
+                    <AnnotationFramingViewer
                         modelId={String(a.model_id)}
-                        partId={String(part.part_id)}
-                        workOrderId={part.work_order_id ? String(part.work_order_id) : undefined}
-                        qualityReportIds={part.quality_report_id ? [String(part.quality_report_id)] : []}
-                        className="rounded border"
-                        showHeader={false}
-                        startExpanded
+                        defaultView={a.default_view ?? null}
+                        onSaveView={(view) => updateAttributes({ default_view: view })}
                     />
                 ) : (
                     <div className="flex h-24 flex-col items-center justify-center rounded border border-dashed text-center text-xs text-muted-foreground">
-                        {!hasModel ? (
-                            <>Pick a 3D model in the properties panel.</>
-                        ) : !hasPartBinding ? (
-                            <>3D annotator will load when a part is bound (operator runtime).</>
-                        ) : (
-                            <>Annotator ready.</>
-                        )}
+                        Pick a 3D model in the properties panel.
                     </div>
                 )}
             </div>
@@ -170,6 +245,7 @@ export const PartAnnotation = Node.create({
             label: { default: "Part annotation" },
             model_id: { default: "" },
             required: { default: false },
+            default_view: { default: null as SavedView | null, renderHTML: () => ({}) },
         };
     },
     parseHTML() {
@@ -190,9 +266,13 @@ export const PartAnnotation = Node.create({
 export const SAMPLE_PART_ANNOTATION = {
     type: "partAnnotation",
     attrs: {
-        node_id: "seed-part-annotation-1",
+        // Left empty on purpose — withFreshNodeId() mints a UUIDv7 on insert
+        // (partAnnotation is in CAPTURE_NODE_TYPES). A hardcoded id here would
+        // make every inserted node collide.
+        node_id: "",
         label: "Place defect annotations on the 3D model",
         model_id: "",
         required: false,
+        default_view: null,
     },
 };

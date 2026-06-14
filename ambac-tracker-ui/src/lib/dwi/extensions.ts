@@ -17,13 +17,16 @@ import { PersonnelRolesField } from "@/components/dwi/nodes/PersonnelRolesField"
 import { InspectionSignatures } from "@/components/dwi/nodes/InspectionSignatures";
 import { ErrorTypesField } from "@/components/dwi/nodes/ErrorTypesField";
 import { PartAnnotation } from "@/components/dwi/nodes/PartAnnotation";
+import { PartCallout } from "@/components/dwi/nodes/PartCallout";
 import { HarvestedComponentCapture } from "@/components/dwi/nodes/HarvestedComponentCapture";
 import { DocumentLink } from "@/components/dwi/nodes/DocumentLink";
+import { SlashCommand } from "@/lib/dwi/slash-command";
 
 /** Shared TipTap extension list — used by both engineer (editable) and
  * operator (editable: false) editors. */
 export const DWI_EXTENSIONS = [
     StarterKit,
+    SlashCommand,
     MeasurementSpec,
     Callout,
     Media,
@@ -43,5 +46,6 @@ export const DWI_EXTENSIONS = [
     InspectionSignatures,
     ErrorTypesField,
     PartAnnotation,
+    PartCallout,
     HarvestedComponentCapture,
 ];

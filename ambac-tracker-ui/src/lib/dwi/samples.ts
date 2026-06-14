@@ -34,6 +34,7 @@ export { SAMPLE_PERSONNEL_ROLES } from "@/components/dwi/nodes/PersonnelRolesFie
 export { SAMPLE_INSPECTION_SIGNATURES } from "@/components/dwi/nodes/InspectionSignatures";
 export { SAMPLE_ERROR_TYPES } from "@/components/dwi/nodes/ErrorTypesField";
 export { SAMPLE_PART_ANNOTATION } from "@/components/dwi/nodes/PartAnnotation";
+export { SAMPLE_PART_CALLOUT } from "@/components/dwi/nodes/PartCallout";
 export { SAMPLE_HARVESTED_COMPONENT_CAPTURE } from "@/components/dwi/nodes/HarvestedComponentCapture";
 
 // ---------------------------------------------------------------------------

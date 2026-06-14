@@ -12,11 +12,16 @@ Phase 1-3 models:
 
 `body_blocks` is a TipTap document JSON blob — the editor produces it and
 the server stores it verbatim. Per architectural decision #18, `node_id`
-attributes inside the JSON are UUIDv7 minted client-side. Server-side
-validation (UUID format + intra-document uniqueness) is a TODO when a real
-authoring flow surfaces a bad-input case; for v1 the editor is the single
-producer and the schema is trusted.
+attributes inside the JSON are UUIDv7 minted client-side. The server
+enforces that contract on write (`SubstepSerializer.validate_body_blocks`):
+every `node_id` present must be a valid UUID and unique within the document.
+That uniqueness is load-bearing — per-node operator captures
+(`SubstepResponse` / `SubstepGateCompletion`) are keyed by
+`(step_execution, substep, node_id)`, so two nodes sharing an id would
+collide and silently drop a capture.
 """
+import uuid
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -31,7 +36,7 @@ from Tracker.models import (
 from .core import SecureModelMixin
 
 
-class SubstepSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepSerializer(SecureModelMixin):
     """Substep — the unit of work instruction within a Step.
 
     The `body_blocks` field is a TipTap document JSON: `{type: 'doc',
@@ -66,6 +71,51 @@ class SubstepSerializer(serializers.ModelSerializer, SecureModelMixin):
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at', 'is_editable')
+
+    def validate_body_blocks(self, value):
+        """Enforce decision #18: every `node_id` in the TipTap doc is a valid
+        UUID and unique within the document.
+
+        Only capture nodes declare a `node_id` attr, so its presence marks a
+        node whose id keys per-execution rows (`SubstepResponse` /
+        `SubstepGateCompletion`, unique on `(step_execution, substep,
+        node_id)`). A duplicate or malformed id would corrupt or drop a
+        capture, so reject it at the authoring boundary.
+        """
+        seen = set()
+        errors = []
+
+        def walk(node):
+            if not isinstance(node, dict):
+                return
+            attrs = node.get('attrs') or {}
+            if 'node_id' in attrs:
+                node_id = attrs['node_id']
+                try:
+                    uuid.UUID(str(node_id))
+                except (ValueError, AttributeError, TypeError):
+                    errors.append(
+                        f"node '{node.get('type', '?')}' has an invalid "
+                        f"node_id {node_id!r} (must be a UUID)."
+                    )
+                else:
+                    if node_id in seen:
+                        errors.append(f"duplicate node_id {node_id!r} in document.")
+                    seen.add(node_id)
+            for child in node.get('content') or []:
+                walk(child)
+
+        # body_blocks is a doc dict `{type:'doc', content:[...]}`; the model
+        # default is `[]` (empty / not-yet-authored).
+        if isinstance(value, dict):
+            walk(value)
+        elif isinstance(value, list):
+            for node in value:
+                walk(node)
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        return value
 
     def update(self, instance, validated_data):
         """When editing from a PCR DRAFT process (`?process=<uuid>`),
@@ -136,7 +186,7 @@ class SubstepSerializer(serializers.ModelSerializer, SecureModelMixin):
             return None
 
 
-class SubstepResourceSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepResourceSerializer(SecureModelMixin):
     """Equipment / material / PPE references attached to a substep."""
 
     equipment_type_name = serializers.CharField(
@@ -155,7 +205,7 @@ class SubstepResourceSerializer(serializers.ModelSerializer, SecureModelMixin):
         read_only_fields = ('created_at', 'updated_at')
 
 
-class SubstepTranslationSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepTranslationSerializer(SecureModelMixin):
     """Localized title + body for a substep."""
 
     class Meta:
@@ -169,7 +219,7 @@ class SubstepTranslationSerializer(serializers.ModelSerializer, SecureModelMixin
         read_only_fields = ('created_at', 'updated_at')
 
 
-class SubstepCompletionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepCompletionSerializer(SecureModelMixin):
     """Per-execution completion record."""
 
     substep_title = serializers.CharField(source='substep.title', read_only=True, allow_null=True)
@@ -199,7 +249,7 @@ class SubstepCompletionSerializer(serializers.ModelSerializer, SecureModelMixin)
         return None
 
 
-class SubstepGateCompletionSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepGateCompletionSerializer(SecureModelMixin):
     """Per-node attestation / signature gate records."""
 
     completed_by_name = serializers.SerializerMethodField()
@@ -223,7 +273,7 @@ class SubstepGateCompletionSerializer(serializers.ModelSerializer, SecureModelMi
         return None
 
 
-class SubstepResponseSerializer(serializers.ModelSerializer, SecureModelMixin):
+class SubstepResponseSerializer(SecureModelMixin):
     """Per-node operator capture rows (text / choice / photo / file /
     timer / computed)."""
 
@@ -271,7 +321,7 @@ class SamplingDecisionSerializer(serializers.ModelSerializer):
 # BatchExecution — read/list serializer for the seal lifecycle viewset
 # =============================================================================
 
-class BatchExecutionSerializer(serializers.ModelSerializer):
+class BatchExecutionSerializer(SecureModelMixin):
     """Minimal BatchExecution shape for the lifecycle viewset.
 
     The viewset only exposes list/retrieve + the seal action in this

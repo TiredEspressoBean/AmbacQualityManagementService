@@ -23,48 +23,28 @@ import {
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-    AlertTriangle,
     Bold,
     Braces,
-    Calculator,
-    Camera,
-    CheckSquare,
+    ChevronDown,
+    ChevronRight,
     Code,
     Eye,
     FlaskConical,
-    SlidersHorizontal,
-    Gauge,
+    GripVertical,
     Heading1,
     Heading2,
-    Image as ImageIcon,
-    FileText,
     Italic,
     List,
-    ListChecks,
     ListOrdered,
     Minus,
-    Paperclip,
     Pencil,
     PenLine,
     Plus,
     Quote,
     Redo,
-    Ruler,
-    ScanLine,
+    SlidersHorizontal,
     Strikethrough,
-    Timer as TimerIcon,
-    Type,
     Undo,
-    ChevronDown,
-    ChevronRight,
-    GripVertical,
-    ShieldCheck,
-    Wrench,
-    Users,
-    Bug,
-    ClipboardCheck,
-    ScanSearch,
-    PackageOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -81,22 +61,22 @@ import {
     SAMPLE_MEASUREMENT_INPUT,
     SAMPLE_MEASUREMENT_SPEC,
     SAMPLE_MEDIA,
-    SAMPLE_DOCUMENT_LINK,
     SAMPLE_PHOTO,
     SAMPLE_SCAN,
     SAMPLE_TEXT_INPUT_LONG,
     SAMPLE_TEXT_INPUT_SHORT,
     SAMPLE_TIMER_COUNTDOWN,
-    SAMPLE_QUALITY_STATUS,
-    SAMPLE_EQUIPMENT_ROLES,
-    SAMPLE_PERSONNEL_ROLES,
-    SAMPLE_INSPECTION_SIGNATURES,
-    SAMPLE_ERROR_TYPES,
-    SAMPLE_PART_ANNOTATION,
-    SAMPLE_HARVESTED_COMPONENT_CAPTURE,
-    QUALITY_REPORT_BUNDLE,
 } from "@/lib/dwi/samples";
-import { withFreshNodeId } from "@/lib/dwi/node-id";
+import {
+    NODE_CATALOG,
+    ALL_ENTRIES,
+    DEFAULT_FREQUENT,
+    loadRecent,
+    rememberRecent,
+    insertEntry,
+    type CatalogEntry,
+} from "@/lib/dwi/node-catalog";
+import { SlashMenu } from "@/lib/dwi/slash-command";
 import {
     OperatorResponseContext,
     type OperatorResponses,
@@ -145,62 +125,100 @@ function ToolbarDivider() {
     return <div className="mx-1 h-5 w-px bg-border" />;
 }
 
+// The node catalog (NODE_CATALOG / ALL_ENTRIES / insertEntry / recency) now
+// lives in `@/lib/dwi/node-catalog` so the ribbon and the `/` slash menu share
+// one source of truth.
+
+function RibbonTab({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={
+                "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors " +
+                (active ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-muted/60")
+            }
+        >
+            {label}
+        </button>
+    );
+}
+
+/** Grouped, labeled insert ribbon. ★Frequent is pre-selected so the common
+ *  nodes are a single click; long-tail nodes are tab + click. One row of
+ *  tabs + one tray row — fixed shallow height, never a scroll-dump. */
+function InsertRibbon({ editor }: { editor: Editor }) {
+    const [activeTab, setActiveTab] = useState<string>("frequent");
+    const [recent, setRecent] = useState<string[]>(loadRecent);
+
+    const insert = (entry: CatalogEntry) => {
+        insertEntry(editor, entry);
+        setRecent(rememberRecent(entry.id));
+    };
+
+    const frequentEntries = (recent.length ? recent : DEFAULT_FREQUENT)
+        .map((id) => ALL_ENTRIES.find((e) => e.id === id))
+        .filter((e): e is CatalogEntry => Boolean(e));
+
+    const visibleEntries =
+        activeTab === "frequent"
+            ? frequentEntries
+            : NODE_CATALOG.find((c) => c.key === activeTab)?.entries ?? [];
+
+    return (
+        <div className="border-t">
+            {/* Category tabs */}
+            <div className="flex items-center gap-1 overflow-x-auto px-2 py-1">
+                <RibbonTab active={activeTab === "frequent"} label="★ Frequent" onClick={() => setActiveTab("frequent")} />
+                <div className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+                {NODE_CATALOG.map((c) => (
+                    <RibbonTab key={c.key} active={activeTab === c.key} label={c.label} onClick={() => setActiveTab(c.key)} />
+                ))}
+            </div>
+            {/* Tray for the active group */}
+            <div className="flex flex-wrap items-center gap-1 px-2 pb-2 pt-0.5">
+                {visibleEntries.map((entry) => (
+                    <Button
+                        key={entry.id}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => insert(entry)}
+                        title={entry.description}
+                        className="h-8 gap-1.5 px-2"
+                    >
+                        {entry.icon}
+                        <span className="text-xs">{entry.label}</span>
+                    </Button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function Toolbar({ editor }: { editor: Editor | null }) {
     if (!editor) return null;
     return (
-        <div className="flex flex-wrap items-center gap-0.5 border-b bg-background px-2 py-1.5">
-            <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={<Bold className="h-4 w-4" />} label="Bold" />
-            <ToolbarButton active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} icon={<Italic className="h-4 w-4" />} label="Italic" />
-            <ToolbarButton active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough className="h-4 w-4" />} label="Strikethrough" />
-            <ToolbarButton active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()} icon={<Code className="h-4 w-4" />} label="Inline code" />
-            <ToolbarDivider />
-            <ToolbarButton active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} icon={<Heading1 className="h-4 w-4" />} label="Heading 1" />
-            <ToolbarButton active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} icon={<Heading2 className="h-4 w-4" />} label="Heading 2" />
-            <ToolbarDivider />
-            <ToolbarButton active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} icon={<List className="h-4 w-4" />} label="Bullet list" />
-            <ToolbarButton active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} icon={<ListOrdered className="h-4 w-4" />} label="Ordered list" />
-            <ToolbarButton active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} icon={<Quote className="h-4 w-4" />} label="Blockquote" />
-            <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={<Minus className="h-4 w-4" />} label="Horizontal rule" />
-            <ToolbarDivider />
-            <ToolbarButton onClick={() => editor.chain().focus().undo().run()} icon={<Undo className="h-4 w-4" />} label="Undo" />
-            <ToolbarButton onClick={() => editor.chain().focus().redo().run()} icon={<Redo className="h-4 w-4" />} label="Redo" />
-            <ToolbarDivider />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_CALLOUT_CAUTION).run()} icon={<AlertTriangle className="h-4 w-4" />} label="Insert callout" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_MEDIA).run()} icon={<ImageIcon className="h-4 w-4" />} label="Insert media" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(SAMPLE_DOCUMENT_LINK).run()} icon={<FileText className="h-4 w-4" />} label="Insert document link" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_MEASUREMENT_SPEC)).run()} icon={<Gauge className="h-4 w-4" />} label="Insert measurement spec" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_MEASUREMENT_INPUT)).run()} icon={<Ruler className="h-4 w-4" />} label="Insert measurement input" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_ATTESTATION_CONFIRM)).run()} icon={<CheckSquare className="h-4 w-4" />} label="Insert attestation" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_ATTESTATION_SIGNATURE)).run()} icon={<PenLine className="h-4 w-4" />} label="Insert signature gate" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_TEXT_INPUT_SHORT)).run()} icon={<Type className="h-4 w-4" />} label="Insert text input" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_CHOICE_RADIO)).run()} icon={<ListChecks className="h-4 w-4" />} label="Insert choice input" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_PHOTO)).run()} icon={<Camera className="h-4 w-4" />} label="Insert photo capture" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_SCAN)).run()} icon={<ScanLine className="h-4 w-4" />} label="Insert scan input" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_FILE)).run()} icon={<Paperclip className="h-4 w-4" />} label="Insert file capture" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_TIMER_COUNTDOWN)).run()} icon={<TimerIcon className="h-4 w-4" />} label="Insert timer (countdown)" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_COMPUTED_TRUE_POSITION)).run()} icon={<Calculator className="h-4 w-4" />} label="Insert computed value" />
-            <ToolbarDivider />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_QUALITY_STATUS)).run()} icon={<ShieldCheck className="h-4 w-4" />} label="Insert quality status" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_EQUIPMENT_ROLES)).run()} icon={<Wrench className="h-4 w-4" />} label="Insert equipment + roles" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_PERSONNEL_ROLES)).run()} icon={<Users className="h-4 w-4" />} label="Insert personnel + roles" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_INSPECTION_SIGNATURES)).run()} icon={<PenLine className="h-4 w-4" />} label="Insert inspection signatures" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_ERROR_TYPES)).run()} icon={<Bug className="h-4 w-4" />} label="Insert defect findings" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_PART_ANNOTATION)).run()} icon={<ScanSearch className="h-4 w-4" />} label="Insert part annotation (3D)" />
-            <ToolbarButton onClick={() => editor.chain().focus().insertContent(withFreshNodeId(SAMPLE_HARVESTED_COMPONENT_CAPTURE)).run()} icon={<PackageOpen className="h-4 w-4" />} label="Insert harvested-components capture (teardown)" />
-            {/* Bundle — drops the minimum capture set for a complete
-                QualityReport in one click. Set the parent substep's
-                `is_inspection_point` toggle to actually promote captures. */}
-            <ToolbarButton
-                onClick={() =>
-                    editor
-                        .chain()
-                        .focus()
-                        .insertContent(QUALITY_REPORT_BUNDLE.map((n) => withFreshNodeId(n)))
-                        .run()
-                }
-                icon={<ClipboardCheck className="h-4 w-4" />}
-                label="Insert QA inspection bundle"
-            />
+        <div className="bg-background">
+            {/* Formatting — stays as always-visible toggles */}
+            <div className="flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
+                <ToolbarButton active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={<Bold className="h-4 w-4" />} label="Bold" />
+                <ToolbarButton active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} icon={<Italic className="h-4 w-4" />} label="Italic" />
+                <ToolbarButton active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough className="h-4 w-4" />} label="Strikethrough" />
+                <ToolbarButton active={editor.isActive("code")} onClick={() => editor.chain().focus().toggleCode().run()} icon={<Code className="h-4 w-4" />} label="Inline code" />
+                <ToolbarDivider />
+                <ToolbarButton active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} icon={<Heading1 className="h-4 w-4" />} label="Heading 1" />
+                <ToolbarButton active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} icon={<Heading2 className="h-4 w-4" />} label="Heading 2" />
+                <ToolbarDivider />
+                <ToolbarButton active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} icon={<List className="h-4 w-4" />} label="Bullet list" />
+                <ToolbarButton active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} icon={<ListOrdered className="h-4 w-4" />} label="Ordered list" />
+                <ToolbarButton active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} icon={<Quote className="h-4 w-4" />} label="Blockquote" />
+                <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={<Minus className="h-4 w-4" />} label="Horizontal rule" />
+                <ToolbarDivider />
+                <ToolbarButton onClick={() => editor.chain().focus().undo().run()} icon={<Undo className="h-4 w-4" />} label="Undo" />
+                <ToolbarButton onClick={() => editor.chain().focus().redo().run()} icon={<Redo className="h-4 w-4" />} label="Redo" />
+            </div>
+            {/* Grouped insert ribbon — replaces the old icon strip */}
+            <InsertRibbon editor={editor} />
         </div>
     );
 }
@@ -294,6 +312,8 @@ export function SubstepEditor({
                             PROSE_CLASSES
                         }
                     />
+                    {/* `/` slash menu — renders at the caret over the shared catalog */}
+                    <SlashMenu editor={editor} />
                 </div>
             </div>
 

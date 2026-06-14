@@ -48,6 +48,17 @@ export const CAPTURE_NODE_TYPES = new Set<string>([
     "timer",
     "computedValue",
     "harvestedComponentCapture",
+    // QMS field + 3D-annotation capture nodes. These are keyed by node_id in
+    // build-captures.ts (SubstepResponse kinds: status / equipment_roles /
+    // personnel_roles / signatures / defects / annotation), so each inserted
+    // instance needs its own minted id — otherwise two of the same type in one
+    // substep collide on (step_execution, substep, node_id).
+    "qualityStatusField",
+    "equipmentRolesField",
+    "personnelRolesField",
+    "inspectionSignatures",
+    "errorTypesField",
+    "partAnnotation",
 ]);
 
 /**

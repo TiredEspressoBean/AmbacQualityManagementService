@@ -10,7 +10,7 @@ import {
 import {Edit3, Navigation, Save, Trash2, Loader2, AlertTriangle} from "lucide-react";
 import {Badge} from "@/components/ui/badge";
 import {toast} from "sonner";
-import {ThreeDModelViewer} from "@/components/three-d-model-viewer";
+import {ThreeDModelViewer, type SavedView} from "@/components/three-d-model-viewer";
 import {AnnotationPoint} from "@/components/annotation-point";
 import {AnnotationsList} from "@/components/annotations-list";
 import {useCreateHeatMapAnnotation} from "@/hooks/useCreateHeatMapAnnotation";
@@ -63,10 +63,12 @@ interface PartAnnotatorProps {
     showHeader?: boolean;
     startExpanded?: boolean;
     onSaveComplete?: () => void;
+    /** Camera framing to open at (author-saved default_view on the node). */
+    initialView?: SavedView | null;
 }
 
 export function PartAnnotator({
-                                  modelId: propsModelId, partId: propsPartId, workOrderId, qualityReportIds = [], className = "", showHeader = true, startExpanded = true, onSaveComplete,
+                                  modelId: propsModelId, partId: propsPartId, workOrderId, qualityReportIds = [], className = "", showHeader = true, startExpanded = true, onSaveComplete, initialView,
                               }: PartAnnotatorProps) {
     // Get route params (if navigated via route) and merge with props
     const routeParams = useParams({ strict: false }) as { modelId?: string; partId?: string };
@@ -579,6 +581,7 @@ export function PartAnnotator({
                     onModelClick={handleClick}
                     isLoading={isLoading}
                     onLoadingComplete={() => setIsLoading(false)}
+                    initialView={initialView}
                     instructions={mode === "annotate" ? "Tap model to add defect" : "WASD move • Space/Ctrl up/down • QE yaw • RF pitch • ZC roll"}
                 >
                     {annotations.map((annotation, idx) => (<AnnotationPoint
