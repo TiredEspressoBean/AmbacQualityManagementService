@@ -17124,11 +17124,7 @@ const LoginRequest = z.object({
   email: z.string().email().optional(),
   password: z.string().min(1),
 });
-const Login = z.object({
-  username: z.string().optional(),
-  email: z.string().email().optional(),
-  password: z.string(),
-});
+const RestAuthToken = z.object({ key: z.string() });
 const RestAuthDetail = z.object({ detail: z.string() });
 const PasswordChangeRequest = z.object({
   new_password1: z.string().min(1).max(128),
@@ -17898,7 +17894,7 @@ export const schemas = {
   SwitchTenantResponse,
   EffectivePermissionsResponse,
   LoginRequest,
-  Login,
+  RestAuthToken,
   RestAuthDetail,
   PasswordChangeRequest,
   PasswordResetRequest,
@@ -38237,7 +38233,7 @@ Return the REST Framework Token Object&#x27;s key.`,
         schema: LoginRequest,
       },
     ],
-    response: Login,
+    response: z.object({ key: z.string() }),
   },
   {
     method: "post",

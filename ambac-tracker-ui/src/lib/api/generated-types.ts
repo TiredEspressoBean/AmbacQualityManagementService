@@ -15851,12 +15851,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        Login: {
-            username?: string;
-            /** Format: email */
-            email?: string;
-            password: string;
-        };
         LoginRequest: {
             username?: string;
             /** Format: email */
@@ -21075,6 +21069,9 @@ export interface components {
         };
         RestAuthDetail: {
             readonly detail: string;
+        };
+        RestAuthToken: {
+            key: string;
         };
         /**
          * @description * `ANY` - Any Qualified Operator
@@ -45609,7 +45606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Login"];
+                    "application/json": components["schemas"]["RestAuthToken"];
                 };
             };
         };

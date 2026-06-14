@@ -29103,7 +29103,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Login'
+                $ref: '#/components/schemas/RestAuthToken'
           description: ''
   /auth/logout/:
     post:
@@ -35852,18 +35852,6 @@ components:
       - ordering_fields_display
       - search_fields
       - search_fields_display
-    Login:
-      type: object
-      properties:
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-      required:
-      - password
     LoginRequest:
       type: object
       properties:
@@ -45172,6 +45160,13 @@ components:
           readOnly: true
       required:
       - detail
+    RestAuthToken:
+      type: object
+      properties:
+        key:
+          type: string
+      required:
+      - key
     RevisitAssignmentEnum:
       enum:
       - ANY

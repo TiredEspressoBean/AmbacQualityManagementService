@@ -5,8 +5,8 @@ from django.contrib.auth import login, logout, authenticate
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_protect
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -29,6 +29,19 @@ from Tracker.throttling import ClientIPScopedRateThrottle
 class ThrottledLoginView(LoginView):
     throttle_classes = [ClientIPScopedRateThrottle]
     throttle_scope = 'login'
+
+    # drf-spectacular otherwise infers the *request* serializer (LoginRequest,
+    # which requires email/password) as the 200 response, so the generated
+    # Zodios client rejects the real `{ key }` body and treats a successful
+    # login as a failure. Declare the actual token response.
+    @extend_schema(
+        responses=inline_serializer(
+            name='RestAuthToken',
+            fields={'key': serializers.CharField()},
+        )
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 
 class ThrottledPasswordResetView(PasswordResetView):
