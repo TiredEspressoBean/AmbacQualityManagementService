@@ -35,6 +35,7 @@ from .sampling import DemoSamplingSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
+from .dwi import DemoDwiSeeder
 
 
 class DemoScenario(BaseSeeder):
@@ -105,6 +106,10 @@ class DemoScenario(BaseSeeder):
         # Phase 4b: 3D Models and Annotations
         self.log("\n--- Phase 4b: 3D Models and Annotations ---")
         result['models_3d'] = self._seed_3d_models(result['users'])
+
+        # Phase 4c: DWI work instructions (substeps + 3D callouts)
+        self.log("\n--- Phase 4c: DWI Work Instructions ---")
+        result['dwi'] = self._seed_dwi(result['manufacturing'], result['models_3d'])
 
         # Phase 5: CAPAs
         self.log("\n--- Phase 5: CAPAs ---")
@@ -210,6 +215,16 @@ class DemoScenario(BaseSeeder):
         """
         seeder = DemoThreeDModelSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         return seeder.seed(users)
+
+    def _seed_dwi(self, manufacturing, models_3d):
+        """
+        Author digital work instructions (Substep.body_blocks) on the demo
+        steps: 3D part callouts + defect annotation on inspection steps,
+        measurement captures wired to the demo MeasurementDefinitions,
+        attestation/signature gates, and scan/photo captures.
+        """
+        seeder = DemoDwiSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        return seeder.seed(manufacturing, models_3d)
 
     def _seed_orders(self, companies, users, manufacturing):
         """
