@@ -81,6 +81,19 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering_fields = ['order', 'created_at', 'updated_at']
     ordering = ['step', 'order']
 
+    # Operator-runtime actions are NOT authoring. `submit` and
+    # `ensure_inspection_qr` are POSTs, so the default CRUD gate would demand
+    # `add_substep` — an AUTHORING permission that floor roles (Operator, QA
+    # Inspector, Shift Lead) don't have, which wrongly 403s them out of running
+    # an inspection. Exempt these from the CRUD gate and require the
+    # operator-capture perm instead, so any staff member who can complete a
+    # substep can run an inspection (everyone with STAFF_OPERATIONAL_WRITE).
+    crud_exempt_actions = {'submit', 'ensure_inspection_qr'}
+    action_permissions = {
+        'submit': ['add_substepcompletion'],
+        'ensure_inspection_qr': ['add_substepcompletion'],
+    }
+
     # ----- DRAFT-only authoring guard -----
     #
     # Substeps are part of a Process's authoring lineage. Once any consuming
