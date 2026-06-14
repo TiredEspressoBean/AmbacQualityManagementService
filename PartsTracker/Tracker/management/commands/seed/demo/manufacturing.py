@@ -99,7 +99,7 @@ DEMO_PROCESS = {
             'name': 'Nozzle Inspection', 'order': 5, 'description': 'Inspect nozzle spray pattern and wear',
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
-            'sampling_required': True, 'min_sampling_rate': 0.25,  # 25% sampling
+            'sampling_required': True, 'min_sampling_rate': 25.0,  # 25% sampling (whole-number percent: backend compares against sampled/total*100)
             'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
@@ -110,7 +110,7 @@ DEMO_PROCESS = {
             'name': 'Flow Testing', 'order': 6, 'description': 'Test fuel flow rate and pressure',
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
-            'sampling_required': True, 'min_sampling_rate': 0.20,  # 20% sampling
+            'sampling_required': True, 'min_sampling_rate': 20.0,  # 20% sampling (whole-number percent)
             'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
@@ -132,7 +132,7 @@ DEMO_PROCESS = {
             'name': 'Final Test', 'order': 8, 'description': 'Final functional test under pressure',
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
-            'sampling_required': True, 'min_sampling_rate': 0.10,  # 10% sampling
+            'sampling_required': True, 'min_sampling_rate': 10.0,  # 10% sampling (whole-number percent)
             'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 4, 'undo_window_minutes': 15, 'rollback_requires_approval': True,

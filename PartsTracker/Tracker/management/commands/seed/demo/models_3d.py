@@ -30,101 +30,104 @@ DEMO_3D_MODELS = [
     },
 ]
 
-# Realistic annotation coordinates on a benchy model (from real data)
-# These are positions in scaled space (model scaled to ~3 units)
+# Annotation coordinates on the demo model (positions in scaled space, ~3 units).
+# The model is a stand-in mesh; defect *labels* describe injector defects so the
+# heatmap reads coherently for the Injector Reman storyline. Positions, severities,
+# and part serials are unchanged — only the defect type / notes were relabeled
+# from the old 3D-print defect language to injector defects.
 DEMO_HEATMAP_ANNOTATIONS = [
-    # Hull area - coating defects
+    # Nozzle tip - scoring / erosion wear
     {
         'part_serial': 'INJ-0038-003',
         'position_x': 0.4710,
         'position_y': -0.3082,
         'position_z': 0.5955,
-        'defect_type': 'Coating defects present',
+        'defect_type': 'Nozzle tip scoring',
         'severity': 'LOW',
-        'notes': 'Minor coating irregularity observed on hull surface',
+        'notes': 'Minor scoring observed on nozzle tip',
     },
     {
         'part_serial': 'INJ-0038-007',
         'position_x': 0.2821,
         'position_y': -0.3059,
         'position_z': 0.5298,
-        'defect_type': 'Coating defects present',
+        'defect_type': 'Nozzle tip scoring',
         'severity': 'MEDIUM',
-        'notes': 'Coating defect with visible discoloration',
+        'notes': 'Scoring with visible wear on nozzle tip',
     },
     {
         'part_serial': 'INJ-0038-008',
         'position_x': 0.2999,
         'position_y': -0.1841,
         'position_z': 0.6156,
-        'defect_type': 'Coating defects present',
+        'defect_type': 'Nozzle tip scoring',
         'severity': 'LOW',
-        'notes': 'Small area of coating irregularity',
+        'notes': 'Small area of scoring near nozzle tip',
     },
-    # Cabin/deck area - layer separation
+    # Spray-hole bank - erosion
     {
         'part_serial': 'INJ-0038-010',
         'position_x': 0.6779,
         'position_y': 0.5497,
         'position_z': -0.6679,
-        'defect_type': 'Layer separation',
+        'defect_type': 'Spray-hole erosion',
         'severity': 'LOW',
-        'notes': 'Minor layer separation detected',
+        'notes': 'Minor erosion at spray-hole bank',
     },
     {
         'part_serial': 'INJ-0038-011',
         'position_x': 0.6787,
         'position_y': 0.5377,
         'position_z': -0.6980,
-        'defect_type': 'Layer separation',
+        'defect_type': 'Spray-hole erosion',
         'severity': 'LOW',
-        'notes': 'Layer separation near deck area',
+        'notes': 'Erosion near spray-hole bank',
     },
     {
         'part_serial': 'INJ-0042-017',
         'position_x': 1.2149,
         'position_y': 0.1190,
         'position_z': -0.6669,
-        'defect_type': 'Layer separation',
+        'defect_type': 'Spray-hole erosion',
         'severity': 'MEDIUM',
-        'notes': 'Moderate layer separation requiring monitoring',
+        'notes': 'Moderate spray-hole erosion requiring monitoring',
     },
     {
         'part_serial': 'INJ-0042-019',
         'position_x': 0.9073,
         'position_y': 0.5218,
         'position_z': -0.3667,
-        'defect_type': 'Layer separation',
+        'defect_type': 'Spray-hole erosion',
         'severity': 'HIGH',
-        'notes': 'Significant layer separation - disposition required',
+        'notes': 'Significant spray-hole erosion - disposition required',
     },
-    # Chimney area - dimensional issues
+    # Seat face - pitting
     {
         'part_serial': 'INJ-0038-003',
         'position_x': -0.2860,
         'position_y': -0.1342,
         'position_z': 1.0418,
-        'defect_type': 'Dimensional out of tolerance',
+        'defect_type': 'Seat face pitting',
         'severity': 'HIGH',
-        'notes': 'Critical dimensional deviation at chimney',
+        'notes': 'Critical pitting on seat face',
     },
     {
         'part_serial': 'INJ-0038-007',
         'position_x': -0.1081,
         'position_y': 0.0956,
         'position_z': 1.0661,
-        'defect_type': 'Dimensional out of tolerance',
+        'defect_type': 'Seat face pitting',
         'severity': 'MEDIUM',
-        'notes': 'Dimensional tolerance exceeded',
+        'notes': 'Pitting exceeds acceptance on seat face',
     },
     {
         'part_serial': 'INJ-0042-017',
         'position_x': -0.2720,
         'position_y': 0.1473,
         'position_z': 1.1223,
-        'defect_type': 'Dimensional out of tolerance',
+        'defect_type': 'Seat face pitting',
         'severity': 'LOW',
-        'notes': 'Minor dimensional variation noted',
+        'notes': 'Minor pitting noted on seat face',
     },
 ]
 

@@ -27,6 +27,7 @@ from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
 from .dwi import DemoDwiSeeder
+from .showcase import DemoShowcaseSeeder
 
 __all__ = [
     'DemoScenario',
@@ -44,4 +45,5 @@ __all__ = [
     'DemoLifeTrackingSeeder',
     'DemoThreeDModelSeeder',
     'DemoDwiSeeder',
+    'DemoShowcaseSeeder',
 ]

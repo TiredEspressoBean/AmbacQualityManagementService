@@ -36,6 +36,7 @@ from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
 from .dwi import DemoDwiSeeder
+from .showcase import DemoShowcaseSeeder
 
 
 class DemoScenario(BaseSeeder):
@@ -110,6 +111,12 @@ class DemoScenario(BaseSeeder):
         # Phase 4c: DWI work instructions (substeps + 3D callouts)
         self.log("\n--- Phase 4c: DWI Work Instructions ---")
         result['dwi'] = self._seed_dwi(result['manufacturing'], result['models_3d'])
+
+        # Phase 4d: SHOWCASE storyline (named objects threaded by one hero part)
+        self.log("\n--- Phase 4d: Showcase Storyline ---")
+        result['showcase'] = self._seed_showcase(
+            result['manufacturing'], result['models_3d'], result['users']
+        )
 
         # Phase 5: CAPAs
         self.log("\n--- Phase 5: CAPAs ---")
@@ -225,6 +232,18 @@ class DemoScenario(BaseSeeder):
         """
         seeder = DemoDwiSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         return seeder.seed(manufacturing, models_3d)
+
+    def _seed_showcase(self, manufacturing, models_3d, users):
+        """
+        Create the named SHOWCASE storyline objects for the guided demo:
+        a DRAFT authoring clone of Injector Reman, a one-part work order, the
+        hero part INJ-SHOWCASE-001 parked at Nozzle Inspection with an open
+        StepExecution, and a FAIL quality report wired to a 3D-annotation
+        error type. All tagged SHOWCASE and threaded by the hero part.
+        """
+        seeder = DemoShowcaseSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed(manufacturing, models_3d, users)
 
     def _seed_orders(self, companies, users, manufacturing):
         """

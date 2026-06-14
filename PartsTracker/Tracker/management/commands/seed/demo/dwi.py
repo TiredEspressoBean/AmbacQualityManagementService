@@ -116,6 +116,45 @@ def _quality_status(step, key, label, required=True):
     }
 
 
+def _equipment_roles(step, key, label="Equipment used during this inspection", required=True):
+    return {
+        "type": "equipmentRolesField",
+        "attrs": {
+            "node_id": _nid(step, key),
+            "label": label,
+            "required": required,
+            "min_rows": 1,
+            "default_role": "PRODUCTION",
+        },
+    }
+
+
+def _inspection_signatures(step, key, label="Inspection sign-off",
+                           require_detected=True, require_verified=False):
+    return {
+        "type": "inspectionSignatures",
+        "attrs": {
+            "node_id": _nid(step, key),
+            "label": label,
+            "require_detected": require_detected,
+            "require_verified": require_verified,
+        },
+    }
+
+
+def _error_types(step, key, label="Defects observed", required=False, min_rows=0):
+    return {
+        "type": "errorTypesField",
+        "attrs": {
+            "node_id": _nid(step, key),
+            "label": label,
+            "required": required,
+            "min_rows": min_rows,
+            "default_severity": "MAJOR",
+        },
+    }
+
+
 def _callout_point(step, n, x, y, z, label):
     """A single numbered callout, with a saved camera framing aimed at it."""
     return {
@@ -235,12 +274,21 @@ class DemoDwiSeeder(BaseSeeder):
                 {
                     "title": "Visual nozzle inspection",
                     "order": 0,
+                    # Inspection point: the defect annotator + Pass/Fail + the QR
+                    # capture bundle only record to a QualityReport when this is
+                    # True (operator_capture.py). Mirrors what the substep editor
+                    # now enforces when an annotator is present.
+                    "is_inspection_point": True,
                     "body": _doc(
                         _heading("Inspect the nozzle"),
                         _callout("caution", "Handle the nozzle tip with lint-free gloves — fingerprints etch the seat."),
                         *callout_block,
                         _part_annotation("Nozzle Inspection", "defects", "Mark any defects you find on the model", model_id),
+                        # QualityReport capture bundle (status already present above):
                         _quality_status("Nozzle Inspection", "visual-result", "Visual inspection result"),
+                        _equipment_roles("Nozzle Inspection", "equipment"),
+                        _inspection_signatures("Nozzle Inspection", "signoff-sig"),
+                        _error_types("Nozzle Inspection", "defect-types"),
                     ),
                 },
                 {
