@@ -3146,162 +3146,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Groups/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description ViewSet for Django Groups with user and permission management */
-        get: operations["api_Groups_list"];
-        put?: never;
-        /** @description ViewSet for Django Groups with user and permission management */
-        post: operations["api_Groups_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description ViewSet for Django Groups with user and permission management */
-        get: operations["api_Groups_retrieve"];
-        put?: never;
-        post?: never;
-        /** @description ViewSet for Django Groups with user and permission management */
-        delete: operations["api_Groups_destroy"];
-        options?: never;
-        head?: never;
-        /** @description ViewSet for Django Groups with user and permission management */
-        patch: operations["api_Groups_partial_update"];
-        trace?: never;
-    };
-    "/api/Groups/{id}/add-permissions/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Add permissions to this group */
-        post: operations["api_Groups_add_permissions_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/{id}/add-users/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Add users to this group */
-        post: operations["api_Groups_add_users_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/{id}/remove-permissions/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Remove permissions from this group */
-        post: operations["api_Groups_remove_permissions_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/{id}/remove-users/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Remove users from this group */
-        post: operations["api_Groups_remove_users_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/{id}/set-permissions/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Replace all permissions on this group with the provided list */
-        post: operations["api_Groups_set_permissions_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/available-permissions/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get all available permissions that can be assigned to groups */
-        get: operations["api_Groups_available_permissions_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/Groups/available-users/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Get all users available to add to groups */
-        get: operations["api_Groups_available_users_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/HarvestedComponents/": {
         parameters: {
             query?: never;
@@ -13316,20 +13160,6 @@ export interface components {
             readonly id: string;
             readonly name: string;
         };
-        AvailablePermissionResponse: {
-            id: number;
-            codename: string;
-            name: string;
-            content_type: string;
-        };
-        AvailableUserResponse: {
-            id: number;
-            /** Format: email */
-            email: string;
-            first_name: string;
-            last_name: string;
-            groups: string[];
-        };
         /**
          * @description Bill of Materials serializer.
          *
@@ -15595,56 +15425,6 @@ export interface components {
          * @enum {string}
          */
         GeneratedReportStatusEnum: "PENDING" | "COMPLETED" | "FAILED";
-        /** @description Serializer for Django Groups with user and permission details */
-        Group: {
-            readonly id: number;
-            name: string;
-            readonly description: string | null;
-            readonly user_count: number;
-            readonly users: Record<string, never>[];
-            readonly permissions: Record<string, never>[];
-        };
-        GroupAddPermissionsInputRequest: {
-            permission_ids: number[];
-        };
-        GroupAddPermissionsResponse: {
-            detail: string;
-            added_count: number;
-            group: components["schemas"]["Group"];
-        };
-        GroupAddUsersInputRequest: {
-            user_ids: number[];
-        };
-        GroupAddUsersResponse: {
-            detail: string;
-            group: components["schemas"]["Group"];
-        };
-        GroupRemovePermissionsInputRequest: {
-            permission_ids: number[];
-        };
-        GroupRemovePermissionsResponse: {
-            detail: string;
-            removed_count: number;
-            group: components["schemas"]["Group"];
-        };
-        GroupRemoveUsersInputRequest: {
-            user_ids: number[];
-        };
-        GroupRemoveUsersResponse: {
-            detail: string;
-            group: components["schemas"]["Group"];
-        };
-        /** @description Serializer for Django Groups with user and permission details */
-        GroupRequest: {
-            name: string;
-        };
-        GroupSetPermissionsInputRequest: {
-            permission_ids: number[];
-        };
-        GroupSetPermissionsResponse: {
-            detail: string;
-            group: components["schemas"]["Group"];
-        };
         /** @description Harvested component serializer */
         HarvestedComponent: {
             /** Format: uuid */
@@ -16071,6 +15851,12 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        Login: {
+            username?: string;
+            /** Format: email */
+            email?: string;
+            password: string;
+        };
         LoginRequest: {
             username?: string;
             /** Format: email */
@@ -16298,6 +16084,24 @@ export interface components {
             /** Format: decimal */
             lower_tol?: string | null;
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
         MeasurementResult: {
             readonly report: string;
             /** Format: uuid */
@@ -16309,6 +16113,24 @@ export interface components {
             readonly created_by: number;
             archived?: boolean;
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
         MeasurementResultRequest: {
             /** Format: uuid */
             definition: string;
@@ -16574,21 +16396,6 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["AuditLog"][];
-        };
-        PaginatedAvailableUserResponseList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["AvailableUserResponse"][];
         };
         PaginatedBOMLineList: {
             /** @example 123 */
@@ -16949,21 +16756,6 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["GeneratedReport"][];
-        };
-        PaginatedGroupList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["Group"][];
         };
         PaginatedHarvestedComponentList: {
             /** @example 123 */
@@ -18045,6 +17837,18 @@ export interface components {
             new_password1: string;
             new_password2: string;
         };
+        /** @description Serializer for requesting a password reset e-mail. */
+        PasswordReset: {
+            /** Format: email */
+            email: string;
+        };
+        /** @description Serializer for confirming a password reset attempt. */
+        PasswordResetConfirm: {
+            new_password1: string;
+            new_password2: string;
+            uid: string;
+            token: string;
+        };
         /** @description Serializer for confirming a password reset attempt. */
         PasswordResetConfirmRequest: {
             new_password1: string;
@@ -18688,10 +18492,6 @@ export interface components {
             identified_root_cause?: string | null;
             archived?: boolean;
         };
-        /** @description Serializer for Django Groups with user and permission details */
-        PatchedGroupRequest: {
-            name?: string;
-        };
         /** @description Harvested component serializer */
         PatchedHarvestedComponentRequest: {
             /** Format: uuid */
@@ -19130,6 +18930,24 @@ export interface components {
             is_first_piece?: boolean;
             archived?: boolean;
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
         PatchedQuarantineDispositionRequest: {
             current_state?: components["schemas"]["CurrentStateEnum"];
             disposition_type?: components["schemas"]["DispositionTypeEnum"] | components["schemas"]["BlankEnum"];
@@ -19511,8 +19329,11 @@ export interface components {
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /** @description Required role when revisit_assignment='role' */
-            revisit_role?: number | null;
+            /**
+             * Format: uuid
+             * @description Required role when revisit_assignment='role'
+             */
+            revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             archived?: boolean;
@@ -20041,7 +19862,6 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
-            group_ids?: number[];
         };
         /**
          * @description Work center serializer with equipment list.
@@ -20987,6 +20807,24 @@ export interface components {
          * @enum {string}
          */
         QualityStatusEnum: "PASS" | "FAIL" | "CONDITIONAL";
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
         QuarantineDisposition: {
             /** Format: uuid */
             readonly id: string;
@@ -21046,6 +20884,24 @@ export interface components {
             readonly completion_blockers: string[];
             archived?: boolean;
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
         QuarantineDispositionRequest: {
             current_state?: components["schemas"]["CurrentStateEnum"];
             disposition_type?: components["schemas"]["DispositionTypeEnum"] | components["schemas"]["BlankEnum"];
@@ -21183,6 +21039,11 @@ export interface components {
             task_id: string;
             status: string;
             message: string;
+        };
+        Register: {
+            username: string;
+            /** Format: email */
+            email: string;
         };
         RegisterRequest: {
             username: string;
@@ -22558,8 +22419,11 @@ export interface components {
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /** @description Required role when revisit_assignment='role' */
-            revisit_role?: number | null;
+            /**
+             * Format: uuid
+             * @description Required role when revisit_assignment='role'
+             */
+            revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /** Format: date-time */
@@ -22615,8 +22479,11 @@ export interface components {
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /** @description Required role when revisit_assignment='role' */
-            revisit_role?: number | null;
+            /**
+             * Format: uuid
+             * @description Required role when revisit_assignment='role'
+             */
+            revisit_role?: string | null;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             archived?: boolean;
@@ -23797,10 +23664,6 @@ export interface components {
          * @enum {string}
          */
         TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT";
-        /** @description Serializer for Token model. */
-        Token: {
-            key: string;
-        };
         /**
          * @description Serializer for TrainingRecord model.
          *
@@ -24206,7 +24069,6 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
-            group_ids?: number[];
         };
         /** @description Simplified user serializer for dropdowns and selections */
         UserSelect: {
@@ -26528,10 +26390,10 @@ export interface operations {
                     "application/json": {
                         total?: number;
                         by_status?: {
-                            open?: number;
-                            in_progress?: number;
-                            pending_verification?: number;
-                            closed?: number;
+                            OPEN?: number;
+                            IN_PROGRESS?: number;
+                            PENDING_VERIFICATION?: number;
+                            CLOSED?: number;
                         };
                         by_severity?: {
                             CRITICAL?: number;
@@ -30820,322 +30682,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_list: {
-        parameters: {
-            query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                /** @description A search term. */
-                search?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedGroupList"];
-                };
-            };
-        };
-    };
-    api_Groups_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupRequest"];
-                "multipart/form-data": components["schemas"]["GroupRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Group"];
-                };
-            };
-        };
-    };
-    api_Groups_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Group"];
-                };
-            };
-        };
-    };
-    api_Groups_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_Groups_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedGroupRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedGroupRequest"];
-                "multipart/form-data": components["schemas"]["PatchedGroupRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Group"];
-                };
-            };
-        };
-    };
-    api_Groups_add_permissions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupAddPermissionsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupAddPermissionsInputRequest"];
-                "multipart/form-data": components["schemas"]["GroupAddPermissionsInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupAddPermissionsResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_add_users_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupAddUsersInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupAddUsersInputRequest"];
-                "multipart/form-data": components["schemas"]["GroupAddUsersInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupAddUsersResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_remove_permissions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupRemovePermissionsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupRemovePermissionsInputRequest"];
-                "multipart/form-data": components["schemas"]["GroupRemovePermissionsInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupRemovePermissionsResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_remove_users_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupRemoveUsersInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupRemoveUsersInputRequest"];
-                "multipart/form-data": components["schemas"]["GroupRemoveUsersInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupRemoveUsersResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_set_permissions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this group. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GroupSetPermissionsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["GroupSetPermissionsInputRequest"];
-                "multipart/form-data": components["schemas"]["GroupSetPermissionsInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GroupSetPermissionsResponse"];
-                };
-            };
-        };
-    };
-    api_Groups_available_permissions_list: {
-        parameters: {
-            query?: {
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                /** @description A search term. */
-                search?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AvailablePermissionResponse"][];
-                };
-            };
-        };
-    };
-    api_Groups_available_users_list: {
-        parameters: {
-            query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                /** @description A search term. */
-                search?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedAvailableUserResponseList"];
                 };
             };
         };
@@ -46063,7 +45609,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Token"];
+                    "application/json": components["schemas"]["Login"];
                 };
             };
         };
@@ -46132,7 +45678,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RestAuthDetail"];
+                    "application/json": components["schemas"]["PasswordReset"];
                 };
             };
         };
@@ -46182,7 +45728,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Token"];
+                    "application/json": components["schemas"]["Register"];
                 };
             };
         };
@@ -46329,7 +45875,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RestAuthDetail"];
+                    "application/json": components["schemas"]["PasswordResetConfirm"];
                 };
             };
         };

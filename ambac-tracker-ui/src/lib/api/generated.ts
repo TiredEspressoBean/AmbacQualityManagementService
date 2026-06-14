@@ -2261,39 +2261,6 @@ export type GeneratedReportStatusEnum =
    * @enum PENDING, COMPLETED, FAILED
    */
   "PENDING" | "COMPLETED" | "FAILED";
-export type GroupAddPermissionsResponse = {
-  detail: string;
-  added_count: number;
-  group: Group;
-};
-export type Group = {
-  id: number;
-  /**
-   * @maxLength 150
-   */
-  name: string;
-  description: string | null;
-  user_count: number;
-  users: Array<{}>;
-  permissions: Array<{}>;
-};
-export type GroupAddUsersResponse = {
-  detail: string;
-  group: Group;
-};
-export type GroupRemovePermissionsResponse = {
-  detail: string;
-  removed_count: number;
-  group: Group;
-};
-export type GroupRemoveUsersResponse = {
-  detail: string;
-  group: Group;
-};
-export type GroupSetPermissionsResponse = {
-  detail: string;
-  group: Group;
-};
 export type HarvestedComponentRequest = {
   core: string;
   component_type: string;
@@ -3013,32 +2980,6 @@ export type PaginatedAuditLogList = {
     | undefined;
   results: Array<AuditLog>;
 };
-export type PaginatedAvailableUserResponseList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<AvailableUserResponse>;
-};
-export type AvailableUserResponse = {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  groups: Array<string>;
-};
 export type PaginatedBOMLineList = {
   /**
    * @example 123
@@ -3739,25 +3680,6 @@ export type PaginatedGeneratedReportList = {
     (string | null)
     | undefined;
   results: Array<GeneratedReport>;
-};
-export type PaginatedGroupList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<Group>;
 };
 export type PaginatedHarvestedComponentList = {
   /**
@@ -6011,7 +5933,7 @@ export type Steps = {
     | /**
      * Required role when revisit_assignment='role'
      */
-    (number | null)
+    (string | null)
     | undefined;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
@@ -8877,7 +8799,7 @@ export type PatchedStepsRequest = Partial<{
   /**
    * Required role when revisit_assignment='role'
    */
-  revisit_role: number | null;
+  revisit_role: string | null;
   /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -10443,7 +10365,7 @@ export type StepsRequest = {
     | /**
      * Required role when revisit_assignment='role'
      */
-    (number | null)
+    (string | null)
     | undefined;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
@@ -12805,74 +12727,6 @@ const PatchedFiveWhysRequest = z
     archived: z.boolean(),
   })
   .partial();
-const Group = z.object({
-  id: z.number().int(),
-  name: z.string().max(150),
-  description: z.string().nullable(),
-  user_count: z.number().int(),
-  users: z.array(z.object({}).partial()),
-  permissions: z.array(z.object({}).partial()),
-});
-const PaginatedGroupList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(Group),
-});
-const GroupRequest = z.object({ name: z.string().min(1).max(150) });
-const PatchedGroupRequest = z
-  .object({ name: z.string().min(1).max(150) })
-  .partial();
-const GroupAddPermissionsInputRequest = z.object({
-  permission_ids: z.array(z.number().int()),
-});
-const GroupAddPermissionsResponse = z.object({
-  detail: z.string(),
-  added_count: z.number().int(),
-  group: Group,
-});
-const GroupAddUsersInputRequest = z.object({
-  user_ids: z.array(z.number().int()),
-});
-const GroupAddUsersResponse = z.object({ detail: z.string(), group: Group });
-const GroupRemovePermissionsInputRequest = z.object({
-  permission_ids: z.array(z.number().int()),
-});
-const GroupRemovePermissionsResponse = z.object({
-  detail: z.string(),
-  removed_count: z.number().int(),
-  group: Group,
-});
-const GroupRemoveUsersInputRequest = z.object({
-  user_ids: z.array(z.number().int()),
-});
-const GroupRemoveUsersResponse = z.object({ detail: z.string(), group: Group });
-const GroupSetPermissionsInputRequest = z.object({
-  permission_ids: z.array(z.number().int()),
-});
-const GroupSetPermissionsResponse = z.object({
-  detail: z.string(),
-  group: Group,
-});
-const AvailablePermissionResponse = z.object({
-  id: z.number().int(),
-  codename: z.string(),
-  name: z.string(),
-  content_type: z.string(),
-});
-const AvailableUserResponse = z.object({
-  id: z.number().int(),
-  email: z.string().email(),
-  first_name: z.string(),
-  last_name: z.string(),
-  groups: z.array(z.string()),
-});
-const PaginatedAvailableUserResponseList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(AvailableUserResponse),
-});
 const HarvestedComponentRequest = z.object({
   core: z.string().uuid(),
   component_type: z.string().uuid(),
@@ -14624,7 +14478,7 @@ const Steps = z.object({
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.number().int().nullish(),
+  revisit_role: z.string().uuid().nullish(),
   sequencing_mode: z.string().max(20).optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14655,7 +14509,7 @@ const StepsRequest = z.object({
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.number().int().nullish(),
+  revisit_role: z.string().uuid().nullish(),
   sequencing_mode: z.string().min(1).max(20).optional(),
   archived: z.boolean().optional(),
 });
@@ -14678,7 +14532,7 @@ const PatchedStepsRequest = z
     terminal_status: z.union([TerminalStatusEnum, BlankEnum]),
     max_visits: z.number().int().gte(0).lte(2147483647).nullable(),
     revisit_assignment: RevisitAssignmentEnum,
-    revisit_role: z.number().int().nullable(),
+    revisit_role: z.string().uuid().nullable(),
     sequencing_mode: z.string().min(1).max(20),
     archived: z.boolean(),
   })
@@ -15558,7 +15412,6 @@ const UserRequest = z.object({
   is_staff: z.boolean().optional(),
   is_active: z.boolean().optional(),
   parent_company_id: z.string().uuid().nullish(),
-  group_ids: z.array(z.number().int()).optional(),
 });
 const PatchedUserRequest = z
   .object({
@@ -15573,7 +15426,6 @@ const PatchedUserRequest = z
     is_staff: z.boolean(),
     is_active: z.boolean(),
     parent_company_id: z.string().uuid().nullable(),
-    group_ids: z.array(z.number().int()),
   })
   .partial();
 const BulkUserActivationInputRequest = z.object({
@@ -17272,13 +17124,18 @@ const LoginRequest = z.object({
   email: z.string().email().optional(),
   password: z.string().min(1),
 });
-const Token = z.object({ key: z.string().max(40) });
+const Login = z.object({
+  username: z.string().optional(),
+  email: z.string().email().optional(),
+  password: z.string(),
+});
 const RestAuthDetail = z.object({ detail: z.string() });
 const PasswordChangeRequest = z.object({
   new_password1: z.string().min(1).max(128),
   new_password2: z.string().min(1).max(128),
 });
 const PasswordResetRequest = z.object({ email: z.string().min(1).email() });
+const PasswordReset = z.object({ email: z.string().email() });
 const PasswordResetConfirmRequest = z.object({
   new_password1: z.string().min(1).max(128),
   new_password2: z.string().min(1).max(128),
@@ -17290,6 +17147,10 @@ const RegisterRequest = z.object({
   email: z.string().min(1).email(),
   password1: z.string().min(1),
   password2: z.string().min(1),
+});
+const Register = z.object({
+  username: z.string().min(1).max(150),
+  email: z.string().email(),
 });
 const ResendEmailVerificationRequest = z.object({
   email: z.string().min(1).email(),
@@ -17333,6 +17194,12 @@ const PatchedTenantAwareUserDetailsRequest = z
     last_name: z.string().max(150).nullable(),
   })
   .partial();
+const PasswordResetConfirm = z.object({
+  new_password1: z.string().max(128),
+  new_password2: z.string().max(128),
+  uid: z.string(),
+  token: z.string(),
+});
 const CapaTaskAssigneeRequest = z.object({
   task: z.string().uuid(),
   user: z.number().int(),
@@ -17576,23 +17443,6 @@ export const schemas = {
   PaginatedFiveWhysList,
   FiveWhysRequest,
   PatchedFiveWhysRequest,
-  Group,
-  PaginatedGroupList,
-  GroupRequest,
-  PatchedGroupRequest,
-  GroupAddPermissionsInputRequest,
-  GroupAddPermissionsResponse,
-  GroupAddUsersInputRequest,
-  GroupAddUsersResponse,
-  GroupRemovePermissionsInputRequest,
-  GroupRemovePermissionsResponse,
-  GroupRemoveUsersInputRequest,
-  GroupRemoveUsersResponse,
-  GroupSetPermissionsInputRequest,
-  GroupSetPermissionsResponse,
-  AvailablePermissionResponse,
-  AvailableUserResponse,
-  PaginatedAvailableUserResponseList,
   HarvestedComponentRequest,
   PatchedHarvestedComponentRequest,
   HarvestedComponentAcceptRequest,
@@ -18048,18 +17898,21 @@ export const schemas = {
   SwitchTenantResponse,
   EffectivePermissionsResponse,
   LoginRequest,
-  Token,
+  Login,
   RestAuthDetail,
   PasswordChangeRequest,
   PasswordResetRequest,
+  PasswordReset,
   PasswordResetConfirmRequest,
   RegisterRequest,
+  Register,
   ResendEmailVerificationRequest,
   VerifyEmailRequest,
   AuthUserTenantGroup,
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,
+  PasswordResetConfirm,
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
@@ -20163,10 +20016,10 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         total: z.number().int(),
         by_status: z
           .object({
-            open: z.number().int(),
-            in_progress: z.number().int(),
-            pending_verification: z.number().int(),
-            closed: z.number().int(),
+            OPEN: z.number().int(),
+            IN_PROGRESS: z.number().int(),
+            PENDING_VERIFICATION: z.number().int(),
+            CLOSED: z.number().int(),
           })
           .partial(),
         by_severity: z
@@ -24394,251 +24247,6 @@ before batch production proceeds. Configurable per step via fpi_scope:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
-  {
-    method: "get",
-    path: "/api/Groups/",
-    alias: "api_Groups_list",
-    description: `ViewSet for Django Groups with user and permission management`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "search",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: PaginatedGroupList,
-  },
-  {
-    method: "post",
-    path: "/api/Groups/",
-    alias: "api_Groups_create",
-    description: `ViewSet for Django Groups with user and permission management`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ name: z.string().min(1).max(150) }),
-      },
-    ],
-    response: Group,
-  },
-  {
-    method: "get",
-    path: "/api/Groups/:id/",
-    alias: "api_Groups_retrieve",
-    description: `ViewSet for Django Groups with user and permission management`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Group,
-  },
-  {
-    method: "patch",
-    path: "/api/Groups/:id/",
-    alias: "api_Groups_partial_update",
-    description: `ViewSet for Django Groups with user and permission management`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ name: z.string().min(1).max(150) }).partial(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Group,
-  },
-  {
-    method: "delete",
-    path: "/api/Groups/:id/",
-    alias: "api_Groups_destroy",
-    description: `ViewSet for Django Groups with user and permission management`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/api/Groups/:id/add-permissions/",
-    alias: "api_Groups_add_permissions_create",
-    description: `Add permissions to this group`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: GroupAddPermissionsInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: GroupAddPermissionsResponse,
-  },
-  {
-    method: "post",
-    path: "/api/Groups/:id/add-users/",
-    alias: "api_Groups_add_users_create",
-    description: `Add users to this group`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: GroupAddUsersInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: GroupAddUsersResponse,
-  },
-  {
-    method: "post",
-    path: "/api/Groups/:id/remove-permissions/",
-    alias: "api_Groups_remove_permissions_create",
-    description: `Remove permissions from this group`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: GroupRemovePermissionsInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: GroupRemovePermissionsResponse,
-  },
-  {
-    method: "post",
-    path: "/api/Groups/:id/remove-users/",
-    alias: "api_Groups_remove_users_create",
-    description: `Remove users from this group`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: GroupRemoveUsersInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: GroupRemoveUsersResponse,
-  },
-  {
-    method: "post",
-    path: "/api/Groups/:id/set-permissions/",
-    alias: "api_Groups_set_permissions_create",
-    description: `Replace all permissions on this group with the provided list`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: GroupSetPermissionsInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: GroupSetPermissionsResponse,
-  },
-  {
-    method: "get",
-    path: "/api/Groups/available-permissions/",
-    alias: "api_Groups_available_permissions_list",
-    description: `Get all available permissions that can be assigned to groups`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "search",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.array(AvailablePermissionResponse),
-  },
-  {
-    method: "get",
-    path: "/api/Groups/available-users/",
-    alias: "api_Groups_available_users_list",
-    description: `Get all users available to add to groups`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "search",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: PaginatedAvailableUserResponseList,
   },
   {
     method: "get",
@@ -38629,7 +38237,7 @@ Return the REST Framework Token Object&#x27;s key.`,
         schema: LoginRequest,
       },
     ],
-    response: z.object({ key: z.string().max(40) }),
+    response: Login,
   },
   {
     method: "post",
@@ -38676,7 +38284,7 @@ Returns the success/fail message.`,
         schema: z.object({ email: z.string().min(1).email() }),
       },
     ],
-    response: z.object({ detail: z.string() }),
+    response: z.object({ email: z.string().email() }),
   },
   {
     method: "post",
@@ -38713,7 +38321,7 @@ Accepts the following POST parameters: username, email, password1, password2.`,
         schema: RegisterRequest,
       },
     ],
-    response: z.object({ key: z.string().max(40) }),
+    response: Register,
   },
   {
     method: "post",
@@ -38827,7 +38435,7 @@ Returns the success/fail message.`,
         schema: z.string(),
       },
     ],
-    response: z.object({ detail: z.string() }),
+    response: PasswordResetConfirm,
   },
 ]);
 
