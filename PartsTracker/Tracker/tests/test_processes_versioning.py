@@ -7,7 +7,7 @@ Covers:
   - DRAFT-successor-exists guard with a clear error
   - Bug-regression tests for the 8 documented bugs
   - Child copy: ProcessStep, StepEdge (same Step FKs)
-  - Document GFK copy: new rows, same storage, fresh approval lifecycle
+  - Document GFK copy: new rows, same storage, approval status carried forward
   - ApprovalRequest GFK NOT copied
   - `effective()` regression (is_current_version + status=APPROVED)
   - WorkOrder FK pinning stability across versioning
@@ -261,8 +261,10 @@ class DocumentsCopyOnProcessVersioningTestCase(TenantTestCase):
         self.assertEqual(v2_doc.file_name, self.doc.file_name)
         self.assertEqual(v2_doc.classification, self.doc.classification)
 
-    def test_v2_document_starts_in_draft(self):
-        """Re-approval required in v2's context."""
+    def test_v2_document_carries_approval_forward(self):
+        """An unchanged attachment keeps its APPROVED status and approver on
+        the new process version — revving the process does not force
+        re-signing identical documents."""
         v2 = create_new_process_version(
             self.process, user=self.user_a, change_description='Rev',
         )
@@ -270,9 +272,8 @@ class DocumentsCopyOnProcessVersioningTestCase(TenantTestCase):
         v2_doc = Documents.objects.filter(
             content_type=process_ct, object_id=v2.pk,
         ).first()
-        self.assertEqual(v2_doc.status, 'DRAFT')
-        self.assertIsNone(v2_doc.approved_by)
-        self.assertIsNone(v2_doc.approved_at)
+        self.assertEqual(v2_doc.status, 'APPROVED')
+        self.assertEqual(v2_doc.approved_by, self.user_a)
 
     def test_v1_documents_unchanged_after_versioning(self):
         create_new_process_version(

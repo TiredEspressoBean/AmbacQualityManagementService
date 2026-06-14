@@ -114,9 +114,9 @@ def create_new_step_version(
        lifecycles — copying them here would duplicate them.
 
     Documents attached via GenericRelation are copied as fresh Document rows
-    pointing at the new version, sharing the same file storage blobs. Each new
-    Document starts as DRAFT (re-approval required in the new version's
-    context). ApprovalRequest GFK children are NOT copied.
+    pointing at the new version, sharing the same file storage blob (no
+    re-upload) and carrying their approval status forward — see
+    `clone_current_documents`. ApprovalRequest GFK children are NOT copied.
 
     The `revision_created` signal fires via the base
     `SecureModel.create_new_version` call post-commit.
@@ -133,10 +133,6 @@ def create_new_step_version(
         ValueError: change_description blank/whitespace-only.
         ValueError: base-inherited — step not current version, or archived.
     """
-    from django.contrib.contenttypes.models import ContentType
-
-    from Tracker.models import Documents
-
     if not change_description or not change_description.strip():
         raise ValueError(
             "change_description is required when creating a new Step version "
@@ -262,31 +258,9 @@ def create_new_step_version(
             )
 
         # --- Documents (GenericRelation) ---
-        step_ct = ContentType.objects.get_for_model(Steps)
-        # tenant-safe: scoped via the Step content_type/object_id GFK
-        source_docs = Documents.objects.filter(
-            content_type=step_ct,
-            object_id=step.pk,
-            is_current_version=True,
-        )
-        _reset_on_clone = {
-            'id', 'created_at', 'updated_at',
-            'archived', 'deleted_at',
-            'version', 'previous_version', 'is_current_version',
-            'object_id',
-            'status', 'approved_by', 'approved_at', 'change_justification',
-            'effective_date', 'review_date', 'obsolete_date', 'retention_until',
-        }
-        for doc in source_docs:
-            clone_data = {
-                f.name: getattr(doc, f.name)
-                for f in Documents._meta.fields
-                if f.name not in _reset_on_clone and not f.auto_created
-            }
-            clone_data['object_id'] = new_version.pk
-            clone_data['status'] = 'DRAFT'
-            # tenant-safe: cloned from in-tenant Documents row (tenant FK carried in clone_data).
-            Documents.objects.create(**clone_data)
+        # Carried forward automatically by the base
+        # SecureModel.create_new_version (clones inside the super() call
+        # above), so no explicit copy is needed here.
 
         # Junction-flip: if the caller scoped this edit to a specific
         # Process version (the PCR-DRAFT editing flow), repoint that

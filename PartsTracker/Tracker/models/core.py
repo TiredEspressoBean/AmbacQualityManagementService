@@ -20,7 +20,7 @@ import os
 from datetime import date
 
 from auditlog.models import LogEntry
-from django.contrib.auth.models import AbstractUser, Group
+from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -609,6 +609,20 @@ class SecureQuerySet(models.QuerySet):
             queryset = self
         else:
             queryset = self.active()
+
+        # DocChunk has no tenant / classification / export-control fields of
+        # its own — its visibility must mirror its parent Document's. Delegate
+        # to Documents.for_user so chunks inherit tenant + classification +
+        # export-control + relationship scoping in EVERY branch. Without this,
+        # the full_tenant_access / superuser / staff branches below apply no
+        # tenant filter (DocChunk.objects is unscoped because the model lacks a
+        # `tenant` field), leaking chunk text across tenants via AI search.
+        if model_name == 'docchunk':
+            from Tracker.models import Documents
+            accessible_doc_ids = Documents.objects.for_user(
+                user, include_archived=include_archived
+            ).values('id')
+            return queryset.filter(doc_id__in=accessible_doc_ids)
 
         # Superuser bypasses all checks (but still apply security filters)
         if user.is_superuser:
@@ -1273,6 +1287,27 @@ class SecureModel(models.Model):
                 self.is_current_version = False
 
             new_version = type(self).objects.create(**new_data)
+
+            # Carry forward GenericRelation-attached Documents (controlled
+            # drawings, SOPs, specs) so the new version starts with the same
+            # attachment set. Unchanged attachments keep their approval status
+            # forward — see `clone_current_documents`. Runs inside the atomic
+            # block so a copy failure rolls back the whole version creation.
+            # Gated on the model actually declaring a `documents`
+            # GenericRelation, so the many versioned models with none don't
+            # pay for a wasted query. Centralizing here (rather than in each
+            # composite service) means every versioned model — leaf or
+            # composite, present or future — carries Documents forward
+            # uniformly and none can silently regress.
+            from django.contrib.contenttypes.fields import GenericRelation
+            if any(
+                isinstance(f, GenericRelation)
+                and getattr(f.related_model, '_meta', None) is not None
+                and f.related_model._meta.model_name == 'documents'
+                for f in self._meta.private_fields
+            ):
+                from Tracker.services.core.documents import clone_current_documents
+                clone_current_documents(source=locked, target=new_version)
 
         # Emitted outside the transaction so handlers observe committed
         # state. Use send_robust so one misbehaving receiver can't abort
@@ -2615,6 +2650,7 @@ class ApprovalRequest(SecureModel):
     def get_template(self):
         """Get the approval template used for this request"""
         try:
+            # tenant-safe: SecureManager .objects auto-scopes to the request tenant
             return ApprovalTemplate.objects.get(
                 approval_type=self.approval_type,
                 is_current_version=True,

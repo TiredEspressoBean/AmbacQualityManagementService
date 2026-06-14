@@ -20,7 +20,7 @@ from Tracker.serializers.core import SecureModelMixin
 # Process Change Request
 # ---------------------------------------------------------------------------
 
-class ProcessChangeRequestSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ProcessChangeRequestSerializer(SecureModelMixin):
     """Read/write serializer for PCRs.
 
     Most fields are read-only after creation; lifecycle transitions go
@@ -109,7 +109,7 @@ class ProcessChangeRequestSerializer(serializers.ModelSerializer, SecureModelMix
 # Process Change Order
 # ---------------------------------------------------------------------------
 
-class ProcessChangeOrderSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ProcessChangeOrderSerializer(SecureModelMixin):
     """Read/write serializer for PCOs.
 
     Implementation actions (author, approve, implement, cancel) flow
@@ -204,7 +204,7 @@ class ProcessChangeOrderSerializer(serializers.ModelSerializer, SecureModelMixin
 # Process Change Notice
 # ---------------------------------------------------------------------------
 
-class ProcessChangeNoticeSerializer(serializers.ModelSerializer, SecureModelMixin):
+class ProcessChangeNoticeSerializer(SecureModelMixin):
     """Read/write serializer for PCNs."""
 
     order_artifact_number = serializers.CharField(

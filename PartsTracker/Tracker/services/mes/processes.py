@@ -55,6 +55,7 @@ def approve_process(process: Processes, user=None) -> Processes:
             # tenant-safe: scoped via the previous_version FK in the
             # caller's tenant.
             predecessor = (
+                # tenant-safe: pk lookup of this chain's predecessor version (globally-unique UUID)
                 Processes.all_tenants.filter(pk=process.previous_version_id).first()
             )
             if predecessor is not None:
@@ -89,6 +90,7 @@ def submit_process_for_approval(process: Processes, user) -> ApprovalRequest:
         raise ValueError("Cannot submit process with no steps for approval.")
 
     try:
+        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
         template = ApprovalTemplate.objects.get(
             approval_type='PROCESS_APPROVAL',
             is_current_version=True,
@@ -162,7 +164,8 @@ def create_new_process_version(
     copied (same Step FKs — Steps are independently versioned and
     historically pinned). Documents attached via GenericRelation are
     copied as fresh Document rows pointing at the new version, sharing
-    the same file storage blobs (no duplication). ApprovalRequest GFK
+    the same file storage blob (no re-upload) and carrying their approval
+    status forward — see `clone_current_documents`. ApprovalRequest GFK
     children are NOT copied — v2 starts its own approval cycle.
 
     The `revision_created` signal fires via the base
@@ -181,10 +184,7 @@ def create_new_process_version(
             APPROVED/DEPRECATED; a DRAFT successor already exists;
             base-inherited (not current, archived).
     """
-    from django.contrib.contenttypes.models import ContentType
     from django.db import transaction
-
-    from Tracker.models import Documents
 
     if not change_description or not change_description.strip():
         raise ValueError(
@@ -256,65 +256,11 @@ def create_new_process_version(
                 condition_value=edge.condition_value,
             )
 
-        _copy_documents_to_new_process_version(process, new_version)
+        # Documents (GenericRelation) carry forward automatically — the base
+        # SecureModel.create_new_version clones them inside the super() call
+        # above. No explicit copy needed here.
 
     return new_version
-
-
-def _copy_documents_to_new_process_version(
-    source: Processes, new_version: Processes,
-) -> None:
-    """Copy Document GFK children from the source process to the new
-    version. Same file storage blobs (no duplication); Document
-    metadata rows are fresh — each version owns its own Document chain.
-
-    Only current Documents are copied. Superseded Document revisions
-    stay with the source version's history. The new Document rows start
-    as DRAFT and will need re-approval in the new version's context.
-
-    NOT copied: ApprovalRequest GFK children (v2 starts its own approval
-    cycle — v1's approval records stay with v1).
-
-    Pattern note: replicate this shape in other composite versioning
-    services when they need to carry Documents forward. Extract to a
-    shared helper at `services/core/documents.py` when the second
-    composite needs it — not before.
-    """
-    from django.contrib.contenttypes.models import ContentType
-
-    from Tracker.models import Documents
-
-    process_ct = ContentType.objects.get_for_model(Processes)
-
-    # tenant-safe: scoped via the Process content_type/object_id GFK
-    source_docs = Documents.objects.filter(
-        content_type=process_ct,
-        object_id=source.pk,
-        is_current_version=True,
-    )
-
-    # Fields reset on the new Document row — a fresh attachment for the
-    # new Process version. Versioning / approval lifecycle / compliance
-    # dates all restart.
-    _reset_on_clone = {
-        'id', 'created_at', 'updated_at',
-        'archived', 'deleted_at',
-        'version', 'previous_version', 'is_current_version',
-        'object_id',  # rewired below
-        'status', 'approved_by', 'approved_at', 'change_justification',
-        'effective_date', 'review_date', 'obsolete_date', 'retention_until',
-    }
-
-    for doc in source_docs:
-        clone_data = {
-            f.name: getattr(doc, f.name)
-            for f in Documents._meta.fields
-            if f.name not in _reset_on_clone and not f.auto_created
-        }
-        clone_data['object_id'] = new_version.pk
-        clone_data['status'] = 'DRAFT'  # re-approval required in v2's context
-        # tenant-safe: clone_data carries tenant from source doc + new_version
-        Documents.objects.create(**clone_data)
 
 
 def duplicate_process(

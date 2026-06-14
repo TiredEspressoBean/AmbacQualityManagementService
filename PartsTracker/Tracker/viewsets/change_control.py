@@ -116,12 +116,16 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     # Custom action perms — TenantModelPermissions only maps default CRUD
     # methods. `propose` forks a DRAFT Process AND creates a PCR row, so
-    # require both perms.
+    # require both perms. `approve`/`reject` additionally require
+    # change_processes (an authoring perm): in SIMPLIFIED mode approval
+    # auto-creates an auto-approved PCO — i.e. it changes the live process —
+    # so it must not be reachable on change_processchangerequest alone,
+    # which every doer role holds for raising/editing requests.
     action_permissions = {
         'propose': ['add_processchangerequest', 'add_processes'],
         'submit': ['change_processchangerequest'],
-        'approve': ['change_processchangerequest'],
-        'reject': ['change_processchangerequest'],
+        'approve': ['change_processchangerequest', 'change_processes'],
+        'reject': ['change_processchangerequest', 'change_processes'],
         'cancel': ['change_processchangerequest'],
     }
 

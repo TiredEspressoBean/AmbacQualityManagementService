@@ -12,7 +12,8 @@ Covers:
   - Child copy: StepRequirement (all config fields)
   - Cross-cutting TrainingRequirement: step-owned only — process-linked and
     equipment_type-linked rows must NOT be copied.
-  - Documents GenericRelation copied (fresh rows, same file_name, DRAFT status)
+  - Documents GenericRelation copied (fresh rows, same file_name, approval
+    status carried forward for unchanged attachments)
   - `revision_created` signal fires with correct kwargs
 """
 from __future__ import annotations
@@ -378,7 +379,8 @@ class TrainingRequirementCrossCuttingTestCase(TenantTestCase):
 
 class DocumentsCopyOnStepVersioningTestCase(TenantTestCase):
     """Documents attached to a Step via GenericRelation are copied to the new
-    version as fresh Document rows (DRAFT, same file_name, same storage)."""
+    version as fresh Document rows (same file_name, same storage, approval
+    status carried forward)."""
 
     def setUp(self):
         super().setUp()
@@ -406,14 +408,17 @@ class DocumentsCopyOnStepVersioningTestCase(TenantTestCase):
         self.assertNotEqual(v2_doc.pk, self.doc.pk)
         self.assertEqual(v2_doc.file_name, 'step-SOP-rev-A.pdf')
 
-    def test_v2_document_starts_as_draft(self):
+    def test_v2_document_carries_approval_forward(self):
+        """An unchanged attachment keeps its APPROVED status and approver on
+        the new Step version — revving the step does not force re-signing
+        identical documents."""
         v2 = create_new_step_version(
             self.step, user=self.user_a, change_description='Rev',
         )
         step_ct = ContentType.objects.get_for_model(Steps)
         v2_doc = Documents.objects.filter(content_type=step_ct, object_id=v2.pk).first()
-        self.assertEqual(v2_doc.status, 'DRAFT')
-        self.assertIsNone(v2_doc.approved_by)
+        self.assertEqual(v2_doc.status, 'APPROVED')
+        self.assertEqual(v2_doc.approved_by, self.user_a)
 
     def test_v1_document_unchanged_after_versioning(self):
         create_new_step_version(

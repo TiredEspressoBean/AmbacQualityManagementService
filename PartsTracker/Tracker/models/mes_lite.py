@@ -633,8 +633,9 @@ class Steps(SecureModel):
         max_length=20, choices=REVISIT_ASSIGNMENT_CHOICES, default='ANY'
     )
     revisit_role = models.ForeignKey(
-        'auth.Group', null=True, blank=True,
+        'Tracker.TenantGroup', null=True, blank=True,
         on_delete=models.SET_NULL,
+        related_name='+',
         help_text="Required role when revisit_assignment='role'"
     )
 

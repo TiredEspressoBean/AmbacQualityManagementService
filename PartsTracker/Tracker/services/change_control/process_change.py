@@ -115,6 +115,7 @@ def submit_pcr(
     # same approval_type. Without this filter the lookup raises
     # `MultipleObjectsReturned` the moment any admin edits the template.
     try:
+        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
         template = ApprovalTemplate.objects.get(
             approval_type='PCR_APPROVAL',
             is_current_version=True,
@@ -234,6 +235,7 @@ def approve_pcr(
         from django.contrib.contenttypes.models import ContentType
         from Tracker.models import Approval_Status_Type
         pcr_ct = ContentType.objects.get_for_model(ProcessChangeRequest)
+        # tenant-safe: .objects auto-scopes to the request tenant; further bound to this PCR via object_id
         ApprovalRequest.objects.filter(
             content_type=pcr_ct,
             object_id=str(pcr.id),
@@ -514,6 +516,7 @@ def approve_pco(
         )
 
     try:
+        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
         template = ApprovalTemplate.objects.get(
             approval_type='PCO_APPROVAL',
             is_current_version=True,

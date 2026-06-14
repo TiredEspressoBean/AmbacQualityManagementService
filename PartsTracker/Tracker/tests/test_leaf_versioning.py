@@ -12,7 +12,9 @@ import tempfile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 
-from Tracker.models import MeasurementDefinition, PartTypes, Steps, ThreeDModel
+from django.contrib.contenttypes.models import ContentType
+
+from Tracker.models import Documents, MeasurementDefinition, PartTypes, Steps, ThreeDModel
 from Tracker.serializers.dms import ThreeDModelSerializer
 from Tracker.serializers.mes_lite import PartTypesSerializer
 from Tracker.serializers.qms import MeasurementDefinitionSerializer
@@ -93,6 +95,51 @@ class PartTypesSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.ID_prefix, 'HPI-')
         # Unchanged fields carried forward.
         self.assertEqual(result.ERP_id, 'ERP-001')
+
+
+# =============================================================================
+# Leaf-model Document carry-forward (base SecureModel.create_new_version)
+# =============================================================================
+
+class LeafDocumentCarryForwardTestCase(TenantTestCase):
+    """Leaf versioned models (no create_new_version override) that declare a
+    `documents` GenericRelation must carry their attachments onto the new
+    version via the base SecureModel.create_new_version. PartTypes stands in
+    for the six such models (Companies, PartTypes, Equipments,
+    QualityErrorsList, ThreeDModel, TrainingType)."""
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='Carrier PT', ID_prefix='CP-')
+        self.doc = Documents.objects.create(
+            content_type=ContentType.objects.get_for_model(PartTypes),
+            object_id=self.part_type.pk,
+            file_name='pt-drawing-rev-A.pdf',
+            is_image=False,
+            classification='INTERNAL',
+            status='APPROVED',
+            approved_by=self.user_a,
+        )
+
+    def test_document_carried_to_new_version(self):
+        v2 = self.part_type.create_new_version(
+            user=self.user_a, name='Carrier PT Mk2',
+        )
+        pt_ct = ContentType.objects.get_for_model(PartTypes)
+        v2_docs = Documents.objects.filter(content_type=pt_ct, object_id=v2.pk)
+        self.assertEqual(v2_docs.count(), 1)
+        v2_doc = v2_docs.first()
+        # Fresh row, same content, approval carried forward unchanged.
+        self.assertNotEqual(v2_doc.pk, self.doc.pk)
+        self.assertEqual(v2_doc.file_name, 'pt-drawing-rev-A.pdf')
+        self.assertEqual(v2_doc.status, 'APPROVED')
+        self.assertEqual(v2_doc.approved_by, self.user_a)
+
+    def test_v1_document_unchanged(self):
+        self.part_type.create_new_version(user=self.user_a, name='Carrier PT Mk2')
+        self.doc.refresh_from_db()
+        self.assertEqual(self.doc.status, 'APPROVED')
+        self.assertEqual(self.doc.object_id, str(self.part_type.pk))
 
 
 # =============================================================================

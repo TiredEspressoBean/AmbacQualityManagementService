@@ -68,6 +68,16 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = CustomerOrderSerializer
     pagination_class = LimitOffsetPagination
 
+    # Inviting a viewer is not order creation: without the exemption,
+    # POST /invite/ would demand add_orders (POST → add_{model}), which
+    # customers rightly lack. Gate on add_orderviewer instead — row scoping
+    # is already enforced by get_object() over the for_user()-filtered
+    # queryset, so customers can only invite to orders they can reach.
+    crud_exempt_actions = {'invite_viewer'}
+    action_permissions = {
+        'invite_viewer': ['add_orderviewer'],
+    }
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Orders.objects.none()
@@ -2264,6 +2274,14 @@ class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
         qs = super().get_queryset()
         return qs.select_related("part_type").prefetch_related("process_steps__step")
 
+    def _include_archived(self):
+        # See ProcessWithStepsViewSet._include_archived — a retrieve-by-pk
+        # of a superseded (archived) process version must still resolve so
+        # WorkOrders pinned to a historical version can load their spec.
+        if self.action == 'retrieve':
+            return True
+        return super()._include_archived()
+
     @extend_schema(
         description=(
             "Create a new revision of an APPROVED or DEPRECATED process. "
@@ -2368,6 +2386,17 @@ class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.Mode
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs.prefetch_related("process_steps__step__sampling_ruleset__rules")
+
+    def _include_archived(self):
+        # A retrieve-by-pk must return the exact row even when it's an
+        # archived (superseded) version. WorkOrders and execution records
+        # legitimately pin to a historical process version; approving a
+        # successor archives the predecessor, but the original spec must
+        # stay fetchable for the traveller/flow view of in-flight WOs.
+        # List/picker endpoints keep the default archived-excluding behavior.
+        if self.action == 'retrieve':
+            return True
+        return super()._include_archived()
 
     def create(self, request, *args, **kwargs):
         with transaction.atomic():

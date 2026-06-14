@@ -100,6 +100,7 @@ def submit_document_for_approval(document, user):
         # raises `MultipleObjectsReturned` the moment any admin edits
         # the template.
         try:
+            # tenant-safe: SecureManager .objects auto-scopes to the request tenant
             template = ApprovalTemplate.objects.get(
                 approval_type='DOCUMENT_RELEASE',
                 is_current_version=True,
@@ -121,6 +122,83 @@ def submit_document_for_approval(document, user):
     document.save(update_fields=['status'])
 
     return approval_request
+
+
+# =========================================================================
+# Parent-version cloning
+# =========================================================================
+
+# Fields rewritten (not carried) when a Document is cloned onto a new
+# parent version. Identity, GFK target, and soft-delete state always reset
+# — the clone is a fresh row in its own version chain attached to the new
+# parent. The document's own revision narrative (`change_justification`)
+# does NOT carry: this is a re-attachment, not a content revision.
+#
+# Everything NOT listed here carries forward — crucially the approval
+# lifecycle (`status`, `approved_by`, `approved_at`) and the
+# approval-linked compliance dates (`effective_date`, `review_date`,
+# `obsolete_date`, `retention_until`). An unchanged document stays
+# APPROVED with its approver and dates intact, so revving the parent
+# spec does not force re-signing identical attachments. The `file` field
+# is also carried — it holds the storage path string, so the clone shares
+# the same stored blob (no re-upload); a genuine file replacement later
+# writes a fresh key via `upload_to`.
+_DOCUMENT_VERSION_RESET_FIELDS = frozenset({
+    'id', 'created_at', 'updated_at',
+    'archived', 'deleted_at',
+    'version', 'previous_version', 'is_current_version',
+    'object_id',
+    'change_justification',
+})
+
+
+def clone_current_documents(*, source, target):
+    """Clone every current Document attached to `source` onto `target`.
+
+    Used when a versioned composite parent (Process, Step, …) creates a
+    new version: the new parent row gets its own Document rows so each
+    historical version keeps a complete attachment set. Each clone:
+
+    - **shares the source's stored file** — the `file` FieldFile carries
+      its storage-path string forward, so both rows point at the same
+      blob. No bytes are re-read or re-uploaded. When the new version's
+      file is genuinely replaced later, the upload path writes a fresh
+      key and the versions diverge naturally.
+    - is a **fresh Document row in its own version chain** (new id, version
+      reset, `previous_version` cleared) attached to `target` via GFK.
+    - **carries the approval lifecycle forward unchanged** — an unchanged
+      document stays in its current status (e.g. APPROVED) with approver
+      and compliance dates intact. Revving the parent does not reset
+      identical attachments to DRAFT or demand re-approval.
+
+    `source` and `target` must be instances of the same model; the GFK
+    content type is derived from `source`.
+
+    Returns the list of created Document clones (may be empty).
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from Tracker.models import Documents
+
+    ct = ContentType.objects.get_for_model(type(source))
+    # tenant-safe: scoped via the source content_type/object_id GFK
+    source_docs = Documents.objects.filter(
+        content_type=ct,
+        object_id=source.pk,
+        is_current_version=True,
+    )
+
+    cloned = []
+    for doc in source_docs:
+        clone_data = {
+            f.name: getattr(doc, f.name)
+            for f in Documents._meta.fields
+            if f.name not in _DOCUMENT_VERSION_RESET_FIELDS and not f.auto_created
+        }
+        clone_data['object_id'] = target.pk
+        # tenant-safe: clone_data carries the tenant FK from the source doc.
+        cloned.append(Documents.objects.create(**clone_data))
+    return cloned
 
 
 # =========================================================================
@@ -212,11 +290,9 @@ def log_document_access(document, user, request=None, action_type='view'):
 
     remote_addr = None
     if request:
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            remote_addr = x_forwarded_for.split(',')[0].strip()
-        else:
-            remote_addr = request.META.get('REMOTE_ADDR')
+        # Trusted client IP (edge-set header, not spoofable X-Forwarded-For).
+        from Tracker.throttling import get_client_ip
+        remote_addr = get_client_ip(request)
 
     access_data = {
         'action_type': f'document_{action_type}',
