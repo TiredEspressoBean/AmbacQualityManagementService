@@ -71,6 +71,9 @@ from Tracker.models import (
     StepMeasurementRequirement,
     # Order viewers
     OrderViewer,
+    # DWI (work instructions)
+    Substep, SubstepResource, SubstepTranslation,
+    SubstepCompletion, SubstepGateCompletion, SubstepResponse,
 )
 
 from .seed import BaseSeeder
@@ -203,256 +206,121 @@ class Command(BaseCommand):
             self._clear_tenant_data_inner(tenant)
 
     def _clear_tenant_data_inner(self, tenant):
-        """Inner clear logic, called within an established tenant_context."""
+        """Wipe the tenant's DATA, preserving auto-provisioned tenant config.
 
-        # Helper to safely delete a queryset
-        def safe_delete(qs, name):
+        FK enforcement is disabled for the wipe (`session_replication_role =
+        'replica'`), so deletion is order-independent — version self-FK chains
+        (Processes/Steps/ApprovalTemplate) and the dense cross-table FK web
+        (change-control, batch, material, notifications, …) no longer block it.
+        A generic sweep covers every tenant-scoped model automatically, so new
+        models can't silently accumulate; non-tenant child tables are cleared by
+        join to a tenant-scoped parent. Runs inside an established tenant_context.
+        """
+        from django.apps import apps
+        from django.db import connection, transaction
+        from Tracker import models as TM
+
+        tid = str(tenant.id)
+
+        # Auto-provisioned tenant config (created by the tenant-creation signal,
+        # NOT recreated by seed_demo) — must survive a data wipe.
+        PRESERVE = {
+            'Tenant', 'TenantGroup', 'TenantLLMProvider',
+            'TenantNotificationBranding', 'TenantNotificationDefault',
+            'NotificationTemplate', 'NotificationRule', 'NotificationSchedule',
+            'EscalationPolicy', 'EscalationStep', 'ArtifactSequence',
+            'IntegrationConfig', 'Facility', 'Shift', 'WorkCenter',
+        }
+
+        # Non-tenant child tables, cleared by join to a tenant-scoped parent.
+        child_joins = [
+            ('ProcessStep', {'process__tenant': tenant}),
+            ('StepEdge', {'process__tenant': tenant}),
+            ('StepMeasurementRequirement', {'step__tenant': tenant}),
+            ('QualityReportDefect', {'report__tenant': tenant}),
+            ('QualityReportPersonnel', {'quality_report__tenant': tenant}),
+            ('QualityReportEquipment', {'quality_report__tenant': tenant}),
+            ('OrderViewer', {'order__tenant': tenant}),
+            ('ApproverAssignment', {'approval_request__tenant': tenant}),
+            ('GroupApproverAssignment', {'approval_request__tenant': tenant}),
+            ('UserRole', {'user__tenant': tenant}),
+            ('UserInvitation', {'user__tenant': tenant}),
+            ('DocChunk', {'doc__tenant': tenant}),
+            ('HubSpotOrderLink', {'order__tenant': tenant}),
+            ('HubSpotCompanyLink', {'company__tenant': tenant}),
+        ]
+
+        tenant_models = [
+            m for m in apps.get_models()
+            if m._meta.app_label in ('Tracker', 'integrations')
+            and any(f.name == 'tenant' for f in m._meta.local_fields)
+            and m._meta.object_name not in PRESERVE
+        ]
+
+        def _sql(sql, params, label):
+            # Own savepoint so one failed delete can't poison the rest.
             try:
-                count = qs.count()
-                if count == 0:
-                    return 0
-                # Use _raw_delete to bypass soft-delete behavior
-                if hasattr(qs, '_raw_delete'):
-                    qs._raw_delete(qs.db)
-                else:
-                    qs.delete()
-                self.stdout.write(f"  Cleared {count} {name}")
-                return count
+                with transaction.atomic():
+                    with connection.cursor() as cur:
+                        cur.execute(sql, params)
+                        rc = cur.rowcount
+                if rc:
+                    self.stdout.write(f"  Cleared {rc} {label}")
             except Exception as e:
-                error_msg = str(e).encode('ascii', 'replace').decode('ascii')
-                self.stdout.write(self.style.WARNING(f"  Could not clear {name}: {error_msg[:200]}"))
-                return 0
+                msg = str(e).encode('ascii', 'replace').decode('ascii')[:160]
+                self.stdout.write(self.style.WARNING(f"  Could not clear {label}: {msg}"))
 
-        # Helper to clear M2M through tables via raw SQL using subquery
-        # This ensures we catch ALL records, not just ones that exist at query time
-        def clear_m2m_table_subquery(table_name, fk_column, parent_table, parent_tenant_column='tenant_id'):
-            """Clear M2M table entries where parent record belongs to this tenant."""
+        with transaction.atomic():
+            with connection.cursor() as cur:
+                cur.execute("SET session_replication_role = 'replica';")
             try:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        f'''DELETE FROM "{table_name}"
-                            WHERE "{fk_column}" IN (
-                                SELECT id FROM "{parent_table}" WHERE "{parent_tenant_column}" = %s
-                            )''',
-                        [str(tenant.id)]
-                    )
-                    count = cursor.rowcount
-                    if count > 0:
-                        self.stdout.write(f"  Cleared {count} {table_name} entries")
-                    return count
-            except Exception as e:
-                error_msg = str(e).encode('ascii', 'replace').decode('ascii')
-                self.stdout.write(self.style.WARNING(f"  Could not clear {table_name}: {error_msg[:100]}"))
-                return 0
+                # 1) M2M through-tables (need parent ids → before the sweep).
+                for m in tenant_models:
+                    for f in m._meta.local_many_to_many:
+                        through = f.remote_field.through._meta.db_table
+                        src = f.m2m_column_name()
+                        _sql(
+                            f'DELETE FROM "{through}" WHERE "{src}" IN '
+                            f'(SELECT id FROM "{m._meta.db_table}" WHERE tenant_id=%s)',
+                            [tid], through,
+                        )
+                # 2) Non-tenant children, by join (parents still present).
+                for name, flt in child_joins:
+                    Model = getattr(TM, name, None)
+                    if Model is None:
+                        continue
+                    n = 0
+                    try:
+                        with transaction.atomic():
+                            qs = Model.objects.filter(**flt)
+                            n = qs.count()
+                            if n:
+                                qs._raw_delete(qs.db)
+                        if n:
+                            self.stdout.write(f"  Cleared {n} {name}")
+                    except Exception as e:
+                        msg = str(e).encode('ascii', 'replace').decode('ascii')[:160]
+                        self.stdout.write(self.style.WARNING(f"  Could not clear {name}: {msg}"))
+                # 3) Generic tenant-scoped sweep (data only; config preserved).
+                for m in tenant_models:
+                    _sql(f'DELETE FROM "{m._meta.db_table}" WHERE tenant_id=%s', [tid], m._meta.object_name)
+                # 4) Audit log (not tenant-scoped).
+                _sql('DELETE FROM "auditlog_logentry";', [], "audit log entries")
+                # 5) Null dangling FKs on preserved config that pointed at the
+                #    now-deleted demo users/companies.
+                for tbl in ('Tracker_notificationrule', 'Tracker_notificationschedule'):
+                    for col in ('created_by_id', 'company_id'):
+                        try:
+                            with transaction.atomic():
+                                with connection.cursor() as cur:
+                                    cur.execute(f'UPDATE "{tbl}" SET "{col}"=NULL WHERE tenant_id=%s', [tid])
+                        except Exception:
+                            pass
+            finally:
+                with connection.cursor() as cur:
+                    cur.execute("SET session_replication_role = 'origin';")
 
-        # Helper to clear M2M through tables via raw SQL (for auto-generated tables)
-        def clear_m2m_table(table_name, fk_column, ids):
-            if not ids:
-                return 0
-            try:
-                with connection.cursor() as cursor:
-                    # Use parameterized query with IN clause
-                    placeholders = ','.join(['%s'] * len(ids))
-                    cursor.execute(
-                        f'DELETE FROM "{table_name}" WHERE "{fk_column}" IN ({placeholders})',
-                        list(ids)
-                    )
-                    count = cursor.rowcount
-                    if count > 0:
-                        self.stdout.write(f"  Cleared {count} {table_name} entries")
-                    return count
-            except Exception as e:
-                error_msg = str(e).encode('ascii', 'replace').decode('ascii')
-                self.stdout.write(self.style.WARNING(f"  Could not clear {table_name}: {error_msg[:100]}"))
-                return 0
-
-        # Helper to convert UUIDs to strings for SQL
-        def ids_to_str(ids):
-            return [str(id) for id in ids]
-
-        # Get IDs for M2M clearing
-        demo_users = User.objects.filter(tenant=tenant)
-        demo_user_ids = list(demo_users.values_list('id', flat=True))
-
-        # First, clean up orphaned records with NULL tenant that reference demo users
-        safe_delete(
-            QuarantineDisposition.objects.filter(tenant__isnull=True, assigned_to__in=demo_users),
-            "orphaned QuarantineDispositions"
-        )
-        safe_delete(
-            QualityReports.objects.filter(tenant__isnull=True, detected_by__in=demo_users),
-            "orphaned QualityReports"
-        )
-        safe_delete(
-            QaApproval.objects.filter(tenant__isnull=True, qa_staff__in=demo_users),
-            "orphaned QaApprovals"
-        )
-
-        # Clear audit logs (not tenant-scoped)
-        safe_delete(LogEntry.objects.all(), "Audit log entries")
-
-        # =====================================================================
-        # PHASE 1: Clear M2M through tables and junction tables FIRST
-        # These block deletion of their parent models
-        # =====================================================================
-
-        # Approval M2M tables (use subquery approach)
-        safe_delete(ApproverAssignment.objects.filter(approval_request__tenant=tenant), "Approver assignments")
-        safe_delete(GroupApproverAssignment.objects.filter(approval_request__tenant=tenant), "Group approver assignments")
-
-        # CAPA M2M tables (use subquery to catch all records)
-        clear_m2m_table_subquery('Tracker_capa_quality_reports', 'capa_id', 'Tracker_capa')
-        clear_m2m_table_subquery('Tracker_capa_dispositions', 'capa_id', 'Tracker_capa')
-
-        # RCA M2M tables - RcaRecord doesn't have direct tenant, so use CAPA join
-        # For now, use the ID list approach but with fresh IDs
-        rca_record_ids = list(RcaRecord.objects.filter(capa__tenant=tenant).values_list('id', flat=True))
-        clear_m2m_table('Tracker_rcarecord_quality_reports', 'rcarecord_id', ids_to_str(rca_record_ids))
-        clear_m2m_table('Tracker_rcarecord_dispositions', 'rcarecord_id', ids_to_str(rca_record_ids))
-
-        # Quality M2M tables (use subquery to catch all records)
-        safe_delete(QualityReportDefect.objects.filter(report__tenant=tenant), "Quality report defects")
-        clear_m2m_table_subquery('Tracker_qualityreports_operators', 'qualityreports_id', 'Tracker_qualityreports')
-
-        # Disposition M2M tables (clear by both disposition and quality_report sides)
-        clear_m2m_table_subquery('Tracker_quarantinedisposition_quality_reports', 'quarantinedisposition_id', 'Tracker_quarantinedisposition')
-        clear_m2m_table_subquery('Tracker_quarantinedisposition_quality_reports', 'qualityreports_id', 'Tracker_qualityreports')
-
-        # HeatMap M2M tables (use subquery)
-        clear_m2m_table_subquery('Tracker_heatmapannotations_quality_reports', 'heatmapannotations_id', 'Tracker_heatmapannotations')
-
-        # Sampling M2M tables (use subquery)
-        clear_m2m_table_subquery('Tracker_samplingtriggerstate_parts_inspected', 'samplingtriggerstate_id', 'Tracker_samplingtriggerstate')
-        clear_m2m_table_subquery('Tracker_samplingtriggerstate_notified_users', 'samplingtriggerstate_id', 'Tracker_samplingtriggerstate')
-
-        # Step M2M tables (use subquery)
-        safe_delete(StepMeasurementRequirement.objects.filter(step__tenant=tenant), "Step measurement requirements")
-        clear_m2m_table_subquery('Tracker_steps_notification_users', 'steps_id', 'Tracker_steps')
-
-        # Order M2M tables (use subquery)
-        safe_delete(OrderViewer.objects.filter(order__tenant=tenant), "Order viewers")
-
-        # BatchRollback M2M tables (use subquery)
-        clear_m2m_table_subquery('Tracker_batchrollback_affected_parts', 'batchrollback_id', 'Tracker_batchrollback')
-        clear_m2m_table_subquery('Tracker_batchrollback_individual_rollbacks', 'batchrollback_id', 'Tracker_batchrollback')
-
-        # =====================================================================
-        # PHASE 2: Clear models in proper dependency order
-        # =====================================================================
-
-        # Approval workflow (now that M2M tables are cleared)
-        safe_delete(ApprovalResponse.objects.filter(tenant=tenant), "Approval responses")
-        safe_delete(ApprovalRequest.objects.filter(tenant=tenant), "Approval requests")
-
-        # CAPA hierarchy (deepest first)
-        safe_delete(CapaVerification.objects.filter(capa__tenant=tenant), "CAPA verifications")
-        safe_delete(FiveWhys.objects.filter(rca_record__capa__tenant=tenant), "Five whys")
-        safe_delete(Fishbone.objects.filter(rca_record__capa__tenant=tenant), "Fishbone diagrams")
-        safe_delete(RcaRecord.objects.filter(capa__tenant=tenant), "RCA records")
-        safe_delete(CapaTaskAssignee.objects.filter(task__capa__tenant=tenant), "CAPA task assignees")
-        safe_delete(CapaTasks.objects.filter(capa__tenant=tenant), "CAPA tasks")
-        safe_delete(CAPA.objects.filter(tenant=tenant), "CAPAs")
-
-        # Training and calibration
-        safe_delete(TrainingRecord.objects.filter(tenant=tenant), "Training records")
-        safe_delete(TrainingRequirement.objects.filter(tenant=tenant), "Training requirements")
-        safe_delete(TrainingType.objects.filter(tenant=tenant), "Training types")
-        safe_delete(CalibrationRecord.objects.filter(tenant=tenant), "Calibration records")
-
-        # Quality (measurement results before definitions)
-        # Also clear NULL tenant measurement results that reference demo definitions
-        safe_delete(MeasurementResult.objects.filter(tenant=tenant), "Measurement results (tenant)")
-        safe_delete(MeasurementResult.objects.filter(definition__tenant=tenant), "Measurement results (by definition)")
-        safe_delete(StepExecutionMeasurement.objects.filter(step_execution__tenant=tenant), "Step execution measurements")
-        safe_delete(QaApproval.objects.filter(tenant=tenant), "QA approvals")
-        # Also clear NULL tenant dispositions that reference demo quality reports through M2M
-        safe_delete(QuarantineDisposition.objects.filter(tenant=tenant), "Quarantine dispositions (tenant)")
-        safe_delete(QuarantineDisposition.objects.filter(quality_reports__tenant=tenant), "Quarantine dispositions (by QR)")
-        safe_delete(QualityReports.objects.filter(tenant=tenant), "Quality reports")
-        safe_delete(QualityErrorsList.objects.filter(tenant=tenant), "Quality errors")
-
-        # 3D models (annotations before models)
-        safe_delete(HeatMapAnnotations.objects.filter(tenant=tenant), "Heatmap annotations")
-        safe_delete(ThreeDModel.objects.filter(tenant=tenant), "3D models")
-
-        # Work tracking (MUST clear before Parts - also clear NULL tenant records)
-        safe_delete(StepRollback.objects.filter(tenant=tenant), "Step rollbacks (tenant)")
-        safe_delete(StepRollback.objects.filter(part__tenant=tenant), "Step rollbacks (by part)")
-        safe_delete(BatchRollback.objects.filter(tenant=tenant), "Batch rollbacks")
-        safe_delete(StepExecution.objects.filter(tenant=tenant), "Step executions (tenant)")
-        safe_delete(StepExecution.objects.filter(part__tenant=tenant), "Step executions (by part)")
-        safe_delete(StepTransitionLog.objects.filter(tenant=tenant), "Step transition logs (tenant)")
-        safe_delete(StepTransitionLog.objects.filter(part__tenant=tenant), "Step transition logs (by part)")
-        safe_delete(EquipmentUsage.objects.filter(tenant=tenant), "Equipment usage (tenant)")
-        safe_delete(EquipmentUsage.objects.filter(part__tenant=tenant), "Equipment usage (by part)")
-
-        # FPI records
-        safe_delete(FPIRecord.objects.filter(tenant=tenant), "FPI records")
-        safe_delete(FPIRecord.objects.filter(designated_part__tenant=tenant), "FPI records (by part)")
-
-        # Life tracking
-        safe_delete(LifeTracking.objects.filter(tenant=tenant), "Life tracking records")
-        safe_delete(PartTypeLifeLimit.objects.filter(tenant=tenant), "Part type life limits")
-        safe_delete(LifeLimitDefinition.objects.filter(tenant=tenant), "Life limit definitions")
-
-        # Reman
-        safe_delete(HarvestedComponent.objects.filter(tenant=tenant), "Harvested components")
-        safe_delete(Core.objects.filter(tenant=tenant), "Cores")
-        safe_delete(DisassemblyBOMLine.objects.filter(tenant=tenant), "Disassembly BOM lines")
-
-        # Parts and work orders (MUST clear before SamplingRule)
-        safe_delete(Parts.objects.filter(tenant=tenant), "Parts")
-        safe_delete(WorkOrder.objects.filter(tenant=tenant), "Work orders")
-
-        # Orders (after parts)
-        safe_delete(ExternalAPIOrderIdentifier.objects.filter(tenant=tenant), "External order identifiers")
-        safe_delete(Orders.objects.filter(tenant=tenant), "Orders")
-
-        # Sampling (AFTER Parts - Parts has FK to SamplingRule)
-        # Note: Some records may have NULL tenant but reference demo objects - clear by FK too
-        safe_delete(SamplingAnalytics.objects.filter(tenant=tenant), "Sampling analytics")
-        safe_delete(SamplingAuditLog.objects.filter(tenant=tenant), "Sampling audit logs (tenant)")
-        safe_delete(SamplingAuditLog.objects.filter(rule__tenant=tenant), "Sampling audit logs (by rule)")
-        safe_delete(SamplingAuditLog.objects.filter(rule__ruleset__tenant=tenant), "Sampling audit logs (by ruleset)")
-        safe_delete(SamplingTriggerState.objects.filter(tenant=tenant), "Sampling trigger states")
-        safe_delete(SamplingRule.objects.filter(tenant=tenant), "Sampling rules (tenant)")
-        safe_delete(SamplingRule.objects.filter(ruleset__tenant=tenant), "Sampling rules (by ruleset)")
-        safe_delete(SamplingRuleSet.objects.filter(tenant=tenant), "Sampling rule sets")
-
-        # Measurement definitions (after sampling rules which might reference them)
-        safe_delete(MeasurementDefinition.objects.filter(tenant=tenant), "Measurement definitions")
-
-        # SPC baselines
-        safe_delete(SPCBaseline.objects.filter(tenant=tenant), "SPC baselines")
-
-        # Process graph (edges before steps, steps before processes)
-        safe_delete(StepEdge.objects.filter(process__tenant=tenant), "Step edges")
-        safe_delete(ProcessStep.objects.filter(process__tenant=tenant), "Process steps")
-        safe_delete(Steps.objects.filter(tenant=tenant), "Steps")
-        safe_delete(Processes.objects.filter(tenant=tenant), "Processes")
-
-        # Documents
-        safe_delete(Documents.objects.filter(tenant=tenant), "Documents")
-        safe_delete(ApprovalTemplate.objects.filter(tenant=tenant), "Approval templates")
-        safe_delete(DocumentType.objects.filter(tenant=tenant), "Document types")
-
-        # Equipment
-        safe_delete(Equipments.objects.filter(tenant=tenant), "Equipment")
-        safe_delete(EquipmentType.objects.filter(tenant=tenant), "Equipment types")
-
-        # Part types
-        safe_delete(PartTypes.objects.filter(tenant=tenant), "Part types")
-
-        # Users and companies (last, as many things reference them)
-        # User roles and notifications (must clear before Users)
-        safe_delete(NotificationTask.objects.filter(recipient__tenant=tenant), "Notification tasks")
-        safe_delete(UserRole.objects.filter(user__tenant=tenant), "User roles")
-        safe_delete(User.objects.filter(tenant=tenant, is_superuser=False), "Users")
-        safe_delete(Companies.objects.filter(tenant=tenant), "Companies")
-
-        # Don't delete tenant - it has auto-seeded doc types/approval templates with protected FKs
-        # The tenant will be reused with fresh data
-        self.stdout.write(self.style.SUCCESS("  Demo tenant data cleared (tenant preserved for reuse)"))
+        self.stdout.write(self.style.SUCCESS("  Demo tenant data cleared (config preserved)"))
 
     def _seed_demo_tenant(self):
         """Seed demo tenant with deterministic preset data."""
