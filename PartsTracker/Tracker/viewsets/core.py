@@ -3,7 +3,6 @@ import os
 from typing import Any, Dict, List, Optional
 import pandas as pd
 from django.conf import settings
-from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.http import HttpResponse, FileResponse, Http404
@@ -26,7 +25,7 @@ from Tracker.models.core import User, Companies, UserInvitation, ApprovalTemplat
 from Tracker.serializers.core import (
     UserSerializer, UserSelectSerializer, UserDetailSerializer,
     TenantAwareUserDetailsSerializer,
-    CompanySerializer, GroupSerializer, UserInvitationSerializer,
+    CompanySerializer, UserInvitationSerializer,
     ContentTypeSerializer, AuditLogSerializer,
     ApprovalTemplateSerializer, ApprovalRequestSerializer, ApprovalResponseSerializer
 )
@@ -783,279 +782,6 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         return Response(payload)
 
 
-class GroupViewSet(viewsets.ModelViewSet):
-    """ViewSet for Django Groups with user and permission management"""
-    serializer_class = GroupSerializer
-    pagination_class = LimitOffsetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['name']
-    ordering_fields = ['name']
-    ordering = ['name']
-    http_method_names = ['get', 'post', 'patch', 'delete']  # No PUT
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Group.objects.none()
-
-        # Only staff users can see groups
-        if self.request.user and self.request.user.is_staff:
-            # prefetch_related prevents N+1 queries for M2M traversal in serializer
-            return Group.objects.all().prefetch_related('user_set', 'permissions')
-        return Group.objects.none()
-
-    def get_permissions(self):
-        """Only admins can modify groups"""
-        admin_actions = [
-            'create', 'update', 'partial_update', 'destroy',
-            'add_users', 'remove_users',
-            'add_permissions', 'remove_permissions', 'set_permissions'
-        ]
-        if self.action in admin_actions:
-            return [permissions.IsAdminUser()]
-        return [permissions.IsAuthenticated()]
-
-    @extend_schema(
-        request=inline_serializer(
-            name='GroupAddUsersInput',
-            fields={'user_ids': serializers.ListField(child=serializers.IntegerField())}
-        ),
-        responses={200: inline_serializer(
-            name='GroupAddUsersResponse',
-            fields={
-                'detail': serializers.CharField(),
-                'group': GroupSerializer()
-            }
-        )}
-    )
-    @action(detail=True, methods=['post'], url_path='add-users')
-    def add_users(self, request, pk=None):
-        """Add users to this group"""
-        group = self.get_object()
-        user_ids = request.data.get('user_ids', [])
-
-        if not user_ids:
-            return Response(
-                {"detail": "user_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        users = User.objects.filter(id__in=user_ids)
-        added_count = 0
-        tenant = request.user.tenant  # Use requesting user's tenant for group membership
-        for user in users:
-            if tenant and not user.has_tenant_group(group.name, tenant):
-                user.add_to_tenant_group(group, tenant=tenant, granted_by=request.user)
-                added_count += 1
-
-        return Response({
-            "detail": f"Added {added_count} users to group {group.name}",
-            "group": GroupSerializer(group).data
-        })
-
-    @extend_schema(
-        request=inline_serializer(
-            name='GroupRemoveUsersInput',
-            fields={'user_ids': serializers.ListField(child=serializers.IntegerField())}
-        ),
-        responses={200: inline_serializer(
-            name='GroupRemoveUsersResponse',
-            fields={
-                'detail': serializers.CharField(),
-                'group': GroupSerializer()
-            }
-        )}
-    )
-    @action(detail=True, methods=['post'], url_path='remove-users')
-    def remove_users(self, request, pk=None):
-        """Remove users from this group"""
-        group = self.get_object()
-        user_ids = request.data.get('user_ids', [])
-
-        if not user_ids:
-            return Response(
-                {"detail": "user_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        users = User.objects.filter(id__in=user_ids)
-        removed_count = 0
-        tenant = request.user.tenant  # Use requesting user's tenant for group membership
-        for user in users:
-            if tenant and user.has_tenant_group(group.name, tenant):
-                user.remove_from_tenant_group(group, tenant=tenant)
-                removed_count += 1
-
-        return Response({
-            "detail": f"Removed {removed_count} users from group {group.name}",
-            "group": GroupSerializer(group).data
-        })
-
-    @extend_schema(
-        responses={200: inline_serializer(
-            name='AvailableUserResponse',
-            fields={
-                'id': serializers.IntegerField(),
-                'email': serializers.EmailField(),
-                'first_name': serializers.CharField(),
-                'last_name': serializers.CharField(),
-                'groups': serializers.ListField(child=serializers.CharField())
-            },
-            many=True
-        )}
-    )
-    @action(detail=False, methods=['get'], url_path='available-users')
-    def available_users(self, request):
-        """Get all users available to add to groups"""
-        users = User.objects.filter(is_active=True).order_by('email')
-        tenant = request.user.tenant
-        return Response([
-            {
-                'id': user.id,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'groups': [g.name for g in user.get_tenant_groups(tenant)] if tenant else [],
-            }
-            for user in users
-        ])
-
-    @extend_schema(
-        responses={200: inline_serializer(
-            name='AvailablePermissionResponse',
-            fields={
-                'id': serializers.IntegerField(),
-                'codename': serializers.CharField(),
-                'name': serializers.CharField(),
-                'content_type': serializers.CharField(),
-            },
-            many=True
-        )}
-    )
-    @action(detail=False, methods=['get'], url_path='available-permissions', pagination_class=None)
-    def available_permissions(self, request):
-        """Get all available permissions that can be assigned to groups"""
-        # Filter to only Tracker app permissions (not django admin stuff)
-        permissions = Permission.objects.filter(
-            content_type__app_label='Tracker'
-        ).select_related('content_type').order_by('content_type__model', 'codename')
-
-        return Response([
-            {
-                'id': perm.id,
-                'codename': perm.codename,
-                'name': perm.name,
-                'content_type': perm.content_type.model,
-            }
-            for perm in permissions
-        ])
-
-    @extend_schema(
-        request=inline_serializer(
-            name='GroupAddPermissionsInput',
-            fields={'permission_ids': serializers.ListField(child=serializers.IntegerField())}
-        ),
-        responses={200: inline_serializer(
-            name='GroupAddPermissionsResponse',
-            fields={
-                'detail': serializers.CharField(),
-                'added_count': serializers.IntegerField(),
-                'group': GroupSerializer()
-            }
-        )}
-    )
-    @action(detail=True, methods=['post'], url_path='add-permissions')
-    def add_permissions(self, request, pk=None):
-        """Add permissions to this group"""
-        group = self.get_object()
-        permission_ids = request.data.get('permission_ids', [])
-
-        if not permission_ids:
-            return Response(
-                {"detail": "permission_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        permissions = Permission.objects.filter(id__in=permission_ids)
-        added_count = 0
-        for perm in permissions:
-            if not group.permissions.filter(id=perm.id).exists():
-                group.permissions.add(perm)
-                added_count += 1
-
-        return Response({
-            "detail": f"Added {added_count} permissions to group {group.name}",
-            "added_count": added_count,
-            "group": GroupSerializer(group).data
-        })
-
-    @extend_schema(
-        request=inline_serializer(
-            name='GroupRemovePermissionsInput',
-            fields={'permission_ids': serializers.ListField(child=serializers.IntegerField())}
-        ),
-        responses={200: inline_serializer(
-            name='GroupRemovePermissionsResponse',
-            fields={
-                'detail': serializers.CharField(),
-                'removed_count': serializers.IntegerField(),
-                'group': GroupSerializer()
-            }
-        )}
-    )
-    @action(detail=True, methods=['post'], url_path='remove-permissions')
-    def remove_permissions(self, request, pk=None):
-        """Remove permissions from this group"""
-        group = self.get_object()
-        permission_ids = request.data.get('permission_ids', [])
-
-        if not permission_ids:
-            return Response(
-                {"detail": "permission_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        permissions = Permission.objects.filter(id__in=permission_ids)
-        removed_count = 0
-        for perm in permissions:
-            if group.permissions.filter(id=perm.id).exists():
-                group.permissions.remove(perm)
-                removed_count += 1
-
-        return Response({
-            "detail": f"Removed {removed_count} permissions from group {group.name}",
-            "removed_count": removed_count,
-            "group": GroupSerializer(group).data
-        })
-
-    @extend_schema(
-        request=inline_serializer(
-            name='GroupSetPermissionsInput',
-            fields={'permission_ids': serializers.ListField(child=serializers.IntegerField())}
-        ),
-        responses={200: inline_serializer(
-            name='GroupSetPermissionsResponse',
-            fields={
-                'detail': serializers.CharField(),
-                'group': GroupSerializer()
-            }
-        )}
-    )
-    @action(detail=True, methods=['post'], url_path='set-permissions')
-    def set_permissions(self, request, pk=None):
-        """Replace all permissions on this group with the provided list"""
-        group = self.get_object()
-        permission_ids = request.data.get('permission_ids', [])
-
-        # Can set to empty list to clear all permissions
-        permissions = Permission.objects.filter(id__in=permission_ids)
-        group.permissions.set(permissions)
-
-        return Response({
-            "detail": f"Set {len(permission_ids)} permissions on group {group.name}",
-            "group": GroupSerializer(group).data
-        })
-
-
 class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
     queryset = Companies.unscoped.all()
@@ -1279,13 +1005,10 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
     def get_client_ip(self, request):
-        """Extract client IP address from request"""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
+        """Trusted client IP (edge-set header, not spoofable X-Forwarded-For).
+        Delegates to the shared resolver — see Tracker/throttling.py."""
+        from Tracker.throttling import get_client_ip as _trusted_client_ip
+        return _trusted_client_ip(request)
 
 
 # ===== DOCUMENT VIEWSETS =====
@@ -1780,8 +1503,19 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return LogEntry.objects.none()
 
-        # LogEntry doesn't have SecureManager, so use the base queryset
-        return self.queryset
+        # LogEntry has no tenant column (and no SecureManager), so scope by
+        # the acting user's tenant. Conservative by design: entries with no
+        # actor (system/service writes) are visible to superusers only —
+        # they can't be attributed to a tenant without joining every audited
+        # table, and showing them would leak other tenants' changes.
+        if self.request.user.is_superuser:
+            return self.queryset
+
+        tenant = getattr(self.request, 'tenant', None)
+        if not tenant:
+            return LogEntry.objects.none()
+
+        return self.queryset.filter(actor__tenant=tenant)
 
 
 # ===== APPROVAL WORKFLOW VIEWSETS =====
@@ -2380,6 +2114,79 @@ class ScopeView(viewsets.ViewSet):
 
 # ===== MEDIA SERVING FUNCTION =====
 
+# Media path prefixes that are intentionally public — tenant branding shown
+# pre-login (CurrentTenantView already exposes logo_url to anonymous callers).
+# Everything else requires an authenticated, authorized request.
+_PUBLIC_MEDIA_PREFIXES = ('tenant_logos/',)
+
+
+def _authorize_media_path(request, rel_path):
+    """Authorize a `/media/<rel_path>` read.
+
+    The media endpoint serves raw bytes outside the ORM/permission layer, so
+    we re-impose access control here by resolving the file back to its owning
+    record and checking the requester against it:
+
+    - Public branding prefixes (`tenant_logos/`) are open.
+    - Superusers / SaaS-vendor staff may read any tenant's files (support),
+      consistent with the rest of the system's staff bypass.
+    - Documents (incl. generated reports stored as Documents) go through the
+      full `for_user` gate (tenant + classification + export-control).
+    - 3D models and material-lot certificates require tenant membership.
+    - Any path not owned by a known record fails closed.
+    """
+    norm = rel_path.replace('\\', '/')
+    if any(norm.startswith(p) for p in _PUBLIC_MEDIA_PREFIXES):
+        return True
+
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+
+    from Tracker.models import Documents, ThreeDModel, MaterialLot, UserRole
+    from Tracker.utils.tenant_context import tenant_context
+
+    def can_reach(tenant):
+        if tenant is None:
+            return False
+        if getattr(user, 'tenant_id', None) == tenant.id:
+            return True
+        return UserRole.objects.filter(user=user, group__tenant=tenant).exists()
+
+    # Documents: full access gate (tenant + classification + export-control).
+    # tenant-safe: cross-tenant lookup to resolve the file's owning record;
+    # access is enforced immediately below via can_reach + Documents.for_user.
+    doc = Documents.all_tenants.filter(file=norm).first()
+    if doc is not None:
+        if not can_reach(doc.tenant):
+            return False
+        # for_user resolves perms against _current_tenant; set it to the doc's
+        # tenant so classification/relationship checks evaluate in the right
+        # tenant rather than the user's home tenant.
+        user._current_tenant = doc.tenant
+        with tenant_context(doc.tenant_id):
+            return Documents.objects.for_user(user).filter(pk=doc.pk).exists()
+
+    # 3D models — tenant membership is the bar.
+    # tenant-safe: cross-tenant lookup to resolve the file's owner; access is
+    # enforced immediately below via can_reach(tenant).
+    tm = ThreeDModel.all_tenants.filter(file=norm).first()
+    if tm is not None:
+        return can_reach(tm.tenant)
+
+    # Material-lot certificates of conformance.
+    # tenant-safe: cross-tenant lookup to resolve the file's owner; access is
+    # enforced immediately below via can_reach(tenant).
+    lot = MaterialLot.all_tenants.filter(certificate_of_conformance=norm).first()
+    if lot is not None:
+        return can_reach(lot.tenant)
+
+    # Unowned / unknown path — fail closed.
+    return False
+
+
 @xframe_options_exempt
 def serve_media_iframe_safe(request, path):
     """
@@ -2387,6 +2194,12 @@ def serve_media_iframe_safe(request, path):
 
     This function allows media files to be embedded in iframes from the frontend.
     It sets appropriate CSP and CORS headers based on FRONTEND_URL setting.
+
+    Access control: this endpoint serves bytes outside the ORM/permission
+    layer, so every request is authorized via `_authorize_media_path` (tenant +
+    classification + export-control). `/media/` is tenant-exempt in middleware,
+    but `request.user` is still set from the session by AuthenticationMiddleware,
+    so cookie-authenticated iframe/img loads authorize correctly.
     """
     import mimetypes
 
@@ -2397,6 +2210,10 @@ def serve_media_iframe_safe(request, path):
     real_path = os.path.realpath(full_path)
     media_root = os.path.realpath(settings.MEDIA_ROOT)
     if not real_path.startswith(media_root + os.sep) and real_path != media_root:
+        raise Http404()
+
+    # Authorize before disclosing existence — unauthorized reads 404.
+    if not _authorize_media_path(request, path):
         raise Http404()
 
     if not os.path.exists(full_path):

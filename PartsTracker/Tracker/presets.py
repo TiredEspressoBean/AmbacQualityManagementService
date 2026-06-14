@@ -9,6 +9,33 @@ Permission system:
 - Users without view_* permission fall back to Order relationship filtering
   (Order.customer and Order.viewers determine access)
 
+Policy (the whole file follows from these two rules):
+- **Customer is the only hard access boundary.** External portal users get
+  view-only access plus the handful of portal interactions they genuinely need
+  (responding to use-as-is approvals, AI chat), row-filtered to their own
+  orders. Everything else is internal.
+- **Internal roles are permissive by default.** Every internal "doer" role gets
+  the full view base plus broad add/change on operational records. The only
+  things held back are the named compliance sets below — each one states its
+  reason. If a permission isn't compliance-shaped, every doer role has it.
+
+Compliance holdbacks (the ONLY reasons an internal role lacks a permission):
+- Segregation of duties: approve/verify/close verbs + approver routing
+  (SOD_APPROVAL_PERMISSIONS) — QA Manager / Tenant Admin only.
+- Change control: authoring of processes, work instructions, specs, BOMs,
+  controlled docs (AUTHORING_PERMISSIONS) — engineering/manager tier.
+- Record retention: delete_ on operational records (MANAGER_DELETE_PERMISSIONS)
+  — manager tier; line roles void/supersede, never delete.
+- Export control / ITAR: classification + audit-log export
+  (COMPLIANCE_PERMISSIONS) — Tenant Admin + Document Controller.
+- Document classification: secret tier + classification authority — narrow.
+- Audit independence: Auditor is view-only, no classified tiers.
+- Access administration: users, groups, invitations, order viewers — admin /
+  manager tier.
+- Audit-record writes: none. Append-only audit tables (sampling audit log,
+  step transition log, equipment usage, approval responses) are enforced
+  immutable by DB triggers (setup_audit_triggers) — no role gets dead grants.
+
 Usage:
     from Tracker.presets import GROUP_PRESETS
 
@@ -22,17 +49,27 @@ Usage:
 """
 
 # =============================================================================
-# STANDARD VIEW PERMISSIONS - All staff can see everything
+# STAFF VIEW BASE - every internal role, INCLUDING Auditor, sees everything
 # =============================================================================
-# Philosophy: Everyone should be able to see what's happening in the system.
-# Write permissions are role-specific, but view permissions are universal for staff.
+# Philosophy: everyone internal should be able to see what's happening in the
+# system. Classified document tiers are the one exception (see
+# CLASSIFIED_DOCUMENT_VIEW below); the secret tier is narrower still.
 
 STAFF_VIEW_PERMISSIONS = [
+    # Export-your-own-views
+    'export_data',
     # Production
     'view_orders', 'view_workorder', 'view_parts', 'view_parttypes',
     'view_processes', 'view_steps', 'view_processstep', 'view_stepedge',
     'view_stepexecution', 'view_steptransitionlog', 'view_stepmeasurementrequirement',
     'view_companies', 'view_orderviewer', 'view_externalapiorderidentifier',
+    # DWI (digital work instructions)
+    'view_substep', 'view_substepcompletion', 'view_substepresource',
+    'view_substeptranslation', 'view_substepgatecompletion', 'view_substepresponse',
+    # Production exceptions & runtime records
+    'view_workorderhold', 'view_steprollback', 'view_batchrollback',
+    'view_stepoverride', 'view_fpirecord', 'view_batchexecution',
+    'view_steprequirement',
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
     'view_materiallot', 'view_materialusage', 'view_harvestedcomponent',
@@ -43,32 +80,280 @@ STAFF_VIEW_PERMISSIONS = [
     # Scheduling
     'view_workcenter', 'view_shift', 'view_scheduleslot', 'view_downtimeevent',
     'view_timeentry',
+    # Milestones & life tracking
+    'view_milestone', 'view_milestonetemplate',
+    'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
     # Quality
     'view_qualityreports', 'view_qualityerrorslist', 'view_qualityreportdefect',
     'view_qaapproval', 'view_quarantinedisposition',
+    'view_qualityreportequipment', 'view_qualityreportpersonnel',
     # CAPA & RCA
     'view_capa', 'view_capatasks', 'view_capataskassignee', 'view_capaverification',
     'view_rcarecord', 'view_fishbone', 'view_fivewhys', 'view_rootcause',
+    'view_capastatustransition',
     # Measurements & SPC
     'view_measurementresult', 'view_measurementdefinition', 'view_spcbaseline',
-    # Documents (not secret)
-    'view_documents', 'view_documenttype', 'view_confidential_documents',
+    'view_stepexecutionmeasurement',
+    # Documents (classified tiers live in CLASSIFIED_DOCUMENT_VIEW)
+    'view_documents', 'view_documenttype',
     # 3D Models & Annotations
     'view_threedmodel', 'view_heatmapannotations',
     # Approvals
     'view_approvaltemplate', 'view_approvalrequest', 'view_approvalresponse',
     'view_approverassignment', 'view_groupapproverassignment',
     # Sampling
-    'view_samplingrule', 'view_samplingruleset', 'view_samplinganalytics', 'view_samplingauditlog',
+    'view_samplingrule', 'view_samplingruleset', 'view_samplingdecision',
+    'view_samplinganalytics', 'view_samplingauditlog', 'view_samplingtriggerstate',
+    # Process Change Control
+    'view_processchangerequest', 'view_processchangeorder', 'view_processchangenotice',
     # Training
     'view_trainingrecord', 'view_trainingtype', 'view_trainingrequirement',
     # Reports
     'view_generatedreport',
     # AI Chat & Embeddings
     'view_chatsession', 'view_docchunk',
-    # Admin/Config (view only)
+    # Notifications (config is admin-managed; everyone can see what's configured)
+    'view_notificationrule', 'view_notificationschedule',
+    # Audit & traceability (viewing is universal; exporting is compliance-gated)
+    # `view_logentry` is the django-auditlog perm the /api/auditlog/ endpoint
+    # actually enforces (TenantModelPermissions derives it from the LogEntry
+    # model); `view_auditlog` is the Tracker-side marker. Grant both.
+    'view_auditlog', 'view_logentry', 'view_recordedit', 'view_permissionchangelog',
+    # Admin/Config (view only) — group/role *membership* is readable by all
+    # staff (the endpoints already allow it); managing it stays admin-only.
     'view_facility', 'view_archivereason', 'view_user', 'view_userinvitation',
-    'view_permissionchangelog',
+    'view_tenantgroup', 'view_userrole',
+]
+
+# Classified technical data (confidential + restricted tiers). All internal
+# doer roles — the floor needs restricted technical documents to do the work.
+# NOT Auditor (audit independence / export-control: external auditors may not
+# be authorized persons) and NOT Customer. The secret tier and classification
+# authority are granted per-role below.
+CLASSIFIED_DOCUMENT_VIEW = [
+    'view_confidential_documents', 'view_restricted_documents',
+]
+
+# =============================================================================
+# STAFF OPERATIONAL WRITE - broad add/change for every internal doer role
+# =============================================================================
+# Philosophy: internal roles are trusted; over-granting operational capability
+# is preferable to a role hitting a 403 mid-task. Anything add/change on an
+# operational record is here. What is NOT here (and why):
+#   - delete_ on records        -> MANAGER_DELETE_PERMISSIONS (retention)
+#   - authoring of definitions  -> AUTHORING_PERMISSIONS (change control)
+#   - approve/verify/close      -> SOD_APPROVAL_PERMISSIONS (segregation of duties)
+#   - export control, secret docs, access admin, notification config -> below
+# Append-only audit models (recordedit, capastatustransition, ...) have no
+# write grants anywhere — enforced by test_permission_coverage.py + DB triggers.
+
+STAFF_OPERATIONAL_WRITE = [
+    # Production records
+    'add_orders', 'change_orders',
+    'add_workorder', 'change_workorder',
+    'add_parts', 'change_parts',
+    'add_stepexecution', 'change_stepexecution',
+    # (steptransitionlog is service-written and DB-immutable — view only)
+    # Production exceptions
+    'add_workorderhold', 'change_workorderhold',
+    'add_steprollback', 'change_steprollback',
+    'add_batchrollback', 'change_batchrollback',
+    'add_stepoverride', 'change_stepoverride',
+    'add_fpirecord', 'change_fpirecord',
+    'add_batchexecution', 'change_batchexecution',
+    'add_steprequirement', 'change_steprequirement',
+    # DWI runtime — completions + per-node responses + gate completions
+    'add_substepcompletion', 'change_substepcompletion',
+    'add_substepgatecompletion', 'change_substepgatecompletion',
+    'add_substepresponse', 'change_substepresponse',
+    # Reman — receive + work cores, grade harvested components
+    'add_core', 'change_core',
+    'start_disassembly', 'complete_disassembly', 'scrap_core',
+    'grade_component', 'accept_component', 'reject_component',
+    'add_harvestedcomponent', 'change_harvestedcomponent',
+    # Materials & BOM usage
+    'add_materiallot', 'change_materiallot',
+    'add_materialusage', 'change_materialusage',
+    'add_assemblyusage', 'change_assemblyusage',
+    # Equipment & Calibration (equipmentusage rows are DB-immutable once
+    # written — add only, no change)
+    'add_equipments', 'change_equipments',
+    'add_equipmenttype', 'change_equipmenttype',
+    'add_equipmentusage',
+    'add_calibrationrecord', 'change_calibrationrecord',
+    # Scheduling & time
+    'add_workcenter', 'change_workcenter',
+    'add_shift', 'change_shift',
+    'add_scheduleslot', 'change_scheduleslot',
+    'add_downtimeevent', 'change_downtimeevent',
+    'add_timeentry', 'change_timeentry',
+    # Milestones & life tracking
+    'add_milestone', 'change_milestone',
+    'add_milestonetemplate', 'change_milestonetemplate',
+    'add_lifelimitdefinition', 'change_lifelimitdefinition',
+    'add_parttypelifelimit', 'change_parttypelifelimit',
+    'add_lifetracking', 'change_lifetracking',
+    # Quality records
+    'add_qualityreports', 'change_qualityreports',
+    'add_qualityerrorslist', 'change_qualityerrorslist',
+    'add_qualityreportdefect', 'change_qualityreportdefect',
+    'add_qaapproval', 'change_qaapproval',
+    'add_quarantinedisposition', 'change_quarantinedisposition',
+    'add_qualityreportequipment', 'change_qualityreportequipment',
+    'add_qualityreportpersonnel', 'change_qualityreportpersonnel',
+    # CAPA & RCA — anyone can raise and work; approval verbs are SoD-gated
+    'add_capa', 'change_capa', 'initiate_capa',
+    'add_capatasks', 'change_capatasks',
+    'add_capataskassignee', 'change_capataskassignee',
+    'add_capaverification', 'change_capaverification',
+    'add_rcarecord', 'change_rcarecord', 'conduct_rca',
+    'add_fishbone', 'change_fishbone',
+    'add_fivewhys', 'change_fivewhys',
+    'add_rootcause', 'change_rootcause',
+    # Measurements & SPC — operators record step measurements via the
+    # bulk-record endpoint (POST → add_); change/delete stay immutable
+    'add_measurementresult', 'change_measurementresult',
+    'add_stepexecutionmeasurement',
+    'add_spcbaseline', 'change_spcbaseline',
+    # Documents & 3D — records in/out; deletion + classification are gated
+    'add_documents', 'change_documents',
+    'add_threedmodel', 'change_threedmodel',
+    'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations',
+    # Reports
+    'add_generatedreport', 'change_generatedreport',
+    # Approvals — route for approval + respond; workflow admin is gated.
+    # Responses are e-signature records: DB-immutable once written (add only;
+    # delegation is a crud-exempt action gated on respond_to_approval).
+    'add_approvalrequest', 'change_approvalrequest',
+    'add_approvalresponse',
+    'respond_to_approval',
+    # Sampling — rules editable by quality doers today; deletes are manager-tier
+    'add_samplingrule', 'change_samplingrule',
+    'add_samplingruleset', 'change_samplingruleset',
+    'add_samplinganalytics', 'change_samplinganalytics',
+    # Process change — anyone can raise/edit/submit a change request. Note:
+    # the `propose` action also requires add_processes (it forks a draft
+    # process), and approve/reject additionally gate on change_processes —
+    # so deciding a PCR stays with authoring roles even though the PCR row
+    # itself is broadly writable.
+    'add_processchangerequest', 'change_processchangerequest',
+    # Training
+    'add_trainingrecord', 'change_trainingrecord',
+    # Master data & config (not compliance-shaped)
+    'add_companies', 'change_companies',
+    'add_externalapiorderidentifier', 'change_externalapiorderidentifier',
+    'add_facility', 'change_facility',
+    'add_archivereason', 'change_archivereason',
+    # AI Chat (own sessions)
+    'add_chatsession', 'change_chatsession', 'delete_chatsession',
+]
+
+# =============================================================================
+# COMPLIANCE HOLDBACK SETS
+# =============================================================================
+
+# Change control: authoring of processes, work instructions, specs, BOM
+# definitions, controlled document types, approval workflows. Engineering +
+# manager tier + Document Controller. Line roles execute these definitions;
+# they don't author them. Authors also delete their own draft artifacts.
+AUTHORING_PERMISSIONS = [
+    # Process & step definitions
+    'add_processes', 'change_processes', 'delete_processes',
+    'add_steps', 'change_steps', 'delete_steps',
+    'add_processstep', 'change_processstep', 'delete_processstep',
+    'add_stepedge', 'change_stepedge', 'delete_stepedge',
+    # DWI substep authoring
+    'add_substep', 'change_substep', 'delete_substep',
+    'add_substepresource', 'change_substepresource', 'delete_substepresource',
+    'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation',
+    # Specs
+    'add_parttypes', 'change_parttypes', 'delete_parttypes',
+    'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition',
+    'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement',
+    # BOM definitions
+    'add_bom', 'change_bom', 'delete_bom',
+    'add_bomline', 'change_bomline', 'delete_bomline',
+    'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline',
+    # Controlled documents — deletion + categories (add/change of documents is broad)
+    'delete_documents', 'delete_threedmodel',
+    'add_documenttype', 'change_documenttype', 'delete_documenttype',
+    # Approval workflow authoring
+    'add_approvaltemplate', 'change_approvaltemplate', 'delete_approvaltemplate',
+    'create_approval_template', 'manage_approval_workflow',
+    # Training program definitions
+    'add_trainingtype', 'change_trainingtype', 'delete_trainingtype',
+    'add_trainingrequirement', 'change_trainingrequirement', 'delete_trainingrequirement',
+    # AI embedding pipeline (document-derived)
+    'add_docchunk', 'change_docchunk', 'delete_docchunk',
+    # Process change control — PCO/PCN lifecycle; PCR proposing is broad
+    'delete_processchangerequest',
+    'add_processchangeorder', 'change_processchangeorder', 'delete_processchangeorder',
+    'add_processchangenotice', 'change_processchangenotice', 'delete_processchangenotice',
+]
+
+# Segregation of duties: e-signature approve/verify/close verbs + approver
+# routing. QA Manager + Tenant Admin only — the person doing the work must not
+# be the person who can approve it.
+# NOTE: `approve_own_qualityreports` ("Can approve own quality reports") is
+# deliberately granted to NO role — it is a license to self-approve, which is
+# exactly what this set exists to prevent. See test_permission_coverage.py.
+SOD_APPROVAL_PERMISSIONS = [
+    'approve_qualityreports',
+    'approve_capa', 'close_capa', 'verify_capa',
+    'review_rca',
+    'approve_disposition', 'close_disposition',
+    # Approver routing — who is eligible to approve what
+    'add_approverassignment', 'change_approverassignment', 'delete_approverassignment',
+    'add_groupapproverassignment', 'change_groupapproverassignment', 'delete_groupapproverassignment',
+]
+
+# Record retention: deleting operational records is manager-tier only. Line
+# roles void / supersede / archive, never delete. (Authoring artifacts delete
+# via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
+# see test_permission_coverage.py.)
+MANAGER_DELETE_PERMISSIONS = [
+    'delete_orders', 'delete_workorder', 'delete_parts',
+    'delete_stepexecution',
+    'delete_substepcompletion', 'delete_substepgatecompletion', 'delete_substepresponse',
+    'delete_core', 'delete_harvestedcomponent',
+    'delete_materiallot', 'delete_materialusage', 'delete_assemblyusage',
+    'delete_equipments', 'delete_equipmenttype',
+    'delete_calibrationrecord',
+    'delete_workcenter', 'delete_shift', 'delete_scheduleslot',
+    'delete_downtimeevent', 'delete_timeentry',
+    'delete_qualityreports', 'delete_qualityerrorslist', 'delete_qualityreportdefect',
+    'delete_qaapproval', 'delete_quarantinedisposition',
+    'delete_capa', 'delete_capatasks', 'delete_capataskassignee', 'delete_capaverification',
+    'delete_rcarecord', 'delete_fishbone', 'delete_fivewhys', 'delete_rootcause',
+    'delete_measurementresult', 'delete_spcbaseline',
+    'delete_generatedreport',
+    'delete_approvalrequest',
+    'delete_samplingrule', 'delete_samplingruleset', 'delete_samplinganalytics',
+    'delete_trainingrecord',
+    'delete_companies', 'delete_externalapiorderidentifier',
+    'delete_facility', 'delete_archivereason',
+]
+
+# Access administration: who can see which orders, who joins the team.
+# Manager tier (QA + Production) + Tenant Admin.
+TEAM_ACCESS_ADMIN_PERMISSIONS = [
+    'add_userinvitation', 'change_userinvitation', 'delete_userinvitation',
+    'add_orderviewer', 'change_orderviewer', 'delete_orderviewer',
+]
+
+# ITAR / export-control declaration + audit-log export. Compliance roles only
+# (Tenant Admin + Document Controller). A line operator must NOT be able to
+# (re)classify export-controlled technical data or pull the audit log.
+COMPLIANCE_PERMISSIONS = [
+    'verify_export_control', 'change_export_classification', 'export_auditlog',
+]
+
+# Notification rule/schedule management = tenant configuration. Tenant Admin +
+# the manager roles (Production / QA) for their domains. NOT line roles.
+NOTIFICATION_ADMIN_PERMISSIONS = [
+    'edit_notification_rules', 'edit_notification_schedules',
+    'add_notificationrule', 'change_notificationrule',
+    'add_notificationschedule', 'change_notificationschedule',
 ]
 
 # =============================================================================
@@ -81,6 +366,10 @@ STAFF_VIEW_PERMISSIONS = [
 #
 # Data filtering: Users with view_* permissions see all data of that type.
 # Users without view_* permissions fall back to Order relationship filtering.
+#
+# Internal roles = base sets + compliance holdbacks they qualify for + a small
+# per-role delta. If you're adding a permission, prefer adding it to the right
+# shared set over a role's delta.
 
 GROUP_PRESETS = {
     # -------------------------------------------------------------------------
@@ -99,121 +388,25 @@ GROUP_PRESETS = {
         'name': 'Tenant Admin',
         'description': 'Tenant administrator - full access within their organization',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            *AUTHORING_PERMISSIONS,
+            *SOD_APPROVAL_PERMISSIONS,
+            *MANAGER_DELETE_PERMISSIONS,
+            *TEAM_ACCESS_ADMIN_PERMISSIONS,
+            *NOTIFICATION_ADMIN_PERMISSIONS,
+            *COMPLIANCE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # User management within tenant
-            'add_user', 'change_user', 'delete_user', 'view_user',
-            'add_userinvitation', 'change_userinvitation', 'delete_userinvitation', 'view_userinvitation',
-            'add_userrole', 'change_userrole', 'delete_userrole', 'view_userrole',
+            # Secret document tier + classification authority
+            'view_secret_documents', 'classify_documents',
+            # User management within tenant (view perms come from the staff
+            # view base; membership is the UserRole model)
+            'add_user', 'change_user', 'delete_user',
+            'add_userrole', 'change_userrole', 'delete_userrole',
             # Group management within tenant
-            'add_tenantgroup', 'change_tenantgroup', 'delete_tenantgroup', 'view_tenantgroup',
-            'add_tenantgroupmembership', 'change_tenantgroupmembership', 'delete_tenantgroupmembership', 'view_tenantgroupmembership',
-            # Facility management
-            'add_facility', 'change_facility', 'delete_facility', 'view_facility',
-            # Archive reasons
-            'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
-            # View permission audit logs
-            'view_permissionchangelog',
-            # Full production access
-            'add_orders', 'change_orders', 'delete_orders', 'view_orders',
-            'add_workorder', 'change_workorder', 'delete_workorder', 'view_workorder',
-            'add_parts', 'change_parts', 'delete_parts', 'view_parts',
-            'add_parttypes', 'change_parttypes', 'delete_parttypes', 'view_parttypes',
-            'add_processes', 'change_processes', 'delete_processes', 'view_processes',
-            'add_steps', 'change_steps', 'delete_steps', 'view_steps',
-            'add_processstep', 'change_processstep', 'delete_processstep', 'view_processstep',
-            'add_stepedge', 'change_stepedge', 'delete_stepedge', 'view_stepedge',
-            'add_stepexecution', 'change_stepexecution', 'delete_stepexecution', 'view_stepexecution',
-            'add_steptransitionlog', 'change_steptransitionlog', 'delete_steptransitionlog', 'view_steptransitionlog',
-            'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement', 'view_stepmeasurementrequirement',
-            # DWI substep layer (Phase 1 — model CRUD; custom action perms added in later phases)
-            'add_substep', 'change_substep', 'delete_substep', 'view_substep',
-            'add_substepcompletion', 'change_substepcompletion', 'delete_substepcompletion', 'view_substepcompletion',
-            'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
-            'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
-            'add_substepgatecompletion', 'change_substepgatecompletion', 'delete_substepgatecompletion', 'view_substepgatecompletion',
-            'add_substepresponse', 'change_substepresponse', 'delete_substepresponse', 'view_substepresponse',
-            'add_companies', 'change_companies', 'delete_companies', 'view_companies',
-            'add_orderviewer', 'change_orderviewer', 'delete_orderviewer', 'view_orderviewer',
-            'add_externalapiorderidentifier', 'change_externalapiorderidentifier', 'delete_externalapiorderidentifier', 'view_externalapiorderidentifier',
-            # Full BOM & Materials
-            'add_bom', 'change_bom', 'delete_bom', 'view_bom',
-            'add_bomline', 'change_bomline', 'delete_bomline', 'view_bomline',
-            'add_assemblyusage', 'change_assemblyusage', 'delete_assemblyusage', 'view_assemblyusage',
-            'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
-            'add_materiallot', 'change_materiallot', 'delete_materiallot', 'view_materiallot',
-            'add_materialusage', 'change_materialusage', 'delete_materialusage', 'view_materialusage',
-            'add_harvestedcomponent', 'change_harvestedcomponent', 'delete_harvestedcomponent', 'view_harvestedcomponent',
-            # Reman cores — CRUD plus the Core-defined custom perms
-            'add_core', 'change_core', 'delete_core', 'view_core',
-            'start_disassembly', 'complete_disassembly', 'scrap_core',
-            # Full Equipment & Calibration
-            'add_equipments', 'change_equipments', 'delete_equipments', 'view_equipments',
-            'add_equipmenttype', 'change_equipmenttype', 'delete_equipmenttype', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'delete_equipmentusage', 'view_equipmentusage',
-            'add_calibrationrecord', 'change_calibrationrecord', 'delete_calibrationrecord', 'view_calibrationrecord',
-            # Full Scheduling
-            'add_workcenter', 'change_workcenter', 'delete_workcenter', 'view_workcenter',
-            'add_shift', 'change_shift', 'delete_shift', 'view_shift',
-            'add_scheduleslot', 'change_scheduleslot', 'delete_scheduleslot', 'view_scheduleslot',
-            'add_downtimeevent', 'change_downtimeevent', 'delete_downtimeevent', 'view_downtimeevent',
-            'add_timeentry', 'change_timeentry', 'delete_timeentry', 'view_timeentry',
-            # Full Quality
-            'add_qualityreports', 'change_qualityreports', 'delete_qualityreports', 'view_qualityreports',
-            'approve_qualityreports', 'approve_own_qualityreports',
-            'add_qualityerrorslist', 'change_qualityerrorslist', 'delete_qualityerrorslist', 'view_qualityerrorslist',
-            'add_qualityreportdefect', 'change_qualityreportdefect', 'delete_qualityreportdefect', 'view_qualityreportdefect',
-            'add_qaapproval', 'change_qaapproval', 'delete_qaapproval', 'view_qaapproval',
-            'add_quarantinedisposition', 'change_quarantinedisposition', 'delete_quarantinedisposition', 'view_quarantinedisposition',
-            'approve_disposition', 'close_disposition',
-            # Full CAPA & RCA
-            'add_capa', 'change_capa', 'delete_capa', 'view_capa',
-            'initiate_capa', 'approve_capa', 'close_capa', 'verify_capa',
-            'add_capatasks', 'change_capatasks', 'delete_capatasks', 'view_capatasks',
-            'add_capataskassignee', 'change_capataskassignee', 'delete_capataskassignee', 'view_capataskassignee',
-            'add_capaverification', 'change_capaverification', 'delete_capaverification', 'view_capaverification',
-            'add_rcarecord', 'change_rcarecord', 'delete_rcarecord', 'view_rcarecord',
-            'conduct_rca', 'review_rca',
-            'add_fishbone', 'change_fishbone', 'delete_fishbone', 'view_fishbone',
-            'add_fivewhys', 'change_fivewhys', 'delete_fivewhys', 'view_fivewhys',
-            'add_rootcause', 'change_rootcause', 'delete_rootcause', 'view_rootcause',
-            # Full Measurements & SPC
-            'add_measurementresult', 'change_measurementresult', 'delete_measurementresult', 'view_measurementresult',
-            'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition', 'view_measurementdefinition',
-            'add_spcbaseline', 'change_spcbaseline', 'delete_spcbaseline', 'view_spcbaseline',
-            # Full Documents (including secret)
-            'add_documents', 'change_documents', 'delete_documents', 'view_documents',
-            'view_confidential_documents', 'view_restricted_documents', 'view_secret_documents',
-            'classify_documents',
-            'add_documenttype', 'change_documenttype', 'delete_documenttype', 'view_documenttype',
-            # Full 3D Models & Annotations
-            'add_threedmodel', 'change_threedmodel', 'delete_threedmodel', 'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations', 'view_heatmapannotations',
-            # Full Approvals
-            'add_approvaltemplate', 'change_approvaltemplate', 'delete_approvaltemplate', 'view_approvaltemplate',
-            'add_approvalrequest', 'change_approvalrequest', 'delete_approvalrequest', 'view_approvalrequest',
-            'add_approvalresponse', 'change_approvalresponse', 'delete_approvalresponse', 'view_approvalresponse',
-            'create_approval_template', 'manage_approval_workflow', 'respond_to_approval',
-            'add_approverassignment', 'change_approverassignment', 'delete_approverassignment', 'view_approverassignment',
-            'add_groupapproverassignment', 'change_groupapproverassignment', 'delete_groupapproverassignment', 'view_groupapproverassignment',
-            # Full Sampling
-            'add_samplingrule', 'change_samplingrule', 'delete_samplingrule', 'view_samplingrule',
-            'add_samplingruleset', 'change_samplingruleset', 'delete_samplingruleset', 'view_samplingruleset',
-            'add_samplinganalytics', 'change_samplinganalytics', 'delete_samplinganalytics', 'view_samplinganalytics',
-            'add_samplingauditlog', 'change_samplingauditlog', 'delete_samplingauditlog', 'view_samplingauditlog',
-            # Full Training
-            'add_trainingrecord', 'change_trainingrecord', 'delete_trainingrecord', 'view_trainingrecord',
-            'add_trainingtype', 'change_trainingtype', 'delete_trainingtype', 'view_trainingtype',
-            'add_trainingrequirement', 'change_trainingrequirement', 'delete_trainingrequirement', 'view_trainingrequirement',
-            # Full Reports
-            'add_generatedreport', 'change_generatedreport', 'delete_generatedreport', 'view_generatedreport',
-            # Full AI Chat & Embeddings
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            'add_docchunk', 'change_docchunk', 'delete_docchunk', 'view_docchunk',
-            # Process Change Control - full PCR/PCO/PCN lifecycle
-            'add_processchangerequest', 'change_processchangerequest', 'delete_processchangerequest', 'view_processchangerequest',
-            'add_processchangeorder', 'change_processchangeorder', 'delete_processchangeorder', 'view_processchangeorder',
-            'add_processchangenotice', 'change_processchangenotice', 'delete_processchangenotice', 'view_processchangenotice',
+            'add_tenantgroup', 'change_tenantgroup', 'delete_tenantgroup',
         ],
     },
 
@@ -224,94 +417,18 @@ GROUP_PRESETS = {
         'name': 'QA Manager',
         'description': 'Quality management, approvals, CAPA control',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            *AUTHORING_PERMISSIONS,
+            *SOD_APPROVAL_PERMISSIONS,
+            *MANAGER_DELETE_PERMISSIONS,
+            *TEAM_ACCESS_ADMIN_PERMISSIONS,
+            *NOTIFICATION_ADMIN_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Quality Reports - full CRUD + approval
-            'add_qualityreports', 'change_qualityreports', 'delete_qualityreports', 'view_qualityreports',
-            'approve_qualityreports', 'approve_own_qualityreports',
-            'add_qualityerrorslist', 'change_qualityerrorslist', 'delete_qualityerrorslist', 'view_qualityerrorslist',
-            'add_qualityreportdefect', 'change_qualityreportdefect', 'delete_qualityreportdefect', 'view_qualityreportdefect',
-            # QA Approval records
-            'add_qaapproval', 'change_qaapproval', 'delete_qaapproval', 'view_qaapproval',
-            # CAPA - full CRUD + workflow
-            'add_capa', 'change_capa', 'delete_capa', 'view_capa',
-            'initiate_capa', 'approve_capa', 'close_capa', 'verify_capa',
-            'add_capaverification', 'change_capaverification', 'delete_capaverification', 'view_capaverification',
-            'add_capatasks', 'change_capatasks', 'delete_capatasks', 'view_capatasks',
-            'add_capataskassignee', 'change_capataskassignee', 'delete_capataskassignee', 'view_capataskassignee',
-            # RCA - full control
-            'add_rcarecord', 'change_rcarecord', 'delete_rcarecord', 'view_rcarecord',
-            'conduct_rca', 'review_rca',
-            'add_fishbone', 'change_fishbone', 'delete_fishbone', 'view_fishbone',
-            'add_fivewhys', 'change_fivewhys', 'delete_fivewhys', 'view_fivewhys',
-            'add_rootcause', 'change_rootcause', 'delete_rootcause', 'view_rootcause',
-            # Dispositions - full CRUD
-            'add_quarantinedisposition', 'change_quarantinedisposition', 'delete_quarantinedisposition', 'view_quarantinedisposition',
-            'approve_disposition', 'close_disposition',
-            # Measurements & SPC
-            'add_measurementresult', 'change_measurementresult', 'delete_measurementresult', 'view_measurementresult',
-            'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition', 'view_measurementdefinition',
-            'add_spcbaseline', 'change_spcbaseline', 'delete_spcbaseline', 'view_spcbaseline',
-            # Step measurement requirements
-            'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement', 'view_stepmeasurementrequirement',
-            # Documents - full including classified
-            'add_documents', 'change_documents', 'delete_documents', 'view_documents',
-            'view_confidential_documents', 'view_restricted_documents',
+            # Classification authority (no secret tier)
             'classify_documents',
-            'add_documenttype', 'change_documenttype', 'delete_documenttype', 'view_documenttype',
-            # 3D Models & Annotations
-            'add_threedmodel', 'change_threedmodel', 'delete_threedmodel', 'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations', 'view_heatmapannotations',
-            # Approvals - full workflow control
-            'add_approvaltemplate', 'change_approvaltemplate', 'delete_approvaltemplate', 'view_approvaltemplate',
-            'add_approvalrequest', 'change_approvalrequest', 'delete_approvalrequest', 'view_approvalrequest',
-            'add_approvalresponse', 'change_approvalresponse', 'delete_approvalresponse', 'view_approvalresponse',
-            'create_approval_template', 'manage_approval_workflow', 'respond_to_approval',
-            # Approver assignments
-            'add_approverassignment', 'change_approverassignment', 'delete_approverassignment', 'view_approverassignment',
-            'add_groupapproverassignment', 'change_groupapproverassignment', 'delete_groupapproverassignment', 'view_groupapproverassignment',
-            # Generated Reports
-            'add_generatedreport', 'change_generatedreport', 'delete_generatedreport', 'view_generatedreport',
-            # Training Management
-            'add_trainingrecord', 'change_trainingrecord', 'delete_trainingrecord', 'view_trainingrecord',
-            'add_trainingtype', 'change_trainingtype', 'delete_trainingtype', 'view_trainingtype',
-            'add_trainingrequirement', 'change_trainingrequirement', 'delete_trainingrequirement', 'view_trainingrequirement',
-            # Calibration
-            'add_calibrationrecord', 'change_calibrationrecord', 'delete_calibrationrecord', 'view_calibrationrecord',
-            # Equipment
-            'add_equipments', 'change_equipments', 'delete_equipments', 'view_equipments',
-            'add_equipmenttype', 'change_equipmenttype', 'delete_equipmenttype', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'delete_equipmentusage', 'view_equipmentusage',
-            # Production - full view + some edit
-            'add_orders', 'change_orders', 'delete_orders', 'view_orders',
-            'add_parts', 'change_parts', 'delete_parts', 'view_parts',
-            'add_workorder', 'change_workorder', 'delete_workorder', 'view_workorder',
-            'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies', 'view_core',
-            'view_steptransitionlog',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # Sampling - full control including analytics
-            'add_samplingrule', 'change_samplingrule', 'delete_samplingrule', 'view_samplingrule',
-            'add_samplingruleset', 'change_samplingruleset', 'delete_samplingruleset', 'view_samplingruleset',
-            'add_samplinganalytics', 'change_samplinganalytics', 'delete_samplinganalytics', 'view_samplinganalytics',
-            'add_samplingauditlog', 'change_samplingauditlog', 'delete_samplingauditlog', 'view_samplingauditlog',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'add_docchunk', 'change_docchunk', 'delete_docchunk', 'view_docchunk',
-            # Facilities - full control
-            'add_facility', 'change_facility', 'delete_facility', 'view_facility',
-            # Users (view team members)
-            'view_user',
-            # User invitations - can invite team members
-            'add_userinvitation', 'change_userinvitation', 'delete_userinvitation', 'view_userinvitation',
-            # Archive reasons - full control
-            'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
-            # Process Change Control - approve PCRs, manage PCO/PCN lifecycle
-            'add_processchangerequest', 'change_processchangerequest', 'delete_processchangerequest', 'view_processchangerequest',
-            'add_processchangeorder', 'change_processchangeorder', 'delete_processchangeorder', 'view_processchangeorder',
-            'add_processchangenotice', 'change_processchangenotice', 'delete_processchangenotice', 'view_processchangenotice',
         ],
     },
 
@@ -322,75 +439,11 @@ GROUP_PRESETS = {
         'name': 'QA Inspector',
         'description': 'Perform inspections, create quality reports, initiate CAPAs',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Quality Reports - full working access
-            'add_qualityreports', 'change_qualityreports', 'delete_qualityreports', 'view_qualityreports',
-            'add_qualityerrorslist', 'change_qualityerrorslist', 'view_qualityerrorslist',
-            'add_qualityreportdefect', 'change_qualityreportdefect', 'view_qualityreportdefect',
-            # QA Approval records
-            'add_qaapproval', 'change_qaapproval', 'view_qaapproval',
-            # CAPA - can initiate and work on
-            'add_capa', 'change_capa', 'view_capa',
-            'initiate_capa',
-            'add_capaverification', 'change_capaverification', 'view_capaverification',
-            'add_capatasks', 'change_capatasks', 'view_capatasks',
-            'add_capataskassignee', 'change_capataskassignee', 'view_capataskassignee',
-            # RCA - can conduct
-            'add_rcarecord', 'change_rcarecord', 'view_rcarecord',
-            'conduct_rca',
-            'add_fishbone', 'change_fishbone', 'view_fishbone',
-            'add_fivewhys', 'change_fivewhys', 'view_fivewhys',
-            'add_rootcause', 'change_rootcause', 'view_rootcause',
-            # Dispositions
-            'add_quarantinedisposition', 'change_quarantinedisposition', 'view_quarantinedisposition',
-            # Measurements & SPC
-            'add_measurementresult', 'change_measurementresult', 'view_measurementresult',
-            'view_measurementdefinition',
-            'add_spcbaseline', 'change_spcbaseline', 'view_spcbaseline',
-            # Step measurement requirements
-            'view_stepmeasurementrequirement',
-            # Calibration
-            'add_calibrationrecord', 'change_calibrationrecord', 'view_calibrationrecord',
-            # 3D Models & Annotations
-            'add_threedmodel', 'change_threedmodel', 'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations', 'view_heatmapannotations',
-            # Generated Reports
-            'add_generatedreport', 'change_generatedreport', 'view_generatedreport',
-            # Production - view + change parts
-            'view_orders', 'change_parts', 'view_parts', 'view_workorder',
-            'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies', 'view_core', 'view_equipments', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
-            'view_steptransitionlog',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # Documents
-            'add_documents', 'change_documents', 'view_documents',
-            'view_confidential_documents',
-            # Approvals - can respond
-            'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
-            'respond_to_approval',
-            'view_approverassignment',
-            # Sampling
-            'add_samplingrule', 'change_samplingrule', 'view_samplingrule',
-            'add_samplingruleset', 'change_samplingruleset', 'view_samplingruleset',
-            'view_samplinganalytics',
-            # Training
-            'add_trainingrecord', 'change_trainingrecord', 'view_trainingrecord',
-            'view_trainingrequirement', 'view_trainingtype',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities
-            'add_facility', 'change_facility', 'view_facility',
-            # Archive reasons
-            'view_archivereason',
-            # Process Change Control - view PCR/PCO/PCN (read-only, can't propose changes)
-            'view_processchangerequest',
-            'view_processchangeorder',
-            'view_processchangenotice',
         ],
     },
 
@@ -401,102 +454,15 @@ GROUP_PRESETS = {
         'name': 'Production Manager',
         'description': 'Manage production operations, work orders, scheduling',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            *AUTHORING_PERMISSIONS,
+            *MANAGER_DELETE_PERMISSIONS,
+            *TEAM_ACCESS_ADMIN_PERMISSIONS,
+            *NOTIFICATION_ADMIN_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Orders - full CRUD
-            'add_orders', 'change_orders', 'delete_orders', 'view_orders',
-            # Work Orders - full CRUD
-            'add_workorder', 'change_workorder', 'delete_workorder', 'view_workorder',
-            # Parts - full CRUD
-            'add_parts', 'change_parts', 'delete_parts', 'view_parts',
-            # Processes and Steps - full CRUD
-            'add_processes', 'change_processes', 'delete_processes', 'view_processes',
-            'add_steps', 'change_steps', 'delete_steps', 'view_steps',
-            # Process flow modeling - full CRUD
-            'add_processstep', 'change_processstep', 'delete_processstep', 'view_processstep',
-            'add_stepedge', 'change_stepedge', 'delete_stepedge', 'view_stepedge',
-            # Part Types - full CRUD
-            'add_parttypes', 'change_parttypes', 'delete_parttypes', 'view_parttypes',
-            # Step Execution
-            'add_stepexecution', 'change_stepexecution', 'delete_stepexecution', 'view_stepexecution',
-            'add_steptransitionlog', 'change_steptransitionlog', 'delete_steptransitionlog', 'view_steptransitionlog',
-            # Step measurement requirements
-            'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement', 'view_stepmeasurementrequirement',
-            # Equipment - full CRUD
-            'add_equipments', 'change_equipments', 'delete_equipments', 'view_equipments',
-            'add_equipmenttype', 'change_equipmenttype', 'delete_equipmenttype', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'delete_equipmentusage', 'view_equipmentusage',
-            # BOM
-            'add_bom', 'change_bom', 'delete_bom', 'view_bom',
-            'add_bomline', 'change_bomline', 'delete_bomline', 'view_bomline',
-            'add_assemblyusage', 'change_assemblyusage', 'delete_assemblyusage', 'view_assemblyusage',
-            # Disassembly BOM
-            'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
-            # Harvested components (remanufacturing)
-            'add_harvestedcomponent', 'change_harvestedcomponent', 'delete_harvestedcomponent', 'view_harvestedcomponent',
-            # Reman cores — full CRUD plus the Core-defined custom perms
-            'add_core', 'change_core', 'delete_core', 'view_core',
-            'start_disassembly', 'complete_disassembly', 'scrap_core',
-            # Materials
-            'add_materiallot', 'change_materiallot', 'delete_materiallot', 'view_materiallot',
-            'add_materialusage', 'change_materialusage', 'delete_materialusage', 'view_materialusage',
-            # Scheduling
-            'add_workcenter', 'change_workcenter', 'delete_workcenter', 'view_workcenter',
-            'add_shift', 'change_shift', 'delete_shift', 'view_shift',
-            'add_scheduleslot', 'change_scheduleslot', 'delete_scheduleslot', 'view_scheduleslot',
-            'add_downtimeevent', 'change_downtimeevent', 'delete_downtimeevent', 'view_downtimeevent',
-            # Time tracking
-            'add_timeentry', 'change_timeentry', 'delete_timeentry', 'view_timeentry',
-            # Companies - full CRUD
-            'add_companies', 'change_companies', 'delete_companies', 'view_companies',
-            # Order viewers (access control)
-            'add_orderviewer', 'change_orderviewer', 'delete_orderviewer', 'view_orderviewer',
-            # External API identifiers
-            'add_externalapiorderidentifier', 'change_externalapiorderidentifier', 'delete_externalapiorderidentifier', 'view_externalapiorderidentifier',
-            # Quality - full view + can report issues
-            'add_qualityreports', 'change_qualityreports', 'view_qualityreports',
-            'view_qualityerrorslist', 'view_qualityreportdefect',
-            'view_capa', 'view_capatasks', 'view_quarantinedisposition',
-            'view_capaverification', 'view_rcarecord',
-            # Measurements
-            'add_measurementresult', 'change_measurementresult', 'view_measurementresult',
-            'add_measurementdefinition', 'change_measurementdefinition', 'view_measurementdefinition',
-            # 3D Models & Annotations
-            'add_threedmodel', 'change_threedmodel', 'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'view_heatmapannotations',
-            # Documents
-            'add_documents', 'change_documents', 'view_documents',
-            'view_confidential_documents',
-            # Generated Reports
-            'add_generatedreport', 'change_generatedreport', 'view_generatedreport',
-            # Approvals - can respond
-            'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
-            'respond_to_approval',
-            # Training - manage team training
-            'add_trainingrecord', 'change_trainingrecord', 'view_trainingrecord',
-            'view_trainingrequirement', 'view_trainingtype',
-            # Calibration
-            'add_calibrationrecord', 'change_calibrationrecord', 'view_calibrationrecord',
-            # Sampling - full control including analytics
-            'add_samplingrule', 'change_samplingrule', 'delete_samplingrule', 'view_samplingrule',
-            'add_samplingruleset', 'change_samplingruleset', 'delete_samplingruleset', 'view_samplingruleset',
-            'add_samplinganalytics', 'change_samplinganalytics', 'delete_samplinganalytics', 'view_samplinganalytics',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities - full control
-            'add_facility', 'change_facility', 'delete_facility', 'view_facility',
-            # Users (view team members)
-            'view_user',
-            # User invitations - can invite team members
-            'add_userinvitation', 'change_userinvitation', 'delete_userinvitation', 'view_userinvitation',
-            # Archive reasons
-            'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
-            # Process Change Control - engineers propose + author changes; PCO/PCN read-only
-            'add_processchangerequest', 'change_processchangerequest', 'view_processchangerequest',
-            'view_processchangeorder',
-            'view_processchangenotice',
         ],
     },
 
@@ -507,186 +473,30 @@ GROUP_PRESETS = {
         'name': 'Operator',
         'description': 'Production floor work, inspections, data entry',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Parts - full working access
-            'add_parts', 'change_parts', 'view_parts',
-            # Work Orders
-            'add_workorder', 'change_workorder', 'view_workorder',
-            # Orders
-            'view_orders',
-            # Processes/Steps - view instructions
-            'view_processes', 'view_steps',
-            'view_parttypes',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # Step execution & transitions
-            'add_stepexecution', 'change_stepexecution', 'view_stepexecution',
-            'add_steptransitionlog', 'change_steptransitionlog', 'view_steptransitionlog',
-            # Step measurement requirements
-            'view_stepmeasurementrequirement',
-            # DWI — read substep instructions; create completions + per-node
-            # responses + gate completions as the operator works through
-            'view_substep', 'view_substepresource', 'view_substeptranslation',
-            'add_substepcompletion', 'change_substepcompletion', 'view_substepcompletion',
-            'add_substepgatecompletion', 'change_substepgatecompletion', 'view_substepgatecompletion',
-            'add_substepresponse', 'change_substepresponse', 'view_substepresponse',
-            # Equipment
-            'view_equipments', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
-            # Materials
-            'add_materialusage', 'change_materialusage', 'view_materialusage',
-            'view_materiallot',
-            # BOM
-            'view_bom', 'view_bomline',
-            'add_assemblyusage', 'change_assemblyusage', 'view_assemblyusage',
-            # Disassembly BOM
-            'view_disassemblybomline',
-            # Harvested components (remanufacturing)
-            'add_harvestedcomponent', 'change_harvestedcomponent', 'view_harvestedcomponent',
-            # Reman cores — receive + work disassembly, no delete
-            'add_core', 'change_core', 'view_core',
-            'start_disassembly', 'complete_disassembly', 'scrap_core',
-            # Time tracking
-            'add_timeentry', 'change_timeentry', 'view_timeentry',
-            # Measurements
-            'add_measurementresult', 'change_measurementresult', 'view_measurementresult',
-            'view_measurementdefinition',
-            # Quality Reports - operators report issues
-            'add_qualityreports', 'change_qualityreports', 'view_qualityreports',
-            'add_qualityreportdefect', 'change_qualityreportdefect', 'view_qualityreportdefect',
-            'view_qualityerrorslist',
-            # Dispositions
-            'add_quarantinedisposition', 'change_quarantinedisposition', 'view_quarantinedisposition',
-            # CAPA - view and work on tasks
-            'view_capa', 'view_capatasks', 'change_capatasks',
-            # 3D Models & Annotations
-            'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'view_heatmapannotations',
-            # Documents
-            'add_documents', 'view_documents',
-            # Generated Reports
-            'add_generatedreport', 'view_generatedreport',
-            # Companies
-            'view_companies',
-            # Training
-            'add_trainingrecord', 'view_trainingrecord', 'view_trainingrequirement',
-            # Calibration
-            'view_calibrationrecord',
-            # Approvals
-            'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
-            'respond_to_approval',
-            # Scheduling
-            'view_shift', 'view_scheduleslot', 'view_workcenter',
-            'add_downtimeevent', 'change_downtimeevent', 'view_downtimeevent',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities
-            'add_facility', 'change_facility', 'view_facility',
-            # Archive reasons
-            'view_archivereason',
         ],
     },
 
     # -------------------------------------------------------------------------
     # SHIFT LEAD - Floor-shaped supervisor between Operator and Production Manager
     # -------------------------------------------------------------------------
-    # Base permission set is Operator's, plus team/quality oversight visibility.
+    # Same grants as Operator today — the base sets already include the team /
+    # quality-oversight visibility that used to be Shift Lead additions.
     # Override / waive / reassign authority will be added when those features
     # exist as distinct permissions.
     'shift_lead': {
         'name': 'Shift Lead',
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Parts - full working access
-            'add_parts', 'change_parts', 'view_parts',
-            # Work Orders
-            'add_workorder', 'change_workorder', 'view_workorder',
-            # Orders
-            'view_orders',
-            # Processes/Steps - view instructions
-            'view_processes', 'view_steps',
-            'view_parttypes',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # Step execution & transitions
-            'add_stepexecution', 'change_stepexecution', 'view_stepexecution',
-            'add_steptransitionlog', 'change_steptransitionlog', 'view_steptransitionlog',
-            # Step measurement requirements
-            'view_stepmeasurementrequirement',
-            # DWI — read substep instructions; create completions + per-node
-            # responses + gate completions as the operator works through
-            'view_substep', 'view_substepresource', 'view_substeptranslation',
-            'add_substepcompletion', 'change_substepcompletion', 'view_substepcompletion',
-            'add_substepgatecompletion', 'change_substepgatecompletion', 'view_substepgatecompletion',
-            'add_substepresponse', 'change_substepresponse', 'view_substepresponse',
-            # Equipment
-            'view_equipments', 'view_equipmenttype',
-            'add_equipmentusage', 'change_equipmentusage', 'view_equipmentusage',
-            # Materials
-            'add_materialusage', 'change_materialusage', 'view_materialusage',
-            'view_materiallot',
-            # BOM
-            'view_bom', 'view_bomline',
-            'add_assemblyusage', 'change_assemblyusage', 'view_assemblyusage',
-            # Disassembly BOM
-            'view_disassemblybomline',
-            # Harvested components (remanufacturing)
-            'add_harvestedcomponent', 'change_harvestedcomponent', 'view_harvestedcomponent',
-            # Reman cores — receive + work disassembly, no delete
-            'add_core', 'change_core', 'view_core',
-            'start_disassembly', 'complete_disassembly', 'scrap_core',
-            # Time tracking
-            'add_timeentry', 'change_timeentry', 'view_timeentry',
-            # Measurements
-            'add_measurementresult', 'change_measurementresult', 'view_measurementresult',
-            'view_measurementdefinition',
-            # Quality Reports - operators report issues
-            'add_qualityreports', 'change_qualityreports', 'view_qualityreports',
-            'add_qualityreportdefect', 'change_qualityreportdefect', 'view_qualityreportdefect',
-            'view_qualityerrorslist',
-            # Dispositions
-            'add_quarantinedisposition', 'change_quarantinedisposition', 'view_quarantinedisposition',
-            # CAPA - view and work on tasks
-            'view_capa', 'view_capatasks', 'change_capatasks',
-            # 3D Models & Annotations
-            'view_threedmodel',
-            'add_heatmapannotations', 'change_heatmapannotations', 'view_heatmapannotations',
-            # Documents
-            'add_documents', 'view_documents',
-            # Generated Reports
-            'add_generatedreport', 'view_generatedreport',
-            # Companies
-            'view_companies',
-            # Training
-            'add_trainingrecord', 'view_trainingrecord', 'view_trainingrequirement',
-            # Calibration
-            'view_calibrationrecord',
-            # Approvals
-            'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
-            'respond_to_approval',
-            # Scheduling
-            'view_shift', 'view_scheduleslot', 'view_workcenter',
-            'add_downtimeevent', 'change_downtimeevent', 'view_downtimeevent',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities
-            'add_facility', 'change_facility', 'view_facility',
-            # Archive reasons
-            'view_archivereason',
-            # ---- Shift Lead additions over Operator ----
-            # Team visibility - see who is on shift, who claimed what
-            'view_user',
-            # Sampling oversight - see configured rules and analytics
-            'view_samplingrule', 'view_samplingruleset', 'view_samplinganalytics',
-            # Quality investigation visibility
-            'view_rcarecord', 'view_capaverification',
         ],
     },
 
@@ -697,52 +507,16 @@ GROUP_PRESETS = {
         'name': 'Document Controller',
         'description': 'Manage controlled documents, revisions, and approvals',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            *AUTHORING_PERMISSIONS,
+            *MANAGER_DELETE_PERMISSIONS,
+            *COMPLIANCE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Documents - full CRUD including classified + classification control
-            'add_documents', 'change_documents', 'delete_documents', 'view_documents',
-            'view_confidential_documents', 'view_restricted_documents', 'view_secret_documents',
-            'classify_documents',
-            # Document Types - manage document categories
-            'add_documenttype', 'change_documenttype', 'delete_documenttype', 'view_documenttype',
-            # 3D Models - full control
-            'add_threedmodel', 'change_threedmodel', 'delete_threedmodel', 'view_threedmodel',
-            # Heatmap Annotations
-            'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations', 'view_heatmapannotations',
-            # Generated Reports
-            'add_generatedreport', 'change_generatedreport', 'delete_generatedreport', 'view_generatedreport',
-            # Approval templates - full workflow control
-            'add_approvaltemplate', 'change_approvaltemplate', 'delete_approvaltemplate', 'view_approvaltemplate',
-            'add_approvalrequest', 'change_approvalrequest', 'delete_approvalrequest', 'view_approvalrequest',
-            'add_approvalresponse', 'change_approvalresponse', 'view_approvalresponse',
-            'create_approval_template', 'manage_approval_workflow', 'respond_to_approval',
-            # Training documentation
-            'add_trainingtype', 'change_trainingtype', 'delete_trainingtype', 'view_trainingtype',
-            'add_trainingrequirement', 'change_trainingrequirement', 'view_trainingrequirement',
-            'add_trainingrecord', 'change_trainingrecord', 'view_trainingrecord',
-            # Quality - view for document context
-            'view_qualityreports', 'view_capa', 'view_quarantinedisposition',
-            'view_rcarecord', 'view_capatasks',
-            # Production context - broad view
-            'view_orders', 'view_parts', 'view_workorder',
-            'add_processes', 'change_processes', 'view_processes',
-            'add_steps', 'change_steps', 'view_steps',
-            'view_parttypes', 'view_core',
-            'view_companies', 'view_equipments', 'view_equipmenttype',
-            'view_measurementdefinition', 'view_measurementresult',
-            'view_calibrationrecord',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # BOM for documentation
-            'view_bom', 'view_bomline',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding) - full control for document managers
-            'add_docchunk', 'change_docchunk', 'delete_docchunk', 'view_docchunk',
-            # Facilities
-            'add_facility', 'change_facility', 'view_facility',
-            # Archive reasons - full control for document management
-            'add_archivereason', 'change_archivereason', 'delete_archivereason', 'view_archivereason',
+            # Secret document tier + classification authority
+            'view_secret_documents', 'classify_documents',
         ],
     },
 
@@ -753,146 +527,28 @@ GROUP_PRESETS = {
         'name': 'Engineering',
         'description': 'Engineering changes, drawing control, design work',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            *AUTHORING_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Documents - full control
-            'add_documents', 'change_documents', 'delete_documents', 'view_documents',
-            'view_confidential_documents', 'view_restricted_documents',
-            'add_documenttype', 'change_documenttype', 'view_documenttype',
-            # 3D Models - full control
-            'add_threedmodel', 'change_threedmodel', 'delete_threedmodel', 'view_threedmodel',
-            # Heatmap Annotations
-            'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations', 'view_heatmapannotations',
-            # Part Types - full control
-            'add_parttypes', 'change_parttypes', 'delete_parttypes', 'view_parttypes',
-            # Processes - full control
-            'add_processes', 'change_processes', 'delete_processes', 'view_processes',
-            'add_steps', 'change_steps', 'delete_steps', 'view_steps',
-            # Process flow modeling - full control
-            'add_processstep', 'change_processstep', 'delete_processstep', 'view_processstep',
-            'add_stepedge', 'change_stepedge', 'delete_stepedge', 'view_stepedge',
-            # DWI substep authoring (Phase 1 — CRUD; custom actions added later)
-            'add_substep', 'change_substep', 'delete_substep', 'view_substep',
-            'view_substepcompletion',  # read-only — engineers review completions but don't create them
-            'add_substepresource', 'change_substepresource', 'delete_substepresource', 'view_substepresource',
-            'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation', 'view_substeptranslation',
-            # DWI per-node operator state (Phase 2) — engineers view only (operators capture these)
-            'view_substepgatecompletion',
-            'view_substepresponse',
-            # Measurement Definitions
-            'add_measurementdefinition', 'change_measurementdefinition', 'delete_measurementdefinition', 'view_measurementdefinition',
-            'view_measurementresult',
-            # Step measurement requirements - full control
-            'add_stepmeasurementrequirement', 'change_stepmeasurementrequirement', 'delete_stepmeasurementrequirement', 'view_stepmeasurementrequirement',
-            # BOM - full control
-            'add_bom', 'change_bom', 'delete_bom', 'view_bom',
-            'add_bomline', 'change_bomline', 'delete_bomline', 'view_bomline',
-            # Disassembly BOM - full control
-            'add_disassemblybomline', 'change_disassemblybomline', 'delete_disassemblybomline', 'view_disassemblybomline',
-            # Reman cores — engineering reads inventory for yield analysis
-            'view_core',
-            # Equipment specs
-            'add_equipmenttype', 'change_equipmenttype', 'view_equipmenttype',
-            'view_equipments',
-            # CAPA - can initiate and participate
-            'add_capa', 'change_capa', 'view_capa',
-            'initiate_capa',
-            'view_capatasks', 'change_capatasks',
-            'view_capaverification',
-            # RCA - full participation
-            'add_rcarecord', 'change_rcarecord', 'view_rcarecord',
-            'conduct_rca',
-            'add_fishbone', 'change_fishbone', 'view_fishbone',
-            'add_fivewhys', 'change_fivewhys', 'view_fivewhys',
-            'add_rootcause', 'change_rootcause', 'view_rootcause',
-            # Production
-            'add_orders', 'change_orders', 'view_orders',
-            'add_parts', 'change_parts', 'view_parts',
-            'add_workorder', 'change_workorder', 'view_workorder',
-            'view_companies',
-            # Quality
-            'add_qualityreports', 'change_qualityreports', 'view_qualityreports',
-            'view_quarantinedisposition',
-            # Approvals
-            'add_approvaltemplate', 'change_approvaltemplate', 'view_approvaltemplate',
-            'add_approvalrequest', 'change_approvalrequest', 'view_approvalrequest',
-            'add_approvalresponse', 'view_approvalresponse',
-            'respond_to_approval',
-            # Generated Reports
-            'add_generatedreport', 'change_generatedreport', 'view_generatedreport',
-            # Training
-            'view_trainingrecord', 'view_trainingrequirement', 'view_trainingtype',
-            # Calibration
-            'view_calibrationrecord',
-            # AI Chat
-            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities
-            'add_facility', 'change_facility', 'view_facility',
-            # Archive reasons
-            'view_archivereason',
         ],
     },
 
     # -------------------------------------------------------------------------
-    # AUDITOR - Read-only with anonymized sensitive data
+    # AUDITOR - Read-only, audit independence
     # -------------------------------------------------------------------------
+    # View base only: auditors must not mutate what they audit, and don't get
+    # the classified document tiers (external auditors may not be authorized
+    # persons for export-controlled technical data).
     'auditor': {
         'name': 'Auditor',
         'description': 'Read-only access for audits, anonymized sensitive data',
         'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
-            # Production - view all
-            'view_orders', 'view_parts', 'view_workorder',
-            'view_processes', 'view_steps', 'view_parttypes',
-            'view_companies', 'view_core', 'view_equipments', 'view_equipmenttype',
-            # Process flow modeling
-            'view_processstep', 'view_stepedge',
-            # Step measurement requirements
-            'view_stepmeasurementrequirement',
-            # Quality - view all
-            'view_qualityreports', 'view_capa', 'view_rcarecord', 'view_capatasks',
-            'view_quarantinedisposition', 'view_capaverification',
-            'view_qaapproval',
-            # Measurements
-            'view_measurementresult', 'view_measurementdefinition',
-            # BOM
-            'view_bom', 'view_bomline', 'view_disassemblybomline',
-            # Harvested components
-            'view_harvestedcomponent',
-            # Reman cores
-            'view_core',
-            # Documents
-            'view_documents', 'view_documenttype',
-            # Approvals
-            'view_approvalrequest', 'view_approvalresponse', 'view_approvaltemplate',
-            # Order viewers
-            'view_orderviewer',
-            # Sampling
-            'view_samplingrule', 'view_samplingruleset',
-            # Traceability
-            'view_steptransitionlog',
-            # Training & Calibration - compliance evidence
-            'view_trainingrecord', 'view_trainingtype', 'view_trainingrequirement',
-            'view_calibrationrecord',
-            # Generated Reports
-            'view_generatedreport',
-            # AI Chat (view only for audit trail)
-            'view_chatsession',
-            # Doc chunks (AI embedding)
-            'view_docchunk',
-            # Facilities
-            'view_facility',
-            # Sampling audit logs (compliance)
-            'view_samplingauditlog', 'view_samplinganalytics',
-            # Permission change logs (compliance)
-            'view_permissionchangelog',
-            # Archive reasons (compliance)
-            'view_archivereason',
-            # User invitations (audit trail)
-            'view_userinvitation',
         ],
     },
 
@@ -908,17 +564,21 @@ GROUP_PRESETS = {
             'view_orders',
             'view_workorder',
             'view_parts',
-            # Order viewers (see who has access)
-            'view_orderviewer',
-            # Documents linked to their orders
-            'view_documents',
+            # Order viewers - see who has access + invite viewers to their own
+            # orders (the /TrackerOrders/{id}/invite/ action gates on
+            # add_orderviewer; row scoping via for_user() keeps it to orders
+            # they can already reach)
+            'view_orderviewer', 'add_orderviewer',
+            # Documents linked to their orders (+ the type catalog the portal
+            # needs to label/filter them — /api/DocumentTypes/ gates on it)
+            'view_documents', 'view_documenttype',
             # Quality info for their orders
             'view_qualityreports',
             # Approvals - can respond to customer approval requests (use-as-is, etc.)
             'view_approvalrequest', 'add_approvalresponse', 'view_approvalresponse',
             'respond_to_approval',
-            # AI Chat - customers can use AI assistance
-            'add_chatsession', 'change_chatsession', 'view_chatsession',
+            # AI Chat - customers can use AI assistance (own sessions only)
+            'add_chatsession', 'change_chatsession', 'delete_chatsession', 'view_chatsession',
             # Doc chunks (AI embedding)
             'view_docchunk',
         ],
@@ -947,6 +607,7 @@ def get_all_preset_permissions():
         if preset['permissions'] != '__all__':
             all_perms.update(preset['permissions'])
     return all_perms
+
 
 
 def validate_presets():

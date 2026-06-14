@@ -4,7 +4,6 @@ Tracker services module.
 Contains business logic services for the Tracker app.
 """
 
-from .permission_service import PermissionService
 from .csv_utils import (
     detect_encoding,
     decode_file_content,
@@ -31,8 +30,6 @@ from .template_generator import (
 )
 
 __all__ = [
-    # Permission Service
-    'PermissionService',
 
     # CSV Utils
     'detect_encoding',

@@ -14,6 +14,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from Tracker.throttling import ClientIPScopedRateThrottle
 
 from Tracker.permissions import TenantAccessPermission
 from Tracker.permissions import AllowAnyWithTenantAccess
@@ -25,6 +26,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from Tracker.serializers.core import SecureModelMixin
 
 User = get_user_model()
 
@@ -148,7 +150,11 @@ class CurrentTenantView(APIView):
                 'email': user.email,
                 'name': user.get_full_name() or user.email,
                 'is_staff': user.is_staff,
-                'groups': list(user.groups.values_list('name', flat=True)),
+                # Tenant-scoped roles for the current tenant. (Was
+                # `user.groups` — the global auth.Group set — which is never
+                # populated, so it always returned []. Permissions/roles live
+                # on TenantGroup via UserRole.)
+                'groups': list(user.get_tenant_group_names(tenant)),
             }
 
         return Response({
@@ -787,6 +793,10 @@ class SignupView(APIView):
     Creates a new tenant and admin user. Only available in SaaS mode.
     """
     permission_classes = [AllowAny]
+    # Rate-limit this unauthenticated, side-effectful endpoint (mass tenant/user
+    # creation + email enumeration). Keyed by client IP.
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'signup'
 
     @extend_schema(
         request=SignupSerializer,
@@ -877,7 +887,7 @@ class TenantGroupDetailSerializer(TenantGroupSerializer):
         return list(obj.permissions.values_list('codename', flat=True))
 
 
-class UserRoleSerializer(serializers.ModelSerializer):
+class UserRoleSerializer(SecureModelMixin):
     """Serializer for UserRole (group membership)."""
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_name = serializers.SerializerMethodField()

@@ -197,18 +197,25 @@ class GroupSeeder:
     @classmethod
     def sync_permissions(cls, dry_run=False):
         """
-        Additively sync preset permissions onto existing TenantGroups.
+        Reconcile preset-backed TenantGroups to *exactly* match their preset.
 
-        Unlike :meth:`backfill_permissions` (which only seeds groups with
-        zero perms), this walks every preset-backed group and adds any
-        preset permissions that are missing. Existing permissions on the
-        group — including admin customisations — are never removed.
+        Walks every preset-backed group and makes its permission set equal to
+        the preset: missing preset perms are added, AND perms not in the preset
+        are removed. This is required for changes that *move* a permission out
+        of a role — e.g. scoping ITAR / export-control or notification-rule
+        editing to a narrower set of roles. An additive-only sync structurally
+        cannot enforce such a split on existing tenants (the perm stays granted
+        where it was removed), so the preset would not be authoritative.
 
-        Run this after a release that introduces new permission codenames
-        (e.g. new models, new `action_permissions` entries) so existing
-        tenant groups gain the new defaults without operator action.
+        The preset IS the source of truth for preset-backed (`is_custom=False`)
+        groups; manual edits to those groups are intentionally overwritten.
+        **Custom groups (no matching preset) are skipped entirely** — admin-
+        created groups keep their bespoke grants.
 
-        Returns a dict with per-tenant + total counters.
+        Run after any release that adds, removes, or relocates permission
+        codenames so existing tenant groups converge on the current presets.
+
+        Returns a dict with grant/revoke counters.
         """
         from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
@@ -222,6 +229,7 @@ class GroupSeeder:
             'groups_updated': 0,
             'groups_skipped_custom': 0,
             'permissions_added': 0,
+            'permissions_removed': 0,
         }
 
         for group in TenantGroup.objects.all():
@@ -242,13 +250,18 @@ class GroupSeeder:
 
             existing_ids = set(group.permissions.values_list('id', flat=True))
             missing_ids = desired_ids - existing_ids
-            if not missing_ids:
+            extra_ids = existing_ids - desired_ids
+            if not missing_ids and not extra_ids:
                 continue
 
             results['permissions_added'] += len(missing_ids)
+            results['permissions_removed'] += len(extra_ids)
             results['groups_updated'] += 1
             if not dry_run:
-                group.permissions.add(*missing_ids)
+                if missing_ids:
+                    group.permissions.add(*missing_ids)
+                if extra_ids:
+                    group.permissions.remove(*extra_ids)
 
         return results
 

@@ -26,7 +26,11 @@ from Tracker import views
 # Note: Updated to use new modular viewsets structure
 from Tracker.viewsets import *
 from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet, LLMConfigViewSet
-from Tracker.api_views import get_csrf_token, get_user_api_token
+from Tracker.api_views import (
+    get_csrf_token, get_user_api_token,
+    ThrottledLoginView, ThrottledPasswordResetView,
+    ThrottledPasswordResetConfirmView, ThrottledRegisterView,
+)
 from Tracker.forms import DealForm
 from Tracker.generic_views import GenericCreateEntry, GenericUpdateEntry, GenericDeleteEntry, GenericViewEntry
 from Tracker.views import OrderUpdateView, OrderCreateView, ErrorFormView
@@ -138,11 +142,18 @@ urlpatterns += [
 urlpatterns += [
     path(
         "password/reset/confirm/<slug:uidb64>/<slug:token>/",
-        PasswordResetConfirmView.as_view(),
+        ThrottledPasswordResetConfirmView.as_view(),
         name="password_reset_confirm",
     ),
     # Note: UserDetailsView is imported via wildcard from Tracker.viewsets
     path("auth/user/", UserDetailsView.as_view(), name="rest_user_details"),
+    # Throttled overrides MUST precede the dj_rest_auth includes so they take
+    # precedence for these abuse-prone endpoints (login brute-force, account
+    # spam, reset-email bombing). The includes still serve the rest
+    # (logout, password-change, verify-email, etc.).
+    path("auth/login/", ThrottledLoginView.as_view()),
+    path("auth/password/reset/", ThrottledPasswordResetView.as_view()),
+    path("auth/registration/", ThrottledRegisterView.as_view()),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/csrf/", get_csrf_token),
@@ -198,7 +209,6 @@ router.register("MeasurementDefinitions", MeasurementsDefinitionViewSet)
 router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
 router.register("User", UserViewSet, basename="User")
-router.register("Groups", GroupViewSet, basename="Groups")
 router.register("TenantGroups", TenantGroupViewSet, basename="TenantGroups")
 router.register("Tenants", TenantViewSet, basename="Tenants")
 router.register("TenantLLMProviders", TenantLLMProviderViewSet, basename="TenantLLMProviders")

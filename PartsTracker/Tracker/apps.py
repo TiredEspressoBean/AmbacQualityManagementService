@@ -64,38 +64,24 @@ def setup_defaults(sender, **kwargs):
     Post-migrate signal handler to set up all defaults.
 
     This runs after all migrations complete, ensuring:
-    1. Groups and permissions are configured
-    2. Document types are seeded
-    3. Approval templates are seeded
+    1. Document types are seeded
+    2. Approval templates are seeded
 
     These can also be managed manually via:
-    - python manage.py setup_permissions
     - python manage.py setup_document_types
     - python manage.py setup_approval_templates
     - python manage.py setup_defaults (runs all)
+
+    Note: tenant group permissions are seeded per-tenant from
+    `Tracker.presets.GROUP_PRESETS` (the tenant-creation signal +
+    `sync_tenant_permissions`), not here — there is no global-group
+    permission step.
     """
     # Only run for Tracker app to avoid duplicate runs
     if sender.name != 'Tracker':
         return
 
-    # 1. Set up permissions (groups + their permissions)
-    try:
-        from Tracker.services.permission_service import apply_permissions
-        results = apply_permissions(user=None, source='post_migrate')
-
-        if results['changes']:
-            logger.info(
-                f"Permission sync: {results['permissions_added']} added, "
-                f"{results['permissions_removed']} removed"
-            )
-        if results['errors']:
-            for error in results['errors']:
-                logger.warning(f"Permission sync error: {error}")
-
-    except Exception as e:
-        logger.warning(f"Permission setup skipped: {e}")
-
-    # 2. Load system notification templates (tenant=NULL rows). Idempotent.
+    # 1. Load system notification templates (tenant=NULL rows). Idempotent.
     try:
         from Tracker.services.core.notifications.system_templates import (
             setup_system_templates,

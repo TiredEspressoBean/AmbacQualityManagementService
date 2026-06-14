@@ -35,7 +35,6 @@ import { useRetrieveUser } from "@/hooks/useRetrieveUser";
 import { useCreateUser } from "@/hooks/useCreateUser";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
-import { useRetrieveGroups } from "@/hooks/useRetrieveGroups";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
@@ -49,7 +48,6 @@ const formSchema = schemas.UserRequest.pick({
     is_staff: true,
     is_active: true,
     parent_company_id: true,
-    group_ids: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -63,7 +61,6 @@ const required = {
     is_staff: isFieldRequired(formSchema.shape.is_staff),
     is_active: isFieldRequired(formSchema.shape.is_active),
     parent_company_id: isFieldRequired(formSchema.shape.parent_company_id),
-    group_ids: isFieldRequired(formSchema.shape.group_ids),
 };
 
 export default function UserFormPage() {
@@ -72,8 +69,6 @@ export default function UserFormPage() {
     const userId = params.id ? Number(params.id) : undefined;
     const [companySearch, setCompanySearch] = useState("");
     const [open, setOpen] = useState(false);
-    const [groupSearch, setGroupSearch] = useState("");
-    const [groupsOpen, setGroupsOpen] = useState(false);
 
     const { data: user, isLoading: isLoadingUser } = useRetrieveUser(
         { params: { id: userId as number } },
@@ -82,10 +77,6 @@ export default function UserFormPage() {
 
     const { data: companies, isLoading: isLoadingCompanies } = useRetrieveCompanies({
         search: companySearch,
-    });
-
-    const { data: groups, isLoading: isLoadingGroups } = useRetrieveGroups({
-        search: groupSearch,
     });
 
     // Get current user to check staff/superuser status
@@ -102,7 +93,6 @@ export default function UserFormPage() {
             is_staff: false,
             is_active: true,
             parent_company_id: undefined,
-            group_ids: [],
         },
     });
 
@@ -117,7 +107,6 @@ export default function UserFormPage() {
                 is_staff: user.is_staff ?? false,
                 is_active: user.is_active ?? true,
                 parent_company_id: user.parent_company?.id ?? undefined,
-                group_ids: user.groups?.map(group => (group as { id: number }).id) ?? [],
             });
         }
     }, [mode, user, form]);
@@ -134,7 +123,6 @@ export default function UserFormPage() {
             email: values.email || undefined,
             is_active: values.is_active !== undefined ? values.is_active : true,
             parent_company_id: values.parent_company_id || undefined,
-            group_ids: values.group_ids || [],
         };
 
         // Only staff users can set is_staff field
@@ -183,7 +171,6 @@ export default function UserFormPage() {
     }
 
     const selectedCompany = companies?.results.find((company) => company.id === form.watch("parent_company_id"));
-    const selectedGroups = groups?.results.filter((group) => form.watch("group_ids")?.includes(group.id)) || [];
 
     return (
         <div className="max-w-3xl mx-auto py-10">
@@ -366,84 +353,6 @@ export default function UserFormPage() {
                                 </Popover>
                                 <FormDescription>
                                     Associate this user with a company, or leave blank for no company
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="group_ids"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel required={required.group_ids}>Groups</FormLabel>
-                                <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={groupsOpen}
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    (!field.value || field.value.length === 0) && "text-muted-foreground"
-                                                )}
-                                                disabled={isLoadingGroups}
-                                            >
-                                                {isLoadingGroups
-                                                    ? "Loading..."
-                                                    : selectedGroups.length > 0
-                                                        ? `${selectedGroups.length} group${selectedGroups.length > 1 ? 's' : ''} selected`
-                                                        : "Select groups (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command>
-                                            <CommandInput
-                                                value={groupSearch}
-                                                onValueChange={setGroupSearch}
-                                                placeholder="Search groups..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No groups found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {groups?.results.map((group) => {
-                                                        const isSelected = field.value?.includes(group.id);
-                                                        return (
-                                                            <CommandItem
-                                                                key={group.id}
-                                                                value={group.name}
-                                                                onSelect={() => {
-                                                                    const currentGroups = field.value || [];
-                                                                    if (isSelected) {
-                                                                        // Remove group
-                                                                        form.setValue("group_ids", currentGroups.filter(id => id !== group.id));
-                                                                    } else {
-                                                                        // Add group
-                                                                        form.setValue("group_ids", [...currentGroups, group.id]);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        isSelected ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {group.name}
-                                                            </CommandItem>
-                                                        );
-                                                    })}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                <FormDescription>
-                                    Select user groups for permissions and role-based access control
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

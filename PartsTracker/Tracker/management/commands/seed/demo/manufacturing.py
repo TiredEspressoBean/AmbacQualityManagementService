@@ -10,12 +10,10 @@ Creates deterministic manufacturing setup matching DEMO_DATA_SYSTEM.md:
 from datetime import timedelta
 from django.utils import timezone
 
-from django.contrib.auth.models import Group
-
 from Tracker.models import (
     PartTypes, Processes, Steps, ProcessStep, StepEdge,
     Equipments, EquipmentType, MeasurementDefinition,
-    CalibrationRecord, EquipmentStatus,
+    CalibrationRecord, EquipmentStatus, TenantGroup,
 )
 from Tracker.models.mes_lite import ProcessStatus, EdgeType
 
@@ -442,13 +440,16 @@ class DemoManufacturingSeeder(BaseSeeder):
             }
         )
 
-        # Build Group lookup for revisit_role (Group FK)
+        # Build TenantGroup lookup for revisit_role (TenantGroup FK). The
+        # demo tenant's groups are seeded from presets (e.g. 'QA Manager');
+        # revisit_role is runtime-inert, so a miss just leaves it null.
         group_map = {}
         for step_data in DEMO_PROCESS['steps']:
             role_name = step_data.get('revisit_role_name')
             if role_name and role_name not in group_map:
-                group, _ = Group.objects.get_or_create(name=role_name)
-                group_map[role_name] = group
+                group_map[role_name] = TenantGroup.objects.filter(
+                    tenant=self.tenant, name=role_name,
+                ).first()
 
         # Create steps with ALL fields explicitly set from config
         steps = []

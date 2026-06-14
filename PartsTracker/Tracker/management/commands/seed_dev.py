@@ -579,10 +579,14 @@ class Command(BaseCommand):
             'qa_staff': [],
         }
 
+        # Classify by tenant-scoped roles (TenantGroup via UserRole), not the
+        # global auth.Group set which is never populated. Preset TenantGroup
+        # names use spaces (e.g. 'QA Manager'), not the underscore form.
         for user in users['employees']:
-            if user.groups.filter(name__in=['Production_Manager', 'Admin']).exists():
+            group_names = set(user.get_tenant_group_names(tenant))
+            if group_names & {'Production Manager', 'Tenant Admin', 'System Admin'}:
                 users['managers'].append(user)
-            if user.groups.filter(name__in=['QA_Manager', 'QA_Inspector']).exists():
+            if group_names & {'QA Manager', 'QA Inspector'}:
                 users['qa_staff'].append(user)
 
         return users

@@ -45,7 +45,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useRetrieveApprovalTemplate } from "@/hooks/useRetrieveApprovalTemplate";
 import { useCreateApprovalTemplate } from "@/hooks/useCreateApprovalTemplate";
 import { useUpdateApprovalTemplate } from "@/hooks/useUpdateApprovalTemplate";
-import { useRetrieveGroups } from "@/hooks/useRetrieveGroups";
+import { useTenantGroups } from "@/hooks/useTenantGroups";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 import { RequiredApproversField } from "@/components/approval-templates/RequiredApproversField";
@@ -140,7 +140,7 @@ export default function ApprovalTemplateFormPage() {
     const [groupSearch, setGroupSearch] = useState("");
     const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
 
-    const { data: groups } = useRetrieveGroups();
+    const { data: groups } = useTenantGroups();
     const groupsList = Array.isArray(groups?.results) ? groups.results : groups?.results || [];
 
     // Filter groups based on search
