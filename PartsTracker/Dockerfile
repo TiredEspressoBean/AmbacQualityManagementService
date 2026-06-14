@@ -47,6 +47,7 @@ CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
     else \
       python manage.py migrate --noinput && \
       python manage.py setup_defaults && \
+      python manage.py setup_database && \
       python manage.py collectstatic --noinput && \
       gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4; \
     fi

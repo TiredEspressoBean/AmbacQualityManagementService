@@ -1,4 +1,8 @@
 web: gunicorn PartsTrackerApp.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 120
 worker: celery -A PartsTrackerApp worker --loglevel=info --concurrency=2
 beat: celery -A PartsTrackerApp beat --loglevel=info
-release: python manage.py migrate && python manage.py setup_defaults
+# NOTE: railway.toml pins builder = "dockerfile", so Railway runs the
+# Dockerfile CMD, NOT this Procfile. Kept in sync for Nixpacks/Foreman/Heroku
+# parity and to avoid misleading the next reader. The live release sequence
+# lives in Dockerfile CMD.
+release: python manage.py migrate && python manage.py setup_defaults && python manage.py setup_database
