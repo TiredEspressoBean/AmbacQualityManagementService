@@ -535,42 +535,69 @@ export function ModelEditorPage<T extends { id: string | number }>({
                 )}
             </div>
 
-            {/* Table with responsive columns via CSS breakpoints */}
-            <Table>
-                <TableCaption>{title} List</TableCaption>
-                <TableHeader>
-                    <TableRow>
-                        {columns.map((col, i) => (
-                            <TableHead key={i} className={getPriorityClass(col.priority)}>
-                                {col.header}
-                            </TableHead>
-                        ))}
-                        {showDetailsLink && <TableHead>Details</TableHead>}
-                        {renderActions && <TableHead>Actions</TableHead>}
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {items.map((item) => (
-                        <TableRow key={item.id}>
-                            {columns.map((col, j) => (
-                                <TableCell key={j} className={getPriorityClass(col.priority)}>
-                                    {col.renderCell(item)}
-                                </TableCell>
+            {/* Table with responsive columns via CSS breakpoints. The wrapper
+                makes the table horizontally scrollable on narrow screens and
+                the rightmost action column (Actions if present, else Details)
+                is sticky-right so it stays visible while scrolling. */}
+            <div className="relative w-full overflow-x-auto rounded-md border">
+                <Table>
+                    <TableCaption>{title} List</TableCaption>
+                    <TableHeader>
+                        <TableRow>
+                            {columns.map((col, i) => (
+                                <TableHead key={i} className={getPriorityClass(col.priority)}>
+                                    {col.header}
+                                </TableHead>
                             ))}
                             {showDetailsLink && (
-                                <TableCell>
-                                    <SafeDetailLink item={item} />
-                                </TableCell>
+                                <TableHead
+                                    className={
+                                        // Sticky-right only when there's no Actions column
+                                        // to its right — otherwise the Actions column wins.
+                                        renderActions
+                                            ? undefined
+                                            : "sticky right-0 z-10 bg-background shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]"
+                                    }
+                                >
+                                    Details
+                                </TableHead>
                             )}
                             {renderActions && (
-                                <TableCell className="text-right space-x-2">
-                                    {renderActions(item)}
-                                </TableCell>
+                                <TableHead className="sticky right-0 z-10 bg-background text-right shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">
+                                    Actions
+                                </TableHead>
                             )}
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {items.map((item) => (
+                            <TableRow key={item.id}>
+                                {columns.map((col, j) => (
+                                    <TableCell key={j} className={getPriorityClass(col.priority)}>
+                                        {col.renderCell(item)}
+                                    </TableCell>
+                                ))}
+                                {showDetailsLink && (
+                                    <TableCell
+                                        className={
+                                            renderActions
+                                                ? undefined
+                                                : "sticky right-0 z-10 bg-background shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]"
+                                        }
+                                    >
+                                        <SafeDetailLink item={item} />
+                                    </TableCell>
+                                )}
+                                {renderActions && (
+                                    <TableCell className="sticky right-0 z-10 bg-background text-right space-x-2 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">
+                                        {renderActions(item)}
+                                    </TableCell>
+                                )}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
 
             {/* Pagination */}
             <div className="flex justify-between items-center">
