@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Dialog,
@@ -42,7 +41,6 @@ import { toast } from "sonner";
 import { useMyCapaTasks, type CapaTask } from "@/hooks/useMyCapaTasks";
 import { useMyPendingApprovals, type PendingApproval } from "@/hooks/useMyPendingApprovals";
 import { useCompleteCapaTask } from "@/hooks/useCompleteCapaTask";
-import { useSubmitApprovalResponse } from "@/hooks/useSubmitApprovalResponse";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -132,21 +130,30 @@ function transformApproval(approval: PendingApproval): InboxItem {
 }
 
 function getApprovalReferenceUrl(approval: PendingApproval): string {
-    // Route to appropriate detail page based on content object type
-    const contentType = approval.content_object_info?.type?.toLowerCase();
+    // Route to the artifact's own detail page, which hosts the real
+    // approval surface (ApprovalSignaturePanel for change control,
+    // DocumentApprovalTab / CapaApprovalTab elsewhere) — drawn signature
+    // + password capture. The inbox never approves inline; it routes.
+    const id = approval.object_id;
+    const contentType = approval.content_object_info?.type?.toLowerCase() ?? "";
+    const approvalType = approval.approval_type ?? "";
 
-    if (contentType === "capa") {
-        return `/quality/capas/${approval.object_id}`;
+    // Change-control artifacts.
+    if (contentType.includes("processchangerequest") || approvalType.startsWith("PCR")) {
+        return `/quality/change-control/pcrs/${id}`;
     }
-    if (contentType === "documents" || contentType === "document") {
-        return `/documents/${approval.object_id}`;
+    if (contentType.includes("processchangeorder") || approvalType.startsWith("PCO")) {
+        return `/quality/change-control/pcos/${id}`;
     }
-    // Fallback: try to infer from approval_type
-    if (approval.approval_type.includes("CAPA")) {
-        return `/quality/capas/${approval.object_id}`;
+    if (contentType.includes("processchangenotice") || approvalType.startsWith("PCN")) {
+        return `/quality/change-control/pcns/${id}`;
     }
-    if (approval.approval_type.includes("DOCUMENT")) {
-        return `/documents/${approval.object_id}`;
+    // CAPA / Documents.
+    if (contentType.includes("capa") || approvalType.includes("CAPA")) {
+        return `/quality/capas/${id}`;
+    }
+    if (contentType.includes("document") || approvalType.includes("DOCUMENT")) {
+        return `/documents/${id}`;
     }
     return "#";
 }
@@ -431,115 +438,15 @@ function CompleteTaskModal({
     );
 }
 
-function ApprovalModal({
-    open,
-    onOpenChange,
-    item,
-    onApprove,
-    onReject,
-    isSubmitting,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    item: InboxItem;
-    onApprove: (comments: string) => void;
-    onReject: (comments: string) => void;
-    isSubmitting: boolean;
-}) {
-    const [comments, setComments] = useState("");
-    const [confirmed, setConfirmed] = useState(false);
-
-    const handleApprove = () => {
-        if (!confirmed) {
-            toast.error("Please confirm you have reviewed this item");
-            return;
-        }
-        onApprove(comments);
-        setComments("");
-        setConfirmed(false);
-    };
-
-    const handleReject = () => {
-        if (!comments.trim()) {
-            toast.error("Please provide a reason for rejection");
-            return;
-        }
-        onReject(comments);
-        setComments("");
-        setConfirmed(false);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Review Approval</DialogTitle>
-                    <DialogDescription>
-                        Review and approve or reject this request.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label className="text-muted-foreground">Request</Label>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-sm text-muted-foreground">{item.reference}</p>
-                        {item.description && (
-                            <p className="text-sm text-muted-foreground mt-2">{item.description}</p>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="approval-comments">Comments (required for rejection)</Label>
-                        <Textarea
-                            id="approval-comments"
-                            placeholder="Add any comments..."
-                            value={comments}
-                            onChange={(e) => setComments(e.target.value)}
-                            rows={3}
-                        />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="confirm-review"
-                            checked={confirmed}
-                            onCheckedChange={(checked) => setConfirmed(checked as boolean)}
-                        />
-                        <Label htmlFor="confirm-review" className="text-sm font-normal">
-                            I confirm I have reviewed this item
-                        </Label>
-                    </div>
-                </div>
-
-                <DialogFooter className="flex gap-2 sm:gap-0">
-                    <Button variant="destructive" onClick={handleReject} disabled={isSubmitting}>
-                        Reject
-                    </Button>
-                    <div className="flex-1" />
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleApprove} disabled={isSubmitting || !confirmed}>
-                        {isSubmitting ? "Submitting..." : "Approve"}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 // ============================================================================
 // INBOX ITEM CARD
 // ============================================================================
 
 function InboxItemCard({ item }: { item: InboxItem }) {
     const [showCompleteModal, setShowCompleteModal] = useState(false);
-    const [showApprovalModal, setShowApprovalModal] = useState(false);
 
     const queryClient = useQueryClient();
     const completeTask = useCompleteCapaTask();
-    const submitApproval = useSubmitApprovalResponse(item.numericId);
 
     const typeInfo = typeConfig[item.type];
     const TypeIcon = typeInfo.icon;
@@ -567,41 +474,7 @@ function InboxItemCard({ item }: { item: InboxItem }) {
         );
     };
 
-    const handleApprove = (comments: string) => {
-        submitApproval.mutate(
-            { decision: "APPROVED", comments },
-            {
-                onSuccess: () => {
-                    toast.success(`Approved: ${item.title}`);
-                    setShowApprovalModal(false);
-                    queryClient.invalidateQueries({ queryKey: ["approvals", "my-pending"] });
-                },
-                onError: (error) => {
-                    toast.error("Failed to submit approval");
-                    console.error(error);
-                },
-            }
-        );
-    };
-
-    const handleReject = (comments: string) => {
-        submitApproval.mutate(
-            { decision: "REJECTED", comments },
-            {
-                onSuccess: () => {
-                    toast.success(`Rejected: ${item.title}`);
-                    setShowApprovalModal(false);
-                    queryClient.invalidateQueries({ queryKey: ["approvals", "my-pending"] });
-                },
-                onError: (error) => {
-                    toast.error("Failed to submit rejection");
-                    console.error(error);
-                },
-            }
-        );
-    };
-
-    const isSubmitting = completeTask.isPending || submitApproval.isPending;
+    const isSubmitting = completeTask.isPending;
 
     return (
         <>
@@ -679,11 +552,12 @@ function InboxItemCard({ item }: { item: InboxItem }) {
                             size="sm"
                             variant="default"
                             className="h-8 gap-1"
-                            onClick={() => setShowApprovalModal(true)}
-                            disabled={isSubmitting}
+                            asChild
                         >
-                            <FileSignature className="h-3 w-3" />
-                            Review
+                            <Link to={item.referenceUrl}>
+                                <FileSignature className="h-3 w-3" />
+                                Review
+                            </Link>
                         </Button>
                     ) : (
                         <Button
@@ -707,14 +581,6 @@ function InboxItemCard({ item }: { item: InboxItem }) {
                 item={item}
                 onComplete={handleCompleteTask}
                 isSubmitting={completeTask.isPending}
-            />
-            <ApprovalModal
-                open={showApprovalModal}
-                onOpenChange={setShowApprovalModal}
-                item={item}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                isSubmitting={submitApproval.isPending}
             />
         </>
     );
