@@ -55,15 +55,13 @@ export default function LoginPreview() {
     })
 
     async function onSubmit(values: z.infer<typeof Login>) {
-        let key: string | undefined
         try {
-            const res = await api.auth_login_create({
+            await api.auth_login_create({
                 email: values.email,
                 password: values.password
             }, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             })
-            key = res.key
         } catch (error: any) {
             // Only an actual login-POST rejection is a failed login.
             const apiError = error?.response?.data;
@@ -89,10 +87,9 @@ export default function LoginPreview() {
         // Login succeeded — do NOT gate the redirect on the follow-up
         // `/auth/user/` calls. A transient 401 there (e.g. right after a
         // session change) would otherwise be swallowed as "Login failed" and
-        // strand us on /login despite a 200 login. Store the token, nudge a
-        // refresh, and navigate; the root layout fetches `authUser` (with
-        // retry) on its own.
-        if (key) localStorage.setItem("authToken", key)
+        // strand us on /login despite a 200 login. Auth rides the session
+        // cookie set by this POST; nudge a refresh and navigate — the root
+        // layout fetches `authUser` (with retry) on its own.
         toast.success(`Welcome back, ${values.email}!`)
         void queryClient.invalidateQueries({ queryKey: ['authUser'] })
         router.navigate({ to: "/" })
