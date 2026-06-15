@@ -106,7 +106,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING(f"Note: TenantGroups not yet created: {', '.join(missing_groups)}")
                 )
-                self.stdout.write("  Run 'python manage.py setup_groups' first to create groups\n")
+                self.stdout.write("  Run 'python manage.py setup_database' first to create the tenant's groups\n")
             elif missing_groups and not tenant:
                 self.stdout.write(
                     self.style.WARNING(f"Note: Use --tenant to assign groups to templates")
