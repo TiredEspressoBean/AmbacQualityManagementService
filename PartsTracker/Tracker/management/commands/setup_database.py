@@ -58,7 +58,17 @@ class Command(BaseCommand):
         # 2. User Groups
         if not options['skip_groups']:
             self.stdout.write(self.style.MIGRATE_HEADING('Step 2: User Groups'))
-            call_command('setup_groups', stdout=self.stdout)
+            # Global app-level groups were retired in favor of per-tenant
+            # TenantGroups (see migration 0072). The old `setup_groups` command
+            # no longer exists; backfill each tenant's preset groups instead.
+            # Idempotent (get_or_create). Permission reconcile for existing
+            # groups is a separate step: `sync_tenant_permissions`.
+            from Tracker.groups import GroupSeeder
+            result = GroupSeeder.backfill_all_tenants()
+            self.stdout.write(
+                f"  Seeded groups for {result['tenants']} tenant(s); "
+                f"created {result['groups_created']} new group(s)."
+            )
             self.stdout.write('')
 
         # 3. Row-Level Security
