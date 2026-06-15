@@ -88,11 +88,21 @@ visible.
 ## Before you start (presenter prep)
 
 **Reseed the demo tenant** (gives deterministic data; invalidates any open
-session, so log in fresh afterward):
+session, so log in fresh afterward). Two ways:
 
-```
-cd PartsTracker && python manage.py seed_demo
-```
+- **From the UI (no terminal needed):** as Admin, go to
+  **`/settings/organization`** (sidebar **Admin → Settings**, then the
+  **Organization** section) → the **"Regenerate Demo Data"** card → click
+  **Regenerate demo data**, type **`REGENERATE`** to confirm. It wipes and
+  reseeds the demo tenant from the preset state (async; the page reloads when it
+  finishes). *This card only appears on the `demo` tenant.* This is the easiest
+  way to reset to a clean fixture right before a demo.
+- **From the terminal:**
+  ```
+  cd PartsTracker && python manage.py seed_demo
+  ```
+
+Either way, the reseed invalidates your session — log in fresh afterward.
 
 **Logins** (all password `demo123`):
 
@@ -121,6 +131,11 @@ call.
 **Route:** `/process-flow?id={injectorRemanProcessId}` — selects the **real,
 seeded Injector Reman process**, NOT the `demo` pseudo-process.
 **Log in as:** Administrator (stays logged in through Scene 2).
+**Sidebar → page:** in the left sidebar, under **Production**, click **Processes**
+(opens the process list). On the **Injector Reman** row, click the **flow icon**
+(the little branching-workflow glyph, tooltip "Edit Process") → that opens the real
+flow view. *(There is no "Process Flow" item in the sidebar — it's only reached by
+the flow icon on a process row.)*
 
 > **Use the real process, not the overlay.** `/process-flow` defaults to a
 > built-in `demo` pseudo-process with canned Part Journey / bottleneck / work-order
@@ -180,6 +195,12 @@ stable).
 **Route:** the substep editor for **Nozzle Inspection**
 (`/editor/processes/{processId}/steps/{stepId}/substeps`).
 **Log in as:** Administrator (same login as Scene 1 — no switch).
+**Sidebar → page:** **Production → Processes**, then click the **flow icon** on the
+**"Injector Reman — Authoring Draft (SHOWCASE)"** row (search "SHOWCASE" in the
+process list if needed). In the flow view, click the **Nozzle Inspection** node →
+in the Step Details panel on the right, click **View substeps** → the editable
+substep editor. *(The substep editor has no direct sidebar link — it's reached
+through the flow view's node panel.)*
 
 > **Why a draft process:** the seeded *Injector Reman* is **Approved**, so its
 > substep editor is **read-only** (the change-control guarantee — you can't
@@ -237,6 +258,9 @@ change-control cut.
 **Route:** `/operator/steps/{stepId}/substeps?part=…&workOrder=…&execution=…`
 **Log in as:** QA Inspector (`sarah.qa`) — **the one login switch**, from Admin;
 stays on through Scene 4.
+**Sidebar → page:** under **Production**, click **WO Control Center** → open
+**WO-SHOWCASE-01** → on the work-order detail, click **Start Work** → tick
+**INJ-SHOWCASE-001** → the operator runtime opens at Nozzle Inspection.
 
 **Do this:**
 1. Open the operator run for **`INJ-SHOWCASE-001`**: `/workorders` →
@@ -277,6 +301,10 @@ equipment + sign-off), and the defect annotator **"Linked to inspection report:
 
 **Route:** annotator at `/partAnnotator/{modelId}/{partId}`, then `/heatmap`.
 **Log in as:** QA Inspector (`sarah.qa`) (same login as Scene 3 — no switch).
+**Sidebar → page:** for the heatmap, under **Quality**, click **Heat Map** (direct
+link) → pick **Common Rail Injector**. For the annotator, under **Quality** click
+**Quality Reports**, open the FAIL **QR-SHOWCASE-001**, and launch its 3D
+annotation (or reach it from the operator inspection in Scene 3).
 
 **Do this:**
 1. Start from a **failed** inspection that requires 3D annotation. Open the
