@@ -573,7 +573,11 @@ API_TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", str(60 * 60)))  #
 # In production: actual frontend URL
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# Default is real SMTP. Override via env to make email a no-op while no mail
+# path is available (e.g. during the GCC High migration):
+#   EMAIL_BACKEND=django.core.mail.backends.dummy.EmailBackend    (silently discard)
+#   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend  (log to stdout)
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True")
