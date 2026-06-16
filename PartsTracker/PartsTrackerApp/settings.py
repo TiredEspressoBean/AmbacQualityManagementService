@@ -550,6 +550,10 @@ else:
         PASSWORD_RESET_DOMAIN = _frontend_url
 
 REST_AUTH = {
+    # Require the current password to change it (self-service change on /profile).
+    # dj-rest-auth defaults this to False; enable so a hijacked open session
+    # can't silently reset the password.
+    'OLD_PASSWORD_FIELD_ENABLED': True,
     'PASSWORD_RESET_SERIALIZER': 'Tracker.serializers.PasswordResetSerializer',
     'PASSWORD_RESET_CONFIRM_URL': f'{PASSWORD_RESET_PROTOCOL}://{PASSWORD_RESET_DOMAIN}/reset-password/{{uid}}/{{token}}/',
     'PASSWORD_RESET_USE_SITES_DOMAIN': False,
