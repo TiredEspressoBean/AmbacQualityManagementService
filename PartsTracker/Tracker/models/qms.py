@@ -801,18 +801,21 @@ class QuarantineDisposition(SecureModel):
         if not self.part or not self.disposition_type:
             return
 
-        # Only update if disposition is being implemented/closed
-        if self.current_state not in ['in_progress', 'closed']:
+        # Only update if disposition is being implemented/closed. Keys MUST match
+        # the uppercase STATE_CHOICES values, or this guard silently swallows
+        # every call (the original lowercase compare did exactly that).
+        if self.current_state not in ['IN_PROGRESS', 'CLOSED']:
             return
 
-        # Map disposition types to part statuses (QMS standard workflow)
+        # Map disposition types to part statuses (QMS standard workflow).
+        # Keys MUST match the uppercase DISPOSITION_TYPES values.
         # repair uses same status as rework per AS9100 - both need rework processing
         status_mapping = {
-            'rework': PartsStatus.REWORK_NEEDED,
-            'repair': PartsStatus.REWORK_NEEDED,  # AS9100: May not fully conform, requires approval
-            'scrap': PartsStatus.SCRAPPED,
-            'use_as_is': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
-            'return_to_supplier': PartsStatus.CANCELLED,
+            'REWORK': PartsStatus.REWORK_NEEDED,
+            'REPAIR': PartsStatus.REWORK_NEEDED,  # AS9100: May not fully conform, requires approval
+            'SCRAP': PartsStatus.SCRAPPED,
+            'USE_AS_IS': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
+            'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
         }
 
         new_status = status_mapping.get(self.disposition_type)
@@ -821,7 +824,7 @@ class QuarantineDisposition(SecureModel):
             self.part.part_status = new_status
 
             # Increment rework counter if rework or repair disposition
-            if self.disposition_type in ['rework', 'repair']:
+            if self.disposition_type in ['REWORK', 'REPAIR']:
                 self.part.total_rework_count += 1
 
             self.part.save(update_fields=['part_status', 'total_rework_count'])
