@@ -1,4 +1,5 @@
 # viewsets/core.py - Core infrastructure (Users, Companies, Auth, Approvals, Documents, Mixins)
+import logging
 import os
 from typing import Any, Dict, List, Optional
 import pandas as pd
@@ -497,7 +498,14 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
 
     @extend_schema(
         request=inline_serializer(name="SendInvitationInput", fields={"user_id": serializers.IntegerField()}),
-        responses={201: OpenApiResponse(response=dict, description="Invitation sent successfully")})
+        responses={201: inline_serializer(name="SendInvitationResponse", fields={
+            "detail": serializers.CharField(),
+            "invitation_id": serializers.IntegerField(),
+            "user_email": serializers.EmailField(),
+            "expires_at": serializers.DateTimeField(),
+            "invitation_url": serializers.CharField(),
+            "email_sent": serializers.BooleanField(),
+        })})
     @action(detail=False, methods=['post'], url_path='send-invitation')
     def send_invitation(self, request):
         """Send invitation email to a user"""
@@ -519,8 +527,13 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
                                                             expires_at__gt=timezone.now()).first()
 
         if existing_invitation:
+            # Return the live link so an admin can copy it instead of hitting a
+            # dead end — onboarding must work even when email delivery is off.
             return Response(
-                {"detail": "User already has a pending invitation", "invitation_id": existing_invitation.id},
+                {"detail": "User already has a pending invitation",
+                 "invitation_id": existing_invitation.id,
+                 "expires_at": existing_invitation.expires_at,
+                 "invitation_url": f"{settings.FRONTEND_URL}/signup?token={existing_invitation.token}"},
                 status=status.HTTP_400_BAD_REQUEST)
 
         # Create invitation
@@ -529,12 +542,26 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
                                                    expires_at=timezone.now() + timedelta(days=7)  # 7 day expiration
                                                    )
 
-        # Send invitation email via Celery
-        from Tracker.email_notifications import send_invitation_email
-        send_invitation_email(invitation.id, immediate=True)
+        # Send invitation email — best-effort. The invitation row + copyable
+        # link below are the source of truth; onboarding must not depend on a
+        # working mail path (a misconfigured/disabled backend must not 500).
+        email_sent = True
+        try:
+            from Tracker.email_notifications import send_invitation_email
+            send_invitation_email(invitation.id, immediate=True)
+        except Exception:  # noqa: BLE001 - surface link regardless of mail health
+            email_sent = False
+            logging.getLogger(__name__).warning(
+                "Invitation email dispatch failed for invitation %s; returning link only",
+                invitation.id, exc_info=True,
+            )
 
-        return Response({"detail": "Invitation sent successfully", "invitation_id": invitation.id,
-                         "user_email": user_to_invite.email, "expires_at": invitation.expires_at},
+        detail = ("Invitation sent successfully" if email_sent
+                  else "Invitation created — email could not be sent, share the link directly")
+        return Response({"detail": detail, "invitation_id": invitation.id,
+                         "user_email": user_to_invite.email, "expires_at": invitation.expires_at,
+                         "invitation_url": f"{settings.FRONTEND_URL}/signup?token={invitation.token}",
+                         "email_sent": email_sent},
                         status=status.HTTP_201_CREATED)
 
     @extend_schema(

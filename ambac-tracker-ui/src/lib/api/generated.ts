@@ -15451,6 +15451,14 @@ const BulkReconcileUsersResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
 const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
+const SendInvitationResponse = z.object({
+  detail: z.string(),
+  invitation_id: z.number().int(),
+  user_email: z.string().email(),
+  expires_at: z.string().datetime({ offset: true }),
+  invitation_url: z.string(),
+  email_sent: z.boolean(),
+});
 const UserInvitation = z.object({
   id: z.number().int(),
   user: z.number().int(),
@@ -17127,6 +17135,7 @@ const LoginRequest = z.object({
 const RestAuthToken = z.object({ key: z.string() });
 const RestAuthDetail = z.object({ detail: z.string() });
 const PasswordChangeRequest = z.object({
+  old_password: z.string().min(1).max(128),
   new_password1: z.string().min(1).max(128),
   new_password2: z.string().min(1).max(128),
 });
@@ -17707,6 +17716,7 @@ export const schemas = {
   BulkReconcileSummary,
   BulkReconcileUsersResponse,
   SendInvitationInputRequest,
+  SendInvitationResponse,
   UserInvitation,
   PaginatedUserInvitationList,
   UserInvitationRequest,
@@ -37263,7 +37273,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.object({ user_id: z.number().int() }),
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: SendInvitationResponse,
   },
   {
     method: "get",

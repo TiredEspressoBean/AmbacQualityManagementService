@@ -17828,6 +17828,7 @@ export interface components {
          */
         PartsStatusEnum: "PENDING" | "IN_PROGRESS" | "AWAITING_QA" | "READY_FOR_NEXT_STEP" | "COMPLETED" | "QUARANTINED" | "REWORK_NEEDED" | "REWORK_IN_PROGRESS" | "SCRAPPED" | "CANCELLED" | "SHIPPED" | "IN_STOCK" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED";
         PasswordChangeRequest: {
+            old_password: string;
             new_password1: string;
             new_password2: string;
         };
@@ -21700,6 +21701,16 @@ export interface components {
         };
         SendInvitationInputRequest: {
             user_id: number;
+        };
+        SendInvitationResponse: {
+            detail: string;
+            invitation_id: number;
+            /** Format: email */
+            user_email: string;
+            /** Format: date-time */
+            expires_at: string;
+            invitation_url: string;
+            email_sent: boolean;
         };
         /**
          * @description * `CRITICAL` - Critical
@@ -40577,15 +40588,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation sent successfully */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SendInvitationResponse"];
                 };
             };
         };

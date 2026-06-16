@@ -24,6 +24,7 @@ import io
 from datetime import timedelta
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -193,6 +194,10 @@ def _create_and_invite(
     except Exception as e:  # noqa: BLE001 - surface to caller; never raise
         return {"outcome": "error", "error": f"create failed: {e}"}
 
+    # Copyable signup link — onboarding must work even when email delivery is
+    # off (matches UserInvitationSerializer.get_invitation_url / send_invitation).
+    invitation_url = f"{settings.FRONTEND_URL}/signup?token={invitation.token}"
+
     # Send invitation email outside the transaction so a failed send doesn't
     # roll back the user creation. `immediate=False` queues via Celery.
     try:
@@ -206,6 +211,7 @@ def _create_and_invite(
             "outcome": "created",
             "user_id": str(user.id),
             "invitation_id": str(invitation.id),
+            "invitation_url": invitation_url,
             "warnings": [f"invitation row created but email dispatch failed: {e}"],
         }
 
@@ -222,6 +228,7 @@ def _create_and_invite(
         "outcome": "created",
         "user_id": str(user.id),
         "invitation_id": str(invitation.id),
+        "invitation_url": invitation_url,
         "warnings": warnings,
     }
 

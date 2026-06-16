@@ -22255,9 +22255,8 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
-          description: Invitation sent successfully
+                $ref: '#/components/schemas/SendInvitationResponse'
+          description: ''
   /api/UserInvitations/:
     get:
       operationId: api_UserInvitations_list
@@ -39302,6 +39301,10 @@ components:
     PasswordChangeRequest:
       type: object
       properties:
+        old_password:
+          type: string
+          minLength: 1
+          maxLength: 128
         new_password1:
           type: string
           minLength: 1
@@ -39313,6 +39316,7 @@ components:
       required:
       - new_password1
       - new_password2
+      - old_password
     PasswordReset:
       type: object
       description: Serializer for requesting a password reset e-mail.
@@ -46326,6 +46330,30 @@ components:
           type: integer
       required:
       - user_id
+    SendInvitationResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        invitation_id:
+          type: integer
+        user_email:
+          type: string
+          format: email
+        expires_at:
+          type: string
+          format: date-time
+        invitation_url:
+          type: string
+        email_sent:
+          type: boolean
+      required:
+      - detail
+      - email_sent
+      - expires_at
+      - invitation_id
+      - invitation_url
+      - user_email
     SeverityEnum:
       enum:
       - CRITICAL
