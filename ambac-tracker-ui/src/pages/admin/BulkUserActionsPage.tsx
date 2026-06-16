@@ -1,17 +1,18 @@
 /**
  * Bulk user actions — full-page workbook surface.
  *
- * Single endpoint behind it (to be built) accepts a unified set of row actions:
- *   invite, group reassignment, activate, deactivate, etc.
- * The "action" is implied by which fields the row populates plus an
- * optional `action` column for explicit verbs (e.g. action=deactivate).
+ * Backed by POST /api/User/bulk-reconcile/, which accepts a desired-state
+ * roster: each row describes a user, matched by email. Missing emails are
+ * created + invited; existing emails are reconciled (fields/groups/status) to
+ * match the row. Behavior is implied by which fields a row populates.
  *
  * Two input modes share the same submit:
- * - **Manual entry**: in-page editable table.
+ * - **Manual entry**: in-page editable table (JSON rows).
  * - **Upload workbook**: CSV/XLSX file picker; sample template available.
  *
- * Backend is not yet wired — Submit + Upload only emit a toast describing
- * what *would* happen. This page exists to define the spec.
+ * Under 25 rows runs synchronously (207 with per-row results); 25+ queues a
+ * Celery batch and this page polls for completion. Created users surface a
+ * copyable signup link so onboarding works without email delivery.
  */
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -683,28 +684,6 @@ export function BulkUserActionsPage() {
                     Polling background job <span className="font-mono">{asyncTaskId}</span>…
                 </div>
             )}
-
-            <div className="mt-6 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground font-mono whitespace-pre-line">
-                {`Backend wired:
-  • Manual entry → POST /api/User/bulk-reconcile/ with JSON rows
-  • Workbook upload → POST /api/User/bulk-reconcile/ multipart with file
-  • ≥25 rows → Celery batch with polled status (auto-handled by this page)
-  • Per-row results render below on completion
-
-Workbook semantics (state-based, no action column):
-  • Email not in tenant      → create user + send invite
-  • Email in tenant          → update fields/groups/status to match the row
-  • Empty cell               → no change to that field
-  • Re-running the same workbook is a no-op once state matches
-  • CSV upload: group cells accept semicolon-separated names for multi-group
-
-Resend invitation is NOT here — it's a per-row + bulk-bar action on the
-User Management page, not a workbook concern.
-
-Known follow-ups:
-  • Invite email \`message\` field is captured in the row but not yet
-    threaded into the email template (the row's result emits a warning).`}
-            </div>
         </div>
     );
 }

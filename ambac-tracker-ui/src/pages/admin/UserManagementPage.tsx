@@ -602,18 +602,6 @@ export function UserManagementPage() {
                         </tbody>
                     </table>
                 </div>
-
-                <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground font-mono whitespace-pre-line">
-                    {`Wired actions:
-  • Resend invitation — per-row + bulk fanout
-  • Activate / Deactivate — per-row + bulk fanout
-  • Edit profile — opens the existing user edit form
-
-Still mocked:
-  • Bulk workbook upload (/admin/users/bulk-invite) — backend endpoint not built yet
-
-Status pill is derived from is_active + last_login until the UserInvitation join is exposed; it can't yet distinguish "Pending invite" from "Expired invite". Legacy /editor/users still works.`}
-                </div>
             </div>
 
             {/* Bulk "Add to group" picker dialog */}
