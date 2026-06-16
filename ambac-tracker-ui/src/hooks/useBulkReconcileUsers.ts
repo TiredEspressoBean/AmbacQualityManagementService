@@ -33,6 +33,9 @@ export type BulkReconcileResultRow = {
     outcome: "created" | "updated" | "unchanged" | "error";
     user_id?: string;
     invitation_id?: string;
+    /** Copyable signup link for newly created users — onboarding works even
+     *  when email delivery is off. Only present on `created` rows. */
+    invitation_url?: string;
     changes?: string[];
     warnings?: string[];
     error?: string;

@@ -15,6 +15,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useDeleteUser } from "@/hooks/useDeleteUser.ts";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation.ts";
+import { InviteLinkDialog } from "@/components/users/InviteLinkDialog.tsx";
 import { toast } from "sonner";
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
 export function EditUserActionsCell({ userId }: Props) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
+    const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+    const [inviteOpen, setInviteOpen] = useState(false);
     const deleteUser = useDeleteUser();
     const sendInvitation = useSendUserInvitation();
 
@@ -49,10 +52,24 @@ export function EditUserActionsCell({ userId }: Props) {
 
     const handleSendInvitation = () => {
         sendInvitation.mutate(userId, {
-            onSuccess: () => {
-                toast.success(`Invitation sent to user #${userId} successfully.`);
+            onSuccess: (data) => {
+                if (data?.invitation_url) {
+                    setInviteUrl(data.invitation_url);
+                    setInviteOpen(true);
+                }
+                toast.success(`Invitation created for user #${userId}.`);
             },
             onError: (error) => {
+                // A pending invitation already exists — surface its live link
+                // (email may be off) instead of dead-ending on an error toast.
+                // eslint-disable-next-line local/no-as-any -- axios error body needs verbose narrowing
+                const apiError = (error as any)?.response?.data;
+                if (apiError?.invitation_url) {
+                    setInviteUrl(apiError.invitation_url);
+                    setInviteOpen(true);
+                    toast.info("User already has a pending invitation — here's the link.");
+                    return;
+                }
                 console.error("Failed to send invitation:", error);
                 toast.error("Failed to send invitation.");
             },
@@ -110,6 +127,11 @@ export function EditUserActionsCell({ userId }: Props) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <InviteLinkDialog
+                open={inviteOpen}
+                onOpenChange={setInviteOpen}
+                url={inviteUrl}
+            />
         </div>
     );
 }

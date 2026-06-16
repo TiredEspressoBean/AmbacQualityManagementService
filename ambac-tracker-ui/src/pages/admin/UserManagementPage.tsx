@@ -22,6 +22,7 @@ import {
     Users as UsersIcon,
     X,
     Edit,
+    Link as LinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -63,6 +64,7 @@ import { useTenantGroups } from "@/hooks/useTenantGroups";
 import { useUpdateUser } from "@/hooks/useUpdateUser";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
+import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
 import { format, formatDistanceToNow } from "date-fns";
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,9 @@ export function UserManagementPage() {
     const [addToGroupOpen, setAddToGroupOpen] = useState(false);
     const [addToGroupId, setAddToGroupId] = useState<string>("");
     const [addToGroupSubmitting, setAddToGroupSubmitting] = useState(false);
+    const [inviteLinkUrl, setInviteLinkUrl] = useState<string | null>(null);
+    const [inviteLinkEmail, setInviteLinkEmail] = useState<string | undefined>(undefined);
+    const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
 
     const queryClient = useQueryClient();
     const { data: usersData, isLoading } = useRetrieveUsers({
@@ -179,12 +184,30 @@ export function UserManagementPage() {
 
     // ---- Action handlers --------------------------------------------------
 
-    const handleResend = async (userId: number, email: string) => {
+    /** Create (or surface an existing) invitation and show its copyable link.
+     *  Doubles as email-free access recovery: accepting a fresh invite re-sets
+     *  the user's password. Works for any user — active users get a new invite,
+     *  users with a live pending invite get that invite's link back (400). */
+    const handleInviteLink = async (userId: number, email: string) => {
         try {
-            await sendInvite.mutateAsync(userId);
-            toast.success(`Invitation sent to ${email}`);
+            const data = await sendInvite.mutateAsync(userId);
+            if (data?.invitation_url) {
+                setInviteLinkUrl(data.invitation_url);
+                setInviteLinkEmail(email);
+                setInviteLinkOpen(true);
+            }
+            toast.success(`Invitation link ready for ${email}`);
         } catch (err) {
-            toast.error(`Failed to send invitation to ${email}`, {
+            // eslint-disable-next-line local/no-as-any -- axios error body needs verbose narrowing
+            const apiError = (err as any)?.response?.data;
+            if (apiError?.invitation_url) {
+                setInviteLinkUrl(apiError.invitation_url);
+                setInviteLinkEmail(email);
+                setInviteLinkOpen(true);
+                toast.info(`${email} already has a pending invitation — here's the link.`);
+                return;
+            }
+            toast.error(`Failed to create invitation link for ${email}`, {
                 description: err instanceof Error ? err.message : undefined,
             });
         }
@@ -546,11 +569,15 @@ export function UserManagementPage() {
                                                         Edit profile
                                                     </DropdownMenuItem>
                                                     {u._status === "pending_invite" || u._status === "expired_invite" ? (
-                                                        <DropdownMenuItem onClick={() => handleResend(u.id, u.email)}>
+                                                        <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email)}>
                                                             <Mail className="h-4 w-4 mr-2" />
                                                             Resend invitation
                                                         </DropdownMenuItem>
                                                     ) : null}
+                                                    <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email)}>
+                                                        <LinkIcon className="h-4 w-4 mr-2" />
+                                                        Copy access link
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {u.is_active ? (
                                                         <DropdownMenuItem
@@ -637,6 +664,13 @@ Status pill is derived from is_active + last_login until the UserInvitation join
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <InviteLinkDialog
+                open={inviteLinkOpen}
+                onOpenChange={setInviteLinkOpen}
+                url={inviteLinkUrl}
+                email={inviteLinkEmail}
+            />
         </TooltipProvider>
     );
 }

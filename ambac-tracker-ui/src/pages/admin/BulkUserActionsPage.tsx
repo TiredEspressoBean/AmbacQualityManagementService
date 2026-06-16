@@ -23,6 +23,9 @@ import {
     AlertCircle,
     ArrowLeft,
     UserPlus,
+    Copy,
+    Check,
+    Link as LinkIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +47,7 @@ import {
     fetchBulkReconcileStatus,
     type BulkReconcileResultRow,
 } from "@/hooks/useBulkReconcileUsers";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 // ---------------------------------------------------------------------------
 // Row model — describes desired state of a user. Behavior is inferred:
@@ -91,6 +95,24 @@ function rowProblems(row: WorkbookRow): string[] {
 }
 
 const STATUS_VALUES: RowStatus[] = ["Active", "Inactive"];
+
+/** Inline copy button for a single invite link. Own hook instance so the
+ *  checkmark only flips on the row that was clicked. */
+function CopyLinkButton({ url }: { url: string }) {
+    const { isCopied, copyToClipboard } = useCopyToClipboard();
+    return (
+        <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-[11px] shrink-0"
+            onClick={() => copyToClipboard(url)}
+        >
+            {isCopied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+            Copy
+        </Button>
+    );
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -258,6 +280,27 @@ export function BulkUserActionsPage() {
                 description: e instanceof Error ? e.message : undefined,
             });
         }
+    };
+
+    const { isCopied: allCopied, copyToClipboard: copyAll } = useCopyToClipboard();
+
+    /** Copy every created user's invite link as `email — url` lines so an admin
+     *  can hand out access in one go even when invite emails are off. Email is
+     *  only known for the manual-entry path (matched by row index); CSV imports
+     *  fall back to the bare URL. */
+    const handleCopyAllLinks = () => {
+        const lines = (results ?? [])
+            .filter((r) => r.outcome === "created" && r.invitation_url)
+            .map((r) => {
+                const email = populatedRows[r.row - 1]?.email;
+                return email ? `${email} — ${r.invitation_url}` : (r.invitation_url as string);
+            });
+        if (lines.length === 0) {
+            toast.info("No invite links to copy");
+            return;
+        }
+        copyAll(lines.join("\n"));
+        toast.success(`Copied ${lines.length} invite link${lines.length === 1 ? "" : "s"}`);
     };
 
     const handleDownloadTemplate = () => {
@@ -549,9 +592,32 @@ export function BulkUserActionsPage() {
             {/* Per-row results from the last submit */}
             {results && results.length > 0 && (
                 <div className="mt-6 rounded-md border overflow-hidden">
-                    <div className="px-3 py-2 bg-muted/50 text-sm font-medium">
-                        Results
+                    <div className="px-3 py-2 bg-muted/50 text-sm font-medium flex items-center justify-between gap-2">
+                        <span>Results</span>
+                        {results.some((r) => r.outcome === "created" && r.invitation_url) && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                onClick={handleCopyAllLinks}
+                            >
+                                {allCopied ? (
+                                    <Check className="h-3.5 w-3.5 mr-1.5" />
+                                ) : (
+                                    <LinkIcon className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                Copy all links
+                            </Button>
+                        )}
                     </div>
+                    {results.some((r) => r.outcome === "created" && r.invitation_url) && (
+                        <p className="px-3 py-2 border-b bg-muted/20 text-xs text-muted-foreground">
+                            Each created user has a signup link below — copy it (or use
+                            “Copy all links”) and share it directly. They set their password
+                            via that link, so onboarding works even when invite emails aren’t sent.
+                        </p>
+                    )}
                     <div className="max-h-[40vh] overflow-y-auto">
                         <table className="w-full text-xs">
                             <thead className="bg-muted/30 text-left">
@@ -584,10 +650,20 @@ export function BulkUserActionsPage() {
                                         <td className="px-2 py-1.5 text-muted-foreground">
                                             {r.outcome === "error" && r.error}
                                             {r.outcome === "created" && (
-                                                <>
-                                                    user created
-                                                    {r.warnings?.length ? ` · ${r.warnings.join(", ")}` : ""}
-                                                </>
+                                                <div className="space-y-1">
+                                                    <div>
+                                                        user created
+                                                        {r.warnings?.length ? ` · ${r.warnings.join(", ")}` : ""}
+                                                    </div>
+                                                    {r.invitation_url && (
+                                                        <div className="flex items-center gap-1">
+                                                            <code className="truncate max-w-[420px] rounded bg-muted px-1 py-0.5 text-[10px]">
+                                                                {r.invitation_url}
+                                                            </code>
+                                                            <CopyLinkButton url={r.invitation_url} />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                             {r.outcome === "updated" && (
                                                 <>changed: {(r.changes ?? []).join(", ") || "—"}</>
