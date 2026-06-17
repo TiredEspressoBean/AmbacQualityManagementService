@@ -583,11 +583,17 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 #   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend  (log to stdout)
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
-EMAIL_PORT = 587
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True")
+# Env-driven so on-prem can use M365 Direct Send (port 25) vs submission (587).
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+# Parse to a real bool — any non-empty string (e.g. "False") is truthy, so the
+# raw env value must be interpreted, not used directly.
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").strip().lower() in ("1", "true", "yes", "on")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@example.com")
+# Fail fast instead of hanging forever when a mail host is firewalled/blackholed
+# (a blocked outbound SMTP connect with no timeout blocks the request/worker).
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
 
 # --- AI / RAG minimal settings ---
 AI_EMBED_ENABLED = os.getenv("AI_EMBED_ENABLED", "true").lower() in {"1", "true", "yes"}
