@@ -58,7 +58,7 @@ def split_part_from_lot(
     second call on an already-split part returns `already_split=True`
     without further changes.
     """
-    from Tracker.models import PartSplitReason, StepExecution, StepTransitionLog
+    from Tracker.models import Parts, PartSplitReason, StepExecution, StepTransitionLog
 
     if not user or not user.is_authenticated:
         raise PermissionDenied("Authenticated user required to split a part.")
@@ -81,15 +81,20 @@ def split_part_from_lot(
                 "substep — reworked parts must be re-inspected before they can advance."
             )
 
-    if part.split_from_cohort:
-        return SplitResult(
-            part_id=str(part.id),
-            reason=part.split_reason or reason,
-            moved_to_step_id=None,
-            already_split=True,
-        )
-
     with transaction.atomic():
+        # Lock the part and re-check the idempotency guard under the lock: two
+        # concurrent splits of the same part must not both proceed (which would
+        # duplicate the rework StepExecution and double-split). The second call
+        # blocks here, then sees split_from_cohort set and returns already_split.
+        part = Parts.objects.select_for_update().get(pk=part.id)
+        if part.split_from_cohort:
+            return SplitResult(
+                part_id=str(part.id),
+                reason=part.split_reason or reason,
+                moved_to_step_id=None,
+                already_split=True,
+            )
+
         part.split_from_cohort = True
         part.split_reason = reason
         part.split_at = timezone.now()
@@ -112,7 +117,7 @@ def split_part_from_lot(
             part.step = rework_target_step
             update_fields.append('step')
 
-            visit_number = StepExecution.get_visit_count(part, rework_target_step) + 1
+            visit_number = StepExecution.get_visit_count_for_update(part, rework_target_step) + 1
             new_exec = StepExecution.objects.create(
                 part=part,
                 step=rework_target_step,

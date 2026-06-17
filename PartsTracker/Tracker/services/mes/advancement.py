@@ -89,11 +89,22 @@ def try_advance_lot(
             )
 
         try:
-            step = Steps.objects.get(id=step_id)
+            step = Steps.objects.get(id=step_id)  # tenant-safe: scoped by the enclosing tenant_context(tenant_id)
         except Steps.DoesNotExist:
             return LotAdvanceResult(status='noop', reason='step_not_found')
 
-        result = _evaluate_and_advance(wo=wo, step=step, operator=operator)
+        # Serialize concurrent advancement of the same (WO, step). The cohort
+        # read inside _evaluate_and_advance takes SELECT ... FOR UPDATE on the
+        # part rows; this transaction holds those locks across gate-check AND
+        # advance, so two simultaneous movers (operator complete_step, batch
+        # seal, the async advance_lot_task, reactive events) can't both act on
+        # the same stale snapshot and double-advance / duplicate StepExecution
+        # + traveler rows. The second mover blocks here, then re-reads the
+        # post-move state and correctly no-ops. The cascade below recurses
+        # OUTSIDE this block, so each step locks → commits → releases in turn
+        # (no lock held across steps, no deadlock).
+        with transaction.atomic():
+            result = _evaluate_and_advance(wo=wo, step=step, operator=operator)
 
         # Bounded synchronous cascade: if the cohort advanced, walk
         # forward through any pass-through steps until we hit one that
@@ -140,8 +151,15 @@ def _evaluate_and_advance(
     # Terminal parts (scrapped/cancelled/shipped/…) are not live cohort
     # members — they must never block or be re-advanced. Exclude them so a
     # scrapped part left sitting at the step doesn't stall the lot (3c).
+    #
+    # select_for_update(of=('self',)) locks ONLY the matched Parts rows (not the
+    # joined step/work_order/part_type), serializing concurrent advancement of
+    # this (WO, step) — the caller wraps this in a transaction so the lock is
+    # held across gate-check + advance. A second concurrent mover blocks on
+    # these row locks, then re-reads the post-move state and no-ops.
     parts_at_step = list(
-        Parts.objects.filter(work_order=wo, step=step)
+        Parts.objects.select_for_update(of=('self',))
+        .filter(work_order=wo, step=step)
         .exclude(part_status__in=TERMINAL_PART_STATUSES)
         .select_related('step', 'work_order', 'part_type')
     )

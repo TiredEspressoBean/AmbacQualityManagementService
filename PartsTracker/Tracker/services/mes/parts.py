@@ -257,7 +257,12 @@ def advance_part_step(
 
             transition_logs.append(StepTransitionLog(part=p, step=next_step, operator=operator))
 
-            visit_number = StepExecution.get_visit_count(p, next_step) + 1
+            # Lock the target step's executions for this part while assigning the
+            # visit number — two advances converging on the same step (e.g. from
+            # different source steps) would otherwise both read the same count and
+            # mint duplicate visit numbers. Held until the enclosing transaction
+            # commits, covering the bulk_create below.
+            visit_number = StepExecution.get_visit_count_for_update(p, next_step) + 1
             assigned_operator = _get_operator_for_step(p, next_step, operator)
             step_executions.append(StepExecution(
                 part=p,
@@ -283,8 +288,10 @@ def advance_part_step(
 
         return "escalated" if was_escalated else "advanced"
 
-    # Individual part advancement
-    visit_number = StepExecution.get_visit_count(part, next_step) + 1
+    # Individual part advancement. Lock the target step's executions for this
+    # part while assigning the visit number (see batch path above) so concurrent
+    # advances into the same step can't mint duplicate visit numbers.
+    visit_number = StepExecution.get_visit_count_for_update(part, next_step) + 1
     assigned_operator = _get_operator_for_step(part, next_step, operator)
 
     new_exec = StepExecution.objects.create(
@@ -526,17 +533,23 @@ def _blocks_terminal_exit(current_status, new_status, allow_terminal_exit: bool)
     )
 
 
-def _load_parts_scoped(tenant_id, part_ids: list) -> dict:
-    """Fetch parts for the given tenant, keyed by id. Missing ids are absent."""
+def _load_parts_scoped(tenant_id, part_ids: list, *, lock: bool = False) -> dict:
+    """Fetch parts for the given tenant, keyed by id. Missing ids are absent.
+
+    `lock=True` takes SELECT ... FOR UPDATE (must run inside a transaction) so a
+    bulk mutation serializes against concurrent advancement / disposition writes
+    to the same parts' status — the read-modify-write below can't lose updates."""
     qs = Parts.unscoped.filter(tenant_id=tenant_id, id__in=part_ids)
+    if lock:
+        qs = qs.select_for_update()
     return {p.id: p for p in qs}
 
 
 def bulk_increment(tenant_id, part_ids: list, operator) -> list[BulkResult]:
     """Advance each listed part one step. Per-id errors are captured, not raised."""
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:
@@ -563,8 +576,8 @@ def bulk_rollback(
 ) -> list[BulkResult]:
     """Rollback each listed part one step. Parts needing approval are reported as not ok."""
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:
@@ -608,8 +621,8 @@ def bulk_set_status(
         raise ValueError(f"Invalid part status: {new_status}")
 
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:

@@ -448,9 +448,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             # the gate's pass-oriented checks (QA signoff, FPI) would paradoxically
             # block routing a FAILED part to its rework branch. The
             # `resolve_step_decision` permission is the control here.
-            result = advance_part_step(
-                part, operator=request.user, decision_result=decision, skip_gate_check=True,
-            )
+            #
+            # In a transaction so the visit-number lock advance_part_step takes
+            # (get_visit_count_for_update) is held through the StepExecution insert.
+            with transaction.atomic():
+                result = advance_part_step(
+                    part, operator=request.user, decision_result=decision, skip_gate_check=True,
+                )
         except (ValueError, DjangoValidationError) as e:
             msg = "; ".join(e.messages) if isinstance(e, DjangoValidationError) else str(e)
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)

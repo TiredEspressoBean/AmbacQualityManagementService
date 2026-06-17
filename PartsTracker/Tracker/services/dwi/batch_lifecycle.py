@@ -79,70 +79,76 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
     """Seal a BatchExecution and trigger advancement retry. Raises
     ValidationError if the batch isn't ready to seal (missing
     completions, foreign parts, empty)."""
-    from Tracker.models import Substep, SubstepCompletion, SubstepScope
-
-    if batch.sealed_at is not None:
-        return SealResult(
-            batch_id=str(batch.id),
-            sealed_at=batch.sealed_at.isoformat(),
-            problems=[],
-        )
-
+    from Tracker.models import BatchExecution, Substep, SubstepCompletion, SubstepScope
     from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
 
-    problems: list[str] = []
-    members = list(batch.parts.all())
-
-    # 3c — membership reconciliation: a member that went terminal
-    # (scrapped/cancelled) after batch start is no longer a live cohort
-    # member. Drop it from the batch so seal doesn't validate against — or
-    # later try to advance — a dead part. Split parts stay (Case-19: the
-    # batch substep still covers a split-out part's operation).
-    dropped = [p for p in members if p.part_status in TERMINAL_PART_STATUSES]
-    if dropped:
-        batch.parts.remove(*dropped)
-        logger.info(
-            "Seal reconcile: dropped %d terminal part(s) from batch %s: %s",
-            len(dropped), batch.id, [str(p.id) for p in dropped],
-        )
-    parts = [p for p in members if p.part_status not in TERMINAL_PART_STATUSES]
-
-    if not parts:
-        problems.append("Batch has no live parts (all members are scrapped/cancelled).")
-
-    foreign = [p for p in parts if p.work_order_id != batch.work_order_id]
-    if foreign:
-        problems.append(
-            f"Batch contains parts from other WOs: {[str(p.id) for p in foreign]}. "
-            "One BatchExecution per WO is invariant."
-        )
-
-    required_subs = list(
-        Substep.objects.filter(
-            step_id=batch.step_id,
-            scope=SubstepScope.BATCH,
-            is_optional=False,
-            archived=False,
-        )
-    )
-    if required_subs:
-        completed_ids = set(
-            SubstepCompletion.objects.filter(
-                batch_execution_id=batch.id,
-                substep_id__in=[s.id for s in required_subs],
-                is_voided=False,
-            ).values_list('substep_id', flat=True)
-        )
-        for s in required_subs:
-            if s.id not in completed_ids:
-                problems.append(
-                    f"Batch substep '{s.title}' has no completion on this batch."
-                )
-
-    if problems:
-        raise ValidationError(problems)
-
+    # One transaction holds a row lock on the batch across the whole check →
+    # validate → seal → fire-advancement sequence, so two concurrent seals
+    # can't both pass the already-sealed check, double-stamp sealed_at, and
+    # double-fire advancement. The second seal blocks on the lock, then sees
+    # sealed_at set and returns the idempotent result.
     with transaction.atomic():
+        batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
+
+        if batch.sealed_at is not None:
+            return SealResult(
+                batch_id=str(batch.id),
+                sealed_at=batch.sealed_at.isoformat(),
+                problems=[],
+            )
+
+        problems: list[str] = []
+        members = list(batch.parts.all())
+
+        # 3c — membership reconciliation: a member that went terminal
+        # (scrapped/cancelled) after batch start is no longer a live cohort
+        # member. Drop it from the batch so seal doesn't validate against — or
+        # later try to advance — a dead part. Split parts stay (Case-19: the
+        # batch substep still covers a split-out part's operation).
+        dropped = [p for p in members if p.part_status in TERMINAL_PART_STATUSES]
+        if dropped:
+            batch.parts.remove(*dropped)
+            logger.info(
+                "Seal reconcile: dropped %d terminal part(s) from batch %s: %s",
+                len(dropped), batch.id, [str(p.id) for p in dropped],
+            )
+        parts = [p for p in members if p.part_status not in TERMINAL_PART_STATUSES]
+
+        if not parts:
+            problems.append("Batch has no live parts (all members are scrapped/cancelled).")
+
+        foreign = [p for p in parts if p.work_order_id != batch.work_order_id]
+        if foreign:
+            problems.append(
+                f"Batch contains parts from other WOs: {[str(p.id) for p in foreign]}. "
+                "One BatchExecution per WO is invariant."
+            )
+
+        required_subs = list(
+            Substep.objects.filter(
+                step_id=batch.step_id,
+                scope=SubstepScope.BATCH,
+                is_optional=False,
+                archived=False,
+            )
+        )
+        if required_subs:
+            completed_ids = set(
+                SubstepCompletion.objects.filter(
+                    batch_execution_id=batch.id,
+                    substep_id__in=[s.id for s in required_subs],
+                    is_voided=False,
+                ).values_list('substep_id', flat=True)
+            )
+            for s in required_subs:
+                if s.id not in completed_ids:
+                    problems.append(
+                        f"Batch substep '{s.title}' has no completion on this batch."
+                    )
+
+        if problems:
+            raise ValidationError(problems)
+
         batch.sealed_at = timezone.now()
         batch.save(update_fields=['sealed_at'])
         logger.info("BatchExecution %s sealed by user %s", batch.id, user.id)

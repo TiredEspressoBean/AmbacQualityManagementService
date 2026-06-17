@@ -32,10 +32,9 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
     `user` is accepted for symmetry with non-request callers; in the request path
     auditlog attributes the `part.save()` to `request.user` via middleware.
     """
-    from Tracker.models import PartsStatus
+    from Tracker.models import PartsStatus, Parts
 
-    part = disposition.part
-    if part is None or not disposition.disposition_type:
+    if disposition.part_id is None or not disposition.disposition_type:
         return
 
     # Only act once the decision is being implemented (or closed).
@@ -51,8 +50,8 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
     }
     new_status = status_mapping.get(disposition.disposition_type)
-    if not new_status or part.part_status == new_status:
-        return  # unknown type, or idempotent no-op
+    if not new_status:
+        return  # unknown type
 
     # Terminal-dominant precedence (2a): a less-severe disposition must not pull a
     # part out of — or downgrade — a terminal status. SCRAP dominates everything;
@@ -69,13 +68,25 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         PartsStatus.CORE_BANKED: 1,
         PartsStatus.RMA_CLOSED: 1,
     }
-    if terminal_rank.get(part.part_status, 0) > terminal_rank.get(new_status, 0):
-        return  # current terminal status outranks this decision — don't regress it
 
-    part.part_status = new_status
-    if disposition.disposition_type in ('REWORK', 'REPAIR'):
-        part.total_rework_count += 1
-    part.save(update_fields=['part_status', 'total_rework_count'])
+    # Lock the part so the read-check-write below is atomic. Dispositions are
+    # per-QR (several can target one part), and the advancement engine writes
+    # part_status too; without the lock two concurrent appliers each read a
+    # stale status and the precedence guard can be defeated — e.g. a REWORK
+    # decision reviving a part another disposition just SCRAPPED, or the rework
+    # counter double-incrementing. The second applier blocks here, then re-reads
+    # the committed status and the guard holds.
+    with transaction.atomic():
+        part = Parts.objects.select_for_update().get(pk=disposition.part_id)
+        if part.part_status == new_status:
+            return  # idempotent no-op
+        if terminal_rank.get(part.part_status, 0) > terminal_rank.get(new_status, 0):
+            return  # current terminal status outranks this decision — don't regress it
+
+        part.part_status = new_status
+        if disposition.disposition_type in ('REWORK', 'REPAIR'):
+            part.total_rework_count += 1
+        part.save(update_fields=['part_status', 'total_rework_count'])
 
 
 def complete_disposition_resolution(

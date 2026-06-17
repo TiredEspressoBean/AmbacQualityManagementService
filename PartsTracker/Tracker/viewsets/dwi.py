@@ -472,16 +472,29 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         batches per (WO, step) are allowed (furnace/wash loads) as long as
         their parts don't overlap."""
         from django.core.exceptions import ValidationError as DjangoValidationError
+        from django.db import transaction
         from rest_framework.exceptions import ValidationError as DRFValidationError
+        from Tracker.models import Parts
         from Tracker.services.dwi.batch_lifecycle import assert_no_open_batch_overlap
 
         step = serializer.validated_data.get('step')
         parts = serializer.validated_data.get('parts') or []
+        part_ids = [getattr(p, 'id', p) for p in parts]
         try:
-            assert_no_open_batch_overlap(step=step, parts=parts)
+            # Lock the candidate part rows, then check overlap, then create —
+            # all in one transaction. Two concurrent creates that share a part
+            # serialize on its lock; the loser's overlap check then sees the
+            # winner's committed open batch and is rejected. Without this the
+            # disjoint-membership invariant is a check-then-act race (no DB
+            # constraint backs it).
+            with transaction.atomic():
+                if part_ids:
+                    # Materialize the locked rows (FOR UPDATE) before the check.
+                    list(Parts.objects.select_for_update().filter(id__in=part_ids))
+                assert_no_open_batch_overlap(step=step, parts=parts)
+                serializer.save(started_by=self.request.user)
         except DjangoValidationError as exc:
             raise DRFValidationError({'detail': exc.messages})
-        serializer.save(started_by=self.request.user)
 
     @extend_schema(
         request=None,
