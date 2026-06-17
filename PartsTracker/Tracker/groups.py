@@ -146,34 +146,43 @@ class GroupSeeder:
 
         Note: 'system_admin' is NOT seeded - that's only for platform team.
         """
+        from auditlog.context import disable_auditlog
         from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
         from Tracker.presets import GROUP_PRESETS
 
         created = []
-        for key, preset in GROUP_PRESETS.items():
-            # Skip system_admin - that's only for platform team
-            if key in cls.SKIP_FOR_TENANT_SEEDING:
-                continue
+        # Suppress auditlog while seeding. The Admin group's
+        # `permissions.set(Permission.objects.all())` otherwise makes auditlog
+        # stringify every permission (each str() lazily fetches content_type),
+        # an N+1 that costs ~9s per tenant created. These default groups are
+        # actor-less system setup, fully reproducible from GROUP_PRESETS, so the
+        # per-permission audit rows are noise. Admin edits to groups afterward
+        # are still audited normally.
+        with disable_auditlog():
+            for key, preset in GROUP_PRESETS.items():
+                # Skip system_admin - that's only for platform team
+                if key in cls.SKIP_FOR_TENANT_SEEDING:
+                    continue
 
-            group, was_created = TenantGroup.objects.get_or_create(
-                tenant=tenant,
-                name=preset['name'],
-                defaults={
-                    'description': preset['description'],
-                    'is_custom': False,
-                }
-            )
-            if was_created:
-                # Assign permissions
-                if preset['permissions'] == '__all__':
-                    # Admin gets all permissions
-                    group.permissions.set(Permission.objects.all())
-                else:
-                    perms = Permission.objects.filter(codename__in=preset['permissions'])
-                    group.permissions.set(perms)
+                group, was_created = TenantGroup.objects.get_or_create(
+                    tenant=tenant,
+                    name=preset['name'],
+                    defaults={
+                        'description': preset['description'],
+                        'is_custom': False,
+                    }
+                )
+                if was_created:
+                    # Assign permissions
+                    if preset['permissions'] == '__all__':
+                        # Admin gets all permissions
+                        group.permissions.set(Permission.objects.all())
+                    else:
+                        perms = Permission.objects.filter(codename__in=preset['permissions'])
+                        group.permissions.set(perms)
 
-                created.append(group)
+                    created.append(group)
 
         return created
 

@@ -394,3 +394,76 @@ export const useCompleteStep = () => {
     const queryClient = useQueryClient();
     return useMutation(completeStepMutationOptions(queryClient));
 };
+
+// =============================================================================
+// 4a — decision-point resolution
+// =============================================================================
+
+export type DecisionBranch = { step_id: string; step_name: string } | null;
+export type DecisionOptions = {
+    is_decision_point: boolean;
+    decision_type?: string;
+    default_branch?: DecisionBranch;
+    alternate_branch?: DecisionBranch;
+    qa_suggested?: string | null;
+};
+
+/** Decision-point metadata for a part's current step (4a). Drives the
+ *  runtime resolver: branch labels for MANUAL, auto-route note for QA_RESULT. */
+export function useDecisionOptions(partId: string | null | undefined, options?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: [...partsKeys.detail(partId ?? ""), "decision_options"] as const,
+        queryFn: () =>
+            api.api_Parts_decision_options_retrieve({
+                params: { id: String(partId) },
+            }) as Promise<DecisionOptions>,
+        enabled: Boolean(partId) && (options?.enabled ?? true),
+    });
+}
+
+/** Resolve a MANUAL decision point by choosing the routing branch (4a).
+ *  Manager/lead-gated server-side (`resolve_step_decision`). */
+export type ResolveDecisionResult = {
+    result: string;
+    new_step_id: string | null;
+    new_step_name: string | null;
+    part_status: string;
+};
+export const useResolveDecision = () => {
+    const queryClient = useQueryClient();
+    return useMutation<ResolveDecisionResult, unknown, { partId: string; decision: "DEFAULT" | "ALTERNATE" }>({
+        mutationFn: ({ partId, decision }) =>
+            api.api_Parts_resolve_decision_create(
+                { decision } as never,
+                { params: { id: partId }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
+            ) as Promise<ResolveDecisionResult>,
+        onSuccess: () => invalidateAllParts(queryClient),
+    });
+};
+
+// =============================================================================
+// 4b — rework-cycle / escalation status
+// =============================================================================
+
+export type ReworkStatus = {
+    total_rework_count: number;
+    current_step_name: string | null;
+    max_visits: number | null;
+    current_visits: number;
+    remaining: number | null;
+    at_limit: boolean;
+    escalation_step_name: string | null;
+};
+
+/** Rework-cycle status for a part: cumulative reworks, visits vs the current
+ *  step's cap, and the escalation target when the cap is exceeded (4b). */
+export function useReworkStatus(partId: string | null | undefined, options?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: [...partsKeys.detail(partId ?? ""), "rework_status"] as const,
+        queryFn: () =>
+            api.api_Parts_rework_status_retrieve({
+                params: { id: String(partId) },
+            }) as Promise<ReworkStatus>,
+        enabled: Boolean(partId) && (options?.enabled ?? true),
+    });
+}

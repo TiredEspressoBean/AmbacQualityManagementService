@@ -341,7 +341,7 @@ def seed_tenant_defaults(sender, instance, created, **kwargs):
     - Default notification rules (starter set; admins customize from there)
     """
     if created:
-        import sys
+        from django.conf import settings
         from .groups import GroupSeeder
         from .services.core.notifications.system_rules import (
             seed_system_rules_for_tenant,
@@ -356,14 +356,18 @@ def seed_tenant_defaults(sender, instance, created, **kwargs):
         # silently returning nothing (when the caller's tenant differs
         # from the one being created).
         with tenant_context(instance.id):
+            # Groups always seed — RBAC/permission tests depend on them.
             GroupSeeder.seed_for_tenant(instance)
-            seed_reference_data_for_tenant(instance)
-            # System notification rules go last — they reference groups
-            # seeded by GroupSeeder. Skipped during tests: most existing
-            # tests assume an empty rules state in setUp and would choke
-            # on the starter set. Tests that want to verify seeding call
-            # `seed_system_rules_for_tenant()` directly.
-            if 'test' not in sys.argv:
+
+            # Reference data (document types, approval templates) and the
+            # starter notification rules are the optional, heaviest part of
+            # tenant creation. Gated behind SEED_TENANT_REFERENCE_DATA so the
+            # test runner can skip it (most tests assume an empty state in
+            # setUp and would choke on the starter set). Tests that assert on
+            # this data call the seed_* helpers directly. Notification rules
+            # go last — they reference groups seeded by GroupSeeder.
+            if settings.SEED_TENANT_REFERENCE_DATA:
+                seed_reference_data_for_tenant(instance)
                 seed_system_rules_for_tenant(instance)
 
 

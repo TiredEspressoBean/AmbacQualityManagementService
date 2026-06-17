@@ -90,10 +90,20 @@ SITE_NAME = os.environ.get('SITE_NAME', 'UQMES')
 # Custom test runner for vector extension support
 TEST_RUNNER = 'Tracker.tests.VectorAwareTestRunner'
 
+# Whether Tenant creation auto-seeds the optional per-tenant defaults
+# (document types, approval templates, starter notification rules). Always on
+# in real deployments. Disabled under the test runner below: it's the heaviest
+# part of tenant creation, and most tests assume an empty state in setUp.
+# Groups are NOT covered by this flag — they always seed (RBAC tests need them).
+# Tests that assert on seeded reference data / rules call the seed_* helpers
+# directly.
+SEED_TENANT_REFERENCE_DATA = True
+
 # Speed up tests: PBKDF2 burns ~1s per User.objects.create_user call. MD5 is fine for tests.
 import sys as _sys
 if 'test' in _sys.argv:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+    SEED_TENANT_REFERENCE_DATA = False
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,.railway.app,.up.railway.app,169.254.131.*').split(',')

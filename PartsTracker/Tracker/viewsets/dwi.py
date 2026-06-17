@@ -10,7 +10,11 @@ when Phase 4 frontend wires them.
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import (
+    extend_schema_view, extend_schema, inline_serializer,
+    OpenApiParameter, OpenApiTypes,
+)
+from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -129,6 +133,34 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         self._assert_step_editable(instance.step)
         instance.delete()
 
+    @extend_schema(
+        request=inline_serializer(
+            name='SubstepSubmitRequest',
+            fields={
+                # Exactly one of step_execution / batch_execution.
+                'step_execution': drf_serializers.UUIDField(required=False),
+                'batch_execution': drf_serializers.UUIDField(required=False),
+                'captures': drf_serializers.ListField(
+                    child=drf_serializers.DictField(), required=False,
+                ),
+                'notes': drf_serializers.CharField(required=False, allow_blank=True),
+                'signature_data': drf_serializers.CharField(required=False, allow_blank=True),
+                'signature_meaning': drf_serializers.CharField(required=False, allow_blank=True),
+                'verification_method': drf_serializers.CharField(required=False, allow_blank=True),
+                'marked_not_applicable': drf_serializers.BooleanField(required=False),
+                'na_reason_code': drf_serializers.CharField(required=False, allow_blank=True),
+            },
+        ),
+        responses=inline_serializer(
+            name='SubstepSubmitResponse',
+            fields={
+                'completion_id': drf_serializers.CharField(),
+                'response_count': drf_serializers.IntegerField(),
+                'quality_report_id': drf_serializers.CharField(allow_null=True),
+                'measurement_count': drf_serializers.IntegerField(),
+            },
+        ),
+    )
     @action(detail=True, methods=['post'])
     def submit(self, request, *args, **kwargs):
         """Operator-runtime submit endpoint.
@@ -147,14 +179,22 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         """
         substep = self.get_object()
 
+        # A submit targets either a per-part StepExecution (SAMPLED substeps) or a
+        # per-batch BatchExecution (BATCH-scope substeps, 3a) — exactly one.
         step_execution_id = request.data.get('step_execution')
-        if not step_execution_id:
+        batch_execution_id = request.data.get('batch_execution')
+        if bool(step_execution_id) == bool(batch_execution_id):
             return Response(
-                {'detail': 'Body must include `step_execution` id.'},
+                {'detail': 'Body must include exactly one of `step_execution` / `batch_execution` id.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        step_execution = get_object_or_404(StepExecution, pk=step_execution_id)
+        step_execution = (
+            get_object_or_404(StepExecution, pk=step_execution_id) if step_execution_id else None
+        )
+        batch_execution = (
+            get_object_or_404(BatchExecution, pk=batch_execution_id) if batch_execution_id else None
+        )
         captures = request.data.get('captures') or []
         if not isinstance(captures, list):
             return Response(
@@ -171,6 +211,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             result = submit_substep(
                 substep=substep,
                 step_execution=step_execution,
+                batch_execution=batch_execution,
                 user=request.user if request.user.is_authenticated else None,
                 captures=captures,
                 notes=request.data.get('notes', '') or '',
@@ -425,6 +466,33 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         from Tracker.serializers.dwi import BatchExecutionSerializer
         return BatchExecutionSerializer
 
+    def perform_create(self, serializer):
+        """Stamp the operator and enforce the disjoint-membership invariant
+        (3c): a part may be in at most one open batch per step. Multiple open
+        batches per (WO, step) are allowed (furnace/wash loads) as long as
+        their parts don't overlap."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from Tracker.services.dwi.batch_lifecycle import assert_no_open_batch_overlap
+
+        step = serializer.validated_data.get('step')
+        parts = serializer.validated_data.get('parts') or []
+        try:
+            assert_no_open_batch_overlap(step=step, parts=parts)
+        except DjangoValidationError as exc:
+            raise DRFValidationError({'detail': exc.messages})
+        serializer.save(started_by=self.request.user)
+
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            name='BatchSealResponse',
+            fields={
+                'batch_id': drf_serializers.CharField(),
+                'sealed_at': drf_serializers.CharField(),
+            },
+        ),
+    )
     @action(detail=True, methods=['post'], url_path='seal')
     def seal(self, request, pk=None):
         """POST /api/BatchExecutions/{id}/seal/

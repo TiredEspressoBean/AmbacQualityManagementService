@@ -58,6 +58,45 @@ export interface StepNodeData {
   isStart?: boolean;
   /** Demo mode for conditional overlay rendering */
   demoMode?: DemoMode;
+  /** 4c — live part distribution at this step (always-on overlay, not demo-gated). */
+  liveMetrics?: {
+    total: number;
+    in_rework: number;
+    quarantined: number;
+    awaiting_qa: number;
+  };
+}
+
+/**
+ * 4c — always-on live overlay: how many parts sit at this step right now, with
+ * an attention accent when any are in rework / quarantine / awaiting QA. Unlike
+ * NodeOverlays (demo-gated), this renders whenever real metrics are present.
+ */
+function LiveMetricsBadge({ data }: { data: StepNodeData }) {
+  const m = data.liveMetrics;
+  if (!m || m.total <= 0) return null;
+  const attention = m.quarantined + m.in_rework;
+  const bg = m.quarantined > 0
+    ? 'bg-destructive text-destructive-foreground'
+    : m.in_rework > 0
+      ? 'bg-orange-500 text-white'
+      : 'bg-primary text-primary-foreground';
+  const parts: string[] = [];
+  if (m.in_rework > 0) parts.push(`${m.in_rework} rework`);
+  if (m.quarantined > 0) parts.push(`${m.quarantined} quarantined`);
+  if (m.awaiting_qa > 0) parts.push(`${m.awaiting_qa} awaiting QA`);
+  return (
+    <div
+      className={cn(
+        'absolute -top-2 -right-2 z-10 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-semibold shadow-sm',
+        bg,
+      )}
+      title={parts.length ? `${m.total} here · ${parts.join(' · ')}` : `${m.total} part(s) here`}
+    >
+      {attention > 0 ? <AlertTriangle className="h-3 w-3" /> : <Package className="h-3 w-3" />}
+      <span>{m.total}</span>
+    </div>
+  );
 }
 
 // Props for our custom step nodes
@@ -187,6 +226,7 @@ export const TaskNode = memo(({ data }: StepNodeProps) => {
   return (
     <BaseNode className={cn(getHighlightClass(data))}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseHandle type="target" position={Position.Left} />
       <BaseNodeHeader>
         <Circle className="h-3 w-3 text-muted-foreground" />
@@ -213,6 +253,7 @@ export const DecisionNode = memo(({ data }: StepNodeProps) => {
       getHighlightClass(data)
     )}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseHandle type="target" position={Position.Left} />
       <BaseNodeHeader className="bg-amber-50 dark:bg-amber-950/30">
         <GitBranch className="h-3 w-3 text-amber-600" />
@@ -256,6 +297,7 @@ export const StartNode = memo(({ data }: StepNodeProps) => {
       getHighlightClass(data)
     )}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseNodeHeader className="bg-green-50 dark:bg-green-950/30">
         <Play className="h-3 w-3 text-green-600" />
         <BaseNodeHeaderTitle>{data.label}</BaseNodeHeaderTitle>
@@ -281,6 +323,7 @@ export const ReworkNode = memo(({ data }: StepNodeProps) => {
       getHighlightClass(data)
     )}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseHandle type="target" position={Position.Left} />
       <BaseNodeHeader className="bg-orange-50 dark:bg-orange-950/30">
         <RefreshCw className="h-3 w-3 text-orange-600" />
@@ -312,6 +355,7 @@ export const TimerNode = memo(({ data }: StepNodeProps) => {
       getHighlightClass(data)
     )}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseHandle type="target" position={Position.Left} />
       <BaseNodeHeader className="bg-blue-50 dark:bg-blue-950/30">
         <Clock className="h-3 w-3 text-blue-600" />
@@ -359,6 +403,7 @@ export const TerminalNode = memo(({ data }: StepNodeProps) => {
       getHighlightClass(data)
     )}>
       <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
       <BaseHandle type="target" position={Position.Left} />
       <BaseNodeHeader className={config.bgClass}>
         <Icon className={cn("h-3 w-3", config.textClass)} />

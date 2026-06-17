@@ -4461,6 +4461,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/decision_options/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 4a — decision-point metadata for the operator runtime resolver.
+         *
+         *     Tells the runtime whether this part's current step is a decision
+         *     point, its `decision_type`, and the resolved DEFAULT/ALTERNATE branch
+         *     targets so it can label 'pass → X' / 'fail/rework → Y'. For QA_RESULT
+         *     it also returns the QualityReport-suggested branch (those route
+         *     automatically; no manual pick).
+         */
+        get: operations["api_Parts_decision_options_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/increment/": {
         parameters: {
             query?: never;
@@ -4481,6 +4506,51 @@ export interface paths {
          *     If no decision is provided for qa_result decisions, the latest QualityReport status is used.
          */
         post: operations["api_Parts_increment_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Parts/{id}/resolve_decision/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description 4a — manager/lead resolves a MANUAL decision-point step by choosing
+         *     the routing branch. Gated by `resolve_step_decision`. QA_RESULT points
+         *     route automatically from the QualityReport and don't use this.
+         */
+        post: operations["api_Parts_resolve_decision_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Parts/{id}/rework_status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 4b — rework-cycle visibility.
+         *
+         *     Reports the part's cumulative rework count and, when its current step
+         *     carries a visit cap (`max_visits`), how many visits it's used, how many
+         *     remain, and the ESCALATION target it routes to once the cap is exceeded
+         *     (engine-driven — `_check_cycle_limit`).
+         */
+        get: operations["api_Parts_rework_status_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5717,6 +5787,27 @@ export interface paths {
          *             serializer_class = OrderSerializer
          */
         patch: operations["api_QuarantineDispositions_partial_update"];
+        trace?: never;
+    };
+    "/api/QuarantineDispositions/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Complete (close) a disposition. Gated by `close_disposition` via
+         *     action_permissions; delegates to the resolution service which enforces
+         *     the completion blockers.
+         */
+        post: operations["api_QuarantineDispositions_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/QuarantineDispositions/export-excel/": {
@@ -9456,6 +9547,31 @@ export interface paths {
         };
         /** @description Get step history summary for digital traveler display */
         get: operations["api_WorkOrders_step_history_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/step_metrics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description 4c — live part distribution per step for the flow-map overlay.
+         *
+         *     Returns, for each step that currently holds live (non-terminal) parts on
+         *     this work order, the total count plus an attention breakdown
+         *     (in-rework / quarantined / awaiting-QA / on-hold). A single grouped
+         *     query — accurate regardless of list pagination, unlike counting a capped
+         *     client-side page.
+         */
+        get: operations["api_WorkOrders_step_metrics_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -13310,7 +13426,7 @@ export interface components {
             /** @description Parts that are members of this batch. */
             parts?: string[];
             /** @description Operator who started the batch. */
-            started_by: number;
+            readonly started_by: number;
             /**
              * Format: date-time
              * @description When the operator started the batch.
@@ -13349,10 +13465,12 @@ export interface components {
             step: string;
             /** @description Parts that are members of this batch. */
             parts?: string[];
-            /** @description Operator who started the batch. */
-            started_by: number;
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
+        };
+        BatchSealResponse: {
+            batch_id: string;
+            sealed_at: string;
         };
         /** @enum {unknown} */
         BlankEnum: "";
@@ -14399,6 +14517,17 @@ export interface components {
          * @enum {string}
          */
         DataOriginEnum: "NATIVE" | "IMPORTED";
+        DecisionOptionsResponse: {
+            is_decision_point: boolean;
+            decision_type?: string;
+            default_branch?: {
+                [key: string]: unknown;
+            } | null;
+            alternate_branch?: {
+                [key: string]: unknown;
+            } | null;
+            qa_suggested?: string | null;
+        };
         /**
          * @description * `QA_RESULT` - Based on QA Pass/Fail
          *     * `MEASUREMENT` - Based on Measurement Threshold
@@ -15369,6 +15498,14 @@ export interface components {
             identified_root_cause?: string | null;
             archived?: boolean;
         };
+        /**
+         * @description * `PER_WORKORDER` - Per Work Order
+         *     * `PER_SHIFT` - Per Shift
+         *     * `PER_EQUIPMENT` - Per Equipment
+         *     * `PER_OPERATOR` - Per Operator
+         * @enum {string}
+         */
+        FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
         /**
          * @description Top-level shape: {report_type, params}.
          *
@@ -18004,8 +18141,6 @@ export interface components {
             step?: string;
             /** @description Parts that are members of this batch. */
             parts?: string[];
-            /** @description Operator who started the batch. */
-            started_by?: number;
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
         };
@@ -19438,6 +19573,13 @@ export interface components {
             is_inspection_point?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
+            /**
+             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             *
+             *     * `sampled` - Per part (sampling)
+             *     * `batch` - Per batch
+             */
+            scope?: components["schemas"]["ScopeEnum"];
             /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -21068,6 +21210,10 @@ export interface components {
         ResendInvitationInputRequest: {
             invitation_id: number;
         };
+        ResolveDecisionInputRequest: {
+            /** @description Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'. */
+            decision: string;
+        };
         RestAuthDetail: {
             readonly detail: string;
         };
@@ -21082,6 +21228,15 @@ export interface components {
          * @enum {string}
          */
         RevisitAssignmentEnum: "ANY" | "SAME" | "DIFFERENT" | "ROLE";
+        ReworkStatusResponse: {
+            total_rework_count: number;
+            current_step_name: string | null;
+            max_visits: number | null;
+            current_visits: number;
+            remaining: number | null;
+            at_limit: boolean;
+            escalation_step_name: string | null;
+        };
         /** @description Root cause serializer */
         RootCause: {
             /** Format: uuid */
@@ -21699,6 +21854,12 @@ export interface components {
             description: string;
             params_schema: unknown;
         };
+        /**
+         * @description * `sampled` - Per part (sampling)
+         *     * `batch` - Per batch
+         * @enum {string}
+         */
+        ScopeEnum: "sampled" | "batch";
         SendInvitationInputRequest: {
             user_id: number;
         };
@@ -21825,6 +21986,19 @@ export interface components {
             block_on_quarantine?: boolean;
             /** Format: double */
             pass_threshold?: number;
+            /** @description If True, all parts in batch must be ready before any can advance */
+            requires_batch_completion?: boolean;
+            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
+            requires_first_piece_inspection?: boolean;
+            /**
+             * @description Scope at which FPI applies
+             *
+             *     * `PER_WORKORDER` - Per Work Order
+             *     * `PER_SHIFT` - Per Shift
+             *     * `PER_EQUIPMENT` - Per Equipment
+             *     * `PER_OPERATOR` - Per Operator
+             */
+            fpi_scope?: components["schemas"]["FpiScopeEnum"];
             /**
              * @description Visual type for flow editor.
              *
@@ -22266,6 +22440,19 @@ export interface components {
             block_on_quarantine?: boolean;
             /** Format: double */
             pass_threshold?: number;
+            /** @description If True, all parts in batch must be ready before any can advance */
+            requires_batch_completion?: boolean;
+            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
+            requires_first_piece_inspection?: boolean;
+            /**
+             * @description Scope at which FPI applies
+             *
+             *     * `PER_WORKORDER` - Per Work Order
+             *     * `PER_SHIFT` - Per Shift
+             *     * `PER_EQUIPMENT` - Per Equipment
+             *     * `PER_OPERATOR` - Per Operator
+             */
+            fpi_scope?: components["schemas"]["FpiScopeEnum"];
             /**
              * @description Visual type for flow editor.
              *
@@ -22541,6 +22728,13 @@ export interface components {
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
+             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             *
+             *     * `sampled` - Per part (sampling)
+             *     * `batch` - Per batch
+             */
+            scope?: components["schemas"]["ScopeEnum"];
+            /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
@@ -22761,6 +22955,13 @@ export interface components {
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
+             * @description Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+             *
+             *     * `sampled` - Per part (sampling)
+             *     * `batch` - Per batch
+             */
+            scope?: components["schemas"]["ScopeEnum"];
+            /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
@@ -22935,6 +23136,27 @@ export interface components {
             value_json?: unknown;
             /** @description Operator who captured the response. */
             responded_by: number;
+        };
+        SubstepSubmitRequestRequest: {
+            /** Format: uuid */
+            step_execution?: string;
+            /** Format: uuid */
+            batch_execution?: string;
+            captures?: {
+                [key: string]: unknown;
+            }[];
+            notes?: string;
+            signature_data?: string;
+            signature_meaning?: string;
+            verification_method?: string;
+            marked_not_applicable?: boolean;
+            na_reason_code?: string;
+        };
+        SubstepSubmitResponse: {
+            completion_id: string;
+            response_count: number;
+            quality_report_id: string | null;
+            measurement_count: number;
         };
         /** @description Localized title + body for a substep. */
         SubstepTranslation: {
@@ -24447,6 +24669,11 @@ export interface components {
             process_name: string | null;
             total_parts: number;
             step_history: components["schemas"]["StepSummary"][];
+        };
+        WorkOrderStepMetricsResponse: {
+            steps: {
+                [key: string]: unknown;
+            }[];
         };
         /**
          * @description Nested policy + steps. Replace-all semantics on update: writing a
@@ -26066,20 +26293,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BatchExecutionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
-                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchExecution"];
+                    "application/json": components["schemas"]["BatchSealResponse"];
                 };
             };
         };
@@ -33125,6 +33346,31 @@ export interface operations {
             };
         };
     };
+    api_Parts_decision_options_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionOptionsResponse"];
+                };
+            };
+        };
+    };
     api_Parts_increment_create: {
         parameters: {
             query?: {
@@ -33154,6 +33400,64 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Parts_resolve_decision_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDecisionInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResolveDecisionInputRequest"];
+                "multipart/form-data": components["schemas"]["ResolveDecisionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Parts_rework_status_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReworkStatusResponse"];
                 };
             };
         };
@@ -34525,6 +34829,34 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedQuarantineDispositionRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedQuarantineDispositionRequest"];
                 "multipart/form-data": components["schemas"]["PatchedQuarantineDispositionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineDisposition"];
+                };
+            };
+        };
+    };
+    api_QuarantineDispositions_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Disposition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuarantineDispositionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["QuarantineDispositionRequest"];
+                "multipart/form-data": components["schemas"]["QuarantineDispositionRequest"];
             };
         };
         responses: {
@@ -37962,11 +38294,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["SubstepRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepRequest"];
-                "multipart/form-data": components["schemas"]["SubstepRequest"];
+                "application/json": components["schemas"]["SubstepSubmitRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepSubmitRequestRequest"];
+                "multipart/form-data": components["schemas"]["SubstepSubmitRequestRequest"];
             };
         };
         responses: {
@@ -37975,7 +38307,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Substep"];
+                    "application/json": components["schemas"]["SubstepSubmitResponse"];
                 };
             };
         };
@@ -41393,6 +41725,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderStepHistoryResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_step_metrics_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderStepMetricsResponse"];
                 };
             };
         };

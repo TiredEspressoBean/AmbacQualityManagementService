@@ -77,6 +77,11 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
         [partsByStep],
     );
 
+    // The part list caps at 500 (§3.10). If the WO has more, the list is
+    // incomplete — warn so the operator doesn't assume every part is shown.
+    const partsTruncated =
+        (partsData?.count ?? 0) > (partsData?.results?.length ?? 0);
+
     const togglePart = (partId: string) => {
         setSelectedIds((prev) =>
             prev.includes(partId)
@@ -166,6 +171,14 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
                         checked part automatically.
                     </DialogDescription>
                 </DialogHeader>
+
+                {partsTruncated && (
+                    <p className="rounded bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        Showing the first {partsData?.results?.length ?? 0} of{" "}
+                        {partsData?.count ?? 0} parts — the list is incomplete. Some
+                        parts on this work order aren't shown here.
+                    </p>
+                )}
 
                 <div className="max-h-[50vh] overflow-y-auto rounded-md border">
                     {isLoading ? (

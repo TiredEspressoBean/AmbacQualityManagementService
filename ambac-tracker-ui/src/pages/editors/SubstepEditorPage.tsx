@@ -147,6 +147,7 @@ type PendingEdits = {
     is_inspection_point?: boolean;
     is_critical?: boolean;
     allow_not_applicable?: boolean;
+    scope?: "sampled" | "batch";
 };
 
 /**
@@ -168,6 +169,7 @@ type PendingCreate = {
     is_inspection_point: boolean;
     is_critical: boolean;
     allow_not_applicable: boolean;
+    scope: "sampled" | "batch";
 };
 
 let _tempIdCounter = 0;
@@ -382,6 +384,7 @@ export function SubstepEditorPage() {
                         draft.is_inspection_point || bodyHasAnnotator(draft.body_blocks),
                     is_critical: draft.is_critical,
                     allow_not_applicable: draft.allow_not_applicable,
+                    scope: draft.scope,
                 } as never);
             }
 
@@ -453,6 +456,7 @@ export function SubstepEditorPage() {
             is_inspection_point: false,
             is_critical: false,
             allow_not_applicable: false,
+            scope: "sampled",
             ...seed,
         };
         setPendingCreates((prev) => [...prev, draft]);
@@ -884,6 +888,7 @@ function SubstepExpandedBody({
         pending?.is_critical ?? (substep.is_critical ?? false);
     const workingAllowNa =
         pending?.allow_not_applicable ?? (substep.allow_not_applicable ?? false);
+    const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
     const workingBody =
         (pending?.body_blocks as object | undefined) ??
         ((substep.body_blocks as unknown as object) ?? { type: "doc", content: [] });
@@ -997,6 +1002,22 @@ function SubstepExpandedBody({
                         }
                     >
                         Inspection point
+                    </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Switch
+                        id={`scope-${substep.id}`}
+                        checked={workingScope === "batch"}
+                        disabled={!editable}
+                        onCheckedChange={(v) => mergePending({ scope: v ? "batch" : "sampled" })}
+                    />
+                    <Label
+                        htmlFor={`scope-${substep.id}`}
+                        className="text-xs"
+                        title="When on, this substep is captured ONCE for the whole batch (a BatchExecution) — heat-treat cycles, plating baths, wash tanks — not per part. Off = per-part (sampling)."
+                    >
+                        Batch (once per lot)
                     </Label>
                 </div>
 

@@ -31,6 +31,19 @@ export interface StepData {
   requires_qa_signoff?: boolean;
   sampling_required?: boolean;
   min_sampling_rate?: number;
+  // Batch completion — lot moves as a unit; pass_threshold = fraction READY to advance
+  requires_batch_completion?: boolean;
+  pass_threshold?: number;
+  // First Piece Inspection
+  requires_first_piece_inspection?: boolean;
+  fpi_scope?: string;
+  // 4c — live part distribution at this step (work-order runtime overlay).
+  liveMetrics?: {
+    total: number;
+    in_rework: number;
+    quarantined: number;
+    awaiting_qa: number;
+  };
 }
 
 /**
@@ -133,6 +146,12 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         requiresQaSignoff: step.requires_qa_signoff,
         samplingRequired: step.sampling_required,
         minSamplingRate: step.min_sampling_rate,
+        requiresBatchCompletion: step.requires_batch_completion,
+        passThreshold: step.pass_threshold,
+        requiresFirstPieceInspection: step.requires_first_piece_inspection,
+        fpiScope: step.fpi_scope,
+        // 4c — live overlay (always-on when present; not demo-gated).
+        liveMetrics: step.liveMetrics,
       },
     });
   });
@@ -150,6 +169,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       if (edge.edge_type === 'DEFAULT') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}`,
+          data: { edge_type: 'DEFAULT' },
           source: String(edge.from_step),
           target: String(edge.to_step),
           sourceHandle: isDecisionNode ? 'pass' : undefined,
@@ -163,6 +183,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       } else if (edge.edge_type === 'ALTERNATE') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-alt`,
+          data: { edge_type: 'ALTERNATE' },
           source: String(edge.from_step),
           target: String(edge.to_step),
           sourceHandle: isDecisionNode ? 'fail' : undefined,
@@ -176,6 +197,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       } else if (edge.edge_type === 'ESCALATION') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}-esc`,
+          data: { edge_type: 'ESCALATION' },
           source: String(edge.from_step),
           target: String(edge.to_step),
           label: 'Max Exceeded',
@@ -194,6 +216,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         const nextStep = sortedSteps[index + 1];
         edges.push({
           id: `e${step.id}-${nextStep.id}`,
+          data: { edge_type: 'DEFAULT' },
           source: String(step.id),
           target: String(nextStep.id),
           type: 'smoothstep',

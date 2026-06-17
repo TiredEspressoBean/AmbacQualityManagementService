@@ -307,6 +307,24 @@ SOD_APPROVAL_PERMISSIONS = [
     'add_groupapproverassignment', 'change_groupapproverassignment', 'delete_groupapproverassignment',
 ]
 
+# Disposition resolution: closing an NCR's disposition (resolving the decision).
+# Granted GENEROUSLY across the manager / lead / inspector tiers — many roles
+# legitimately resolve dispositions on the floor, so this is not held to the
+# narrow SoD approve tier. (`approve_disposition` stays SoD-restricted above; the
+# line Operator is still excluded — they surface the QR, they don't disposition it.)
+# qa_manager / tenant_admin already get close_disposition via SOD_APPROVAL_PERMISSIONS.
+DISPOSITION_RESOLUTION_PERMISSIONS = [
+    'close_disposition',
+]
+
+# Decision-point resolution (4a): choosing the routing branch at a MANUAL
+# decision-point step. Manager / lead tier — operators run the step but a
+# supervisor makes the routing call. (QA_RESULT decision points route
+# automatically from the QualityReport and need no permission.)
+DECISION_RESOLUTION_PERMISSIONS = [
+    'resolve_step_decision',
+]
+
 # Record retention: deleting operational records is manager-tier only. Line
 # roles void / supersede / archive, never delete. (Authoring artifacts delete
 # via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
@@ -407,6 +425,8 @@ GROUP_PRESETS = {
             'add_userrole', 'change_userrole', 'delete_userrole',
             # Group management within tenant
             'add_tenantgroup', 'change_tenantgroup', 'delete_tenantgroup',
+            # Resolve MANUAL decision-point routing (4a)
+            *DECISION_RESOLUTION_PERMISSIONS,
         ],
     },
 
@@ -429,6 +449,8 @@ GROUP_PRESETS = {
             'full_tenant_access',
             # Classification authority (no secret tier)
             'classify_documents',
+            # Resolve MANUAL decision-point routing (4a)
+            *DECISION_RESOLUTION_PERMISSIONS,
         ],
     },
 
@@ -442,6 +464,10 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            # Resolve (close) NCR dispositions
+            *DISPOSITION_RESOLUTION_PERMISSIONS,
+            # Resolve MANUAL decision-point routing (4a)
+            *DECISION_RESOLUTION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -461,6 +487,10 @@ GROUP_PRESETS = {
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
+            # Resolve (close) NCR dispositions
+            *DISPOSITION_RESOLUTION_PERMISSIONS,
+            # Resolve MANUAL decision-point routing (4a)
+            *DECISION_RESOLUTION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -495,6 +525,10 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            # Resolve (close) NCR dispositions
+            *DISPOSITION_RESOLUTION_PERMISSIONS,
+            # Resolve MANUAL decision-point routing (4a)
+            *DECISION_RESOLUTION_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],

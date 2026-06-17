@@ -4579,6 +4579,23 @@ export type Step = {
   number | undefined;
   block_on_quarantine?: boolean | undefined;
   pass_threshold?: number | undefined;
+  requires_batch_completion?: /**
+   * If True, all parts in batch must be ready before any can advance
+   */
+  boolean | undefined;
+  requires_first_piece_inspection?: /**
+   * If True, first part of each work order at this step requires FPI before others can proceed
+   */
+  boolean | undefined;
+  fpi_scope?: /**
+     * Scope at which FPI applies
+    
+    * `PER_WORKORDER` - Per Work Order
+    * `PER_SHIFT` - Per Shift
+    * `PER_EQUIPMENT` - Per Equipment
+    * `PER_OPERATOR` - Per Operator
+     */
+  FpiScopeEnum | undefined;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -4605,6 +4622,16 @@ export type Step = {
     | undefined;
   revisit_assignment?: RevisitAssignmentEnum | undefined;
 };
+export type FpiScopeEnum =
+  /**
+   * * `PER_WORKORDER` - Per Work Order
+   * `PER_SHIFT` - Per Shift
+   * `PER_EQUIPMENT` - Per Equipment
+   * `PER_OPERATOR` - Per Operator
+   *
+   * @enum PER_WORKORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR
+   */
+  "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
 export type StepTypeEnum =
   /**
    * * `TASK` - Task
@@ -6182,6 +6209,13 @@ export type Substep = {
      */
     (string | null)
     | undefined;
+  scope?: /**
+     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+    
+    * `sampled` - Per part (sampling)
+    * `batch` - Per batch
+     */
+  ScopeEnum | undefined;
   sampling_rule?:
     | /**
      * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -6211,6 +6245,14 @@ export type Substep = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type ScopeEnum =
+  /**
+   * * `sampled` - Per part (sampling)
+   * `batch` - Per batch
+   *
+   * @enum sampled, batch
+   */
+  "sampled" | "batch";
 export type PaginatedSubstepResourceList = {
   /**
    * @example 123
@@ -8908,6 +8950,80 @@ export type PatchedSubstepGateCompletionRequest = Partial<{
    */
   ip_address: string | null;
 }>;
+export type PatchedSubstepRequest = Partial<{
+  /**
+   * The parent Op this substep belongs to.
+   */
+  step: string;
+  /**
+   * Position within the parent Op's substep sequence (0-indexed).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  order: number;
+  /**
+   * Short human-readable title shown in substep listings.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
+   */
+  body_blocks: unknown;
+  /**
+   * Operator may mark this substep N/A instead of completing it.
+   */
+  is_optional: boolean;
+  /**
+   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
+   */
+  is_critical: boolean;
+  /**
+   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
+   */
+  allow_not_applicable: boolean;
+  /**
+   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   */
+  requires_signature: boolean;
+  /**
+   * When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc.
+   */
+  is_inspection_point: boolean;
+  /**
+   * Estimated time the substep typically takes. Informational.
+   */
+  expected_duration: string | null;
+  /**
+     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+    
+    * `sampled` - Per part (sampling)
+    * `batch` - Per batch
+     */
+  scope: ScopeEnum;
+  /**
+   * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
+   */
+  sampling_rule: string | null;
+  /**
+   * Forward-compatible: id of the LibrarySubstep this was inserted from.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  source_library_substep_id: number | null;
+  /**
+   * Forward-compatible: version of the LibrarySubstep at insert time.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  source_library_version: number | null;
+  archived: boolean;
+}>;
 export type PatchedSubstepResponseRequest = Partial<{
   /**
    * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set.
@@ -10267,6 +10383,23 @@ export type StepRequest = {
   number | undefined;
   block_on_quarantine?: boolean | undefined;
   pass_threshold?: number | undefined;
+  requires_batch_completion?: /**
+   * If True, all parts in batch must be ready before any can advance
+   */
+  boolean | undefined;
+  requires_first_piece_inspection?: /**
+   * If True, first part of each work order at this step requires FPI before others can proceed
+   */
+  boolean | undefined;
+  fpi_scope?: /**
+     * Scope at which FPI applies
+    
+    * `PER_WORKORDER` - Per Work Order
+    * `PER_SHIFT` - Per Shift
+    * `PER_EQUIPMENT` - Per Equipment
+    * `PER_OPERATOR` - Per Operator
+     */
+  FpiScopeEnum | undefined;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -10497,6 +10630,88 @@ export type SubstepGateCompletionRequest = {
      */
     (string | null)
     | undefined;
+};
+export type SubstepRequest = {
+  /**
+   * The parent Op this substep belongs to.
+   */
+  step: string;
+  order?: /**
+   * Position within the parent Op's substep sequence (0-indexed).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  /**
+   * Short human-readable title shown in substep listings.
+   *
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  body_blocks?: /**
+   * TipTap document JSON. Shape: {type: 'doc', content: [...]}. See ambac-tracker-ui/src/types/dwi.ts (DwiDocument) for the node vocabulary.
+   */
+  unknown | undefined;
+  is_optional?: /**
+   * Operator may mark this substep N/A instead of completing it.
+   */
+  boolean | undefined;
+  is_critical?: /**
+   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
+   */
+  boolean | undefined;
+  allow_not_applicable?: /**
+   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
+   */
+  boolean | undefined;
+  requires_signature?: /**
+   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   */
+  boolean | undefined;
+  is_inspection_point?: /**
+   * When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc.
+   */
+  boolean | undefined;
+  expected_duration?:
+    | /**
+     * Estimated time the substep typically takes. Informational.
+     */
+    (string | null)
+    | undefined;
+  scope?: /**
+     * Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+    
+    * `sampled` - Per part (sampling)
+    * `batch` - Per batch
+     */
+  ScopeEnum | undefined;
+  sampling_rule?:
+    | /**
+     * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
+     */
+    (string | null)
+    | undefined;
+  source_library_substep_id?:
+    | /**
+     * Forward-compatible: id of the LibrarySubstep this was inserted from.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  source_library_version?:
+    | /**
+     * Forward-compatible: version of the LibrarySubstep at insert time.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  archived?: boolean | undefined;
 };
 export type SubstepResponseRequest = {
   step_execution?:
@@ -11477,7 +11692,6 @@ const BatchExecutionRequest = z.object({
   work_order: z.string().uuid(),
   step: z.string().uuid(),
   parts: z.array(z.string().uuid()).optional(),
-  started_by: z.number().int(),
   notes: z.string().optional(),
 });
 const PatchedBatchExecutionRequest = z
@@ -11485,10 +11699,13 @@ const PatchedBatchExecutionRequest = z
     work_order: z.string().uuid(),
     step: z.string().uuid(),
     parts: z.array(z.string().uuid()),
-    started_by: z.number().int(),
     notes: z.string(),
   })
   .partial();
+const BatchSealResponse = z.object({
+  batch_id: z.string(),
+  sealed_at: z.string(),
+});
 const CapaTypeEnum = z.enum([
   "CORRECTIVE",
   "PREVENTIVE",
@@ -13364,9 +13581,26 @@ const PatchedPartsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const DecisionOptionsResponse = z.object({
+  is_decision_point: z.boolean(),
+  decision_type: z.string().optional(),
+  default_branch: z.object({}).partial().passthrough().nullish(),
+  alternate_branch: z.object({}).partial().passthrough().nullish(),
+  qa_suggested: z.string().nullish(),
+});
 const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
   .partial();
+const ResolveDecisionInputRequest = z.object({ decision: z.string().min(1) });
+const ReworkStatusResponse = z.object({
+  total_rework_count: z.number().int(),
+  current_step_name: z.string().nullable(),
+  max_visits: z.number().int().nullable(),
+  current_visits: z.number().int(),
+  remaining: z.number().int().nullable(),
+  at_limit: z.boolean(),
+  escalation_step_name: z.string().nullable(),
+});
 const api_Parts_rollback_create_Body = z
   .object({ reason: z.string(), override_id: z.string().uuid() })
   .partial();
@@ -13498,6 +13732,12 @@ const ProcessesCategoryEnum = z.enum([
   "NPI",
   "DOCUMENT",
 ]);
+const FpiScopeEnum = z.enum([
+  "PER_WORKORDER",
+  "PER_SHIFT",
+  "PER_EQUIPMENT",
+  "PER_OPERATOR",
+]);
 const StepTypeEnum = z.enum([
   "TASK",
   "START",
@@ -13530,6 +13770,9 @@ const Step = z.object({
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
   pass_threshold: z.number().optional(),
+  requires_batch_completion: z.boolean().optional(),
+  requires_first_piece_inspection: z.boolean().optional(),
+  fpi_scope: FpiScopeEnum.optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -14836,6 +15079,7 @@ const PatchedSubstepTranslationRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ScopeEnum = z.enum(["sampled", "batch"]);
 const Substep = z.object({
   id: z.string().uuid(),
   step: z.string().uuid(),
@@ -14849,6 +15093,7 @@ const Substep = z.object({
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   expected_duration: z.string().nullish(),
+  scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
   source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -14874,6 +15119,7 @@ const SubstepRequest = z.object({
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   expected_duration: z.string().nullish(),
+  scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
   source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -14891,6 +15137,7 @@ const PatchedSubstepRequest = z
     requires_signature: z.boolean(),
     is_inspection_point: z.boolean(),
     expected_duration: z.string().nullable(),
+    scope: ScopeEnum,
     sampling_rule: z.string().uuid().nullable(),
     source_library_substep_id: z
       .number()
@@ -14902,6 +15149,25 @@ const PatchedSubstepRequest = z
     archived: z.boolean(),
   })
   .partial();
+const SubstepSubmitRequestRequest = z
+  .object({
+    step_execution: z.string().uuid(),
+    batch_execution: z.string().uuid(),
+    captures: z.array(z.object({}).partial().passthrough()),
+    notes: z.string(),
+    signature_data: z.string(),
+    signature_meaning: z.string(),
+    verification_method: z.string(),
+    marked_not_applicable: z.boolean(),
+    na_reason_code: z.string(),
+  })
+  .partial();
+const SubstepSubmitResponse = z.object({
+  completion_id: z.string(),
+  response_count: z.number().int(),
+  quality_report_id: z.string().nullable(),
+  measurement_count: z.number().int(),
+});
 const TenantGroup = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
@@ -15726,6 +15992,9 @@ const WorkOrderStepHistoryResponse = z.object({
   process_name: z.string().nullable(),
   total_parts: z.number().int(),
   step_history: z.array(StepSummary),
+});
+const WorkOrderStepMetricsResponse = z.object({
+  steps: z.array(z.object({}).partial().passthrough()),
 });
 const WorkOrderBulkClearHoldInputRequest = z.object({
   ids: z.array(z.string().uuid()),
@@ -17284,6 +17553,9 @@ const StepRequest = z.object({
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
   pass_threshold: z.number().optional(),
+  requires_batch_completion: z.boolean().optional(),
+  requires_first_piece_inspection: z.boolean().optional(),
+  fpi_scope: FpiScopeEnum.optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -17337,6 +17609,7 @@ export const schemas = {
   PaginatedBatchExecutionList,
   BatchExecutionRequest,
   PatchedBatchExecutionRequest,
+  BatchSealResponse,
   CapaTypeEnum,
   SeverityEnum,
   TaskTypeEnum,
@@ -17514,7 +17787,10 @@ export const schemas = {
   PaginatedPartsList,
   PartsRequest,
   PatchedPartsRequest,
+  DecisionOptionsResponse,
   PartIncrementInputRequest,
+  ResolveDecisionInputRequest,
+  ReworkStatusResponse,
   api_Parts_rollback_create_Body,
   PartsBulkSetStatusInputRequest,
   BulkSetStatusResponse,
@@ -17537,6 +17813,7 @@ export const schemas = {
   PaginatedPartSelectList,
   ProcessStatusEnum,
   ProcessesCategoryEnum,
+  FpiScopeEnum,
   StepTypeEnum,
   DecisionTypeEnum,
   TerminalStatusEnum,
@@ -17651,10 +17928,13 @@ export const schemas = {
   PaginatedSubstepTranslationList,
   SubstepTranslationRequest,
   PatchedSubstepTranslationRequest,
+  ScopeEnum,
   Substep,
   PaginatedSubstepList,
   SubstepRequest,
   PatchedSubstepRequest,
+  SubstepSubmitRequestRequest,
+  SubstepSubmitResponse,
   TenantGroup,
   PaginatedTenantGroupList,
   TenantGroupRequest,
@@ -17747,6 +18027,7 @@ export const schemas = {
   WorkOrderSplitResponse,
   StepSummary,
   WorkOrderStepHistoryResponse,
+  WorkOrderStepMetricsResponse,
   WorkOrderBulkClearHoldInputRequest,
   WorkOrderBulkClearHoldResponse,
   WorkOrderBulkPlaceOnHoldInputRequest,
@@ -19128,17 +19409,12 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: BatchExecutionRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: BatchExecution,
+    response: BatchSealResponse,
   },
   {
     method: "get",
@@ -27482,6 +27758,32 @@ request that triggered the gate.`,
     response: Parts,
   },
   {
+    method: "get",
+    path: "/api/Parts/:id/decision_options/",
+    alias: "api_Parts_decision_options_retrieve",
+    description: `4a — decision-point metadata for the operator runtime resolver.
+
+Tells the runtime whether this part&#x27;s current step is a decision
+point, its &#x60;decision_type&#x60;, and the resolved DEFAULT/ALTERNATE branch
+targets so it can label &#x27;pass → X&#x27; / &#x27;fail/rework → Y&#x27;. For QA_RESULT
+it also returns the QualityReport-suggested branch (those route
+automatically; no manual pick).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: DecisionOptionsResponse,
+  },
+  {
     method: "post",
     path: "/api/Parts/:id/increment/",
     alias: "api_Parts_increment_create",
@@ -27512,6 +27814,58 @@ If no decision is provided for qa_result decisions, the latest QualityReport sta
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/Parts/:id/resolve_decision/",
+    alias: "api_Parts_resolve_decision_create",
+    description: `4a — manager/lead resolves a MANUAL decision-point step by choosing
+the routing branch. Gated by &#x60;resolve_step_decision&#x60;. QA_RESULT points
+route automatically from the QualityReport and don&#x27;t use this.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ decision: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Parts/:id/rework_status/",
+    alias: "api_Parts_rework_status_retrieve",
+    description: `4b — rework-cycle visibility.
+
+Reports the part&#x27;s cumulative rework count and, when its current step
+carries a visit cap (&#x60;max_visits&#x60;), how many visits it&#x27;s used, how many
+remain, and the ESCALATION target it routes to once the cap is exceeded
+(engine-driven — &#x60;_check_cycle_limit&#x60;).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: ReworkStatusResponse,
   },
   {
     method: "post",
@@ -30521,6 +30875,28 @@ Usage:
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/QuarantineDispositions/:id/close/",
+    alias: "api_QuarantineDispositions_close_create",
+    description: `Complete (close) a disposition. Gated by &#x60;close_disposition&#x60; via
+action_permissions; delegates to the resolution service which enforces
+the completion blockers.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: QuarantineDispositionRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QuarantineDisposition,
   },
   {
     method: "get",
@@ -34731,7 +35107,7 @@ Returns:
       {
         name: "body",
         type: "Body",
-        schema: SubstepRequest,
+        schema: SubstepSubmitRequestRequest,
       },
       {
         name: "id",
@@ -34739,7 +35115,7 @@ Returns:
         schema: z.string().uuid(),
       },
     ],
-    response: Substep,
+    response: SubstepSubmitResponse,
   },
   {
     method: "post",
@@ -38035,6 +38411,27 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrderStepHistoryResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/step_metrics/",
+    alias: "api_WorkOrders_step_metrics_retrieve",
+    description: `4c — live part distribution per step for the flow-map overlay.
+
+Returns, for each step that currently holds live (non-terminal) parts on
+this work order, the total count plus an attention breakdown
+(in-rework / quarantined / awaiting-QA / on-hold). A single grouped
+query — accurate regardless of list pagination, unlike counting a capped
+client-side page.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderStepMetricsResponse,
   },
   {
     method: "post",

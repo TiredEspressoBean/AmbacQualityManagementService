@@ -30,12 +30,49 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Cohorts at or below this size advance synchronously in the seal request so
+# the operator sees the move immediately; larger cohorts defer advancement to
+# Celery (3d) to keep the seal request bounded.
+ASYNC_ADVANCE_THRESHOLD = 50
+
 
 @dataclass(frozen=True)
 class SealResult:
     batch_id: str
     sealed_at: str
     problems: list[str]
+
+
+def assert_no_open_batch_overlap(*, step, parts) -> None:
+    """3c — disjoint-membership invariant for open batches.
+
+    A part may be a member of at most one OPEN (unsealed) batch at a given
+    step. Multiple concurrent open batches per (WO, step) are allowed — a
+    fixed-capacity op (furnace/wash/autoclave) legitimately splits one lot
+    into several loads — but their membership must be disjoint, else it's
+    ambiguous which load's cycle data covers the part.
+
+    Sealed batches don't count: once a load is sealed its parts have their
+    capture recorded, so a part may later join a new batch (rare, but valid).
+
+    Raises ValidationError naming the overlapping part count.
+    """
+    from Tracker.models import BatchExecution
+
+    part_ids = [getattr(p, 'id', p) for p in parts]
+    if not part_ids:
+        return
+    in_open_batch = set(
+        BatchExecution.objects.filter(
+            step=step, sealed_at__isnull=True, parts__id__in=part_ids,
+        ).values_list('parts__id', flat=True)
+    )
+    overlapping = in_open_batch & set(part_ids)
+    if overlapping:
+        raise ValidationError(
+            f"{len(overlapping)} selected part(s) are already in an open batch "
+            "at this step. Seal or finish that batch before starting another."
+        )
 
 
 def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
@@ -51,10 +88,27 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
             problems=[],
         )
 
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+
     problems: list[str] = []
-    parts = list(batch.parts.all())
+    members = list(batch.parts.all())
+
+    # 3c — membership reconciliation: a member that went terminal
+    # (scrapped/cancelled) after batch start is no longer a live cohort
+    # member. Drop it from the batch so seal doesn't validate against — or
+    # later try to advance — a dead part. Split parts stay (Case-19: the
+    # batch substep still covers a split-out part's operation).
+    dropped = [p for p in members if p.part_status in TERMINAL_PART_STATUSES]
+    if dropped:
+        batch.parts.remove(*dropped)
+        logger.info(
+            "Seal reconcile: dropped %d terminal part(s) from batch %s: %s",
+            len(dropped), batch.id, [str(p.id) for p in dropped],
+        )
+    parts = [p for p in members if p.part_status not in TERMINAL_PART_STATUSES]
+
     if not parts:
-        problems.append("Batch has no parts.")
+        problems.append("Batch has no live parts (all members are scrapped/cancelled).")
 
     foreign = [p for p in parts if p.work_order_id != batch.work_order_id]
     if foreign:
@@ -68,6 +122,7 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
             step_id=batch.step_id,
             scope=SubstepScope.BATCH,
             is_optional=False,
+            archived=False,
         )
     )
     if required_subs:
@@ -92,16 +147,39 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
         batch.save(update_fields=['sealed_at'])
         logger.info("BatchExecution %s sealed by user %s", batch.id, user.id)
 
-        # Seal IS the cohort's "Complete step" — synchronously run the
-        # advancement gate in the same request. The cohort's BATCH
-        # substep just got satisfied; member parts may now be ready.
-        from Tracker.services.mes.advancement import try_advance_lot
-        try_advance_lot(
-            work_order_id=str(batch.work_order_id),
-            step_id=str(batch.step_id),
-            tenant_id=str(batch.tenant_id),
-            operator=user,
-        )
+        # Seal IS the cohort's "Complete step" — the BATCH substep just got
+        # satisfied, so member parts may now be ready to advance.
+        #
+        # Small cohorts advance synchronously so the operator sees the move
+        # immediately. Large cohorts (3d) would make the seal request gate +
+        # advance hundreds of parts inline and risk a timeout, so dispatch the
+        # advancement to Celery after commit; the batch is sealed regardless.
+        if len(parts) > ASYNC_ADVANCE_THRESHOLD:
+            from Tracker.tasks import advance_lot_task
+            wo_id = str(batch.work_order_id)
+            step_id = str(batch.step_id)
+            tenant_id = str(batch.tenant_id)
+            operator_id = getattr(user, 'id', None)
+            transaction.on_commit(
+                lambda: advance_lot_task.delay(
+                    work_order_id=wo_id,
+                    step_id=step_id,
+                    tenant_id=tenant_id,
+                    operator_id=operator_id,
+                )
+            )
+            logger.info(
+                "Batch %s seal: %d-part cohort — advancement dispatched async.",
+                batch.id, len(parts),
+            )
+        else:
+            from Tracker.services.mes.advancement import try_advance_lot
+            try_advance_lot(
+                work_order_id=str(batch.work_order_id),
+                step_id=str(batch.step_id),
+                tenant_id=str(batch.tenant_id),
+                operator=user,
+            )
 
     return SealResult(
         batch_id=str(batch.id),

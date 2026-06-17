@@ -67,6 +67,20 @@ def split_part_from_lot(
     if reason not in valid_reasons:
         raise ValidationError(f"Unknown split reason: {reason!r}. Expected one of {valid_reasons}.")
 
+    # 2d: a reworked part must be re-inspected. Re-inspection lives on the rework
+    # step as an inspection-point substep (Decision #7), so a rework target must
+    # carry one — otherwise the part could pass straight through unverified.
+    if reason == PartSplitReason.REWORK and rework_target_step is not None:
+        from Tracker.models import Substep
+        has_inspection = Substep.objects.filter(
+            step=rework_target_step, is_inspection_point=True, archived=False,
+        ).exists()
+        if not has_inspection:
+            raise ValidationError(
+                f"Rework target step '{rework_target_step.name}' has no inspection "
+                "substep — reworked parts must be re-inspected before they can advance."
+            )
+
     if part.split_from_cohort:
         return SplitResult(
             part_id=str(part.id),
@@ -95,7 +109,6 @@ def split_part_from_lot(
                 current_exec.status = 'ROLLED_BACK'
                 current_exec.save(update_fields=['status'])
 
-            prior_step_id = part.step_id
             part.step = rework_target_step
             update_fields.append('step')
 
@@ -112,11 +125,12 @@ def split_part_from_lot(
             from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
             evaluate_substep_sampling(new_exec)
 
+            # StepTransitionLog has no `reason` field; the rework reason lives on
+            # the part (split_reason) and the disposition — just log the move.
             StepTransitionLog.objects.create(
                 part=part,
                 step=rework_target_step,
                 operator=user,
-                reason=f"Rework split from step {prior_step_id}",
             )
             moved_to_step_id = str(rework_target_step.id)
 

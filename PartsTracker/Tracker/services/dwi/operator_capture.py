@@ -76,6 +76,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from Tracker.models import (
+    BatchExecution,
     EquipmentRole,
     MeasurementDefinition,
     PersonnelRole,
@@ -112,7 +113,8 @@ class SubmitResult:
 def submit_substep(
     *,
     substep: Substep,
-    step_execution: StepExecution,
+    step_execution: Optional[StepExecution] = None,
+    batch_execution: Optional[BatchExecution] = None,
     user,
     captures: list[dict[str, Any]],
     notes: str = "",
@@ -135,6 +137,14 @@ def submit_substep(
     """
     from django.core.exceptions import ValidationError
 
+    # Exactly one execution target: per-part (step_execution) for SAMPLED
+    # substeps, or per-batch (batch_execution) for BATCH-scope substeps (3a).
+    if (step_execution is None) == (batch_execution is None):
+        raise ValidationError(
+            "submit_substep requires exactly one of step_execution / batch_execution."
+        )
+    is_batch = batch_execution is not None
+
     if marked_not_applicable:
         if substep.is_critical:
             raise ValidationError(
@@ -150,7 +160,14 @@ def submit_substep(
             )
 
     with transaction.atomic():
-        report = ensure_quality_report(substep, step_execution, user) if substep.is_inspection_point else None
+        # Batch substeps span many parts → no single-part QualityReport; skip the
+        # inspection-record side effects in batch mode (per-part SAMPLED substeps
+        # carry the inspection findings). v1 batch substeps are attestation/status/etc.
+        report = (
+            ensure_quality_report(substep, step_execution, user)
+            if (substep.is_inspection_point and not is_batch)
+            else None
+        )
         response_count = 0
         measurement_count = 0
 
@@ -161,6 +178,14 @@ def submit_substep(
                 continue
 
             if kind == "measurement":
+                if is_batch:
+                    # Per-batch measurements need a batch-scoped measurement store
+                    # (deferred — needs a migration). Keep measurements on per-part
+                    # SAMPLED substeps for now.
+                    raise ValidationError(
+                        "Batch-scope measurements aren't supported yet; keep measurement "
+                        "captures on per-part (SAMPLED) substeps."
+                    )
                 _handle_measurement(cap, substep, step_execution, user)
                 # MeasurementInput doesn't write SubstepResponse — its row
                 # lives in StepExecutionMeasurement (+ MeasurementResult via
@@ -170,6 +195,10 @@ def submit_substep(
                 continue
 
             if kind == "harvested_components":
+                if is_batch:
+                    raise ValidationError(
+                        "Harvested-component capture is per-part; not valid on a batch substep."
+                    )
                 # Reman teardown capture — write HarvestedComponent rows via
                 # the dedicated service, then enrich the cap payload so the
                 # SubstepResponse persists the created IDs for traceability.
@@ -186,6 +215,7 @@ def submit_substep(
                 sr = _write_substep_response(
                     substep=substep,
                     step_execution=step_execution,
+                    batch_execution=batch_execution,
                     user=user,
                     cap=cap,
                 )
@@ -196,6 +226,7 @@ def submit_substep(
             sr = _write_substep_response(
                 substep=substep,
                 step_execution=step_execution,
+                batch_execution=batch_execution,
                 user=user,
                 cap=cap,
             )
@@ -240,6 +271,7 @@ def submit_substep(
         completion = _record_completion(
             substep=substep,
             step_execution=step_execution,
+            batch_execution=batch_execution,
             user=user,
             notes=notes,
             signature_data=signature_data,
@@ -346,10 +378,10 @@ def _handle_measurement(cap, substep, step_execution, user):
     )
 
 
-def _write_substep_response(*, substep, step_execution, user, cap) -> Optional[SubstepResponse]:
-    """Generic per-node audit row. Upserts on (step_execution, substep,
-    node_id) so re-submits replace the prior capture rather than
-    duplicating."""
+def _write_substep_response(*, substep, step_execution=None, batch_execution=None, user, cap) -> Optional[SubstepResponse]:
+    """Generic per-node audit row. Upserts on (step_execution|batch_execution,
+    substep, node_id) so re-submits replace the prior capture rather than
+    duplicating. Exactly one of step_execution / batch_execution is set."""
     kind_raw = cap.get("kind")
     kind = _normalize_kind(kind_raw)
     if kind is None:
@@ -378,6 +410,7 @@ def _write_substep_response(*, substep, step_execution, user, cap) -> Optional[S
 
     sr, _ = SubstepResponse.objects.update_or_create(
         step_execution=step_execution,
+        batch_execution=batch_execution,
         substep=substep,
         node_id=cap.get("node_id"),
         defaults={
@@ -503,7 +536,8 @@ def _apply_defects(report: QualityReports, cap) -> None:
 def _record_completion(
     *,
     substep,
-    step_execution,
+    step_execution=None,
+    batch_execution=None,
     user,
     notes,
     signature_data,
@@ -532,6 +566,7 @@ def _record_completion(
 
     completion, _ = SubstepCompletion.objects.update_or_create(
         step_execution=step_execution,
+        batch_execution=batch_execution,
         substep=substep,
         defaults=defaults,
     )
