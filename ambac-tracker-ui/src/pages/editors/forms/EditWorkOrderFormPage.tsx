@@ -49,8 +49,9 @@ const formSchema = schemas.WorkOrderRequest.pick({
     related_order: true,
     process: true,
 }).extend({
-    // Override related_order to be string (UUID from select)
-    related_order: z.string(),
+    // related_order is optional — a work order need not be tied to a customer
+    // order/deal/company. Empty string from the select is coerced to null on submit.
+    related_order: z.string().optional(),
     // Handle date separately since form uses Date object
     expected_completion: z.coerce.date(),
 })
@@ -66,7 +67,7 @@ const required = {
     workorder_status: isFieldRequired(formSchema.shape.workorder_status),
     priority: isFieldRequired(formSchema.shape.priority),
     notes: isFieldRequired(formSchema.shape.notes),
-    related_order: true, // Overridden to required
+    related_order: false, // optional — a WO need not be tied to a customer order
     process: isFieldRequired(formSchema.shape.process),
     expected_completion: true,
 }
@@ -116,10 +117,18 @@ export default function WorkOrderFormPage() {
     const updateWorkOrder = useUpdateWorkOrder()
 
     function onSubmit(values: FormValues) {
+        // expected_completion is a DateField (YYYY-MM-DD), not a datetime —
+        // send a local date string, not a full ISO timestamp (which the API
+        // rejects with "Date has wrong format").
+        const d = values.expected_completion
+        const expectedDate = d
+            ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+            : undefined
         const payload = {
             ...values,
             process: values.process || null,
-            expected_completion: values.expected_completion?.toISOString(),
+            related_order: values.related_order || null,
+            expected_completion: expectedDate,
         } as Schema<"WorkOrderRequest">
 
         if (mode === "edit" && workOrderId) {
