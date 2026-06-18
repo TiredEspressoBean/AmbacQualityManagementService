@@ -390,6 +390,7 @@ def create_process_with_steps(data: dict) -> Processes:
     return process
 
 
+@transaction.atomic
 def update_process_with_steps(instance: Processes, data: dict, user=None) -> Processes:
     """Update a Process plus its child Steps, ProcessSteps, and StepEdges.
 
@@ -423,6 +424,9 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     for node in nodes_data:
         node = node.copy()
         node_id = node.pop("id", None)
+        # Client-only correlation id for a brand-new node (no persisted Step yet).
+        # Must NOT reach Steps.objects.create; kept to map edges to the new Step.
+        temp_id = node.pop("_temp_id", None)
         order = node.pop("order", None)
         is_entry_point = node.pop("is_entry_point", False)
 
@@ -500,6 +504,10 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
             incoming_step_ids.add(step.id)
             if node_id is not None:
                 temp_id_map[node_id] = step.id
+            # Edges from the canvas reference a new node by its _temp_id; map it
+            # to the freshly-created Step so _build_edges can resolve them.
+            if temp_id is not None:
+                temp_id_map[temp_id] = step.id
             temp_id_map[step.id] = step.id
 
     steps_to_unlink = set(existing_process_steps.keys()) - incoming_step_ids

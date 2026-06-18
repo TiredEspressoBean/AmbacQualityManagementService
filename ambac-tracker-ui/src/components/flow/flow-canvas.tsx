@@ -18,7 +18,7 @@ import { flowNodeTypes } from './nodes';
 import { buildNodesAndEdges, useAutoLayout, type StepData, type StepEdgeInput } from './use-steps-to-flow';
 import type { DemoMode } from '@/lib/demo-data/process-flow-demo';
 import { Button } from '@/components/ui/button';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Trash2 } from 'lucide-react';
 
 /** MiniMap color based on node type */
 function getNodeColor(node: Node): string {
@@ -270,6 +270,14 @@ export function FlowCanvas({
     [edges, selectedEdgeId],
   );
 
+  // Explicit edge deletion (in addition to the Delete key) — discoverable for
+  // users who don't know the keyboard shortcut.
+  const deleteSelectedEdge = useCallback(() => {
+    if (!selectedEdgeId) return;
+    setEdges((eds) => eds.filter((e) => e.id !== selectedEdgeId));
+    setSelectedEdgeId(null);
+  }, [selectedEdgeId, setEdges]);
+
   const handlePaneClick = useCallback(() => {
     setSelectedEdgeId(null);
     onPaneClick?.();
@@ -344,6 +352,16 @@ export function FlowCanvas({
               </Button>
             ))}
           </div>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="mt-2 h-7 w-full justify-start text-xs"
+            onClick={deleteSelectedEdge}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            Delete edge
+          </Button>
+          <p className="mt-1 text-[10px] text-muted-foreground">or press Delete</p>
         </div>
       )}
     </ReactFlow>
