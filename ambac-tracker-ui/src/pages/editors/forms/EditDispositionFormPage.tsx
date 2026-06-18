@@ -270,15 +270,29 @@ export default function EditDispositionFormPage() {
         }
     }, [watchSeverity])
 
+    // Display label for an employee. Prefer the server-computed full_name
+    // (which already falls back to username/email), so users without a
+    // first/last name set don't render as blank rows.
+    const empLabel = (emp: typeof employees[number]) =>
+        emp.full_name?.trim() || `${emp.first_name ?? ""} ${emp.last_name ?? ""}`.trim() || emp.email || emp.username || "Unknown"
+
+    // Resolve an employee id to a display name. Returns null when the id isn't
+    // in the loaded options (e.g. an assignee outside the first page) so callers
+    // fall back to a placeholder instead of rendering "undefined undefined".
+    const employeeName = (id?: string | null) => {
+        const e = employees.find((emp) => emp.id === id)
+        return e ? empLabel(e) : null
+    }
+
     // Filtered employee lists
     const filteredAssignedTo = employees.filter((emp) =>
-        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(assignedToSearch.toLowerCase())
+        empLabel(emp).toLowerCase().includes(assignedToSearch.toLowerCase())
     )
     const filteredCompletedBy = employees.filter((emp) =>
-        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(completedBySearch.toLowerCase())
+        empLabel(emp).toLowerCase().includes(completedBySearch.toLowerCase())
     )
     const filteredContainmentBy = employees.filter((emp) =>
-        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(containmentBySearch.toLowerCase())
+        empLabel(emp).toLowerCase().includes(containmentBySearch.toLowerCase())
     )
 
     // Form submission
@@ -371,8 +385,8 @@ export default function EditDispositionFormPage() {
             </div>
 
             {/* Main Content - Split Layout */}
-            <div className="container py-6">
-                <div className="grid gap-6 lg:grid-cols-3">
+            <div className="container py-8">
+                <div className="grid gap-8 lg:grid-cols-3">
                     {/* Form Section (2/3 width) */}
                     <div className="lg:col-span-2">
                         <Card>
@@ -493,10 +507,7 @@ export default function EditDispositionFormPage() {
                                                         <PopoverTrigger asChild>
                                                             <FormControl>
                                                                 <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                                    {field.value
-                                                                        ? `${employees.find((emp) => emp.id === field.value)?.first_name} ${employees.find((emp) => emp.id === field.value)?.last_name}`
-                                                                        : "Select employee"
-                                                                    }
+                                                                    {employeeName(field.value) ?? "Select employee"}
                                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
@@ -516,7 +527,7 @@ export default function EditDispositionFormPage() {
                                                                                 }}
                                                                             >
                                                                                 <Check className={cn("mr-2 h-4 w-4", field.value === emp.id ? "opacity-100" : "opacity-0")} />
-                                                                                {emp.first_name} {emp.last_name}
+                                                                                {empLabel(emp)}
                                                                             </CommandItem>
                                                                         ))}
                                                                     </CommandGroup>
@@ -584,10 +595,7 @@ export default function EditDispositionFormPage() {
                                                                     <PopoverTrigger asChild>
                                                                         <FormControl>
                                                                             <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                                                {field.value
-                                                                                    ? `${employees.find((emp) => emp.id === field.value)?.first_name} ${employees.find((emp) => emp.id === field.value)?.last_name}`
-                                                                                    : "Select employee"
-                                                                                }
+                                                                                {employeeName(field.value) ?? "Select employee"}
                                                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                             </Button>
                                                                         </FormControl>
@@ -607,7 +615,7 @@ export default function EditDispositionFormPage() {
                                                                                             }}
                                                                                         >
                                                                                             <Check className={cn("mr-2 h-4 w-4", field.value === emp.id ? "opacity-100" : "opacity-0")} />
-                                                                                            {emp.first_name} {emp.last_name}
+                                                                                            {empLabel(emp)}
                                                                                         </CommandItem>
                                                                                     ))}
                                                                                 </CommandGroup>
@@ -783,10 +791,7 @@ export default function EditDispositionFormPage() {
                                                             <PopoverTrigger asChild>
                                                                 <FormControl>
                                                                     <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                                        {field.value
-                                                                            ? `${employees.find((emp) => emp.id === field.value)?.first_name} ${employees.find((emp) => emp.id === field.value)?.last_name}`
-                                                                            : "Select employee"
-                                                                        }
+                                                                        {employeeName(field.value) ?? "Select employee"}
                                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                     </Button>
                                                                 </FormControl>
@@ -806,7 +811,7 @@ export default function EditDispositionFormPage() {
                                                                                     }}
                                                                                 >
                                                                                     <Check className={cn("mr-2 h-4 w-4", field.value === emp.id ? "opacity-100" : "opacity-0")} />
-                                                                                    {emp.first_name} {emp.last_name}
+                                                                                    {empLabel(emp)}
                                                                                 </CommandItem>
                                                                             ))}
                                                                         </CommandGroup>

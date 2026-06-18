@@ -59,6 +59,7 @@ export function QaQuarantinePage() {
                 col({ header: "Status", renderCell: (p) => <StatusBadge status={p.part_status} size="sm" /> }),
                 col({ header: "Step", renderCell: (p) => p.step_name ?? "—" }),
                 col({ header: "Part Type", renderCell: (p) => p.part_type_name ?? p.part_type }),
+                col({ header: "Process", renderCell: (p) => p.process_name ?? "—" }),
                 col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString() }),
             ]}
             renderActions={(part) => <QaQuarantineActionsCell part={part} />}

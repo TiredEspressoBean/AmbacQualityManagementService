@@ -312,7 +312,7 @@ def with_int_pk_schema(cls):
 # ===== USER & COMPANY VIEWSETS =====
 
 class EmployeeSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
-    """Select list for employees (staff users)."""
+    """Select list for employees (the tenant's internal workforce)."""
     queryset = User.objects.all()
     serializer_class = UserSelectSerializer
 
@@ -320,8 +320,11 @@ class EmployeeSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
 
-        # Apply tenant scoping, then filter to staff
-        return super().get_queryset().filter(is_staff=True)
+        # Apply tenant scoping, then filter to the tenant's internal employees.
+        # NOT is_staff — in this system is_staff marks platform/UQMES staff (only
+        # a handful per tenant), so it wrongly collapsed the picker to one name.
+        # The workforce is user_type='INTERNAL' (PORTAL = external customers).
+        return super().get_queryset().filter(user_type='INTERNAL', is_active=True)
 
 
 class CustomerViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
