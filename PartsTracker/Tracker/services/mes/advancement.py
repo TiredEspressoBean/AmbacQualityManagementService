@@ -106,35 +106,42 @@ def try_advance_lot(
         with transaction.atomic():
             result = _evaluate_and_advance(wo=wo, step=step, operator=operator)
 
-        # Bounded synchronous cascade: if the cohort advanced, walk
-        # forward through any pass-through steps until we hit one that
-        # needs operator work. Each iteration runs the full gate; the
-        # cascade halts naturally when blockers appear.
-        if (
-            result.status == 'advanced'
-            and result.parts_advanced
-            and _depth < _MAX_CASCADE_DEPTH
-        ):
+        # Bounded synchronous cascade: if anything advanced, walk forward
+        # through any pass-through steps until one needs operator work. Each
+        # iteration runs the full gate; the cascade halts naturally on blockers.
+        advanced_ids = list(result.parts_advanced) + list(result.split_parts_advanced)
+        if result.status == 'advanced' and advanced_ids and _depth < _MAX_CASCADE_DEPTH:
             from Tracker.models import Parts
-            # All advanced parts moved to the same next step (cohort
-            # all-or-none). Pick any one to find the new step id.
-            advanced_part = Parts.objects.filter(
-                id=result.parts_advanced[0]
-            ).first()
-            if advanced_part and advanced_part.step_id:
+            # Advanced parts may have routed to DIFFERENT next steps (a decision
+            # step branches per part), so cascade EACH distinct next step — not
+            # just the first part's — or parts on the other branches stall until
+            # the next event.
+            next_step_ids = {
+                str(p.step_id)
+                for p in Parts.objects.filter(id__in=advanced_ids)
+                if p.step_id
+            }
+            for next_step_id in next_step_ids:
                 next_result = try_advance_lot(
                     work_order_id=work_order_id,
-                    step_id=str(advanced_part.step_id),
+                    step_id=next_step_id,
                     tenant_id=tenant_id,
                     operator=operator,
                     _depth=_depth + 1,
                 )
                 if next_result.status == 'advanced':
-                    # Accumulate the cascaded advances into the original
-                    # result so the caller sees the full walk.
+                    # Accumulate cascaded advances so the caller sees the full walk.
                     result.parts_advanced = list(
                         set(result.parts_advanced) | set(next_result.parts_advanced)
                     )
+        elif result.status == 'advanced' and advanced_ids and _depth >= _MAX_CASCADE_DEPTH:
+            # Don't truncate silently: a >cap chain of pass-through steps leaves
+            # parts mid-walk until the next event re-fires advancement.
+            logger.warning(
+                "Advancement cascade hit the depth cap (%d) at wo=%s step=%s; "
+                "remaining pass-through steps will advance on the next event.",
+                _MAX_CASCADE_DEPTH, work_order_id, step_id,
+            )
 
         return result
 
@@ -265,11 +272,16 @@ def _evaluate_and_advance(
             logger.exception("Split-part advance failed for %s: %s", p.id, exc)
             result.split_parts_blocked[str(p.id)] = [str(exc)]
 
-    # Status disambiguation when both paths were tried.
-    if result.status == 'noop':
-        if result.split_parts_advanced:
-            result.status = 'advanced'
-        elif result.split_parts_blocked:
-            result.status = 'blocked'
+    # Authoritative final status (supersedes the per-path assignments above):
+    # 'advanced' if ANY part moved — cohort or split — since partial progress is
+    # real progress, with the held parts surfaced in blockers_by_part /
+    # split_parts_blocked. Without this, a partial batch advance that also had a
+    # blocked sibling would mislabel itself 'blocked' even though parts moved.
+    if result.parts_advanced or result.split_parts_advanced:
+        result.status = 'advanced'
+    elif result.blockers_by_part or result.split_parts_blocked:
+        result.status = 'blocked'
+    else:
+        result.status = 'noop'
 
     return result
