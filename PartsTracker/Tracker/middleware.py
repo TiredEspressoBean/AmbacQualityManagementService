@@ -47,7 +47,7 @@ class TenantMiddleware:
         '/health/',
         '/ready/',
         '/api/health/',
-        '/api/auth/',
+        '/auth/',
         '/admin/',
         '/accounts/',
         '/__reload__/',

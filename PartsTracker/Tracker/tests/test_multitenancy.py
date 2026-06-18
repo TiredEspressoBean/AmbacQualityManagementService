@@ -149,7 +149,7 @@ class TenantMiddlewareTestCase(TestCase):
 
     def test_exempt_paths_no_tenant(self):
         """Test that exempt paths don't require tenant."""
-        exempt_paths = ['/api/health/', '/api/auth/login/', '/admin/', '/accounts/']
+        exempt_paths = ['/api/health/', '/auth/login/', '/admin/', '/accounts/']
 
         for path in exempt_paths:
             request = self.factory.get(path)
@@ -158,6 +158,35 @@ class TenantMiddlewareTestCase(TestCase):
             self.middleware(request)
 
             self.assertIsNone(request.tenant)
+
+    def test_auth_endpoints_are_tenant_exempt(self):
+        """Regression: /auth/* must be tenant-exempt so login/logout are never
+        gated by tenant resolution or the membership 403 check.
+
+        The exempt list previously used '/api/auth/', which matched nothing (auth
+        is served at '/auth/'), so a session whose tenant context went stale (e.g.
+        after a demo reseed) got 403'd on the very logout that would clear it.
+        Uses a user WITH a home tenant: if the path were not exempt, resolution
+        would fall back to that tenant — so this fails under the old bug."""
+        for path in ['/auth/login/', '/auth/logout/', '/auth/user/',
+                     '/auth/password/reset/']:
+            request = self.factory.post(path)
+            request.user = self.user_acme
+            self.middleware(request)
+            self.assertIsNone(request.tenant, f'{path} should be tenant-exempt')
+            self.assertIsNone(request.tenant_source)
+
+    @override_settings(DEPLOYMENT_MODE='dedicated', DEDICATED_MODE=True,
+                       TENANT_BASE_DOMAIN='localhost')
+    def test_dedicated_mode_resolves_without_base_domain(self):
+        """Dedicated/on-prem must not depend on TENANT_BASE_DOMAIN or subdomains:
+        a bare host still resolves the default tenant. Guards against a SaaS-only
+        subdomain assumption silently blocking on-prem deployments."""
+        request = self.factory.get('/api/Orders/', HTTP_HOST='qmes.corp.local')
+        request.user = self.user_acme
+        self.middleware(request)
+        self.assertIsNotNone(request.tenant)
+        self.assertEqual(request.tenant_source, 'default')
 
     def test_inactive_tenant_not_resolved(self):
         """Test that inactive tenants are not resolved via header."""
