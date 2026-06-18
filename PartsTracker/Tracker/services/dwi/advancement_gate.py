@@ -59,7 +59,9 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
         # reman-specific gate. Substep gate is part-only for now.
         return []
 
-    substeps = list(Substep.objects.filter(step=step))
+    # Exclude archived (soft-deleted) substeps — a voided substep definition
+    # must not gate advancement.
+    substeps = list(Substep.objects.filter(step=step, archived=False))
     if not substeps:
         return []
 

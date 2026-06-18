@@ -89,41 +89,59 @@ def try_advance_lot(
             )
 
         try:
-            step = Steps.objects.get(id=step_id)
+            step = Steps.objects.get(id=step_id)  # tenant-safe: scoped by the enclosing tenant_context(tenant_id)
         except Steps.DoesNotExist:
             return LotAdvanceResult(status='noop', reason='step_not_found')
 
-        result = _evaluate_and_advance(wo=wo, step=step, operator=operator)
+        # Serialize concurrent advancement of the same (WO, step). The cohort
+        # read inside _evaluate_and_advance takes SELECT ... FOR UPDATE on the
+        # part rows; this transaction holds those locks across gate-check AND
+        # advance, so two simultaneous movers (operator complete_step, batch
+        # seal, the async advance_lot_task, reactive events) can't both act on
+        # the same stale snapshot and double-advance / duplicate StepExecution
+        # + traveler rows. The second mover blocks here, then re-reads the
+        # post-move state and correctly no-ops. The cascade below recurses
+        # OUTSIDE this block, so each step locks → commits → releases in turn
+        # (no lock held across steps, no deadlock).
+        with transaction.atomic():
+            result = _evaluate_and_advance(wo=wo, step=step, operator=operator)
 
-        # Bounded synchronous cascade: if the cohort advanced, walk
-        # forward through any pass-through steps until we hit one that
-        # needs operator work. Each iteration runs the full gate; the
-        # cascade halts naturally when blockers appear.
-        if (
-            result.status == 'advanced'
-            and result.parts_advanced
-            and _depth < _MAX_CASCADE_DEPTH
-        ):
+        # Bounded synchronous cascade: if anything advanced, walk forward
+        # through any pass-through steps until one needs operator work. Each
+        # iteration runs the full gate; the cascade halts naturally on blockers.
+        advanced_ids = list(result.parts_advanced) + list(result.split_parts_advanced)
+        if result.status == 'advanced' and advanced_ids and _depth < _MAX_CASCADE_DEPTH:
             from Tracker.models import Parts
-            # All advanced parts moved to the same next step (cohort
-            # all-or-none). Pick any one to find the new step id.
-            advanced_part = Parts.objects.filter(
-                id=result.parts_advanced[0]
-            ).first()
-            if advanced_part and advanced_part.step_id:
+            # Advanced parts may have routed to DIFFERENT next steps (a decision
+            # step branches per part), so cascade EACH distinct next step — not
+            # just the first part's — or parts on the other branches stall until
+            # the next event.
+            next_step_ids = {
+                str(p.step_id)
+                for p in Parts.objects.filter(id__in=advanced_ids)
+                if p.step_id
+            }
+            for next_step_id in next_step_ids:
                 next_result = try_advance_lot(
                     work_order_id=work_order_id,
-                    step_id=str(advanced_part.step_id),
+                    step_id=next_step_id,
                     tenant_id=tenant_id,
                     operator=operator,
                     _depth=_depth + 1,
                 )
                 if next_result.status == 'advanced':
-                    # Accumulate the cascaded advances into the original
-                    # result so the caller sees the full walk.
+                    # Accumulate cascaded advances so the caller sees the full walk.
                     result.parts_advanced = list(
                         set(result.parts_advanced) | set(next_result.parts_advanced)
                     )
+        elif result.status == 'advanced' and advanced_ids and _depth >= _MAX_CASCADE_DEPTH:
+            # Don't truncate silently: a >cap chain of pass-through steps leaves
+            # parts mid-walk until the next event re-fires advancement.
+            logger.warning(
+                "Advancement cascade hit the depth cap (%d) at wo=%s step=%s; "
+                "remaining pass-through steps will advance on the next event.",
+                _MAX_CASCADE_DEPTH, work_order_id, step_id,
+            )
 
         return result
 
@@ -135,23 +153,84 @@ def _evaluate_and_advance(
     operator,
 ) -> LotAdvanceResult:
     from Tracker.models import Parts
-    from Tracker.services.mes.parts import advance_part_step
+    from Tracker.services.mes.parts import advance_part_step, TERMINAL_PART_STATUSES
 
+    # Terminal parts (scrapped/cancelled/shipped/…) are not live cohort
+    # members — they must never block or be re-advanced. Exclude them so a
+    # scrapped part left sitting at the step doesn't stall the lot (3c).
+    #
+    # select_for_update(of=('self',)) locks ONLY the matched Parts rows (not the
+    # joined step/work_order/part_type), serializing concurrent advancement of
+    # this (WO, step) — the caller wraps this in a transaction so the lock is
+    # held across gate-check + advance. A second concurrent mover blocks on
+    # these row locks, then re-reads the post-move state and no-ops.
     parts_at_step = list(
-        Parts.objects.filter(work_order=wo, step=step).select_related('step')
+        Parts.objects.select_for_update(of=('self',))
+        .filter(work_order=wo, step=step)
+        .exclude(part_status__in=TERMINAL_PART_STATUSES)
+        .select_related('step', 'work_order', 'part_type')
     )
     if not parts_at_step:
         return LotAdvanceResult(status='noop', reason='no_parts_at_step')
+
+    # 4a — a MANUAL decision-point step doesn't auto-advance: a manager/lead
+    # picks the routing branch via resolve_decision. The normal complete-step
+    # flow (no decision_result) would raise inside get_next_step, so report it
+    # as a blocker rather than letting it 500.
+    if getattr(step, 'is_decision_point', False) and getattr(step, 'decision_type', '') == 'MANUAL':
+        return LotAdvanceResult(
+            status='blocked',
+            reason='manual_decision_required',
+            blockers_by_part={
+                str(p.id): ['Manual decision required — a manager/lead must choose the routing branch']
+                for p in parts_at_step
+            },
+        )
 
     cohort = [p for p in parts_at_step if not p.split_from_cohort]
     split_parts = [p for p in parts_at_step if p.split_from_cohort]
 
     result = LotAdvanceResult(status='noop')
 
-    # ----- Cohort path: all-or-none -----
-    if cohort:
+    from Tracker.models import StepExecution, Substep, SubstepScope
+
+    # On a batch step the cohesion unit is the *batch* (a furnace/wash/
+    # autoclave load), not the whole (WO, step) lot. Each load is captured and
+    # sealed separately, and the per-part gate (substep_completion_blockers)
+    # already clears a part only when ITS OWN sealed batch carries the batch
+    # substep completion. So a batch step must advance per-part — one sealed
+    # load moves on without waiting for the others — rather than all-or-none.
+    step_is_batched = Substep.objects.filter(
+        step=step, scope=SubstepScope.BATCH, archived=False
+    ).exists()
+
+    # ----- Cohort path -----
+    if cohort and step_is_batched:
+        # Per-load: advance every cohort part whose gate clears, independently.
+        for p in cohort:
+            se = StepExecution.get_current_execution(p)
+            if se is None:
+                result.blockers_by_part[str(p.id)] = ['No active StepExecution']
+                continue
+            can_advance, blockers = step.can_advance_from_step(se, wo)
+            if not can_advance:
+                result.blockers_by_part[str(p.id)] = blockers
+                continue
+            try:
+                with transaction.atomic():
+                    advance_part_step(p, operator=operator, skip_gate_check=True)
+                result.parts_advanced.append(str(p.id))
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Batch-cohort advance failed for %s: %s", p.id, exc)
+                result.blockers_by_part[str(p.id)] = [str(exc)]
+        if result.parts_advanced:
+            result.status = 'advanced'
+        elif result.blockers_by_part:
+            result.status = 'blocked'
+
+    elif cohort:
+        # Non-batch step: classic lot cohesion — all-or-none.
         per_part_blockers: dict[str, list[str]] = {}
-        from Tracker.models import StepExecution
         for p in cohort:
             se = StepExecution.get_current_execution(p)
             if se is None:
@@ -167,13 +246,15 @@ def _evaluate_and_advance(
         else:
             with transaction.atomic():
                 for p in cohort:
-                    advance_part_step(p, operator=operator)
+                    # 3d: the engine just gated every cohort part above, so
+                    # skip the redundant per-part gate inside advance_part_step
+                    # (it re-runs can_advance_from_step — the dominant cost).
+                    advance_part_step(p, operator=operator, skip_gate_check=True)
                     result.parts_advanced.append(str(p.id))
             result.status = 'advanced'
 
     # ----- Split path: each part evaluated solo -----
     for p in split_parts:
-        from Tracker.models import StepExecution
         se = StepExecution.get_current_execution(p)
         if se is None:
             result.split_parts_blocked[str(p.id)] = ['No active StepExecution']
@@ -184,17 +265,23 @@ def _evaluate_and_advance(
             continue
         try:
             with transaction.atomic():
-                advance_part_step(p, operator=operator)
+                # Already gated immediately above — skip the redundant re-gate.
+                advance_part_step(p, operator=operator, skip_gate_check=True)
             result.split_parts_advanced.append(str(p.id))
         except Exception as exc:  # noqa: BLE001
             logger.exception("Split-part advance failed for %s: %s", p.id, exc)
             result.split_parts_blocked[str(p.id)] = [str(exc)]
 
-    # Status disambiguation when both paths were tried.
-    if result.status == 'noop':
-        if result.split_parts_advanced:
-            result.status = 'advanced'
-        elif result.split_parts_blocked:
-            result.status = 'blocked'
+    # Authoritative final status (supersedes the per-path assignments above):
+    # 'advanced' if ANY part moved — cohort or split — since partial progress is
+    # real progress, with the held parts surfaced in blockers_by_part /
+    # split_parts_blocked. Without this, a partial batch advance that also had a
+    # blocked sibling would mislabel itself 'blocked' even though parts moved.
+    if result.parts_advanced or result.split_parts_advanced:
+        result.status = 'advanced'
+    elif result.blockers_by_part or result.split_parts_blocked:
+        result.status = 'blocked'
+    else:
+        result.status = 'noop'
 
     return result

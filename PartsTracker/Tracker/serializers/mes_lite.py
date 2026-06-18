@@ -1051,6 +1051,11 @@ class StepSerializer(SecureModelMixin):
             # QA settings
             "requires_qa_signoff", "sampling_required", "min_sampling_rate",
             "block_on_quarantine", "pass_threshold",
+            # Batch completion — lot moves as a unit; pass_threshold is the
+            # cohort-readiness fraction (% READY before the batch advances).
+            "requires_batch_completion",
+            # First Piece Inspection
+            "requires_first_piece_inspection", "fpi_scope",
             # Workflow engine - step type & behavior
             "step_type", "is_decision_point", "decision_type",
             # Workflow engine - terminal

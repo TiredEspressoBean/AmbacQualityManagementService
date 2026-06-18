@@ -1957,18 +1957,6 @@ paths:
         required: true
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
-        required: true
       security:
       - tokenAuth: []
       responses:
@@ -1976,7 +1964,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatchExecution'
+                $ref: '#/components/schemas/BatchSealResponse'
           description: ''
   /api/CAPAs/:
     get:
@@ -11433,6 +11421,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/Parts'
           description: ''
+  /api/Parts/{id}/decision_options/:
+    get:
+      operationId: api_Parts_decision_options_retrieve
+      description: |-
+        4a — decision-point metadata for the operator runtime resolver.
+
+        Tells the runtime whether this part's current step is a decision
+        point, its `decision_type`, and the resolved DEFAULT/ALTERNATE branch
+        targets so it can label 'pass → X' / 'fail/rework → Y'. For QA_RESULT
+        it also returns the QualityReport-suggested branch (those route
+        automatically; no manual pick).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionOptionsResponse'
+          description: ''
   /api/Parts/{id}/increment/:
     post:
       operationId: api_Parts_increment_create
@@ -11484,6 +11511,92 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/Parts/{id}/resolve_decision/:
+    post:
+      operationId: api_Parts_resolve_decision_create
+      description: |-
+        4a — manager/lead resolves a MANUAL decision-point step by choosing
+        the routing branch. Gated by `resolve_step_decision`. QA_RESULT points
+        route automatically from the QualityReport and don't use this.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveDecisionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResolveDecisionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResolveDecisionInputRequest'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Parts/{id}/rework_status/:
+    get:
+      operationId: api_Parts_rework_status_retrieve
+      description: |-
+        4b — rework-cycle visibility.
+
+        Reports the part's cumulative rework count and, when its current step
+        carries a visit cap (`max_visits`), how many visits it's used, how many
+        remain, and the ESCALATION target it routes to once the cap is exceeded
+        (engine-driven — `_check_cycle_limit`).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReworkStatusResponse'
           description: ''
   /api/Parts/{id}/rollback/:
     post:
@@ -13887,6 +14000,44 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/QuarantineDispositions/{id}/close/:
+    post:
+      operationId: api_QuarantineDispositions_close_create
+      description: |-
+        Complete (close) a disposition. Gated by `close_disposition` via
+        action_permissions; delegates to the resolution service which enforces
+        the completion blockers.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Disposition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuarantineDispositionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuarantineDispositionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuarantineDispositionRequest'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineDisposition'
+          description: ''
   /api/QuarantineDispositions/export-excel/:
     get:
       operationId: api_QuarantineDispositions_export_excel_retrieve
@@ -18919,14 +19070,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/SubstepSubmitRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
+              $ref: '#/components/schemas/SubstepSubmitRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubstepRequest'
-        required: true
+              $ref: '#/components/schemas/SubstepSubmitRequestRequest'
       security:
       - tokenAuth: []
       responses:
@@ -18934,7 +19084,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Substep'
+                $ref: '#/components/schemas/SubstepSubmitResponse'
           description: ''
   /api/Substeps/reorder/:
     post:
@@ -23289,6 +23439,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderStepHistoryResponse'
+          description: ''
+  /api/WorkOrders/{id}/step_metrics/:
+    get:
+      operationId: api_WorkOrders_step_metrics_retrieve
+      description: |-
+        4c — live part distribution per step for the flow-map overlay.
+
+        Returns, for each step that currently holds live (non-terminal) parts on
+        this work order, the total count plus an attention breakdown
+        (in-rework / quarantined / awaiting-QA / on-hold). A single grouped
+        query — accurate regardless of list pagination, unlike counting a capped
+        client-side page.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderStepMetricsResponse'
           description: ''
   /api/WorkOrders/{id}/undo_split/:
     post:
@@ -30605,6 +30785,7 @@ components:
           description: Parts that are members of this batch.
         started_by:
           type: integer
+          readOnly: true
           description: Operator who started the batch.
         started_at:
           type: string
@@ -30658,16 +30839,22 @@ components:
             type: string
             format: uuid
           description: Parts that are members of this batch.
-        started_by:
-          type: integer
-          description: Operator who started the batch.
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
       required:
-      - started_by
       - step
       - work_order
+    BatchSealResponse:
+      type: object
+      properties:
+        batch_id:
+          type: string
+        sealed_at:
+          type: string
+      required:
+      - batch_id
+      - sealed_at
     BlankEnum:
       enum:
       - ''
@@ -32824,6 +33011,26 @@ components:
       description: |-
         * `NATIVE` - Native
         * `IMPORTED` - Imported
+    DecisionOptionsResponse:
+      type: object
+      properties:
+        is_decision_point:
+          type: boolean
+        decision_type:
+          type: string
+        default_branch:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        alternate_branch:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        qa_suggested:
+          type: string
+          nullable: true
+      required:
+      - is_decision_point
     DecisionTypeEnum:
       enum:
       - QA_RESULT
@@ -34725,6 +34932,18 @@ components:
           type: boolean
       required:
       - rca_record
+    FpiScopeEnum:
+      enum:
+      - PER_WORKORDER
+      - PER_SHIFT
+      - PER_EQUIPMENT
+      - PER_OPERATOR
+      type: string
+      description: |-
+        * `PER_WORKORDER` - Per Work Order
+        * `PER_SHIFT` - Per Shift
+        * `PER_EQUIPMENT` - Per Equipment
+        * `PER_OPERATOR` - Per Operator
     GenerateReportRequest:
       type: object
       description: |-
@@ -39637,9 +39856,6 @@ components:
             type: string
             format: uuid
           description: Parts that are members of this batch.
-        started_by:
-          type: integer
-          description: Operator who started the batch.
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
@@ -42018,6 +42234,14 @@ components:
           type: string
           nullable: true
           description: Estimated time the substep typically takes. Informational.
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/ScopeEnum'
+          description: |-
+            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+
+            * `sampled` - Per part (sampling)
+            * `batch` - Per batch
         sampling_rule:
           type: string
           format: uuid
@@ -45156,6 +45380,15 @@ components:
           type: integer
       required:
       - invitation_id
+    ResolveDecisionInputRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          minLength: 1
+          description: 'Branch to route along: ''DEFAULT''/''PASS'' or ''ALTERNATE''/''FAIL''.'
+      required:
+      - decision
     RestAuthDetail:
       type: object
       properties:
@@ -45183,6 +45416,35 @@ components:
         * `SAME` - Same as Previous
         * `DIFFERENT` - Different Operator
         * `ROLE` - Specific Role
+    ReworkStatusResponse:
+      type: object
+      properties:
+        total_rework_count:
+          type: integer
+        current_step_name:
+          type: string
+          nullable: true
+        max_visits:
+          type: integer
+          nullable: true
+        current_visits:
+          type: integer
+        remaining:
+          type: integer
+          nullable: true
+        at_limit:
+          type: boolean
+        escalation_step_name:
+          type: string
+          nullable: true
+      required:
+      - at_limit
+      - current_step_name
+      - current_visits
+      - escalation_step_name
+      - max_visits
+      - remaining
+      - total_rework_count
     RootCause:
       type: object
       description: Root cause serializer
@@ -46323,6 +46585,14 @@ components:
       - name
       - params_schema
       - title
+    ScopeEnum:
+      enum:
+      - sampled
+      - batch
+      type: string
+      description: |-
+        * `sampled` - Per part (sampling)
+        * `batch` - Per batch
     SendInvitationInputRequest:
       type: object
       properties:
@@ -46575,6 +46845,23 @@ components:
         pass_threshold:
           type: number
           format: double
+        requires_batch_completion:
+          type: boolean
+          description: If True, all parts in batch must be ready before any can advance
+        requires_first_piece_inspection:
+          type: boolean
+          description: If True, first part of each work order at this step requires
+            FPI before others can proceed
+        fpi_scope:
+          allOf:
+          - $ref: '#/components/schemas/FpiScopeEnum'
+          description: |-
+            Scope at which FPI applies
+
+            * `PER_WORKORDER` - Per Work Order
+            * `PER_SHIFT` - Per Shift
+            * `PER_EQUIPMENT` - Per Equipment
+            * `PER_OPERATOR` - Per Operator
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -47341,6 +47628,23 @@ components:
         pass_threshold:
           type: number
           format: double
+        requires_batch_completion:
+          type: boolean
+          description: If True, all parts in batch must be ready before any can advance
+        requires_first_piece_inspection:
+          type: boolean
+          description: If True, first part of each work order at this step requires
+            FPI before others can proceed
+        fpi_scope:
+          allOf:
+          - $ref: '#/components/schemas/FpiScopeEnum'
+          description: |-
+            Scope at which FPI applies
+
+            * `PER_WORKORDER` - Per Work Order
+            * `PER_SHIFT` - Per Shift
+            * `PER_EQUIPMENT` - Per Equipment
+            * `PER_OPERATOR` - Per Operator
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -47878,6 +48182,14 @@ components:
           type: string
           nullable: true
           description: Estimated time the substep typically takes. Informational.
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/ScopeEnum'
+          description: |-
+            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+
+            * `sampled` - Per part (sampling)
+            * `batch` - Per batch
         sampling_rule:
           type: string
           format: uuid
@@ -48258,6 +48570,14 @@ components:
           type: string
           nullable: true
           description: Estimated time the substep typically takes. Informational.
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/ScopeEnum'
+          description: |-
+            Whether the substep runs per part (SAMPLED, default — uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH — oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
+
+            * `sampled` - Per part (sampling)
+            * `batch` - Per batch
         sampling_rule:
           type: string
           format: uuid
@@ -48523,6 +48843,49 @@ components:
       - node_id
       - responded_by
       - substep
+    SubstepSubmitRequestRequest:
+      type: object
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+        batch_execution:
+          type: string
+          format: uuid
+        captures:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        notes:
+          type: string
+        signature_data:
+          type: string
+        signature_meaning:
+          type: string
+        verification_method:
+          type: string
+        marked_not_applicable:
+          type: boolean
+        na_reason_code:
+          type: string
+    SubstepSubmitResponse:
+      type: object
+      properties:
+        completion_id:
+          type: string
+        response_count:
+          type: integer
+        quality_report_id:
+          type: string
+          nullable: true
+        measurement_count:
+          type: integer
+      required:
+      - completion_id
+      - measurement_count
+      - quality_report_id
+      - response_count
     SubstepTranslation:
       type: object
       description: Localized title + body for a substep.
@@ -51697,6 +52060,16 @@ components:
       - step_history
       - total_parts
       - work_order_id
+    WorkOrderStepMetricsResponse:
+      type: object
+      properties:
+        steps:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - steps
     _Escalation:
       type: object
       description: |-

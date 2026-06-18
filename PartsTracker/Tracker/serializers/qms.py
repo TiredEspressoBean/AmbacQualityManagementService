@@ -1,4 +1,6 @@
 # serializers/qms.py - Quality Management System serializers
+import logging
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -22,6 +24,8 @@ from Tracker.models import (
 )
 
 from .core import SecureModelMixin
+
+logger = logging.getLogger(__name__)
 
 
 # ===== QUALITY AND ERROR SERIALIZERS =====
@@ -636,6 +640,35 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     def get_work_order_erp_id(self, obj):
         wo = getattr(obj.part, 'work_order', None) if obj.part_id else None
         return wo.ERP_id if wo else None
+
+    def create(self, validated_data):
+        instance = super().create(validated_data)
+        self._route_if_rework(instance)
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        self._route_if_rework(instance)
+        return instance
+
+    def _route_if_rework(self, instance):
+        """2b (lifecycle Y): when QA's decision is REWORK/REPAIR, route the part to
+        its in-process rework step now — it's split off the lot and moved there.
+        The disposition stays IN_PROGRESS until the rework is re-inspected (2e
+        closes it then). Idempotent + best-effort: a routing failure (e.g. the
+        rework step lacks an inspection substep, per 2d) must not fail the save —
+        the part stays REWORK_NEEDED for manual routing via the control page."""
+        if instance.disposition_type not in ('REWORK', 'REPAIR'):
+            return
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is None:
+            return
+        from Tracker.services.qms.disposition import route_part_to_rework_if_needed
+        try:
+            route_part_to_rework_if_needed(instance, user)
+        except Exception:
+            logger.exception("Rework routing failed for disposition %s", instance.pk)
 
     @extend_schema_field(serializers.CharField())
     def get_assignee_name(self, obj):

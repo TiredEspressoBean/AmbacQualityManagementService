@@ -393,6 +393,12 @@ class BatchExecution(SecureModel):
             models.Index(fields=['work_order', 'step'], name='dwi_batchexec_wo_step_idx'),
             models.Index(fields=['-started_at'], name='dwi_batchexec_started_idx'),
         ]
+        # NOTE: deliberately no "one open batch per (WO, step)" constraint —
+        # a single WO at one step legitimately runs as several concurrent
+        # batches (fixed-capacity ops: furnace/wash/autoclave loads). The real
+        # invariant is disjoint membership (a part in at most one open batch
+        # per step), enforced in the create path; see batch_lifecycle
+        # .assert_no_open_batch_overlap.
 
     def __str__(self) -> str:
         return f"Batch on Step {self.step_id} (WO {self.work_order_id})"

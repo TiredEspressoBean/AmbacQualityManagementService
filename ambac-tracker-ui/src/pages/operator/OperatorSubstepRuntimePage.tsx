@@ -63,6 +63,9 @@ import {
 } from "@/components/dwi/shared/PartContext";
 import { SubstepOperatorView } from "@/components/dwi/SubstepOperatorView";
 import { BatchPanel } from "@/components/dwi/BatchPanel";
+import { DecisionResolverPanel } from "@/components/dwi/DecisionResolverPanel";
+import { ReworkLimitBanner } from "@/components/dwi/ReworkLimitBanner";
+import { FpiStatusBanner } from "@/components/fpi-status-banner";
 import { useRetrieveParts, useCompleteStep } from "@/hooks/parts";
 import {
     useSamplingDecisionsForExecution,
@@ -216,12 +219,18 @@ export function OperatorSubstepRuntimePage() {
         undefined,
         { enabled: cohortQueryEnabled },
     );
-    const cohortPartIds = useMemo(
+    const cohortParts = useMemo(
         () =>
             (cohortPartsData?.results ?? [])
                 .filter((p) => !p.split_from_cohort)
-                .map((p) => String(p.id)),
+                .map((p) => ({ id: String(p.id), label: p.ERP_id ?? String(p.id).slice(0, 8) })),
         [cohortPartsData],
+    );
+    // A >500-part cohort would silently truncate the batch-start list (§3.10);
+    // surface it so the operator never starts a load on a partial cohort.
+    const cohortTruncated = Boolean(
+        cohortPartsData &&
+            (cohortPartsData.count ?? 0) > (cohortPartsData.results?.length ?? 0),
     );
 
     if (!stepId) {
@@ -237,7 +246,36 @@ export function OperatorSubstepRuntimePage() {
     const substeps: Substep[] = (data?.results as Substep[] | undefined) ?? [];
     const sortedSubsteps = [...substeps].sort((a, b) => a.order - b.order);
     if (sortedSubsteps.length === 0) {
-        return <EmptyStepScreen />;
+        // A step can legitimately have no substeps — most commonly a pure
+        // decision point (routing, no work to instruct). Still render the
+        // runtime banners (they self-hide when not applicable) so a decision
+        // point shows its resolver and a capped step shows its rework status,
+        // rather than dead-ending on the "author substeps" prompt.
+        return (
+            <div className="flex h-[calc(100vh-1px)] flex-col bg-background operator-runtime">
+                <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
+                    <div className="w-full max-w-3xl space-y-4">
+                        {search.workOrder && (
+                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} />
+                        )}
+                        {search.part && <ReworkLimitBanner partId={search.part} />}
+                        {search.part && (
+                            <DecisionResolverPanel
+                                partId={search.part}
+                                onResolved={() =>
+                                    advanceToNextQueuedPart({
+                                        queue: search.queue ?? "",
+                                        workOrderId: search.workOrder ?? null,
+                                        navigate,
+                                    })
+                                }
+                            />
+                        )}
+                        <EmptyStepScreen />
+                    </div>
+                </main>
+            </div>
+        );
     }
 
 
@@ -280,11 +318,28 @@ export function OperatorSubstepRuntimePage() {
 
                 <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
                     <div className="w-full max-w-3xl space-y-4">
+                        {search.workOrder && (
+                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} />
+                        )}
+                        {search.part && <ReworkLimitBanner partId={search.part} />}
+                        {search.part && (
+                            <DecisionResolverPanel
+                                partId={search.part}
+                                onResolved={() =>
+                                    advanceToNextQueuedPart({
+                                        queue: search.queue ?? "",
+                                        workOrderId: search.workOrder ?? null,
+                                        navigate,
+                                    })
+                                }
+                            />
+                        )}
                         {sortedSubsteps.some((s) => s.scope === "batch") && search.workOrder && (
                             <BatchPanel
                                 workOrderId={search.workOrder}
                                 stepId={stepId}
-                                cohortPartIds={cohortPartIds}
+                                cohortParts={cohortParts}
+                                cohortTruncated={cohortTruncated}
                             />
                         )}
                         {isReview ? (

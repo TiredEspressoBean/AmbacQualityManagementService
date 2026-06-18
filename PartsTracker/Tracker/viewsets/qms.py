@@ -97,6 +97,15 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
     ordering_fields = ["disposition_number", "current_state", "created_at", "updated_at", "resolution_completed_at"]
     ordering = ["-updated_at"]
 
+    # Closing a disposition is a deliberate, permission-gated action (not just a
+    # CRUD PATCH). `close_disposition` is the declared marker perm; enforced here.
+    # `close` is CRUD-exempt so it's gated solely by `close_disposition` — a
+    # closer shouldn't also need `add_quarantinedisposition` (POST -> add).
+    action_permissions = {
+        'close': ['close_disposition'],
+    }
+    crud_exempt_actions = {'close'}
+
     def get_queryset(self):
         """Apply tenant scoping first, then SecureModel filtering for user-specific access"""
         if getattr(self, 'swagger_fake_view', False):
@@ -106,6 +115,19 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
                                                              'resolution_completed_by',
                                                              'part__part_type').prefetch_related(
             'quality_reports', 'documents')
+
+    @action(detail=True, methods=['post'], url_path='close')
+    def close(self, request, pk=None):
+        """Complete (close) a disposition. Gated by `close_disposition` via
+        action_permissions; delegates to the resolution service which enforces
+        the completion blockers."""
+        from Tracker.services.qms.disposition import complete_disposition_resolution
+        disposition = self.get_object()
+        try:
+            complete_disposition_resolution(disposition, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(disposition).data)
 
 
 # ===== SAMPLING VIEWSETS =====

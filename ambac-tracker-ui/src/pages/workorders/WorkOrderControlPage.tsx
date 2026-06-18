@@ -73,10 +73,6 @@ import { UndoSplitButton } from "./SplitWorkOrderUndo";
 import { ReportExceptionDialog, type ReportExceptionPayload } from "./ReportExceptionDialog";
 
 type SplitMode = "QUANTITY" | "OPERATION" | "REWORK";
-const MOCK_REWORK_PROCESSES = [
-    { id: "proc-rework-injector", name: "Injector Rework Rev A" },
-    { id: "proc-rework-generic", name: "Generic Rework Loop" },
-];
 import { cn } from "@/lib/utils";
 import {
     type ExceptionItem,
@@ -93,6 +89,7 @@ import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
 import { useRetrieveParts } from "@/hooks/parts";
 import { usePartTraveler } from "@/hooks/parts";
 import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
+import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses";
 import { useUpdatePart } from "@/hooks/parts";
 import { useBulkIncrementParts } from "@/hooks/parts";
 import { useBulkRollbackParts } from "@/hooks/parts";
@@ -105,6 +102,7 @@ import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { useSplitWorkOrder } from "@/hooks/useSplitWorkOrder";
 import { useUndoSplitWorkOrder } from "@/hooks/useUndoSplitWorkOrder";
+import { useWorkOrderStepMetrics, type StepLiveMetrics } from "@/hooks/useWorkOrderStepMetrics";
 import { ReactFlowProvider } from "@xyflow/react";
 import { FlowCanvas } from "@/components/flow";
 import type { StepData as FlowStepData } from "@/components/flow/use-steps-to-flow";
@@ -817,6 +815,19 @@ export function WorkOrderControlPage() {
         undefined,
         { enabled: !!workOrderId },
     );
+    // The part list caps at 500 (§3.10). A larger WO renders an incomplete
+    // view — surface it so counts/actions aren't read as the whole lot.
+    const partsTruncated =
+        (realPartsData?.count ?? 0) > (realPartsData?.results?.length ?? 0);
+
+    // 4c — live per-step part distribution for the flow-map overlay (accurate
+    // via a grouped query, independent of the 500-part list cap above).
+    const { data: stepMetricsData } = useWorkOrderStepMetrics(workOrderId, { enabled: !!workOrderId });
+    const stepMetricsById = useMemo(() => {
+        const m = new Map<string, StepLiveMetrics>();
+        (stepMetricsData?.steps ?? []).forEach((s) => m.set(String(s.step_id), s));
+        return m;
+    }, [stepMetricsData]);
     const processId = realWo?.process ?? null;
     const { data: realProcess } = useRetrieveProcessWithSteps(
         { params: { id: processId ?? "" } },
@@ -879,6 +890,9 @@ export function WorkOrderControlPage() {
     const [statusDialogOpen, setStatusDialogOpen] = useState(false);
     const [statusTarget, setStatusTarget] = useState<MockPartStatus>("IN_PROGRESS");
     const [scrapDialogOpen, setScrapDialogOpen] = useState(false);
+    const [reworkDialogOpen, setReworkDialogOpen] = useState(false);
+    const [reworkDialogIds, setReworkDialogIds] = useState<string[]>([]);
+    const [reworkTargetStep, setReworkTargetStep] = useState<string | null>(null);
     const [scrapReason, setScrapReason] = useState("");
 
     const [holdDialogOpen, setHoldDialogOpen] = useState(false);
@@ -1041,6 +1055,13 @@ export function WorkOrderControlPage() {
     const splitPart = useSplitPartFromLot();
     const { data: authUser } = useAuthUser();
     const canForceAdvance = userCanForceAdvance(authUser);
+    // Rework-split targets: real, tenant-scoped remanufacturing processes
+    // (replaces the old hardcoded MOCK_REWORK_PROCESSES). The backend requires a
+    // valid target_process_id for a REWORK split, so the picker must be real.
+    const { data: reworkProcessesData } = useRetrieveProcesses({ is_remanufactured: true });
+    const reworkProcesses = reworkProcessesData?.results ?? [];
+    // In-process rework steps for the "send to rework" picker (2c).
+    const reworkSteps = (wo?.steps ?? []).filter((s) => s.node_type === "REWORK");
 
     function applyToIds(ids: string[], action: Action) {
         setParts((prev) => prev.map((p) => (ids.includes(p.id) ? applyAction(p, wo?.steps ?? [], action) : p)));
@@ -1285,6 +1306,17 @@ export function WorkOrderControlPage() {
                 </div>
             </div>
 
+            {partsTruncated && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">
+                        Showing {realPartsData?.results?.length ?? 0} of{" "}
+                        {realPartsData?.count ?? 0} parts — this view is incomplete.
+                        Counts and bulk actions below cover only the loaded parts.
+                    </span>
+                </div>
+            )}
+
             {splitBanner && (
                 <div className="flex items-center gap-2 rounded-md border bg-accent/40 px-3 py-2 text-sm">
                     <Split className="h-4 w-4 text-muted-foreground" />
@@ -1405,13 +1437,18 @@ export function WorkOrderControlPage() {
                                             <SelectValue placeholder="Select rework process…" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {MOCK_REWORK_PROCESSES.map((p) => (
+                                            {reworkProcesses.map((p) => (
                                                 <SelectItem key={p.id} value={p.id}>
                                                     {p.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {reworkProcesses.length === 0 && (
+                                        <p className="text-xs text-destructive">
+                                            No remanufacturing processes exist to rework into — create one first.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
@@ -1616,6 +1653,9 @@ export function WorkOrderControlPage() {
                                     step_type: s.node_type as unknown as FlowStepData["step_type"],
                                     requires_qa_signoff: s.requires_qa,
                                     is_decision_point: s.node_type === "DECISION",
+                                    // 4c — live part distribution overlay per node.
+                                    // String() to match the map key — step ids arrive as numeric PKs at runtime.
+                                    liveMetrics: stepMetricsById.get(String(s.id)),
                                 }))}
                                 stepEdges={wo.edges.map((e) => ({
                                     from_step: e.from_step,
@@ -1804,9 +1844,13 @@ export function WorkOrderControlPage() {
                                                             The engine treats these as the only sanctioned exception
                                                             actions; status changes don't move the part out of the lot. */}
                                                         <DropdownMenuItem
-                                                            onClick={() => applyToIds([p.id], { kind: "split", reason: "rework" })}
+                                                            onClick={() => {
+                                                                setReworkDialogIds([p.id]);
+                                                                setReworkTargetStep(null);
+                                                                setReworkDialogOpen(true);
+                                                            }}
                                                         >
-                                                            Split for rework
+                                                            Send to rework…
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             onClick={() => applyToIds([p.id], { kind: "split", reason: "quarantine" })}
@@ -1890,7 +1934,11 @@ export function WorkOrderControlPage() {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => applyToSelected({ kind: "status", status: "REWORK_NEEDED" })}
+                                onClick={() => {
+                                    setReworkDialogIds(Array.from(selected));
+                                    setReworkTargetStep(null);
+                                    setReworkDialogOpen(true);
+                                }}
                             >
                                 <Undo2 className="mr-1 h-4 w-4" />
                                 Rework
@@ -1954,6 +2002,56 @@ export function WorkOrderControlPage() {
                             }}
                         >
                             Move
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={reworkDialogOpen} onOpenChange={setReworkDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Send {reworkDialogIds.length} part(s) to rework</DialogTitle>
+                        <DialogDescription>
+                            Pick the in-process rework step. The part is split from the lot and routed there
+                            (a fresh visit), so it can be reworked and re-inspected before rejoining the flow.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {reworkSteps.length > 0 ? (
+                        <Select value={reworkTargetStep ?? ""} onValueChange={setReworkTargetStep}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a rework step" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {reworkSteps.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                        {s.order}. {s.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <p className="text-sm text-destructive">
+                            This process has no rework step (a step of type REWORK). Add one in the flow editor first.
+                        </p>
+                    )}
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setReworkDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={!reworkTargetStep}
+                            onClick={() => {
+                                if (reworkTargetStep) {
+                                    applyToIds(reworkDialogIds, {
+                                        kind: "split",
+                                        reason: "rework",
+                                        reworkTargetStepId: reworkTargetStep,
+                                    });
+                                }
+                                setReworkDialogOpen(false);
+                            }}
+                        >
+                            Send to rework
                         </Button>
                     </DialogFooter>
                 </DialogContent>

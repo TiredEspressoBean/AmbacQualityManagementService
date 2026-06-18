@@ -93,7 +93,10 @@ export type OperatorCapture = Record<string, unknown> & {
     kind: string;
 };
 export type SubmitSubstepRequest = {
-    step_execution: string;
+    /** Exactly one of step_execution / batch_execution — per-part vs
+     *  once-per-lot batch capture (3a). The backend rejects both/neither. */
+    step_execution?: string;
+    batch_execution?: string;
     captures: OperatorCapture[];
     notes?: string;
     signature_data?: string;

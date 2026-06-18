@@ -64,6 +64,7 @@ class SubstepSerializer(SecureModelMixin):
             'requires_signature',
             'is_inspection_point',
             'expected_duration',
+            'scope',
             'sampling_rule',
             'source_library_substep_id',
             'source_library_version',
@@ -116,6 +117,23 @@ class SubstepSerializer(SecureModelMixin):
         if errors:
             raise serializers.ValidationError(errors)
         return value
+
+    def validate(self, attrs):
+        """FPI ⊕ batch mutual exclusion (Decision #12): a first-piece-inspection
+        step can't carry BATCH-scope substeps. FPI means "inspect the first piece,
+        then run the rest"; a BATCH substep runs the whole lot at once — the two
+        are incompatible. Guarded here at the authoring boundary.
+        """
+        scope = attrs.get('scope')
+        if scope is None and self.instance is not None:
+            scope = self.instance.scope
+        step = attrs.get('step') or (self.instance.step if self.instance else None)
+        if scope == 'batch' and step is not None and step.requires_first_piece_inspection:
+            raise serializers.ValidationError({
+                'scope': "Cannot set BATCH scope on a substep of a first-piece-inspection "
+                         "step — FPI and batch are mutually exclusive.",
+            })
+        return attrs
 
     def update(self, instance, validated_data):
         """When editing from a PCR DRAFT process (`?process=<uuid>`),
@@ -335,4 +353,6 @@ class BatchExecutionSerializer(SecureModelMixin):
             'id', 'work_order', 'step', 'parts', 'started_by',
             'started_at', 'sealed_at', 'completed_at', 'notes',
         ]
-        read_only_fields = ['id', 'started_at', 'sealed_at', 'completed_at']
+        # started_by is stamped from request.user in the viewset, not sent by
+        # the client; sealed/completed timestamps are lifecycle-service-owned.
+        read_only_fields = ['id', 'started_by', 'started_at', 'sealed_at', 'completed_at']

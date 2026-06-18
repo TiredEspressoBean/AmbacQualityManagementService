@@ -456,7 +456,10 @@ class Steps(SecureModel):
     """Name of the step, e.g., 'Inspection', 'Assembly'."""
 
     pass_threshold = models.FloatField(default=1.0)
-    """Threshold for pass/fail determination."""
+    """Cohort-readiness fraction for batch steps: the fraction of the lot that must
+    be READY_FOR_NEXT_STEP before the batch advances (used with
+    `requires_batch_completion`; enforced by `can_advance_step`). 1.0 = whole lot.
+    NOT an inspection pass/fail or AQL acceptance threshold (the name is legacy)."""
 
     documents = GenericRelation('Tracker.Documents')
     """Optional documents related to this step."""
@@ -2532,6 +2535,11 @@ class Parts(SecureModel):
             models.Index(fields=['part_status', 'step'], name='parts_status_step_idx'),
             models.Index(fields=['work_order', 'step'], name='parts_workorder_step_idx'),
             models.Index(fields=['order', 'part_status'], name='parts_order_status_idx'),
+        ]
+        permissions = [
+            # 4a — resolving a MANUAL decision-point step (choosing the routing
+            # branch) is a manager/lead-tier call, not routine advancement.
+            ("resolve_step_decision", "Can resolve a manual decision-point step (choose the routing branch)"),
         ]
 
     ERP_id = models.CharField(max_length=50)

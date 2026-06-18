@@ -42,6 +42,14 @@ export const DECISION_TYPE_OPTIONS = [
   { value: 'MANUAL', label: 'Manual Operator Selection' },
 ] as const;
 
+/** First Piece Inspection scope options */
+export const FPI_SCOPE_OPTIONS = [
+  { value: 'PER_WORKORDER', label: 'Per Work Order' },
+  { value: 'PER_SHIFT', label: 'Per Shift' },
+  { value: 'PER_EQUIPMENT', label: 'Per Equipment' },
+  { value: 'PER_OPERATOR', label: 'Per Operator' },
+] as const;
+
 export interface StepEditorPanelProps {
   node: Node;
   onUpdate: (nodeId: string, data: Partial<StepData>) => void;
@@ -343,6 +351,86 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               ) : (
                 <p className="text-sm">{data.minSamplingRate ? `${data.minSamplingRate}%` : 'Not set'}</p>
               )}
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* First Piece Inspection */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">First Piece Inspection</Label>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="requires-fpi" className="text-sm font-normal">Requires First Piece Inspection</Label>
+            {editable ? (
+              <Switch
+                id="requires-fpi"
+                checked={data.requiresFirstPieceInspection || false}
+                onCheckedChange={(checked) => onUpdate(node.id, { requires_first_piece_inspection: checked })}
+              />
+            ) : (
+              <Badge variant={data.requiresFirstPieceInspection ? 'default' : 'secondary'}>
+                {data.requiresFirstPieceInspection ? 'Yes' : 'No'}
+              </Badge>
+            )}
+          </div>
+
+          {data.requiresFirstPieceInspection && editable && (
+            <div className="space-y-1.5">
+              <Label htmlFor="fpi-scope">FPI Scope</Label>
+              <Select value={data.fpiScope || 'PER_WORKORDER'} onValueChange={(v) => onUpdate(node.id, { fpi_scope: v })}>
+                <SelectTrigger id="fpi-scope"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FPI_SCOPE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Batch Completion */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Batch Completion</Label>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="requires-batch" className="text-sm font-normal">Move lot as a unit</Label>
+            {editable ? (
+              <Switch
+                id="requires-batch"
+                checked={data.requiresBatchCompletion || false}
+                onCheckedChange={(checked) => onUpdate(node.id, { requires_batch_completion: checked })}
+              />
+            ) : (
+              <Badge variant={data.requiresBatchCompletion ? 'default' : 'secondary'}>
+                {data.requiresBatchCompletion ? 'Yes' : 'No'}
+              </Badge>
+            )}
+          </div>
+
+          {data.requiresBatchCompletion && (
+            <div className="space-y-1.5">
+              <Label htmlFor="batch-ready-threshold">Batch ready threshold (% of lot ready to advance)</Label>
+              {editable ? (
+                <Input
+                  id="batch-ready-threshold"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={data.passThreshold != null ? Math.round(data.passThreshold * 100) : ''}
+                  onChange={(e) => onUpdate(node.id, { pass_threshold: e.target.value ? parseInt(e.target.value) / 100 : undefined })}
+                  placeholder="100"
+                />
+              ) : (
+                <p className="text-sm">{data.passThreshold != null ? `${Math.round(data.passThreshold * 100)}%` : '100%'}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Fraction of the lot that must be READY before the batch advances — not a pass/fail threshold.
+              </p>
             </div>
           )}
         </div>

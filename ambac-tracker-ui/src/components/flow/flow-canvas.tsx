@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useMemo, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -34,6 +34,27 @@ function getNodeColor(node: Node): string {
 
 /** Node types that have pass/fail handles */
 const DECISION_NODE_TYPES = new Set(['DECISION']);
+
+/** Edge routing types — authored explicitly via the edge inspector (1d) so the
+ *  backend `edge_type` no longer depends on a fragile id-suffix convention. */
+const EDGE_TYPES = ['DEFAULT', 'ALTERNATE', 'ESCALATION'] as const;
+type EdgeType = (typeof EDGE_TYPES)[number];
+const EDGE_TYPE_LABEL: Record<EdgeType, string> = {
+  DEFAULT: 'Default (pass)',
+  ALTERNATE: 'Alternate (fail)',
+  ESCALATION: 'Escalation (max visits)',
+};
+const EDGE_TYPE_STYLE: Record<EdgeType, { stroke: string; strokeDasharray?: string }> = {
+  DEFAULT: { stroke: '#10b981' },
+  ALTERNATE: { stroke: '#ef4444' },
+  ESCALATION: { stroke: '#f97316', strokeDasharray: '5,5' },
+};
+
+/** Read an edge's authored type from its data, defaulting to DEFAULT. */
+function edgeTypeOf(edge: Edge): EdgeType {
+  const t = (edge.data as { edge_type?: string } | undefined)?.edge_type;
+  return (EDGE_TYPES as readonly string[]).includes(t ?? '') ? (t as EdgeType) : 'DEFAULT';
+}
 
 /**
  * Validate edges against nodes to ensure all handle references are valid.
@@ -194,18 +215,65 @@ export function FlowCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedNode, editable, onDeleteNode, onPaneClick]);
 
-  // Handle new connections
+  // Handle new connections. New edges carry an explicit edge_type in data
+  // (seeded from the source handle: a decision "fail" handle implies ALTERNATE,
+  // otherwise DEFAULT). The edge inspector below lets the author change it.
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!editable) return;
+      const edgeType: EdgeType = connection.sourceHandle === 'fail' ? 'ALTERNATE' : 'DEFAULT';
       setEdges((eds) => addEdge({
         ...connection,
         type: 'smoothstep',
         animated: true,
+        data: { edge_type: edgeType },
+        label: EDGE_TYPE_LABEL[edgeType],
+        style: EDGE_TYPE_STYLE[edgeType],
       }, eds));
     },
     [setEdges, editable]
   );
+
+  // Edge selection + inspector (1d): click an edge to set its routing type
+  // explicitly, instead of inferring it from the edge id at save time.
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  const onEdgeClick = useCallback(
+    (_: MouseEvent, edge: Edge) => {
+      if (!editable) return;
+      setSelectedEdgeId(edge.id);
+    },
+    [editable],
+  );
+
+  const setSelectedEdgeType = useCallback(
+    (edgeType: EdgeType) => {
+      if (!selectedEdgeId) return;
+      setEdges((eds) =>
+        eds.map((e) =>
+          e.id === selectedEdgeId
+            ? {
+                ...e,
+                data: { ...(e.data ?? {}), edge_type: edgeType },
+                label: EDGE_TYPE_LABEL[edgeType],
+                style: { ...(e.style ?? {}), ...EDGE_TYPE_STYLE[edgeType] },
+              }
+            : e,
+        ),
+      );
+    },
+    [selectedEdgeId, setEdges],
+  );
+
+  const selectedEdge = useMemo(
+    () => edges.find((e) => e.id === selectedEdgeId) ?? null,
+    [edges, selectedEdgeId],
+  );
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedEdgeId(null);
+    onPaneClick?.();
+  }, [onPaneClick]);
 
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.1, maxZoom: 1, duration: 200 });
@@ -222,7 +290,8 @@ export function FlowCanvas({
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onNodeClick={onNodeClick}
-      onPaneClick={onPaneClick}
+      onEdgeClick={onEdgeClick}
+      onPaneClick={handlePaneClick}
       onConnect={onConnect}
       nodeTypes={flowNodeTypes}
       fitView
@@ -257,6 +326,26 @@ export function FlowCanvas({
           Fit
         </Button>
       </div>
+
+      {/* Edge inspector (1d) — set the selected edge's routing type explicitly */}
+      {editable && selectedEdge && (
+        <div className="absolute top-14 right-2 z-10 w-56 rounded-md border bg-background/95 p-2 shadow-sm backdrop-blur-sm">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Edge routing type</p>
+          <div className="flex flex-col gap-1">
+            {EDGE_TYPES.map((t) => (
+              <Button
+                key={t}
+                size="sm"
+                variant={edgeTypeOf(selectedEdge) === t ? 'default' : 'outline'}
+                className="h-7 justify-start text-xs"
+                onClick={() => setSelectedEdgeType(t)}
+              >
+                {EDGE_TYPE_LABEL[t]}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </ReactFlow>
   );
 }

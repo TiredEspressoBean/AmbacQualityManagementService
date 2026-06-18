@@ -6,11 +6,14 @@ so step advancement, rollback, and work-order cascade logic live in one place.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import transaction
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from Tracker.models.mes_lite import (
     EdgeType,
@@ -105,7 +108,9 @@ def _cascade_work_order_completion_for_subject(wo) -> None:
     wo.save(update_fields=['workorder_status', 'true_completion'])
 
 
-def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
+def advance_part_step(
+    part: Parts, operator=None, decision_result=None, skip_gate_check: bool = False
+) -> str:
     """
     Advance part to next step using workflow engine logic.
 
@@ -121,6 +126,10 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
         operator: User who performed the transition. If None, logged as system/automated.
         decision_result: For decision points — 'PASS', 'FAIL', 'DEFAULT', 'ALTERNATE',
             or a measurement value.
+        skip_gate_check: When True, skip the per-part `can_advance_from_step`
+            gate. Set only by callers (the lot-cohesion engine) that have
+            ALREADY gated this part — avoids re-running the gate, the dominant
+            cost when advancing a large cohort (3d). Direct callers leave False.
 
     Returns:
         "completed"    — terminal/final step reached
@@ -136,9 +145,13 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
     if not part.step or not part.part_type:
         raise ValueError("Current step or part type is missing.")
 
+    # 2e: remember whether the part is leaving a rework step, so a successful
+    # advance (rework + re-inspection passed) can auto-close its open disposition.
+    leaving_rework_step = part.step.step_type == 'REWORK'
+
     current_execution = StepExecution.get_current_execution(part)
 
-    if current_execution and part.work_order:
+    if not skip_gate_check and current_execution and part.work_order:
         can_advance, blockers = part.step.can_advance_from_step(
             current_execution,
             part.work_order,
@@ -244,7 +257,12 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
 
             transition_logs.append(StepTransitionLog(part=p, step=next_step, operator=operator))
 
-            visit_number = StepExecution.get_visit_count(p, next_step) + 1
+            # Lock the target step's executions for this part while assigning the
+            # visit number — two advances converging on the same step (e.g. from
+            # different source steps) would otherwise both read the same count and
+            # mint duplicate visit numbers. Held until the enclosing transaction
+            # commits, covering the bulk_create below.
+            visit_number = StepExecution.get_visit_count_for_update(p, next_step) + 1
             assigned_operator = _get_operator_for_step(p, next_step, operator)
             step_executions.append(StepExecution(
                 part=p,
@@ -270,8 +288,10 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
 
         return "escalated" if was_escalated else "advanced"
 
-    # Individual part advancement
-    visit_number = StepExecution.get_visit_count(part, next_step) + 1
+    # Individual part advancement. Lock the target step's executions for this
+    # part while assigning the visit number (see batch path above) so concurrent
+    # advances into the same step can't mint duplicate visit numbers.
+    visit_number = StepExecution.get_visit_count_for_update(part, next_step) + 1
     assigned_operator = _get_operator_for_step(part, next_step, operator)
 
     new_exec = StepExecution.objects.create(
@@ -299,7 +319,39 @@ def advance_part_step(part: Parts, operator=None, decision_result=None) -> str:
 
     StepTransitionLog.objects.create(part=part, step=next_step, operator=operator)
 
+    if leaving_rework_step:
+        _close_open_rework_disposition(part, operator)
+
     return "escalated" if was_escalated else "advanced"
+
+
+def _close_open_rework_disposition(part, operator) -> None:
+    """2e: a reworked part just left its rework step (rework + re-inspection
+    passed), so auto-close its open REWORK/REPAIR disposition. Best-effort — if
+    the disposition still has blockers (e.g. containment not recorded), it's left
+    open for QA to finish. Closing also re-runs the disposition's rework-routing,
+    but that's a no-op here since the part is already split."""
+    from Tracker.models import QuarantineDisposition
+    from Tracker.services.qms.disposition import complete_disposition_resolution
+
+    disp = (
+        QuarantineDisposition.objects.filter(
+            part=part,
+            disposition_type__in=('REWORK', 'REPAIR'),
+            current_state__in=('OPEN', 'IN_PROGRESS'),
+        )
+        .order_by('-created_at')
+        .first()
+    )
+    if disp is None:
+        return
+    try:
+        complete_disposition_resolution(disp, operator)
+    except Exception:
+        logger.warning(
+            "Could not auto-close rework disposition %s for part %s (left open).",
+            disp.pk, part.id,
+        )
 
 
 def rollback_part_step(
@@ -307,6 +359,7 @@ def rollback_part_step(
     operator,
     reason: str | None = None,
     override_id=None,
+    allow_terminal_exit: bool = False,
 ) -> dict:
     """
     Roll back this part to the previous step in the workflow.
@@ -333,6 +386,14 @@ def rollback_part_step(
         ValueError: If rollback is not allowed or required data is missing.
     """
     from Tracker.models.qms import StepTransitionLog, StepOverride, OverrideStatus, BlockType
+
+    # Rollback moves the part back to IN_PROGRESS — i.e. out of any terminal
+    # status. Block that unless an elevated caller authorized it.
+    if part.part_status in TERMINAL_PART_STATUSES and not allow_terminal_exit:
+        raise ValueError(
+            f"Cannot roll back a part in terminal status {part.part_status} "
+            "without elevated permission"
+        )
 
     can_rollback, message, requires_approval = part.can_rollback_step(operator)
 
@@ -458,17 +519,37 @@ TERMINAL_PART_STATUSES = frozenset([
 ])
 
 
-def _load_parts_scoped(tenant_id, part_ids: list) -> dict:
-    """Fetch parts for the given tenant, keyed by id. Missing ids are absent."""
+def _blocks_terminal_exit(current_status, new_status, allow_terminal_exit: bool) -> bool:
+    """True when a transition would leave a terminal status without authorization.
+
+    Terminal states (especially SCRAPPED) must not be reversed as a casual status
+    change. Reversal is allowed only when an elevated caller passes
+    `allow_terminal_exit=True` (gated at the viewset). Scrap should not be easy to undo.
+    """
+    return (
+        not allow_terminal_exit
+        and current_status in TERMINAL_PART_STATUSES
+        and new_status != current_status
+    )
+
+
+def _load_parts_scoped(tenant_id, part_ids: list, *, lock: bool = False) -> dict:
+    """Fetch parts for the given tenant, keyed by id. Missing ids are absent.
+
+    `lock=True` takes SELECT ... FOR UPDATE (must run inside a transaction) so a
+    bulk mutation serializes against concurrent advancement / disposition writes
+    to the same parts' status — the read-modify-write below can't lose updates."""
     qs = Parts.unscoped.filter(tenant_id=tenant_id, id__in=part_ids)
+    if lock:
+        qs = qs.select_for_update()
     return {p.id: p for p in qs}
 
 
 def bulk_increment(tenant_id, part_ids: list, operator) -> list[BulkResult]:
     """Advance each listed part one step. Per-id errors are captured, not raised."""
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:
@@ -491,11 +572,12 @@ def bulk_rollback(
     operator,
     reason: str = "",
     override_id=None,
+    allow_terminal_exit: bool = False,
 ) -> list[BulkResult]:
     """Rollback each listed part one step. Parts needing approval are reported as not ok."""
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:
@@ -505,6 +587,7 @@ def bulk_rollback(
             try:
                 result = rollback_part_step(
                     part, operator=operator, reason=reason, override_id=override_id,
+                    allow_terminal_exit=allow_terminal_exit,
                 )
                 if result.get('success'):
                     transaction.savepoint_commit(sid)
@@ -527,14 +610,19 @@ def bulk_set_status(
     new_status: str,
     operator,
     reason: str | None = None,
+    allow_terminal_exit: bool = False,
 ) -> list[BulkResult]:
-    """Directly set part_status on each listed part. Cascades WO completion on terminal transitions."""
+    """Directly set part_status on each listed part. Cascades WO completion on terminal transitions.
+
+    Leaving a terminal status (e.g. un-scrapping) is blocked unless
+    `allow_terminal_exit=True` is passed by an elevated caller (see viewset).
+    """
     if new_status not in PartsStatus.values:
         raise ValueError(f"Invalid part status: {new_status}")
 
     results: list[BulkResult] = []
-    parts = _load_parts_scoped(tenant_id, part_ids)
     with transaction.atomic():
+        parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
             part = parts.get(pid)
             if part is None:
@@ -542,6 +630,13 @@ def bulk_set_status(
                 continue
             sid = transaction.savepoint()
             try:
+                if _blocks_terminal_exit(part.part_status, new_status, allow_terminal_exit):
+                    transaction.savepoint_rollback(sid)
+                    results.append(BulkResult(
+                        id=pid, ok=False,
+                        error=f"Cannot leave terminal status {part.part_status} without elevated permission",
+                    ))
+                    continue
                 part.part_status = new_status
                 part.save(update_fields=['part_status', 'updated_at'])
                 if new_status in TERMINAL_PART_STATUSES:

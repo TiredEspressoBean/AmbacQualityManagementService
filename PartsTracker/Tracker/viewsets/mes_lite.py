@@ -245,6 +245,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
     ordering = ['-created_at']
     search_fields = ["ERP_id", "order__name", "work_order__ERP_id", "step__name", "part_type__name", "part_status", ]
 
+    # 4a — resolving a MANUAL decision-point branch is manager/lead-gated, and
+    # isn't "creating a part" (so it's CRUD-exempt; the action perm is the gate).
+    crud_exempt_actions = {'resolve_decision'}
+    action_permissions = {
+        'resolve_decision': ['resolve_step_decision'],
+    }
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Parts.objects.none()
@@ -299,6 +306,164 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             })
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        responses={200: inline_serializer(
+            name="DecisionOptionsResponse",
+            fields={
+                "is_decision_point": serializers.BooleanField(),
+                "decision_type": serializers.CharField(required=False, allow_blank=True),
+                "default_branch": serializers.DictField(required=False, allow_null=True),
+                "alternate_branch": serializers.DictField(required=False, allow_null=True),
+                "qa_suggested": serializers.CharField(required=False, allow_null=True),
+            },
+        )},
+    )
+    @action(detail=True, methods=["get"], url_path="decision_options")
+    def decision_options(self, request, pk=None):
+        """4a — decision-point metadata for the operator runtime resolver.
+
+        Tells the runtime whether this part's current step is a decision
+        point, its `decision_type`, and the resolved DEFAULT/ALTERNATE branch
+        targets so it can label 'pass → X' / 'fail/rework → Y'. For QA_RESULT
+        it also returns the QualityReport-suggested branch (those route
+        automatically; no manual pick)."""
+        from Tracker.models.mes_lite import EdgeType
+
+        part = self.get_object()
+        step = part.step
+        if step is None or not step.is_decision_point:
+            return Response({"is_decision_point": False})
+
+        def branch(edge_type):
+            to_step = part._get_edge(step, edge_type)
+            return {"step_id": str(to_step.id), "step_name": to_step.name} if to_step else None
+
+        qa_suggested = None
+        if step.decision_type == 'QA_RESULT':
+            from Tracker.models.qms import QualityReports
+            qr = (
+                QualityReports.objects.filter(part=part, step=step)
+                .order_by('-created_at').first()
+            )
+            qa_suggested = qr.status if qr else None
+
+        return Response({
+            "is_decision_point": True,
+            "decision_type": step.decision_type,
+            "default_branch": branch(EdgeType.DEFAULT),
+            "alternate_branch": branch(EdgeType.ALTERNATE),
+            "qa_suggested": qa_suggested,
+        })
+
+    @extend_schema(
+        responses={200: inline_serializer(
+            name="ReworkStatusResponse",
+            fields={
+                "total_rework_count": serializers.IntegerField(),
+                "current_step_name": serializers.CharField(allow_null=True),
+                "max_visits": serializers.IntegerField(allow_null=True),
+                "current_visits": serializers.IntegerField(),
+                "remaining": serializers.IntegerField(allow_null=True),
+                "at_limit": serializers.BooleanField(),
+                "escalation_step_name": serializers.CharField(allow_null=True),
+            },
+        )},
+    )
+    @action(detail=True, methods=["get"], url_path="rework_status")
+    def rework_status(self, request, pk=None):
+        """4b — rework-cycle visibility.
+
+        Reports the part's cumulative rework count and, when its current step
+        carries a visit cap (`max_visits`), how many visits it's used, how many
+        remain, and the ESCALATION target it routes to once the cap is exceeded
+        (engine-driven — `_check_cycle_limit`)."""
+        from Tracker.models import StepExecution
+        from Tracker.models.mes_lite import EdgeType, StepEdge
+
+        part = self.get_object()
+        step = part.step
+        max_visits = getattr(step, 'max_visits', None) if step else None
+        current_visits = StepExecution.get_visit_count(part, step) if step else 0
+
+        escalation_step_name = None
+        if step and max_visits is not None:
+            process = part.work_order.process if part.work_order else None
+            if process:
+                esc = StepEdge.objects.filter(
+                    process=process, from_step=step, edge_type=EdgeType.ESCALATION,
+                ).first()
+                escalation_step_name = esc.to_step.name if esc and esc.to_step else None
+
+        remaining = max(0, max_visits - current_visits) if max_visits is not None else None
+        return Response({
+            "total_rework_count": part.total_rework_count or 0,
+            "current_step_name": step.name if step else None,
+            "max_visits": max_visits,
+            "current_visits": current_visits,
+            "remaining": remaining,
+            "at_limit": max_visits is not None and current_visits >= max_visits,
+            "escalation_step_name": escalation_step_name,
+        })
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ResolveDecisionInput",
+            fields={"decision": serializers.CharField(
+                help_text="Branch to route along: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'."
+            )},
+        ),
+        responses={200: dict},
+    )
+    @action(detail=True, methods=["post"], url_path="resolve_decision")
+    def resolve_decision(self, request, pk=None):
+        """4a — manager/lead resolves a MANUAL decision-point step by choosing
+        the routing branch. Gated by `resolve_step_decision`. QA_RESULT points
+        route automatically from the QualityReport and don't use this."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.mes.parts import advance_part_step
+
+        part = self.get_object()
+        step = part.step
+        if step is None or not step.is_decision_point:
+            return Response(
+                {"detail": "This step is not a decision point."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if step.decision_type != 'MANUAL':
+            return Response(
+                {"detail": "Only MANUAL decision points are resolved here; "
+                           "QA_RESULT routes from the inspection result."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        decision = (request.data.get("decision") or "").upper()
+        if decision not in ("DEFAULT", "ALTERNATE", "PASS", "FAIL"):
+            return Response(
+                {"detail": "decision must be 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            # The manual decision is authoritative — a manager/lead has explicitly
+            # chosen the branch, so bypass the per-part advancement gate. Otherwise
+            # the gate's pass-oriented checks (QA signoff, FPI) would paradoxically
+            # block routing a FAILED part to its rework branch. The
+            # `resolve_step_decision` permission is the control here.
+            #
+            # In a transaction so the visit-number lock advance_part_step takes
+            # (get_visit_count_for_update) is held through the StepExecution insert.
+            with transaction.atomic():
+                result = advance_part_step(
+                    part, operator=request.user, decision_result=decision, skip_gate_check=True,
+                )
+        except (ValueError, DjangoValidationError) as e:
+            msg = "; ".join(e.messages) if isinstance(e, DjangoValidationError) else str(e)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "result": result,
+            "new_step_id": str(part.step.id) if part.step else None,
+            "new_step_name": part.step.name if part.step else None,
+            "part_status": part.part_status,
+        })
 
     @extend_schema(
         description="Check if part can be rolled back to previous step",
@@ -504,12 +669,19 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         ids = request.data.get("ids") or []
         if not isinstance(ids, list):
             return Response({"detail": "ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        # Elevated users may reverse parts out of a terminal status (e.g. un-scrap).
+        # Placeholder gate; precise elevated-role policy (admins, QA/prod managers)
+        # is deferred — see remediation plan 0d.
+        allow_terminal_exit = bool(
+            getattr(request.user, "is_superuser", False) or getattr(request.user, "is_staff", False)
+        )
         results = svc(
             tenant_id=self.tenant.id if self.tenant else None,
             part_ids=ids,
             operator=request.user,
             reason=request.data.get("reason", "") or "",
             override_id=request.data.get("override_id"),
+            allow_terminal_exit=allow_terminal_exit,
         )
         return Response({"results": [r.to_dict() for r in results]})
 
@@ -581,6 +753,11 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         if not isinstance(ids, list) or not new_status:
             return Response({"detail": "ids (list) and status are required"},
                             status=status.HTTP_400_BAD_REQUEST)
+        # Elevated users may move a part out of a terminal status (e.g. un-scrap).
+        # Placeholder gate; precise elevated-role policy is deferred — see plan 0d.
+        allow_terminal_exit = bool(
+            getattr(request.user, "is_superuser", False) or getattr(request.user, "is_staff", False)
+        )
         try:
             results = svc(
                 tenant_id=self.tenant.id if self.tenant else None,
@@ -588,6 +765,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 new_status=new_status,
                 operator=request.user,
                 reason=request.data.get("reason"),
+                allow_terminal_exit=allow_terminal_exit,
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1708,6 +1886,62 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"results": [r.to_dict() for r in results]})
+
+    @extend_schema(
+        responses={200: inline_serializer(
+            name="WorkOrderStepMetricsResponse",
+            fields={
+                "steps": serializers.ListField(child=serializers.DictField()),
+            },
+        )},
+    )
+    @action(detail=True, methods=["get"], url_path="step_metrics")
+    def step_metrics(self, request, pk=None):
+        """4c — live part distribution per step for the flow-map overlay.
+
+        Returns, for each step that currently holds live (non-terminal) parts on
+        this work order, the total count plus an attention breakdown
+        (in-rework / quarantined / awaiting-QA / on-hold). A single grouped
+        query — accurate regardless of list pagination, unlike counting a capped
+        client-side page."""
+        from django.db.models import Count
+        from Tracker.models import Parts
+
+        wo = self.get_object()
+        from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+
+        # for_user (not raw .objects): the overlay must count only parts this
+        # user can see — same row-level scoping (relationship / classification /
+        # export-control) as the parts list — so the map can't leak counts of
+        # restricted parts. `Parts` is unused now; qs_for_user supplies the base.
+        rows = (
+            self.qs_for_user(Parts)
+            .filter(work_order=wo)
+            .exclude(part_status__in=TERMINAL_PART_STATUSES)
+            .exclude(step__isnull=True)
+            .values("step_id", "part_status")
+            .annotate(n=Count("id"))
+        )
+
+        # Roll up per step.
+        by_step: dict[str, dict] = {}
+        for r in rows:
+            sid = str(r["step_id"])
+            entry = by_step.setdefault(sid, {
+                "step_id": sid, "total": 0,
+                "in_rework": 0, "quarantined": 0, "awaiting_qa": 0,
+            })
+            n = r["n"]
+            status_val = r["part_status"]
+            entry["total"] += n
+            if status_val in ("REWORK_NEEDED", "REWORK_IN_PROGRESS"):
+                entry["in_rework"] += n
+            elif status_val == "QUARANTINED":
+                entry["quarantined"] += n
+            elif status_val == "AWAITING_QA":
+                entry["awaiting_qa"] += n
+
+        return Response({"steps": list(by_step.values())})
 
     @extend_schema(
         request=inline_serializer(

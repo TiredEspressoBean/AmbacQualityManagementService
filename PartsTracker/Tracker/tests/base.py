@@ -109,56 +109,71 @@ class TenantTestCase(VectorTestCase):
     """
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUpTestData(cls):
+        """Build the shared tenant/user fixtures once per class.
 
-    def setUp(self):
-        super().setUp()
+        setUpTestData runs inside a class-level transaction that's rolled
+        back to a savepoint after each test, so the (expensive) tenant
+        seeding fires once per class instead of once per test method.
+        Django isolates these cls.* instances per-test (copy-on-access), so
+        a test mutating self.user_a doesn't bleed into the next.
+
+        Only static data lives here. The per-test ContextVar and API client
+        are runtime state and stay in setUp().
+        """
+        super().setUpTestData()
         from Tracker.models import Tenant
 
         # Tenant itself is not a SecureModel, so its default manager does
         # not auto-scope. Create tenants first so we have an id to set the
         # ContextVar to.
-        self.tenant_a = Tenant.objects.create(
+        cls.tenant_a = Tenant.objects.create(
             name="Tenant A",
             slug="tenant-a",
             tier="PRO"
         )
-        self.tenant_b = Tenant.objects.create(
+        cls.tenant_b = Tenant.objects.create(
             name="Tenant B",
             slug="tenant-b",
             tier="STARTER"
         )
 
-        # Set the tenant ContextVar so any SecureManager queries during
-        # the test auto-scope to tenant_a. Tests that need to query as
-        # tenant_b can call self.switch_tenant_context(self.tenant_b).
-        self._tenant_cv_token = set_current_tenant_id(self.tenant_a.id)
-
         User = get_user_model()
 
-        # Create users for each tenant
-        self.user_a = User.objects.create_user(
-            username='user_a',
-            email='user_a@tenant-a.com',
-            password='testpass123',
-            tenant=self.tenant_a
-        )
-        self.user_b = User.objects.create_user(
-            username='user_b',
-            email='user_b@tenant-b.com',
-            password='testpass123',
-            tenant=self.tenant_b
-        )
+        # Mirror the historical setUp ordering: user creation ran under
+        # tenant_a's ContextVar. Set it for the duration of fixture creation,
+        # then reset so it doesn't leak into the per-test ContextVar that
+        # setUp establishes.
+        token = set_current_tenant_id(cls.tenant_a.id)
+        try:
+            cls.user_a = User.objects.create_user(
+                username='user_a',
+                email='user_a@tenant-a.com',
+                password='testpass123',
+                tenant=cls.tenant_a
+            )
+            cls.user_b = User.objects.create_user(
+                username='user_b',
+                email='user_b@tenant-b.com',
+                password='testpass123',
+                tenant=cls.tenant_b
+            )
+            # Create superuser (no tenant)
+            cls.superuser = User.objects.create_superuser(
+                username='admin',
+                email='admin@example.com',
+                password='adminpass123'
+            )
+        finally:
+            reset_current_tenant(token)
 
-        # Create superuser (no tenant)
-        self.superuser = User.objects.create_superuser(
-            username='admin',
-            email='admin@example.com',
-            password='adminpass123'
-        )
-
-        # Set up API client
+    def setUp(self):
+        super().setUp()
+        # Per-test runtime state (not data): point the ContextVar at tenant_a
+        # so SecureManager queries auto-scope there. Tests needing tenant_b
+        # call self.switch_tenant_context(self.tenant_b). Each test also gets
+        # a fresh API client.
+        self._tenant_cv_token = set_current_tenant_id(self.tenant_a.id)
         self.client = APIClient()
 
     def tearDown(self):

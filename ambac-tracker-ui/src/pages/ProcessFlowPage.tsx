@@ -178,6 +178,10 @@ export default function ProcessFlowPage() {
         requires_qa_signoff: step.requires_qa_signoff as boolean | undefined,
         sampling_required: step.sampling_required as boolean | undefined,
         min_sampling_rate: step.min_sampling_rate as number | undefined,
+        requires_batch_completion: step.requires_batch_completion as boolean | undefined,
+        pass_threshold: step.pass_threshold as number | undefined,
+        requires_first_piece_inspection: step.requires_first_piece_inspection as boolean | undefined,
+        fpi_scope: step.fpi_scope as string | undefined,
       };
     });
   }, [isDemo, processWithSteps?.process_steps]);
@@ -350,6 +354,10 @@ export default function ProcessFlowPage() {
           requiresQaSignoff: updatedStep.requires_qa_signoff,
           samplingRequired: updatedStep.sampling_required,
           minSamplingRate: updatedStep.min_sampling_rate,
+          requiresBatchCompletion: updatedStep.requires_batch_completion,
+          passThreshold: updatedStep.pass_threshold,
+          requiresFirstPieceInspection: updatedStep.requires_first_piece_inspection,
+          fpiScope: updatedStep.fpi_scope,
         },
       };
     });
@@ -399,18 +407,27 @@ export default function ProcessFlowPage() {
         requires_qa_signoff: step.requires_qa_signoff || false,
         sampling_required: step.sampling_required || false,
         min_sampling_rate: step.min_sampling_rate,
+        requires_batch_completion: step.requires_batch_completion || false,
+        pass_threshold: step.pass_threshold,
+        requires_first_piece_inspection: step.requires_first_piece_inspection || false,
+        fpi_scope: step.fpi_scope || 'PER_WORKORDER',
       });
       });
 
       // Build edges array from local edges (new graph-based format)
       const edgesToProcess = localEdges || [];
       const edgesPayload = edgesToProcess.map(edge => {
+        // Prefer the explicitly-authored edge_type (set via the edge inspector,
+        // stored on edge.data). Fall back to the legacy id-suffix/handle
+        // inference for any edge that predates explicit typing.
+        const explicit = (edge.data as { edge_type?: string } | undefined)?.edge_type;
         const isEscalation = edge.id.endsWith('-esc');
         const isAlternate = edge.id.endsWith('-alt') || edge.sourceHandle === 'fail';
+        const inferred = isEscalation ? 'ESCALATION' : isAlternate ? 'ALTERNATE' : 'DEFAULT';
         return {
           from_step: edge.source,
           to_step: edge.target,
-          edge_type: isEscalation ? 'ESCALATION' : isAlternate ? 'ALTERNATE' : 'DEFAULT',
+          edge_type: explicit ?? inferred,
         };
       });
 

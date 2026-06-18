@@ -767,9 +767,13 @@ class QuarantineDisposition(SecureModel):
 
         super().save(*args, **kwargs)
 
-        # Update part status when disposition type changes or state changes
-        if (old_disposition_type != self.disposition_type or old_state != self.current_state) and self.part:
-            self._update_part_status()
+        # Apply the decision to the part only when the disposition_type is set or
+        # changed (the OPEN->IN_PROGRESS decision) — NOT on a pure state change such
+        # as close, so a later close can't re-apply or re-increment the rework
+        # counter. Business logic lives in services.qms.disposition, not save().
+        if old_disposition_type != self.disposition_type and self.disposition_type and self.part:
+            from Tracker.services.qms.disposition import apply_disposition_to_part
+            apply_disposition_to_part(self)
 
     def _generate_disposition_number(self):
         """Generate disposition number with race condition protection.
@@ -794,38 +798,6 @@ class QuarantineDisposition(SecureModel):
         from Tracker.services.qms.disposition import complete_disposition_resolution
         return complete_disposition_resolution(self, completed_by_user)
 
-    def _update_part_status(self):
-        """Update part status based on disposition type and state"""
-        from Tracker.models import PartsStatus
-
-        if not self.part or not self.disposition_type:
-            return
-
-        # Only update if disposition is being implemented/closed
-        if self.current_state not in ['in_progress', 'closed']:
-            return
-
-        # Map disposition types to part statuses (QMS standard workflow)
-        # repair uses same status as rework per AS9100 - both need rework processing
-        status_mapping = {
-            'rework': PartsStatus.REWORK_NEEDED,
-            'repair': PartsStatus.REWORK_NEEDED,  # AS9100: May not fully conform, requires approval
-            'scrap': PartsStatus.SCRAPPED,
-            'use_as_is': PartsStatus.READY_FOR_NEXT_STEP,  # QA approved, ready to advance
-            'return_to_supplier': PartsStatus.CANCELLED,
-        }
-
-        new_status = status_mapping.get(self.disposition_type)
-
-        if new_status and self.part.part_status != new_status:
-            self.part.part_status = new_status
-
-            # Increment rework counter if rework or repair disposition
-            if self.disposition_type in ['rework', 'repair']:
-                self.part.total_rework_count += 1
-
-            self.part.save(update_fields=['part_status', 'total_rework_count'])
-
     def has_pending_annotations(self):
         """
         Check if any linked quality reports require 3D annotations but don't have any.
@@ -849,7 +821,7 @@ class QuarantineDisposition(SecureModel):
         """Check if disposition is ready to be marked as completed"""
         if not self.disposition_type:  # Must have a disposition decision
             return False
-        if self.current_state not in ['open', 'in_progress']:  # Must be active
+        if self.current_state not in ['OPEN', 'IN_PROGRESS']:  # Must be active
             return False
         if self.resolution_completed:  # Not already completed
             return False
@@ -857,6 +829,11 @@ class QuarantineDisposition(SecureModel):
         # Check for pending 3D annotations
         has_pending, _ = self.has_pending_annotations()
         if has_pending:
+            return False
+
+        # Containment (AS9100, Level 1): a CRITICAL/MAJOR disposition must record a
+        # containment action before it can be completed.
+        if self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip():
             return False
 
         return True
@@ -867,7 +844,7 @@ class QuarantineDisposition(SecureModel):
 
         if not self.disposition_type:
             blockers.append("No disposition decision selected")
-        if self.current_state not in ['open', 'in_progress']:
+        if self.current_state not in ['OPEN', 'IN_PROGRESS']:
             blockers.append(f"Disposition is {self.get_current_state_display()}, not active")
         if self.resolution_completed:
             blockers.append("Resolution already completed")
@@ -875,6 +852,10 @@ class QuarantineDisposition(SecureModel):
         has_pending, pending_reports = self.has_pending_annotations()
         if has_pending:
             blockers.append(f"3D annotations required for {len(pending_reports)} quality report(s)")
+
+        # Containment (AS9100, Level 1): high-severity dispositions need containment.
+        if self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip():
+            blockers.append("Containment action required before closing a CRITICAL/MAJOR disposition")
 
         return blockers
 

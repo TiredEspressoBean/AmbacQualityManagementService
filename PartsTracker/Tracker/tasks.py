@@ -555,6 +555,35 @@ def fire_one_escalation(self, instance_id):
         raise self.retry(exc=exc, countdown=60) from exc
 
 
+@shared_task(bind=True, max_retries=3)
+def advance_lot_task(self, work_order_id, step_id, tenant_id, operator_id=None):
+    """Async lot advancement — the deferred path for a large batch seal (3d).
+
+    `seal_batch` runs advancement synchronously for small cohorts; for large
+    ones it dispatches here so the seal request stays bounded. Idempotent:
+    `try_advance_lot` is safe to re-run, so a retry can't double-advance.
+    """
+    from Tracker.services.mes.advancement import try_advance_lot
+
+    operator = None
+    if operator_id:
+        from django.contrib.auth import get_user_model
+        with tenant_context(tenant_id):
+            operator = get_user_model().objects.filter(id=operator_id).first()
+    try:
+        try_advance_lot(
+            work_order_id=work_order_id,
+            step_id=step_id,
+            tenant_id=tenant_id,
+            operator=operator,
+        )
+    except Exception as exc:
+        logger.exception(
+            "advance_lot_task: wo=%s step=%s failed", work_order_id, step_id,
+        )
+        raise self.retry(exc=exc, countdown=30) from exc
+
+
 @shared_task
 def dispatch_pending_notifications():
     """
