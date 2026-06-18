@@ -15,7 +15,7 @@ deterministic UUIDv5s so re-seeding is stable and each capture node is unique
 
 import uuid
 
-from Tracker.models import Substep
+from Tracker.models import Substep, SubstepScope
 
 from ..base import BaseSeeder
 
@@ -225,6 +225,9 @@ class DemoDwiSeeder(BaseSeeder):
                         "allow_not_applicable": ss.get("allow_not_applicable", False),
                         "requires_signature": ss.get("requires_signature", False),
                         "is_inspection_point": ss.get("is_inspection_point", False),
+                        # BATCH-scope substeps run once per load (BatchExecution);
+                        # default SAMPLED runs per part.
+                        "scope": ss.get("scope", SubstepScope.SAMPLED),
                     },
                 )
                 created += 1
@@ -267,6 +270,28 @@ class DemoDwiSeeder(BaseSeeder):
                         _callout("note", "Keep the core's identity band with the body group until grading."),
                         _scan("Disassembly", "core-serial", "Scan core serial / identity band"),
                         _photo("Disassembly", "teardown-photo", "Photograph the teardown layout", required=False),
+                    ),
+                },
+            ],
+            "Cleaning": [
+                {
+                    "title": "Load parts into the cleaner",
+                    "order": 0,
+                    "body": _doc(
+                        _para("Scan each part as you load it into the ultrasonic basket. Every part in this load is cleaned together."),
+                        _scan("Cleaning", "load-scan", "Scan each part into the load"),
+                    ),
+                },
+                {
+                    "title": "Run ultrasonic wash cycle",
+                    "order": 1,
+                    # BATCH scope: one cycle cleans the whole basket, so the
+                    # capture binds to the load's BatchExecution, not per part.
+                    "scope": SubstepScope.BATCH,
+                    "body": _doc(
+                        _heading("Ultrasonic clean — whole load"),
+                        _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),
+                        _attest_confirm("Cleaning", "cycle-done", "Cycle complete", "Confirm the wash and rinse cycle finished and the basket was inspected."),
                     ),
                 },
             ],

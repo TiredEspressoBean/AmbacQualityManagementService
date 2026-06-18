@@ -363,6 +363,12 @@ class DemoQualitySeeder(BaseSeeder):
         defect_links = self._create_defect_links(qr_map, result['error_lists'])
         result['defect_links'] = defect_links
 
+        # Give the auto-created NCRs (bare OPEN, no type — created by the
+        # QR-FAIL signal) a realistic lifecycle spread instead of leaving them
+        # all stuck at OPEN.
+        enriched = self._enrich_auto_dispositions(qa_users, operators)
+        self.log(f"  Enriched {enriched} auto-created dispositions with lifecycle data")
+
         self.log(f"  Created {len(result['quality_reports'])} quality reports")
         self.log(f"  Created {len(result['defect_links'])} defect links")
         self.log(f"  Created {len(result['dispositions'])} dispositions")
@@ -511,6 +517,93 @@ class DemoQualitySeeder(BaseSeeder):
         disp.quality_reports.add(quality_report)
 
         return disp
+
+    # Resolution notes keyed by disposition type — short, type-appropriate.
+    _RESOLUTION_NOTES = {
+        'REWORK': 'Reworked at station and re-inspected; conforms.',
+        'SCRAP': 'Nonconformance beyond repair limits; scrapped per QP-007.',
+        'USE_AS_IS': 'Accepted as-is under customer concession; within functional limits.',
+        'RETURN_TO_SUPPLIER': 'Returned to supplier under SCAR; replacement requested.',
+        'REPAIR': 'Repaired per approved repair traveler (AS9100); verified.',
+    }
+
+    def _enrich_auto_dispositions(self, qa_users, operators):
+        """Advance the bare auto-created NCRs through a realistic lifecycle.
+
+        The QR-FAIL signal opens a disposition with no type and state OPEN. Left
+        alone, every NCR sits identically at OPEN. This walks a deterministic
+        subset to IN_PROGRESS / CLOSED (with containment + resolution data) and
+        types the rest, leaving a few untriaged as a realistic backlog.
+
+        Uses `.update()` (not save) so it doesn't cascade part-status changes
+        onto parts already positioned elsewhere in the seed.
+        """
+        from Tracker.models import QuarantineDisposition
+
+        approver = qa_users[0] if qa_users else (operators[0] if operators else None)
+        resolver = (qa_users[1] if len(qa_users) > 1 else None) or approver
+        assignees = [u for u in (qa_users + list(operators)) if u] or [approver]
+
+        bare = list(
+            QuarantineDisposition.objects.filter(
+                tenant=self.tenant, current_state='OPEN', disposition_type=''
+            ).order_by('disposition_number')
+        )
+        if not bare:
+            return 0
+
+        types = ['REWORK', 'SCRAP', 'USE_AS_IS', 'REWORK', 'RETURN_TO_SUPPLIER']
+        severities = ['MAJOR', 'MINOR', 'CRITICAL']
+        enriched = 0
+
+        for i, d in enumerate(bare):
+            dtype = types[i % len(types)]
+            sev = severities[i % len(severities)]
+            created_at = self.today - timedelta(days=12 - (i % 10))
+            fields = {
+                'disposition_type': dtype,
+                'severity': sev,
+                'assigned_to': assignees[i % len(assignees)],
+            }
+
+            outcome = i % 3  # 0 = triaged (stays OPEN), 1 = IN_PROGRESS, 2 = CLOSED
+            if outcome >= 1:
+                fields.update({
+                    'containment_action': 'Part quarantined and segregated pending disposition',
+                    'containment_completed_at': created_at + timedelta(hours=3),
+                    'containment_completed_by': approver,
+                })
+            if outcome == 1:
+                fields['current_state'] = 'IN_PROGRESS'
+            elif outcome == 2:
+                resolved_at = created_at + timedelta(days=2)
+                fields.update({
+                    'current_state': 'CLOSED',
+                    'resolution_completed': True,
+                    'resolution_completed_by': resolver,
+                    'resolution_completed_at': resolved_at,
+                    'resolution_notes': self._RESOLUTION_NOTES.get(dtype, 'Resolved.'),
+                })
+                if dtype == 'SCRAP':
+                    fields.update({
+                        'scrap_verified': True,
+                        'scrap_verification_method': 'Crushed and tagged',
+                        'scrap_verified_by': resolver,
+                        'scrap_verified_at': resolved_at,
+                    })
+                if dtype in ('USE_AS_IS', 'RETURN_TO_SUPPLIER'):
+                    fields.update({
+                        'requires_customer_approval': True,
+                        'customer_approval_received': True,
+                        'customer_approval_reference': 'CON-2024-001',
+                        'customer_approval_date': (created_at + timedelta(hours=4)).date()
+                        if hasattr(created_at, 'date') else created_at,
+                    })
+
+            QuarantineDisposition.objects.filter(pk=d.pk).update(**fields)
+            enriched += 1
+
+        return enriched
 
     def seed_spc_data(self, measurement_definitions, quality_reports, users):
         """

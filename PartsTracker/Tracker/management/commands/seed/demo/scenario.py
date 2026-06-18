@@ -274,6 +274,9 @@ class DemoScenario(BaseSeeder):
         # Seed FPI records for work orders
         seeder.seed_fpi_records(result['work_orders'], part_types, users, equipment)
 
+        # Seed batch-execution history at the Cleaning batch step
+        seeder.seed_batch_executions(process, users)
+
         return result
 
     def _seed_quality_events(self, orders, users, manufacturing):

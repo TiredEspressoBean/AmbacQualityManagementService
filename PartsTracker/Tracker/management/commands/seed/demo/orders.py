@@ -696,3 +696,89 @@ class DemoOrdersSeeder(BaseSeeder):
                     fpi_count += 1
 
         self.log(f"  Created {fpi_count} FPI records")
+
+    def seed_batch_executions(self, process, users):
+        """Seed batch-execution history at the Cleaning step.
+
+        Cleaning is a batch step (requires_batch_completion + a BATCH-scope
+        substep): parts are cleaned together in loads. Parts already past
+        Cleaning get sealed historical loads; one work order with parts still
+        at Cleaning gets an open (unsealed) load, so the batch list/detail and
+        the operator batch panel have real data to show.
+        """
+        from collections import defaultdict
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from Tracker.models import BatchExecution, ProcessStep, Parts
+
+        self.log("Creating batch execution history (Cleaning loads)...")
+
+        process_steps = list(
+            ProcessStep.objects.filter(process=process).select_related('step').order_by('order')
+        )
+        cleaning = next((ps.step for ps in process_steps if ps.step.name == 'Cleaning'), None)
+        if cleaning is None:
+            self.log("  No Cleaning step found; skipping batch executions", warning=True)
+            return {'batch_executions': 0}
+
+        order_of = {ps.step_id: ps.order for ps in process_steps}
+        cleaning_order = order_of.get(cleaning.id, 0)
+
+        # A real user for started_by (non-null PROTECT FK).
+        operator = (users.get('employees') or users.get('managers') or [None])[0]
+        if operator is None:
+            operator = get_user_model().objects.filter(tenant=self.tenant, is_active=True).first()
+        if operator is None:
+            self.log("  No user available for started_by; skipping batch executions", warning=True)
+            return {'batch_executions': 0}
+
+        parts = Parts.objects.filter(
+            tenant=self.tenant, ERP_id__startswith='INJ-'
+        ).select_related('work_order', 'step')
+
+        past = defaultdict(list)  # parts that already cleaned -> sealed loads
+        at = defaultdict(list)    # parts still at Cleaning -> one open load
+        for p in parts:
+            if not p.work_order_id or not p.step_id:
+                continue
+            o = order_of.get(p.step_id)
+            if o is None:
+                continue
+            if o > cleaning_order:
+                past[p.work_order_id].append(p)
+            elif o == cleaning_order:
+                at[p.work_order_id].append(p)
+
+        now = timezone.now()
+        count = 0
+
+        # Sealed historical loads — chunk each WO's cleaned parts into baskets.
+        for wo_parts in past.values():
+            wo = wo_parts[0].work_order
+            for i in range(0, len(wo_parts), 6):
+                load = wo_parts[i:i + 6]
+                be = BatchExecution.objects.create(
+                    tenant=self.tenant, work_order=wo, step=cleaning, started_by=operator,
+                )
+                be.parts.set(load)
+                started = now - timedelta(days=8, hours=i)
+                sealed = started + timedelta(hours=1, minutes=20)
+                # started_at is auto_now_add; .update() bypasses it to backdate.
+                BatchExecution.objects.filter(pk=be.pk).update(
+                    started_at=started, sealed_at=sealed, completed_at=sealed,
+                )
+                count += 1
+
+        # One open (unsealed) load for a WO that still has parts at Cleaning.
+        for wo_parts in at.values():
+            wo = wo_parts[0].work_order
+            be = BatchExecution.objects.create(
+                tenant=self.tenant, work_order=wo, step=cleaning, started_by=operator,
+            )
+            be.parts.set(wo_parts[:6])
+            BatchExecution.objects.filter(pk=be.pk).update(started_at=now - timedelta(hours=2))
+            count += 1
+            break
+
+        self.log(f"  Created {count} batch executions")
+        return {'batch_executions': count}
