@@ -259,10 +259,18 @@ def submit_substep(
         # one-QR-per-substep "inspection session" model consistent — the
         # operator drops findings on the part and the report's pass/fail
         # falls out of the data instead of requiring a separate toggle.
+        # Re-read status from the DB first: a measurement capture above may have
+        # already resolved this QR to PASS/FAIL via record_dwi_measurement (and
+        # an OOS reading may have fired auto_create_disposition). The in-memory
+        # `report` is stale from ensure_quality_report, so without this refresh
+        # the rollup would clobber that FAIL back to PASS — an NCR on a
+        # PASS-reading report.
+        if report is not None:
+            report.refresh_from_db(fields=["status"])
         if report is not None and report.status == "PENDING":
             has_findings = (
                 report.annotations.exists()
-                or QualityReportDefect.objects.filter(quality_report=report).exists()
+                or QualityReportDefect.objects.filter(report=report).exists()
             )
             QualityReports.objects.filter(pk=report.pk).update(
                 status="FAIL" if has_findings else "PASS",

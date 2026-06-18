@@ -4,7 +4,7 @@
  * Linked spec dropdown which autofills the rest. Operator sees a numeric
  * input and a live in-spec / out-of-spec badge.
  */
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -137,12 +137,13 @@ function View(props: NodeViewProps) {
               parsedValue! <= nominal + (upper_tol ?? 0)
             : null;
 
-    // Flow #3: surface an OOS toast exactly once when the operator's
-    // committed value crosses from in-spec (or empty) to out-of-spec.
-    // The operator continues; QA dispositions later. We don't disposition
-    // here — operators aren't authorized.
+    // Flow #3: surface an OOS warning when the operator LEAVES the field
+    // (on blur) — NOT per keystroke, which stacked a toast for every
+    // intermediate value while typing (1 → 12 → 128). The operator continues;
+    // QA dispositions later — we don't disposition here (operators aren't
+    // authorized). The ref de-dupes repeated blurs on an unchanged value.
     const lastOOSValueRef = useRef<string | null>(null);
-    useEffect(() => {
+    const handleOperatorBlur = () => {
         if (!isOperator) return;
         if (inSpec === false && rawValue !== lastOOSValueRef.current) {
             lastOOSValueRef.current = rawValue;
@@ -152,7 +153,7 @@ function View(props: NodeViewProps) {
         } else if (inSpec !== false) {
             lastOOSValueRef.current = null;
         }
-    }, [inSpec, rawValue, isOperator, label]);
+    };
 
     const card = (
         <NodeCard
@@ -190,6 +191,7 @@ function View(props: NodeViewProps) {
                     placeholder="—"
                     value={rawValue}
                     onChange={(e) => isOperator && setValue(e.target.value)}
+                    onBlur={handleOperatorBlur}
                     className="w-32 rounded border bg-background px-2 py-1 text-sm font-mono"
                 />
                 {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
