@@ -254,7 +254,7 @@ export function OperatorSubstepRuntimePage() {
         // point shows its resolver and a capped step shows its rework status,
         // rather than dead-ending on the "author substeps" prompt.
         return (
-            <div className="flex h-[calc(100vh-1px)] flex-col bg-background operator-runtime">
+            <div className="flex h-full min-h-0 flex-col bg-background operator-runtime">
                 <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
                     <div className="w-full max-w-3xl space-y-4">
                         {search.workOrder && (
@@ -309,7 +309,7 @@ export function OperatorSubstepRuntimePage() {
 
     return (
         <PartContext.Provider value={partContext}>
-            <div className="flex h-[calc(100vh-1px)] flex-col bg-background operator-runtime">
+            <div className="flex h-full min-h-0 flex-col bg-background operator-runtime">
                 <ProgressRail
                     substeps={sortedSubsteps}
                     currentIdx={at}
