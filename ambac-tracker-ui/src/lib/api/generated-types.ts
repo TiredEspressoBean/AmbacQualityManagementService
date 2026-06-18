@@ -2041,7 +2041,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Select list for employees (staff users). */
+        /** @description Select list for employees (the tenant's internal workforce). */
         get: operations["api_Employees_Options_list"];
         put?: never;
         post?: never;
@@ -2058,7 +2058,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Select list for employees (staff users). */
+        /** @description Select list for employees (the tenant's internal workforce). */
         get: operations["api_Employees_Options_retrieve"];
         put?: never;
         post?: never;
@@ -33151,6 +33151,7 @@ export interface operations {
                 archived?: boolean;
                 created_at__gte?: string;
                 created_at__lte?: string;
+                exclude_terminal?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 needs_qa?: boolean;
@@ -33899,6 +33900,7 @@ export interface operations {
                 archived?: boolean;
                 created_at__gte?: string;
                 created_at__lte?: string;
+                exclude_terminal?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 needs_qa?: boolean;

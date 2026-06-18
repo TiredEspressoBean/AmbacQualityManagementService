@@ -5928,7 +5928,7 @@ paths:
   /api/Employees-Options/:
     get:
       operationId: api_Employees_Options_list
-      description: Select list for employees (staff users).
+      description: Select list for employees (the tenant's internal workforce).
       parameters:
       - name: limit
         required: false
@@ -5962,7 +5962,7 @@ paths:
   /api/Employees-Options/{id}/:
     get:
       operationId: api_Employees_Options_retrieve
-      description: Select list for employees (staff users).
+      description: Select list for employees (the tenant's internal workforce).
       parameters:
       - in: path
         name: id
@@ -11048,6 +11048,10 @@ paths:
         schema:
           type: string
           format: date-time
+      - in: query
+        name: exclude_terminal
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -12147,6 +12151,10 @@ paths:
         schema:
           type: string
           format: date-time
+      - in: query
+        name: exclude_terminal
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query

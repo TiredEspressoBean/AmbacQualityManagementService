@@ -55,6 +55,11 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
     # Filter for parts that need QA (require sampling but don't have a PASS report)
     needs_qa = django_filters.BooleanFilter(method='filter_needs_qa')
 
+    # Drop parts that have left the line (scrapped/cancelled/shipped/etc.) — for
+    # "live work" lists like the batch cohort, where a terminal part shouldn't
+    # be selectable.
+    exclude_terminal = django_filters.BooleanFilter(method='filter_exclude_terminal')
+
     created_at__gte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="gte")
     created_at__lte = django_filters.DateTimeFilter(field_name="created_at", lookup_expr="lte")
 
@@ -84,6 +89,17 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
             ).distinct()
         return queryset
 
+    def filter_exclude_terminal(self, queryset, name, value):
+        """Exclude parts in a terminal status when value is True.
+
+        Uses the canonical TERMINAL_PART_STATUSES so the FE doesn't have to
+        track the (evolving) set of terminal statuses itself.
+        """
+        if value is True:
+            from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+            return queryset.exclude(part_status__in=list(TERMINAL_PART_STATUSES))
+        return queryset
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Apply tenant filtering to ModelChoiceFilter querysets
@@ -98,7 +114,7 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
             "archived", "requires_sampling",
             "order", "step", "part_type", "work_order",
             "created_at__gte", "created_at__lte",
-            "ERP_id", "status__in", "needs_qa"
+            "ERP_id", "status__in", "needs_qa", "exclude_terminal"
         ]
 
 class OrderFilter(TenantFilterMixin, django_filters.FilterSet):

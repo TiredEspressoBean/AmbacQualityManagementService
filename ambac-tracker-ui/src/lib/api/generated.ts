@@ -22988,7 +22988,7 @@ Returns documents where review_date &lt;&#x3D; today.`,
     method: "get",
     path: "/api/Employees-Options/",
     alias: "api_Employees_Options_list",
-    description: `Select list for employees (staff users).`,
+    description: `Select list for employees (the tenant&#x27;s internal workforce).`,
     requestFormat: "json",
     parameters: [
       {
@@ -23013,7 +23013,7 @@ Returns documents where review_date &lt;&#x3D; today.`,
     method: "get",
     path: "/api/Employees-Options/:id/",
     alias: "api_Employees_Options_retrieve",
-    description: `Select list for employees (staff users).`,
+    description: `Select list for employees (the tenant&#x27;s internal workforce).`,
     requestFormat: "json",
     parameters: [
       {
@@ -27534,6 +27534,11 @@ Import/Export endpoints (auto-configured from model):
         schema: z.string().datetime({ offset: true }).optional(),
       },
       {
+        name: "exclude_terminal",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -28231,6 +28236,11 @@ Import/Export endpoints (auto-configured from model):
         name: "created_at__lte",
         type: "Query",
         schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "exclude_terminal",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "limit",

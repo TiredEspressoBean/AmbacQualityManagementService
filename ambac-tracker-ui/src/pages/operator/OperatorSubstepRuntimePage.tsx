@@ -214,7 +214,9 @@ export function OperatorSubstepRuntimePage() {
     const cohortQueryEnabled = Boolean(search.workOrder && stepId);
     const { data: cohortPartsData } = useRetrieveParts(
         cohortQueryEnabled
-            ? { work_order: search.workOrder, step: stepId, limit: 500 }
+            // exclude_terminal: a scrapped/cancelled/shipped part sitting at the
+            // step is not live work and must not be selectable into a load.
+            ? { work_order: search.workOrder, step: stepId, exclude_terminal: true, limit: 500 }
             : undefined,
         undefined,
         { enabled: cohortQueryEnabled },
