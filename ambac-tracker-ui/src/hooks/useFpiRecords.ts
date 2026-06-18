@@ -8,6 +8,13 @@ export type FpiCheckStatusResponse = {
     satisfied: boolean;
     has_pending: boolean;
     pending_fpi_id: string | null;
+    /** The part the buy-off is made against (first to enter the step). */
+    designated_part_id: string | null;
+    designated_part_label: string | null;
+    /** Designated first piece has completed the step's inspection — buy-off possible. */
+    first_piece_ready: boolean;
+    /** Whether the current user holds sign_off_fpi (may pass/fail/waive). */
+    can_sign_off: boolean;
     message: string;
 };
 

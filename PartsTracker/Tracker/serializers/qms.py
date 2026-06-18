@@ -1342,11 +1342,13 @@ class FPIRecordSerializer(SecureModelMixin):
             'inspected_at',
             'waived', 'waived_by', 'waived_by_info',
             'waive_reason',
+            'quality_report',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'status', 'result', 'inspected_by', 'inspected_at',
             'waived', 'waived_by', 'waive_reason',
+            'quality_report',
             'created_at', 'updated_at'
         )
 

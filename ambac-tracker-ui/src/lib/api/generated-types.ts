@@ -12918,6 +12918,24 @@ export interface components {
             /** @default VISIBLE */
             visibility: components["schemas"]["VisibilityEnum"];
         };
+        AdvanceLotInputRequest: {
+            /** Format: uuid */
+            work_order_id: string;
+            /** Format: uuid */
+            step_id: string;
+        };
+        AdvanceLotResponse: {
+            status: string;
+            reason?: string;
+            parts_advanced: string[];
+            blockers_by_part: {
+                [key: string]: unknown;
+            };
+            split_parts_advanced: string[];
+            split_parts_blocked: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * @description * `ALL_REQUIRED` - All Required
          *     * `THRESHOLD` - Threshold
@@ -14046,6 +14064,18 @@ export interface components {
             description: string;
             hubspot_api_id?: string | null;
             archived?: boolean;
+        };
+        CompleteStepResponse: {
+            status: string;
+            reason?: string;
+            parts_advanced: string[];
+            blockers_by_part: {
+                [key: string]: unknown;
+            };
+            split_parts_advanced: string[];
+            split_parts_blocked: {
+                [key: string]: unknown;
+            };
         };
         /**
          * @description * `SINGLE_OWNER` - Single Owner
@@ -15294,6 +15324,11 @@ export interface components {
             } | null;
             /** @description Reason for waiving FPI requirement */
             readonly waive_reason: string;
+            /**
+             * Format: uuid
+             * @description The designated first piece's QualityReport this buy-off was made against
+             */
+            readonly quality_report: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -33328,20 +33363,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PartsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
-                "multipart/form-data": components["schemas"]["PartsRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Parts"];
+                    "application/json": components["schemas"]["CompleteStepResponse"];
                 };
             };
         };
@@ -33569,9 +33598,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PartsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PartsRequest"];
-                "multipart/form-data": components["schemas"]["PartsRequest"];
+                "application/json": components["schemas"]["AdvanceLotInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdvanceLotInputRequest"];
+                "multipart/form-data": components["schemas"]["AdvanceLotInputRequest"];
             };
         };
         responses: {
@@ -33580,7 +33609,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Parts"];
+                    "application/json": components["schemas"]["AdvanceLotResponse"];
                 };
             };
         };

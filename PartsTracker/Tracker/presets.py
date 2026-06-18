@@ -325,6 +325,14 @@ DECISION_RESOLUTION_PERMISSIONS = [
     'resolve_step_decision',
 ]
 
+# First Piece Inspection buy-off: who may pass / fail / waive an FPI. Setup
+# verification must be independent of the operator who ran the first piece, so
+# this goes to the QA / lead / manager tier (same distribution as decision
+# resolution) and is deliberately withheld from the Operator role.
+FPI_SIGNOFF_PERMISSIONS = [
+    'sign_off_fpi',
+]
+
 # Record retention: deleting operational records is manager-tier only. Line
 # roles void / supersede / archive, never delete. (Authoring artifacts delete
 # via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
@@ -427,6 +435,8 @@ GROUP_PRESETS = {
             'add_tenantgroup', 'change_tenantgroup', 'delete_tenantgroup',
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
+            # Sign off (buy off) First Piece Inspections
+            *FPI_SIGNOFF_PERMISSIONS,
         ],
     },
 
@@ -451,6 +461,8 @@ GROUP_PRESETS = {
             'classify_documents',
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
+            # Sign off (buy off) First Piece Inspections
+            *FPI_SIGNOFF_PERMISSIONS,
         ],
     },
 
@@ -468,6 +480,8 @@ GROUP_PRESETS = {
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
+            # Sign off (buy off) First Piece Inspections
+            *FPI_SIGNOFF_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -491,6 +505,8 @@ GROUP_PRESETS = {
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
+            # Sign off (buy off) First Piece Inspections
+            *FPI_SIGNOFF_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -529,6 +545,8 @@ GROUP_PRESETS = {
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
+            # Sign off (buy off) First Piece Inspections
+            *FPI_SIGNOFF_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],

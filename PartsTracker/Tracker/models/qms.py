@@ -2445,6 +2445,14 @@ class FPIRecord(SecureModel):
         blank=True,
         help_text='Inspector notes captured at pass / fail time (audit trail)'
     )
+    quality_report = models.ForeignKey(
+        'Tracker.QualityReports',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='fpi_records',
+        help_text="The designated first piece's QualityReport this buy-off was made against",
+    )
 
     class Meta:
         verbose_name = 'FPI Record'
@@ -2453,6 +2461,12 @@ class FPIRecord(SecureModel):
         indexes = [
             models.Index(fields=['work_order', 'step', 'status']),
             models.Index(fields=['equipment', 'shift_date']),
+        ]
+        permissions = [
+            # Independent buy-off authority: who may pass / fail / waive an FPI.
+            # Operators initiate (add) and run the first piece, but the setup
+            # verification is signed off by someone else (QA / lead / manager).
+            ('sign_off_fpi', 'Can sign off (buy off) a First Piece Inspection'),
         ]
 
     def __str__(self):

@@ -1043,6 +1043,14 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
     ordering_fields = ['created_at', 'shift_date', 'inspected_at']
     ordering = ['-created_at']
+    # Buy-off is an independent authority act: passing / failing / waiving an FPI
+    # requires sign_off_fpi (QA / lead / manager), layered on top of the CRUD
+    # gate. Operators can still get-or-create (initiate) the record.
+    action_permissions = {
+        'pass_inspection': ['sign_off_fpi'],
+        'fail_inspection': ['sign_off_fpi'],
+        'waive': ['sign_off_fpi'],
+    }
 
     def get_serializer_class(self):
         from Tracker.serializers.qms import FPIRecordSerializer
@@ -1059,6 +1067,33 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             'equipment', 'inspected_by', 'waived_by'
         )
 
+    def _designate_first_piece(self, tenant, work_order, step):
+        """The first piece is the part the FPI buy-off is made against.
+
+        Defined as the first part to ENTER this step (earliest StepExecution),
+        falling back to the lowest-ERP_id part at the step if none has started.
+        Returns None if no parts are at the step yet.
+        """
+        from Tracker.models import StepExecution, Parts
+        # Only parts CURRENTLY at this step are candidates — a part that entered
+        # in the past and already advanced is not the first piece of this run.
+        se = (
+            StepExecution.objects.filter(
+                tenant=tenant, step=step, exited_at__isnull=True,
+                part__work_order=work_order, part__step=step,
+            )
+            .select_related('part')
+            .order_by('entered_at')
+            .first()
+        )
+        if se is not None and se.part_id:
+            return se.part
+        return (
+            Parts.objects.filter(tenant=tenant, work_order=work_order, step=step)
+            .order_by('ERP_id')
+            .first()
+        )
+
     @extend_schema(
         description="Mark FPI as passed",
         request={"application/json": {"type": "object", "properties": {
@@ -1068,9 +1103,17 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
     )
     @action(detail=True, methods=['post'], url_path='pass')
     def pass_inspection(self, request, pk=None):
-        """Mark FPI as passed."""
+        """Mark FPI as passed.
+
+        Hard-gated on the first piece: the buy-off can only be recorded once the
+        designated first piece has actually completed this step's inspection
+        (its substep captures / measurements are done). The first piece's
+        QualityReport is linked to the record so the buy-off references real
+        inspection data rather than being a bare attestation. (Waive is the
+        escape hatch when you legitimately need to skip FPI — it is not gated.)
+        """
         fpi = self.get_object()
-        from Tracker.models import FPIStatus
+        from Tracker.models import FPIStatus, StepExecution, QualityReports
 
         if fpi.status != FPIStatus.PENDING:
             return Response(
@@ -1078,13 +1121,63 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Designate the first piece lazily if the record predates designation.
+        if fpi.designated_part_id is None:
+            designated = self._designate_first_piece(self.tenant, fpi.work_order, fpi.step)
+            if designated is not None:
+                fpi.designated_part = designated
+        designated = fpi.designated_part
+        if designated is None:
+            return Response(
+                {"detail": "No first piece has reached this step yet — nothing to inspect."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Hard gate: the first piece must have completed THIS step's inspection.
+        se = StepExecution.get_current_execution(designated)
+        if se is None or str(se.step_id) != str(fpi.step_id):
+            return Response(
+                {"detail": "The first piece has not started this step's inspection yet."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # Reuse the canonical advancement gate, but drop the FPI blocker itself —
+        # that one is always present here (we're mid-buy-off) and would make this
+        # circular. What's left tells us whether the first piece actually finished
+        # its substeps / measurements / sampling for this step.
+        _, blockers = fpi.step.can_advance_from_step(se, fpi.work_order)
+        remaining = [b for b in blockers if not b.startswith("First Piece Inspection required")]
+        if remaining:
+            return Response(
+                {"detail": "First piece inspection incomplete — finish the step's captures first.",
+                 "blockers": remaining},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Link the first piece's QualityReport (latest finalized one for this
+        # part at this step) so the buy-off references real inspection data.
+        qr = (
+            QualityReports.objects.filter(tenant=self.tenant, part=designated, step=fpi.step)
+            .exclude(status="PENDING")
+            .order_by('-created_at')
+            .first()
+        )
+        if qr is not None:
+            fpi.quality_report = qr
+            if not qr.is_first_piece:
+                qr.is_first_piece = True
+                qr.save(update_fields=['is_first_piece'])
+
         notes = request.data.get('notes', '')
+        # Model method persists status/result/inspected_* AND the designated_part
+        # / quality_report we set above (it does a full save()).
         fpi.pass_inspection(request.user, notes)
 
         return Response({
             "detail": "FPI passed",
             "id": str(fpi.id),
             "status": fpi.status,
+            "designated_part": str(designated.id),
+            "quality_report": str(fpi.quality_report_id) if fpi.quality_report_id else None,
         })
 
     @extend_schema(
@@ -1185,21 +1278,24 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Build filter based on fpi_scope
-        fpi_scope = getattr(step, 'fpi_scope', 'per_workorder')
+        # Build filter based on fpi_scope. Scope is stored uppercase
+        # (PER_WORKORDER / PER_SHIFT / PER_EQUIPMENT / PER_OPERATOR) — compare
+        # against that, not lowercase, or per-shift/per-equipment scoping is
+        # silently ignored and everything collapses to per-workorder.
+        fpi_scope = getattr(step, 'fpi_scope', 'PER_WORKORDER')
         lookup = {
             'work_order': work_order,
             'step': step,
             'status': FPIStatus.PENDING,
         }
 
-        if fpi_scope == 'per_shift':
+        if fpi_scope == 'PER_SHIFT':
             shift_date = request.data.get('shift_date')
             if not shift_date:
                 shift_date = timezone.now().date()
             lookup['shift_date'] = shift_date
 
-        if fpi_scope == 'per_equipment':
+        if fpi_scope == 'PER_EQUIPMENT':
             equipment_id = request.data.get('equipment')
             if not equipment_id:
                 return Response(
@@ -1230,14 +1326,22 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             'tenant': tenant,
             'work_order': work_order,
             'step': step,
-            'part_type': work_order.part_type,
+            # FPI is per (work order, step); the step's part_type is the
+            # reliable source. WorkOrder has no part_type attribute (it routes
+            # through process), and process is nullable — Steps.part_type is
+            # non-null (PROTECT), so it's always present.
+            'part_type': step.part_type,
             'status': FPIStatus.PENDING,
         }
+        # Designate the first piece — the part the buy-off is made against.
+        designated = self._designate_first_piece(tenant, work_order, step)
+        if designated is not None:
+            create_data['designated_part'] = designated
 
-        if fpi_scope == 'per_shift':
+        if fpi_scope == 'PER_SHIFT':
             create_data['shift_date'] = lookup.get('shift_date', timezone.now().date())
 
-        if fpi_scope == 'per_equipment' and 'equipment' in lookup:
+        if fpi_scope == 'PER_EQUIPMENT' and 'equipment' in lookup:
             create_data['equipment'] = lookup['equipment']
 
         fpi = FPIRecord.objects.create(**create_data)  # tenant-safe: create_data['tenant'] set above
@@ -1281,7 +1385,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             )
 
         # Check if step requires FPI
-        requires_fpi = getattr(step, 'requires_fpi', False)
+        requires_fpi = getattr(step, 'requires_first_piece_inspection', False)
         if not requires_fpi:
             return Response({
                 "requires_fpi": False,
@@ -1301,14 +1405,38 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             work_order_id=work_order_id,
             step_id=step_id,
             status=FPIStatus.PENDING
-        ).first()
+        ).select_related('designated_part').first()
+
+        # First-piece state: is the designated first piece's inspection done
+        # (so a buy-off is now possible)? Drives the operator banner's wording
+        # ("complete the inspection below" vs "awaiting buy-off"). Read-only —
+        # we never designate here (that happens at get-or-create / pass).
+        designated = pending_fpi.designated_part if pending_fpi else None
+        first_piece_ready = False
+        if pending_fpi is not None and designated is not None:
+            from Tracker.models import StepExecution, WorkOrder
+            se = StepExecution.get_current_execution(designated)
+            if se is not None and str(se.step_id) == str(step_id):
+                wo = WorkOrder.objects.filter(tenant=tenant, id=work_order_id).first()
+                if wo is not None:
+                    _, blockers = step.can_advance_from_step(se, wo)
+                    first_piece_ready = not [
+                        b for b in blockers
+                        if not b.startswith("First Piece Inspection required")
+                    ]
 
         return Response({
             "requires_fpi": True,
             "satisfied": passed_fpi,
             "has_pending": pending_fpi is not None,
             "pending_fpi_id": str(pending_fpi.id) if pending_fpi else None,
-            "message": "FPI passed" if passed_fpi else "FPI required"
+            "designated_part_id": str(designated.id) if designated else None,
+            "designated_part_label": designated.ERP_id if designated else None,
+            "first_piece_ready": first_piece_ready,
+            # Whether THIS user may buy off (drives showing the sign-off action
+            # vs an "awaiting buy-off" message to the operator).
+            "can_sign_off": bool(request.user.has_tenant_perm('sign_off_fpi')),
+            "message": "FPI passed" if passed_fpi else "FPI required",
         })
 
 

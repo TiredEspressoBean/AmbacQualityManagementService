@@ -2199,6 +2199,10 @@ export type FPIRecord = {
    * Reason for waiving FPI requirement
    */
   waive_reason: string;
+  /**
+   * The designated first piece's QualityReport this buy-off was made against
+   */
+  quality_report: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -12836,6 +12840,7 @@ const FPIRecord = z.object({
   waived_by: z.number().int().nullable(),
   waived_by_info: z.object({}).partial().passthrough().nullable(),
   waive_reason: z.string(),
+  quality_report: z.string().uuid().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -13581,6 +13586,14 @@ const PatchedPartsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const CompleteStepResponse = z.object({
+  status: z.string(),
+  reason: z.string().optional(),
+  parts_advanced: z.array(z.string()),
+  blockers_by_part: z.object({}).partial().passthrough(),
+  split_parts_advanced: z.array(z.string()),
+  split_parts_blocked: z.object({}).partial().passthrough(),
+});
 const DecisionOptionsResponse = z.object({
   is_decision_point: z.boolean(),
   decision_type: z.string().optional(),
@@ -13691,6 +13704,18 @@ const PartTravelerResponse = z.object({
   current_step_name: z.string().nullable(),
   part_status: z.string(),
   traveler: z.array(TravelerStepEntry),
+});
+const AdvanceLotInputRequest = z.object({
+  work_order_id: z.string().uuid(),
+  step_id: z.string().uuid(),
+});
+const AdvanceLotResponse = z.object({
+  status: z.string(),
+  reason: z.string().optional(),
+  parts_advanced: z.array(z.string()),
+  blockers_by_part: z.object({}).partial().passthrough(),
+  split_parts_advanced: z.array(z.string()),
+  split_parts_blocked: z.object({}).partial().passthrough(),
 });
 const PartsBulkIncrementInputRequest = z.object({
   ids: z.array(z.string().uuid()),
@@ -17787,6 +17812,7 @@ export const schemas = {
   PaginatedPartsList,
   PartsRequest,
   PatchedPartsRequest,
+  CompleteStepResponse,
   DecisionOptionsResponse,
   PartIncrementInputRequest,
   ResolveDecisionInputRequest,
@@ -17805,6 +17831,8 @@ export const schemas = {
   TravelerAttachment,
   TravelerStepEntry,
   PartTravelerResponse,
+  AdvanceLotInputRequest,
+  AdvanceLotResponse,
   PartsBulkIncrementInputRequest,
   BulkResultResponse,
   PartsBulkRollbackInputRequest,
@@ -27740,11 +27768,6 @@ request that triggered the gate.`,
     requestFormat: "json",
     parameters: [
       {
-        name: "body",
-        type: "Body",
-        schema: PartsRequest,
-      },
-      {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
@@ -27755,7 +27778,7 @@ request that triggered the gate.`,
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: Parts,
+    response: CompleteStepResponse,
   },
   {
     method: "get",
@@ -27960,7 +27983,7 @@ Body: { &quot;work_order_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;step_id&quot;
       {
         name: "body",
         type: "Body",
-        schema: PartsRequest,
+        schema: AdvanceLotInputRequest,
       },
       {
         name: "status__in",
@@ -27968,7 +27991,7 @@ Body: { &quot;work_order_id&quot;: &quot;&lt;uuid&gt;&quot;, &quot;step_id&quot;
         schema: z.array(z.string()).optional(),
       },
     ],
-    response: Parts,
+    response: AdvanceLotResponse,
   },
   {
     method: "post",

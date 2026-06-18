@@ -187,6 +187,10 @@ def _evaluate_and_advance(
             },
         )
 
+    # First Piece Inspection is enforced per-part by Steps.can_advance_from_step
+    # (via get_fpi_status) in the cohort / batch / split paths below — that is
+    # the single source of truth, so no separate FPI gate is needed here.
+
     cohort = [p for p in parts_at_step if not p.split_from_cohort]
     split_parts = [p for p in parts_at_step if p.split_from_cohort]
 

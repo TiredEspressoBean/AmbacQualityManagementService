@@ -11400,18 +11400,6 @@ paths:
         style: form
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PartsRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PartsRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PartsRequest'
-        required: true
       security:
       - tokenAuth: []
       responses:
@@ -11419,7 +11407,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Parts'
+                $ref: '#/components/schemas/CompleteStepResponse'
           description: ''
   /api/Parts/{id}/decision_options/:
     get:
@@ -11756,13 +11744,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/AdvanceLotInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/AdvanceLotInputRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PartsRequest'
+              $ref: '#/components/schemas/AdvanceLotInputRequest'
         required: true
       security:
       - tokenAuth: []
@@ -11771,7 +11759,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Parts'
+                $ref: '#/components/schemas/AdvanceLotResponse'
           description: ''
   /api/Parts/bulk_increment/:
     post:
@@ -29686,6 +29674,45 @@ components:
           default: VISIBLE
       required:
       - message
+    AdvanceLotInputRequest:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        step_id:
+          type: string
+          format: uuid
+      required:
+      - step_id
+      - work_order_id
+    AdvanceLotResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        reason:
+          type: string
+        parts_advanced:
+          type: array
+          items:
+            type: string
+        blockers_by_part:
+          type: object
+          additionalProperties: {}
+        split_parts_advanced:
+          type: array
+          items:
+            type: string
+        split_parts_blocked:
+          type: object
+          additionalProperties: {}
+      required:
+      - blockers_by_part
+      - parts_advanced
+      - split_parts_advanced
+      - split_parts_blocked
+      - status
     ApprovalFlowTypeEnum:
       enum:
       - ALL_REQUIRED
@@ -32063,6 +32090,33 @@ components:
       required:
       - description
       - name
+    CompleteStepResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        reason:
+          type: string
+        parts_advanced:
+          type: array
+          items:
+            type: string
+        blockers_by_part:
+          type: object
+          additionalProperties: {}
+        split_parts_advanced:
+          type: array
+          items:
+            type: string
+        split_parts_blocked:
+          type: object
+          additionalProperties: {}
+      required:
+      - blockers_by_part
+      - parts_advanced
+      - split_parts_advanced
+      - split_parts_blocked
+      - status
     CompletionModeEnum:
       enum:
       - SINGLE_OWNER
@@ -34480,6 +34534,13 @@ components:
           type: string
           readOnly: true
           description: Reason for waiving FPI requirement
+        quality_report:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The designated first piece's QualityReport this buy-off was
+            made against
         created_at:
           type: string
           format: date-time
@@ -34500,6 +34561,7 @@ components:
       - inspected_by_info
       - part_type
       - part_type_info
+      - quality_report
       - result
       - result_display
       - status
