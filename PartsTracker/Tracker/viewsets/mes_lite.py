@@ -571,6 +571,26 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                       part_ids=ids, operator=request.user)
         return Response({"results": [r.to_dict() for r in results]})
 
+    @extend_schema(
+        request=inline_serializer(
+            name="AdvanceLotInput",
+            fields={
+                "work_order_id": serializers.UUIDField(),
+                "step_id": serializers.UUIDField(),
+            },
+        ),
+        responses={200: inline_serializer(
+            name="AdvanceLotResponse",
+            fields={
+                "status": serializers.CharField(),
+                "reason": serializers.CharField(required=False, allow_blank=True),
+                "parts_advanced": serializers.ListField(child=serializers.CharField()),
+                "blockers_by_part": serializers.DictField(),
+                "split_parts_advanced": serializers.ListField(child=serializers.CharField()),
+                "split_parts_blocked": serializers.DictField(),
+            },
+        )},
+    )
     @action(detail=False, methods=["post"], url_path="advance_lot")
     def advance_lot(self, request):
         """
@@ -606,6 +626,20 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "split_parts_blocked": result.split_parts_blocked,
         })
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name="CompleteStepResponse",
+            fields={
+                "status": serializers.CharField(),
+                "reason": serializers.CharField(required=False, allow_blank=True),
+                "parts_advanced": serializers.ListField(child=serializers.CharField()),
+                "blockers_by_part": serializers.DictField(),
+                "split_parts_advanced": serializers.ListField(child=serializers.CharField()),
+                "split_parts_blocked": serializers.DictField(),
+            },
+        )},
+    )
     @action(detail=True, methods=["post"], url_path="complete_step")
     def complete_step(self, request, pk=None):
         """

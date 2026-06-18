@@ -65,12 +65,20 @@ export function BatchPanel({
     const openBatches = batches.filter((b) => !b.sealed_at);
     const sealedBatches = batches.filter((b) => b.sealed_at);
 
-    // Disjoint membership: a part already in an OPEN batch can't join another.
-    // Offer only the parts not yet committed to an open load.
-    const batchedIds = new Set(
+    // Disjoint membership: a part already in an OPEN batch can't join another,
+    // so the picker only offers parts not in an open load. Parts in a SEALED
+    // batch ARE still offered (a reworked part can re-batch on a later visit)
+    // but get tagged below so they don't read as never-batched.
+    const openBatchedIds = new Set(
         openBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
     );
-    const availableParts = cohortParts.filter((p) => !batchedIds.has(p.id));
+    const sealedBatchedIds = new Set(
+        sealedBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
+    );
+    const availableParts = cohortParts.filter((p) => !openBatchedIds.has(p.id));
+    // "Fresh" = in no batch at all. Coverage + select-all key off these so a
+    // part sitting in a sealed load isn't counted/treated as never-batched.
+    const freshParts = availableParts.filter((p) => !sealedBatchedIds.has(p.id));
 
     const toggle = (id: string) =>
         setSelectedIds((prev) => {
@@ -80,11 +88,14 @@ export function BatchPanel({
             return next;
         });
 
-    const allAvailableSelected =
-        availableParts.length > 0 && availableParts.every((p) => selectedIds.has(p.id));
+    // Select-all targets the fresh (never-batched) parts — the common "start a
+    // load with everything left" — so it doesn't sweep already-sealed units
+    // back into a new load. A redo of a sealed part stays a deliberate click.
+    const allFreshSelected =
+        freshParts.length > 0 && freshParts.every((p) => selectedIds.has(p.id));
     const toggleAll = () =>
         setSelectedIds(
-            allAvailableSelected ? new Set() : new Set(availableParts.map((p) => p.id)),
+            allFreshSelected ? new Set() : new Set(freshParts.map((p) => p.id)),
         );
 
     const handleStart = () => {
@@ -130,8 +141,8 @@ export function BatchPanel({
     };
 
     const totalAtStep = cohortParts.length;
-    const unbatched = availableParts.length;
-    const batchedAtStep = totalAtStep - unbatched;
+    const unbatched = freshParts.length;            // never in any batch
+    const batchedAtStep = totalAtStep - unbatched;  // in an open OR sealed load
 
     return (
         <div className="rounded-lg border bg-card">
@@ -233,13 +244,13 @@ export function BatchPanel({
                         <span className="text-xs font-medium">
                             Start a load — select its units
                         </span>
-                        {availableParts.length > 0 && (
+                        {freshParts.length > 0 && (
                             <button
                                 type="button"
                                 className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
                                 onClick={toggleAll}
                             >
-                                {allAvailableSelected ? "Clear" : "Select all"}
+                                {allFreshSelected ? "Clear" : "Select all"}
                             </button>
                         )}
                     </div>
@@ -258,20 +269,30 @@ export function BatchPanel({
                         </p>
                     ) : (
                         <div className="max-h-40 space-y-1 overflow-auto">
-                            {availableParts.map((p) => (
-                                <label
-                                    key={p.id}
-                                    className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-muted/50"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        className="h-3.5 w-3.5"
-                                        checked={selectedIds.has(p.id)}
-                                        onChange={() => toggle(p.id)}
-                                    />
-                                    <span className="font-mono">{p.label}</span>
-                                </label>
-                            ))}
+                            {availableParts.map((p) => {
+                                const inSealed = sealedBatchedIds.has(p.id);
+                                return (
+                                    <label
+                                        key={p.id}
+                                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-muted/50"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="h-3.5 w-3.5"
+                                            checked={selectedIds.has(p.id)}
+                                            onChange={() => toggle(p.id)}
+                                        />
+                                        <span className={"font-mono" + (inSealed ? " text-muted-foreground" : "")}>
+                                            {p.label}
+                                        </span>
+                                        {inSealed && (
+                                            <Badge variant="outline" className="text-[9px] text-muted-foreground">
+                                                in a sealed load
+                                            </Badge>
+                                        )}
+                                    </label>
+                                );
+                            })}
                         </div>
                     )}
 
