@@ -8,6 +8,7 @@ live in one place.
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from Tracker.models import (
@@ -418,8 +419,22 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     instance.save()
 
     temp_id_map: dict = {}
-    existing_process_steps = {ps.step_id: ps for ps in instance.process_steps.all()}
+    # Key by str(step_id): node ids arrive as strings (nodes is a DictField),
+    # while ps.step_id is a UUID — comparing the two directly always misses,
+    # which made existing steps look new (duplicate-junction insert) and also
+    # mis-computed the unlink set. Normalize every step-id comparison to str.
+    existing_process_steps = {str(ps.step_id): ps for ps in instance.process_steps.all()}
     incoming_step_ids: set = set()
+
+    # Shift existing junction orders out of the 1..N range up front. ProcessStep
+    # has a (process, order) unique constraint, and the per-node pass below
+    # re-assigns orders / creates new steps incrementally — a new or reordered
+    # step would otherwise collide with a row not yet updated or removed (the
+    # unlink of dropped steps only runs at the end). Each node writes its final
+    # order over this offset; any rows left at the offset are unlinked below.
+    # Safe because the whole function is atomic.
+    if existing_process_steps:
+        ProcessStep.objects.filter(process=instance).update(order=F('order') + 100000)
 
     for node in nodes_data:
         node = node.copy()
@@ -443,7 +458,7 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                 existing_step = None
 
         if existing_step is not None:
-            incoming_step_ids.add(node_id)
+            incoming_step_ids.add(str(existing_step.id))
             step = existing_step
 
             # Content edits MUST route through `create_new_step_version`
@@ -470,7 +485,7 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                     **diffed,
                 )
 
-            if node_id in existing_process_steps:
+            if str(node_id) in existing_process_steps:
                 # Junction may have just been repointed to the new Step
                 # version by `create_new_step_version` above. Re-fetch
                 # to grab the row that now binds this process to the
@@ -501,7 +516,7 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                 is_entry_point=is_entry_point,
                 **node,
             )
-            incoming_step_ids.add(step.id)
+            incoming_step_ids.add(str(step.id))
             if node_id is not None:
                 temp_id_map[node_id] = step.id
             # Edges from the canvas reference a new node by its _temp_id; map it
