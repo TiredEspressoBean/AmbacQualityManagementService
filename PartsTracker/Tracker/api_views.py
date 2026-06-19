@@ -48,10 +48,33 @@ class ThrottledPasswordResetView(PasswordResetView):
     throttle_classes = [ClientIPScopedRateThrottle]
     throttle_scope = 'password_reset'
 
+    # drf-spectacular otherwise infers the *request* serializer (which requires
+    # `email`) as the 200 response, so the generated Zodios client rejects the
+    # real `{ detail }` body and treats a successful reset request as a failure.
+    @extend_schema(
+        responses=inline_serializer(
+            name='PasswordResetResponse',
+            fields={'detail': serializers.CharField()},
+        )
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
 
 class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
     throttle_classes = [ClientIPScopedRateThrottle]
     throttle_scope = 'password_reset'
+
+    # Same drf-spectacular inference issue as above — the real response is
+    # `{ detail }`, not the request serializer's fields.
+    @extend_schema(
+        responses=inline_serializer(
+            name='PasswordResetConfirmResponse',
+            fields={'detail': serializers.CharField()},
+        )
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 
 class ThrottledRegisterView(RegisterView):

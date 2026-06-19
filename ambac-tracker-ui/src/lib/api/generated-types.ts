@@ -18004,18 +18004,6 @@ export interface components {
             new_password1: string;
             new_password2: string;
         };
-        /** @description Serializer for requesting a password reset e-mail. */
-        PasswordReset: {
-            /** Format: email */
-            email: string;
-        };
-        /** @description Serializer for confirming a password reset attempt. */
-        PasswordResetConfirm: {
-            new_password1: string;
-            new_password2: string;
-            uid: string;
-            token: string;
-        };
         /** @description Serializer for confirming a password reset attempt. */
         PasswordResetConfirmRequest: {
             new_password1: string;
@@ -18023,10 +18011,16 @@ export interface components {
             uid: string;
             token: string;
         };
+        PasswordResetConfirmResponse: {
+            detail: string;
+        };
         /** @description Serializer for requesting a password reset e-mail. */
         PasswordResetRequest: {
             /** Format: email */
             email: string;
+        };
+        PasswordResetResponse: {
+            detail: string;
         };
         /** @description Approval request serializer */
         PatchedApprovalRequestRequest: {
@@ -46068,7 +46062,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PasswordReset"];
+                    "application/json": components["schemas"]["PasswordResetResponse"];
                 };
             };
         };
@@ -46265,7 +46259,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PasswordResetConfirm"];
+                    "application/json": components["schemas"]["PasswordResetConfirmResponse"];
                 };
             };
         };

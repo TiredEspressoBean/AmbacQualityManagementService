@@ -29361,7 +29361,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PasswordReset'
+                $ref: '#/components/schemas/PasswordResetResponse'
           description: ''
   /auth/password/reset/confirm/:
     post:
@@ -29614,7 +29614,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PasswordResetConfirm'
+                $ref: '#/components/schemas/PasswordResetConfirmResponse'
           description: ''
 components:
   schemas:
@@ -39606,34 +39606,6 @@ components:
       - new_password1
       - new_password2
       - old_password
-    PasswordReset:
-      type: object
-      description: Serializer for requesting a password reset e-mail.
-      properties:
-        email:
-          type: string
-          format: email
-      required:
-      - email
-    PasswordResetConfirm:
-      type: object
-      description: Serializer for confirming a password reset attempt.
-      properties:
-        new_password1:
-          type: string
-          maxLength: 128
-        new_password2:
-          type: string
-          maxLength: 128
-        uid:
-          type: string
-        token:
-          type: string
-      required:
-      - new_password1
-      - new_password2
-      - token
-      - uid
     PasswordResetConfirmRequest:
       type: object
       description: Serializer for confirming a password reset attempt.
@@ -39657,6 +39629,13 @@ components:
       - new_password2
       - token
       - uid
+    PasswordResetConfirmResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     PasswordResetRequest:
       type: object
       description: Serializer for requesting a password reset e-mail.
@@ -39667,6 +39646,13 @@ components:
           minLength: 1
       required:
       - email
+    PasswordResetResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     PatchedApprovalRequestRequest:
       type: object
       description: Approval request serializer

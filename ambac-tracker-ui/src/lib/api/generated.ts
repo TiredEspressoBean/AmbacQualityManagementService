@@ -17434,7 +17434,7 @@ const PasswordChangeRequest = z.object({
   new_password2: z.string().min(1).max(128),
 });
 const PasswordResetRequest = z.object({ email: z.string().min(1).email() });
-const PasswordReset = z.object({ email: z.string().email() });
+const PasswordResetResponse = z.object({ detail: z.string() });
 const PasswordResetConfirmRequest = z.object({
   new_password1: z.string().min(1).max(128),
   new_password2: z.string().min(1).max(128),
@@ -17493,12 +17493,7 @@ const PatchedTenantAwareUserDetailsRequest = z
     last_name: z.string().max(150).nullable(),
   })
   .partial();
-const PasswordResetConfirm = z.object({
-  new_password1: z.string().max(128),
-  new_password2: z.string().max(128),
-  uid: z.string(),
-  token: z.string(),
-});
+const PasswordResetConfirmResponse = z.object({ detail: z.string() });
 const CapaTaskAssigneeRequest = z.object({
   task: z.string().uuid(),
   user: z.number().int(),
@@ -18217,7 +18212,7 @@ export const schemas = {
   RestAuthDetail,
   PasswordChangeRequest,
   PasswordResetRequest,
-  PasswordReset,
+  PasswordResetResponse,
   PasswordResetConfirmRequest,
   RegisterRequest,
   Register,
@@ -18227,7 +18222,7 @@ export const schemas = {
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,
-  PasswordResetConfirm,
+  PasswordResetConfirmResponse,
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
@@ -38720,7 +38715,7 @@ Returns the success/fail message.`,
         schema: z.object({ email: z.string().min(1).email() }),
       },
     ],
-    response: z.object({ email: z.string().email() }),
+    response: z.object({ detail: z.string() }),
   },
   {
     method: "post",
@@ -38871,7 +38866,7 @@ Returns the success/fail message.`,
         schema: z.string(),
       },
     ],
-    response: PasswordResetConfirm,
+    response: z.object({ detail: z.string() }),
   },
 ]);
 
