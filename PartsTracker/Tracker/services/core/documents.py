@@ -306,6 +306,38 @@ def documents_attached_to(target):
     ).distinct()
 
 
+def forward_target_links(*, old_target, new_target):
+    """Carry inbound DocumentLinks from a superseded target onto its new version.
+
+    When a versioned entity (PartType, Process, Step, …) is re-versioned, the
+    primary-GFK documents attached to it are cloned onto the new version
+    (`clone_current_documents`). This does the same for *secondary* links: every
+    live DocumentLink pointing at `old_target` is copied to point at
+    `new_target`, so a document linked to "this part type" stays associated as
+    the part type revs. The old version keeps its links for history (copy, not
+    move) — mirroring the primary-GFK clone semantics exactly.
+
+    Idempotent per (document, new_target). Returns the links created on the new
+    target. No-op when nothing points at `old_target`.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from Tracker.models import DocumentLink
+
+    ct = ContentType.objects.get_for_model(type(old_target))
+    created = []
+    # tenant-safe: `.objects` auto-scopes to the current tenant.
+    for link in DocumentLink.objects.filter(
+        content_type=ct, object_id=str(old_target.pk), archived=False,
+    ):
+        created.append(
+            DocumentLink.objects.get_or_create(
+                document=link.document, content_type=ct, object_id=str(new_target.pk),
+            )[0]
+        )
+    return created
+
+
 def clone_document_links(*, source_document, target_document):
     """Copy every live link from `source_document` onto `target_document`.
 

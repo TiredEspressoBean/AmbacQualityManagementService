@@ -1092,6 +1092,15 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     ordering_fields = ["upload_date", "version", "file_name"]
     ordering = ["-upload_date"]
 
+    # attach/detach manage DocumentLink rows, not the Document itself, so they
+    # gate on the DocumentLink CRUD perms rather than the POST→add_documents
+    # default. crud_exempt skips that default so the action perm is the sole gate.
+    action_permissions = {
+        'attach': ['add_documentlink'],
+        'detach': ['delete_documentlink'],
+    }
+    crud_exempt_actions = {'attach', 'detach'}
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Documents.objects.none()

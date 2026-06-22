@@ -95,7 +95,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_measurementresult', 'view_measurementdefinition', 'view_spcbaseline',
     'view_stepexecutionmeasurement',
     # Documents (classified tiers live in CLASSIFIED_DOCUMENT_VIEW)
-    'view_documents', 'view_documenttype',
+    'view_documents', 'view_documenttype', 'view_documentlink',
     # 3D Models & Annotations
     'view_threedmodel', 'view_heatmapannotations',
     # Approvals
@@ -217,6 +217,12 @@ STAFF_OPERATIONAL_WRITE = [
     'add_spcbaseline', 'change_spcbaseline',
     # Documents & 3D — records in/out; deletion + classification are gated
     'add_documents', 'change_documents',
+    # Document associations (attach/detach a doc to additional entities).
+    # Both verbs are operational: linking is the natural counterpart to
+    # unlinking, so the roles that attach can also detach. (`change_documentlink`
+    # is intentionally never granted — links are immutable, managed via
+    # attach=add / detach=delete only.)
+    'add_documentlink', 'delete_documentlink',
     'add_threedmodel', 'change_threedmodel',
     'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations',
     # Reports

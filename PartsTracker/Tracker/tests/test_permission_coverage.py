@@ -40,6 +40,12 @@ ADMIN_ONLY_MODELS = {
     'artifactsequence',                    # change-control sequence counter
     'notificationtemplate', 'notificationoutbox', 'notificationtask',
     'escalationpolicy', 'escalationstep', 'escalationinstance',
+    # Per-tenant access record. Rows are signal-maintained projections of
+    # home-tenant + UserRole (see services.core.tenant_membership.ensure_*);
+    # there is no membership CRUD endpoint. Adding an operator is gated by
+    # role/user perms, and suspend/reactivate by the User viewset's
+    # bulk-activate action — never by membership CRUD perms.
+    'tenantmembership',
 }
 
 # change_/delete_ never granted to ANY role — append-only audit/evidence
@@ -72,6 +78,11 @@ WITHHELD_PERMS = {
     # exists to prevent. Tenants wanting it can grant it manually, eyes open.
     'approve_own_qualityreports':
         'self-approval bypasses segregation of duties',
+    # DocumentLink rows are immutable associations: created by attach
+    # (add_documentlink) and removed by detach (delete_documentlink), never
+    # edited. There is no change endpoint, so the perm is granted to no role.
+    'change_documentlink':
+        'links are immutable; managed via attach (add) / detach (delete) only',
 }
 
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete

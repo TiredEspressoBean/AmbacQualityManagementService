@@ -249,3 +249,89 @@ class DocumentListFilterLinkAwarenessTests(TenantTestCase):
         ids = self._filtered_ids({'content_type': self.order_ct.pk})
         self.assertIn(self.primary_doc.id, ids)
         self.assertNotIn(self.linked_doc.id, ids)
+
+
+class DocumentLinkTargetVersioningTests(TenantTestCase):
+    """P1.2 — a link to a versioned target follows it forward on re-version."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import PartTypes, Documents
+
+        self.part_type = self.create_for_tenant(PartTypes, self.tenant_a, name="Versioned")
+        self.doc = self.create_for_tenant(
+            Documents, self.tenant_a,
+            file_name="spec.pdf", file="parts_docs/a/spec.pdf", classification="PUBLIC",
+        )
+
+    def test_link_forwards_to_new_target_version(self):
+        from Tracker.services.core.documents import attach_document_to, documents_attached_to
+
+        attach_document_to(self.doc, self.part_type)  # link to v1
+        v2 = self.part_type.create_new_version(change_description="rev")
+
+        # The new version inherits the association...
+        self.assertIn(
+            self.doc.id, set(documents_attached_to(v2).values_list('id', flat=True)),
+            "Link must follow the part type forward to its new version.",
+        )
+        # ...and the old version keeps its link (copy, not move — history kept).
+        self.assertIn(
+            self.doc.id, set(documents_attached_to(self.part_type).values_list('id', flat=True)),
+            "Old version must retain its link for history.",
+        )
+
+
+class DocumentLinkPermissionTests(TenantTestCase):
+    """P1.1 (C) — attach/detach gate on dedicated DocumentLink CRUD perms."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Orders, Documents
+
+        # The doc is primary-attached to user_a's OWN order, so a relationship-
+        # scoped user with view_documents can retrieve it via get_object — which
+        # isolates the attach/detach perm gate from document visibility.
+        self.order = self.create_for_tenant(
+            Orders, self.tenant_a, name="PERM-ORDER", customer=self.user_a,
+        )
+        self.order_ct = ContentType.objects.get_for_model(Orders)
+        self.doc = self.create_for_tenant(
+            Documents, self.tenant_a,
+            file_name="p.pdf", file="parts_docs/a/p.pdf", classification="PUBLIC",
+            content_type=self.order_ct, object_id=str(self.order.pk),
+        )
+        self.other_order = self.create_for_tenant(
+            Orders, self.tenant_a, name="OTHER", customer=self.user_a,
+        )
+        self.body = {'content_type': self.order_ct.pk, 'object_id': str(self.other_order.pk)}
+
+    def _attach(self):
+        return self.client.post(
+            f"/api/Documents/{self.doc.id}/attach/", self.body, format="json",
+        )
+
+    def test_attach_forbidden_without_documentlink_perm(self):
+        # Can see the doc (view_documents + owns the order) but lacks
+        # add_documentlink — attach must be refused.
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['view_documents'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        resp = self._attach()
+        self.assertEqual(resp.status_code, 403, resp.content)
+
+    def test_attach_and_detach_with_documentlink_perms(self):
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a,
+            ['view_documents', 'add_documentlink', 'delete_documentlink'],
+        )
+        self.authenticate_as(self.user_a, self.tenant_a)
+
+        attach = self._attach()
+        self.assertEqual(attach.status_code, 200, attach.content)
+        self.assertEqual(self.doc.links.filter(archived=False).count(), 1)
+
+        detach = self.client.post(
+            f"/api/Documents/{self.doc.id}/detach/", self.body, format="json",
+        )
+        self.assertEqual(detach.status_code, 200, detach.content)
+        self.assertEqual(self.doc.links.filter(archived=False).count(), 0)

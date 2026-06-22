@@ -1388,6 +1388,15 @@ class SecureModel(models.Model):
                 from Tracker.services.core.documents import clone_current_documents
                 clone_current_documents(source=locked, target=new_version)
 
+            # Forward secondary DocumentLinks pointing AT this entity onto the
+            # new version, so a document linked to "this part type / process /
+            # step" stays associated as the entity revs (the primary-GFK case
+            # is handled by clone_current_documents above). Copy, not move —
+            # the old version retains its links for history. One indexed query;
+            # a no-op for the common case of no inbound links.
+            from Tracker.services.core.documents import forward_target_links
+            forward_target_links(old_target=locked, new_target=new_version)
+
         # Emitted outside the transaction so handlers observe committed
         # state. Use send_robust so one misbehaving receiver can't abort
         # the version operation post-hoc.
