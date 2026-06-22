@@ -92,7 +92,10 @@ class MeasurementDefinitionSerializer(SecureModelMixin):
             "spc_enabled", "archived",
             "version", "is_current_version", "previous_version",
         ]
-        read_only_fields = ["id", "step", "version", "is_current_version",
+        # `step` is writable on create (a measurement must be attached to a
+        # step) but the form always sends the owning step, so versioned
+        # updates carry it forward unchanged.
+        read_only_fields = ["id", "version", "is_current_version",
                             "previous_version"]
 
     @extend_schema_field(serializers.CharField())

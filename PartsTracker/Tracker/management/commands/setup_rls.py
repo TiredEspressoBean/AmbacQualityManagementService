@@ -37,6 +37,7 @@ class Command(BaseCommand):
         # Documents
         'Tracker_documents',
         'Tracker_documenttype',
+        'Tracker_documentlink',
         'Tracker_generatedreport',
 
         # Equipment

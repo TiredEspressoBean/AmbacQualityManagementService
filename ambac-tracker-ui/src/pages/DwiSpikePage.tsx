@@ -269,7 +269,20 @@ export function SubstepEditor({
             onChange(e.getJSON());
         },
         onSelectionUpdate: () => forceRerender((n) => n + 1),
-    }, [editable]);
+    });
+
+    // Drive editability through setEditable rather than recreating the editor
+    // via a deps array. Passing `editable` only as a creation option (or in the
+    // useEditor deps) does not reliably re-apply `contenteditable` when the flag
+    // flips after the editor mounts — `is_editable` arrives async, so the editor
+    // is first created while still `true`. setEditable(emitUpdate=true) also
+    // re-renders the custom node views so their authoring controls lock, since
+    // each gates on `editor.isEditable`.
+    useEffect(() => {
+        if (editor && editor.isEditable !== editable) {
+            editor.setEditable(editable);
+        }
+    }, [editor, editable]);
 
     const operatorEditor = useEditor({
         extensions: DWI_EXTENSIONS,
@@ -303,7 +316,11 @@ export function SubstepEditor({
                     title="Editor"
                     subtitle="engineer authoring"
                 />
-                <Toolbar editor={editor} />
+                {/* Authoring toolbar dispatches formatting/insert commands
+                    programmatically (editor.chain().run()), which bypass
+                    `editable: false` — so it must be hidden, not just disabled,
+                    when the process is locked. */}
+                {editable && <Toolbar editor={editor} />}
                 <div className="flex-1 overflow-auto">
                     <EditorContent
                         editor={editor}

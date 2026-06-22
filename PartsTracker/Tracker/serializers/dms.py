@@ -74,6 +74,7 @@ class DocumentsSerializer(SecureModelMixin):
     uploaded_by_info = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
     content_type_info = serializers.SerializerMethodField()
+    links = serializers.SerializerMethodField()
     access_info = serializers.SerializerMethodField()
     auto_properties = serializers.SerializerMethodField()
     approved_by_info = serializers.SerializerMethodField()
@@ -89,7 +90,7 @@ class DocumentsSerializer(SecureModelMixin):
     class Meta:
         model = Documents
         fields = ('id', 'classification', 'ai_readable', 'is_image', 'file_name', 'file', 'file_url', 'upload_date',
-                  'uploaded_by', 'uploaded_by_info', 'uploaded_by_name', 'content_type', 'object_id', 'content_type_info', 'version',
+                  'uploaded_by', 'uploaded_by_info', 'uploaded_by_name', 'content_type', 'object_id', 'content_type_info', 'links', 'version',
                   'access_info', 'auto_properties',
                   'status', 'status_display', 'approved_by', 'approved_by_info', 'approved_at',
                   'document_type', 'document_type_code', 'document_type_info', 'change_justification',
@@ -102,7 +103,7 @@ class DocumentsSerializer(SecureModelMixin):
                   'created_at', 'updated_at')
         read_only_fields = (
             'upload_date', 'created_at', 'updated_at', 'archived', 'file_url', 'uploaded_by_info', 'uploaded_by_name',
-            'content_type_info', 'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
+            'content_type_info', 'links', 'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
             'previous_version', 'is_current_version',
             # DMS Compliance - these are calculated on release, not editable
             'effective_date', 'review_date', 'obsolete_date', 'retention_until',
@@ -131,6 +132,24 @@ class DocumentsSerializer(SecureModelMixin):
             return {'app_label': obj.content_type.app_label, 'model': obj.content_type.model,
                     'name': str(obj.content_type)}
         return None
+
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
+    def get_links(self, obj):
+        """Secondary associations (DocumentLink) beyond the primary GFK owner.
+
+        Each entry: {id, content_type, model, object_id, target_str}. Empty
+        list when the document has no additional links.
+        """
+        links = []
+        for link in obj.links.filter(archived=False).select_related('content_type'):
+            links.append({
+                'id': link.id,
+                'content_type': link.content_type_id,
+                'model': link.content_type.model if link.content_type else None,
+                'object_id': link.object_id,
+                'target_str': str(link.content_object) if link.content_object else None,
+            })
+        return links
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_access_info(self, obj):

@@ -40,6 +40,7 @@ import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
 import { useRetrieveThreeDModel } from "@/hooks/useRetrieveThreeDModel";
 import { ThreeDModelViewer, type SavedView, type ViewerViewApi } from "@/components/three-d-model-viewer";
 
+
 /** A numbered, labeled callout in the model's normalized (auto-centered +
  *  scaled-to-3-units) space — the space `ThreeDModelViewer` reports clicks in.
  *  `view` is this callout's own saved camera framing (optional). */

@@ -197,8 +197,121 @@ def clone_current_documents(*, source, target):
         }
         clone_data['object_id'] = target.pk
         # tenant-safe: clone_data carries the tenant FK from the source doc.
-        cloned.append(Documents.objects.create(**clone_data))
+        clone = Documents.objects.create(**clone_data)
+        # Carry the source doc's secondary links onto the clone so the new
+        # parent version starts with the same association set as the primary
+        # GFK already does.
+        clone_document_links(source_document=doc, target_document=clone)
+        cloned.append(clone)
     return cloned
+
+
+# =========================================================================
+# Multi-target association (DocumentLink)
+# =========================================================================
+#
+# A Document's *primary* owner is its own `content_type`/`object_id` GFK.
+# These helpers manage *additional* associations via `DocumentLink` and never
+# touch the primary GFK. Soft-delete (`archived`) is the system convention, so
+# detach archives the link and attach revives an archived one rather than
+# colliding with the partial unique constraint.
+
+def attach_document_to(document, target):
+    """Associate `document` with an additional `target` entity.
+
+    Idempotent and revive-aware:
+    - a live link to `target` already exists → returns it unchanged;
+    - a soft-deleted link exists → restores and returns it;
+    - otherwise creates a new link.
+
+    The document's primary GFK (`content_object`) is never modified.
+
+    Returns the DocumentLink.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from Tracker.models import DocumentLink
+
+    ct = ContentType.objects.get_for_model(type(target))
+    # tenant-safe: `.objects` auto-scopes to the current tenant, so we never
+    # match or revive a link belonging to another tenant.
+    existing = DocumentLink.objects.filter(
+        document=document, content_type=ct, object_id=str(target.pk),
+    ).first()
+    if existing is not None:
+        if existing.archived:
+            existing.restore()
+        return existing
+    return DocumentLink.objects.create(
+        document=document, content_type=ct, object_id=str(target.pk),
+    )
+
+
+def detach_document_from(document, target):
+    """Remove the secondary link from `document` to `target`.
+
+    Soft-deletes (archives) the link to preserve the audit trail — consistent
+    with the rest of the system. No-op if no live link exists. Never affects
+    the primary GFK. Returns the number of links archived.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from Tracker.models import DocumentLink
+
+    ct = ContentType.objects.get_for_model(type(target))
+    count = 0
+    # tenant-safe: `.objects` auto-scopes to the current tenant.
+    for link in DocumentLink.objects.filter(
+        document=document, content_type=ct, object_id=str(target.pk), archived=False,
+    ):
+        link.delete()  # SecureModel.delete() is a soft delete
+        count += 1
+    return count
+
+
+def documents_attached_to(target):
+    """Return all Documents attached to `target` — primary GFK *or* link.
+
+    Deduplicated. Tenant-scoped via `.objects`. Does not filter by archived
+    document state or version; callers chain `.active()` / `.for_user()` /
+    `.current_versions()` as needed (same contract as a plain GFK query).
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db.models import Q
+
+    from Tracker.models import Documents, DocumentLink
+
+    ct = ContentType.objects.get_for_model(type(target))
+    # tenant-safe: both querysets auto-scope to the current tenant.
+    linked_doc_ids = DocumentLink.objects.filter(
+        content_type=ct, object_id=str(target.pk), archived=False,
+    ).values_list('document_id', flat=True)
+    return Documents.objects.filter(
+        Q(content_type=ct, object_id=str(target.pk)) | Q(id__in=list(linked_doc_ids))
+    ).distinct()
+
+
+def clone_document_links(*, source_document, target_document):
+    """Copy every live link from `source_document` onto `target_document`.
+
+    Used when a document is carried forward to a new version (either its own
+    re-version or a parent-version clone) so the new row starts with the same
+    secondary associations as the primary GFK already does. Idempotent per
+    target via `attach_document_to`. Returns the list of links on the target.
+    """
+    from Tracker.models import DocumentLink
+
+    created = []
+    # tenant-safe: `.objects` auto-scopes; clones stay within the tenant.
+    for link in DocumentLink.objects.filter(document=source_document, archived=False):
+        created.append(
+            DocumentLink.objects.get_or_create(
+                document=target_document,
+                content_type=link.content_type,
+                object_id=link.object_id,
+            )[0]
+        )
+    return created
 
 
 # =========================================================================
