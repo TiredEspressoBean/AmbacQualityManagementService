@@ -452,7 +452,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                   </div>
                   <Badge variant="secondary">{primaryDisplay}</Badge>
                 </div>
-                <SamplingRulesEditor name="rules" label="Primary Rules" />
+                <SamplingRulesEditor name="rules" label="Primary Rules" readOnly={readOnly} />
               </div>
 
               <Separator />
@@ -472,7 +472,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                     </Badge>
                   )}
                 </div>
-                <SamplingRulesEditor name="fallback_rules" label="Escalation Rules" />
+                <SamplingRulesEditor name="fallback_rules" label="Escalation Rules" readOnly={readOnly} />
 
                 {/* Trigger settings - only show when there are escalation rules */}
                 {hasFallbackRules && (
@@ -485,6 +485,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                         id="fallback_threshold"
                         type="number"
                         min={1}
+                        disabled={readOnly}
                         className="w-16 h-8"
                         value={watchedThreshold ?? ''}
                         onChange={(e) => {
@@ -506,6 +507,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                         id="fallback_duration"
                         type="number"
                         min={1}
+                        disabled={readOnly}
                         className="w-16 h-8"
                         value={watchedDuration ?? ''}
                         onChange={(e) => {

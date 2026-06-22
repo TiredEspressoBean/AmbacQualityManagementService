@@ -137,12 +137,21 @@ class ExportControlService:
         """
         Get classification levels the user can access.
 
-        Mapping (customize per organization):
-        - PUBLIC: All authenticated users
-        - INTERNAL: Employees and above
-        - CONFIDENTIAL: Managers, QA Managers, Admins
-        - RESTRICTED: Admins, explicitly authorized users
-        - SECRET: Explicitly authorized users only
+        Driven by *permissions*, not group names. The role presets in
+        ``presets.py`` grant these perms per tier (e.g. Tenant Admin gets all
+        of them via CLASSIFIED_DOCUMENT_VIEW + view_secret_documents), and they
+        are tenant-scoped via ``has_tenant_perm``. This keeps access correct
+        regardless of how tenants name their groups — the previous group-name
+        matching silently gave every non-superuser PUBLIC-only because tenant
+        role names ("Tenant Admin", "QA Manager") never matched the hard-coded
+        Django group names ("Admin", "QA_Manager").
+
+        Tiers:
+        - PUBLIC:       all authenticated users
+        - INTERNAL:     any internal user who can view documents (view_documents)
+        - CONFIDENTIAL: view_confidential_documents
+        - RESTRICTED:   view_restricted_documents
+        - SECRET:       view_secret_documents
 
         Returns:
             list: Classification level values user can access
@@ -152,30 +161,73 @@ class ExportControlService:
         if user.is_superuser:
             return [level.value for level in ClassificationLevel]
 
-        # Cache groups for efficiency (tenant-scoped)
-        if not hasattr(user, '_cached_tenant_group_names'):
-            user._cached_tenant_group_names = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
+        # Tenant-scoped permission check (falls back to global perms if the
+        # user model predates tenant perms).
+        def _can(perm: str) -> bool:
+            if hasattr(user, 'has_tenant_perm'):
+                return user.has_tenant_perm(perm)
+            return user.has_perm(f'Tracker.{perm}')
 
-        groups = user._cached_tenant_group_names
-
-        # Build accessible levels based on group membership
+        # PUBLIC is always visible to authenticated users.
         accessible = [ClassificationLevel.PUBLIC.value]
 
-        if groups & {'Admin', 'QA_Manager', 'Production_Manager', 'Document_Controller',
-                     'QA_Inspector', 'Production_Operator'}:
+        # INTERNAL is the baseline for internal staff who can view documents.
+        # Portal/customer users may hold view_documents (so the portal can show
+        # documents linked to their own orders, via relationship scoping in
+        # for_user) but must NOT gain INTERNAL classification clearance — they
+        # stay PUBLIC-tier. There is no dedicated view_internal_documents perm.
+        is_portal_user = getattr(user, 'user_type', None) == 'PORTAL'
+        if _can('view_documents') and not is_portal_user:
             accessible.append(ClassificationLevel.INTERNAL.value)
 
-        if groups & {'Admin', 'QA_Manager', 'Production_Manager', 'Document_Controller'}:
+        if _can('view_confidential_documents'):
             accessible.append(ClassificationLevel.CONFIDENTIAL.value)
 
-        if groups & {'Admin'}:
+        if _can('view_restricted_documents'):
             accessible.append(ClassificationLevel.RESTRICTED.value)
 
-        # SECRET requires explicit per-user authorization
-        if getattr(user, 'secret_clearance', False):
+        if _can('view_secret_documents'):
             accessible.append(ClassificationLevel.SECRET.value)
 
         return accessible
+
+    @classmethod
+    def can_access_classification(cls, user: 'User', classification: str) -> bool:
+        """Whether the user may access a document at the given classification.
+
+        Single source of truth for the per-instance access check — derived
+        from `get_accessible_classification_levels` so it can never drift from
+        the queryset filter (`SecureQuerySet.for_classification`).
+        """
+        if user.is_superuser:
+            return True
+        return classification in cls.get_accessible_classification_levels(user)
+
+    @classmethod
+    def access_level_for_classification(cls, user: 'User', classification: str) -> str:
+        """Access-level marker (`full_access` / `read_write` / `read_only` /
+        `public_only` / `no_access`) for a document at `classification`.
+
+        Read clearance comes from `get_accessible_classification_levels`; write
+        capability from the `change_documents` permission. Same source of truth
+        as `can_access_classification` and the queryset filter.
+        """
+        from Tracker.models import ClassificationLevel
+
+        if user.is_superuser:
+            return "full_access"
+
+        accessible = cls.get_accessible_classification_levels(user)
+        if classification not in accessible:
+            return "no_access"
+
+        # PUBLIC-only clearance (e.g. customer/portal users) gets a distinct
+        # marker for any PUBLIC doc they can see.
+        if set(accessible) == {ClassificationLevel.PUBLIC.value}:
+            return "public_only"
+
+        can_write = user.has_tenant_perm('change_documents') if hasattr(user, 'has_tenant_perm') else False
+        return "read_write" if can_write else "read_only"
 
     @classmethod
     def log_access_denial(

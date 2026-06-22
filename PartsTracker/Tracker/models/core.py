@@ -3044,35 +3044,20 @@ class Documents(SecureModel):
         return self.file_name
 
     def user_can_access(self, user):
-        if user.is_superuser:
-            return True
-        # Use tenant-scoped group membership
-        if user.has_tenant_group("Customer") if hasattr(user, 'has_tenant_group') else False:
-            return self.classification == ClassificationLevel.PUBLIC
-        elif user.has_tenant_group("Employee") if hasattr(user, 'has_tenant_group') else False:
-            return self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL]
-        elif user.has_tenant_group("Manager") if hasattr(user, 'has_tenant_group') else False:
-            return self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL,
-                                           ClassificationLevel.CONFIDENTIAL]
-        return False
+        """Whether the user may access this document at its classification.
+
+        Delegates to ExportControlService — the single source of truth for
+        classification access (shared with SecureQuerySet.for_classification),
+        so this can't drift from the queryset filter.
+        """
+        from Tracker.services.export_control import ExportControlService
+        return ExportControlService.can_access_classification(user, self.classification)
 
     def get_access_level_for_user(self, user):
-        if user.is_superuser:
-            return "full_access"
-        # Use tenant-scoped group membership
-        user_groups = user.get_tenant_group_names() if hasattr(user, 'get_tenant_group_names') else set()
-        if "Customer" in user_groups:
-            return "public_only" if self.classification == ClassificationLevel.PUBLIC else "no_access"
-        elif "Employee" in user_groups:
-            if self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL]:
-                return "read_only"
-            return "no_access"
-        elif "Manager" in user_groups:
-            if self.classification in [ClassificationLevel.PUBLIC, ClassificationLevel.INTERNAL,
-                                       ClassificationLevel.CONFIDENTIAL]:
-                return "read_write"
-            return "no_access"
-        return "no_access"
+        """Access-level marker for this document. Delegates to
+        ExportControlService (single source of truth)."""
+        from Tracker.services.export_control import ExportControlService
+        return ExportControlService.access_level_for_classification(user, self.classification)
 
     def auto_detect_properties(self, file=None):
         from Tracker.services.core.documents import auto_detect_document_properties

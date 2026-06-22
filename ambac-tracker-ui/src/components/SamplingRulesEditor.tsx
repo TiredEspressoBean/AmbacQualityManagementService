@@ -12,9 +12,10 @@ import SamplingRuleForm from "./sampling-rule-form";
 type SamplingRulesEditorProps = {
     name: string;   // e.g. "rules" or "fallback_rules"
     label?: string; // e.g. "Sampling Rules" or "Fallback Rules"
+    readOnly?: boolean; // hide add/edit/delete affordances when viewing
 };
 
-export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: SamplingRulesEditorProps) {
+export default function SamplingRulesEditor({ name, label = "Sampling Rules", readOnly = false }: SamplingRulesEditorProps) {
     const { control, getValues, setValue } = useFormContext();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
@@ -58,30 +59,32 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
                         {label} ({fields.length})
                     </span>
                 </div>
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                    <DialogTrigger asChild>
-                        <Button type="button" size="sm">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Rule
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-xl">
-                        <DialogHeader>
-                            <DialogTitle>Create Sampling Rule</DialogTitle>
-                        </DialogHeader>
-                        <SamplingRuleForm
-                            onSuccess={handleCreateSuccess}
-                            onCancel={() => setIsCreateDialogOpen(false)}
-                        />
-                    </DialogContent>
-                </Dialog>
+                {!readOnly && (
+                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button type="button" size="sm">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Rule
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xl">
+                            <DialogHeader>
+                                <DialogTitle>Create Sampling Rule</DialogTitle>
+                            </DialogHeader>
+                            <SamplingRuleForm
+                                onSuccess={handleCreateSuccess}
+                                onCancel={() => setIsCreateDialogOpen(false)}
+                            />
+                        </DialogContent>
+                    </Dialog>
+                )}
             </div>
 
             {fields.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground border rounded-md">
                     <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No sampling rules defined.</p>
-                    <p className="text-sm">Click "Add Rule" to get started.</p>
+                    {!readOnly && <p className="text-sm">Click "Add Rule" to get started.</p>}
                 </div>
             ) : (
                 <div className="space-y-2">
@@ -91,6 +94,7 @@ export default function SamplingRulesEditor({ name, label = "Sampling Rules" }: 
                             // eslint-disable-next-line local/no-as-any -- react-hook-form useFieldArray appends { id } to the field object; SamplingRuleCard expects the plain rule shape
                             rule={field as any}
                             index={index}
+                            readOnly={readOnly}
                             onUpdate={handleUpdateRule}
                             onDelete={() => handleDeleteRule(index)}
                         />

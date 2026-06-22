@@ -1,13 +1,14 @@
 import {z} from "zod";
 
-// Must match backend SamplingRuleType choices in mes_lite.py
+// Must match backend SamplingRuleType choices in mes_standard.py
+// (values are UPPERCASE — see RuleTypeEnum in the generated API schema).
 export const ruleTypes = [
-    { value: "every_nth_part", label: "Every Nth Part" },
-    { value: "percentage", label: "Percentage of Parts" },
-    { value: "random", label: "Pure Random" },
-    { value: "first_n_parts", label: "First N Parts" },
-    { value: "last_n_parts", label: "Last N Parts" },
-    { value: "exact_count", label: "Exact Count (No Variance)" },
+    { value: "EVERY_NTH_PART", label: "Every Nth Part" },
+    { value: "PERCENTAGE", label: "Percentage of Parts" },
+    { value: "RANDOM", label: "Pure Random" },
+    { value: "FIRST_N_PARTS", label: "First N Parts" },
+    { value: "LAST_N_PARTS", label: "Last N Parts" },
+    { value: "EXACT_COUNT", label: "Exact Count (No Variance)" },
 ] as const;
 
 // Extract just the values for zod enum validation

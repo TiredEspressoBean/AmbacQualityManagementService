@@ -199,8 +199,24 @@ export function FlowCanvas({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't treat Delete/Backspace as "delete node" while the user is
+      // typing into a form field (step name/description, sampling &
+      // measurement dialogs, comboboxes, etc.). Without this guard,
+      // backspacing text in the node editor deletes the node itself.
+      const target = event.target as HTMLElement | null;
+      const isEditableTarget =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable === true;
+
       // Delete key - remove selected node
-      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedNode && editable) {
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        selectedNode &&
+        editable &&
+        !isEditableTarget
+      ) {
         event.preventDefault();
         onDeleteNode?.(selectedNode.id);
       }

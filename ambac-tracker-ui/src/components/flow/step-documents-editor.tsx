@@ -102,7 +102,7 @@ export function StepDocumentsEditor({
         file_name: fileName || selectedFile.name,
         content_type: stepsContentTypeId,
         object_id: stepId,
-        classification: 'internal',
+        classification: 'INTERNAL',
       };
       if (selectedDocType) {
         payload.document_type = selectedDocType;

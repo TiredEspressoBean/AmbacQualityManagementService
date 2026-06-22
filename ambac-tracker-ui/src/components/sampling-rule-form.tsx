@@ -39,14 +39,14 @@ const ruleTypeConfig: Record<string, {
   valueMin?: number;
   valueMax?: number;
 }> = {
-  every_nth_part: {
+  EVERY_NTH_PART: {
     help: "Inspect every Nth part in sequence. E.g., value of 5 means parts 5, 10, 15... (20% coverage)",
     valueLabel: "Sample every N parts",
     valuePlaceholder: "5",
     valueRequired: true,
     valueMin: 1,
   },
-  percentage: {
+  PERCENTAGE: {
     help: "Randomly select X% of parts for inspection. Good for statistical sampling.",
     valueLabel: "Percentage (%)",
     valuePlaceholder: "10",
@@ -54,7 +54,7 @@ const ruleTypeConfig: Record<string, {
     valueMin: 0,
     valueMax: 100,
   },
-  random: {
+  RANDOM: {
     help: "Pure random sampling - each part has an equal chance of being selected.",
     valueLabel: "Sample rate (%)",
     valuePlaceholder: "10",
@@ -62,38 +62,26 @@ const ruleTypeConfig: Record<string, {
     valueMin: 0,
     valueMax: 100,
   },
-  random_within_n: {
-    help: "Randomly select one part from each group of N consecutive parts.",
-    valueLabel: "Group size (N)",
-    valuePlaceholder: "10",
-    valueRequired: true,
-    valueMin: 1,
-  },
-  first_n_parts: {
+  FIRST_N_PARTS: {
     help: "Always inspect the first N parts of each batch. Useful for startup validation.",
     valueLabel: "Number of parts",
     valuePlaceholder: "5",
     valueRequired: true,
     valueMin: 1,
   },
-  last_n_parts: {
+  LAST_N_PARTS: {
     help: "Always inspect the last N parts of each batch. Useful for end-of-run validation.",
     valueLabel: "Number of parts",
     valuePlaceholder: "5",
     valueRequired: true,
     valueMin: 1,
   },
-  all: {
-    help: "100% inspection - every part is sampled. Use for critical processes.",
-    valueLabel: "Value",
-    valuePlaceholder: "",
-    valueRequired: false,
-  },
-  none: {
-    help: "Skip sampling at this step. Parts pass through without inspection.",
-    valueLabel: "Value",
-    valuePlaceholder: "",
-    valueRequired: false,
+  EXACT_COUNT: {
+    help: "Inspect an exact, fixed number of parts per batch (no variance).",
+    valueLabel: "Number of parts",
+    valuePlaceholder: "5",
+    valueRequired: true,
+    valueMin: 1,
   },
 };
 

@@ -19,6 +19,7 @@ interface SamplingRule {
 interface SamplingRuleCardProps {
   rule: SamplingRule;
   index: number;
+  readOnly?: boolean;
   onUpdate?: (index: number, rule: SamplingRule) => void;
   onDelete?: () => void;
 }
@@ -26,6 +27,7 @@ interface SamplingRuleCardProps {
 export default function SamplingRuleCard({
   rule,
   index,
+  readOnly = false,
   onUpdate,
   onDelete,
 }: SamplingRuleCardProps) {
@@ -44,20 +46,18 @@ export default function SamplingRuleCard({
   const formatRuleDescription = (): string => {
     const value = rule.value;
     switch (rule.rule_type) {
-      case "EVERY_NTH":
+      case "EVERY_NTH_PART":
         return `Every ${value ?? "N"}th part`;
       case "PERCENTAGE":
         return `${value ?? 0}% random sampling`;
-      case "FIRST_N":
+      case "RANDOM":
+        return value != null ? `${value}% pure random` : "Pure random sampling";
+      case "FIRST_N_PARTS":
         return `First ${value ?? "N"} parts`;
-      case "LAST_N":
+      case "LAST_N_PARTS":
         return `Last ${value ?? "N"} parts`;
-      case "FIRST_AND_LAST":
-        return "First and last parts";
-      case "ALL":
-        return "100% inspection";
-      case "NONE":
-        return "No sampling";
+      case "EXACT_COUNT":
+        return `Exact count: ${value ?? "N"} parts`;
       default: {
         const ruleType = ruleTypes.find(type => type.value === rule.rule_type);
         return ruleType?.label || rule.rule_type;
@@ -77,7 +77,8 @@ export default function SamplingRuleCard({
         {formatRuleDescription()}
       </span>
 
-      {/* Actions - always visible for better discoverability */}
+      {/* Actions - hidden in read-only (viewer) mode */}
+      {!readOnly && (
       <div className="flex items-center gap-1 shrink-0">
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
@@ -122,6 +123,7 @@ export default function SamplingRuleCard({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+      )}
     </div>
   );
 }

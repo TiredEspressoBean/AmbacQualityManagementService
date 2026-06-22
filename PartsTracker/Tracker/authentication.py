@@ -140,3 +140,28 @@ class TenantMembershipSessionAuthentication(TenantMembershipMixin, SessionAuthen
     """SessionAuthentication with the same membership check, for symmetry.
     The middleware already validates session users, so this is belt-and-
     suspenders for that path."""
+
+
+# ---------------------------------------------------------------------------
+# drf-spectacular auth extensions
+#
+# Without these, drf-spectacular can't map our custom authenticator subclasses
+# to an OpenAPI security scheme and emits a "could not resolve authenticator"
+# warning for every viewset that uses them (~one per operation → the bulk of
+# the schema-generation warning count). These thin subclasses just re-point
+# spectacular's built-in Session/Token schemes at our classes; the resulting
+# security schemes are identical to stock DRF session/token auth.
+#
+# Defined here so they self-register (via the extension metaclass) whenever this
+# module is imported — and settings references these auth classes, so that's at
+# startup, before any schema generation runs.
+# ---------------------------------------------------------------------------
+from drf_spectacular.authentication import SessionScheme, TokenScheme  # noqa: E402
+
+
+class TenantMembershipSessionScheme(SessionScheme):
+    target_class = "Tracker.authentication.TenantMembershipSessionAuthentication"
+
+
+class TenantMembershipTokenScheme(TokenScheme):
+    target_class = "Tracker.authentication.TenantMembershipTokenAuthentication"
