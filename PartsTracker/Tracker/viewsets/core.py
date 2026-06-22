@@ -20,7 +20,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from auditlog.models import LogEntry
 from dj_rest_auth.views import UserDetailsView as BaseUserDetailsView
 
-from Tracker.filters import UserFilter
+from Tracker.filters import UserFilter, DocumentFilter
 from Tracker.permissions import TenantAccessPermission
 from Tracker.models.core import User, Companies, UserInvitation, ApprovalTemplate, ApprovalRequest, ApprovalResponse, Documents, DocumentType
 from Tracker.serializers.core import (
@@ -1085,7 +1085,9 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
     serializer_class = DocumentsSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["content_type", "object_id", "is_image", "status", "document_type"]
+    # Link-aware: filtering by content_type+object_id returns docs attached via
+    # the primary GFK OR a secondary DocumentLink. See DocumentFilter.
+    filterset_class = DocumentFilter
     search_fields = ["file_name", "uploaded_by__email"]
     ordering_fields = ["upload_date", "version", "file_name"]
     ordering = ["-upload_date"]

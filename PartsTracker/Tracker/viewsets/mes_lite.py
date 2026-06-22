@@ -1585,24 +1585,29 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         step_ct = ContentType.objects.get_for_model(Steps) if current_step else None
         part_type_ct = ContentType.objects.get_for_model(PartTypes) if part_type else None
 
-        # Get documents (filtered by user permissions)
+        # Get documents (filtered by user permissions). Link-aware: include
+        # docs attached via a secondary DocumentLink, not just the primary GFK,
+        # while preserving the for_user access scoping.
+        from django.db.models import Q
+        from Tracker.services.core.documents import linked_document_ids
+
         work_order_docs = Documents.objects.for_user(request.user).filter(
-            content_type=work_order_ct,
-            object_id=str(work_order.id)
+            Q(content_type=work_order_ct, object_id=str(work_order.id))
+            | Q(id__in=linked_document_ids(work_order_ct, work_order.id))
         )
 
         current_step_docs = Documents.objects.none()
         if step_ct and current_step:
             current_step_docs = Documents.objects.for_user(request.user).filter(
-                content_type=step_ct,
-                object_id=str(current_step.id)
+                Q(content_type=step_ct, object_id=str(current_step.id))
+                | Q(id__in=linked_document_ids(step_ct, current_step.id))
             )
 
         part_type_docs = Documents.objects.none()
         if part_type_ct and part_type:
             part_type_docs = Documents.objects.for_user(request.user).filter(
-                content_type=part_type_ct,
-                object_id=str(part_type.id)
+                Q(content_type=part_type_ct, object_id=str(part_type.id))
+                | Q(id__in=linked_document_ids(part_type_ct, part_type.id))
             )
 
         # Serialize documents

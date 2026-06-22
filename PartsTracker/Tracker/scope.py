@@ -619,6 +619,24 @@ def related_to(model_class, root_obj, user=None, direction='down',
 
     q_filter = _build_generic_filter(objects_by_type)
 
+    # Documents support secondary associations (DocumentLink) beyond their
+    # primary GFK. Include any document linked to a node in the graph so
+    # "documents related to this graph" matches the link-aware semantics used
+    # by the documents list endpoint and `documents_attached_to`. DocumentLink
+    # shares the (content_type_id, object_id) shape, so the same generic filter
+    # selects the relevant links.
+    from Tracker.models import Documents
+    if model_class is Documents and objects_by_type:
+        from django.db.models import Q
+        from Tracker.models import DocumentLink
+        # tenant-safe: `.objects` auto-scopes to the current tenant.
+        linked_ids = list(
+            DocumentLink.objects.filter(archived=False).filter(q_filter)
+            .values_list('document_id', flat=True)
+        )
+        if linked_ids:
+            q_filter = q_filter | Q(id__in=linked_ids)
+
     # Also filter the final result by user permissions
     if user and hasattr(model_class.objects, 'for_user'):
         return model_class.objects.for_user(user).filter(q_filter)

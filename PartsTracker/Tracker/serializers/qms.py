@@ -1074,8 +1074,9 @@ class CapaTasksSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.DictField())
     def get_documents_info(self, obj):
-        """Get summary of attached documents"""
-        docs = obj.documents.all()
+        """Get summary of attached documents (primary GFK + secondary links)."""
+        from Tracker.services.core.documents import documents_attached_to
+        docs = documents_attached_to(obj)
         return {
             'count': docs.count(),
             'items': [

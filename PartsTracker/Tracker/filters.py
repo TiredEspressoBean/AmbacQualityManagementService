@@ -5,7 +5,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from django.db.models import Q
 import django_filters
 
-from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies
+from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies, Documents
 
 
 class CharInFilter(BaseInFilter, CharFilter):
@@ -200,3 +200,49 @@ class UserFilter(TenantFilterMixin, django_filters.FilterSet):
             "parent_company",
             "date_joined__gte", "date_joined__lte"
         ]
+
+
+class DocumentFilter(TenantFilterMixin, django_filters.FilterSet):
+    """Documents filter.
+
+    `content_type` + `object_id` are *coordinated*: filtering by a target
+    object (both supplied) returns documents attached to it via the primary
+    GFK OR via a secondary `DocumentLink` — so "documents for X" means the same
+    thing whether the doc is primary-attached or linked. Supplying only one of
+    the pair preserves the prior independent-field behavior, and every other
+    field filters normally.
+
+    The coordination can't live in per-field filters (django-filter applies
+    each independently, so an independent `content_type=` AND would exclude the
+    linked docs whose primary content_type differs). Hence the `filter_queryset`
+    override.
+    """
+
+    class Meta:
+        model = Documents
+        fields = ["content_type", "object_id", "is_image", "status", "document_type"]
+
+    def filter_queryset(self, queryset):
+        cleaned = self.form.cleaned_data
+        ct = cleaned.get("content_type")
+        oid = cleaned.get("object_id")
+
+        # Apply every filter except the GFK pair the normal (independent) way.
+        for name, value in cleaned.items():
+            if name in ("content_type", "object_id"):
+                continue
+            queryset = self.filters[name].filter(queryset, value)
+
+        # Coordinate the GFK pair into one link-aware lookup.
+        if ct is not None and oid:
+            from Tracker.services.core.documents import linked_document_ids
+            queryset = queryset.filter(
+                Q(content_type=ct, object_id=str(oid))
+                | Q(id__in=linked_document_ids(ct, oid))
+            )
+        elif ct is not None:
+            queryset = queryset.filter(content_type=ct)
+        elif oid:
+            queryset = queryset.filter(object_id=str(oid))
+
+        return queryset

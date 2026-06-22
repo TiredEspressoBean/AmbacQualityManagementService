@@ -193,3 +193,59 @@ class DocumentLinkAccessFilterTests(TenantTestCase):
             file_name="b.pdf", file="parts_docs/b/b.pdf", classification="PUBLIC",
         )
         self.assertNotIn(tenant_b_doc.id, self._visible_ids())
+
+
+class DocumentListFilterLinkAwarenessTests(TenantTestCase):
+    """The list endpoint's content_type+object_id filter must be link-aware."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Orders, Documents
+        from Tracker.services.core.documents import attach_document_to
+
+        self.order = self.create_for_tenant(Orders, self.tenant_a, name="FILTER-ORDER")
+        self.order_ct = ContentType.objects.get_for_model(Orders)
+
+        # primary_doc: attached via the primary GFK
+        self.primary_doc = self.create_for_tenant(
+            Documents, self.tenant_a,
+            file_name="primary.pdf", file="parts_docs/a/primary.pdf", classification="PUBLIC",
+            content_type=self.order_ct, object_id=str(self.order.pk),
+        )
+        # linked_doc: reaches the order ONLY via a secondary link (no primary owner)
+        self.linked_doc = self.create_for_tenant(
+            Documents, self.tenant_a,
+            file_name="linked.pdf", file="parts_docs/a/linked.pdf", classification="PUBLIC",
+        )
+        attach_document_to(self.linked_doc, self.order)
+        # unrelated_doc: nothing to do with the order
+        self.unrelated_doc = self.create_for_tenant(
+            Documents, self.tenant_a,
+            file_name="unrelated.pdf", file="parts_docs/a/unrelated.pdf", classification="PUBLIC",
+        )
+
+    def _filtered_ids(self, data):
+        from Tracker.filters import DocumentFilter
+        from Tracker.models import Documents
+        f = DocumentFilter(data, queryset=Documents.objects.all())
+        return set(f.qs.values_list('id', flat=True))
+
+    def test_content_type_and_object_id_includes_linked(self):
+        ids = self._filtered_ids({
+            'content_type': self.order_ct.pk, 'object_id': str(self.order.pk),
+        })
+        self.assertIn(self.primary_doc.id, ids)
+        self.assertIn(self.linked_doc.id, ids, "Link-attached doc must appear when filtering by target.")
+        self.assertNotIn(self.unrelated_doc.id, ids)
+
+    def test_object_id_only_preserves_primary_only_behavior(self):
+        # Single-field filtering keeps the prior semantics: linked_doc has no
+        # primary object_id, so it must NOT appear.
+        ids = self._filtered_ids({'object_id': str(self.order.pk)})
+        self.assertIn(self.primary_doc.id, ids)
+        self.assertNotIn(self.linked_doc.id, ids)
+
+    def test_content_type_only_preserves_primary_only_behavior(self):
+        ids = self._filtered_ids({'content_type': self.order_ct.pk})
+        self.assertIn(self.primary_doc.id, ids)
+        self.assertNotIn(self.linked_doc.id, ids)

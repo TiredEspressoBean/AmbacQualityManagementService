@@ -269,6 +269,24 @@ def detach_document_from(document, target):
     return count
 
 
+def linked_document_ids(content_type, object_id):
+    """Ids of documents *linked* (secondary) to a single (content_type, object_id) target.
+
+    The shared primitive behind the link-aware reads: the customer access
+    filter, `documents_attached_to`, and the documents list FilterSet all need
+    "which documents point here via a live DocumentLink". Returns a list (the
+    querysets that consume it `__in` against it, and evaluating once avoids a
+    correlated subquery). tenant-safe: `.objects` auto-scopes.
+    """
+    from Tracker.models import DocumentLink
+
+    return list(
+        DocumentLink.objects.filter(
+            content_type=content_type, object_id=str(object_id), archived=False,
+        ).values_list('document_id', flat=True)
+    )
+
+
 def documents_attached_to(target):
     """Return all Documents attached to `target` — primary GFK *or* link.
 
@@ -279,15 +297,12 @@ def documents_attached_to(target):
     from django.contrib.contenttypes.models import ContentType
     from django.db.models import Q
 
-    from Tracker.models import Documents, DocumentLink
+    from Tracker.models import Documents
 
     ct = ContentType.objects.get_for_model(type(target))
-    # tenant-safe: both querysets auto-scope to the current tenant.
-    linked_doc_ids = DocumentLink.objects.filter(
-        content_type=ct, object_id=str(target.pk), archived=False,
-    ).values_list('document_id', flat=True)
     return Documents.objects.filter(
-        Q(content_type=ct, object_id=str(target.pk)) | Q(id__in=list(linked_doc_ids))
+        Q(content_type=ct, object_id=str(target.pk))
+        | Q(id__in=linked_document_ids(ct, target.pk))
     ).distinct()
 
 
