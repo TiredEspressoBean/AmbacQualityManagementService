@@ -470,6 +470,69 @@ class UserRole(models.Model):
         return " ".join(parts)
 
 
+class TenantMembership(models.Model):
+    """Per-tenant membership — the source of truth for whether a user may
+    access a given tenant.
+
+    Multi-tenant access used to be *derived* (home ``User.tenant`` FK OR the
+    existence of any ``UserRole`` in the tenant). That gave no way to suspend a
+    user in ONE tenant without either hard-deleting their roles or flipping the
+    GLOBAL ``User.is_active`` (which locks them out everywhere). This model makes
+    membership explicit and independently suspendable per tenant:
+
+      * ``User.is_active``   -> GLOBAL account switch (platform-level).
+      * membership ``status`` -> per-tenant switch (tenant-admin level).
+
+    NOT a ``SecureModel``: the tenant-isolation access check queries this table
+    to DECIDE access, *before* the request's tenant ContextVar is established,
+    so it must never be auto-scoped. It is always queried via ``objects`` with
+    an explicit ``tenant=`` filter (see ``services.core.tenant_membership``).
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = 'ACTIVE', 'Active'
+        SUSPENDED = 'SUSPENDED', 'Suspended'
+
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    user = models.ForeignKey(
+        'User', on_delete=models.CASCADE, related_name='tenant_memberships'
+    )
+    tenant = models.ForeignKey(
+        'Tenant', on_delete=models.CASCADE, related_name='memberships'
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.ACTIVE
+    )
+    is_home = models.BooleanField(
+        default=False,
+        help_text="User's home/primary tenant (mirrors their User.tenant FK)."
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_by = models.ForeignKey(
+        'User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='memberships_suspended'
+    )
+
+    class Meta:
+        db_table = 'tracker_tenant_membership'
+        unique_together = [('user', 'tenant')]
+        verbose_name = 'Tenant Membership'
+        verbose_name_plural = 'Tenant Memberships'
+        indexes = [
+            models.Index(fields=['user', 'tenant']),
+            models.Index(fields=['tenant', 'status']),
+        ]
+
+    @property
+    def is_active_membership(self) -> bool:
+        return self.status == self.Status.ACTIVE
+
+    def __str__(self):
+        return f"{self.user_id} @ {self.tenant_id} ({self.status})"
+
+
 class SecureQuerySet(models.QuerySet):
     """QuerySet with soft delete, versioning, audit logging, and export control filtering.
 
@@ -728,13 +791,29 @@ class SecureQuerySet(models.QuerySet):
                 parts__order_id__in=accessible_order_ids
             ).values_list('id', flat=True)
 
+            # Additive: documents reachable via a secondary DocumentLink to any
+            # accessible order/work-order/part/part-type. Mirrors the primary
+            # GFK branches below so a *linked* doc is as visible as a
+            # primary-attached one. tenant-safe: `.objects` auto-scopes, so a
+            # link can never surface a document across tenants.
+            from Tracker.models import DocumentLink
+            linked_doc_ids = DocumentLink.objects.filter(
+                archived=False,
+            ).filter(
+                Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
+                Q(content_type=workorder_ct, object_id__in=[str(id) for id in accessible_workorder_ids]) |
+                Q(content_type=part_ct, object_id__in=[str(id) for id in accessible_part_ids]) |
+                Q(content_type=parttype_ct, object_id__in=[str(id) for id in accessible_parttype_ids])
+            ).values_list('document_id', flat=True)
+
             return queryset.filter(
                 classification='PUBLIC'
             ).filter(
                 Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
                 Q(content_type=workorder_ct, object_id__in=[str(id) for id in accessible_workorder_ids]) |
                 Q(content_type=part_ct, object_id__in=[str(id) for id in accessible_part_ids]) |
-                Q(content_type=parttype_ct, object_id__in=[str(id) for id in accessible_parttype_ids])
+                Q(content_type=parttype_ct, object_id__in=[str(id) for id in accessible_parttype_ids]) |
+                Q(id__in=list(linked_doc_ids))
             ).distinct()
 
         elif model_name == 'docchunk':
@@ -3211,6 +3290,71 @@ class Documents(SecureModel):
             return text.strip()
         except Exception:
             return ""
+
+
+class DocumentLink(SecureModel):
+    """Secondary association between a Document and any entity.
+
+    Every Document already carries one *primary* owner via its own
+    `content_type` / `object_id` GenericForeignKey (`Documents.content_object`).
+    That single FK is unchanged and remains the canonical "where this document
+    lives". `DocumentLink` layers *additional* targets on top so one controlled
+    document — a shared cert, a legacy inspection sheet, a spec referenced from
+    several parts — can surface from many unrelated entities without
+    duplicating the row. Duplication is not an option here: `Documents` is
+    `_is_versioned = True`, so a copy would fork the version chain and give one
+    physical file N independent revision histories.
+
+    Links are purely additive: they never gate or replace the primary
+    association. They are folded into the customer access filter
+    (`SecureManager._filter_by_relationship`, documents branch) so a document
+    linked to an order/part/part-type a customer can already see becomes
+    visible exactly as a primary-attached one would — and, because the link
+    query is tenant-scoped via `.objects`, a link can never expose a document
+    across tenants.
+
+    Carried forward on versioning: when a composite parent re-versions and
+    clones its attached documents (`clone_current_documents`), each clone
+    inherits the source document's links; when a Document itself re-versions,
+    a `revision_created` receiver copies its links onto the new version. Both
+    mirror how the primary GFK already carries forward.
+    """
+
+    document = models.ForeignKey(
+        'Documents', on_delete=models.CASCADE, related_name='links',
+        help_text="The document being associated to an additional target.",
+    )
+
+    content_type = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE,
+        help_text="Model of the additional target object (generic FK base).",
+    )
+    object_id = models.CharField(
+        max_length=36,
+        help_text="ID of the additional target (CharField for UUID compatibility).",
+    )
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        verbose_name = 'Document Link'
+        verbose_name_plural = 'Document Links'
+        constraints = [
+            # Partial unique: one *live* link per (document, target). A
+            # soft-deleted (archived) link does not block re-attaching — the
+            # `attach` service revives the archived row instead of colliding.
+            models.UniqueConstraint(
+                fields=['tenant', 'document', 'content_type', 'object_id'],
+                condition=models.Q(deleted_at__isnull=True),
+                name='documentlink_tenant_doc_target_unique',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['content_type', 'object_id'], name='documentlink_target_idx'),
+            models.Index(fields=['document'], name='documentlink_document_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.document.file_name} → {self.content_object}"
 
 
 # =============================================================================

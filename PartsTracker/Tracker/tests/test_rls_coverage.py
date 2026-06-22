@@ -35,7 +35,16 @@ from Tracker.management.commands.setup_rls import Command
 # though their model has a `tenant` FK. Keep empty unless there is a real
 # reason (documented inline). NOT for "we haven't gotten to it yet" — that is
 # KNOWN_UNCOVERED.
-INTENTIONALLY_EXEMPT = frozenset()
+INTENTIONALLY_EXEMPT = frozenset({
+    # TenantMembership IS the access-control table: the tenant-isolation access
+    # check queries it to DECIDE access, which runs BEFORE the request's tenant
+    # context / RLS GUC is established. An RLS tenant-isolation policy would
+    # filter it to zero rows during that pre-context query and break the check.
+    # It is never exposed to end users in a list form; the service always
+    # queries it filtered by an explicit (user, tenant) pair. See
+    # Tracker.models.TenantMembership and services.core.tenant_membership.
+    'tracker_tenant_membership',
+})
 
 # Baseline of tables uncovered when the guard was introduced. The audit
 # backfill (2026-06) added all of them to setup_rls.py, so this is now empty:

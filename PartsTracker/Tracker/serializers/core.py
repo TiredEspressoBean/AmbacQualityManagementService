@@ -308,14 +308,20 @@ class UserSerializer(SecureModelMixin):
     # User type (INTERNAL/PORTAL)
     user_type = serializers.CharField(read_only=True)
     user_type_display = serializers.CharField(source='get_user_type_display', read_only=True)
+    # Per-tenant membership status for the current request tenant. This is the
+    # tenant-scoped activation state (driven by the bulk-activate endpoint),
+    # distinct from the GLOBAL `is_active` account flag. Frontend status pills
+    # should read THIS, not `is_active`.
+    tenant_membership_status = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
             'last_login', 'parent_company', 'parent_company_id', 'groups',
-            'tenant', 'user_type', 'user_type_display')
-        read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display')
+            'tenant', 'user_type', 'user_type_display', 'tenant_membership_status')
+        read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display',
+                            'tenant_membership_status')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
@@ -349,6 +355,27 @@ class UserSerializer(SecureModelMixin):
         if hasattr(obj, 'get_tenant_groups') and tenant:
             return TenantGroupSerializer(obj.get_tenant_groups(tenant), many=True).data
         return []
+
+    @extend_schema_field(serializers.ChoiceField(choices=['ACTIVE', 'SUSPENDED', 'NONE']))
+    def get_tenant_membership_status(self, obj):
+        """Membership status for the current REQUEST tenant (the org being
+        administered): 'ACTIVE'/'SUSPENDED' from TenantMembership, or 'NONE' if
+        there is no membership row. Falls back to the user's home tenant when
+        there is no request-tenant context."""
+        request = self.context.get('request')
+        tenant = getattr(request, 'tenant', None) if request else None
+        if tenant is None:
+            tenant = getattr(obj, 'tenant', None)
+        if tenant is None:
+            return 'NONE'
+        from Tracker.models import TenantMembership
+        status = (
+            TenantMembership.objects
+            .filter(user=obj, tenant=tenant)
+            .values_list('status', flat=True)
+            .first()
+        )
+        return status or 'NONE'
 
 
 class UserInvitationSerializer(serializers.ModelSerializer):

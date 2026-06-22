@@ -64,6 +64,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -90,6 +91,7 @@ paths:
               $ref: '#/components/schemas/ApprovalRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -113,6 +115,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -147,6 +150,7 @@ paths:
               $ref: '#/components/schemas/ApprovalRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -180,6 +184,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedApprovalRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -202,6 +207,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -221,6 +227,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -257,6 +264,7 @@ paths:
               $ref: '#/components/schemas/ApprovalResponseSubmitRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -284,6 +292,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -302,6 +311,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -396,6 +406,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -457,6 +468,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -483,6 +495,7 @@ paths:
               $ref: '#/components/schemas/ApprovalResponseRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -506,6 +519,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -540,6 +554,7 @@ paths:
               $ref: '#/components/schemas/ApprovalResponseRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -573,6 +588,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedApprovalResponseRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -599,6 +615,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -630,6 +647,7 @@ paths:
               $ref: '#/components/schemas/ApprovalResponseRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -657,6 +675,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -675,6 +694,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -757,6 +777,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -783,6 +804,7 @@ paths:
               $ref: '#/components/schemas/ApprovalTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -806,6 +828,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -840,6 +863,7 @@ paths:
               $ref: '#/components/schemas/ApprovalTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -873,6 +897,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedApprovalTemplateRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -895,6 +920,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -926,6 +952,7 @@ paths:
               $ref: '#/components/schemas/ApprovalTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -961,6 +988,7 @@ paths:
               $ref: '#/components/schemas/ApprovalTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -997,6 +1025,7 @@ paths:
                   type: string
                   description: Human narrative of what changed and why (ISO 9001 4.4).
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1024,6 +1053,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1042,6 +1072,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1091,6 +1122,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1117,6 +1149,7 @@ paths:
               $ref: '#/components/schemas/AssemblyUsageRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1140,6 +1173,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1174,6 +1208,7 @@ paths:
               $ref: '#/components/schemas/AssemblyUsageRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1207,6 +1242,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedAssemblyUsageRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1229,6 +1265,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1259,6 +1296,7 @@ paths:
             schema:
               $ref: '#/components/schemas/AssemblyRemoveRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1307,6 +1345,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1333,6 +1372,7 @@ paths:
               $ref: '#/components/schemas/BOMLineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1356,6 +1396,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1390,6 +1431,7 @@ paths:
               $ref: '#/components/schemas/BOMLineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1423,6 +1465,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedBOMLineRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1445,6 +1488,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1502,6 +1546,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1528,6 +1573,7 @@ paths:
               $ref: '#/components/schemas/BOMRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1551,6 +1597,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1585,6 +1632,7 @@ paths:
               $ref: '#/components/schemas/BOMRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1618,6 +1666,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedBOMRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1640,6 +1689,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1659,6 +1709,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1682,6 +1733,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1717,6 +1769,7 @@ paths:
               $ref: '#/components/schemas/CreateBOMRevisionInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1771,6 +1824,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1802,6 +1856,7 @@ paths:
               $ref: '#/components/schemas/BatchExecutionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -1830,6 +1885,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1869,6 +1925,7 @@ paths:
               $ref: '#/components/schemas/BatchExecutionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1907,6 +1964,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedBatchExecutionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -1934,6 +1992,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -1958,6 +2017,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2027,6 +2087,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2053,6 +2114,7 @@ paths:
               $ref: '#/components/schemas/CAPARequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -2076,6 +2138,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2110,6 +2173,7 @@ paths:
               $ref: '#/components/schemas/CAPARequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2143,6 +2207,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCAPARequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2165,6 +2230,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -2184,6 +2250,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2207,6 +2274,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2243,6 +2311,7 @@ paths:
               $ref: '#/components/schemas/CAPARequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2270,6 +2339,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2288,6 +2358,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2303,6 +2374,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2318,6 +2390,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2403,6 +2476,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2429,6 +2503,7 @@ paths:
               $ref: '#/components/schemas/CalibrationRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -2452,6 +2527,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2486,6 +2562,7 @@ paths:
               $ref: '#/components/schemas/CalibrationRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2519,6 +2596,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCalibrationRecordRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2541,6 +2619,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -2616,6 +2695,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2643,6 +2723,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2724,6 +2805,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2740,6 +2822,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2813,6 +2896,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2828,6 +2912,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2905,6 +2990,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2931,6 +3017,7 @@ paths:
               $ref: '#/components/schemas/CapaTasksRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -2954,6 +3041,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -2988,6 +3076,7 @@ paths:
               $ref: '#/components/schemas/CapaTasksRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3021,6 +3110,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCapaTasksRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3043,6 +3133,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -3077,6 +3168,7 @@ paths:
               $ref: '#/components/schemas/CapaTasksRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3104,6 +3196,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3122,6 +3215,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3209,6 +3303,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3257,6 +3352,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3283,6 +3379,7 @@ paths:
               $ref: '#/components/schemas/CapaVerificationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -3306,6 +3403,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3340,6 +3438,7 @@ paths:
               $ref: '#/components/schemas/CapaVerificationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3373,6 +3472,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCapaVerificationRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3395,6 +3495,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -3418,6 +3519,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3436,6 +3538,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3474,6 +3577,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3504,6 +3608,7 @@ paths:
               $ref: '#/components/schemas/ChatSessionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -3530,6 +3635,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3567,6 +3673,7 @@ paths:
               $ref: '#/components/schemas/ChatSessionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3603,6 +3710,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedChatSessionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3628,6 +3736,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -3658,6 +3767,7 @@ paths:
               $ref: '#/components/schemas/ChatSessionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3692,6 +3802,7 @@ paths:
               $ref: '#/components/schemas/ChatSessionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3736,6 +3847,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3762,6 +3874,7 @@ paths:
               $ref: '#/components/schemas/CompanyRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -3785,6 +3898,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3819,6 +3933,7 @@ paths:
               $ref: '#/components/schemas/CompanyRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3852,6 +3967,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCompanyRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3874,6 +3990,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -3897,6 +4014,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -3915,6 +4033,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4018,6 +4137,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4053,6 +4173,7 @@ paths:
               $ref: '#/components/schemas/CoreRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4085,6 +4206,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4128,6 +4250,7 @@ paths:
               $ref: '#/components/schemas/CoreRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4170,6 +4293,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCoreRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4201,6 +4325,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -4220,6 +4345,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4321,6 +4447,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4344,6 +4471,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4378,6 +4506,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CoreScrapRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4401,6 +4530,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4429,6 +4559,7 @@ paths:
               $ref: '#/components/schemas/CoreBulkCreateInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4462,6 +4593,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4492,6 +4624,7 @@ paths:
               $ref: '#/components/schemas/CoreStartTeardownBatchInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4514,6 +4647,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4542,6 +4676,7 @@ paths:
               $ref: '#/components/schemas/UserDetailRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4564,6 +4699,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4597,6 +4733,7 @@ paths:
               $ref: '#/components/schemas/UserDetailRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4629,6 +4766,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedUserDetailRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4650,6 +4788,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -4673,6 +4812,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4691,6 +4831,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4735,6 +4876,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4761,6 +4903,7 @@ paths:
               $ref: '#/components/schemas/DisassemblyBOMLineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4784,6 +4927,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4818,6 +4962,7 @@ paths:
               $ref: '#/components/schemas/DisassemblyBOMLineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4851,6 +4996,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDisassemblyBOMLineRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4873,6 +5019,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -4913,6 +5060,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4939,6 +5087,7 @@ paths:
               $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -4962,6 +5111,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -4996,6 +5146,7 @@ paths:
               $ref: '#/components/schemas/DocumentTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5029,6 +5180,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDocumentTypeRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5051,6 +5203,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -5074,6 +5227,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5092,6 +5246,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5167,6 +5322,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5187,6 +5343,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -5210,6 +5367,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5238,6 +5396,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5265,6 +5424,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDocumentsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5287,10 +5447,93 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
           description: No response body
+  /api/Documents/{id}/attach/:
+    post:
+      operationId: api_Documents_attach_create
+      description: |-
+        Attach this document to an additional target (secondary association).
+
+        Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
+        previously detached link. Never affects the primary GFK owner.
+        Returns the refreshed document (with `links`).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Document.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Documents'
+          description: ''
+  /api/Documents/{id}/detach/:
+    post:
+      operationId: api_Documents_detach_create
+      description: |-
+        Remove a secondary association from this document.
+
+        Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
+        no-op if none exists. Never affects the primary GFK owner.
+        Returns the refreshed document (with `links`).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Document.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Documents'
+          description: ''
   /api/Documents/{id}/download/:
     get:
       operationId: api_Documents_download_retrieve
@@ -5306,6 +5549,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5344,6 +5588,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5386,6 +5631,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5432,6 +5678,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5467,6 +5714,7 @@ paths:
               $ref: '#/components/schemas/DocumentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5490,6 +5738,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5508,6 +5757,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5535,6 +5785,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5553,6 +5804,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5568,6 +5820,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5643,6 +5896,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5658,6 +5912,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5731,6 +5986,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5757,6 +6013,7 @@ paths:
               $ref: '#/components/schemas/DowntimeEventRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -5780,6 +6037,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5814,6 +6072,7 @@ paths:
               $ref: '#/components/schemas/DowntimeEventRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5847,6 +6106,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedDowntimeEventRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5869,6 +6129,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -5888,6 +6149,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5915,6 +6177,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5951,6 +6214,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -5973,6 +6237,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6063,6 +6328,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6114,6 +6380,7 @@ paths:
               $ref: '#/components/schemas/EquipmentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -6173,6 +6440,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6221,6 +6489,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6290,6 +6559,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6341,6 +6611,7 @@ paths:
               $ref: '#/components/schemas/EquipmentTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -6389,6 +6660,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6448,6 +6720,7 @@ paths:
               $ref: '#/components/schemas/EquipmentTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6506,6 +6779,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedEquipmentTypeRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6553,6 +6827,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -6576,6 +6851,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6594,6 +6870,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6642,6 +6919,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6701,6 +6979,7 @@ paths:
               $ref: '#/components/schemas/EquipmentsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6759,6 +7038,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedEquipmentsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6806,6 +7086,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -6829,6 +7110,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6847,6 +7129,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6921,6 +7204,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -6972,6 +7256,7 @@ paths:
               $ref: '#/components/schemas/QualityErrorsListRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -7020,6 +7305,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7079,6 +7365,7 @@ paths:
               $ref: '#/components/schemas/QualityErrorsListRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7137,6 +7424,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQualityErrorsListRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7184,6 +7472,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -7207,6 +7496,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7225,6 +7515,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7289,6 +7580,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7315,6 +7607,7 @@ paths:
               $ref: '#/components/schemas/FPIRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -7338,6 +7631,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7379,6 +7673,7 @@ paths:
               $ref: '#/components/schemas/FPIRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7419,6 +7714,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedFPIRecordRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7448,6 +7744,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -7476,6 +7773,7 @@ paths:
                   type: string
                   description: Required failure notes
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7509,6 +7807,7 @@ paths:
                   type: string
                   description: Optional inspection notes
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7542,6 +7841,7 @@ paths:
                   type: string
                   description: Required waive reason (min 10 chars)
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7571,6 +7871,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7607,6 +7908,7 @@ paths:
                   format: date
                   description: Required for per_shift scope
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7624,6 +7926,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7663,6 +7966,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7689,6 +7993,7 @@ paths:
               $ref: '#/components/schemas/FishboneRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -7712,6 +8017,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7746,6 +8052,7 @@ paths:
               $ref: '#/components/schemas/FishboneRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7779,6 +8086,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedFishboneRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7801,6 +8109,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -7824,6 +8133,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7842,6 +8152,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7881,6 +8192,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7907,6 +8219,7 @@ paths:
               $ref: '#/components/schemas/FiveWhysRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -7930,6 +8243,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7964,6 +8278,7 @@ paths:
               $ref: '#/components/schemas/FiveWhysRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -7997,6 +8312,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedFiveWhysRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8019,6 +8335,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -8042,6 +8359,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8060,6 +8378,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8133,6 +8452,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8164,6 +8484,7 @@ paths:
               $ref: '#/components/schemas/HarvestedComponentRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -8192,6 +8513,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8231,6 +8553,7 @@ paths:
               $ref: '#/components/schemas/HarvestedComponentRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8269,6 +8592,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedHarvestedComponentRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8296,6 +8620,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -8326,6 +8651,7 @@ paths:
             schema:
               $ref: '#/components/schemas/HarvestedComponentAcceptRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8360,6 +8686,7 @@ paths:
             schema:
               $ref: '#/components/schemas/HarvestedComponentScrapRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8387,6 +8714,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8505,6 +8833,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8531,6 +8860,7 @@ paths:
               $ref: '#/components/schemas/HeatMapAnnotationsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -8554,6 +8884,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8588,6 +8919,7 @@ paths:
               $ref: '#/components/schemas/HeatMapAnnotationsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8621,6 +8953,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedHeatMapAnnotationsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8643,6 +8976,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -8666,6 +9000,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8711,6 +9046,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8727,6 +9063,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8793,6 +9130,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8819,6 +9157,7 @@ paths:
               $ref: '#/components/schemas/MaterialLotRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -8842,6 +9181,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8876,6 +9216,7 @@ paths:
               $ref: '#/components/schemas/MaterialLotRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8909,6 +9250,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedMaterialLotRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -8931,6 +9273,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -8962,6 +9305,7 @@ paths:
               $ref: '#/components/schemas/MaterialLotSplitRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -8989,6 +9333,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9044,6 +9389,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9067,6 +9413,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9145,6 +9492,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9196,6 +9544,7 @@ paths:
               $ref: '#/components/schemas/MeasurementDefinitionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -9244,6 +9593,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9303,6 +9653,7 @@ paths:
               $ref: '#/components/schemas/MeasurementDefinitionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9361,6 +9712,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedMeasurementDefinitionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9408,6 +9760,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -9431,6 +9784,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9449,6 +9803,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9471,6 +9826,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9499,6 +9855,7 @@ paths:
               $ref: '#/components/schemas/MilestoneTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -9522,6 +9879,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9556,6 +9914,7 @@ paths:
               $ref: '#/components/schemas/MilestoneTemplateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9589,6 +9948,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedMilestoneTemplateRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9611,6 +9971,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -9644,6 +10005,7 @@ paths:
               $ref: '#/components/schemas/CreateMilestoneTemplateRevisionInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -9662,6 +10024,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9690,6 +10053,7 @@ paths:
               $ref: '#/components/schemas/MilestoneRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -9713,6 +10077,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9747,6 +10112,7 @@ paths:
               $ref: '#/components/schemas/MilestoneRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9780,6 +10146,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedMilestoneRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9802,6 +10169,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -9819,6 +10187,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9908,6 +10277,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -9940,6 +10310,7 @@ paths:
               $ref: '#/components/schemas/OrdersRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -9969,6 +10340,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10009,6 +10381,7 @@ paths:
               $ref: '#/components/schemas/OrdersRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10048,6 +10421,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedOrdersRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10076,6 +10450,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -10107,6 +10482,7 @@ paths:
               $ref: '#/components/schemas/AddNoteInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10148,6 +10524,7 @@ paths:
               $ref: '#/components/schemas/StepIncrementInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10189,6 +10566,7 @@ paths:
               $ref: '#/components/schemas/BulkAddPartsInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -10231,6 +10609,7 @@ paths:
               $ref: '#/components/schemas/BulkRemovePartsInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10271,6 +10650,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSetMilestoneInputRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10318,6 +10698,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10355,6 +10736,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10392,6 +10774,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '207':
@@ -10432,6 +10815,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10460,6 +10844,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10483,6 +10868,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10501,6 +10887,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10556,6 +10943,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10594,6 +10982,7 @@ paths:
               $ref: '#/components/schemas/PartTypesRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -10628,6 +11017,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10673,6 +11063,7 @@ paths:
               $ref: '#/components/schemas/PartTypesRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10717,6 +11108,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedPartTypesRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10750,6 +11142,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -10788,6 +11181,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10831,6 +11225,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '207':
@@ -10877,6 +11272,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10910,6 +11306,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10938,6 +11335,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -10962,6 +11360,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11011,6 +11410,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11115,6 +11515,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11157,6 +11558,7 @@ paths:
               $ref: '#/components/schemas/PartsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -11195,6 +11597,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11244,6 +11647,7 @@ paths:
               $ref: '#/components/schemas/PartsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11292,6 +11696,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedPartsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11329,6 +11734,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -11357,6 +11763,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11405,6 +11812,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11444,6 +11852,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11495,6 +11904,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PartIncrementInputRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11543,6 +11953,7 @@ paths:
               $ref: '#/components/schemas/ResolveDecisionInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11582,6 +11993,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11627,6 +12039,7 @@ paths:
                   format: uuid
                   description: Pre-approved override ID
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11679,6 +12092,7 @@ paths:
               $ref: '#/components/schemas/PartsBulkSetStatusInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11712,6 +12126,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11757,6 +12172,7 @@ paths:
               $ref: '#/components/schemas/AdvanceLotInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11794,6 +12210,7 @@ paths:
               $ref: '#/components/schemas/PartsBulkIncrementInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11837,6 +12254,7 @@ paths:
               $ref: '#/components/schemas/PartsBulkRollbackInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11880,6 +12298,7 @@ paths:
               $ref: '#/components/schemas/PartsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11926,6 +12345,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -11973,6 +12393,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '207':
@@ -12023,6 +12444,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12060,6 +12482,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12092,6 +12515,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12120,6 +12544,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12219,6 +12644,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12313,6 +12739,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12364,6 +12791,7 @@ paths:
               $ref: '#/components/schemas/ProcessesRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -12412,6 +12840,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12471,6 +12900,7 @@ paths:
               $ref: '#/components/schemas/ProcessesRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12529,6 +12959,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProcessesRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12576,6 +13007,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -12608,6 +13040,7 @@ paths:
                   type: string
                   description: Human narrative of what changed and why (ISO 9001 4.4).
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -12635,6 +13068,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12653,6 +13087,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12739,6 +13174,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12790,6 +13226,7 @@ paths:
               $ref: '#/components/schemas/ProcessWithStepsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -12838,6 +13275,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12897,6 +13335,7 @@ paths:
               $ref: '#/components/schemas/ProcessWithStepsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -12955,6 +13394,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProcessWithStepsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13002,6 +13442,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -13022,6 +13463,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13046,6 +13488,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13081,6 +13524,7 @@ paths:
             schema:
               $ref: '#/components/schemas/DuplicateProcessRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -13116,6 +13560,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SubmitProcessForApprovalRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13177,6 +13622,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13204,6 +13650,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13303,6 +13750,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13354,6 +13802,7 @@ paths:
               $ref: '#/components/schemas/QualityReportsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -13402,6 +13851,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13461,6 +13911,7 @@ paths:
               $ref: '#/components/schemas/QualityReportsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13519,6 +13970,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQualityReportsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13566,6 +14018,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -13589,6 +14042,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13607,6 +14061,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13729,6 +14184,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13780,6 +14236,7 @@ paths:
               $ref: '#/components/schemas/QuarantineDispositionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -13828,6 +14285,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13887,6 +14345,7 @@ paths:
               $ref: '#/components/schemas/QuarantineDispositionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13945,6 +14404,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedQuarantineDispositionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -13992,6 +14452,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -14026,6 +14487,7 @@ paths:
               $ref: '#/components/schemas/QuarantineDispositionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14053,6 +14515,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14071,6 +14534,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14128,6 +14592,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14154,6 +14619,7 @@ paths:
               $ref: '#/components/schemas/RcaRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -14177,6 +14643,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14211,6 +14678,7 @@ paths:
               $ref: '#/components/schemas/RcaRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14244,6 +14712,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedRcaRecordRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14266,6 +14735,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -14297,6 +14767,7 @@ paths:
               $ref: '#/components/schemas/RcaRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14332,6 +14803,7 @@ paths:
               $ref: '#/components/schemas/RcaRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14359,6 +14831,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14377,6 +14850,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14465,6 +14939,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14516,6 +14991,7 @@ paths:
               $ref: '#/components/schemas/SamplingRuleSetRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -14564,6 +15040,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14623,6 +15100,7 @@ paths:
               $ref: '#/components/schemas/SamplingRuleSetRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14681,6 +15159,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSamplingRuleSetRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14728,6 +15207,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -14751,6 +15231,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14769,6 +15250,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14857,6 +15339,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -14908,6 +15391,7 @@ paths:
               $ref: '#/components/schemas/SamplingRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -14956,6 +15440,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15015,6 +15500,7 @@ paths:
               $ref: '#/components/schemas/SamplingRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15073,6 +15559,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSamplingRuleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15120,6 +15607,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -15143,6 +15631,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15161,6 +15650,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15226,6 +15716,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15256,6 +15747,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15281,6 +15773,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15349,6 +15842,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15375,6 +15869,7 @@ paths:
               $ref: '#/components/schemas/ScheduleSlotRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -15398,6 +15893,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15432,6 +15928,7 @@ paths:
               $ref: '#/components/schemas/ScheduleSlotRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15465,6 +15962,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedScheduleSlotRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15487,6 +15985,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -15506,6 +16005,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15529,6 +16029,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15567,6 +16068,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15593,6 +16095,7 @@ paths:
               $ref: '#/components/schemas/ShiftRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -15616,6 +16119,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15650,6 +16154,7 @@ paths:
               $ref: '#/components/schemas/ShiftRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15683,6 +16188,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedShiftRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15705,6 +16211,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -15755,6 +16262,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15781,6 +16289,7 @@ paths:
               $ref: '#/components/schemas/StepExecutionMeasurementRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -15804,6 +16313,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15842,6 +16352,7 @@ paths:
               $ref: '#/components/schemas/StepExecutionMeasurementRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15879,6 +16390,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStepExecutionMeasurementRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15905,6 +16417,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -15940,6 +16453,7 @@ paths:
                         type: string
                         format: uuid
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -15963,6 +16477,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -15980,6 +16495,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16002,6 +16518,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16116,6 +16633,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16151,6 +16669,7 @@ paths:
               $ref: '#/components/schemas/StepExecutionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -16183,6 +16702,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16226,6 +16746,7 @@ paths:
               $ref: '#/components/schemas/StepExecutionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16268,6 +16789,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStepExecutionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16299,6 +16821,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -16322,6 +16845,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16337,6 +16861,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16353,6 +16878,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16457,6 +16983,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16561,6 +17088,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16665,6 +17193,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16769,6 +17298,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16818,6 +17348,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16848,6 +17379,7 @@ paths:
               $ref: '#/components/schemas/StepOverrideRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -16871,6 +17403,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16909,6 +17442,7 @@ paths:
               $ref: '#/components/schemas/StepOverrideRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16946,6 +17480,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStepOverrideRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -16972,6 +17507,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -17000,6 +17536,7 @@ paths:
                   type: integer
                   description: Hours until override expires (optional, uses step default)
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17033,6 +17570,7 @@ paths:
                   type: string
                   description: Reason for rejection
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17050,6 +17588,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17065,6 +17604,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17151,6 +17691,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17213,6 +17754,7 @@ paths:
               $ref: '#/components/schemas/StepsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -17271,6 +17813,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17341,6 +17884,7 @@ paths:
               $ref: '#/components/schemas/StepsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17414,6 +17958,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedStepsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17471,6 +18016,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -17502,6 +18048,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17549,6 +18096,7 @@ paths:
               $ref: '#/components/schemas/CreateStepRevisionInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -17594,6 +18142,7 @@ paths:
               $ref: '#/components/schemas/StepSamplingRulesUpdateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17631,6 +18180,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17660,6 +18210,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17715,6 +18266,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17744,6 +18296,7 @@ paths:
               $ref: '#/components/schemas/SubstepCompletionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -17770,6 +18323,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17807,6 +18361,7 @@ paths:
               $ref: '#/components/schemas/SubstepCompletionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17843,6 +18398,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17868,6 +18424,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -17911,6 +18468,7 @@ paths:
               $ref: '#/components/schemas/SubstepCompletionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17963,6 +18521,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -17989,6 +18548,7 @@ paths:
               $ref: '#/components/schemas/SubstepGateCompletionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -18012,6 +18572,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18046,6 +18607,7 @@ paths:
               $ref: '#/components/schemas/SubstepGateCompletionRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18079,6 +18641,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18101,6 +18664,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -18149,6 +18713,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18179,6 +18744,7 @@ paths:
               $ref: '#/components/schemas/SubstepResourceRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -18206,6 +18772,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18244,6 +18811,7 @@ paths:
               $ref: '#/components/schemas/SubstepResourceRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18281,6 +18849,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepResourceRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18307,6 +18876,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -18395,6 +18965,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18421,6 +18992,7 @@ paths:
               $ref: '#/components/schemas/SubstepResponseRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -18444,6 +19016,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18478,6 +19051,7 @@ paths:
               $ref: '#/components/schemas/SubstepResponseRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18511,6 +19085,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepResponseRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18533,6 +19108,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -18572,6 +19148,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18598,6 +19175,7 @@ paths:
               $ref: '#/components/schemas/SubstepTranslationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -18621,6 +19199,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18655,6 +19234,7 @@ paths:
               $ref: '#/components/schemas/SubstepTranslationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18688,6 +19268,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepTranslationRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18710,6 +19291,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -18773,6 +19355,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18809,6 +19392,7 @@ paths:
               $ref: '#/components/schemas/SubstepRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -18842,6 +19426,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18896,6 +19481,7 @@ paths:
               $ref: '#/components/schemas/SubstepRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18949,6 +19535,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSubstepRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -18981,6 +19568,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -19027,6 +19615,7 @@ paths:
               $ref: '#/components/schemas/SubstepRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19074,6 +19663,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SubstepSubmitRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19110,6 +19700,7 @@ paths:
               $ref: '#/components/schemas/SubstepRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19151,6 +19742,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19184,6 +19776,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -19214,6 +19807,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19255,6 +19849,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19295,6 +19890,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantGroupRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19324,6 +19920,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -19355,6 +19952,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19382,6 +19980,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19420,6 +20019,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19449,6 +20049,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19478,6 +20079,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19518,6 +20120,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19558,6 +20161,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19586,6 +20190,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -19608,6 +20213,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19635,6 +20241,7 @@ paths:
               $ref: '#/components/schemas/TenantGroupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19680,6 +20287,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19717,6 +20325,7 @@ paths:
               $ref: '#/components/schemas/TenantLLMProviderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -19751,6 +20360,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19796,6 +20406,7 @@ paths:
               $ref: '#/components/schemas/TenantLLMProviderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19840,6 +20451,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantLLMProviderRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19873,6 +20485,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -19904,6 +20517,7 @@ paths:
               $ref: '#/components/schemas/TenantLLMProviderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19919,6 +20533,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19956,6 +20571,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -19985,6 +20601,7 @@ paths:
               $ref: '#/components/schemas/TenantCreateRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -20010,6 +20627,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20046,6 +20664,7 @@ paths:
               $ref: '#/components/schemas/TenantRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20081,6 +20700,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20105,6 +20725,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -20135,6 +20756,7 @@ paths:
               $ref: '#/components/schemas/TenantRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20160,6 +20782,7 @@ paths:
       tags:
       - Tenants
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '202':
@@ -20194,6 +20817,7 @@ paths:
       tags:
       - Tenants
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20228,6 +20852,7 @@ paths:
               $ref: '#/components/schemas/TenantRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20250,6 +20875,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20333,6 +20959,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20353,6 +20980,7 @@ paths:
               $ref: '#/components/schemas/ThreeDModelRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -20376,6 +21004,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20404,6 +21033,7 @@ paths:
               $ref: '#/components/schemas/ThreeDModelRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20431,6 +21061,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedThreeDModelRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20453,6 +21084,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -20476,6 +21108,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20494,6 +21127,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20557,6 +21191,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20583,6 +21218,7 @@ paths:
               $ref: '#/components/schemas/TimeEntryRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -20606,6 +21242,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20640,6 +21277,7 @@ paths:
               $ref: '#/components/schemas/TimeEntryRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20673,6 +21311,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTimeEntryRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20695,6 +21334,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -20714,6 +21354,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20748,6 +21389,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ClockOutInputRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20775,6 +21417,7 @@ paths:
               $ref: '#/components/schemas/ClockInRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -20802,6 +21445,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20846,6 +21490,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20877,6 +21522,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -20916,6 +21562,7 @@ paths:
               $ref: '#/components/schemas/InviteViewerInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -20982,6 +21629,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21008,6 +21656,7 @@ paths:
               $ref: '#/components/schemas/TrainingRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -21031,6 +21680,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21065,6 +21715,7 @@ paths:
               $ref: '#/components/schemas/TrainingRecordRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21098,6 +21749,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTrainingRecordRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21120,6 +21772,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -21169,6 +21822,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21228,6 +21882,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21255,6 +21910,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21273,6 +21929,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21326,6 +21983,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21341,6 +21999,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21401,6 +22060,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21427,6 +22087,7 @@ paths:
               $ref: '#/components/schemas/TrainingRequirementRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -21450,6 +22111,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21484,6 +22146,7 @@ paths:
               $ref: '#/components/schemas/TrainingRequirementRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21517,6 +22180,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTrainingRequirementRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21539,6 +22203,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -21562,6 +22227,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21630,6 +22296,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21696,6 +22363,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21712,6 +22380,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21755,6 +22424,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21781,6 +22451,7 @@ paths:
               $ref: '#/components/schemas/TrainingTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -21804,6 +22475,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21838,6 +22510,7 @@ paths:
               $ref: '#/components/schemas/TrainingTypeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21871,6 +22544,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTrainingTypeRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21893,6 +22567,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -21916,6 +22591,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -21934,6 +22610,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22030,6 +22707,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22057,6 +22735,7 @@ paths:
               $ref: '#/components/schemas/UserRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -22079,6 +22758,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22112,6 +22792,7 @@ paths:
               $ref: '#/components/schemas/UserRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22144,6 +22825,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedUserRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22165,6 +22847,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -22172,7 +22855,14 @@ paths:
   /api/User/bulk-activate/:
     post:
       operationId: api_User_bulk_activate_create
-      description: Bulk activate/deactivate users
+      description: |-
+        Bulk activate/deactivate users **within the current tenant**.
+
+        Tenant-scoped: suspends/reactivates the user's TenantMembership in the
+        request tenant rather than flipping the GLOBAL `User.is_active` (which
+        is reserved for platform admins). A user suspended here loses access to
+        this tenant only; their account and any other tenant memberships are
+        untouched. Request/response shape is unchanged.
       tags:
       - api
       requestBody:
@@ -22188,6 +22878,7 @@ paths:
               $ref: '#/components/schemas/BulkUserActivationInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22216,6 +22907,7 @@ paths:
               $ref: '#/components/schemas/BulkCompanyAssignmentInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22243,6 +22935,7 @@ paths:
             schema:
               $ref: '#/components/schemas/BulkReconcileUsersRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '207':
@@ -22272,6 +22965,7 @@ paths:
       tags:
       - Users
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22305,6 +22999,7 @@ paths:
       tags:
       - Users
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22322,6 +23017,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22350,6 +23046,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22368,6 +23065,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22395,6 +23093,7 @@ paths:
               $ref: '#/components/schemas/SendInvitationInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -22449,6 +23148,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22482,6 +23182,7 @@ paths:
               $ref: '#/components/schemas/UserInvitationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -22511,6 +23212,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22551,6 +23253,7 @@ paths:
               $ref: '#/components/schemas/UserInvitationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22590,6 +23293,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedUserInvitationRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22618,6 +23322,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -22641,6 +23346,7 @@ paths:
               $ref: '#/components/schemas/AcceptInvitationInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -22669,6 +23375,7 @@ paths:
               $ref: '#/components/schemas/ResendInvitationInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22697,6 +23404,7 @@ paths:
               $ref: '#/components/schemas/ValidateTokenInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -22738,6 +23446,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22764,6 +23473,7 @@ paths:
               $ref: '#/components/schemas/WorkCenterRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -22786,6 +23496,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22811,6 +23522,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22834,6 +23546,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22868,6 +23581,7 @@ paths:
               $ref: '#/components/schemas/WorkCenterRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22901,6 +23615,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedWorkCenterRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -22923,6 +23638,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -22946,6 +23662,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23039,6 +23756,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23072,6 +23790,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -23102,6 +23821,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23143,6 +23863,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23183,6 +23904,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedWorkOrderRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23212,6 +23934,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -23243,6 +23966,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderBulkAddPartsInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -23273,6 +23997,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23316,6 +24041,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderPlaceOnHoldInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23340,6 +24066,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23363,6 +24090,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23405,6 +24133,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderSplitInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23428,6 +24157,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23458,6 +24188,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23488,6 +24219,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23523,6 +24255,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderBulkClearHoldInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23557,6 +24290,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderBulkPlaceOnHoldInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23584,6 +24318,7 @@ paths:
               $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23621,6 +24356,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23658,6 +24394,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '207':
@@ -23698,6 +24435,7 @@ paths:
               required:
               - file
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23726,6 +24464,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23749,6 +24488,7 @@ paths:
       tags:
       - Import/Export
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23767,6 +24507,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -23795,6 +24536,7 @@ paths:
         required: true
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23814,6 +24556,7 @@ paths:
       - ai-config
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23833,6 +24576,7 @@ paths:
       - ai-query
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23863,6 +24607,7 @@ paths:
         required: true
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23878,6 +24623,7 @@ paths:
       - ai-query
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23905,6 +24651,7 @@ paths:
         required: true
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23931,6 +24678,7 @@ paths:
               $ref: '#/components/schemas/HybridSearchRequestRequest'
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23964,6 +24712,7 @@ paths:
       - api
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -23991,6 +24740,7 @@ paths:
         required: true
       security:
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -24055,6 +24805,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24076,6 +24827,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24097,6 +24849,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24120,6 +24873,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24146,6 +24900,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24189,6 +24944,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24281,6 +25037,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24321,6 +25078,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24364,6 +25122,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24400,6 +25159,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24448,6 +25208,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24491,6 +25252,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24526,6 +25288,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24567,6 +25330,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24592,6 +25356,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24620,6 +25385,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24659,6 +25425,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24690,6 +25457,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24731,6 +25499,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24766,6 +25535,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24820,6 +25590,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24855,6 +25626,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24879,6 +25651,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24913,6 +25686,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24936,6 +25710,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -24972,6 +25747,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25000,6 +25776,7 @@ paths:
               $ref: '#/components/schemas/IntegrationConfigRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -25025,6 +25802,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25061,6 +25839,7 @@ paths:
               $ref: '#/components/schemas/IntegrationConfigRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25096,6 +25875,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedIntegrationConfigRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25120,6 +25900,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -25139,6 +25920,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25168,6 +25950,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25205,6 +25988,7 @@ paths:
               $ref: '#/components/schemas/IntegrationConfigRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25240,6 +26024,7 @@ paths:
               $ref: '#/components/schemas/IntegrationConfigRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25271,6 +26056,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25294,6 +26080,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25338,6 +26125,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25366,6 +26154,7 @@ paths:
               $ref: '#/components/schemas/ExternalContactRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -25391,6 +26180,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25427,6 +26217,7 @@ paths:
               $ref: '#/components/schemas/ExternalContactRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25462,6 +26253,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedExternalContactRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25486,6 +26278,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -25526,6 +26319,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25556,6 +26350,7 @@ paths:
               $ref: '#/components/schemas/CustomerRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -25583,6 +26378,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25621,6 +26417,7 @@ paths:
               $ref: '#/components/schemas/CustomerRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25658,6 +26455,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCustomerRuleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25684,6 +26482,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -25723,6 +26522,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25752,6 +26552,7 @@ paths:
               $ref: '#/components/schemas/PersonalRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -25778,6 +26579,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25815,6 +26617,7 @@ paths:
               $ref: '#/components/schemas/PersonalRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25851,6 +26654,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedPersonalRuleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25876,6 +26680,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -25915,6 +26720,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -25944,6 +26750,7 @@ paths:
               $ref: '#/components/schemas/TenantRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -25970,6 +26777,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26007,6 +26815,7 @@ paths:
               $ref: '#/components/schemas/TenantRuleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26043,6 +26852,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantRuleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26068,6 +26878,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -26107,6 +26918,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26136,6 +26948,7 @@ paths:
               $ref: '#/components/schemas/CustomerScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -26162,6 +26975,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26199,6 +27013,7 @@ paths:
               $ref: '#/components/schemas/CustomerScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26235,6 +27050,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCustomerScheduleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26260,6 +27076,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -26301,6 +27118,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26332,6 +27150,7 @@ paths:
               $ref: '#/components/schemas/PersonalScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -26360,6 +27179,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26399,6 +27219,7 @@ paths:
               $ref: '#/components/schemas/PersonalScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26437,6 +27258,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedPersonalScheduleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26464,6 +27286,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -26480,6 +27303,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26522,6 +27346,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26548,6 +27373,7 @@ paths:
               $ref: '#/components/schemas/TenantScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -26571,6 +27397,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26605,6 +27432,7 @@ paths:
               $ref: '#/components/schemas/TenantScheduleRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26638,6 +27466,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantScheduleRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26660,6 +27489,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -26696,6 +27526,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26720,6 +27551,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26735,6 +27567,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26793,6 +27626,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26826,6 +27660,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeNoticeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -26856,6 +27691,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26897,6 +27733,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeNoticeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26937,6 +27774,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProcessChangeNoticeRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -26966,6 +27804,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -27004,6 +27843,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeNoticeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27046,6 +27886,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeNoticeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27127,6 +27968,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27165,6 +28007,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -27200,6 +28043,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27246,6 +28090,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27291,6 +28136,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProcessChangeOrderRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27325,6 +28171,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -27349,6 +28196,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27387,6 +28235,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27434,6 +28283,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27481,6 +28331,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27528,6 +28379,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27565,6 +28417,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeOrderRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27648,6 +28501,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27681,6 +28535,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -27711,6 +28566,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27752,6 +28608,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27792,6 +28649,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProcessChangeRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27821,6 +28679,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -27859,6 +28718,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27901,6 +28761,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27943,6 +28804,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -27985,6 +28847,7 @@ paths:
               $ref: '#/components/schemas/ProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28014,6 +28877,7 @@ paths:
               $ref: '#/components/schemas/ProposeProcessChangeRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -28054,6 +28918,7 @@ paths:
               $ref: '#/components/schemas/GenerateReportRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28084,6 +28949,7 @@ paths:
               $ref: '#/components/schemas/GenerateReportRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '202':
@@ -28118,6 +28984,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28133,6 +29000,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28264,6 +29132,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -28316,6 +29185,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28393,6 +29263,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28425,6 +29296,7 @@ paths:
               $ref: '#/components/schemas/SPCBaselineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -28454,6 +29326,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28494,6 +29367,7 @@ paths:
               $ref: '#/components/schemas/SPCBaselineRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28533,6 +29407,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedSPCBaselineRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28561,6 +29436,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '204':
@@ -28591,6 +29467,7 @@ paths:
             schema:
               $ref: '#/components/schemas/SupersedeRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28613,6 +29490,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28640,6 +29518,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28670,6 +29549,7 @@ paths:
               $ref: '#/components/schemas/SPCBaselineFreezeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '201':
@@ -28686,6 +29566,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28742,6 +29623,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28809,6 +29691,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28873,6 +29756,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28926,6 +29810,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28953,6 +29838,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -28983,6 +29869,7 @@ paths:
             schema:
               $ref: '#/components/schemas/DemoResetRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29017,6 +29904,7 @@ paths:
                   type: string
                   format: binary
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29035,6 +29923,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29053,6 +29942,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29081,6 +29971,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantSettingsUpdateRequestRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29111,6 +30002,7 @@ paths:
               $ref: '#/components/schemas/SignupRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29129,6 +30021,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29160,6 +30053,7 @@ paths:
               $ref: '#/components/schemas/SwitchTenantRequestRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29219,6 +30113,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29237,6 +30132,7 @@ paths:
       tags:
       - api
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29271,6 +30167,7 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29291,6 +30188,7 @@ paths:
       tags:
       - auth
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29323,6 +30221,7 @@ paths:
               $ref: '#/components/schemas/PasswordChangeRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29354,6 +30253,7 @@ paths:
               $ref: '#/components/schemas/PasswordResetRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29388,6 +30288,7 @@ paths:
               $ref: '#/components/schemas/PasswordResetConfirmRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29419,6 +30320,7 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29450,6 +30352,7 @@ paths:
               $ref: '#/components/schemas/ResendEmailVerificationRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29481,6 +30384,7 @@ paths:
               $ref: '#/components/schemas/VerifyEmailRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -29502,6 +30406,7 @@ paths:
       tags:
       - auth
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29533,6 +30438,7 @@ paths:
               $ref: '#/components/schemas/TenantAwareUserDetailsRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29563,6 +30469,7 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTenantAwareUserDetailsRequest'
       security:
+      - cookieAuth: []
       - tokenAuth: []
       responses:
         '200':
@@ -29607,6 +30514,7 @@ paths:
               $ref: '#/components/schemas/PasswordResetConfirmRequest'
         required: true
       security:
+      - cookieAuth: []
       - tokenAuth: []
       - {}
       responses:
@@ -33630,6 +34538,12 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        links:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         version:
           type: integer
           maximum: 2147483647
@@ -33768,6 +34682,7 @@ components:
       - is_current_version
       - is_due_for_review
       - is_past_retention
+      - links
       - obsolete_date
       - previous_version
       - retention_until
@@ -36521,7 +37436,6 @@ components:
         step:
           type: string
           format: uuid
-          readOnly: true
         spc_enabled:
           type: boolean
           description: Enable SPC monitoring for this measurement. When enabled, values
@@ -36583,6 +37497,9 @@ components:
           type: boolean
         type:
           $ref: '#/components/schemas/TypeEnum'
+        step:
+          type: string
+          format: uuid
         spc_enabled:
           type: boolean
           description: Enable SPC monitoring for this measurement. When enabled, values
@@ -36591,6 +37508,7 @@ components:
           type: boolean
       required:
       - label
+      - step
       - type
     MeasurementDefinitionSPC:
       type: object
@@ -40926,6 +41844,9 @@ components:
           type: boolean
         type:
           $ref: '#/components/schemas/TypeEnum'
+        step:
+          type: string
+          format: uuid
         spc_enabled:
           type: boolean
           description: Enable SPC monitoring for this measurement. When enabled, values
@@ -49607,6 +50528,16 @@ components:
           nullable: true
       required:
       - logo_url
+    TenantMembershipStatusEnum:
+      enum:
+      - ACTIVE
+      - SUSPENDED
+      - NONE
+      type: string
+      description: |-
+        * `ACTIVE` - ACTIVE
+        * `SUSPENDED` - SUSPENDED
+        * `NONE` - NONE
     TenantMinimal:
       type: object
       description: Minimal tenant serializer for nested use
@@ -51073,6 +52004,10 @@ components:
         user_type_display:
           type: string
           readOnly: true
+        tenant_membership_status:
+          allOf:
+          - $ref: '#/components/schemas/TenantMembershipStatusEnum'
+          readOnly: true
       required:
       - date_joined
       - full_name
@@ -51081,6 +52016,7 @@ components:
       - last_login
       - parent_company
       - tenant
+      - tenant_membership_status
       - user_type
       - user_type_display
       - username

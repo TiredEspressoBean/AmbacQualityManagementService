@@ -188,6 +188,19 @@ class TenantMiddlewareTestCase(TestCase):
         self.assertIsNotNone(request.tenant)
         self.assertEqual(request.tenant_source, 'default')
 
+    @override_settings(TENANT_BASE_DOMAIN='example.com',
+                       ALLOWED_HOSTS=['www.example.com', 'admin.example.com'])
+    def test_reserved_subdomain_does_not_resolve_tenant(self):
+        """A reserved/infra subdomain (www, admin, ...) must never resolve to a
+        tenant even if a row with that slug somehow exists — shared with signup
+        validation so the two can't drift."""
+        Tenant.objects.create(name="Shadow", slug="admin")  # should be unreachable
+        for host in ('www.example.com', 'admin.example.com'):
+            request = self.factory.get('/api/Orders/', HTTP_HOST=host)
+            request.user = self.superuser
+            self.middleware(request)
+            self.assertIsNone(request.tenant, f'{host} must not resolve a tenant')
+
     def test_inactive_tenant_not_resolved(self):
         """Test that inactive tenants are not resolved via header."""
         self.tenant_acme.is_active = False
@@ -1089,3 +1102,158 @@ class StaffTenantAccessTestCase(TenantContextMixin, VectorTestCase):
         # Regular user should NOT have implicit permissions (needs UserRole)
         self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.view_orders'))
         self.assertFalse(backend.has_perm(self.regular_user, 'Tracker.add_orders'))
+
+
+class TenantSlugValidationTests(TestCase):
+    """Slugs become subdomains in SaaS mode, so they must be DNS-label-safe and
+    must not collide with reserved infra subdomains."""
+
+    def test_reserved_slug_rejected(self):
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        with self.assertRaises(ValueError):
+            validate_tenant_slug('admin')
+
+    def test_underscore_slug_rejected(self):
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        with self.assertRaises(ValueError):
+            validate_tenant_slug('my_org')
+
+    def test_uppercase_is_normalized(self):
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        self.assertEqual(validate_tenant_slug('Acme'), 'acme')
+
+    def test_valid_slug_passes(self):
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        self.assertEqual(validate_tenant_slug('acme-corp'), 'acme-corp')
+
+    def test_leading_hyphen_rejected(self):
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        with self.assertRaises(ValueError):
+            validate_tenant_slug('-acme')
+
+    def test_is_reserved_slug(self):
+        from Tracker.services.core.tenant_slug import is_reserved_slug
+        self.assertTrue(is_reserved_slug('www'))
+        self.assertTrue(is_reserved_slug('ADMIN'))
+        self.assertFalse(is_reserved_slug('acme'))
+
+
+class DemoReseedSessionFlushTests(TestCase):
+    """A demo reseed must invalidate the demo tenant's users' sessions (so stale
+    browsers re-login against fresh data) WITHOUT logging out other tenants."""
+
+    def setUp(self):
+        self.tenant_demo = Tenant.objects.create(name="Demo", slug="demo", is_demo=True)
+        self.tenant_other = Tenant.objects.create(name="Other", slug="other")
+        self.demo_user = User.objects.create_user(
+            username='demo_admin', email='demo@example.com', password='x',
+            tenant=self.tenant_demo)
+        self.other_user = User.objects.create_user(
+            username='other_admin', email='other@example.com', password='x',
+            tenant=self.tenant_other)
+
+    def _make_session(self, user):
+        from importlib import import_module
+        from django.conf import settings
+        store = import_module(settings.SESSION_ENGINE).SessionStore()
+        store['_auth_user_id'] = str(user.id)
+        store.create()
+        return store.session_key
+
+    def test_flush_is_scoped_to_target_tenant(self):
+        from django.contrib.sessions.models import Session
+        from Tracker.services.core.demo_regenerate import _flush_tenant_user_sessions
+        demo_key = self._make_session(self.demo_user)
+        other_key = self._make_session(self.other_user)
+
+        deleted = _flush_tenant_user_sessions(self.tenant_demo)
+
+        self.assertEqual(deleted, 1)
+        self.assertFalse(Session.objects.filter(session_key=demo_key).exists())
+        self.assertTrue(Session.objects.filter(session_key=other_key).exists())
+
+
+class TenantMembershipTests(TestCase):
+    """Per-tenant membership is the source of truth for tenant access:
+    independently suspendable per tenant, behavior-preserving via backfill,
+    self-healing when a row is missing."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.middleware = TenantMiddleware(lambda r: r)
+        self.tenant_a = Tenant.objects.create(name="Alpha", slug="alpha")
+        self.tenant_b = Tenant.objects.create(name="Beta", slug="beta")
+        # Home in A; the post_save signal creates the home membership.
+        self.user = User.objects.create_user(
+            username='member', email='m@alpha.com', password='x', tenant=self.tenant_a)
+        self.superuser = User.objects.create_superuser(
+            username='root', email='root@x.com', password='x')
+
+    def _member(self, user, tenant):
+        from Tracker.models import TenantMembership
+        return TenantMembership.objects.filter(user=user, tenant=tenant).first()
+
+    def test_signal_creates_home_membership(self):
+        from Tracker.models import TenantMembership
+        m = self._member(self.user, self.tenant_a)
+        self.assertIsNotNone(m)
+        self.assertTrue(m.is_home)
+        self.assertEqual(m.status, TenantMembership.Status.ACTIVE)
+
+    def test_active_member_can_access_suspended_cannot(self):
+        from Tracker.services.core.tenant_membership import (
+            user_is_tenant_member, suspend_membership, reactivate_membership)
+        self.assertTrue(user_is_tenant_member(self.user, self.tenant_a))
+        suspend_membership(self.user, self.tenant_a)
+        self.assertFalse(user_is_tenant_member(self.user, self.tenant_a))  # even home
+        reactivate_membership(self.user, self.tenant_a)
+        self.assertTrue(user_is_tenant_member(self.user, self.tenant_a))
+
+    def test_suspension_is_tenant_scoped(self):
+        """Suspending in B must not affect access to home tenant A."""
+        from Tracker.services.core.tenant_membership import (
+            user_is_tenant_member, ensure_membership, suspend_membership)
+        ensure_membership(self.user, self.tenant_b)  # guest membership in B
+        self.assertTrue(user_is_tenant_member(self.user, self.tenant_b))
+        suspend_membership(self.user, self.tenant_b)
+        self.assertFalse(user_is_tenant_member(self.user, self.tenant_b))
+        self.assertTrue(user_is_tenant_member(self.user, self.tenant_a))  # untouched
+
+    def test_superuser_bypasses_membership(self):
+        from Tracker.services.core.tenant_membership import user_is_tenant_member
+        self.assertTrue(user_is_tenant_member(self.superuser, self.tenant_b))
+
+    def test_self_heal_creates_row_from_legacy_access(self):
+        from Tracker.models import TenantMembership
+        from Tracker.services.core.tenant_membership import user_is_tenant_member
+        # Delete the auto-created home row to simulate a pre-backfill user.
+        TenantMembership.objects.filter(user=self.user, tenant=self.tenant_a).delete()
+        self.assertTrue(user_is_tenant_member(self.user, self.tenant_a))  # legacy home
+        self.assertIsNotNone(self._member(self.user, self.tenant_a))  # healed
+
+    def test_middleware_denies_suspended_home_user(self):
+        from Tracker.services.core.tenant_membership import suspend_membership
+        suspend_membership(self.user, self.tenant_a)
+        self.assertFalse(self.middleware._user_can_access_tenant(self.user, self.tenant_a))
+
+    def test_backfill_is_idempotent_and_covers_roles(self):
+        from Tracker.models import TenantMembership, TenantGroup, UserRole
+        from Tracker.services.core.tenant_membership import backfill_memberships
+        # Give the user a role in B (guest). The role signal also creates a
+        # membership, but backfill must be safe to re-run regardless.
+        grp = TenantGroup.objects.create(tenant=self.tenant_b, name='Viewer')
+        UserRole.objects.create(user=self.user, group=grp)
+        before = TenantMembership.objects.count()
+        backfill_memberships()  # real models
+        after = TenantMembership.objects.count()
+        self.assertEqual(before, after)  # no duplicates
+        self.assertIsNotNone(self._member(self.user, self.tenant_b))
+
+    def test_member_user_ids_includes_guest(self):
+        """A user homed in A but a member of B appears in B's member list."""
+        from Tracker.services.core.tenant_membership import ensure_membership, member_user_ids
+        ensure_membership(self.user, self.tenant_b)
+        self.assertIn(self.user.id, list(member_user_ids(self.tenant_b)))
+        # And is NOT listed in an unrelated tenant.
+        self.assertNotIn(self.user.id, list(member_user_ids(Tenant.objects.create(
+            name="Gamma", slug="gamma"))))

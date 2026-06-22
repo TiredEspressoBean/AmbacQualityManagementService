@@ -41,6 +41,7 @@ from .core import (
     # Tenant-scoped groups and roles
     TenantGroup,
     UserRole,
+    TenantMembership,
 
     # User and company models
     User,
@@ -80,6 +81,7 @@ from .core import (
     # Document management (core infrastructure)
     DocumentType,
     Documents,
+    DocumentLink,
 
     # Permission audit logging
     PermissionChangeLog,
@@ -366,6 +368,7 @@ __all__ = [
     'Facility',
     'TenantGroup',
     'UserRole',
+    'TenantMembership',
     'User',
     'Companies',
     'UserInvitation',
@@ -388,6 +391,7 @@ __all__ = [
     'GroupApproverAssignment',
     'DocumentType',
     'Documents',
+    'DocumentLink',
     'PermissionChangeLog',
 
     # MES Lite (Core Manufacturing)

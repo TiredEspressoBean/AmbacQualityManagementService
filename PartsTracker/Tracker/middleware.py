@@ -273,10 +273,10 @@ class TenantMiddleware:
         """
         Check if user is allowed to access the specified tenant.
 
-        Access is granted if:
-        1. User is a superuser or SaaS-vendor staff (can access any tenant)
-        2. Tenant is the user's home tenant (user.tenant)
-        3. User has a UserRole in a TenantGroup belonging to that tenant
+        Delegates to the per-tenant membership service (the single source of
+        truth, shared with the DRF auth classes): superusers/staff bypass,
+        otherwise an ACTIVE TenantMembership is required. A SUSPENDED membership
+        denies access even to the user's home tenant.
 
         Returns True if access is allowed, False otherwise.
         """
@@ -284,20 +284,8 @@ class TenantMiddleware:
         if not user.is_authenticated:
             return False
 
-        # Superusers and staff can access any tenant (for support)
-        if user.is_superuser or user.is_staff:
-            return True
-
-        # Check if it's the user's home tenant
-        if hasattr(user, 'tenant') and user.tenant == tenant:
-            return True
-
-        # Check if user has any group membership in this tenant (via UserRole)
-        from Tracker.models import UserRole
-        return UserRole.objects.filter(
-            user=user,
-            group__tenant=tenant
-        ).exists()
+        from Tracker.services.core.tenant_membership import user_is_tenant_member
+        return user_is_tenant_member(user, tenant)
 
     def _get_tenant_from_subdomain(self, request):
         """Extract tenant from subdomain."""
@@ -311,7 +299,10 @@ class TenantMiddleware:
         if base_domain and host.endswith(base_domain):
             # Extract subdomain: "acme.example.com" -> "acme"
             subdomain = host[:-len(base_domain)].rstrip('.')
-            if subdomain and subdomain not in ['www', 'api']:
+            # Skip reserved/infra subdomains (www, api, ...) — shared source of
+            # truth with signup validation so the two can't drift.
+            from Tracker.services.core.tenant_slug import is_reserved_slug
+            if subdomain and not is_reserved_slug(subdomain):
                 return Tenant.objects.filter(slug=subdomain, is_active=True).first()
 
         # For local development without subdomains

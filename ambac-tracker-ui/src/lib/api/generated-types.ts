@@ -1730,6 +1730,52 @@ export interface paths {
         patch: operations["api_Documents_partial_update"];
         trace?: never;
     };
+    "/api/Documents/{id}/attach/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Attach this document to an additional target (secondary association).
+         *
+         *     Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
+         *     previously detached link. Never affects the primary GFK owner.
+         *     Returns the refreshed document (with `links`).
+         */
+        post: operations["api_Documents_attach_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Documents/{id}/detach/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Remove a secondary association from this document.
+         *
+         *     Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
+         *     no-op if none exists. Never affects the primary GFK owner.
+         *     Returns the refreshed document (with `links`).
+         */
+        post: operations["api_Documents_detach_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Documents/{id}/download/": {
         parameters: {
             query?: never;
@@ -8956,7 +9002,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Bulk activate/deactivate users */
+        /**
+         * @description Bulk activate/deactivate users **within the current tenant**.
+         *
+         *     Tenant-scoped: suspends/reactivates the user's TenantMembership in the
+         *     request tenant rather than flipping the GLOBAL `User.is_active` (which
+         *     is reserved for platform admins). A user suspended here loses access to
+         *     this tenant only; their account and any other tenant memberships are
+         *     untouched. Request/response shape is unchanged.
+         */
         post: operations["api_User_bulk_activate_create"];
         delete?: never;
         options?: never;
@@ -14849,6 +14903,9 @@ export interface components {
             readonly content_type_info: {
                 [key: string]: unknown;
             } | null;
+            readonly links: {
+                [key: string]: unknown;
+            }[];
             version?: number;
             readonly access_info: {
                 [key: string]: unknown;
@@ -16205,7 +16262,7 @@ export interface components {
             required?: boolean;
             type: components["schemas"]["TypeEnum"];
             /** Format: uuid */
-            readonly step: string;
+            step: string;
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
@@ -16232,6 +16289,8 @@ export interface components {
             lower_tol?: string | null;
             required?: boolean;
             type: components["schemas"]["TypeEnum"];
+            /** Format: uuid */
+            step: string;
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
@@ -18759,6 +18818,8 @@ export interface components {
             lower_tol?: string | null;
             required?: boolean;
             type?: components["schemas"]["TypeEnum"];
+            /** Format: uuid */
+            step?: string;
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
@@ -23519,6 +23580,13 @@ export interface components {
         TenantLogoResponse: {
             logo_url: string | null;
         };
+        /**
+         * @description * `ACTIVE` - ACTIVE
+         *     * `SUSPENDED` - SUSPENDED
+         *     * `NONE` - NONE
+         * @enum {string}
+         */
+        TenantMembershipStatusEnum: "ACTIVE" | "SUSPENDED" | "NONE";
         /** @description Minimal tenant serializer for nested use */
         TenantMinimal: {
             /** Format: uuid */
@@ -24224,6 +24292,7 @@ export interface components {
             readonly tenant: components["schemas"]["TenantMinimal"] | null;
             readonly user_type: string;
             readonly user_type_display: string;
+            readonly tenant_membership_status: components["schemas"]["TenantMembershipStatusEnum"];
         };
         /** @description Detailed user serializer with company info */
         UserDetail: {
@@ -29000,6 +29069,62 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["PatchedDocumentsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Documents"];
+                };
+            };
+        };
+    };
+    api_Documents_attach_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Document. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DocumentsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
+                "application/json": components["schemas"]["DocumentsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Documents"];
+                };
+            };
+        };
+    };
+    api_Documents_detach_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Document. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DocumentsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
+                "application/json": components["schemas"]["DocumentsRequest"];
             };
         };
         responses: {

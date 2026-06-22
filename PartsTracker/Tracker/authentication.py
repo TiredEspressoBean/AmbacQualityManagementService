@@ -92,17 +92,10 @@ class TenantMembershipMixin:
             # layers (IsAuthenticated, view logic) still apply.
             return True
 
-        # Superusers and SaaS-vendor staff may access any tenant (support).
-        if user.is_superuser or user.is_staff:
-            return True
-
-        # Home tenant.
-        if getattr(user, "tenant_id", None) == tenant.id:
-            return True
-
-        # Any role in the requested tenant.
-        from Tracker.models import UserRole
-        return UserRole.objects.filter(user=user, group__tenant=tenant).exists()
+        # Per-tenant membership is the source of truth (superuser/staff bypass
+        # and self-healing legacy fallback live in the service).
+        from Tracker.services.core.tenant_membership import user_is_tenant_member
+        return user_is_tenant_member(user, tenant)
 
 
 class ExpiringTokenAuthentication(TokenAuthentication):

@@ -519,6 +519,11 @@ class TenantCreateSerializer(serializers.ModelSerializer):
 
     def validate_slug(self, value):
         from Tracker.models import Tenant
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        try:
+            value = validate_tenant_slug(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
         if Tenant.objects.filter(slug=value).exists():
             raise serializers.ValidationError("Tenant with this slug already exists.")
         return value
@@ -733,7 +738,14 @@ class SignupSerializer(serializers.Serializer):
 
     def validate_slug(self, value):
         from Tracker.models import Tenant
-        if value and Tenant.objects.filter(slug=value).exists():
+        from Tracker.services.core.tenant_slug import validate_tenant_slug
+        if not value:
+            return value  # auto-generated from company_name in create()
+        try:
+            value = validate_tenant_slug(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+        if Tenant.objects.filter(slug=value).exists():
             raise serializers.ValidationError("This organization URL is already taken.")
         return value
 
@@ -747,13 +759,18 @@ class SignupSerializer(serializers.Serializer):
         from Tracker.models import Tenant
         from django.utils.text import slugify
 
+        from Tracker.services.core.tenant_slug import is_reserved_slug
+
         company_name = validated_data['company_name']
         slug = validated_data.get('slug') or slugify(company_name)
 
-        # Ensure slug is unique
-        base_slug = slug
+        # Ensure slug is unique AND not reserved. slugify can yield a reserved
+        # infra label (e.g. company "WWW" -> "www"), or empty for non-latin
+        # names — fall back and suffix until clear.
+        base_slug = slug or 'org'
+        slug = base_slug
         counter = 1
-        while Tenant.objects.filter(slug=slug).exists():
+        while is_reserved_slug(slug) or Tenant.objects.filter(slug=slug).exists():
             slug = f"{base_slug}-{counter}"
             counter += 1
 

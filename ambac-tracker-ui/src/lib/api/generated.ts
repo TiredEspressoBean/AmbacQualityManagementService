@@ -1813,6 +1813,7 @@ export type Documents = {
     (string | null)
     | undefined;
   content_type_info: {};
+  links: Array<{}>;
   version?: /**
    * @minimum 0
    * @maximum 2147483647
@@ -2695,6 +2696,7 @@ export type MeasurementDefinitionRequest = {
     | undefined;
   required?: boolean | undefined;
   type: TypeEnum;
+  step: string;
   spc_enabled?: /**
    * Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits.
    */
@@ -7185,6 +7187,7 @@ export type User = {
   tenant: TenantMinimal;
   user_type: string;
   user_type_display: string;
+  tenant_membership_status: TenantMembershipStatusEnum;
 };
 export type TenantMinimal = {
   id: string;
@@ -7194,6 +7197,15 @@ export type TenantMinimal = {
    */
   slug: string;
 };
+export type TenantMembershipStatusEnum =
+  /**
+   * * `ACTIVE` - ACTIVE
+   * `SUSPENDED` - SUSPENDED
+   * `NONE` - NONE
+   *
+   * @enum ACTIVE, SUSPENDED, NONE
+   */
+  "ACTIVE" | "SUSPENDED" | "NONE";
 export type PaginatedUserSelectList = {
   /**
    * @example 123
@@ -8175,6 +8187,7 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
   lower_tol: string | null;
   required: boolean;
   type: TypeEnum;
+  step: string;
   /**
    * Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits.
    */
@@ -12504,6 +12517,7 @@ const Documents = z.object({
   content_type: z.number().int().nullish(),
   object_id: z.string().max(36).nullish(),
   content_type_info: z.object({}).partial().passthrough().nullable(),
+  links: z.array(z.object({}).partial().passthrough()),
   version: z.number().int().gte(0).lte(2147483647).optional(),
   access_info: z.object({}).partial().passthrough().nullable(),
   auto_properties: z.object({}).partial().passthrough().nullable(),
@@ -13213,6 +13227,7 @@ const MeasurementDefinitionRequest = z.object({
     .nullish(),
   required: z.boolean().optional(),
   type: TypeEnum,
+  step: z.string().uuid(),
   spc_enabled: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
@@ -13234,6 +13249,7 @@ const PatchedMeasurementDefinitionRequest = z
       .nullable(),
     required: z.boolean(),
     type: TypeEnum,
+    step: z.string().uuid(),
     spc_enabled: z.boolean(),
     archived: z.boolean(),
   })
@@ -15665,6 +15681,7 @@ const TenantMinimal = z.object({
   name: z.string(),
   slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
 });
+const TenantMembershipStatusEnum = z.enum(["ACTIVE", "SUSPENDED", "NONE"]);
 const User = z.object({
   id: z.number().int(),
   username: z
@@ -15684,6 +15701,7 @@ const User = z.object({
   tenant: TenantMinimal.nullable(),
   user_type: z.string(),
   user_type_display: z.string(),
+  tenant_membership_status: TenantMembershipStatusEnum,
 });
 const PaginatedUserList = z.object({
   count: z.number().int(),
@@ -18009,6 +18027,7 @@ export const schemas = {
   TrainingTypeRequest,
   PatchedTrainingTypeRequest,
   TenantMinimal,
+  TenantMembershipStatusEnum,
   User,
   PaginatedUserList,
   UserRequest,
@@ -22414,6 +22433,54 @@ Response:
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/Documents/:id/attach/",
+    alias: "api_Documents_attach_create",
+    description: `Attach this document to an additional target (secondary association).
+
+Body: {content_type: &lt;id&gt;, object_id: &lt;pk&gt;}. Idempotent; revives a
+previously detached link. Never affects the primary GFK owner.
+Returns the refreshed document (with &#x60;links&#x60;).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: DocumentsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Documents,
+  },
+  {
+    method: "post",
+    path: "/api/Documents/:id/detach/",
+    alias: "api_Documents_detach_create",
+    description: `Remove a secondary association from this document.
+
+Body: {content_type: &lt;id&gt;, object_id: &lt;pk&gt;}. Soft-deletes the link;
+no-op if none exists. Never affects the primary GFK owner.
+Returns the refreshed document (with &#x60;links&#x60;).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: DocumentsRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Documents,
   },
   {
     method: "get",
@@ -37546,7 +37613,13 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     method: "post",
     path: "/api/User/bulk-activate/",
     alias: "api_User_bulk_activate_create",
-    description: `Bulk activate/deactivate users`,
+    description: `Bulk activate/deactivate users **within the current tenant**.
+
+Tenant-scoped: suspends/reactivates the user&#x27;s TenantMembership in the
+request tenant rather than flipping the GLOBAL &#x60;User.is_active&#x60; (which
+is reserved for platform admins). A user suspended here loses access to
+this tenant only; their account and any other tenant memberships are
+untouched. Request/response shape is unchanged.`,
     requestFormat: "json",
     parameters: [
       {

@@ -377,13 +377,18 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
 
         is_customer_only = user_group_names and user_group_names <= {'Customer', 'Customers'}
 
-        # Internal tenant users see all users in the request tenant context
+        # Internal tenant users see all MEMBERS of the request tenant context.
+        # Membership-based (not the home-tenant FK) so cross-tenant members
+        # (e.g. consultants homed elsewhere) are visible and manageable here,
+        # matching the access check. Suspended members are included so an admin
+        # can still see and reactivate them.
+        from Tracker.services.core.tenant_membership import member_user_ids
         if request_tenant and not is_customer_only:
-            return qs.filter(tenant=request_tenant)
+            return qs.filter(id__in=member_user_ids(request_tenant))
 
         # Fallback: use user's own tenant if no request tenant context
         if user.tenant and not is_customer_only:
-            return qs.filter(tenant=user.tenant)
+            return qs.filter(id__in=member_user_ids(user.tenant))
 
         # Portal/Customer users see only users from their company
         if user.parent_company:
@@ -457,16 +462,42 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
                        200: OpenApiResponse(response=dict, description="Bulk activation response")})
     @action(detail=False, methods=['post'], url_path='bulk-activate')
     def bulk_activate(self, request):
-        """Bulk activate/deactivate users"""
+        """Bulk activate/deactivate users **within the current tenant**.
+
+        Tenant-scoped: suspends/reactivates the user's TenantMembership in the
+        request tenant rather than flipping the GLOBAL `User.is_active` (which
+        is reserved for platform admins). A user suspended here loses access to
+        this tenant only; their account and any other tenant memberships are
+        untouched. Request/response shape is unchanged.
+        """
+        from Tracker.services.core.tenant_membership import (
+            suspend_membership, reactivate_membership,
+        )
+
         user_ids = request.data.get('user_ids', [])
         is_active = request.data.get('is_active', True)
 
         if not user_ids:
             return Response({"detail": "No user IDs provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Filter to only users accessible by the requesting user
-        queryset = self.get_queryset().filter(id__in=user_ids)
-        updated_count = queryset.update(is_active=is_active)
+        tenant = self.tenant  # request tenant (middleware)
+        if tenant is None:
+            return Response(
+                {"detail": "No tenant context for membership change"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Filter to only users accessible by the requesting user (membership-scoped).
+        targets = self.get_queryset().filter(id__in=user_ids)
+        updated_count = 0
+        for user in targets:
+            if user.id == request.user.id:
+                continue  # never let an admin suspend their own access
+            if is_active:
+                reactivate_membership(user, tenant)
+            else:
+                suspend_membership(user, tenant, by=request.user)
+            updated_count += 1
 
         return Response(
             {"detail": f"Updated {updated_count} users", "updated_count": updated_count, "is_active": is_active})
@@ -1213,6 +1244,69 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
                 {"detail": "Failed to submit for approval"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def _resolve_link_target(self, request):
+        """Resolve (content_type, object_id) from the request body to a live,
+        tenant-scoped target instance. Returns (target, error_response)."""
+        content_type_id = request.data.get('content_type')
+        object_id = request.data.get('object_id')
+        if not content_type_id or not object_id:
+            return None, Response(
+                {"detail": "Both 'content_type' (id) and 'object_id' are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            ct = ContentType.objects.get_for_id(content_type_id)
+        except ContentType.DoesNotExist:
+            return None, Response(
+                {"detail": "Unknown content_type."}, status=status.HTTP_400_BAD_REQUEST,
+            )
+        model = ct.model_class()
+        if model is None:
+            return None, Response(
+                {"detail": "content_type resolves to no model."}, status=status.HTTP_400_BAD_REQUEST,
+            )
+        # tenant-safe: `.objects` auto-scopes — a target in another tenant
+        # (or non-existent) is rejected, so attach can't cross tenants.
+        target = model.objects.filter(pk=object_id).first()
+        if target is None:
+            return None, Response(
+                {"detail": "Target object was not found in your tenant."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return target, None
+
+    @action(detail=True, methods=['post'])
+    def attach(self, request, pk=None):
+        """Attach this document to an additional target (secondary association).
+
+        Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
+        previously detached link. Never affects the primary GFK owner.
+        Returns the refreshed document (with `links`).
+        """
+        document = self.get_object()
+        target, error = self._resolve_link_target(request)
+        if error is not None:
+            return error
+        from Tracker.services.core.documents import attach_document_to
+        attach_document_to(document, target)
+        return Response(self.get_serializer(document).data)
+
+    @action(detail=True, methods=['post'])
+    def detach(self, request, pk=None):
+        """Remove a secondary association from this document.
+
+        Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
+        no-op if none exists. Never affects the primary GFK owner.
+        Returns the refreshed document (with `links`).
+        """
+        document = self.get_object()
+        target, error = self._resolve_link_target(request)
+        if error is not None:
+            return error
+        from Tracker.services.core.documents import detach_document_from
+        detach_document_from(document, target)
+        return Response(self.get_serializer(document).data)
 
     @action(detail=True, methods=['post'])
     def revise(self, request, pk=None):

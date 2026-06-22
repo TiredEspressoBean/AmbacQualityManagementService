@@ -6,16 +6,43 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 
+from .signals_versioning import revision_created
+
 from .models import (
     QualityReports, QuarantineDisposition, ThreeDModel, Documents,
     ApprovalRequest, ApprovalResponse,
     CAPA, CapaTasks, CapaVerification,
     Tenant,
+    UserRole,
     WorkOrder, WorkOrderStatus,
 )
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+# --- TenantMembership sync -------------------------------------------------
+# Keep the per-tenant membership table in step with the two ways a user gains
+# tenant access, regardless of which code path created them (allauth adapters,
+# serializers, management commands, seeds): their home `User.tenant`, and any
+# `UserRole` grant in a tenant. ensure_membership is idempotent and never
+# reactivates a suspended row, so this only ever *adds* missing memberships.
+
+@receiver(post_save, sender=User)
+def ensure_home_membership(sender, instance, **kwargs):
+    if instance.tenant_id:
+        from Tracker.services.core.tenant_membership import ensure_membership
+        ensure_membership(instance, instance.tenant, is_home=True)
+
+
+@receiver(post_save, sender=UserRole)
+def ensure_membership_for_role(sender, instance, created, **kwargs):
+    if not created:
+        return
+    from Tracker.services.core.tenant_membership import ensure_membership
+    tenant = instance.group.tenant
+    if tenant is not None:
+        ensure_membership(instance.user, tenant)
 
 
 @receiver(post_save, sender=QualityReports)
@@ -323,6 +350,21 @@ def cleanup_chunks_on_archive(sender, instance, **kwargs):
         deleted_count, _ = DocChunk.objects.filter(doc=instance).delete()
         if deleted_count > 0:
             logger.info(f"Cleaned up {deleted_count} chunks for archived document {instance.id}")
+
+
+@receiver(revision_created, sender=Documents)
+def carry_document_links_forward(sender, old_version, new_version, **kwargs):
+    """Carry a document's secondary DocumentLinks onto its new version.
+
+    The base `create_new_version` copies concrete fields (so the primary GFK
+    carries forward), but reverse-relation links are not concrete fields.
+    Cloning them here keeps a re-versioned document's additional associations
+    consistent with how its primary attachment already behaves. (Composite-
+    parent clones go through `clone_current_documents`, not
+    `create_new_version`, so they are handled there and never double-cloned.)
+    """
+    from .services.core.documents import clone_document_links
+    clone_document_links(source_document=old_version, target_document=new_version)
 
 
 # =============================================================================

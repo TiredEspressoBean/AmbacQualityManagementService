@@ -587,20 +587,32 @@ API_TOKEN_TTL_SECONDS = int(os.getenv("API_TOKEN_TTL_SECONDS", str(60 * 60)))  #
 # In production: actual frontend URL
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
-# Default is real SMTP. Override via env to make email a no-op while no mail
-# path is available (e.g. during the GCC High migration):
+# --- Email / SMTP ---
+# Fully env-driven SMTP. The same knobs serve any provider:
+#   SendGrid: EMAIL_HOST=smtp.sendgrid.net, EMAIL_HOST_USER=apikey,
+#             EMAIL_HOST_PASSWORD=<api-key>, EMAIL_PORT=587, EMAIL_USE_TLS=true
+#   On-prem:  point EMAIL_HOST/EMAIL_PORT at the internal relay; many allow the
+#             app's IP unauthenticated (leave USER/PASSWORD blank).
+# Override the backend to make email a no-op while no mail path is available:
 #   EMAIL_BACKEND=django.core.mail.backends.dummy.EmailBackend    (silently discard)
 #   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend  (log to stdout)
+def _env_bool(name, default):
+    # Any non-empty string is truthy, so "False" would read as True — parse it.
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
+
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "outbound-us1.ppe-hosted.com")
+# Neutral default (localhost). Set EMAIL_HOST per deployment — no provider baked in.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 # Env-driven so on-prem can use M365 Direct Send (port 25) vs submission (587).
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-# Parse to a real bool — any non-empty string (e.g. "False") is truthy, so the
-# raw env value must be interpreted, not used directly.
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").strip().lower() in ("1", "true", "yes", "on")
+# STARTTLS (587) vs implicit TLS (465). Mutually exclusive — set exactly one.
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", "True")
+EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", "False")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@example.com")
+# Address Django uses for error/admin mail; defaults to the From address.
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 # Fail fast instead of hanging forever when a mail host is firewalled/blackholed
 # (a blocked outbound SMTP connect with no timeout blocks the request/worker).
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
@@ -790,6 +802,23 @@ DEMO_TENANT_SLUG = os.getenv("DEMO_TENANT_SLUG", "demo")
 # Base domain for subdomain-based tenant resolution (SaaS mode)
 # e.g., "example.com" -> "acme.example.com" resolves to tenant "acme"
 TENANT_BASE_DOMAIN = os.getenv("TENANT_BASE_DOMAIN", "localhost")
+
+# Slugs that may never be used as a tenant slug: in SaaS mode a slug becomes a
+# live subdomain under TENANT_BASE_DOMAIN (e.g. www.uqmes.com), so these collide
+# with infrastructure subdomains or are otherwise reserved. Comma-separated env
+# override; lower-cased on read. (SaaS-only; ignored in dedicated mode.)
+# NOTE: this is infra subdomains ONLY. Never list a real tenant slug here —
+# the subdomain resolver skips reserved slugs, so reserving e.g. "demo" would
+# make demo.<domain> fail to resolve to the demo tenant.
+RESERVED_TENANT_SLUGS = [
+    s.strip().lower()
+    for s in os.getenv(
+        "RESERVED_TENANT_SLUGS",
+        "www,api,app,admin,mail,smtp,docs,static,assets,cdn,media,"
+        "backend,frontend,proxy,status,auth,billing,support,help",
+    ).split(",")
+    if s.strip()
+]
 
 # Enable Row-Level Security (requires non-superuser DB role)
 # Set to True once RLS policies are deployed and app_user role is configured

@@ -61,7 +61,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { useTenantGroups } from "@/hooks/useTenantGroups";
-import { useUpdateUser } from "@/hooks/useUpdateUser";
+import { useSetUsersTenantActive } from "@/hooks/useSetUsersTenantActive";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
@@ -87,9 +87,15 @@ const STATUS_VARIANT: Record<UserStatus, "default" | "secondary" | "destructive"
     expired_invite: "destructive",
 };
 
-/** Derive a status from User fields. Real implementation will read
- *  invitation records; this mock uses last_login + is_active for now. */
-function deriveStatus(user: { is_active?: boolean | null; last_login?: string | null }): UserStatus {
+/** Derive a status from User fields. "inactive" reflects the per-tenant
+ *  membership being SUSPENDED (the tenant-scoped deactivation) OR the global
+ *  account being disabled; pending/active otherwise. */
+function deriveStatus(user: {
+    is_active?: boolean | null;
+    last_login?: string | null;
+    tenant_membership_status?: string | null;
+}): UserStatus {
+    if (user.tenant_membership_status === "SUSPENDED") return "inactive";
     if (user.is_active === false) return "inactive";
     if (!user.last_login) return "pending_invite";
     return "active";
@@ -126,7 +132,7 @@ export function UserManagementPage() {
         search: search || undefined,
     });
     const { data: groupsData } = useTenantGroups({ limit: 200 });
-    const updateUser = useUpdateUser();
+    const setTenantActive = useSetUsersTenantActive();
     const sendInvite = useSendUserInvitation();
     const addToGroup = useAddUserToTenantGroup();
 
@@ -215,10 +221,7 @@ export function UserManagementPage() {
 
     const handleSetActive = async (userId: number, email: string, active: boolean) => {
         try {
-            await updateUser.mutateAsync({
-                id: userId,
-                data: { is_active: active } as never,
-            });
+            await setTenantActive.mutateAsync({ userIds: [userId], isActive: active });
             toast.success(`${active ? "Activated" : "Deactivated"} ${email}`);
             invalidateUsers();
         } catch (err) {
@@ -256,14 +259,29 @@ export function UserManagementPage() {
 
     const handleBulkResend = () =>
         handleBulkFanout("Resent invitations", (id) => sendInvite.mutateAsync(id));
-    const handleBulkActivate = () =>
-        handleBulkFanout("Activated", (id) =>
-            updateUser.mutateAsync({ id, data: { is_active: true } as never }),
-        );
-    const handleBulkDeactivate = () =>
-        handleBulkFanout("Deactivated", (id) =>
-            updateUser.mutateAsync({ id, data: { is_active: false } as never }),
-        );
+
+    /** Activate/deactivate the current selection in ONE tenant-scoped call.
+     *  The backend skips the requesting user, so updated_count may be < the
+     *  number selected — report the server's count. */
+    const handleBulkSetActive = async (active: boolean) => {
+        if (selected.size === 0) return;
+        const userIds = [...selected];
+        const label = active ? "Activated" : "Deactivated";
+        try {
+            const res = await setTenantActive.mutateAsync({ userIds, isActive: active });
+            const n = res?.updated_count ?? userIds.length;
+            toast.success(`${label}: ${n} user${n === 1 ? "" : "s"}`);
+        } catch (err) {
+            toast.error(
+                `${active ? "Activate" : "Deactivate"} failed`,
+                { description: err instanceof Error ? err.message : undefined },
+            );
+        }
+        invalidateUsers();
+        clearSelection();
+    };
+    const handleBulkActivate = () => handleBulkSetActive(true);
+    const handleBulkDeactivate = () => handleBulkSetActive(false);
     const handleBulkAddToGroup = () => {
         if (selected.size === 0) return;
         setAddToGroupId(""); // reset previous pick
