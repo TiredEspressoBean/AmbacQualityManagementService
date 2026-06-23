@@ -5460,7 +5460,7 @@ paths:
 
         Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
         previously detached link. Never affects the primary GFK owner.
-        Returns the refreshed document (with `links`).
+        Returns the document's current `links`.
       parameters:
       - in: path
         name: id
@@ -5475,13 +5475,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkTargetRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkTargetRequestRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkTargetRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -5491,7 +5491,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/DocumentLinksResponse'
           description: ''
   /api/Documents/{id}/detach/:
     post:
@@ -5501,7 +5501,7 @@ paths:
 
         Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
         no-op if none exists. Never affects the primary GFK owner.
-        Returns the refreshed document (with `links`).
+        Returns the document's current `links`.
       parameters:
       - in: path
         name: id
@@ -5516,13 +5516,13 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkDetachRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkDetachRequestRequest'
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentsRequest'
+              $ref: '#/components/schemas/DocumentLinkDetachRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -5532,7 +5532,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Documents'
+                $ref: '#/components/schemas/DocumentLinksDetachResponse'
           description: ''
   /api/Documents/{id}/download/:
     get:
@@ -34305,6 +34305,48 @@ components:
         * `SCRAP` - Scrap
         * `USE_AS_IS` - Use As Is
         * `RETURN_TO_SUPPLIER` - Return to Supplier
+    DocumentLinkDetachRequestRequest:
+      type: object
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          minLength: 1
+      required:
+      - content_type
+      - object_id
+    DocumentLinkTargetRequestRequest:
+      type: object
+      properties:
+        content_type:
+          type: integer
+        object_id:
+          type: string
+          minLength: 1
+      required:
+      - content_type
+      - object_id
+    DocumentLinksDetachResponse:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - links
+    DocumentLinksResponse:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - links
     DocumentStatsResponse:
       type: object
       properties:
@@ -34538,6 +34580,10 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        content_object_display:
+          type: string
+          nullable: true
+          readOnly: true
         links:
           type: array
           items:
@@ -34670,6 +34716,7 @@ components:
       - approved_by
       - approved_by_info
       - auto_properties
+      - content_object_display
       - content_type_info
       - created_at
       - days_until_review

@@ -1287,13 +1287,42 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             )
         return target, None
 
+    def _links_payload(self, document):
+        """Lightweight representation of a document's live secondary links.
+
+        attach/detach return THIS rather than the full DocumentsSerializer: the
+        full serializer builds the `file` absolute URL (slow, and raises under
+        DEBUG=False when the request host isn't in ALLOWED_HOSTS), and the
+        frontend ignores the body anyway — it invalidates and refetches the
+        document via GET. Mirrors DocumentsSerializer.get_links.
+        """
+        return {"links": [
+            {
+                "id": link.id,
+                "content_type": link.content_type_id,
+                "model": link.content_type.model if link.content_type else None,
+                "object_id": link.object_id,
+                "target_str": str(link.content_object) if link.content_object else None,
+            }
+            for link in document.links.filter(archived=False).select_related("content_type")
+        ]}
+
+    @extend_schema(
+        request=inline_serializer(name="DocumentLinkTargetRequest", fields={
+            "content_type": serializers.IntegerField(),
+            "object_id": serializers.CharField(),
+        }),
+        responses=inline_serializer(name="DocumentLinksResponse", fields={
+            "links": serializers.ListField(child=serializers.DictField()),
+        }),
+    )
     @action(detail=True, methods=['post'])
     def attach(self, request, pk=None):
         """Attach this document to an additional target (secondary association).
 
         Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
         previously detached link. Never affects the primary GFK owner.
-        Returns the refreshed document (with `links`).
+        Returns the document's current `links`.
         """
         document = self.get_object()
         target, error = self._resolve_link_target(request)
@@ -1301,15 +1330,24 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             return error
         from Tracker.services.core.documents import attach_document_to
         attach_document_to(document, target)
-        return Response(self.get_serializer(document).data)
+        return Response(self._links_payload(document))
 
+    @extend_schema(
+        request=inline_serializer(name="DocumentLinkDetachRequest", fields={
+            "content_type": serializers.IntegerField(),
+            "object_id": serializers.CharField(),
+        }),
+        responses=inline_serializer(name="DocumentLinksDetachResponse", fields={
+            "links": serializers.ListField(child=serializers.DictField()),
+        }),
+    )
     @action(detail=True, methods=['post'])
     def detach(self, request, pk=None):
         """Remove a secondary association from this document.
 
         Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
         no-op if none exists. Never affects the primary GFK owner.
-        Returns the refreshed document (with `links`).
+        Returns the document's current `links`.
         """
         document = self.get_object()
         target, error = self._resolve_link_target(request)
@@ -1317,7 +1355,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vi
             return error
         from Tracker.services.core.documents import detach_document_from
         detach_document_from(document, target)
-        return Response(self.get_serializer(document).data)
+        return Response(self._links_payload(document))
 
     @action(detail=True, methods=['post'])
     def revise(self, request, pk=None):

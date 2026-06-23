@@ -1744,7 +1744,7 @@ export interface paths {
          *
          *     Body: {content_type: <id>, object_id: <pk>}. Idempotent; revives a
          *     previously detached link. Never affects the primary GFK owner.
-         *     Returns the refreshed document (with `links`).
+         *     Returns the document's current `links`.
          */
         post: operations["api_Documents_attach_create"];
         delete?: never;
@@ -1767,7 +1767,7 @@ export interface paths {
          *
          *     Body: {content_type: <id>, object_id: <pk>}. Soft-deletes the link;
          *     no-op if none exists. Never affects the primary GFK owner.
-         *     Returns the refreshed document (with `links`).
+         *     Returns the document's current `links`.
          */
         post: operations["api_Documents_detach_create"];
         delete?: never;
@@ -14783,6 +14783,24 @@ export interface components {
          * @enum {string}
          */
         DispositionTypeEnum: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+        DocumentLinkDetachRequestRequest: {
+            content_type: number;
+            object_id: string;
+        };
+        DocumentLinkTargetRequestRequest: {
+            content_type: number;
+            object_id: string;
+        };
+        DocumentLinksDetachResponse: {
+            links: {
+                [key: string]: unknown;
+            }[];
+        };
+        DocumentLinksResponse: {
+            links: {
+                [key: string]: unknown;
+            }[];
+        };
         DocumentStatsResponse: {
             total: number;
             pending_approval: number;
@@ -14903,6 +14921,7 @@ export interface components {
             readonly content_type_info: {
                 [key: string]: unknown;
             } | null;
+            readonly content_object_display: string | null;
             readonly links: {
                 [key: string]: unknown;
             }[];
@@ -29094,9 +29113,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
+                "multipart/form-data": components["schemas"]["DocumentLinkTargetRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentLinkTargetRequestRequest"];
+                "application/json": components["schemas"]["DocumentLinkTargetRequestRequest"];
             };
         };
         responses: {
@@ -29105,7 +29124,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["DocumentLinksResponse"];
                 };
             };
         };
@@ -29122,9 +29141,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["DocumentsRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["DocumentsRequest"];
-                "application/json": components["schemas"]["DocumentsRequest"];
+                "multipart/form-data": components["schemas"]["DocumentLinkDetachRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DocumentLinkDetachRequestRequest"];
+                "application/json": components["schemas"]["DocumentLinkDetachRequestRequest"];
             };
         };
         responses: {
@@ -29133,7 +29152,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Documents"];
+                    "application/json": components["schemas"]["DocumentLinksDetachResponse"];
                 };
             };
         };

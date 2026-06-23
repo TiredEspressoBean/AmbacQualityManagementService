@@ -55,6 +55,40 @@ function applySelection(editor: Editor, range: SlashRange, entry: CatalogEntry) 
 
 export const SlashCommand = Extension.create({
     name: "dwiSlashCommand",
+    // Above StarterKit (default 100) so the menu's Enter / Arrow / Escape
+    // shortcuts win while it's open — otherwise StarterKit's Enter (split
+    // block) fires first and the operator has to click. When the menu is
+    // closed these handlers return false and the default behavior runs.
+    priority: 1000,
+    addKeyboardShortcuts() {
+        const editor = this.editor as Editor;
+        const state = () => slashPluginKey.getState(editor.state);
+        const move = (delta: number) => {
+            const st = state();
+            if (!st?.active || st.items.length === 0) return false;
+            editor.view.dispatch(
+                editor.state.tr.setMeta(slashPluginKey, { type: "move", index: st.index + delta }),
+            );
+            return true;
+        };
+        return {
+            ArrowDown: () => move(1),
+            ArrowUp: () => move(-1),
+            Enter: () => {
+                const st = state();
+                if (!st?.active || st.items.length === 0) return false;
+                const entry = st.items[st.index];
+                if (entry && st.range) applySelection(editor, st.range, entry);
+                return true;
+            },
+            Escape: () => {
+                const st = state();
+                if (!st?.active) return false;
+                editor.view.dispatch(editor.state.tr.setMeta(slashPluginKey, { type: "close" }));
+                return true;
+            },
+        };
+    },
     addProseMirrorPlugins() {
         return [
             new Plugin<SlashState>({
@@ -78,30 +112,6 @@ export const SlashCommand = Extension.create({
                         }
                         if (index >= items.length) index = 0;
                         return { active: true, query: match.query, range: match.range, items, index };
-                    },
-                },
-                props: {
-                    handleKeyDown(view, event) {
-                        const st = slashPluginKey.getState(view.state);
-                        if (!st?.active || st.items.length === 0) return false;
-                        switch (event.key) {
-                            case "ArrowDown":
-                                view.dispatch(view.state.tr.setMeta(slashPluginKey, { type: "move", index: st.index + 1 }));
-                                return true;
-                            case "ArrowUp":
-                                view.dispatch(view.state.tr.setMeta(slashPluginKey, { type: "move", index: st.index - 1 }));
-                                return true;
-                            case "Enter": {
-                                const entry = st.items[st.index];
-                                if (entry && st.range) applySelection(this.editor as Editor, st.range, entry);
-                                return true;
-                            }
-                            case "Escape":
-                                view.dispatch(view.state.tr.setMeta(slashPluginKey, { type: "close" }));
-                                return true;
-                            default:
-                                return false;
-                        }
                     },
                 },
             }),

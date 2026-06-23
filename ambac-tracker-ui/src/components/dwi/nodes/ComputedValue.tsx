@@ -29,6 +29,7 @@ import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { DecimalAttrInput, TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
 import { usePartContext } from "../shared/PartContext";
+import { useSubstepAuthoringContext } from "../shared/SubstepAuthoringContext";
 import { FORMULA_PARSER } from "@/lib/dwi/expr";
 import { useRetrieveMeasurementDefinitions } from "@/hooks/useRetrieveMeasurementDefinitions";
 import { useStepExecutionMeasurements } from "@/hooks/useStepExecutionMeasurements";
@@ -87,7 +88,13 @@ function VariablesEditor({
     variables: ComputedVariable[];
     update: (next: ComputedVariable[]) => void;
 }) {
-    const { data: defsResp } = useRetrieveMeasurementDefinitions();
+    // Scope the variable-source dropdown to the step being authored (a
+    // measurement belongs to one step). Unscoped fallback only on the spike
+    // page, which has no step context.
+    const { stepId } = useSubstepAuthoringContext();
+    const { data: defsResp } = useRetrieveMeasurementDefinitions(
+        stepId ? { step: stepId } : undefined,
+    );
     const defs = (defsResp?.results ?? []) as Array<{
         id: string | number;
         label?: string | null;

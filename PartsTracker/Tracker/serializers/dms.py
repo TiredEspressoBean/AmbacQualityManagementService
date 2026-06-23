@@ -74,6 +74,7 @@ class DocumentsSerializer(SecureModelMixin):
     uploaded_by_info = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
     content_type_info = serializers.SerializerMethodField()
+    content_object_display = serializers.SerializerMethodField()
     links = serializers.SerializerMethodField()
     access_info = serializers.SerializerMethodField()
     auto_properties = serializers.SerializerMethodField()
@@ -90,7 +91,7 @@ class DocumentsSerializer(SecureModelMixin):
     class Meta:
         model = Documents
         fields = ('id', 'classification', 'ai_readable', 'is_image', 'file_name', 'file', 'file_url', 'upload_date',
-                  'uploaded_by', 'uploaded_by_info', 'uploaded_by_name', 'content_type', 'object_id', 'content_type_info', 'links', 'version',
+                  'uploaded_by', 'uploaded_by_info', 'uploaded_by_name', 'content_type', 'object_id', 'content_type_info', 'content_object_display', 'links', 'version',
                   'access_info', 'auto_properties',
                   'status', 'status_display', 'approved_by', 'approved_by_info', 'approved_at',
                   'document_type', 'document_type_code', 'document_type_info', 'change_justification',
@@ -103,7 +104,7 @@ class DocumentsSerializer(SecureModelMixin):
                   'created_at', 'updated_at')
         read_only_fields = (
             'upload_date', 'created_at', 'updated_at', 'archived', 'file_url', 'uploaded_by_info', 'uploaded_by_name',
-            'content_type_info', 'links', 'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
+            'content_type_info', 'content_object_display', 'links', 'access_info', 'auto_properties', 'approved_by', 'approved_at', 'status_display', 'document_type_info',
             'previous_version', 'is_current_version',
             # DMS Compliance - these are calculated on release, not editable
             'effective_date', 'review_date', 'obsolete_date', 'retention_until',
@@ -132,6 +133,15 @@ class DocumentsSerializer(SecureModelMixin):
             return {'app_label': obj.content_type.app_label, 'model': obj.content_type.model,
                     'name': str(obj.content_type)}
         return None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_content_object_display(self, obj):
+        """Human-readable label for the primary GFK owner (str of the object),
+        so the UI shows e.g. 'Common Rail Injector' rather than a raw UUID."""
+        try:
+            return str(obj.content_object) if obj.content_object else None
+        except Exception:
+            return None
 
     @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_links(self, obj):

@@ -1813,6 +1813,7 @@ export type Documents = {
     (string | null)
     | undefined;
   content_type_info: {};
+  content_object_display: string | null;
   links: Array<{}>;
   version?: /**
    * @minimum 0
@@ -12517,6 +12518,7 @@ const Documents = z.object({
   content_type: z.number().int().nullish(),
   object_id: z.string().max(36).nullish(),
   content_type_info: z.object({}).partial().passthrough().nullable(),
+  content_object_display: z.string().nullable(),
   links: z.array(z.object({}).partial().passthrough()),
   version: z.number().int().gte(0).lte(2147483647).optional(),
   access_info: z.object({}).partial().passthrough().nullable(),
@@ -12588,6 +12590,20 @@ const PatchedDocumentsRequest = z
     export_control_reason: z.string().max(100),
   })
   .partial();
+const DocumentLinkTargetRequestRequest = z.object({
+  content_type: z.number().int(),
+  object_id: z.string().min(1),
+});
+const DocumentLinksResponse = z.object({
+  links: z.array(z.object({}).partial().passthrough()),
+});
+const DocumentLinkDetachRequestRequest = z.object({
+  content_type: z.number().int(),
+  object_id: z.string().min(1),
+});
+const DocumentLinksDetachResponse = z.object({
+  links: z.array(z.object({}).partial().passthrough()),
+});
 const DocumentStatsResponse = z.object({
   total: z.number().int(),
   pending_approval: z.number().int(),
@@ -17725,6 +17741,10 @@ export const schemas = {
   PaginatedDocumentsList,
   DocumentsRequest,
   PatchedDocumentsRequest,
+  DocumentLinkTargetRequestRequest,
+  DocumentLinksResponse,
+  DocumentLinkDetachRequestRequest,
+  DocumentLinksDetachResponse,
   DocumentStatsResponse,
   DowntimeCategoryEnum,
   DowntimeEvent,
@@ -22442,13 +22462,13 @@ Response:
 
 Body: {content_type: &lt;id&gt;, object_id: &lt;pk&gt;}. Idempotent; revives a
 previously detached link. Never affects the primary GFK owner.
-Returns the refreshed document (with &#x60;links&#x60;).`,
+Returns the document&#x27;s current &#x60;links&#x60;.`,
     requestFormat: "form-data",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: DocumentsRequest,
+        schema: DocumentLinkTargetRequestRequest,
       },
       {
         name: "id",
@@ -22456,7 +22476,7 @@ Returns the refreshed document (with &#x60;links&#x60;).`,
         schema: z.string().uuid(),
       },
     ],
-    response: Documents,
+    response: DocumentLinksResponse,
   },
   {
     method: "post",
@@ -22466,13 +22486,13 @@ Returns the refreshed document (with &#x60;links&#x60;).`,
 
 Body: {content_type: &lt;id&gt;, object_id: &lt;pk&gt;}. Soft-deletes the link;
 no-op if none exists. Never affects the primary GFK owner.
-Returns the refreshed document (with &#x60;links&#x60;).`,
+Returns the document&#x27;s current &#x60;links&#x60;.`,
     requestFormat: "form-data",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: DocumentsRequest,
+        schema: DocumentLinkDetachRequestRequest,
       },
       {
         name: "id",
@@ -22480,7 +22500,7 @@ Returns the refreshed document (with &#x60;links&#x60;).`,
         schema: z.string().uuid(),
       },
     ],
-    response: Documents,
+    response: DocumentLinksDetachResponse,
   },
   {
     method: "get",
