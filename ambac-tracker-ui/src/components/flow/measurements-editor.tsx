@@ -18,6 +18,9 @@ interface MeasurementDefinition {
   upper_tol?: string | null;
   lower_tol?: string | null;
   required?: boolean;
+  characteristic_number?: string | null;
+  default_equipment?: string | null;
+  backup_equipment?: string | null;
 }
 
 export interface MeasurementsEditorProps {
@@ -99,7 +102,7 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Ruler className="h-5 w-5" />

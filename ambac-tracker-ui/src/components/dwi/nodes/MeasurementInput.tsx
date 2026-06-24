@@ -58,6 +58,13 @@ type Attrs = {
     measurement_definition_id: string | null;
     /** "NUMERIC" → operator types a value; "PASS_FAIL" → operator picks Pass/Fail. */
     measurement_type: string;
+    /** Preferred + fallback gauge, copied from the linked MeasurementDefinition.
+     *  Both nullable — visual checks use no instrument. The operator picks which
+     *  was actually used; the choice is captured on StepExecutionMeasurement. */
+    default_equipment_id: string | null;
+    default_equipment_name: string;
+    backup_equipment_id: string | null;
+    backup_equipment_name: string;
 };
 
 type MeasurementDefShape = {
@@ -68,7 +75,30 @@ type MeasurementDefShape = {
     upper_tol?: number | null;
     lower_tol?: number | null;
     type?: string | null;
+    characteristic_number?: string | null;
+    default_equipment?: string | null;
+    default_equipment_name?: string | null;
+    backup_equipment?: string | null;
+    backup_equipment_name?: string | null;
 };
+
+/** Operator response shape for a measurement node. Tolerates the legacy
+ *  bare-string form (value only) from responses captured before equipment
+ *  selection existed. */
+type MeasResponse = { value: string; equipment_id: string | null };
+function readMeasResponse(resp: unknown): MeasResponse {
+    if (resp && typeof resp === "object") {
+        const r = resp as Partial<MeasResponse>;
+        return {
+            value: typeof r.value === "string" ? r.value : "",
+            equipment_id: r.equipment_id ?? null,
+        };
+    }
+    return { value: typeof resp === "string" ? resp : "", equipment_id: null };
+}
+
+// Radix Select can't use an empty-string item value; equipment is optional.
+const EQUIP_NONE = "__none__";
 
 export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -103,6 +133,11 @@ export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewPro
             upper_tol: def.upper_tol ?? null,
             lower_tol: def.lower_tol ?? null,
             measurement_type: def.type ?? "NUMERIC",
+            characteristic_number: def.characteristic_number ?? "",
+            default_equipment_id: def.default_equipment ? String(def.default_equipment) : null,
+            default_equipment_name: def.default_equipment_name ?? "",
+            backup_equipment_id: def.backup_equipment ? String(def.backup_equipment) : null,
+            backup_equipment_name: def.backup_equipment_name ?? "",
         });
     };
 
@@ -208,7 +243,26 @@ function View(props: NodeViewProps) {
     const isOperator = !editor.isEditable;
     const { value, setValue } = useOperatorResponse(a.node_id);
 
-    const rawValue = typeof value === "string" ? value : "";
+    const resp = readMeasResponse(value);
+    const rawValue = resp.value;
+
+    // Equipment the operator may pick from — the spec's default + backup (both
+    // optional; visual checks have none). Effective selection falls back to the
+    // configured default so an untouched node still records the intended gauge.
+    const equipmentOptions = [
+        a.default_equipment_id
+            ? { id: a.default_equipment_id, name: a.default_equipment_name || "Default", tag: "default" as const }
+            : null,
+        a.backup_equipment_id
+            ? { id: a.backup_equipment_id, name: a.backup_equipment_name || "Backup", tag: "backup" as const }
+            : null,
+    ].filter((o): o is { id: string; name: string; tag: "default" | "backup" } => o !== null);
+    const selectedEquipmentId = resp.equipment_id ?? a.default_equipment_id ?? null;
+
+    // Always write the structured {value, equipment_id} shape so the chosen
+    // gauge rides along with the reading into StepExecutionMeasurement.
+    const writeValue = (v: string) => setValue({ value: v, equipment_id: selectedEquipmentId });
+    const writeEquipment = (eid: string | null) => setValue({ value: rawValue, equipment_id: eid });
     // in-spec: pass/fail → "PASS" passes; numeric → within nominal ± tolerance.
     let inSpec: boolean | null = null;
     if (isOperator && rawValue) {
@@ -272,14 +326,15 @@ function View(props: NodeViewProps) {
                         : "no target"
             }
         >
-            <div className="flex items-center gap-2" contentEditable={false}>
+            <div className="space-y-2" contentEditable={false}>
+                <div className="flex items-center gap-2">
                 {isPassFail ? (
                     <Select
                         value={rawValue}
                         disabled={!isOperator}
                         onValueChange={(v) => {
                             if (!isOperator) return;
-                            setValue(v);
+                            writeValue(v);
                             if (v === "FAIL") {
                                 toast.warning(
                                     `${label || "Measurement"} failed — flagged for QA review.`,
@@ -304,12 +359,57 @@ function View(props: NodeViewProps) {
                             disabled={!isOperator}
                             placeholder="—"
                             value={rawValue}
-                            onChange={(e) => isOperator && setValue(e.target.value)}
+                            onChange={(e) => isOperator && writeValue(e.target.value)}
                             onBlur={handleOperatorBlur}
                             className="w-32 rounded border bg-background px-2 py-1 text-sm font-mono"
                         />
                         {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
                     </>
+                )}
+                </div>
+
+                {/* Equipment: operator picks which gauge was used (default
+                    pre-selected); authoring shows the configured default/backup. */}
+                {equipmentOptions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Equipment
+                        </span>
+                        {isOperator ? (
+                            <Select
+                                value={selectedEquipmentId ?? EQUIP_NONE}
+                                onValueChange={(v) => writeEquipment(v === EQUIP_NONE ? null : v)}
+                            >
+                                <SelectTrigger className="h-7 w-48 text-xs">
+                                    <SelectValue placeholder="—" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={EQUIP_NONE}>None</SelectItem>
+                                    {equipmentOptions.map((o) => (
+                                        <SelectItem key={o.id} value={o.id}>
+                                            {o.name}
+                                            {o.tag === "default" ? " (default)" : " (backup)"}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <span className="flex flex-wrap gap-1">
+                                {equipmentOptions.map((o) => (
+                                    <Badge
+                                        key={o.id}
+                                        variant={o.tag === "default" ? "secondary" : "outline"}
+                                        className="text-[10px]"
+                                    >
+                                        {o.name}
+                                        <span className="ml-1 opacity-60">
+                                            {o.tag === "default" ? "default" : "backup"}
+                                        </span>
+                                    </Badge>
+                                ))}
+                            </span>
+                        )}
+                    </div>
                 )}
             </div>
         </NodeCard>
@@ -342,6 +442,10 @@ export const MeasurementInput = Node.create({
             characteristic_number: { default: "" },
             measurement_definition_id: { default: null },
             measurement_type: { default: "NUMERIC" },
+            default_equipment_id: { default: null },
+            default_equipment_name: { default: "" },
+            backup_equipment_id: { default: null },
+            backup_equipment_name: { default: "" },
         };
     },
     parseHTML() {

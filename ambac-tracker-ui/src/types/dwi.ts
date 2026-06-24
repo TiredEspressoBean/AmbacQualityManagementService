@@ -157,6 +157,15 @@ export type MeasurementInputAttrs = {
     characteristic_number: string;
     /** Optional FK to a MeasurementDefinition row in the tenant. */
     measurement_definition_id?: string | null;
+    /** Preferred + fallback gauge, copied from the linked MeasurementDefinition.
+     *  Both optional (visual checks use no instrument). The operator picks which
+     *  was used; the choice is captured on StepExecutionMeasurement.equipment. */
+    default_equipment_id?: string | null;
+    default_equipment_name?: string;
+    backup_equipment_id?: string | null;
+    backup_equipment_name?: string;
+    /** "NUMERIC" → operator types a value; "PASS_FAIL" → operator picks Pass/Fail. */
+    measurement_type?: string;
 };
 export type MeasurementInputNode = {
     type: "measurementInput";

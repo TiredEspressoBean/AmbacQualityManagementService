@@ -385,6 +385,35 @@ class MeasurementDefinition(SecureModel):
                   "When enabled, values are checked against active SPCBaseline control limits."
     )
 
+    # Balloon number on the drawing (AS9102 / Control Plan reference).
+    # Nullable: not every measurement maps to a ballooned characteristic.
+    characteristic_number = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text="Balloon number on the drawing (AS9102 / Control Plan reference).",
+    )
+
+    # Preferred + fallback gauge/instrument for taking this measurement.
+    # Both nullable: visual checks (e.g. looking for burrs with a flashlight)
+    # use no equipment at all.
+    default_equipment = models.ForeignKey(
+        "Equipments",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="default_for_measurements",
+        help_text="Preferred gauge/instrument for this measurement (operator default).",
+    )
+    backup_equipment = models.ForeignKey(
+        "Equipments",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="backup_for_measurements",
+        help_text="Fallback gauge/instrument when the default is unavailable.",
+    )
+
 
 class StepMeasurementRequirement(models.Model):
     """

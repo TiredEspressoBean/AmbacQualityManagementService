@@ -95,10 +95,16 @@ function checkSatisfied(
             return "No file uploaded";
         }
 
-        case "measurementInput":
-            return typeof response === "string" && response.trim() !== ""
+        case "measurementInput": {
+            // Response is either a legacy bare string or {value, equipment_id}.
+            const v =
+                response && typeof response === "object"
+                    ? (response as { value?: unknown }).value
+                    : response;
+            return typeof v === "string" && v.trim() !== ""
                 ? null
                 : "No measurement recorded";
+        }
 
         case "timer": {
             // Operator must have actually run the timer (captured response).
@@ -211,9 +217,19 @@ function summarizeOne(
 
         case "measurementInput": {
             const unit = (attrs.unit as string) || "";
-            if (response === "PASS" || response === "FAIL") return String(response);
-            return typeof response === "string"
-                ? `${response}${unit ? " " + unit : ""}`
+            const isObj = response !== null && typeof response === "object";
+            const v = isObj ? (response as { value?: unknown }).value : response;
+            const eqId = isObj ? (response as { equipment_id?: unknown }).equipment_id : null;
+            const eqName =
+                eqId && eqId === attrs.default_equipment_id
+                    ? (attrs.default_equipment_name as string) || ""
+                    : eqId && eqId === attrs.backup_equipment_id
+                        ? (attrs.backup_equipment_name as string) || ""
+                        : "";
+            const eqSuffix = eqName ? ` · ${eqName}` : "";
+            if (v === "PASS" || v === "FAIL") return `${v}${eqSuffix}`;
+            return typeof v === "string" && v !== ""
+                ? `${v}${unit ? " " + unit : ""}${eqSuffix}`
                 : "—";
         }
 
@@ -430,17 +446,30 @@ export function buildCaptures(
             }
 
             case "measurementInput": {
-                if (typeof response !== "string") break;
+                // Response is either a legacy bare string (value only) or the
+                // structured { value, equipment_id } shape.
+                const isObj = response !== null && typeof response === "object";
+                const val = isObj ? (response as { value?: unknown }).value : response;
+                if (typeof val !== "string") break;
+                const equipmentId = isObj
+                    ? ((response as { equipment_id?: unknown }).equipment_id ?? null)
+                    : null;
                 const md_id = attrs.measurement_definition_id;
-                const parsed = response === "" ? null : Number(response);
-                const isPassFail = response === "PASS" || response === "FAIL";
+                const parsed = val === "" ? null : Number(val);
+                const isPassFail = val === "PASS" || val === "FAIL";
                 captures.push({
                     node_id,
                     kind: "measurement",
                     measurement_definition_id: md_id ?? null,
                     value_numeric:
                         parsed != null && Number.isFinite(parsed) ? parsed : null,
-                    value_string: isPassFail ? response : "",
+                    value_string: isPassFail ? val : "",
+                    // Operator's chosen gauge; fall back to the spec's configured
+                    // default when the selector was left untouched.
+                    equipment_id:
+                        (equipmentId as string | null) ??
+                        (attrs.default_equipment_id as string | null) ??
+                        null,
                 });
                 break;
             }

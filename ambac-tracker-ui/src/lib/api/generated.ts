@@ -2655,6 +2655,28 @@ export type MeasurementDefinition = {
    */
   boolean | undefined;
   archived?: boolean | undefined;
+  characteristic_number?:
+    | /**
+     * Balloon number on the drawing (AS9102 / Control Plan reference).
+     *
+     * @maxLength 20
+     */
+    (string | null)
+    | undefined;
+  default_equipment?:
+    | /**
+     * Preferred gauge/instrument for this measurement (operator default).
+     */
+    (string | null)
+    | undefined;
+  default_equipment_name: string | null;
+  backup_equipment?:
+    | /**
+     * Fallback gauge/instrument when the default is unavailable.
+     */
+    (string | null)
+    | undefined;
+  backup_equipment_name: string | null;
   version: number;
   is_current_version: boolean;
   previous_version: string | null;
@@ -2703,6 +2725,26 @@ export type MeasurementDefinitionRequest = {
    */
   boolean | undefined;
   archived?: boolean | undefined;
+  characteristic_number?:
+    | /**
+     * Balloon number on the drawing (AS9102 / Control Plan reference).
+     *
+     * @maxLength 20
+     */
+    (string | null)
+    | undefined;
+  default_equipment?:
+    | /**
+     * Preferred gauge/instrument for this measurement (operator default).
+     */
+    (string | null)
+    | undefined;
+  backup_equipment?:
+    | /**
+     * Fallback gauge/instrument when the default is unavailable.
+     */
+    (string | null)
+    | undefined;
 };
 export type MeasurementDefinitionSPC = {
   id: string;
@@ -8194,6 +8236,20 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
    */
   spc_enabled: boolean;
   archived: boolean;
+  /**
+   * Balloon number on the drawing (AS9102 / Control Plan reference).
+   *
+   * @maxLength 20
+   */
+  characteristic_number: string | null;
+  /**
+   * Preferred gauge/instrument for this measurement (operator default).
+   */
+  default_equipment: string | null;
+  /**
+   * Fallback gauge/instrument when the default is unavailable.
+   */
+  backup_equipment: string | null;
 }>;
 export type PatchedOrdersRequest = Partial<{
   /**
@@ -13216,6 +13272,11 @@ const MeasurementDefinition = z.object({
   step: z.string().uuid(),
   spc_enabled: z.boolean().optional(),
   archived: z.boolean().optional(),
+  characteristic_number: z.string().max(20).nullish(),
+  default_equipment: z.string().uuid().nullish(),
+  default_equipment_name: z.string().nullable(),
+  backup_equipment: z.string().uuid().nullish(),
+  backup_equipment_name: z.string().nullable(),
   version: z.number().int(),
   is_current_version: z.boolean(),
   previous_version: z.string().uuid().nullable(),
@@ -13246,6 +13307,9 @@ const MeasurementDefinitionRequest = z.object({
   step: z.string().uuid(),
   spc_enabled: z.boolean().optional(),
   archived: z.boolean().optional(),
+  characteristic_number: z.string().max(20).nullish(),
+  default_equipment: z.string().uuid().nullish(),
+  backup_equipment: z.string().uuid().nullish(),
 });
 const PatchedMeasurementDefinitionRequest = z
   .object({
@@ -13268,6 +13332,9 @@ const PatchedMeasurementDefinitionRequest = z
     step: z.string().uuid(),
     spc_enabled: z.boolean(),
     archived: z.boolean(),
+    characteristic_number: z.string().max(20).nullable(),
+    default_equipment: z.string().uuid().nullable(),
+    backup_equipment: z.string().uuid().nullable(),
   })
   .partial();
 const Milestone = z.object({

@@ -18,9 +18,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
+import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
 import { toast } from "sonner";
 import { schemas, type TypeEnum } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
+
+// Sentinel for the "no equipment" Select option — Radix Select items can't
+// use an empty-string value, and equipment is nullable (visual checks use
+// no instrument).
+const NO_EQUIPMENT = "__none__";
 
 // Use generated schema
 const formSchema = schemas.MeasurementDefinitionRequest.pick({
@@ -31,6 +37,9 @@ const formSchema = schemas.MeasurementDefinitionRequest.pick({
   upper_tol: true,
   lower_tol: true,
   required: true,
+  characteristic_number: true,
+  default_equipment: true,
+  backup_equipment: true,
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -51,6 +60,9 @@ interface MeasurementDefinitionFormProps {
     upper_tol?: string | null;
     lower_tol?: string | null;
     required?: boolean;
+    characteristic_number?: string | null;
+    default_equipment?: string | null;
+    backup_equipment?: string | null;
   };
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -74,11 +86,17 @@ export default function MeasurementDefinitionForm({
       upper_tol: existingDefinition?.upper_tol || null,
       lower_tol: existingDefinition?.lower_tol || null,
       required: existingDefinition?.required ?? true,
+      characteristic_number: existingDefinition?.characteristic_number || null,
+      default_equipment: existingDefinition?.default_equipment || null,
+      backup_equipment: existingDefinition?.backup_equipment || null,
     },
   });
 
   const createMutation = useCreateMeasurementDefinition();
   const updateMutation = useUpdateMeasurementDefinition();
+
+  const { data: equipmentsResp } = useRetrieveEquipments();
+  const equipments = (equipmentsResp?.results ?? []) as Array<{ id: string; name: string }>;
 
   const watchedType = form.watch("type");
   const isNumeric = watchedType === "NUMERIC";
@@ -263,6 +281,86 @@ export default function MeasurementDefinitionForm({
             </div>
           </>
         )}
+
+        <FormField
+          control={form.control}
+          name="characteristic_number"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Characteristic #</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. B12 (balloon # on drawing)"
+                  {...field}
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(e.target.value || null)}
+                />
+              </FormControl>
+              <FormDescription>
+                Balloon number on the drawing (optional)
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="default_equipment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Default equipment</FormLabel>
+                <Select
+                  value={field.value ?? NO_EQUIPMENT}
+                  onValueChange={(v) => field.onChange(v === NO_EQUIPMENT ? null : v)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NO_EQUIPMENT}>None (visual / no instrument)</SelectItem>
+                    {equipments.map((eq) => (
+                      <SelectItem key={eq.id} value={String(eq.id)}>{eq.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>Preferred gauge/instrument</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="backup_equipment"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Backup equipment</FormLabel>
+                <Select
+                  value={field.value ?? NO_EQUIPMENT}
+                  onValueChange={(v) => field.onChange(v === NO_EQUIPMENT ? null : v)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NO_EQUIPMENT}>None</SelectItem>
+                    {equipments.map((eq) => (
+                      <SelectItem key={eq.id} value={String(eq.id)}>{eq.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>Fallback when the default is unavailable</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
