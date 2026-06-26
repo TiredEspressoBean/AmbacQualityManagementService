@@ -130,24 +130,43 @@ def activate_sampling_ruleset(ruleset: SamplingRuleSet, user=None) -> None:
 def create_sampling_fallback_trigger(
     ruleset: SamplingRuleSet, triggering_part, quality_report
 ):
-    """Create a SamplingTriggerState for the fallback ruleset and propagate
-    fallback sampling to remaining parts in the work order.
+    """Execute the TIGHTEN_SAMPLING action: switch to ``ruleset.fallback_ruleset``
+    and propagate fallback sampling to remaining parts in the work order.
+
+    The *decision* to tighten is the quality-gate dispatcher's job
+    (``services.qms.quality_gate``); this is the action executor and assumes the
+    gate already tripped. Idempotent: if the fallback is already active for this
+    (work_order, step), the existing trigger is returned rather than creating a
+    duplicate (which the unique constraint would reject anyway).
 
     Atomic so the trigger row + the bulk part updates either both land or
     both roll back — otherwise a trigger could exist with no parts updated,
     leaving subsequent parts in the WO without their fallback flag.
 
-    Returns the created SamplingTriggerState, or None if no fallback_ruleset
-    is configured.
+    Returns the SamplingTriggerState (created or existing), or None if no
+    fallback_ruleset is configured.
     """
     if not ruleset.fallback_ruleset:
         return None
 
+    work_order = triggering_part.work_order
+    step = ruleset.step
+
+    # Already tightened for this work order at this step — nothing to do.
+    existing = SamplingTriggerState.objects.filter(
+        ruleset=ruleset.fallback_ruleset,
+        work_order=work_order,
+        step=step,
+        active=True,
+    ).first()
+    if existing:
+        return existing
+
     with transaction.atomic():
         trigger_state = SamplingTriggerState.objects.create(
             ruleset=ruleset.fallback_ruleset,
-            work_order=triggering_part.work_order,
-            step=ruleset.step,
+            work_order=work_order,
+            step=step,
             triggered_by=quality_report,
         )
 

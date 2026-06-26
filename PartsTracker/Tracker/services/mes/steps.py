@@ -304,17 +304,22 @@ def apply_step_sampling_rules_update(
     user=None,
     process=None,
     fallback_rules_data: list | None = None,
-    fallback_threshold: int | None = None,
     fallback_duration: int | None = None,
+    tighten_after: int | None = None,
 ) -> SamplingRuleSet:
     """Archive existing active rulesets and create fresh active ones for a step.
 
     Creates a fallback ruleset first (if supplied), then links it to the new
-    main ruleset. Re-evaluates sampling for any active parts currently at this
+    main ruleset. ``tighten_after`` (consecutive failures) configures a
+    CONSECUTIVE_FAILS + TIGHTEN_SAMPLING quality gate on the main ruleset so the
+    switch to the fallback fires automatically; it requires a fallback ruleset
+    to switch to. Re-evaluates sampling for any active parts currently at this
     step.
 
     Returns the newly created main SamplingRuleSet.
     """
+    from Tracker.models import GateMetric, GateAction
+
     with transaction.atomic():
         step.sampling_ruleset.filter(active=True).update(active=False, archived=True)
 
@@ -339,13 +344,19 @@ def apply_step_sampling_rules_update(
             name=f"Rules for Step {step.id}",
             rules=rules_data,
             fallback_ruleset=fallback_ruleset,
-            fallback_threshold=fallback_threshold,
             fallback_duration=fallback_duration,
             created_by=user,
             origin="serializer-update",
             active=True,
             is_fallback=False,
         )
+
+        # "Switch to the fallback after N consecutive failures" → a quality gate.
+        if tighten_after and fallback_ruleset is not None:
+            main_ruleset.gate_metric = GateMetric.CONSECUTIVE_FAILS
+            main_ruleset.gate_threshold = tighten_after
+            main_ruleset.gate_actions = [GateAction.TIGHTEN_SAMPLING]
+            main_ruleset.save(update_fields=["gate_metric", "gate_threshold", "gate_actions"])
 
         active_parts = Parts.objects.filter(
             step=step,
@@ -363,7 +374,6 @@ def update_step_sampling_rules(
     user=None,
     process=None,
     fallback_rules_data: list | None = None,
-    fallback_threshold: int | None = None,
     fallback_duration: int | None = None,
 ) -> SamplingRuleSet:
     """Supersede (or create) the primary ruleset for a step.
@@ -409,7 +419,6 @@ def update_step_sampling_rules(
                 is_fallback=True,
             )
             new_ruleset.fallback_ruleset = fallback_ruleset
-            new_ruleset.fallback_threshold = fallback_threshold
             new_ruleset.fallback_duration = fallback_duration
             new_ruleset.save()
 

@@ -162,19 +162,26 @@ def _link_sampling_audit_log(report) -> None:
 
 
 def _trigger_sampling_fallback(report) -> None:
-    """Trigger fallback sampling for the remaining parts in the work order."""
-    from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
+    """Evaluate the step's quality gate for this inspection result.
 
-    if report.part and report.part.sampling_ruleset:
-        report.part.sampling_ruleset.create_fallback_trigger(
-            triggering_part=report.part,
-            quality_report=report,
-        )
+    The gate (on the step's primary ruleset) decides whether any action fires —
+    including TIGHTEN_SAMPLING, which replaces the old unconditional fallback
+    switch. No-op when the step has no gate configured.
+    """
+    from Tracker.services.qms.quality_gate import evaluate_step_gate, gate_ruleset_for_step
+
+    part = report.part
+    if not part:
         return
 
-    # Legacy path: no ruleset attached, use the generic applier.
-    fallback_applier = SamplingFallbackApplier(report.part)
-    fallback_applier.apply()
+    ruleset = gate_ruleset_for_step(part.step, part.part_type)
+    evaluate_step_gate(
+        ruleset=ruleset,
+        work_order=part.work_order,
+        trigger=report,
+        triggering_part=part,
+        user=getattr(report, "detected_by", None),
+    )
 
 
 def _update_sampling_analytics(report) -> None:

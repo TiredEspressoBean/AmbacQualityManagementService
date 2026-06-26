@@ -567,7 +567,7 @@ class QueryViewSet(viewsets.GenericViewSet):
         ],
         'SamplingRuleSet': [
             'id', 'part_type', 'process', 'step', 'name', 'active', 'version', 'origin',
-            'fallback_threshold', 'fallback_duration_hours', 'created_at', 'updated_at', 'archived'
+            'gate_metric', 'gate_threshold', 'fallback_duration', 'created_at', 'updated_at', 'archived'
         ],
         'SamplingRule': [
             'id', 'ruleset', 'rule_type', 'order', 'n_value', 'percentage_value', 'created_at',
