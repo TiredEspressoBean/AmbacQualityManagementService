@@ -376,6 +376,25 @@ class QualityReports(SecureModel):
                                            help_text="Links to the sampling decision that triggered this inspection")
     """Link to the sampling audit log that triggered this quality report."""
 
+    # ===== RECEIVING INSPECTION (incoming purchased material) =====
+    material_lot = models.ForeignKey(
+        'Tracker.MaterialLot', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='quality_reports',
+        help_text="Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).",
+    )
+    """The incoming material lot this report inspects (receiving inspection). Exactly one of
+    `part` / `material_lot` is set — enforced by a CheckConstraint (mirrors StepTransitionLog)."""
+
+    sample_size = models.PositiveIntegerField(null=True, blank=True,
+        help_text="Acceptance-sampling sample size (n) snapshot at inspection time.")
+    accept_number = models.PositiveIntegerField(null=True, blank=True,
+        help_text="Acceptance-sampling accept number (Ac) snapshot.")
+    reject_number = models.PositiveIntegerField(null=True, blank=True,
+        help_text="Acceptance-sampling reject number (Re) snapshot.")
+    defectives_found = models.PositiveIntegerField(null=True, blank=True,
+        help_text="Bulk/attribute capture: number of defectives found across the sample "
+                  "(used when units aren't measured individually). Null = per-unit capture.")
+
     class Meta:
         verbose_name_plural = 'Error Reports'
         verbose_name = 'Error Report'
@@ -394,15 +413,23 @@ class QualityReports(SecureModel):
                 condition=models.Q(report_number__isnull=False) & ~models.Q(report_number=''),
                 name='qualityreport_tenant_number_uniq'
             ),
+            # A report targets a part OR an incoming lot, never both. `part` is
+            # legitimately nullable (general anomaly reports), so this is "not both"
+            # rather than "exactly one" — keeps existing part-less rows valid.
+            models.CheckConstraint(
+                check=~(models.Q(part__isnull=False) & models.Q(material_lot__isnull=False)),
+                name='qualityreport_not_part_and_lot',
+            ),
         ]
 
     def __str__(self):
         """
         Returns a summary string indicating which part the report refers to and the date.
         """
+        subject = self.material_lot or self.part
         if self.report_number:
-            return f"{self.report_number} - {self.part}"
-        return f"Quality Report for {self.part} on {self.created_at.date()}"
+            return f"{self.report_number} - {subject}"
+        return f"Quality Report for {subject} on {self.created_at.date()}"
 
     @classmethod
     def generate_report_number(cls, tenant=None):
@@ -500,6 +527,12 @@ class MeasurementResult(SecureModel):
     value_pass_fail = models.CharField(max_length=4, choices=[("PASS", "Pass"), ("FAIL", "Fail")], null=True,
                                        blank=True)
     is_within_spec = models.BooleanField()
+    sample_number = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="1-based index of the sampled unit within an acceptance-sampling "
+                  "inspection. Null = single/lot-level capture. A unit is a defective "
+                  "if any of its results is out of spec.",
+    )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
 
     def save(self, *args, **kwargs):
@@ -969,6 +1002,11 @@ class CAPA(SecureModel):
     part = models.ForeignKey('Parts', on_delete=models.SET_NULL, null=True, blank=True, help_text="Representative part if applicable")
     step = models.ForeignKey('Steps', on_delete=models.SET_NULL, null=True, blank=True, help_text="Process step where issue occurred")
     work_order = models.ForeignKey('WorkOrder', on_delete=models.SET_NULL, null=True, blank=True)
+    supplier = models.ForeignKey(
+        'Tracker.Companies', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='supplier_capas',
+        help_text="Supplier this CAPA is raised against (Supplier Corrective Action / SCAR).",
+    )
 
     # Links to triggering issues
     quality_reports = models.ManyToManyField('QualityReports', blank=True, related_name='capas')
@@ -1048,7 +1086,8 @@ class CAPA(SecureModel):
             'supplier': 'SU'
         }
         year = initiated_date.year
-        type_code = type_codes.get(capa_type, 'XX')
+        # CapaType values are uppercase ('SUPPLIER'); the code map is keyed lowercase.
+        type_code = type_codes.get((capa_type or '').lower(), 'XX')
         prefix = f"CAPA-{type_code}-{year}-"
 
         return generate_next_sequence(

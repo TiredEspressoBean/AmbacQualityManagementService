@@ -608,6 +608,7 @@ class Steps(SecureModel):
         ('REWORK', 'Rework'),
         ('TIMER', 'Timer/Wait'),
         ('TERMINAL', 'Terminal'),
+        ('RECEIVING', 'Receiving Inspection'),
     ]
     step_type = models.CharField(
         max_length=20,
@@ -718,8 +719,11 @@ class Steps(SecureModel):
         return {'active_ruleset': {'id': primary_ruleset.id if primary_ruleset else None,
                                    'name': primary_ruleset.name if primary_ruleset else None, 'rules': list(
                 primary_ruleset.rules.all().values('id', 'rule_type', 'value', 'order')) if primary_ruleset else [],
-                                   'fallback_threshold': primary_ruleset.fallback_threshold if primary_ruleset else None,
-                                   'fallback_duration': primary_ruleset.fallback_duration if primary_ruleset else None},
+                                   'fallback_duration': primary_ruleset.fallback_duration if primary_ruleset else None,
+                                   'tighten_after': (
+                                       int(primary_ruleset.gate_threshold)
+                                       if primary_ruleset and primary_ruleset.gate_metric == 'CONSECUTIVE_FAILS'
+                                       and primary_ruleset.gate_threshold is not None else None)},
                 'fallback_ruleset': {'id': fallback_ruleset.id if fallback_ruleset else None,
                                      'name': fallback_ruleset.name if fallback_ruleset else None, 'rules': list(
                         fallback_ruleset.rules.all().values('id', 'rule_type', 'value',
@@ -733,24 +737,25 @@ class Steps(SecureModel):
             process=process, **field_updates,
         )
 
-    def apply_sampling_rules_update(self, rules_data, process=None, fallback_rules_data=None, fallback_threshold=None,
-                                    fallback_duration=None, user=None):
+    def apply_sampling_rules_update(self, rules_data, process=None, fallback_rules_data=None,
+                                    fallback_duration=None, tighten_after=None, user=None):
         """Delegate to services.mes.steps.apply_step_sampling_rules_update."""
         from Tracker.services.mes.steps import apply_step_sampling_rules_update
         return apply_step_sampling_rules_update(
             self, rules_data, user=user, process=process,
             fallback_rules_data=fallback_rules_data,
-            fallback_threshold=fallback_threshold, fallback_duration=fallback_duration,
+            fallback_duration=fallback_duration,
+            tighten_after=tighten_after,
         )
 
-    def update_sampling_rules(self, rules_data, process=None, fallback_rules_data=None, fallback_threshold=None,
+    def update_sampling_rules(self, rules_data, process=None, fallback_rules_data=None,
                               fallback_duration=None, user=None):
         """Delegate to services.mes.steps.update_step_sampling_rules."""
         from Tracker.services.mes.steps import update_step_sampling_rules
         return update_step_sampling_rules(
             self, rules_data, user=user, process=process,
             fallback_rules_data=fallback_rules_data,
-            fallback_threshold=fallback_threshold, fallback_duration=fallback_duration,
+            fallback_duration=fallback_duration,
         )
 
     def can_advance_step(self, work_order, step):
@@ -1444,28 +1449,42 @@ class StepExecution(SecureModel):
             models.Index(fields=['assigned_to', 'status']),
         ]
         constraints = [
+            # A part and a core are mutually exclusive. A third subject kind
+            # (e.g. a MaterialLot at a RECEIVING step) rides the polymorphic
+            # subject_content_type/subject_id fields, so "not both part+core"
+            # replaces the old exactly-one-of (the service guarantees a subject).
             models.CheckConstraint(
-                check=(
-                    models.Q(part__isnull=False, core__isnull=True)
-                    | models.Q(part__isnull=True, core__isnull=False)
-                ),
+                check=~(models.Q(part__isnull=False) & models.Q(core__isnull=False)),
                 name='step_execution_one_subject',
             ),
         ]
 
     @property
+    def subject_object(self):
+        """Resolve the polymorphic subject (subject_content_type + subject_id), if set."""
+        if self.subject_content_type_id and self.subject_id:
+            model = self.subject_content_type.model_class()
+            if model is not None:
+                return model._base_manager.filter(pk=self.subject_id).first()
+        return None
+
+    @property
     def subject(self):
-        """The Part or Core this execution is tracking (whichever is set)."""
-        return self.part or self.core
+        """The Part, Core, or polymorphic subject (e.g. MaterialLot) this execution tracks."""
+        return self.part or self.core or self.subject_object
 
     @property
     def subject_work_order(self):
-        """The WorkOrder linked to this execution's subject, if any."""
+        """The WorkOrder linked to this execution's subject, if any.
+
+        Polymorphic subjects (e.g. an incoming MaterialLot at a RECEIVING step)
+        have no work order — receiving precedes production.
+        """
         if self.part_id:
             return self.part.work_order
         if self.core_id:
             return self.core.work_order
-        return None
+        return getattr(self.subject_object, 'work_order', None)
 
     def __str__(self):
         return f"{self.subject} at {self.step} (visit {self.visit_number})"

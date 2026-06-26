@@ -353,6 +353,35 @@ class SamplingRuleType(models.TextChoices):
     FIRST_N_PARTS = "FIRST_N_PARTS", "First N Parts"
     LAST_N_PARTS = "LAST_N_PARTS", "Last N Parts"
     EXACT_COUNT = "EXACT_COUNT", "Exact Count (No Variance)"
+    # Lot-acceptance sampling (used by RECEIVING steps). Lot-terminal, not per-part
+    # streaming — the plan params live on the ruleset (aql/level/severity/strategy)
+    # and the evaluator is services.qms.acceptance_sampling.
+    AQL = "AQL", "Acceptance Sampling (ANSI/ASQ Z1.4)"
+    C_ZERO = "C_ZERO", "Zero-Acceptance (C=0 / Squeglia)"
+
+
+class GateMetric(models.TextChoices):
+    """Aggregate quality signal a step gate watches."""
+    CONSECUTIVE_FAILS = "CONSECUTIVE_FAILS", "Consecutive failures"
+    FAIL_RATE_PCT = "FAIL_RATE_PCT", "Failure rate (%)"
+    DEFECTIVE_COUNT = "DEFECTIVE_COUNT", "Defective count"
+
+
+class GateWindow(models.TextChoices):
+    """Window over which a gate metric is computed."""
+    WORK_ORDER = "WORK_ORDER", "Whole work order at this step"
+    ROLLING_N = "ROLLING_N", "Rolling last N inspections"
+    LOT = "LOT", "Receiving lot sample"
+
+
+class GateAction(models.TextChoices):
+    """Automatic actions a fired gate can take. Closed set — each maps to an
+    existing service; no free-form scripting."""
+    ROUTE_ALTERNATE = "ROUTE_ALTERNATE", "Route to alternate edge"
+    TIGHTEN_SAMPLING = "TIGHTEN_SAMPLING", "Tighten sampling (switch ruleset)"
+    HOLD_LOT = "HOLD_LOT", "Hold / quarantine"
+    RAISE_CAPA_SCAR = "RAISE_CAPA_SCAR", "Raise CAPA / SCAR"
+    REQUIRE_APPROVAL = "REQUIRE_APPROVAL", "Require approval"
 
 
 class SamplingRuleSet(SecureModel):
@@ -378,10 +407,29 @@ class SamplingRuleSet(SecureModel):
         on_delete=models.CASCADE,
         related_name="sampling_ruleset"
     )
+    # Supplier dimension — lets a RECEIVING step resolve a different acceptance-sampling
+    # plan per supplier (e.g. tightened for a problem supplier). Null = applies to all
+    # suppliers of the part type. Resolution: (step, supplier) > (step, supplier=NULL).
+    supplier = models.ForeignKey(
+        'Tracker.Companies', on_delete=models.CASCADE, null=True, blank=True,
+        related_name="sampling_rulesets",
+        help_text="Supplier scope for receiving acceptance sampling. Null = all suppliers.",
+    )
 
     name = models.CharField(max_length=100)
     origin = models.CharField(max_length=100, blank=True)
     active = models.BooleanField(default=True)
+
+    # Acceptance-sampling plan params — used when the ruleset carries an AQL/C_ZERO rule
+    # (RECEIVING steps). Null for ordinary per-part streaming rulesets.
+    aql = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True,
+        help_text="Acceptable Quality Limit for AQL/C=0 lot acceptance.")
+    inspection_level = models.CharField(max_length=3, blank=True,
+        help_text="ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.")
+    severity = models.CharField(max_length=10, blank=True,
+        help_text="AQL inspection severity (NORMAL/TIGHTENED/REDUCED).")
+    strategy = models.CharField(max_length=4, blank=True,
+        help_text="Acceptance-sampling strategy: C0 (default) or Z14.")
 
     supersedes = models.OneToOneField(
         "self",
@@ -391,18 +439,47 @@ class SamplingRuleSet(SecureModel):
         related_name="superseded_by"
     )
 
-    # CSP fallback support
+    # ---- Quality gate: aggregate-signal automatic decisions -------------
+    # The gate is the single trigger definition for this step. When the
+    # metric crosses the threshold over its window, the configured actions
+    # fire (see services/qms/quality_gate.py). Blank gate_metric = no gate
+    # (ordinary streaming ruleset). Consecutive-fails + TIGHTEN_SAMPLING is
+    # the former CSP fallback, now expressed as one gate among others.
+    gate_metric = models.CharField(
+        max_length=20, choices=GateMetric.choices, blank=True,
+        help_text="Aggregate signal this step watches. Blank = no gate.")
+    gate_threshold = models.DecimalField(
+        max_digits=7, decimal_places=3, null=True, blank=True,
+        help_text="Threshold: percent for FAIL_RATE_PCT, count otherwise.")
+    gate_window = models.CharField(
+        max_length=12, choices=GateWindow.choices, blank=True,
+        help_text="Window the metric is computed over.")
+    gate_window_n = models.PositiveIntegerField(
+        null=True, blank=True, help_text="N for ROLLING_N windows.")
+    gate_min_sample = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Minimum inspections before a FAIL_RATE_PCT gate can fire.")
+    gate_actions = models.JSONField(
+        default=list, blank=True,
+        help_text="List of GateAction codes to fire when the gate trips.")
+    gate_capa_type = models.CharField(
+        max_length=20, blank=True,
+        help_text="CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).")
+    gate_capa_severity = models.CharField(
+        max_length=10, blank=True,
+        help_text="Severity for a RAISE_CAPA_SCAR action.")
+    gate_approval_template = models.ForeignKey(
+        'Tracker.ApprovalTemplate', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+',
+        help_text="Template for a REQUIRE_APPROVAL action.")
+
+    # TIGHTEN_SAMPLING action params (target ruleset + revert duration).
     fallback_ruleset = models.OneToOneField(
         "self",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         related_name="used_as_fallback_for"
-    )
-    fallback_threshold = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Number of consecutive failures before switching to fallback"
     )
     fallback_duration = models.PositiveIntegerField(
         null=True,
@@ -440,7 +517,7 @@ class SamplingRuleSet(SecureModel):
 
     @classmethod
     def create_with_rules(cls, *, part_type, process, step, name, rules=None, fallback_ruleset=None,
-                          fallback_threshold=None, fallback_duration=None, created_by=None, origin="", active=True,
+                          fallback_duration=None, created_by=None, origin="", active=True,
                           supersedes=None, is_fallback=False):
         ruleset = cls.objects.create(
             part_type=part_type,
@@ -448,7 +525,6 @@ class SamplingRuleSet(SecureModel):
             step=step,
             name=name,
             fallback_ruleset=fallback_ruleset,
-            fallback_threshold=fallback_threshold,
             fallback_duration=fallback_duration,
             created_by=created_by,
             origin=origin,
@@ -562,6 +638,54 @@ class SamplingTriggerManager:
         """Thin wrapper — delegates to `services.mes.sampling.update_sampling_trigger_state`."""
         from Tracker.services.mes.sampling import update_sampling_trigger_state
         return update_sampling_trigger_state(self.part, self.status)
+
+
+class StepGateFiring(SecureModel):
+    """Record of a step quality gate firing — the idempotency marker (one fire
+    per window) and the audit trail of an automatic quality decision: which
+    metric crossed which threshold at what value, and which actions ran.
+
+    Distinct from SamplingTriggerState: that is the runtime active-state for the
+    TIGHTEN_SAMPLING action (which ruleset is in force, revert progress); this
+    is the per-window firing ledger across all five actions.
+    """
+    ruleset = models.ForeignKey(SamplingRuleSet, on_delete=models.CASCADE, related_name='gate_firings')
+    step = models.ForeignKey('Tracker.Steps', on_delete=models.CASCADE)
+    work_order = models.ForeignKey('Tracker.WorkOrder', null=True, blank=True, on_delete=models.CASCADE)
+    material_lot = models.ForeignKey('Tracker.MaterialLot', null=True, blank=True, on_delete=models.CASCADE)
+
+    metric = models.CharField(max_length=20, choices=GateMetric.choices)
+    metric_value = models.DecimalField(max_digits=10, decimal_places=3)
+    threshold = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True)
+    actions_taken = models.JSONField(default=list, blank=True)
+
+    triggered_by_report = models.ForeignKey(
+        'Tracker.QualityReports', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_capa = models.ForeignKey(
+        'Tracker.CAPA', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    approval_request = models.ForeignKey(
+        'Tracker.ApprovalRequest', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    fired_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Step Gate Firing'
+        verbose_name_plural = 'Step Gate Firings'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'ruleset', 'work_order', 'step'],
+                name='stepgatefiring_wo_uniq',
+                condition=models.Q(work_order__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=['tenant', 'ruleset', 'material_lot', 'step'],
+                name='stepgatefiring_lot_uniq',
+                condition=models.Q(material_lot__isnull=False),
+            ),
+        ]
+
+    def __str__(self):
+        return f"Gate {self.ruleset.name} fired ({self.metric}={self.metric_value}) @ {self.step}"
 
 
 class SamplingAuditLog(SecureModel):
@@ -889,6 +1013,9 @@ class MaterialLot(SecureModel):
 
     LOT_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
+        ('AWAITING_INSPECTION', 'Awaiting Inspection'),
+        ('ACCEPTED', 'Accepted'),
+        ('REJECTED', 'Rejected'),
         ('IN_USE', 'In Use'),
         ('CONSUMED', 'Consumed'),
         ('SCRAPPED', 'Scrapped'),
@@ -929,6 +1056,15 @@ class MaterialLot(SecureModel):
         max_length=100,
         blank=True,
         help_text="Supplier's lot/batch number"
+    )
+    # Hybrid-ERP reference: purchasing lives in the ERP; UQMES only references the PO.
+    erp_po_number = models.CharField(
+        max_length=100, blank=True,
+        help_text="ERP purchase-order reference (UQMES does not own purchasing)."
+    )
+    promised_date = models.DateField(
+        null=True, blank=True,
+        help_text="Supplier's promised delivery date (from the PO); drives on-time-delivery scoring."
     )
 
     received_date = models.DateField()
