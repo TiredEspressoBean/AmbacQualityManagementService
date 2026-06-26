@@ -180,6 +180,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'id', 'lot_number', 'parent_lot', 'parent_lot_number',
             'material_type', 'material_type_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
+            'erp_po_number', 'promised_date',
             'received_date', 'received_by',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'manufacture_date', 'expiration_date',

@@ -140,44 +140,49 @@ def _promote_to_inspection_record(
     `ncr.opened` event uses the QualityReports id as its idempotency key so
     repeated emits dedupe).
     """
-    # QualityReports are Parts-only. Cores (teardown) have no equivalent
-    # inspection-record promotion path in v1; HarvestedComponent capture
-    # handles the per-substep persistence instead.
-    if step_execution.part_id is None:
-        return
+    from Tracker.models import MaterialLot
 
-    part = step_execution.part
     step = step_execution.step
 
-    # Idempotent find-or-create. The unique combination per inspection event
-    # is (step_execution, substep) — we use `description` to encode that
-    # since QualityReports lacks a direct substep FK. A more permanent fix
-    # would add a substep FK on QualityReports itself, but that pollutes the
-    # inspection-record surface for non-DWI use cases (QC bench, FPI, etc.).
-    # The substep_id-in-description lookup is a pragmatic intermediate.
-    description_tag = _build_substep_tag(step_execution.id, substep.id)
-
-    report = (
-        QualityReports.objects
-        .filter(
-            step=step,
-            part=part,
-            description__startswith=description_tag,
+    if step_execution.part_id is not None:
+        # Part DWI: one report per (step_execution, substep) inspection event,
+        # keyed via a description tag (QualityReports lacks a direct substep FK).
+        part = step_execution.part
+        subject_filter = {'part': part}
+        description_tag = _build_substep_tag(step_execution.id, substep.id)
+        report = (
+            QualityReports.objects
+            .filter(step=step, part=part, description__startswith=description_tag)
+            .first()
         )
-        .first()
-    )
+    else:
+        # Receiving DWI: the subject is a MaterialLot. There is one receiving
+        # inspection per lot (opened by receiving_inspection.open_inspection),
+        # so reuse that lot-keyed report — DWI captures append to it. Cores and
+        # other subjects have no inspection-record promotion path in v1.
+        subj = step_execution.subject_object
+        if not isinstance(subj, MaterialLot):
+            return
+        subject_filter = {'material_lot': subj}
+        description_tag = ""
+        report = (
+            QualityReports.objects
+            .filter(step=step, material_lot=subj)
+            .order_by('-created_at')
+            .first()
+        )
 
     is_new_report = report is None
 
     if is_new_report:
         report = QualityReports.objects.create(
             step=step,
-            part=part,
             detected_by=recorded_by,
             machine=equipment,
             sampling_method="inline_dwi",
             status="PENDING",  # set properly after the MeasurementResult is in
             description=description_tag,
+            **subject_filter,
         )
 
     # Capture the report's status BEFORE adding the new measurement so we

@@ -14,6 +14,8 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
+from django.db import transaction
+
 from Tracker.models import (
     WorkCenter, Shift, ScheduleSlot, DowntimeEvent,
     MaterialLot, MaterialUsage, TimeEntry,
@@ -30,6 +32,12 @@ from Tracker.serializers.mes_standard import (
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
     AssemblyUsageSerializer, AssemblyRemoveSerializer,
 )
+from Tracker.serializers.qms import (
+    QualityReportsSerializer,
+    RecordInspectionRequestSerializer, RecordUnitsRequestSerializer, RecordBulkRequestSerializer,
+    SamplePlanResponseSerializer, MaterialLotBulkCreateSerializer,
+)
+from Tracker.services.qms import receiving_inspection
 from .base import TenantScopedMixin
 from .core import ExcelExportMixin
 
@@ -160,12 +168,22 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
     ordering_fields = ['received_date', 'lot_number', 'expiration_date']
     ordering = ['-received_date']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Receiving-inspection queue: lots still needing a disposition.
+        if self.request.query_params.get('inspection_pending') in ('true', '1'):
+            qs = qs.filter(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
+        return qs
+
     def perform_create(self, serializer):
         # Auto-set received_by to current user, initialize quantity_remaining
-        serializer.save(
+        lot = serializer.save(
             received_by=self.request.user,
             quantity_remaining=serializer.validated_data.get('quantity', 0)
         )
+        # Standards-compliant default: a received lot is auto-routed to inspection
+        # (or dock-to-stock if no RECEIVING step) — never silently available.
+        receiving_inspection.route_received_lot(lot, self.request.user)
 
     @extend_schema(request=MaterialLotSplitSerializer, responses={201: MaterialLotSerializer})
     @action(detail=True, methods=['post'])
@@ -186,6 +204,199 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    # ===== RECEIVING INSPECTION (purchased material, Flow A) =====
+
+    action_permissions = {
+        'accept': ['change_materiallot'],
+        'reject': ['change_materiallot'],
+    }
+
+    def _qr_response(self, report):
+        return Response(QualityReportsSerializer(report, context={'request': self.request}).data)
+
+    @extend_schema(responses={200: SamplePlanResponseSerializer},
+                   description="Derive the acceptance-sampling plan (n/Ac/Re) for this lot "
+                               "from its part type's RECEIVING step + supplier sampling ruleset.")
+    @action(detail=True, methods=['get'])
+    def sample_plan(self, request, pk=None):
+        lot = self.get_object()
+        try:
+            sp = receiving_inspection.sample_plan_for_lot(lot)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        step = receiving_inspection.resolve_receiving_step(lot.material_type)
+        chars = [
+            {'id': m.id, 'label': m.label, 'unit': m.unit or '', 'type': m.type,
+             'nominal': float(m.nominal) if m.nominal is not None else None,
+             'upper_tol': float(m.upper_tol) if m.upper_tol is not None else None,
+             'lower_tol': float(m.lower_tol) if m.lower_tol is not None else None}
+            for m in receiving_inspection.receiving_characteristics(step)
+        ]
+        ex = receiving_inspection.receiving_execution(lot)
+        return Response(SamplePlanResponseSerializer({
+            **sp.__dict__,
+            'characteristics': chars,
+            'step_id': step.id if step else None,
+            'has_substeps': bool(step and step.substeps.filter(archived=False).exists()),
+            'step_execution_id': ex.id if ex else None,
+        }).data)
+
+    @extend_schema(request=None, responses={201: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def open_inspection(self, request, pk=None):
+        lot = self.get_object()
+        try:
+            report = receiving_inspection.open_inspection(lot, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(QualityReportsSerializer(report, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=RecordInspectionRequestSerializer, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def record_inspection(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ser = RecordInspectionRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            report = receiving_inspection.record_inspection(
+                report, ser.validated_data['measurements'], request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(request=RecordUnitsRequestSerializer, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def record_units(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ser = RecordUnitsRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            report = receiving_inspection.record_sample_units(
+                report, ser.validated_data['units'], request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(request=RecordBulkRequestSerializer, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def record_bulk(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ser = RecordBulkRequestSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            report = receiving_inspection.record_bulk(
+                report, ser.validated_data['defectives_found'], request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(request=None, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            report = receiving_inspection.accept(report, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(
+        request=None,
+        responses={201: inline_serializer(name="RaiseScarResponse", fields={
+            "capa_id": serializers.UUIDField(), "capa_number": serializers.CharField(),
+        })},
+        description="Raise a Supplier Corrective Action (SCAR) for this lot's supplier, "
+                    "linking the lot's receiving inspection report.",
+    )
+    @action(detail=True, methods=['post'])
+    def raise_scar(self, request, pk=None):
+        from Tracker.services.qms.scar import open_scar_for_lot
+        lot = self.get_object()
+        try:
+            capa = open_scar_for_lot(lot, user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'capa_id': capa.id, 'capa_number': capa.capa_number},
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=None, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            report = receiving_inspection.reject(report, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(
+        request=MaterialLotBulkCreateSerializer,
+        responses={
+            201: inline_serializer(name="MaterialLotBulkCreateResponse", fields={
+                "count": serializers.IntegerField(),
+                "created_lot_ids": serializers.ListField(child=serializers.UUIDField()),
+            }),
+            400: inline_serializer(name="MaterialLotBulkCreateError", fields={
+                "detail": serializers.CharField(required=False),
+                "errors": serializers.ListField(child=serializers.DictField(), required=False),
+            }),
+        },
+        description="Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back.",
+    )
+    @action(detail=False, methods=['post'], url_path='bulk_create')
+    def bulk_create(self, request):
+        rows = request.data.get('lots')
+        if not isinstance(rows, list) or len(rows) == 0:
+            return Response({"detail": "lots must be a non-empty list"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        ctx = {'request': request}
+        per_row_errors = []
+        valid_rows = []
+        for idx, row in enumerate(rows):
+            ser = MaterialLotSerializer(data=row, context=ctx)
+            if ser.is_valid():
+                valid_rows.append(ser)
+            else:
+                per_row_errors.append({'index': idx, 'errors': ser.errors})
+        if per_row_errors:
+            return Response({"detail": "Validation failed", "errors": per_row_errors},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with transaction.atomic():
+                created = []
+                for ser in valid_rows:
+                    lot = ser.save(received_by=request.user,
+                                   quantity_remaining=ser.validated_data.get('quantity', 0))
+                    receiving_inspection.route_received_lot(lot, request.user)
+                    created.append(lot)
+        except Exception as exc:
+            return Response({"detail": "Bulk receive failed",
+                             "errors": [{"index": -1, "errors": str(exc)}]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({"count": len(created), "created_lot_ids": [str(c.id) for c in created]},
+                        status=status.HTTP_201_CREATED)
 
 
 # ===== MATERIAL USAGE VIEWSETS =====

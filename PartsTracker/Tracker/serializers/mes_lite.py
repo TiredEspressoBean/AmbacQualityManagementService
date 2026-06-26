@@ -318,7 +318,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     work_order_erp_id = serializers.SerializerMethodField()
 
     # Write fields
-    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all())
+    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all(), required=False, allow_null=True)
     part_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all())
     order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
     work_order = TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False, allow_null=True)

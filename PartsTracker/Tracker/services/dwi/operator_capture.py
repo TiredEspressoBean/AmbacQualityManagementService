@@ -323,32 +323,40 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
     """
     from Tracker.services.qms.inline_capture import _build_substep_tag  # type: ignore[attr-defined]
 
-    if step_execution.part_id is None:
-        # Cores don't have a QualityReports promotion path; just no-op.
+    if step_execution.part_id is not None:
+        # Part DWI — one report per (step_execution, substep), keyed by tag.
+        description_tag = _build_substep_tag(step_execution.id, substep.id)
+        report = (
+            QualityReports.objects
+            .filter(step=step_execution.step, part=step_execution.part,
+                    description__startswith=description_tag)
+            .first()
+        )
+        if report is None:
+            report = QualityReports.objects.create(
+                step=step_execution.step, part=step_execution.part,
+                detected_by=user, sampling_method="dwi_substep_submit",
+                status="PENDING", description=description_tag,
+            )
+        return report
+
+    # Receiving DWI — the subject is a MaterialLot. Converge on the lot's
+    # receiving report (opened by receiving_inspection.open_inspection).
+    from Tracker.models import MaterialLot
+    subj = step_execution.subject_object
+    if not isinstance(subj, MaterialLot):
+        # Cores and other subjects have no QualityReports promotion path.
         return None  # type: ignore[return-value]
-
-    description_tag = _build_substep_tag(step_execution.id, substep.id)
-
     report = (
         QualityReports.objects
-        .filter(
-            step=step_execution.step,
-            part=step_execution.part,
-            description__startswith=description_tag,
-        )
-        .first()
+        .filter(step=step_execution.step, material_lot=subj)
+        .order_by("-created_at").first()
     )
-
     if report is None:
         report = QualityReports.objects.create(
-            step=step_execution.step,
-            part=step_execution.part,
-            detected_by=user,
-            sampling_method="dwi_substep_submit",
-            status="PENDING",
-            description=description_tag,
+            step=step_execution.step, material_lot=subj,
+            detected_by=user, sampling_method="dwi_substep_submit", status="PENDING",
         )
-
     return report
 
 

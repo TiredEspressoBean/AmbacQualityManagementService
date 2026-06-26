@@ -2084,6 +2084,11 @@ paths:
         schema:
           type: string
         description: Filter by status
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
       tags:
       - api
       security:
@@ -2386,7 +2391,22 @@ paths:
   /api/CAPAs/stats/:
     get:
       operationId: api_CAPAs_stats_retrieve
-      description: Get aggregated CAPA statistics for dashboard display
+      description: |-
+        Get aggregated CAPA statistics for dashboard display.
+
+        Honors the same query-param filters as the list endpoint (supplier,
+        capa_type, status, severity, …) so a scoped list and its stat cards agree.
+      parameters:
+      - in: query
+        name: capa_type
+        schema:
+          type: string
+        description: Filter stats to a CAPA type.
+      - in: query
+        name: supplier
+        schema:
+          type: string
+        description: Filter stats to a supplier (SCAR drill-in).
       tags:
       - api
       security:
@@ -3995,6 +4015,31 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Companies/{id}/scorecard/:
+    get:
+      operationId: api_Companies_scorecard_retrieve
+      description: Supplier quality scorecard — receiving acceptance/reject rates,
+        CoC compliance, on-time delivery, and open SCAR count.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Company.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierScorecard'
+          description: ''
   /api/Companies/export-excel/:
     get:
       operationId: api_Companies_export_excel_retrieve
@@ -9111,13 +9156,19 @@ paths:
         schema:
           type: string
           enum:
+          - ACCEPTED
+          - AWAITING_INSPECTION
           - CONSUMED
           - IN_USE
           - QUARANTINE
           - RECEIVED
+          - REJECTED
           - SCRAPPED
         description: |-
           * `RECEIVED` - Received
+          * `AWAITING_INSPECTION` - Awaiting Inspection
+          * `ACCEPTED` - Accepted
+          * `REJECTED` - Rejected
           * `IN_USE` - In Use
           * `CONSUMED` - Consumed
           * `SCRAPPED` - Scrapped
@@ -9278,6 +9329,236 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/MaterialLots/{id}/accept/:
+    post:
+      operationId: api_MaterialLots_accept_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/open_inspection/:
+    post:
+      operationId: api_MaterialLots_open_inspection_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/raise_scar/:
+    post:
+      operationId: api_MaterialLots_raise_scar_create
+      description: Raise a Supplier Corrective Action (SCAR) for this lot's supplier,
+        linking the lot's receiving inspection report.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RaiseScarResponse'
+          description: ''
+  /api/MaterialLots/{id}/record_bulk/:
+    post:
+      operationId: api_MaterialLots_record_bulk_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordBulkRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordBulkRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordBulkRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/record_inspection/:
+    post:
+      operationId: api_MaterialLots_record_inspection_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordInspectionRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordInspectionRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordInspectionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/record_units/:
+    post:
+      operationId: api_MaterialLots_record_units_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordUnitsRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordUnitsRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordUnitsRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/reject/:
+    post:
+      operationId: api_MaterialLots_reject_create
+      description: Material lot tracking with split capability
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/sample_plan/:
+    get:
+      operationId: api_MaterialLots_sample_plan_retrieve
+      description: Derive the acceptance-sampling plan (n/Ac/Re) for this lot from
+        its part type's RECEIVING step + supplier sampling ruleset.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplePlanResponse'
+          description: ''
   /api/MaterialLots/{id}/split/:
     post:
       operationId: api_MaterialLots_split_create
@@ -9313,6 +9594,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/MaterialLots/bulk_create/:
+    post:
+      operationId: api_MaterialLots_bulk_create_create
+      description: Receive N lots from a shipment (paste-grid). All-or-nothing — any
+        row error rolls back.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLotBulkCreateResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLotBulkCreateError'
           description: ''
   /api/MaterialLots/export-excel/:
     get:
@@ -11147,6 +11463,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/PartTypes/{id}/quality-summary/:
+    get:
+      operationId: api_PartTypes_quality_summary_retrieve
+      description: 'Aggregate quality rollup for a part type: inspection pass/fail
+        + FPY, open dispositions/CAPAs, defect Pareto, recent failures, and a 30-day
+        FPY trend.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type.
+        required: true
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter processes by associated part type UUID
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypeQualitySummary'
+          description: ''
   /api/PartTypes/export/{export_format}/:
     get:
       operationId: api_PartTypes_export_retrieve
@@ -15312,6 +15659,8 @@ paths:
         schema:
           type: string
           enum:
+          - AQL
+          - C_ZERO
           - EVERY_NTH_PART
           - EXACT_COUNT
           - FIRST_N_PARTS
@@ -15325,6 +15674,8 @@ paths:
           * `FIRST_N_PARTS` - First N Parts
           * `LAST_N_PARTS` - Last N Parts
           * `EXACT_COUNT` - Exact Count (No Variance)
+          * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
+          * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
       - in: query
         name: ruleset
         schema:
@@ -35976,6 +36327,26 @@ components:
         * `PER_SHIFT` - Per Shift
         * `PER_EQUIPMENT` - Per Equipment
         * `PER_OPERATOR` - Per Operator
+    GateMetricEnum:
+      enum:
+      - CONSECUTIVE_FAILS
+      - FAIL_RATE_PCT
+      - DEFECTIVE_COUNT
+      type: string
+      description: |-
+        * `CONSECUTIVE_FAILS` - Consecutive failures
+        * `FAIL_RATE_PCT` - Failure rate (%)
+        * `DEFECTIVE_COUNT` - Defective count
+    GateWindowEnum:
+      enum:
+      - WORK_ORDER
+      - ROLLING_N
+      - LOT
+      type: string
+      description: |-
+        * `WORK_ORDER` - Whole work order at this step
+        * `ROLLING_N` - Rolling last N inspections
+        * `LOT` - Receiving lot sample
     GenerateReportRequest:
       type: object
       description: |-
@@ -37167,6 +37538,16 @@ components:
           type: string
           description: Supplier's lot/batch number
           maxLength: 100
+        erp_po_number:
+          type: string
+          description: ERP purchase-order reference (UQMES does not own purchasing).
+          maxLength: 100
+        promised_date:
+          type: string
+          format: date
+          nullable: true
+          description: Supplier's promised delivery date (from the PO); drives on-time-delivery
+            scoring.
         received_date:
           type: string
           format: date
@@ -37233,6 +37614,93 @@ components:
       - unit_of_measure
       - updated_at
       - version
+    MaterialLotBulkCreateError:
+      type: object
+      properties:
+        detail:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+    MaterialLotBulkCreateRequest:
+      type: object
+      description: Bulk lot-receive payload for the paste-grid screen.
+      properties:
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialLotBulkRowRequest'
+      required:
+      - lots
+    MaterialLotBulkCreateResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        created_lot_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - count
+      - created_lot_ids
+    MaterialLotBulkRowRequest:
+      type: object
+      description: One row of a bulk lot-receive (paste-grid).
+      properties:
+        lot_number:
+          type: string
+          minLength: 1
+          maxLength: 100
+        received_date:
+          type: string
+          format: date
+        material_type:
+          type: string
+          format: uuid
+          nullable: true
+        material_description:
+          type: string
+          maxLength: 200
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+        supplier_lot_number:
+          type: string
+          maxLength: 100
+        erp_po_number:
+          type: string
+          maxLength: 100
+        promised_date:
+          type: string
+          format: date
+          nullable: true
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+        unit_of_measure:
+          type: string
+          maxLength: 20
+        manufacture_date:
+          type: string
+          format: date
+          nullable: true
+        expiration_date:
+          type: string
+          format: date
+          nullable: true
+        storage_location:
+          type: string
+          maxLength: 100
+      required:
+      - lot_number
+      - quantity
+      - received_date
     MaterialLotRequest:
       type: object
       description: |-
@@ -37270,6 +37738,16 @@ components:
           type: string
           description: Supplier's lot/batch number
           maxLength: 100
+        erp_po_number:
+          type: string
+          description: ERP purchase-order reference (UQMES does not own purchasing).
+          maxLength: 100
+        promised_date:
+          type: string
+          format: date
+          nullable: true
+          description: Supplier's promised delivery date (from the PO); drives on-time-delivery
+            scoring.
         received_date:
           type: string
           format: date
@@ -37322,6 +37800,9 @@ components:
     MaterialLotStatusEnum:
       enum:
       - RECEIVED
+      - AWAITING_INSPECTION
+      - ACCEPTED
+      - REJECTED
       - IN_USE
       - CONSUMED
       - SCRAPPED
@@ -37329,6 +37810,9 @@ components:
       type: string
       description: |-
         * `RECEIVED` - Received
+        * `AWAITING_INSPECTION` - Awaiting Inspection
+        * `ACCEPTED` - Accepted
+        * `REJECTED` - Rejected
         * `IN_USE` - In Use
         * `CONSUMED` - Consumed
         * `SCRAPPED` - Scrapped
@@ -37489,6 +37973,29 @@ components:
             are checked against active SPCBaseline control limits.
         archived:
           type: boolean
+        characteristic_number:
+          type: string
+          nullable: true
+          description: Balloon number on the drawing (AS9102 / Control Plan reference).
+          maxLength: 20
+        default_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Preferred gauge/instrument for this measurement (operator default).
+        default_equipment_name:
+          type: string
+          readOnly: true
+          nullable: true
+        backup_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Fallback gauge/instrument when the default is unavailable.
+        backup_equipment_name:
+          type: string
+          readOnly: true
+          nullable: true
         version:
           type: integer
           readOnly: true
@@ -37501,6 +38008,8 @@ components:
           readOnly: true
           nullable: true
       required:
+      - backup_equipment_name
+      - default_equipment_name
       - id
       - is_current_version
       - label
@@ -37553,6 +38062,21 @@ components:
             are checked against active SPCBaseline control limits.
         archived:
           type: boolean
+        characteristic_number:
+          type: string
+          nullable: true
+          description: Balloon number on the drawing (AS9102 / Control Plan reference).
+          maxLength: 20
+        default_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Preferred gauge/instrument for this measurement (operator default).
+        backup_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Fallback gauge/instrument when the default is unavailable.
       required:
       - label
       - step
@@ -40157,6 +40681,45 @@ components:
       - process_name
       - traveler
       - work_order_id
+    PartTypeQualitySummary:
+      type: object
+      properties:
+        parts_total:
+          type: integer
+        reports:
+          type: object
+          additionalProperties: {}
+        open:
+          type: object
+          additionalProperties: {}
+        defect_pareto:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        spc:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        recent_failures:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        fpy_trend:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - defect_pareto
+      - fpy_trend
+      - open
+      - parts_total
+      - recent_failures
+      - reports
+      - spc
     PartTypeSelect:
       type: object
       description: Lightweight part type serializer for dropdown/combobox selections
@@ -40348,6 +40911,7 @@ components:
         step:
           type: string
           format: uuid
+          nullable: true
         step_info:
           type: object
           additionalProperties: {}
@@ -40431,7 +40995,6 @@ components:
       - qa_completed
       - quality_info
       - requires_sampling
-      - step
       - step_description
       - step_info
       - step_name
@@ -40499,6 +41062,7 @@ components:
         step:
           type: string
           format: uuid
+          nullable: true
         work_order:
           type: string
           format: uuid
@@ -40517,7 +41081,6 @@ components:
       required:
       - ERP_id
       - part_type
-      - step
     PartsStatusEnum:
       enum:
       - PENDING
@@ -41826,6 +42389,16 @@ components:
           type: string
           description: Supplier's lot/batch number
           maxLength: 100
+        erp_po_number:
+          type: string
+          description: ERP purchase-order reference (UQMES does not own purchasing).
+          maxLength: 100
+        promised_date:
+          type: string
+          format: date
+          nullable: true
+          description: Supplier's promised delivery date (from the PO); drives on-time-delivery
+            scoring.
         received_date:
           type: string
           format: date
@@ -41900,6 +42473,21 @@ components:
             are checked against active SPCBaseline control limits.
         archived:
           type: boolean
+        characteristic_number:
+          type: string
+          nullable: true
+          description: Balloon number on the drawing (AS9102 / Control Plan reference).
+          maxLength: 20
+        default_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Preferred gauge/instrument for this measurement (operator default).
+        backup_equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: Fallback gauge/instrument when the default is unavailable.
     PatchedMilestoneRequest:
       type: object
       description: Single milestone within a template.
@@ -42048,6 +42636,7 @@ components:
         step:
           type: string
           format: uuid
+          nullable: true
         work_order:
           type: string
           format: uuid
@@ -42763,12 +43352,6 @@ components:
           type: boolean
         is_fallback:
           type: boolean
-        fallback_threshold:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          nullable: true
-          description: Number of consecutive failures before switching to fallback
         fallback_duration:
           type: integer
           maximum: 2147483647
@@ -42786,6 +43369,83 @@ components:
         step:
           type: string
           format: uuid
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Supplier scope for receiving acceptance sampling. Null = all
+            suppliers.
+        aql:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
+          nullable: true
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+        inspection_level:
+          type: string
+          description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+          maxLength: 3
+        severity:
+          type: string
+          description: AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+          maxLength: 10
+        strategy:
+          type: string
+          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          maxLength: 4
+        gate_metric:
+          description: |-
+            Aggregate signal this step watches. Blank = no gate.
+
+            * `CONSECUTIVE_FAILS` - Consecutive failures
+            * `FAIL_RATE_PCT` - Failure rate (%)
+            * `DEFECTIVE_COUNT` - Defective count
+          oneOf:
+          - $ref: '#/components/schemas/GateMetricEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,3})?$
+          nullable: true
+          description: 'Threshold: percent for FAIL_RATE_PCT, count otherwise.'
+        gate_window:
+          description: |-
+            Window the metric is computed over.
+
+            * `WORK_ORDER` - Whole work order at this step
+            * `ROLLING_N` - Rolling last N inspections
+            * `LOT` - Receiving lot sample
+          oneOf:
+          - $ref: '#/components/schemas/GateWindowEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_window_n:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: N for ROLLING_N windows.
+        gate_min_sample:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Minimum inspections before a FAIL_RATE_PCT gate can fire.
+        gate_actions:
+          description: List of GateAction codes to fire when the gate trips.
+        gate_capa_type:
+          type: string
+          description: CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+          maxLength: 20
+        gate_capa_severity:
+          type: string
+          description: Severity for a RAISE_CAPA_SCAR action.
+          maxLength: 10
+        gate_approval_template:
+          type: string
+          format: uuid
+          nullable: true
+          description: Template for a REQUIRE_APPROVAL action.
         created_by:
           type: integer
           nullable: true
@@ -43062,6 +43722,7 @@ components:
             * `REWORK` - Rework
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
+            * `RECEIVING` - Receiving Inspection
         is_decision_point:
           type: boolean
         decision_type:
@@ -45676,6 +46337,29 @@ components:
           type: boolean
           description: If True, this inspection is a First Piece Inspection (FPI)
             for setup verification
+        material_lot:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Set when this report is a receiving inspection of an incoming
+            lot (mutually exclusive with `part`).
+        sample_size:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Acceptance-sampling sample size (n) snapshot at inspection
+            time.
+        accept_number:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Acceptance-sampling accept number (Ac) snapshot.
+        reject_number:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Acceptance-sampling reject number (Re) snapshot.
         equipment_links:
           type: array
           items:
@@ -45721,6 +46405,7 @@ components:
         archived:
           type: boolean
       required:
+      - accept_number
       - created_at
       - detected_by_info
       - equipment_links
@@ -45729,11 +46414,14 @@ components:
       - file_info
       - id
       - machine_info
+      - material_lot
       - operators_info
       - part_display
       - part_info
       - personnel_links
+      - reject_number
       - report_number
+      - sample_size
       - status
       - status_display
       - step_info
@@ -46102,6 +46790,17 @@ components:
           description: Aggregation function
       required:
       - model
+    RaiseScarResponse:
+      type: object
+      properties:
+        capa_id:
+          type: string
+          format: uuid
+        capa_number:
+          type: string
+      required:
+      - capa_id
+      - capa_number
     RcaMethodEnum:
       enum:
       - FIVE_WHYS
@@ -46295,6 +46994,71 @@ components:
         * `NOT_REQUIRED` - Not Required
         * `REQUIRED` - Required
         * `COMPLETED` - Completed
+    ReceivingCharacteristic:
+      type: object
+      description: A measurement definition to capture during receiving inspection.
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        unit:
+          type: string
+        type:
+          type: string
+        nominal:
+          type: number
+          format: double
+          nullable: true
+        upper_tol:
+          type: number
+          format: double
+          nullable: true
+        lower_tol:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - id
+      - label
+      - lower_tol
+      - nominal
+      - type
+      - unit
+      - upper_tol
+    ReceivingMeasurementInputRequest:
+      type: object
+      description: One measurement captured during receiving inspection.
+      properties:
+        definition:
+          type: string
+          format: uuid
+        value_numeric:
+          type: number
+          format: double
+          nullable: true
+        value_pass_fail:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/ValuePassFailEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - definition
+    ReceivingSampleUnitRequest:
+      type: object
+      description: One sampled unit's measurements within an acceptance-sampling inspection.
+      properties:
+        sample_number:
+          type: integer
+          minimum: 1
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivingMeasurementInputRequest'
+      required:
+      - measurements
+      - sample_number
     RecipientStrategyEnum:
       enum:
       - static
@@ -46305,6 +47069,36 @@ components:
         * `static` - Static — recipients from this rule only
         * `from_payload` - From event — recipients from the event payload
         * `union` - Union — combine event-payload recipients with this rule's
+    RecordBulkRequestRequest:
+      type: object
+      description: 'Request body for bulk/attribute capture: defectives found across
+        the sample.'
+      properties:
+        defectives_found:
+          type: integer
+          minimum: 0
+      required:
+      - defectives_found
+    RecordInspectionRequestRequest:
+      type: object
+      description: Request body for recording receiving-inspection measurement results.
+      properties:
+        measurements:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivingMeasurementInputRequest'
+      required:
+      - measurements
+    RecordUnitsRequestRequest:
+      type: object
+      description: Request body for recording per-unit measurements across the sample.
+      properties:
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivingSampleUnitRequest'
+      required:
+      - units
     RegenerateDemoQueued:
       type: object
       properties:
@@ -46591,6 +47385,8 @@ components:
       - FIRST_N_PARTS
       - LAST_N_PARTS
       - EXACT_COUNT
+      - AQL
+      - C_ZERO
       type: string
       description: |-
         * `EVERY_NTH_PART` - Every Nth Part
@@ -46599,6 +47395,8 @@ components:
         * `FIRST_N_PARTS` - First N Parts
         * `LAST_N_PARTS` - Last N Parts
         * `EXACT_COUNT` - Exact Count (No Variance)
+        * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
+        * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
     SPCBaseline:
       type: object
       description: Full SPC Baseline serializer with all fields and computed properties.
@@ -47132,6 +47930,50 @@ components:
       - process_name
       - statistics
       - step_name
+    SamplePlanResponse:
+      type: object
+      description: |-
+        Response: the acceptance_sampling.SamplePlan DTO + the RECEIVING step's characteristics,
+        plus the routing info the UI needs to launch a DWI run (step id, whether the step has
+        substeps, and the open StepExecution for this lot if one exists).
+      properties:
+        sample_size:
+          type: integer
+        accept_number:
+          type: integer
+        reject_number:
+          type: integer
+        strategy:
+          type: string
+        inspection_level:
+          type: string
+        severity:
+          type: string
+        characteristics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceivingCharacteristic'
+        step_id:
+          type: string
+          format: uuid
+          nullable: true
+        has_substeps:
+          type: boolean
+        step_execution_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - accept_number
+      - characteristics
+      - has_substeps
+      - inspection_level
+      - reject_number
+      - sample_size
+      - severity
+      - step_execution_id
+      - step_id
+      - strategy
     SamplingDecision:
       type: object
       description: |-
@@ -47317,12 +48159,6 @@ components:
           readOnly: true
         is_fallback:
           type: boolean
-        fallback_threshold:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          nullable: true
-          description: Number of consecutive failures before switching to fallback
         fallback_duration:
           type: integer
           maximum: 2147483647
@@ -47359,6 +48195,83 @@ components:
           type: array
           items: {}
           readOnly: true
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Supplier scope for receiving acceptance sampling. Null = all
+            suppliers.
+        aql:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
+          nullable: true
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+        inspection_level:
+          type: string
+          description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+          maxLength: 3
+        severity:
+          type: string
+          description: AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+          maxLength: 10
+        strategy:
+          type: string
+          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          maxLength: 4
+        gate_metric:
+          description: |-
+            Aggregate signal this step watches. Blank = no gate.
+
+            * `CONSECUTIVE_FAILS` - Consecutive failures
+            * `FAIL_RATE_PCT` - Failure rate (%)
+            * `DEFECTIVE_COUNT` - Defective count
+          oneOf:
+          - $ref: '#/components/schemas/GateMetricEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,3})?$
+          nullable: true
+          description: 'Threshold: percent for FAIL_RATE_PCT, count otherwise.'
+        gate_window:
+          description: |-
+            Window the metric is computed over.
+
+            * `WORK_ORDER` - Whole work order at this step
+            * `ROLLING_N` - Rolling last N inspections
+            * `LOT` - Receiving lot sample
+          oneOf:
+          - $ref: '#/components/schemas/GateWindowEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_window_n:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: N for ROLLING_N windows.
+        gate_min_sample:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Minimum inspections before a FAIL_RATE_PCT gate can fire.
+        gate_actions:
+          description: List of GateAction codes to fire when the gate trips.
+        gate_capa_type:
+          type: string
+          description: CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+          maxLength: 20
+        gate_capa_severity:
+          type: string
+          description: Severity for a RAISE_CAPA_SCAR action.
+          maxLength: 10
+        gate_approval_template:
+          type: string
+          format: uuid
+          nullable: true
+          description: Template for a REQUIRE_APPROVAL action.
         created_by:
           type: integer
           nullable: true
@@ -47410,12 +48323,6 @@ components:
           type: boolean
         is_fallback:
           type: boolean
-        fallback_threshold:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          nullable: true
-          description: Number of consecutive failures before switching to fallback
         fallback_duration:
           type: integer
           maximum: 2147483647
@@ -47433,6 +48340,83 @@ components:
         step:
           type: string
           format: uuid
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Supplier scope for receiving acceptance sampling. Null = all
+            suppliers.
+        aql:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
+          nullable: true
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+        inspection_level:
+          type: string
+          description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+          maxLength: 3
+        severity:
+          type: string
+          description: AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+          maxLength: 10
+        strategy:
+          type: string
+          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          maxLength: 4
+        gate_metric:
+          description: |-
+            Aggregate signal this step watches. Blank = no gate.
+
+            * `CONSECUTIVE_FAILS` - Consecutive failures
+            * `FAIL_RATE_PCT` - Failure rate (%)
+            * `DEFECTIVE_COUNT` - Defective count
+          oneOf:
+          - $ref: '#/components/schemas/GateMetricEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,3})?$
+          nullable: true
+          description: 'Threshold: percent for FAIL_RATE_PCT, count otherwise.'
+        gate_window:
+          description: |-
+            Window the metric is computed over.
+
+            * `WORK_ORDER` - Whole work order at this step
+            * `ROLLING_N` - Rolling last N inspections
+            * `LOT` - Receiving lot sample
+          oneOf:
+          - $ref: '#/components/schemas/GateWindowEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        gate_window_n:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: N for ROLLING_N windows.
+        gate_min_sample:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Minimum inspections before a FAIL_RATE_PCT gate can fire.
+        gate_actions:
+          description: List of GateAction codes to fire when the gate trips.
+        gate_capa_type:
+          type: string
+          description: CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+          maxLength: 20
+        gate_capa_severity:
+          type: string
+          description: Severity for a RAISE_CAPA_SCAR action.
+          maxLength: 10
+        gate_approval_template:
+          type: string
+          format: uuid
+          nullable: true
+          description: Template for a REQUIRE_APPROVAL action.
         created_by:
           type: integer
           nullable: true
@@ -47898,6 +48882,7 @@ components:
             * `REWORK` - Rework
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
+            * `RECEIVING` - Receiving Inspection
         is_decision_point:
           type: boolean
         decision_type:
@@ -48681,6 +49666,7 @@ components:
             * `REWORK` - Rework
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
+            * `RECEIVING` - Receiving Inspection
         is_decision_point:
           type: boolean
         decision_type:
@@ -48716,10 +49702,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SamplingRuleUpdateRequest'
-        fallback_threshold:
-          type: integer
         fallback_duration:
           type: integer
+        tighten_after:
+          type: integer
+          nullable: true
+          description: Consecutive failures before tightening to the fallback ruleset
+            (sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).
       required:
       - rules
     StepSummary:
@@ -48787,6 +49776,7 @@ components:
       - REWORK
       - TIMER
       - TERMINAL
+      - RECEIVING
       type: string
       description: |-
         * `TASK` - Task
@@ -48795,6 +49785,7 @@ components:
         * `REWORK` - Rework
         * `TIMER` - Timer/Wait
         * `TERMINAL` - Terminal
+        * `RECEIVING` - Receiving Inspection
     StepWithResolvedRules:
       type: object
       description: Step with resolved sampling rules (for flow editor)
@@ -48852,10 +49843,10 @@ components:
                     nullable: true
                   order:
                     type: integer
-            fallback_threshold:
+            fallback_duration:
               type: integer
               nullable: true
-            fallback_duration:
+            tighten_after:
               type: integer
               nullable: true
           readOnly: true
@@ -48978,6 +49969,7 @@ components:
             * `REWORK` - Rework
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
+            * `RECEIVING` - Receiving Inspection
         is_decision_point:
           type: boolean
         decision_type:
@@ -49085,6 +50077,7 @@ components:
             * `REWORK` - Rework
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
+            * `RECEIVING` - Receiving Inspection
         is_decision_point:
           type: boolean
         decision_type:
@@ -49980,6 +50973,44 @@ components:
       properties:
         reason:
           type: string
+    SupplierScorecard:
+      type: object
+      properties:
+        supplier_id:
+          type: string
+        lots_received:
+          type: integer
+        lots_accepted:
+          type: integer
+        lots_rejected:
+          type: integer
+        lots_inspected:
+          type: integer
+        reject_rate:
+          type: number
+          format: double
+        coc_compliance:
+          type: number
+          format: double
+        on_time_rate:
+          type: number
+          format: double
+          nullable: true
+        promised_lots:
+          type: integer
+        open_scar_count:
+          type: integer
+      required:
+      - coc_compliance
+      - lots_accepted
+      - lots_inspected
+      - lots_received
+      - lots_rejected
+      - on_time_rate
+      - open_scar_count
+      - promised_lots
+      - reject_rate
+      - supplier_id
     SwitchTenantRequestRequest:
       type: object
       properties:

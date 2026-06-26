@@ -19,11 +19,14 @@ from Tracker.models import (
     # MES Standard models
     SamplingRule, SamplingRuleSet, SamplingRuleType, SamplingAnalytics,
     SamplingAuditLog, SamplingTriggerState,
+    # Manufacturing / supplier
+    PartTypes, Companies,
     # Core models
     NotificationTask,
 )
 
 from .core import SecureModelMixin
+from .fields import TenantScopedPrimaryKeyRelatedField
 
 logger = logging.getLogger(__name__)
 
@@ -182,9 +185,11 @@ class QualityReportsSerializer(SecureModelMixin):
                   "status_display", "description", "file", "created_at", "errors", "measurements", "sampling_audit_log",
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
+                  "material_lot", "sample_size", "accept_number", "reject_number",  # Receiving inspection
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
-        read_only_fields = ("report_number", "created_at")
+        read_only_fields = ("report_number", "created_at",
+                            "material_lot", "sample_size", "accept_number", "reject_number")
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):
@@ -343,8 +348,11 @@ class SamplingRuleSetSerializer(SecureModelMixin):
 
     class Meta:
         model = SamplingRuleSet
-        fields = ('id', 'name', 'origin', 'active', 'version', 'is_fallback', 'fallback_threshold', 'fallback_duration',
+        fields = ('id', 'name', 'origin', 'active', 'version', 'is_fallback', 'fallback_duration',
                   'part_type', 'part_type_info', 'process', 'process_info', 'step', 'step_info', 'rules',
+                  'supplier', 'aql', 'inspection_level', 'severity', 'strategy',  # acceptance sampling
+                  'gate_metric', 'gate_threshold', 'gate_window', 'gate_window_n', 'gate_min_sample',  # quality gate
+                  'gate_actions', 'gate_capa_type', 'gate_capa_severity', 'gate_approval_template',
                   'created_by', 'created_at', 'modified_by', 'updated_at', 'part_type_name', 'process_name', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'rules', 'part_type_info', 'process_info', 'step_info',
@@ -380,7 +388,7 @@ class ResolvedSamplingRuleSetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SamplingRuleSet
-        fields = ["id", "name", "rules", "fallback_threshold", "fallback_duration"]
+        fields = ["id", "name", "rules", "fallback_duration"]
 
 
 # Schema shape for Step.get_resolved_sampling_rules() output. The model method
@@ -402,8 +410,8 @@ _RESOLVED_ACTIVE_RULESET_SCHEMA = {
         "id": {"type": "string", "format": "uuid", "nullable": True},
         "name": {"type": "string", "nullable": True},
         "rules": {"type": "array", "items": _RESOLVED_RULE_SCHEMA},
-        "fallback_threshold": {"type": "integer", "nullable": True},
         "fallback_duration": {"type": "integer", "nullable": True},
+        "tighten_after": {"type": "integer", "nullable": True},
     },
 }
 
@@ -478,8 +486,11 @@ class StepSamplingRulesUpdateSerializer(serializers.Serializer):
     """Serializer for updating step sampling rules"""
     rules = SamplingRuleUpdateSerializer(many=True)
     fallback_rules = SamplingRuleUpdateSerializer(many=True, required=False)
-    fallback_threshold = serializers.IntegerField(required=False)
     fallback_duration = serializers.IntegerField(required=False)
+    tighten_after = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text="Consecutive failures before tightening to the fallback ruleset "
+                  "(sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).")
 
     def update_step_rules(self, step):
         """Use model method for applying sampling rules"""
@@ -488,8 +499,8 @@ class StepSamplingRulesUpdateSerializer(serializers.Serializer):
 
         return step.apply_sampling_rules_update(rules_data=self.validated_data['rules'],
                                                 fallback_rules_data=self.validated_data.get('fallback_rules', []),
-                                                fallback_threshold=self.validated_data.get('fallback_threshold'),
                                                 fallback_duration=self.validated_data.get('fallback_duration'),
+                                                tighten_after=self.validated_data.get('tighten_after'),
                                                 user=user)
 
 
@@ -497,8 +508,11 @@ class StepSamplingRulesWriteSerializer(serializers.Serializer):
     """Write serializer for step sampling rules"""
     rules = SamplingRuleWriteSerializer(many=True)
     fallback_rules = SamplingRuleWriteSerializer(many=True, required=False)
-    fallback_threshold = serializers.IntegerField(required=False)
     fallback_duration = serializers.IntegerField(required=False)
+    tighten_after = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text="Consecutive failures before tightening to the fallback ruleset "
+                  "(sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).")
 
     def save(self, step: Steps):
         """Use the model method for applying sampling rules"""
@@ -506,11 +520,12 @@ class StepSamplingRulesWriteSerializer(serializers.Serializer):
 
         rules = self.validated_data["rules"]
         fallback_data = self.validated_data.get("fallback_rules", [])
-        threshold = self.validated_data.get("fallback_threshold")
         duration = self.validated_data.get("fallback_duration")
 
         return step.apply_sampling_rules_update(rules_data=rules, fallback_rules_data=fallback_data,
-                                                fallback_threshold=threshold, fallback_duration=duration, user=user)
+                                                fallback_duration=duration,
+                                                tighten_after=self.validated_data.get("tighten_after"),
+                                                user=user)
 
 
 class StepSamplingRulesResponseSerializer(serializers.Serializer):
@@ -1522,3 +1537,85 @@ class BulkMeasurementSerializer(serializers.Serializer):
     """Serializer for recording multiple measurements at once."""
     step_execution = serializers.UUIDField()
     measurements = StepExecutionMeasurementWriteSerializer(many=True)
+
+
+# ===== RECEIVING INSPECTION (purchased material, Flow A) =====
+
+class ReceivingMeasurementInputSerializer(serializers.Serializer):
+    """One measurement captured during receiving inspection."""
+    definition = serializers.UUIDField()
+    value_numeric = serializers.FloatField(required=False, allow_null=True)
+    value_pass_fail = serializers.ChoiceField(
+        choices=[('PASS', 'Pass'), ('FAIL', 'Fail')], required=False, allow_null=True)
+
+
+class RecordInspectionRequestSerializer(serializers.Serializer):
+    """Request body for recording receiving-inspection measurement results."""
+    measurements = ReceivingMeasurementInputSerializer(many=True)
+
+
+class ReceivingSampleUnitSerializer(serializers.Serializer):
+    """One sampled unit's measurements within an acceptance-sampling inspection."""
+    sample_number = serializers.IntegerField(min_value=1)
+    measurements = ReceivingMeasurementInputSerializer(many=True)
+
+
+class RecordUnitsRequestSerializer(serializers.Serializer):
+    """Request body for recording per-unit measurements across the sample."""
+    units = ReceivingSampleUnitSerializer(many=True)
+
+
+class RecordBulkRequestSerializer(serializers.Serializer):
+    """Request body for bulk/attribute capture: defectives found across the sample."""
+    defectives_found = serializers.IntegerField(min_value=0)
+
+
+class ReceivingCharacteristicSerializer(serializers.Serializer):
+    """A measurement definition to capture during receiving inspection."""
+    id = serializers.UUIDField()
+    label = serializers.CharField()
+    unit = serializers.CharField(allow_blank=True)
+    type = serializers.CharField()
+    nominal = serializers.FloatField(allow_null=True)
+    upper_tol = serializers.FloatField(allow_null=True)
+    lower_tol = serializers.FloatField(allow_null=True)
+
+
+class SamplePlanResponseSerializer(serializers.Serializer):
+    """Response: the acceptance_sampling.SamplePlan DTO + the RECEIVING step's characteristics,
+    plus the routing info the UI needs to launch a DWI run (step id, whether the step has
+    substeps, and the open StepExecution for this lot if one exists)."""
+    sample_size = serializers.IntegerField()
+    accept_number = serializers.IntegerField()
+    reject_number = serializers.IntegerField()
+    strategy = serializers.CharField()
+    inspection_level = serializers.CharField()
+    severity = serializers.CharField()
+    characteristics = ReceivingCharacteristicSerializer(many=True)
+    step_id = serializers.UUIDField(allow_null=True)
+    has_substeps = serializers.BooleanField()
+    step_execution_id = serializers.UUIDField(allow_null=True)
+
+
+class MaterialLotBulkRowSerializer(serializers.Serializer):
+    """One row of a bulk lot-receive (paste-grid)."""
+    lot_number = serializers.CharField(max_length=100)
+    received_date = serializers.DateField()
+    material_type = TenantScopedPrimaryKeyRelatedField(
+        queryset=PartTypes.unscoped.all(), required=False, allow_null=True)
+    material_description = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    supplier = TenantScopedPrimaryKeyRelatedField(
+        queryset=Companies.unscoped.all(), required=False, allow_null=True)
+    supplier_lot_number = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    erp_po_number = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    promised_date = serializers.DateField(required=False, allow_null=True)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=4)
+    unit_of_measure = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    manufacture_date = serializers.DateField(required=False, allow_null=True)
+    expiration_date = serializers.DateField(required=False, allow_null=True)
+    storage_location = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+
+class MaterialLotBulkCreateSerializer(serializers.Serializer):
+    """Bulk lot-receive payload for the paste-grid screen."""
+    lots = MaterialLotBulkRowSerializer(many=True)

@@ -862,6 +862,25 @@ class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
         # Companies.objects.for_user filters based on user permissions
         return qs
 
+    @extend_schema(responses={200: inline_serializer(name="SupplierScorecard", fields={
+        "supplier_id": serializers.CharField(),
+        "lots_received": serializers.IntegerField(),
+        "lots_accepted": serializers.IntegerField(),
+        "lots_rejected": serializers.IntegerField(),
+        "lots_inspected": serializers.IntegerField(),
+        "reject_rate": serializers.FloatField(),
+        "coc_compliance": serializers.FloatField(),
+        "on_time_rate": serializers.FloatField(allow_null=True),
+        "promised_lots": serializers.IntegerField(),
+        "open_scar_count": serializers.IntegerField(),
+    })}, description="Supplier quality scorecard — receiving acceptance/reject rates, "
+                     "CoC compliance, on-time delivery, and open SCAR count.")
+    @action(detail=True, methods=['get'])
+    def scorecard(self, request, pk=None):
+        from Tracker.services.qms.supplier_scorecard import compute_supplier_scorecard
+        supplier = self.get_object()
+        return Response(compute_supplier_scorecard(supplier).__dict__)
+
 
 class UserDetailsView(BaseUserDetailsView):
     """User details with staff flags + tenant-scoped groups.

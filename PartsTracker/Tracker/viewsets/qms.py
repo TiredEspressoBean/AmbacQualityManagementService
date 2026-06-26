@@ -28,7 +28,7 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer, QualityErrorsListSerializer, QuarantineDispositionSerializer,
     SamplingRuleSetSerializer, SamplingRuleSerializer, MeasurementDefinitionSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
-    FiveWhysSerializer, FishboneSerializer
+    FiveWhysSerializer, FishboneSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 from .core import ExcelExportMixin, ListMetadataMixin
@@ -224,7 +224,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     queryset = CAPA.unscoped.all()
     serializer_class = CAPASerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'capa_type', 'severity', 'assigned_to', 'initiated_by']
+    filterset_fields = ['status', 'capa_type', 'severity', 'assigned_to', 'initiated_by', 'supplier']
     search_fields = ['capa_number', 'problem_statement', 'immediate_action']
     ordering_fields = ['initiated_date', 'due_date', 'completed_date', 'capa_number', 'severity']
     ordering = ['-initiated_date']
@@ -304,6 +304,10 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
         return Response({'completion_percentage': percentage})
 
     @extend_schema(
+        parameters=[
+            OpenApiParameter('supplier', str, description='Filter stats to a supplier (SCAR drill-in).'),
+            OpenApiParameter('capa_type', str, description='Filter stats to a CAPA type.'),
+        ],
         responses={
             200: {
                 'type': 'object',
@@ -333,13 +337,19 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewse
     )
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
-        """Get aggregated CAPA statistics for dashboard display"""
+        """Get aggregated CAPA statistics for dashboard display.
+
+        Honors the same query-param filters as the list endpoint (supplier,
+        capa_type, status, severity, …) so a scoped list and its stat cards agree.
+        """
         from django.utils import timezone
         from Tracker.models.qms import CapaStatus, CapaSeverity
 
-        # Use the viewset's get_queryset() for proper tenant filtering
-        # (same filtering as the list endpoint)
-        base_queryset = super().get_queryset().prefetch_related('tasks', 'rca_records', 'verifications')
+        # filter_queryset applies the request's filterset (supplier, capa_type, …)
+        # on top of tenant scoping, so the cards match the filtered list.
+        base_queryset = self.filter_queryset(
+            super().get_queryset()
+        ).prefetch_related('tasks', 'rca_records', 'verifications')
         capas = list(base_queryset)
         today = timezone.now().date()
 

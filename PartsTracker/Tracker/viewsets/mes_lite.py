@@ -2187,7 +2187,6 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
         {
             "rules": [...],
             "fallback_rules": [...],
-            "fallback_threshold": 2,
             "fallback_duration": 5
         }
         """
@@ -2641,6 +2640,167 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
         queryset = self.filter_queryset(self.get_queryset())
         serializer = PartTypeSelectSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        description="Aggregate quality rollup for a part type: inspection "
+                    "pass/fail + FPY, open dispositions/CAPAs, defect Pareto, "
+                    "recent failures, and a 30-day FPY trend.",
+        responses={200: inline_serializer(
+            name="PartTypeQualitySummary",
+            fields={
+                "parts_total": serializers.IntegerField(),
+                "reports": serializers.DictField(),
+                "open": serializers.DictField(),
+                "defect_pareto": serializers.ListField(child=serializers.DictField()),
+                "spc": serializers.ListField(child=serializers.DictField()),
+                "recent_failures": serializers.ListField(child=serializers.DictField()),
+                "fpy_trend": serializers.ListField(child=serializers.DictField()),
+            },
+        )},
+    )
+    @action(detail=True, methods=['get'], url_path='quality-summary')
+    def quality_summary(self, request, pk=None):
+        """Aggregate this part type's quality data across all its parts.
+
+        Scoped via `QualityReports.part.part_type`. Honors per-user access via
+        `qs_for_user` (export-control / classification / relationship filtering).
+        """
+        import math
+        from datetime import timedelta
+        from django.utils import timezone
+        from django.db.models import Count, Q
+        from django.db.models.functions import TruncDate
+        from Tracker.models import (
+            QualityReports, QualityErrorsList, Parts, QuarantineDisposition, CAPA,
+            MeasurementDefinition, MeasurementResult,
+        )
+
+        part_type = self.get_object()
+
+        reports = self.qs_for_user(QualityReports).filter(part__part_type=part_type)
+        total = reports.count()
+        passed = reports.filter(status='PASS').count()
+        failed = reports.filter(status='FAIL').count()
+        pending = reports.filter(status='PENDING').count()
+        fpy = round(passed / total * 100, 1) if total else None
+
+        parts_total = self.qs_for_user(Parts).filter(part_type=part_type).count()
+
+        open_dispositions = self.qs_for_user(QuarantineDisposition).filter(
+            part__part_type=part_type,
+        ).exclude(current_state='CLOSED').count()
+
+        open_capas = self.qs_for_user(CAPA).filter(
+            part__part_type=part_type,
+        ).exclude(status__in=['CLOSED', 'CANCELLED']).count()
+
+        # Defect Pareto (top 8) — error types on FAIL reports for this part type.
+        defect_counts = self.qs_for_user(QualityErrorsList).filter(
+            report_instances__report__part__part_type=part_type,
+            report_instances__report__status='FAIL',
+        ).values('error_name').annotate(
+            count=Count('report_instances'),
+        ).order_by('-count')[:8]
+        defect_pareto = [
+            {'error_type': d['error_name'], 'count': d['count']} for d in defect_counts
+        ]
+
+        recent_failures = [
+            {
+                'id': str(r.id),
+                'report_number': r.report_number,
+                'created_at': r.created_at.isoformat(),
+                'part': r.part.ERP_id if r.part else None,
+                'step': r.step.name if r.step else None,
+            }
+            for r in reports.filter(status='FAIL').select_related('part', 'step').order_by('-created_at')[:5]
+        ]
+
+        # 30-day FPY trend (one point per day; null fpy on days with no data).
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=29)
+        daily = reports.filter(
+            created_at__date__gte=start_date, created_at__date__lte=end_date,
+        ).annotate(date=TruncDate('created_at')).values('date').annotate(
+            t=Count('id'), p=Count('id', filter=Q(status='PASS')),
+        )
+        by_date = {d['date']: d for d in daily}
+        fpy_trend = []
+        cur = start_date
+        while cur <= end_date:
+            s = by_date.get(cur)
+            t = s['t'] if s else 0
+            p = s['p'] if s else 0
+            fpy_trend.append({
+                'date': cur.isoformat(),
+                'label': cur.strftime('%b %d'),
+                'fpy': round(p / t * 100, 1) if t else None,
+                'total': t,
+            })
+            cur += timedelta(days=1)
+
+        # SPC: measurement capability for this part type's numeric measurements,
+        # top 8 by reading count. in_spec_pct from the stored is_within_spec flag;
+        # Ppk (overall) computed from value spread vs nominal ± tolerance.
+        meas_results = self.qs_for_user(MeasurementResult).filter(
+            report__part__part_type=part_type, value_numeric__isnull=False,
+            definition__type='NUMERIC',
+        )
+        top_defs = meas_results.values('definition').annotate(
+            n=Count('id'),
+        ).order_by('-n')[:8]
+        def_ids = [r['definition'] for r in top_defs]
+        defs_by_id = {
+            d.id: d for d in self.qs_for_user(MeasurementDefinition).filter(id__in=def_ids)
+        }
+        spc = []
+        for row in top_defs:
+            d = defs_by_id.get(row['definition'])
+            if d is None:
+                continue
+            rows = list(meas_results.filter(definition=d).values_list('value_numeric', 'is_within_spec'))
+            vals = [float(v) for v, _ in rows]
+            n = len(vals)
+            if not n:
+                continue
+            in_spec = sum(1 for _, s in rows if s)
+            mean = sum(vals) / n
+            ppk = None
+            capable = None
+            nominal = float(d.nominal) if d.nominal is not None else None
+            upper_tol = float(d.upper_tol) if d.upper_tol is not None else None
+            lower_tol = float(d.lower_tol) if d.lower_tol is not None else None
+            if n >= 2 and None not in (nominal, upper_tol, lower_tol):
+                variance = sum((v - mean) ** 2 for v in vals) / (n - 1)
+                std = math.sqrt(variance)
+                if std > 0:
+                    usl = nominal + upper_tol
+                    lsl = nominal - lower_tol
+                    ppk = round(min((usl - mean) / (3 * std), (mean - lsl) / (3 * std)), 2)
+                    capable = ppk >= 1.33
+            spc.append({
+                'measurement_id': str(d.id),
+                'label': d.label,
+                'unit': d.unit or '',
+                'n': n,
+                'in_spec_pct': round(in_spec / n * 100, 1),
+                'mean': round(mean, 4),
+                'ppk': ppk,
+                'capable': capable,
+            })
+
+        return Response({
+            'parts_total': parts_total,
+            'reports': {
+                'total': total, 'passed': passed, 'failed': failed,
+                'pending': pending, 'fpy': fpy,
+            },
+            'open': {'dispositions': open_dispositions, 'capas': open_capas},
+            'defect_pareto': defect_pareto,
+            'spc': spc,
+            'recent_failures': recent_failures,
+            'fpy_trend': fpy_trend,
+        })
 
 
 class ProcessWithStepsViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
