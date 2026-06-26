@@ -40,7 +40,7 @@ const stepSchema = z.object({
     expected_duration: z.number().nullable().optional(),
     sampling_rules: z.array(samplingRuleSchema).optional(),
     fallback_rules: z.array(samplingRuleSchema).optional(),
-    fallback_threshold: z.number().nullable().optional(),
+    tighten_after: z.number().nullable().optional(),
     fallback_duration: z.number().nullable().optional(),
 });
 
@@ -71,7 +71,7 @@ type Step = {
     expected_duration?: number | null;
     sampling_rules?: { rule_type: string; value?: string | number | null; order?: number }[];
     fallback_rules?: { rule_type: string; value?: string | number | null; order?: number }[];
-    fallback_threshold?: number | null;
+    tighten_after?: number | null;
     fallback_duration?: number | null;
 };
 export type FormSchema = {
@@ -114,7 +114,7 @@ export default function ProcessFormPage() {
                 expected_duration: null,
                 sampling_rules: [],
                 fallback_rules: [],
-                fallback_threshold: null,
+                tighten_after: null,
                 fallback_duration: null,
             })),
         },
@@ -143,7 +143,7 @@ export default function ProcessFormPage() {
                 expected_duration: undefined,
                 sampling_rules: [],
                 fallback_rules: [],
-                fallback_threshold: undefined,
+                tighten_after: undefined,
                 fallback_duration: undefined,
             }));
         }
@@ -167,7 +167,7 @@ export default function ProcessFormPage() {
                     expected_duration: durationMinutes === '' ? null : durationMinutes,
                     sampling_rules: [],
                     fallback_rules: [],
-                    fallback_threshold: null,
+                    tighten_after: null,
                     fallback_duration: null,
                 };
             }) : Array.from({length: numSteps}, () => ({
@@ -177,7 +177,7 @@ export default function ProcessFormPage() {
                 expected_duration: null,
                 sampling_rules: [],
                 fallback_rules: [],
-                fallback_threshold: null,
+                tighten_after: null,
                 fallback_duration: null,
             }));
 

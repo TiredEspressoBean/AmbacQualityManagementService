@@ -28,7 +28,7 @@ const samplingRuleSchema = z.object({
 const formSchema = z.object({
   rules: z.array(samplingRuleSchema),
   fallback_rules: z.array(samplingRuleSchema).optional(),
-  fallback_threshold: z.number().nullable().optional(),
+  tighten_after: z.number().nullable().optional(),
   fallback_duration: z.number().nullable().optional(),
 });
 
@@ -251,7 +251,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
     defaultValues: {
       rules: [],
       fallback_rules: [],
-      fallback_threshold: null,
+      tighten_after: null,
       fallback_duration: null,
     },
   });
@@ -265,7 +265,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
       form.reset({
         rules: stepWithRules.active_ruleset?.rules ?? [],
         fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
-        fallback_threshold: stepWithRules.active_ruleset?.fallback_threshold ?? null,
+        tighten_after: stepWithRules.active_ruleset?.tighten_after ?? null,
         fallback_duration: stepWithRules.active_ruleset?.fallback_duration ?? null,
       });
     }
@@ -293,7 +293,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
           rules: normalizedRules as any,
           // eslint-disable-next-line local/no-as-any -- same as above for fallback_rules
           fallback_rules: normalizedFallbackRules as any,
-          fallback_threshold: values.fallback_threshold ?? undefined,
+          tighten_after: values.tighten_after ?? undefined,
           fallback_duration: values.fallback_duration ?? undefined,
         },
       },
@@ -322,7 +322,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
   const watchedRules = useMemo(() => watchedRulesRaw ?? [], [watchedRulesRaw]);
   const watchedFallbackRulesRaw = form.watch('fallback_rules');
   const watchedFallbackRules = useMemo(() => watchedFallbackRulesRaw ?? [], [watchedFallbackRulesRaw]);
-  const watchedThreshold = form.watch('fallback_threshold');
+  const watchedThreshold = form.watch('tighten_after');
   const watchedDuration = form.watch('fallback_duration');
   const hasFallbackRules = watchedFallbackRules.length > 0;
 
@@ -478,11 +478,11 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                 {hasFallbackRules && (
                   <div className="flex items-center gap-6 p-4 rounded-lg border bg-muted/30">
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="fallback_threshold" className="text-sm whitespace-nowrap">
+                      <Label htmlFor="tighten_after" className="text-sm whitespace-nowrap">
                         Escalate after
                       </Label>
                       <Input
-                        id="fallback_threshold"
+                        id="tighten_after"
                         type="number"
                         min={1}
                         disabled={readOnly}
@@ -490,7 +490,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                         value={watchedThreshold ?? ''}
                         onChange={(e) => {
                           const parsed = parseInt(e.target.value);
-                          form.setValue('fallback_threshold', isNaN(parsed) ? null : parsed);
+                          form.setValue('tighten_after', isNaN(parsed) ? null : parsed);
                         }}
                         placeholder="3"
                       />

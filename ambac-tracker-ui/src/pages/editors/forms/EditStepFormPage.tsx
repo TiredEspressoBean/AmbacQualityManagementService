@@ -49,7 +49,7 @@ import { isFieldRequired } from "@/lib/zod-config";
 type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection"> & {
     rules: { rule_type: string; value: string | number | null; order: number }[]
     fallback_rules?: { rule_type: string; value: string | number | null; order: number }[]
-    fallback_threshold?: number
+    tighten_after?: number
     fallback_duration?: number
 };
 
@@ -72,7 +72,7 @@ const formSchema = schemas.StepsRequest.pick({
     // Sampling rules are managed separately via useUpdateStepSamplingRules
     rules: z.array(samplingRuleSchema),
     fallback_rules: z.array(samplingRuleSchema).optional(),
-    fallback_threshold: z.number().optional(),
+    tighten_after: z.number().optional(),
     fallback_duration: z.number().optional(),
 });
 
@@ -110,7 +110,7 @@ export default function StepFormPage() {
             requires_first_piece_inspection: false,
             rules: [],
             fallback_rules: [],
-            fallback_threshold: undefined,
+            tighten_after: undefined,
             fallback_duration: undefined,
         }) as unknown as FormValues,
     })
@@ -118,7 +118,7 @@ export default function StepFormPage() {
     useEffect(() => {
         if (mode === "edit" && step) {
             const stepWithRules = step as typeof step & {
-                active_ruleset?: { rules?: FormValues["rules"]; fallback_threshold?: number; fallback_duration?: number }
+                active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
             }
             // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF reset: ruleset fields are optional at runtime but required in strict FormValues; undefined entries are valid
@@ -129,7 +129,7 @@ export default function StepFormPage() {
                 requires_first_piece_inspection: step.requires_first_piece_inspection ?? false,
                 rules: stepWithRules.active_ruleset?.rules ?? [],
                 fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
-                fallback_threshold: stepWithRules.active_ruleset?.fallback_threshold ?? undefined,
+                tighten_after: stepWithRules.active_ruleset?.tighten_after ?? undefined,
                 fallback_duration: stepWithRules.active_ruleset?.fallback_duration ?? undefined,
             } as unknown as FormValues)
             setSelectedPartTypeId(step.part_type)
@@ -150,7 +150,7 @@ export default function StepFormPage() {
         const {
             rules,
             fallback_rules,
-            fallback_threshold,
+            tighten_after,
             fallback_duration,
             ...stepData
         } = values;
@@ -169,7 +169,7 @@ export default function StepFormPage() {
                                 data: {
                                     rules: normalizedRules,
                                     fallback_rules: normalizedFallbackRules,
-                                    fallback_threshold,
+                                    tighten_after,
                                     fallback_duration,
                                 },
                             },
@@ -200,7 +200,7 @@ export default function StepFormPage() {
                                 data: {
                                     rules: normalizedRules,
                                     fallback_rules: normalizedFallbackRules,
-                                    fallback_threshold,
+                                    tighten_after,
                                     fallback_duration,
                                 },
                             },
@@ -365,7 +365,7 @@ export default function StepFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="fallback_threshold"
+                        name="tighten_after"
                         render={({field}) => (
                             <FormItem>
                                 <FormLabel>Fallback Threshold</FormLabel>

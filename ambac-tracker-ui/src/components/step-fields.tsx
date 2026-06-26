@@ -82,7 +82,7 @@ export default function StepFields({ name, index, control, existingStepId, exist
                         <div className="grid grid-cols-2 gap-4">
                             <FormField
                                 control={control}
-                                name={`${name}.${index}.fallback_threshold`}
+                                name={`${name}.${index}.tighten_after`}
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Fallback Threshold</FormLabel>
