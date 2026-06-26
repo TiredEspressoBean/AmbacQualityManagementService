@@ -626,6 +626,7 @@ class Steps(SecureModel):
         ('QA_RESULT', 'Based on QA Pass/Fail'),
         ('MEASUREMENT', 'Based on Measurement Threshold'),
         ('MANUAL', 'Manual Operator Selection'),
+        ('AGGREGATE', 'Based on Quality Gate (aggregate signal)'),
     ]
     decision_type = models.CharField(max_length=20, choices=DECISION_TYPE_CHOICES, blank=True)
     """Type of decision logic used at this step. Routing is defined via StepEdge."""
@@ -2838,6 +2839,22 @@ class Parts(SecureModel):
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.ALTERNATE))
                 else:
                     raise ValueError("Manual decision required: 'DEFAULT'/'PASS' or 'ALTERNATE'/'FAIL'")
+
+            elif current.decision_type == 'AGGREGATE':
+                # Route on the step's quality gate: if the gate has fired for this
+                # part's (work_order, step), divert to the ALTERNATE edge; otherwise
+                # take DEFAULT. The firing is evaluated when THIS part advances, so
+                # only parts not yet past the gate are diverted — parts that already
+                # advanced on DEFAULT are not pulled back.
+                from Tracker.models import StepGateFiring
+                from Tracker.services.qms.quality_gate import gate_ruleset_for_step
+
+                ruleset = gate_ruleset_for_step(current, self.part_type)
+                gate_fired = bool(ruleset) and StepGateFiring.objects.filter(
+                    ruleset=ruleset, step=current, work_order=self.work_order
+                ).exists()
+                edge_type = EdgeType.ALTERNATE if gate_fired else EdgeType.DEFAULT
+                return self._check_cycle_limit(self._get_edge(current, edge_type))
 
         # Non-decision point: use default edge
         default_next = self._get_edge(current, EdgeType.DEFAULT)

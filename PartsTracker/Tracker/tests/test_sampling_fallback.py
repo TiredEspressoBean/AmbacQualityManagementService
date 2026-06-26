@@ -13,7 +13,7 @@ from Tracker.models import (
     PartTypes, Processes, Steps, ProcessStep, Orders, OrdersStatus,
     WorkOrder, WorkOrderStatus, Parts, PartsStatus,
     SamplingRuleSet, SamplingRule, SamplingTriggerState, StepGateFiring,
-    QualityReports, CAPA,
+    QualityReports, CAPA, StepEdge, EdgeType,
 )
 from Tracker.services.qms.quality_gate import evaluate_step_gate
 from Tracker.services.mes.sampling import update_sampling_trigger_state
@@ -238,3 +238,54 @@ class QualityGateTestCase(TenantTestCase):
         self.assertEqual(firing.actions_taken, ['RAISE_CAPA_SCAR'])
         self.assertIsNotNone(firing.created_capa)
         self.assertEqual(firing.created_capa.capa_type, 'CORRECTIVE')
+
+
+class AggregateRoutingTestCase(TenantTestCase):
+    """decision_type='AGGREGATE' routes on whether the step's quality gate fired."""
+
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(username='route_op', email='r@example.com', password='pw')
+        self.part_type = PartTypes.objects.create(name='Route Widget', ID_prefix='RW', ERP_id='RW-001')
+        self.process = Processes.objects.create(name='Route Process', part_type=self.part_type)
+
+        self.gate_step = Steps.objects.create(
+            name='Gate', part_type=self.part_type, description='aggregate decision',
+            is_decision_point=True, decision_type='AGGREGATE',
+        )
+        self.default_step = Steps.objects.create(name='Pass on', part_type=self.part_type, description='default')
+        self.alternate_step = Steps.objects.create(name='Divert', part_type=self.part_type, description='alternate')
+        ProcessStep.objects.create(process=self.process, step=self.gate_step, order=1)
+        ProcessStep.objects.create(process=self.process, step=self.default_step, order=2)
+        ProcessStep.objects.create(process=self.process, step=self.alternate_step, order=3)
+
+        StepEdge.objects.create(process=self.process, from_step=self.gate_step,
+                                to_step=self.default_step, edge_type=EdgeType.DEFAULT)
+        StepEdge.objects.create(process=self.process, from_step=self.gate_step,
+                                to_step=self.alternate_step, edge_type=EdgeType.ALTERNATE)
+
+        self.ruleset = SamplingRuleSet.objects.create(
+            name='Gate ruleset', part_type=self.part_type, process=self.process,
+            step=self.gate_step, active=True, is_fallback=False,
+            gate_metric='CONSECUTIVE_FAILS', gate_threshold=2, gate_actions=['ROUTE_ALTERNATE'],
+        )
+
+        self.order = Orders.objects.create(name='O', customer=self.user, order_status=OrdersStatus.IN_PROGRESS)
+        self.work_order = WorkOrder.objects.create(
+            ERP_id='WO-ROUTE-001', related_order=self.order,
+            workorder_status=WorkOrderStatus.IN_PROGRESS, quantity=10, process=self.process,
+        )
+        self.part = Parts.objects.create(
+            ERP_id='WO-ROUTE-001-RW0001', work_order=self.work_order, part_type=self.part_type,
+            step=self.gate_step, order=self.order, part_status=PartsStatus.IN_PROGRESS,
+        )
+
+    def test_routes_default_when_gate_not_fired(self):
+        self.assertEqual(self.part.get_next_step(), self.default_step)
+
+    def test_routes_alternate_when_gate_fired(self):
+        StepGateFiring.objects.create(
+            ruleset=self.ruleset, step=self.gate_step, work_order=self.work_order,
+            metric='CONSECUTIVE_FAILS', metric_value=2, threshold=2,
+        )
+        self.assertEqual(self.part.get_next_step(), self.alternate_step)

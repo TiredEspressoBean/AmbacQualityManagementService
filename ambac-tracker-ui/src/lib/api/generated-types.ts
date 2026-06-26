@@ -14808,9 +14808,10 @@ export interface components {
          * @description * `QA_RESULT` - Based on QA Pass/Fail
          *     * `MEASUREMENT` - Based on Measurement Threshold
          *     * `MANUAL` - Manual Operator Selection
+         *     * `AGGREGATE` - Based on Quality Gate (aggregate signal)
          * @enum {string}
          */
-        DecisionTypeEnum: "QA_RESULT" | "MEASUREMENT" | "MANUAL";
+        DecisionTypeEnum: "QA_RESULT" | "MEASUREMENT" | "MANUAL" | "AGGREGATE";
         DefectParetoResponse: {
             data: {
                 [key: string]: unknown;

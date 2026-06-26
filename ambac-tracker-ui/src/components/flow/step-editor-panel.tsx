@@ -40,6 +40,7 @@ export const DECISION_TYPE_OPTIONS = [
   { value: 'QA_RESULT', label: 'Based on QA Pass/Fail' },
   { value: 'MEASUREMENT', label: 'Based on Measurement Threshold' },
   { value: 'MANUAL', label: 'Manual Operator Selection' },
+  { value: 'AGGREGATE', label: 'Based on Quality Gate (aggregate signal)' },
 ] as const;
 
 /** First Piece Inspection scope options */

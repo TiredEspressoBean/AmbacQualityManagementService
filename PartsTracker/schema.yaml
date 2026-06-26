@@ -34357,11 +34357,13 @@ components:
       - QA_RESULT
       - MEASUREMENT
       - MANUAL
+      - AGGREGATE
       type: string
       description: |-
         * `QA_RESULT` - Based on QA Pass/Fail
         * `MEASUREMENT` - Based on Measurement Threshold
         * `MANUAL` - Manual Operator Selection
+        * `AGGREGATE` - Based on Quality Gate (aggregate signal)
     DefectParetoResponse:
       type: object
       properties:

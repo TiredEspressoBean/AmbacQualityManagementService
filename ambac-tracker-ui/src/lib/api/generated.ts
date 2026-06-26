@@ -4774,10 +4774,11 @@ export type DecisionTypeEnum =
    * * `QA_RESULT` - Based on QA Pass/Fail
    * `MEASUREMENT` - Based on Measurement Threshold
    * `MANUAL` - Manual Operator Selection
+   * `AGGREGATE` - Based on Quality Gate (aggregate signal)
    *
-   * @enum QA_RESULT, MEASUREMENT, MANUAL
+   * @enum QA_RESULT, MEASUREMENT, MANUAL, AGGREGATE
    */
-  "QA_RESULT" | "MEASUREMENT" | "MANUAL";
+  "QA_RESULT" | "MEASUREMENT" | "MANUAL" | "AGGREGATE";
 export type TerminalStatusEnum =
   /**
    * * `COMPLETED` - Completed Successfully
@@ -14560,7 +14561,12 @@ const StepTypeEnum = z.enum([
   "TERMINAL",
   "RECEIVING",
 ]);
-const DecisionTypeEnum = z.enum(["QA_RESULT", "MEASUREMENT", "MANUAL"]);
+const DecisionTypeEnum = z.enum([
+  "QA_RESULT",
+  "MEASUREMENT",
+  "MANUAL",
+  "AGGREGATE",
+]);
 const TerminalStatusEnum = z.enum([
   "COMPLETED",
   "SHIPPED",
