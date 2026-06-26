@@ -7,7 +7,7 @@ annotation + the defect heatmap.
 **Runtime:** full storyline ~12–15 min; or run any single scene standalone as a
 ~3–5 min quick demo (see *Two ways to run it* below).
 
-> **Status: ready to run.** All four scenes are built, seeded, and verified against
+> **Status: ready to run.** All four scenes are built, iseeded, and verified against
 > the live UI (2026-06-14). Talk-tracks below are final. Run `seed_demo` before a
 > demo for clean, deterministic data — it invalidates open sessions, so log in
 > fresh afterward.

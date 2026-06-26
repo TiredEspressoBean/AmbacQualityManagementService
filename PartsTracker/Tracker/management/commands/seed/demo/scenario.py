@@ -32,6 +32,7 @@ from .training_records import DemoTrainingRecordsSeeder
 from .documents import DemoDocumentsSeeder
 from .training_exercises import TrainingExercisesSeeder
 from .sampling import DemoSamplingSeeder
+from .receiving import DemoReceivingSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -87,6 +88,11 @@ class DemoScenario(BaseSeeder):
         # Phase 2b: Sampling Rules
         self.log("\n--- Phase 2b: Sampling Rules ---")
         result['sampling'] = self._seed_sampling(result['manufacturing'])
+
+        # Phase 2b2: Receiving Inspection (purchased material)
+        self.log("\n--- Phase 2b2: Receiving Inspection ---")
+        result['receiving'] = self._seed_receiving(
+            result['companies'], result['users'], result['manufacturing'])
 
         # Phase 2c: Reman Setup
         self.log("\n--- Phase 2c: Remanufacturing Setup ---")
@@ -183,6 +189,12 @@ class DemoScenario(BaseSeeder):
 
         seeder = DemoSamplingSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         return seeder.seed(part_types, process)
+
+    def _seed_receiving(self, companies, users, manufacturing):
+        """Create demo receiving inspection data (RIP + MaterialLots across the lifecycle)."""
+        seeder = DemoReceivingSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed(companies, users, manufacturing)
 
     def _seed_reman(self, companies, users, manufacturing):
         """

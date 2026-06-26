@@ -53,7 +53,10 @@ DEMO_SAMPLING_RULESETS = [
         'origin': 'QMS-SAMP-001 Rev A',
         'active': True,
         'is_fallback': False,
-        'fallback_threshold': 3,  # Switch to enhanced after 3 consecutive failures
+        # Quality gate: tighten to the enhanced ruleset after 3 consecutive fails.
+        'gate_metric': 'CONSECUTIVE_FAILS',
+        'gate_threshold': 3,
+        'gate_actions': ['TIGHTEN_SAMPLING'],
         'fallback_duration': 10,  # Need 10 good parts to revert
         'rules': [
             {
@@ -73,7 +76,6 @@ DEMO_SAMPLING_RULESETS = [
         'origin': 'QMS-SAMP-002 Rev A',
         'active': True,
         'is_fallback': True,
-        'fallback_threshold': None,
         'fallback_duration': None,
         'rules': [
             {
@@ -100,7 +102,10 @@ DEMO_SAMPLING_RULESETS = [
         'origin': 'QMS-SAMP-003 Rev A',
         'active': True,
         'is_fallback': False,
-        'fallback_threshold': 2,  # Switch to 100% after 2 consecutive failures
+        # Quality gate: tighten to 100% inspection after 2 consecutive fails.
+        'gate_metric': 'CONSECUTIVE_FAILS',
+        'gate_threshold': 2,
+        'gate_actions': ['TIGHTEN_SAMPLING'],
         'fallback_duration': 15,  # Need 15 good parts to revert
         'rules': [
             {
@@ -120,7 +125,6 @@ DEMO_SAMPLING_RULESETS = [
         'origin': 'QMS-SAMP-004 Rev A',
         'active': True,
         'is_fallback': True,
-        'fallback_threshold': None,
         'fallback_duration': None,
         'rules': [
             {
@@ -140,7 +144,6 @@ DEMO_SAMPLING_RULESETS = [
         'origin': 'QMS-SAMP-005 Rev A',
         'active': True,
         'is_fallback': False,
-        'fallback_threshold': None,
         'fallback_duration': None,
         'rules': [
             {
@@ -268,8 +271,12 @@ class DemoSamplingSeeder(BaseSeeder):
             'origin': rs_data.get('origin', ''),
             'active': rs_data.get('active', True),
             'is_fallback': rs_data.get('is_fallback', False),
-            'fallback_threshold': rs_data.get('fallback_threshold', None),
             'fallback_duration': rs_data.get('fallback_duration', None),
+            # Quality gate (CONSECUTIVE_FAILS + TIGHTEN_SAMPLING replaces the old
+            # fallback_threshold trigger).
+            'gate_metric': rs_data.get('gate_metric', ''),
+            'gate_threshold': rs_data.get('gate_threshold', None),
+            'gate_actions': rs_data.get('gate_actions', []),
             'supersedes': None,
             'fallback_ruleset': None,
             'created_by': qa_manager,  # QA manager who created the ruleset

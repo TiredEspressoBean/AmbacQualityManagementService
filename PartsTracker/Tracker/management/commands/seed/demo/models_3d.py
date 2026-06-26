@@ -233,8 +233,22 @@ class DemoThreeDModelSeeder(BaseSeeder):
             defaults=defaults,
         )
 
-        # Use Django's storage API to save file (works with both local and S3)
-        if source_benchy and os.path.exists(source_benchy):
+        # Idempotent file save (works with both local and S3 backends).
+        #
+        # Only (re)upload when the row has no file yet, or its stored file is
+        # actually missing from the backend. Two reasons:
+        #   1. Skips re-uploading on every regenerate, which would otherwise
+        #      mint a fresh {date}/{uuid}_ key each run and orphan the old
+        #      S3 object (file.save() always generates a new upload path).
+        #   2. Self-heals a stale pointer: if a prior reseed/processing run
+        #      repointed this row to a key that was never persisted to the
+        #      live bucket (e.g. a worker writing to local disk), storage
+        #      .exists() returns False and we re-upload to a valid key.
+        file_present = bool(model.file) and model.file.storage.exists(model.file.name)
+
+        if file_present:
+            self.log(f"  File already present for {model.name}, skipping upload")
+        elif source_benchy and os.path.exists(source_benchy):
             with open(source_benchy, 'rb') as f:
                 file_content = f.read()
             model.file.save(
@@ -242,8 +256,9 @@ class DemoThreeDModelSeeder(BaseSeeder):
                 ContentFile(file_content),
                 save=True
             )
-        elif created:
-            # Placeholder for new models without source file
+        else:
+            # No usable file and no source: write a placeholder so the row
+            # always points at a real object rather than a dead key.
             model.file.save(
                 f"models/{dest_filename}",
                 ContentFile(b'Demo 3D model placeholder - benchy file not found'),
