@@ -16,6 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
@@ -23,10 +28,61 @@ import { toast } from "sonner";
 import { schemas, type TypeEnum } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 
-// Sentinel for the "no equipment" Select option — Radix Select items can't
-// use an empty-string value, and equipment is nullable (visual checks use
-// no instrument).
-const NO_EQUIPMENT = "__none__";
+/** Searchable equipment picker. Nullable — "None" covers visual checks
+ *  (e.g. flashlight burr inspection) that use no instrument. */
+function EquipmentCombobox({
+  value,
+  onChange,
+  equipments,
+}: {
+  value: string | null | undefined;
+  onChange: (next: string | null) => void;
+  equipments: Array<{ id: string; name: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = equipments.find((e) => String(e.id) === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <FormControl>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
+          >
+            <span className="truncate">{selected ? selected.name : "None"}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </FormControl>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search equipment..." />
+          <CommandList>
+            <CommandEmpty>No equipment found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="__none__" onSelect={() => { onChange(null); setOpen(false); }}>
+                <Check className={cn("mr-2 h-4 w-4", !selected ? "opacity-100" : "opacity-0")} />
+                None (visual / no instrument)
+              </CommandItem>
+              {equipments.map((eq) => (
+                <CommandItem
+                  key={eq.id}
+                  value={eq.name}
+                  onSelect={() => { onChange(String(eq.id)); setOpen(false); }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", value === String(eq.id) ? "opacity-100" : "opacity-0")} />
+                  {eq.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // Use generated schema
 const formSchema = schemas.MeasurementDefinitionRequest.pick({
@@ -309,24 +365,13 @@ export default function MeasurementDefinitionForm({
             control={form.control}
             name="default_equipment"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Default equipment</FormLabel>
-                <Select
-                  value={field.value ?? NO_EQUIPMENT}
-                  onValueChange={(v) => field.onChange(v === NO_EQUIPMENT ? null : v)}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NO_EQUIPMENT}>None (visual / no instrument)</SelectItem>
-                    {equipments.map((eq) => (
-                      <SelectItem key={eq.id} value={String(eq.id)}>{eq.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EquipmentCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  equipments={equipments}
+                />
                 <FormDescription>Preferred gauge/instrument</FormDescription>
                 <FormMessage />
               </FormItem>
@@ -337,24 +382,13 @@ export default function MeasurementDefinitionForm({
             control={form.control}
             name="backup_equipment"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Backup equipment</FormLabel>
-                <Select
-                  value={field.value ?? NO_EQUIPMENT}
-                  onValueChange={(v) => field.onChange(v === NO_EQUIPMENT ? null : v)}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NO_EQUIPMENT}>None</SelectItem>
-                    {equipments.map((eq) => (
-                      <SelectItem key={eq.id} value={String(eq.id)}>{eq.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EquipmentCombobox
+                  value={field.value}
+                  onChange={field.onChange}
+                  equipments={equipments}
+                />
                 <FormDescription>Fallback when the default is unavailable</FormDescription>
                 <FormMessage />
               </FormItem>

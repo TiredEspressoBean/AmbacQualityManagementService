@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListCapas } from "@/hooks/useListCapas";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { asUserInfo } from "@/lib/extended-types";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditCapaActionsCell } from "@/components/edit-capa-action-cell";
@@ -12,8 +12,9 @@ import type { Schema } from "@/lib/api/types";
 
 const col = createColumnHelper<Schema<"CAPA">>();
 
-// Custom wrapper hook with filter support
-function useCapasListWithFilter(_needsMyApproval: boolean) {
+// Custom wrapper hook with filter support. URL filters (supplier, capa_type) let
+// other pages deep-link into a scoped list — e.g. a supplier scorecard → its SCARs.
+function useCapasListWithFilter(urlFilters: { supplier?: string; capa_type?: string }) {
     return function useCapasList({
         offset,
         limit,
@@ -32,12 +33,15 @@ function useCapasListWithFilter(_needsMyApproval: boolean) {
         };
         if (ordering !== undefined) queries.ordering = ordering;
         if (search !== undefined) queries.search = search;
+        if (urlFilters.supplier) queries.supplier = urlFilters.supplier;
+        if (urlFilters.capa_type) queries.capa_type = urlFilters.capa_type as never;
         return useListCapas(queries);
     };
 }
 
 export function CapaListPage() {
     const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { supplier?: string; capa_type?: string };
     const [needsMyApproval, setNeedsMyApproval] = useState(false);
 
     const filterToolbar = (
@@ -56,9 +60,9 @@ export function CapaListPage() {
         <ModelEditorPage
             title="CAPAs"
             modelName="CAPA"
-            headerContent={<CapaStatsCards />}
+            headerContent={<CapaStatsCards filters={{ supplier: search.supplier, capa_type: search.capa_type }} />}
             extraToolbarContent={filterToolbar}
-            useList={useCapasListWithFilter(needsMyApproval)}
+            useList={useCapasListWithFilter({ supplier: search.supplier, capa_type: search.capa_type })}
             sortOptions={[
                 { label: "CAPA # (Newest)", value: "-capa_number" },
                 { label: "CAPA # (Oldest)", value: "capa_number" },

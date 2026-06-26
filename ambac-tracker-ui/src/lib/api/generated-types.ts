@@ -770,7 +770,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get aggregated CAPA statistics for dashboard display */
+        /**
+         * @description Get aggregated CAPA statistics for dashboard display.
+         *
+         *     Honors the same query-param filters as the list endpoint (supplier,
+         *     capa_type, status, severity, …) so a scoped list and its stat cards agree.
+         */
         get: operations["api_CAPAs_stats_retrieve"];
         put?: never;
         post?: never;
@@ -1240,6 +1245,23 @@ export interface paths {
         head?: never;
         /** @description Company management - scoped to tenant and user permissions. */
         patch: operations["api_Companies_partial_update"];
+        trace?: never;
+    };
+    "/api/Companies/{id}/scorecard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, and open SCAR count. */
+        get: operations["api_Companies_scorecard_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Companies/export-excel/": {
@@ -3447,6 +3469,142 @@ export interface paths {
         patch: operations["api_MaterialLots_partial_update"];
         trace?: never;
     };
+    "/api/MaterialLots/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/open_inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_open_inspection_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/raise_scar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Raise a Supplier Corrective Action (SCAR) for this lot's supplier, linking the lot's receiving inspection report. */
+        post: operations["api_MaterialLots_raise_scar_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/record_bulk/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_record_bulk_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/record_inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_record_inspection_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/record_units/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_record_units_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Material lot tracking with split capability */
+        post: operations["api_MaterialLots_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/sample_plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Derive the acceptance-sampling plan (n/Ac/Re) for this lot from its part type's RECEIVING step + supplier sampling ruleset. */
+        get: operations["api_MaterialLots_sample_plan_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/split/": {
         parameters: {
             query?: never;
@@ -3458,6 +3616,23 @@ export interface paths {
         put?: never;
         /** @description Split a lot into a child lot */
         post: operations["api_MaterialLots_split_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/bulk_create/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back. */
+        post: operations["api_MaterialLots_bulk_create_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4256,6 +4431,23 @@ export interface paths {
          *     - GET /export/ - Export filtered data to CSV/Excel
          */
         patch: operations["api_PartTypes_partial_update"];
+        trace?: never;
+    };
+    "/api/PartTypes/{id}/quality-summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Aggregate quality rollup for a part type: inspection pass/fail + FPY, open dispositions/CAPAs, defect Pareto, recent failures, and a 30-day FPY trend. */
+        get: operations["api_PartTypes_quality_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/PartTypes/export/{export_format}/": {
@@ -15618,6 +15810,20 @@ export interface components {
          */
         FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
         /**
+         * @description * `CONSECUTIVE_FAILS` - Consecutive failures
+         *     * `FAIL_RATE_PCT` - Failure rate (%)
+         *     * `DEFECTIVE_COUNT` - Defective count
+         * @enum {string}
+         */
+        GateMetricEnum: "CONSECUTIVE_FAILS" | "FAIL_RATE_PCT" | "DEFECTIVE_COUNT";
+        /**
+         * @description * `WORK_ORDER` - Whole work order at this step
+         *     * `ROLLING_N` - Rolling last N inspections
+         *     * `LOT` - Receiving lot sample
+         * @enum {string}
+         */
+        GateWindowEnum: "WORK_ORDER" | "ROLLING_N" | "LOT";
+        /**
          * @description Top-level shape: {report_type, params}.
          *
          *     Per-adapter param validation happens inside PdfGenerator via the
@@ -16133,6 +16339,13 @@ export interface components {
             readonly supplier_name: string | null;
             /** @description Supplier's lot/batch number */
             supplier_lot_number?: string;
+            /** @description ERP purchase-order reference (UQMES does not own purchasing). */
+            erp_po_number?: string;
+            /**
+             * Format: date
+             * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+             */
+            promised_date?: string | null;
             /** Format: date */
             received_date: string;
             readonly received_by: number;
@@ -16157,6 +16370,43 @@ export interface components {
             archived?: boolean;
             readonly version: number;
         };
+        MaterialLotBulkCreateError: {
+            detail?: string;
+            errors?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** @description Bulk lot-receive payload for the paste-grid screen. */
+        MaterialLotBulkCreateRequest: {
+            lots: components["schemas"]["MaterialLotBulkRowRequest"][];
+        };
+        MaterialLotBulkCreateResponse: {
+            count: number;
+            created_lot_ids: string[];
+        };
+        /** @description One row of a bulk lot-receive (paste-grid). */
+        MaterialLotBulkRowRequest: {
+            lot_number: string;
+            /** Format: date */
+            received_date: string;
+            /** Format: uuid */
+            material_type?: string | null;
+            material_description?: string;
+            /** Format: uuid */
+            supplier?: string | null;
+            supplier_lot_number?: string;
+            erp_po_number?: string;
+            /** Format: date */
+            promised_date?: string | null;
+            /** Format: decimal */
+            quantity: string;
+            unit_of_measure?: string;
+            /** Format: date */
+            manufacture_date?: string | null;
+            /** Format: date */
+            expiration_date?: string | null;
+            storage_location?: string;
+        };
         /**
          * @description Material lot serializer with hybrid versioning routing.
          *
@@ -16180,6 +16430,13 @@ export interface components {
             supplier?: string | null;
             /** @description Supplier's lot/batch number */
             supplier_lot_number?: string;
+            /** @description ERP purchase-order reference (UQMES does not own purchasing). */
+            erp_po_number?: string;
+            /**
+             * Format: date
+             * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+             */
+            promised_date?: string | null;
             /** Format: date */
             received_date: string;
             /** Format: decimal */
@@ -16207,13 +16464,16 @@ export interface components {
         };
         /**
          * @description * `RECEIVED` - Received
+         *     * `AWAITING_INSPECTION` - Awaiting Inspection
+         *     * `ACCEPTED` - Accepted
+         *     * `REJECTED` - Rejected
          *     * `IN_USE` - In Use
          *     * `CONSUMED` - Consumed
          *     * `SCRAPPED` - Scrapped
          *     * `QUARANTINE` - Quarantine
          * @enum {string}
          */
-        MaterialLotStatusEnum: "RECEIVED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
+        MaterialLotStatusEnum: "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
         /** @description Material consumption record serializer */
         MaterialUsage: {
             /** Format: uuid */
@@ -16285,6 +16545,20 @@ export interface components {
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
+            /** @description Balloon number on the drawing (AS9102 / Control Plan reference). */
+            characteristic_number?: string | null;
+            /**
+             * Format: uuid
+             * @description Preferred gauge/instrument for this measurement (operator default).
+             */
+            default_equipment?: string | null;
+            readonly default_equipment_name: string | null;
+            /**
+             * Format: uuid
+             * @description Fallback gauge/instrument when the default is unavailable.
+             */
+            backup_equipment?: string | null;
+            readonly backup_equipment_name: string | null;
             readonly version: number;
             readonly is_current_version: boolean;
             /** Format: uuid */
@@ -16313,6 +16587,18 @@ export interface components {
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
+            /** @description Balloon number on the drawing (AS9102 / Control Plan reference). */
+            characteristic_number?: string | null;
+            /**
+             * Format: uuid
+             * @description Preferred gauge/instrument for this measurement (operator default).
+             */
+            default_equipment?: string | null;
+            /**
+             * Format: uuid
+             * @description Fallback gauge/instrument when the default is unavailable.
+             */
+            backup_equipment?: string | null;
         };
         /** @description Measurement definition for SPC dropdowns. */
         MeasurementDefinitionSPC: {
@@ -17899,6 +18185,27 @@ export interface components {
             part_status: string;
             traveler: components["schemas"]["TravelerStepEntry"][];
         };
+        PartTypeQualitySummary: {
+            parts_total: number;
+            reports: {
+                [key: string]: unknown;
+            };
+            open: {
+                [key: string]: unknown;
+            };
+            defect_pareto: {
+                [key: string]: unknown;
+            }[];
+            spc: {
+                [key: string]: unknown;
+            }[];
+            recent_failures: {
+                [key: string]: unknown;
+            }[];
+            fpy_trend: {
+                [key: string]: unknown;
+            }[];
+        };
         /** @description Lightweight part type serializer for dropdown/combobox selections */
         PartTypeSelect: {
             /** Format: uuid */
@@ -17995,7 +18302,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Format: uuid */
-            step: string;
+            step?: string | null;
             readonly step_info: {
                 [key: string]: unknown;
             } | null;
@@ -18048,7 +18355,7 @@ export interface components {
             /** Format: uuid */
             part_type: string;
             /** Format: uuid */
-            step: string;
+            step?: string | null;
             /** Format: uuid */
             work_order?: string | null;
             /** Format: uuid */
@@ -18804,6 +19111,13 @@ export interface components {
             supplier?: string | null;
             /** @description Supplier's lot/batch number */
             supplier_lot_number?: string;
+            /** @description ERP purchase-order reference (UQMES does not own purchasing). */
+            erp_po_number?: string;
+            /**
+             * Format: date
+             * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+             */
+            promised_date?: string | null;
             /** Format: date */
             received_date?: string;
             /** Format: decimal */
@@ -18842,6 +19156,18 @@ export interface components {
             /** @description Enable SPC monitoring for this measurement. When enabled, values are checked against active SPCBaseline control limits. */
             spc_enabled?: boolean;
             archived?: boolean;
+            /** @description Balloon number on the drawing (AS9102 / Control Plan reference). */
+            characteristic_number?: string | null;
+            /**
+             * Format: uuid
+             * @description Preferred gauge/instrument for this measurement (operator default).
+             */
+            default_equipment?: string | null;
+            /**
+             * Format: uuid
+             * @description Fallback gauge/instrument when the default is unavailable.
+             */
+            backup_equipment?: string | null;
         };
         /** @description Single milestone within a template. */
         PatchedMilestoneRequest: {
@@ -18920,7 +19246,7 @@ export interface components {
             /** Format: uuid */
             part_type?: string;
             /** Format: uuid */
-            step?: string;
+            step?: string | null;
             /** Format: uuid */
             work_order?: string | null;
             /** Format: uuid */
@@ -19356,8 +19682,6 @@ export interface components {
             origin?: string;
             active?: boolean;
             is_fallback?: boolean;
-            /** @description Number of consecutive failures before switching to fallback */
-            fallback_threshold?: number | null;
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
@@ -19369,6 +19693,58 @@ export interface components {
             process?: string | null;
             /** Format: uuid */
             step?: string;
+            /**
+             * Format: uuid
+             * @description Supplier scope for receiving acceptance sampling. Null = all suppliers.
+             */
+            supplier?: string | null;
+            /**
+             * Format: decimal
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             */
+            aql?: string | null;
+            /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */
+            inspection_level?: string;
+            /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
+            severity?: string;
+            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            strategy?: string;
+            /**
+             * @description Aggregate signal this step watches. Blank = no gate.
+             *
+             *     * `CONSECUTIVE_FAILS` - Consecutive failures
+             *     * `FAIL_RATE_PCT` - Failure rate (%)
+             *     * `DEFECTIVE_COUNT` - Defective count
+             */
+            gate_metric?: components["schemas"]["GateMetricEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: decimal
+             * @description Threshold: percent for FAIL_RATE_PCT, count otherwise.
+             */
+            gate_threshold?: string | null;
+            /**
+             * @description Window the metric is computed over.
+             *
+             *     * `WORK_ORDER` - Whole work order at this step
+             *     * `ROLLING_N` - Rolling last N inspections
+             *     * `LOT` - Receiving lot sample
+             */
+            gate_window?: components["schemas"]["GateWindowEnum"] | components["schemas"]["BlankEnum"];
+            /** @description N for ROLLING_N windows. */
+            gate_window_n?: number | null;
+            /** @description Minimum inspections before a FAIL_RATE_PCT gate can fire. */
+            gate_min_sample?: number | null;
+            /** @description List of GateAction codes to fire when the gate trips. */
+            gate_actions?: unknown;
+            /** @description CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR). */
+            gate_capa_type?: string;
+            /** @description Severity for a RAISE_CAPA_SCAR action. */
+            gate_capa_severity?: string;
+            /**
+             * Format: uuid
+             * @description Template for a REQUIRE_APPROVAL action.
+             */
+            gate_approval_template?: string | null;
             created_by?: number | null;
             modified_by?: number | null;
             archived?: boolean;
@@ -19559,6 +19935,7 @@ export interface components {
              *     * `REWORK` - Rework
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
+             *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
@@ -20998,6 +21375,17 @@ export interface components {
             } | null;
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
+            /**
+             * Format: uuid
+             * @description Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).
+             */
+            readonly material_lot: string | null;
+            /** @description Acceptance-sampling sample size (n) snapshot at inspection time. */
+            readonly sample_size: number | null;
+            /** @description Acceptance-sampling accept number (Ac) snapshot. */
+            readonly accept_number: number | null;
+            /** @description Acceptance-sampling reject number (Re) snapshot. */
+            readonly reject_number: number | null;
             readonly equipment_links: components["schemas"]["QualityReportEquipment"][];
             readonly personnel_links: components["schemas"]["QualityReportPersonnel"][];
             readonly part_info: {
@@ -21198,6 +21586,11 @@ export interface components {
             /** @description Aggregation function */
             aggregate?: string;
         };
+        RaiseScarResponse: {
+            /** Format: uuid */
+            capa_id: string;
+            capa_number: string;
+        };
         /**
          * @description * `FIVE_WHYS` - 5 Whys
          *     * `FISHBONE` - Fishbone Diagram
@@ -21274,6 +21667,33 @@ export interface components {
          * @enum {string}
          */
         RcaReviewStatusEnum: "NOT_REQUIRED" | "REQUIRED" | "COMPLETED";
+        /** @description A measurement definition to capture during receiving inspection. */
+        ReceivingCharacteristic: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            unit: string;
+            type: string;
+            /** Format: double */
+            nominal: number | null;
+            /** Format: double */
+            upper_tol: number | null;
+            /** Format: double */
+            lower_tol: number | null;
+        };
+        /** @description One measurement captured during receiving inspection. */
+        ReceivingMeasurementInputRequest: {
+            /** Format: uuid */
+            definition: string;
+            /** Format: double */
+            value_numeric?: number | null;
+            value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["NullEnum"]) | null;
+        };
+        /** @description One sampled unit's measurements within an acceptance-sampling inspection. */
+        ReceivingSampleUnitRequest: {
+            sample_number: number;
+            measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
+        };
         /**
          * @description * `static` - Static — recipients from this rule only
          *     * `from_payload` - From event — recipients from the event payload
@@ -21281,6 +21701,18 @@ export interface components {
          * @enum {string}
          */
         RecipientStrategyEnum: "static" | "from_payload" | "union";
+        /** @description Request body for bulk/attribute capture: defectives found across the sample. */
+        RecordBulkRequestRequest: {
+            defectives_found: number;
+        };
+        /** @description Request body for recording receiving-inspection measurement results. */
+        RecordInspectionRequestRequest: {
+            measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
+        };
+        /** @description Request body for recording per-unit measurements across the sample. */
+        RecordUnitsRequestRequest: {
+            units: components["schemas"]["ReceivingSampleUnitRequest"][];
+        };
         RegenerateDemoQueued: {
             task_id: string;
             status: string;
@@ -21410,9 +21842,11 @@ export interface components {
          *     * `FIRST_N_PARTS` - First N Parts
          *     * `LAST_N_PARTS` - Last N Parts
          *     * `EXACT_COUNT` - Exact Count (No Variance)
+         *     * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
+         *     * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
          * @enum {string}
          */
-        RuleTypeEnum: "EVERY_NTH_PART" | "PERCENTAGE" | "RANDOM" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "EXACT_COUNT";
+        RuleTypeEnum: "EVERY_NTH_PART" | "PERCENTAGE" | "RANDOM" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "EXACT_COUNT" | "AQL" | "C_ZERO";
         /** @description Full SPC Baseline serializer with all fields and computed properties. */
         SPCBaseline: {
             /** Format: uuid */
@@ -21737,6 +22171,25 @@ export interface components {
             };
         };
         /**
+         * @description Response: the acceptance_sampling.SamplePlan DTO + the RECEIVING step's characteristics,
+         *     plus the routing info the UI needs to launch a DWI run (step id, whether the step has
+         *     substeps, and the open StepExecution for this lot if one exists).
+         */
+        SamplePlanResponse: {
+            sample_size: number;
+            accept_number: number;
+            reject_number: number;
+            strategy: string;
+            inspection_level: string;
+            severity: string;
+            characteristics: components["schemas"]["ReceivingCharacteristic"][];
+            /** Format: uuid */
+            step_id: string | null;
+            has_substeps: boolean;
+            /** Format: uuid */
+            step_execution_id: string | null;
+        };
+        /**
          * @description Append-only sampling decision per (StepExecution, Substep). The
          *     operator runtime queries `?step_execution=<id>` to discover which
          *     substeps are SELECTED / DESELECTED / PENDING and grey out the
@@ -21827,8 +22280,6 @@ export interface components {
             active?: boolean;
             readonly version: number;
             is_fallback?: boolean;
-            /** @description Number of consecutive failures before switching to fallback */
-            fallback_threshold?: number | null;
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
@@ -21850,6 +22301,58 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             readonly rules: unknown[];
+            /**
+             * Format: uuid
+             * @description Supplier scope for receiving acceptance sampling. Null = all suppliers.
+             */
+            supplier?: string | null;
+            /**
+             * Format: decimal
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             */
+            aql?: string | null;
+            /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */
+            inspection_level?: string;
+            /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
+            severity?: string;
+            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            strategy?: string;
+            /**
+             * @description Aggregate signal this step watches. Blank = no gate.
+             *
+             *     * `CONSECUTIVE_FAILS` - Consecutive failures
+             *     * `FAIL_RATE_PCT` - Failure rate (%)
+             *     * `DEFECTIVE_COUNT` - Defective count
+             */
+            gate_metric?: components["schemas"]["GateMetricEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: decimal
+             * @description Threshold: percent for FAIL_RATE_PCT, count otherwise.
+             */
+            gate_threshold?: string | null;
+            /**
+             * @description Window the metric is computed over.
+             *
+             *     * `WORK_ORDER` - Whole work order at this step
+             *     * `ROLLING_N` - Rolling last N inspections
+             *     * `LOT` - Receiving lot sample
+             */
+            gate_window?: components["schemas"]["GateWindowEnum"] | components["schemas"]["BlankEnum"];
+            /** @description N for ROLLING_N windows. */
+            gate_window_n?: number | null;
+            /** @description Minimum inspections before a FAIL_RATE_PCT gate can fire. */
+            gate_min_sample?: number | null;
+            /** @description List of GateAction codes to fire when the gate trips. */
+            gate_actions?: unknown;
+            /** @description CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR). */
+            gate_capa_type?: string;
+            /** @description Severity for a RAISE_CAPA_SCAR action. */
+            gate_capa_severity?: string;
+            /**
+             * Format: uuid
+             * @description Template for a REQUIRE_APPROVAL action.
+             */
+            gate_approval_template?: string | null;
             created_by?: number | null;
             /** Format: date-time */
             readonly created_at: string;
@@ -21866,8 +22369,6 @@ export interface components {
             origin?: string;
             active?: boolean;
             is_fallback?: boolean;
-            /** @description Number of consecutive failures before switching to fallback */
-            fallback_threshold?: number | null;
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
@@ -21879,6 +22380,58 @@ export interface components {
             process?: string | null;
             /** Format: uuid */
             step: string;
+            /**
+             * Format: uuid
+             * @description Supplier scope for receiving acceptance sampling. Null = all suppliers.
+             */
+            supplier?: string | null;
+            /**
+             * Format: decimal
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             */
+            aql?: string | null;
+            /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */
+            inspection_level?: string;
+            /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
+            severity?: string;
+            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            strategy?: string;
+            /**
+             * @description Aggregate signal this step watches. Blank = no gate.
+             *
+             *     * `CONSECUTIVE_FAILS` - Consecutive failures
+             *     * `FAIL_RATE_PCT` - Failure rate (%)
+             *     * `DEFECTIVE_COUNT` - Defective count
+             */
+            gate_metric?: components["schemas"]["GateMetricEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: decimal
+             * @description Threshold: percent for FAIL_RATE_PCT, count otherwise.
+             */
+            gate_threshold?: string | null;
+            /**
+             * @description Window the metric is computed over.
+             *
+             *     * `WORK_ORDER` - Whole work order at this step
+             *     * `ROLLING_N` - Rolling last N inspections
+             *     * `LOT` - Receiving lot sample
+             */
+            gate_window?: components["schemas"]["GateWindowEnum"] | components["schemas"]["BlankEnum"];
+            /** @description N for ROLLING_N windows. */
+            gate_window_n?: number | null;
+            /** @description Minimum inspections before a FAIL_RATE_PCT gate can fire. */
+            gate_min_sample?: number | null;
+            /** @description List of GateAction codes to fire when the gate trips. */
+            gate_actions?: unknown;
+            /** @description CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR). */
+            gate_capa_type?: string;
+            /** @description Severity for a RAISE_CAPA_SCAR action. */
+            gate_capa_severity?: string;
+            /**
+             * Format: uuid
+             * @description Template for a REQUIRE_APPROVAL action.
+             */
+            gate_approval_template?: string | null;
             created_by?: number | null;
             modified_by?: number | null;
             archived?: boolean;
@@ -22117,6 +22670,7 @@ export interface components {
              *     * `REWORK` - Rework
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
+             *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
@@ -22571,6 +23125,7 @@ export interface components {
              *     * `REWORK` - Rework
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
+             *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
@@ -22585,8 +23140,9 @@ export interface components {
         StepSamplingRulesUpdateRequest: {
             rules: components["schemas"]["SamplingRuleUpdateRequest"][];
             fallback_rules?: components["schemas"]["SamplingRuleUpdateRequest"][];
-            fallback_threshold?: number;
             fallback_duration?: number;
+            /** @description Consecutive failures before tightening to the fallback ruleset (sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate). */
+            tighten_after?: number | null;
         };
         /** @description Lightweight step summary for work order overview */
         StepSummary: {
@@ -22615,9 +23171,10 @@ export interface components {
          *     * `REWORK` - Rework
          *     * `TIMER` - Timer/Wait
          *     * `TERMINAL` - Terminal
+         *     * `RECEIVING` - Receiving Inspection
          * @enum {string}
          */
-        StepTypeEnum: "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL";
+        StepTypeEnum: "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL" | "RECEIVING";
         /** @description Step with resolved sampling rules (for flow editor) */
         StepWithResolvedRules: {
             /** Format: uuid */
@@ -22644,8 +23201,8 @@ export interface components {
                     value?: number | null;
                     order?: number;
                 }[];
-                fallback_threshold?: number | null;
                 fallback_duration?: number | null;
+                tighten_after?: number | null;
             };
             readonly fallback_ruleset: {
                 /** Format: uuid */
@@ -22714,6 +23271,7 @@ export interface components {
              *     * `REWORK` - Rework
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
+             *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
@@ -22774,6 +23332,7 @@ export interface components {
              *     * `REWORK` - Rework
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
+             *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
@@ -23305,6 +23864,21 @@ export interface components {
         };
         SupersedeRequestRequest: {
             reason?: string;
+        };
+        SupplierScorecard: {
+            supplier_id: string;
+            lots_received: number;
+            lots_accepted: number;
+            lots_rejected: number;
+            lots_inspected: number;
+            /** Format: double */
+            reject_rate: number;
+            /** Format: double */
+            coc_compliance: number;
+            /** Format: double */
+            on_time_rate: number | null;
+            promised_lots: number;
+            open_scar_count: number;
         };
         SwitchTenantRequestRequest: {
             /** Format: uuid */
@@ -26444,6 +27018,7 @@ export interface operations {
                 severity?: string;
                 /** @description Filter by status */
                 status?: string;
+                supplier?: string;
             };
             header?: never;
             path?: never;
@@ -26721,7 +27296,12 @@ export interface operations {
     };
     api_CAPAs_stats_retrieve: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter stats to a CAPA type. */
+                capa_type?: string;
+                /** @description Filter stats to a supplier (SCAR drill-in). */
+                supplier?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -27948,6 +28528,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Company"];
+                };
+            };
+        };
+    };
+    api_Companies_scorecard_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Company. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierScorecard"];
                 };
             };
         };
@@ -31589,12 +32191,15 @@ export interface operations {
                 search?: string;
                 /**
                  * @description * `RECEIVED` - Received
+                 *     * `AWAITING_INSPECTION` - Awaiting Inspection
+                 *     * `ACCEPTED` - Accepted
+                 *     * `REJECTED` - Rejected
                  *     * `IN_USE` - In Use
                  *     * `CONSUMED` - Consumed
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
                  */
-                status?: "CONSUMED" | "IN_USE" | "QUARANTINE" | "RECEIVED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;
@@ -31737,6 +32342,200 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_open_inspection_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_raise_scar_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaiseScarResponse"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_record_bulk_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordBulkRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordBulkRequestRequest"];
+                "multipart/form-data": components["schemas"]["RecordBulkRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_record_inspection_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordInspectionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordInspectionRequestRequest"];
+                "multipart/form-data": components["schemas"]["RecordInspectionRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_record_units_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordUnitsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordUnitsRequestRequest"];
+                "multipart/form-data": components["schemas"]["RecordUnitsRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_sample_plan_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplePlanResponse"];
+                };
+            };
+        };
+    };
     api_MaterialLots_split_create: {
         parameters: {
             query?: never;
@@ -31761,6 +32560,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_bulk_create_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLotBulkCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotBulkCreateRequest"];
+                "multipart/form-data": components["schemas"]["MaterialLotBulkCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLotBulkCreateResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLotBulkCreateError"];
                 };
             };
         };
@@ -33053,6 +33885,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartTypes"];
+                };
+            };
+        };
+    };
+    api_PartTypes_quality_summary_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter processes by associated part type UUID */
+                part_type?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypeQualitySummary"];
                 };
             };
         };
@@ -35555,8 +36412,10 @@ export interface operations {
                  *     * `FIRST_N_PARTS` - First N Parts
                  *     * `LAST_N_PARTS` - Last N Parts
                  *     * `EXACT_COUNT` - Exact Count (No Variance)
+                 *     * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
+                 *     * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
                  */
-                rule_type?: "EVERY_NTH_PART" | "EXACT_COUNT" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "PERCENTAGE" | "RANDOM";
+                rule_type?: "AQL" | "C_ZERO" | "EVERY_NTH_PART" | "EXACT_COUNT" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "PERCENTAGE" | "RANDOM";
                 ruleset?: string;
                 /** @description A search term. */
                 search?: string;

@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies"
 import {
     Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover"
@@ -38,10 +40,17 @@ const formSchema = schemas.SamplingRuleSetRequest.pick({
     active: true,
     part_type: true,
     step: true,
+    supplier: true,
+    aql: true,
+    inspection_level: true,
+    severity: true,
+    strategy: true,
 }).extend({
     // Process is optional in API but required for this form
     process: z.string().min(1),
 })
+
+const NONE = "__none__"
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -60,6 +69,7 @@ export default function SamplingRuleSetsFormPage() {
     const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null)
 
     const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
+    const { data: companies } = useRetrieveCompanies({ limit: 200 } as never)
     const { data: processes } = useRetrieveProcesses({
         search: processSearch,
         ...(selectedPartTypeId !== null ? { part_type: selectedPartTypeId } : {}),
@@ -95,6 +105,11 @@ export default function SamplingRuleSetsFormPage() {
                 part_type: ruleSet.part_type,
                 process: ruleSet.process ?? "",
                 step: ruleSet.step,
+                supplier: ruleSet.supplier ?? null,
+                aql: ruleSet.aql ?? null,
+                inspection_level: ruleSet.inspection_level ?? "",
+                severity: ruleSet.severity ?? "",
+                strategy: ruleSet.strategy ?? "",
             } as FormValues)
             setSelectedPartTypeId(ruleSet.part_type)
             setSelectedProcessId(ruleSet.process ?? null)
@@ -321,6 +336,83 @@ export default function SamplingRuleSetsFormPage() {
                         )
                     }}
                 />
+
+                <div className="rounded-md border p-4 space-y-4">
+                    <div>
+                        <div className="text-sm font-medium">Acceptance sampling</div>
+                        <p className="text-xs text-muted-foreground">
+                            Used when this rule set is on a RECEIVING step — resolves the incoming lot's
+                            sample plan (n / Ac / Re). Leave blank for ordinary in-process sampling.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="strategy" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Strategy</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="C0">C=0 (Squeglia)</SelectItem>
+                                        <SelectItem value="Z14">ANSI/ASQ Z1.4</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="aql" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>AQL</FormLabel>
+                                <FormControl><Input placeholder="1.0" {...field} value={field.value ?? ""} /></FormControl>
+                                <FormDescription>Acceptable Quality Limit (e.g. 1.0, 0.65).</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="inspection_level" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Inspection level</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="I">I</SelectItem>
+                                        <SelectItem value="II">II</SelectItem>
+                                        <SelectItem value="III">III</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="severity" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Severity</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="NORMAL">Normal</SelectItem>
+                                        <SelectItem value="TIGHTENED">Tightened</SelectItem>
+                                        <SelectItem value="REDUCED">Reduced</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                    <FormField control={form.control} name="supplier" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Supplier</FormLabel>
+                            <Select onValueChange={(v) => field.onChange(v === NONE ? null : v)} value={field.value ?? NONE}>
+                                <FormControl><SelectTrigger className="w-[300px]"><SelectValue /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value={NONE}>All suppliers</SelectItem>
+                                    {companies?.results?.map((c) => (
+                                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>Scope this plan to one supplier (e.g. tightened for a problem supplier), or leave "All suppliers".</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
 
                 <Button type="submit">Submit</Button>
             </form>

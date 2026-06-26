@@ -421,6 +421,38 @@ export const TerminalNode = memo(({ data }: StepNodeProps) => {
 });
 TerminalNode.displayName = 'TerminalNode';
 
+/** Receiving inspection node - incoming material is verified against a plan here.
+ *  Typically the entry op for purchased material; rendered distinctly so the
+ *  receiving gate is visible in the process flow. */
+export const ReceivingNode = memo(({ data }: StepNodeProps) => {
+  return (
+    <BaseNode className={cn(
+      "border-indigo-500",
+      getHighlightClass(data)
+    )}>
+      <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
+      <BaseHandle type="target" position={Position.Left} />
+      <BaseNodeHeader className="bg-indigo-50 dark:bg-indigo-950/30">
+        <ClipboardCheck className="h-3 w-3 text-indigo-600" />
+        <BaseNodeHeaderTitle>{data.label}</BaseNodeHeaderTitle>
+        <span className="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-medium">
+          Receiving
+        </span>
+      </BaseNodeHeader>
+      {data.description && (
+        <BaseNodeContent>
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {data.description}
+          </p>
+        </BaseNodeContent>
+      )}
+      <BaseHandle type="source" position={Position.Right} />
+    </BaseNode>
+  );
+});
+ReceivingNode.displayName = 'ReceivingNode';
+
 /** Node types map for ReactFlow - keys must match UPPERCASE step_type values from backend */
 export const flowNodeTypes = {
   TASK: TaskNode,
@@ -429,4 +461,5 @@ export const flowNodeTypes = {
   REWORK: ReworkNode,
   TIMER: TimerNode,
   TERMINAL: TerminalNode,
+  RECEIVING: ReceivingNode,
 };

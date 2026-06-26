@@ -2538,6 +2538,18 @@ export type MaterialLot = {
    * @maxLength 100
    */
   string | undefined;
+  erp_po_number?: /**
+   * ERP purchase-order reference (UQMES does not own purchasing).
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  promised_date?:
+    | /**
+     * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+     */
+    (string | null)
+    | undefined;
   received_date: string;
   received_by: number;
   /**
@@ -2569,14 +2581,64 @@ export type MaterialLot = {
 export type MaterialLotStatusEnum =
   /**
    * * `RECEIVED` - Received
+   * `AWAITING_INSPECTION` - Awaiting Inspection
+   * `ACCEPTED` - Accepted
+   * `REJECTED` - Rejected
    * `IN_USE` - In Use
    * `CONSUMED` - Consumed
    * `SCRAPPED` - Scrapped
    * `QUARANTINE` - Quarantine
    *
-   * @enum RECEIVED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
+   * @enum RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
    */
-  "RECEIVED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
+  | "RECEIVED"
+  | "AWAITING_INSPECTION"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "IN_USE"
+  | "CONSUMED"
+  | "SCRAPPED"
+  | "QUARANTINE";
+export type MaterialLotBulkCreateRequest = {
+  lots: Array<MaterialLotBulkRowRequest>;
+};
+export type MaterialLotBulkRowRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  lot_number: string;
+  received_date: string;
+  material_type?: (string | null) | undefined;
+  material_description?: /**
+   * @maxLength 200
+   */
+  string | undefined;
+  supplier?: (string | null) | undefined;
+  supplier_lot_number?: /**
+   * @maxLength 100
+   */
+  string | undefined;
+  erp_po_number?: /**
+   * @maxLength 100
+   */
+  string | undefined;
+  promised_date?: (string | null) | undefined;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  quantity: string;
+  unit_of_measure?: /**
+   * @maxLength 20
+   */
+  string | undefined;
+  manufacture_date?: (string | null) | undefined;
+  expiration_date?: (string | null) | undefined;
+  storage_location?: /**
+   * @maxLength 100
+   */
+  string | undefined;
+};
 export type MaterialLotRequest = {
   /**
    * @minLength 1
@@ -2598,6 +2660,18 @@ export type MaterialLotRequest = {
    * @maxLength 100
    */
   string | undefined;
+  erp_po_number?: /**
+   * ERP purchase-order reference (UQMES does not own purchasing).
+   *
+   * @maxLength 100
+   */
+  string | undefined;
+  promised_date?:
+    | /**
+     * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+     */
+    (string | null)
+    | undefined;
   received_date: string;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
@@ -4116,7 +4190,7 @@ export type Parts = {
   order?: (string | null) | undefined;
   part_type: string;
   part_type_info: {};
-  step: string;
+  step?: (string | null) | undefined;
   step_info: {};
   work_order?: (string | null) | undefined;
   quality_info: {};
@@ -4654,6 +4728,7 @@ export type Step = {
     * `REWORK` - Rework
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
+    * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -4689,10 +4764,11 @@ export type StepTypeEnum =
    * `REWORK` - Rework
    * `TIMER` - Timer/Wait
    * `TERMINAL` - Terminal
+   * `RECEIVING` - Receiving Inspection
    *
-   * @enum TASK, START, DECISION, REWORK, TIMER, TERMINAL
+   * @enum TASK, START, DECISION, REWORK, TIMER, TERMINAL, RECEIVING
    */
-  "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL";
+  "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL" | "RECEIVING";
 export type DecisionTypeEnum =
   /**
    * * `QA_RESULT` - Based on QA Pass/Fail
@@ -4978,6 +5054,22 @@ export type QualityReports = {
    * If True, this inspection is a First Piece Inspection (FPI) for setup verification
    */
   boolean | undefined;
+  /**
+   * Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).
+   */
+  material_lot: string | null;
+  /**
+   * Acceptance-sampling sample size (n) snapshot at inspection time.
+   */
+  sample_size: number | null;
+  /**
+   * Acceptance-sampling accept number (Ac) snapshot.
+   */
+  accept_number: number | null;
+  /**
+   * Acceptance-sampling reject number (Re) snapshot.
+   */
+  reject_number: number | null;
   equipment_links: Array<QualityReportEquipment>;
   personnel_links: Array<QualityReportPersonnel>;
   part_info: {};
@@ -5397,15 +5489,19 @@ export type RuleTypeEnum =
    * `FIRST_N_PARTS` - First N Parts
    * `LAST_N_PARTS` - Last N Parts
    * `EXACT_COUNT` - Exact Count (No Variance)
+   * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
+   * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
    *
-   * @enum EVERY_NTH_PART, PERCENTAGE, RANDOM, FIRST_N_PARTS, LAST_N_PARTS, EXACT_COUNT
+   * @enum EVERY_NTH_PART, PERCENTAGE, RANDOM, FIRST_N_PARTS, LAST_N_PARTS, EXACT_COUNT, AQL, C_ZERO
    */
   | "EVERY_NTH_PART"
   | "PERCENTAGE"
   | "RANDOM"
   | "FIRST_N_PARTS"
   | "LAST_N_PARTS"
-  | "EXACT_COUNT";
+  | "EXACT_COUNT"
+  | "AQL"
+  | "C_ZERO";
 export type PaginatedSamplingRuleSetList = {
   /**
    * @example 123
@@ -5438,15 +5534,6 @@ export type SamplingRuleSet = {
   active?: boolean | undefined;
   version: number;
   is_fallback?: boolean | undefined;
-  fallback_threshold?:
-    | /**
-     * Number of consecutive failures before switching to fallback
-     *
-     * @minimum 0
-     * @maximum 2147483647
-     */
-    (number | null)
-    | undefined;
   fallback_duration?:
     | /**
      * Number of good parts required before reverting to this ruleset
@@ -5468,6 +5555,106 @@ export type SamplingRuleSet = {
   step: string;
   step_info: {};
   rules: Array<unknown>;
+  supplier?:
+    | /**
+     * Supplier scope for receiving acceptance sampling. Null = all suppliers.
+     */
+    (string | null)
+    | undefined;
+  aql?:
+    | /**
+     * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+     *
+     * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  inspection_level?: /**
+   * ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+   *
+   * @maxLength 3
+   */
+  string | undefined;
+  severity?: /**
+   * AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+  strategy?: /**
+   * Acceptance-sampling strategy: C0 (default) or Z14.
+   *
+   * @maxLength 4
+   */
+  string | undefined;
+  gate_metric?:
+    | /**
+     * Aggregate signal this step watches. Blank = no gate.
+    
+    * `CONSECUTIVE_FAILS` - Consecutive failures
+    * `FAIL_RATE_PCT` - Failure rate (%)
+    * `DEFECTIVE_COUNT` - Defective count
+     */
+    (GateMetricEnum | BlankEnum)
+    | undefined;
+  gate_threshold?:
+    | /**
+     * Threshold: percent for FAIL_RATE_PCT, count otherwise.
+     *
+     * @pattern ^-?\d{0,4}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  gate_window?:
+    | /**
+     * Window the metric is computed over.
+    
+    * `WORK_ORDER` - Whole work order at this step
+    * `ROLLING_N` - Rolling last N inspections
+    * `LOT` - Receiving lot sample
+     */
+    (GateWindowEnum | BlankEnum)
+    | undefined;
+  gate_window_n?:
+    | /**
+     * N for ROLLING_N windows.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  gate_min_sample?:
+    | /**
+     * Minimum inspections before a FAIL_RATE_PCT gate can fire.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  gate_actions?: /**
+   * List of GateAction codes to fire when the gate trips.
+   */
+  unknown | undefined;
+  gate_capa_type?: /**
+   * CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+   *
+   * @maxLength 20
+   */
+  string | undefined;
+  gate_capa_severity?: /**
+   * Severity for a RAISE_CAPA_SCAR action.
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+  gate_approval_template?:
+    | /**
+     * Template for a REQUIRE_APPROVAL action.
+     */
+    (string | null)
+    | undefined;
   created_by?: (number | null) | undefined;
   created_at: string;
   modified_by?: (number | null) | undefined;
@@ -5476,6 +5663,24 @@ export type SamplingRuleSet = {
   process_name: string;
   archived?: boolean | undefined;
 };
+export type GateMetricEnum =
+  /**
+   * * `CONSECUTIVE_FAILS` - Consecutive failures
+   * `FAIL_RATE_PCT` - Failure rate (%)
+   * `DEFECTIVE_COUNT` - Defective count
+   *
+   * @enum CONSECUTIVE_FAILS, FAIL_RATE_PCT, DEFECTIVE_COUNT
+   */
+  "CONSECUTIVE_FAILS" | "FAIL_RATE_PCT" | "DEFECTIVE_COUNT";
+export type GateWindowEnum =
+  /**
+   * * `WORK_ORDER` - Whole work order at this step
+   * `ROLLING_N` - Rolling last N inspections
+   * `LOT` - Receiving lot sample
+   *
+   * @enum WORK_ORDER, ROLLING_N, LOT
+   */
+  "WORK_ORDER" | "ROLLING_N" | "LOT";
 export type PaginatedScheduleSlotList = {
   /**
    * @example 123
@@ -5989,6 +6194,7 @@ export type Steps = {
     * `REWORK` - Rework
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
+    * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -7586,7 +7792,7 @@ export type PartsRequest = {
   part_status?: PartsStatusEnum | undefined;
   order?: (string | null) | undefined;
   part_type: string;
-  step: string;
+  step?: (string | null) | undefined;
   work_order?: (string | null) | undefined;
   sampling_rule?: (string | null) | undefined;
   sampling_ruleset?: (string | null) | undefined;
@@ -8186,6 +8392,16 @@ export type PatchedMaterialLotRequest = Partial<{
    * @maxLength 100
    */
   supplier_lot_number: string;
+  /**
+   * ERP purchase-order reference (UQMES does not own purchasing).
+   *
+   * @maxLength 100
+   */
+  erp_po_number: string;
+  /**
+   * Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
+   */
+  promised_date: string | null;
   received_date: string;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
@@ -8275,7 +8491,7 @@ export type PatchedPartsRequest = Partial<{
   part_status: PartsStatusEnum;
   order: string | null;
   part_type: string;
-  step: string;
+  step: string | null;
   work_order: string | null;
   sampling_rule: string | null;
   sampling_ruleset: string | null;
@@ -8769,6 +8985,119 @@ export type PatchedSamplingRuleRequest = Partial<{
   modified_by: number | null;
   archived: boolean;
 }>;
+export type PatchedSamplingRuleSetRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @maxLength 100
+   */
+  origin: string;
+  active: boolean;
+  is_fallback: boolean;
+  /**
+   * Number of good parts required before reverting to this ruleset
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  fallback_duration: number | null;
+  part_type: string;
+  /**
+   * Optional process context. Steps can be in multiple processes.
+   */
+  process: string | null;
+  step: string;
+  /**
+   * Supplier scope for receiving acceptance sampling. Null = all suppliers.
+   */
+  supplier: string | null;
+  /**
+   * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+   *
+   * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
+   */
+  aql: string | null;
+  /**
+   * ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+   *
+   * @maxLength 3
+   */
+  inspection_level: string;
+  /**
+   * AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+   *
+   * @maxLength 10
+   */
+  severity: string;
+  /**
+   * Acceptance-sampling strategy: C0 (default) or Z14.
+   *
+   * @maxLength 4
+   */
+  strategy: string;
+  /**
+     * Aggregate signal this step watches. Blank = no gate.
+    
+    * `CONSECUTIVE_FAILS` - Consecutive failures
+    * `FAIL_RATE_PCT` - Failure rate (%)
+    * `DEFECTIVE_COUNT` - Defective count
+     */
+  gate_metric: GateMetricEnum | BlankEnum;
+  /**
+   * Threshold: percent for FAIL_RATE_PCT, count otherwise.
+   *
+   * @pattern ^-?\d{0,4}(?:\.\d{0,3})?$
+   */
+  gate_threshold: string | null;
+  /**
+     * Window the metric is computed over.
+    
+    * `WORK_ORDER` - Whole work order at this step
+    * `ROLLING_N` - Rolling last N inspections
+    * `LOT` - Receiving lot sample
+     */
+  gate_window: GateWindowEnum | BlankEnum;
+  /**
+   * N for ROLLING_N windows.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  gate_window_n: number | null;
+  /**
+   * Minimum inspections before a FAIL_RATE_PCT gate can fire.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  gate_min_sample: number | null;
+  /**
+   * List of GateAction codes to fire when the gate trips.
+   */
+  gate_actions: unknown;
+  /**
+   * CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+   *
+   * @maxLength 20
+   */
+  gate_capa_type: string;
+  /**
+   * Severity for a RAISE_CAPA_SCAR action.
+   *
+   * @maxLength 10
+   */
+  gate_capa_severity: string;
+  /**
+   * Template for a REQUIRE_APPROVAL action.
+   */
+  gate_approval_template: string | null;
+  created_by: number | null;
+  modified_by: number | null;
+  archived: boolean;
+}>;
 export type PatchedScheduleSlotRequest = Partial<{
   work_center: string;
   shift: string;
@@ -8898,6 +9227,7 @@ export type PatchedStepsRequest = Partial<{
     * `REWORK` - Rework
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
+    * `RECEIVING` - Receiving Inspection
      */
   step_type: StepTypeEnum;
   is_decision_point: boolean;
@@ -9842,6 +10172,24 @@ export type RcaRecordRequest = {
   fishbone_data?: FishboneNestedRequest | undefined;
   archived?: boolean | undefined;
 };
+export type ReceivingMeasurementInputRequest = {
+  definition: string;
+  value_numeric?: (number | null) | undefined;
+  value_pass_fail?: (ValuePassFailEnum | NullEnum | null) | undefined;
+};
+export type ReceivingSampleUnitRequest = {
+  /**
+   * @minimum 1
+   */
+  sample_number: number;
+  measurements: Array<ReceivingMeasurementInputRequest>;
+};
+export type RecordInspectionRequestRequest = {
+  measurements: Array<ReceivingMeasurementInputRequest>;
+};
+export type RecordUnitsRequestRequest = {
+  units: Array<ReceivingSampleUnitRequest>;
+};
 export type RootCauseRequest = {
   rca_record: string;
   /**
@@ -10278,6 +10626,27 @@ export type MeasurementDataPoint = {
   operator_name: string | null;
   is_within_spec: boolean;
 };
+export type SamplePlanResponse = {
+  sample_size: number;
+  accept_number: number;
+  reject_number: number;
+  strategy: string;
+  inspection_level: string;
+  severity: string;
+  characteristics: Array<ReceivingCharacteristic>;
+  step_id: string | null;
+  has_substeps: boolean;
+  step_execution_id: string | null;
+};
+export type ReceivingCharacteristic = {
+  id: string;
+  label: string;
+  unit: string;
+  type: string;
+  nominal: number | null;
+  upper_tol: number | null;
+  lower_tol: number | null;
+};
 export type SamplingRuleRequest = {
   rule_type: RuleTypeEnum;
   value?:
@@ -10300,6 +10669,139 @@ export type SamplingRuleRequest = {
   string | undefined;
   last_validated?: (string | null) | undefined;
   ruleset: string;
+  created_by?: (number | null) | undefined;
+  modified_by?: (number | null) | undefined;
+  archived?: boolean | undefined;
+};
+export type SamplingRuleSetRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  origin?: /**
+   * @maxLength 100
+   */
+  string | undefined;
+  active?: boolean | undefined;
+  is_fallback?: boolean | undefined;
+  fallback_duration?:
+    | /**
+     * Number of good parts required before reverting to this ruleset
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  part_type: string;
+  process?:
+    | /**
+     * Optional process context. Steps can be in multiple processes.
+     */
+    (string | null)
+    | undefined;
+  step: string;
+  supplier?:
+    | /**
+     * Supplier scope for receiving acceptance sampling. Null = all suppliers.
+     */
+    (string | null)
+    | undefined;
+  aql?:
+    | /**
+     * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+     *
+     * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  inspection_level?: /**
+   * ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
+   *
+   * @maxLength 3
+   */
+  string | undefined;
+  severity?: /**
+   * AQL inspection severity (NORMAL/TIGHTENED/REDUCED).
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+  strategy?: /**
+   * Acceptance-sampling strategy: C0 (default) or Z14.
+   *
+   * @maxLength 4
+   */
+  string | undefined;
+  gate_metric?:
+    | /**
+     * Aggregate signal this step watches. Blank = no gate.
+    
+    * `CONSECUTIVE_FAILS` - Consecutive failures
+    * `FAIL_RATE_PCT` - Failure rate (%)
+    * `DEFECTIVE_COUNT` - Defective count
+     */
+    (GateMetricEnum | BlankEnum)
+    | undefined;
+  gate_threshold?:
+    | /**
+     * Threshold: percent for FAIL_RATE_PCT, count otherwise.
+     *
+     * @pattern ^-?\d{0,4}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  gate_window?:
+    | /**
+     * Window the metric is computed over.
+    
+    * `WORK_ORDER` - Whole work order at this step
+    * `ROLLING_N` - Rolling last N inspections
+    * `LOT` - Receiving lot sample
+     */
+    (GateWindowEnum | BlankEnum)
+    | undefined;
+  gate_window_n?:
+    | /**
+     * N for ROLLING_N windows.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  gate_min_sample?:
+    | /**
+     * Minimum inspections before a FAIL_RATE_PCT gate can fire.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  gate_actions?: /**
+   * List of GateAction codes to fire when the gate trips.
+   */
+  unknown | undefined;
+  gate_capa_type?: /**
+   * CAPA type for a RAISE_CAPA_SCAR action (SUPPLIER => SCAR).
+   *
+   * @maxLength 20
+   */
+  string | undefined;
+  gate_capa_severity?: /**
+   * Severity for a RAISE_CAPA_SCAR action.
+   *
+   * @maxLength 10
+   */
+  string | undefined;
+  gate_approval_template?:
+    | /**
+     * Template for a REQUIRE_APPROVAL action.
+     */
+    (string | null)
+    | undefined;
   created_by?: (number | null) | undefined;
   modified_by?: (number | null) | undefined;
   archived?: boolean | undefined;
@@ -10483,6 +10985,7 @@ export type StepRequest = {
     * `REWORK` - Rework
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
+    * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -10503,8 +11006,13 @@ export type StepRequest = {
 export type StepSamplingRulesUpdateRequest = {
   rules: Array<SamplingRuleUpdateRequest>;
   fallback_rules?: Array<SamplingRuleUpdateRequest> | undefined;
-  fallback_threshold?: number | undefined;
   fallback_duration?: number | undefined;
+  tighten_after?:
+    | /**
+     * Consecutive failures before tightening to the fallback ruleset (sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).
+     */
+    (number | null)
+    | undefined;
 };
 export type StepSummary = {
   step_id: string;
@@ -10552,6 +11060,7 @@ export type StepsRequest = {
     * `REWORK` - Rework
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
+    * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
@@ -12238,6 +12747,18 @@ const PatchedCompanyRequest = z
     archived: z.boolean(),
   })
   .partial();
+const SupplierScorecard = z.object({
+  supplier_id: z.string(),
+  lots_received: z.number().int(),
+  lots_accepted: z.number().int(),
+  lots_rejected: z.number().int(),
+  lots_inspected: z.number().int(),
+  reject_rate: z.number(),
+  coc_compliance: z.number(),
+  on_time_rate: z.number().nullable(),
+  promised_lots: z.number().int(),
+  open_scar_count: z.number().int(),
+});
 const CoreStatusEnum = z.enum([
   "RECEIVED",
   "IN_DISASSEMBLY",
@@ -13146,6 +13667,9 @@ const HeatMapFacetsResponse = z.object({
 });
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
+  "AWAITING_INSPECTION",
+  "ACCEPTED",
+  "REJECTED",
   "IN_USE",
   "CONSUMED",
   "SCRAPPED",
@@ -13162,6 +13686,8 @@ const MaterialLot = z.object({
   supplier: z.string().uuid().nullish(),
   supplier_name: z.string().nullable(),
   supplier_lot_number: z.string().max(100).optional(),
+  erp_po_number: z.string().max(100).optional(),
+  promised_date: z.string().nullish(),
   received_date: z.string(),
   received_by: z.number().int(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
@@ -13191,6 +13717,8 @@ const MaterialLotRequest = z.object({
   material_description: z.string().max(200).optional(),
   supplier: z.string().uuid().nullish(),
   supplier_lot_number: z.string().max(100).optional(),
+  erp_po_number: z.string().max(100).optional(),
+  promised_date: z.string().nullish(),
   received_date: z.string(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().min(1).max(20),
@@ -13209,6 +13737,8 @@ const PatchedMaterialLotRequest = z
     material_description: z.string().max(200),
     supplier: z.string().uuid().nullable(),
     supplier_lot_number: z.string().max(100),
+    erp_po_number: z.string().max(100),
+    promised_date: z.string().nullable(),
     received_date: z.string(),
     quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
     unit_of_measure: z.string().min(1).max(20),
@@ -13220,10 +13750,160 @@ const PatchedMaterialLotRequest = z
     archived: z.boolean(),
   })
   .partial();
+const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
+const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
+const MeasurementResult = z.object({
+  report: z.string(),
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
+  is_within_spec: z.boolean(),
+  created_by: z.number().int(),
+  archived: z.boolean().optional(),
+});
+const QualityReportEquipmentRoleEnum = z.enum([
+  "PRODUCTION",
+  "FIXTURE",
+  "TOOL",
+  "GAUGE",
+  "OTHER",
+]);
+const QualityReportEquipment = z.object({
+  id: z.number().int(),
+  equipment: z.string().uuid(),
+  equipment_name: z.string(),
+  role: QualityReportEquipmentRoleEnum.optional(),
+  notes: z.string().max(200).optional(),
+});
+const QualityReportPersonnelRoleEnum = z.enum([
+  "DETECTED_BY",
+  "OPERATOR",
+  "VERIFIED_BY",
+  "INSPECTOR",
+  "WITNESS",
+  "TRAINER",
+  "TRAINEE",
+]);
+const QualityReportPersonnel = z.object({
+  id: z.number().int(),
+  user: z.number().int(),
+  username: z.string(),
+  full_name: z.string(),
+  role: QualityReportPersonnelRoleEnum,
+  signed_at: z.string().datetime({ offset: true }).nullish(),
+  notes: z.string().max(200).optional(),
+});
+const QualityReports = z.object({
+  id: z.string().uuid(),
+  report_number: z.string(),
+  step: z.string().uuid().nullish(),
+  part: z.string().uuid().nullish(),
+  machine: z.string().uuid().nullish(),
+  operators: z.array(z.number().int()).optional(),
+  sampling_method: z.string().max(50).optional(),
+  status: QualityReportStatusEnum,
+  status_display: z.string(),
+  description: z.string().max(300).nullish(),
+  file: z.string().uuid().nullish(),
+  created_at: z.string().datetime({ offset: true }),
+  errors: z.array(z.string().uuid()),
+  measurements: z.array(MeasurementResult).optional(),
+  sampling_audit_log: z.string().uuid().nullish(),
+  detected_by: z.number().int().nullish(),
+  detected_by_info: z.object({}).partial().passthrough().nullable(),
+  verified_by: z.number().int().nullish(),
+  verified_by_info: z.object({}).partial().passthrough().nullable(),
+  is_first_piece: z.boolean().optional(),
+  material_lot: z.string().uuid().nullable(),
+  sample_size: z.number().int().nullable(),
+  accept_number: z.number().int().nullable(),
+  reject_number: z.number().int().nullable(),
+  equipment_links: z.array(QualityReportEquipment),
+  personnel_links: z.array(QualityReportPersonnel),
+  part_info: z.object({}).partial().passthrough().nullable(),
+  part_display: z.string().nullable(),
+  step_info: z.object({}).partial().passthrough().nullable(),
+  machine_info: z.object({}).partial().passthrough().nullable(),
+  operators_info: z.array(z.unknown()),
+  errors_info: z.array(z.unknown()),
+  file_info: z.object({}).partial().passthrough().nullable(),
+  archived: z.boolean().optional(),
+});
+const RaiseScarResponse = z.object({
+  capa_id: z.string().uuid(),
+  capa_number: z.string(),
+});
+const RecordBulkRequestRequest = z.object({
+  defectives_found: z.number().int().gte(0),
+});
+const ReceivingMeasurementInputRequest = z.object({
+  definition: z.string().uuid(),
+  value_numeric: z.number().nullish(),
+  value_pass_fail: z.union([ValuePassFailEnum, NullEnum]).nullish(),
+});
+const RecordInspectionRequestRequest = z.object({
+  measurements: z.array(ReceivingMeasurementInputRequest),
+});
+const ReceivingSampleUnitRequest = z.object({
+  sample_number: z.number().int().gte(1),
+  measurements: z.array(ReceivingMeasurementInputRequest),
+});
+const RecordUnitsRequestRequest = z.object({
+  units: z.array(ReceivingSampleUnitRequest),
+});
+const ReceivingCharacteristic = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
+  unit: z.string(),
+  type: z.string(),
+  nominal: z.number().nullable(),
+  upper_tol: z.number().nullable(),
+  lower_tol: z.number().nullable(),
+});
+const SamplePlanResponse = z.object({
+  sample_size: z.number().int(),
+  accept_number: z.number().int(),
+  reject_number: z.number().int(),
+  strategy: z.string(),
+  inspection_level: z.string(),
+  severity: z.string(),
+  characteristics: z.array(ReceivingCharacteristic),
+  step_id: z.string().uuid().nullable(),
+  has_substeps: z.boolean(),
+  step_execution_id: z.string().uuid().nullable(),
+});
 const MaterialLotSplitRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().optional().default(""),
 });
+const MaterialLotBulkRowRequest = z.object({
+  lot_number: z.string().min(1).max(100),
+  received_date: z.string(),
+  material_type: z.string().uuid().nullish(),
+  material_description: z.string().max(200).optional(),
+  supplier: z.string().uuid().nullish(),
+  supplier_lot_number: z.string().max(100).optional(),
+  erp_po_number: z.string().max(100).optional(),
+  promised_date: z.string().nullish(),
+  quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  unit_of_measure: z.string().max(20).optional(),
+  manufacture_date: z.string().nullish(),
+  expiration_date: z.string().nullish(),
+  storage_location: z.string().max(100).optional(),
+});
+const MaterialLotBulkCreateRequest = z.object({
+  lots: z.array(MaterialLotBulkRowRequest),
+});
+const MaterialLotBulkCreateResponse = z.object({
+  count: z.number().int(),
+  created_lot_ids: z.array(z.string().uuid()),
+});
+const MaterialLotBulkCreateError = z
+  .object({
+    detail: z.string(),
+    errors: z.array(z.object({}).partial().passthrough()),
+  })
+  .partial();
 const MaterialUsage = z.object({
   id: z.string().uuid(),
   lot: z.string().uuid().nullish(),
@@ -13612,6 +14292,15 @@ const PatchedPartTypesRequest = z
     default_disassembly_process: z.string().uuid().nullable(),
   })
   .partial();
+const PartTypeQualitySummary = z.object({
+  parts_total: z.number().int(),
+  reports: z.object({}).partial().passthrough(),
+  open: z.object({}).partial().passthrough(),
+  defect_pareto: z.array(z.object({}).partial().passthrough()),
+  spc: z.array(z.object({}).partial().passthrough()),
+  recent_failures: z.array(z.object({}).partial().passthrough()),
+  fpy_trend: z.array(z.object({}).partial().passthrough()),
+});
 const PartTypeSelect = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -13633,7 +14322,7 @@ const Parts = z.object({
   order: z.string().uuid().nullish(),
   part_type: z.string().uuid(),
   part_type_info: z.object({}).partial().passthrough().nullable(),
-  step: z.string().uuid(),
+  step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
   work_order: z.string().uuid().nullish(),
   quality_info: z.object({}).partial().passthrough().nullable(),
@@ -13664,7 +14353,7 @@ const PartsRequest = z.object({
   part_status: PartsStatusEnum.optional(),
   order: z.string().uuid().nullish(),
   part_type: z.string().uuid(),
-  step: z.string().uuid(),
+  step: z.string().uuid().nullish(),
   work_order: z.string().uuid().nullish(),
   sampling_rule: z.string().uuid().nullish(),
   sampling_ruleset: z.string().uuid().nullish(),
@@ -13677,7 +14366,7 @@ const PatchedPartsRequest = z
     part_status: PartsStatusEnum,
     order: z.string().uuid().nullable(),
     part_type: z.string().uuid(),
-    step: z.string().uuid(),
+    step: z.string().uuid().nullable(),
     work_order: z.string().uuid().nullable(),
     sampling_rule: z.string().uuid().nullable(),
     sampling_ruleset: z.string().uuid().nullable(),
@@ -13869,6 +14558,7 @@ const StepTypeEnum = z.enum([
   "REWORK",
   "TIMER",
   "TERMINAL",
+  "RECEIVING",
 ]);
 const DecisionTypeEnum = z.enum(["QA_RESULT", "MEASUREMENT", "MANUAL"]);
 const TerminalStatusEnum = z.enum([
@@ -14031,81 +14721,6 @@ const SubmitProcessForApprovalResponse = z.object({
   process: ProcessWithSteps,
   approval_request_id: z.string().uuid(),
   approval_number: z.string(),
-});
-const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
-const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
-const MeasurementResult = z.object({
-  report: z.string(),
-  definition: z.string().uuid(),
-  value_numeric: z.number().nullish(),
-  value_pass_fail: z.union([ValuePassFailEnum, BlankEnum, NullEnum]).nullish(),
-  is_within_spec: z.boolean(),
-  created_by: z.number().int(),
-  archived: z.boolean().optional(),
-});
-const QualityReportEquipmentRoleEnum = z.enum([
-  "PRODUCTION",
-  "FIXTURE",
-  "TOOL",
-  "GAUGE",
-  "OTHER",
-]);
-const QualityReportEquipment = z.object({
-  id: z.number().int(),
-  equipment: z.string().uuid(),
-  equipment_name: z.string(),
-  role: QualityReportEquipmentRoleEnum.optional(),
-  notes: z.string().max(200).optional(),
-});
-const QualityReportPersonnelRoleEnum = z.enum([
-  "DETECTED_BY",
-  "OPERATOR",
-  "VERIFIED_BY",
-  "INSPECTOR",
-  "WITNESS",
-  "TRAINER",
-  "TRAINEE",
-]);
-const QualityReportPersonnel = z.object({
-  id: z.number().int(),
-  user: z.number().int(),
-  username: z.string(),
-  full_name: z.string(),
-  role: QualityReportPersonnelRoleEnum,
-  signed_at: z.string().datetime({ offset: true }).nullish(),
-  notes: z.string().max(200).optional(),
-});
-const QualityReports = z.object({
-  id: z.string().uuid(),
-  report_number: z.string(),
-  step: z.string().uuid().nullish(),
-  part: z.string().uuid().nullish(),
-  machine: z.string().uuid().nullish(),
-  operators: z.array(z.number().int()).optional(),
-  sampling_method: z.string().max(50).optional(),
-  status: QualityReportStatusEnum,
-  status_display: z.string(),
-  description: z.string().max(300).nullish(),
-  file: z.string().uuid().nullish(),
-  created_at: z.string().datetime({ offset: true }),
-  errors: z.array(z.string().uuid()),
-  measurements: z.array(MeasurementResult).optional(),
-  sampling_audit_log: z.string().uuid().nullish(),
-  detected_by: z.number().int().nullish(),
-  detected_by_info: z.object({}).partial().passthrough().nullable(),
-  verified_by: z.number().int().nullish(),
-  verified_by_info: z.object({}).partial().passthrough().nullable(),
-  is_first_piece: z.boolean().optional(),
-  equipment_links: z.array(QualityReportEquipment),
-  personnel_links: z.array(QualityReportPersonnel),
-  part_info: z.object({}).partial().passthrough().nullable(),
-  part_display: z.string().nullable(),
-  step_info: z.object({}).partial().passthrough().nullable(),
-  machine_info: z.object({}).partial().passthrough().nullable(),
-  operators_info: z.array(z.unknown()),
-  errors_info: z.array(z.unknown()),
-  file_info: z.object({}).partial().passthrough().nullable(),
-  archived: z.boolean().optional(),
 });
 const PaginatedQualityReportsList = z.object({
   count: z.number().int(),
@@ -14342,6 +14957,12 @@ const PatchedRcaRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const GateMetricEnum = z.enum([
+  "CONSECUTIVE_FAILS",
+  "FAIL_RATE_PCT",
+  "DEFECTIVE_COUNT",
+]);
+const GateWindowEnum = z.enum(["WORK_ORDER", "ROLLING_N", "LOT"]);
 const SamplingRuleSet = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
@@ -14349,7 +14970,6 @@ const SamplingRuleSet = z.object({
   active: z.boolean().optional(),
   version: z.number().int(),
   is_fallback: z.boolean().optional(),
-  fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
   fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
   part_type: z.string().uuid(),
   part_type_info: z.object({}).partial().passthrough().nullable(),
@@ -14358,6 +14978,26 @@ const SamplingRuleSet = z.object({
   step: z.string().uuid(),
   step_info: z.object({}).partial().passthrough().nullable(),
   rules: z.array(z.unknown()),
+  supplier: z.string().uuid().nullish(),
+  aql: z
+    .string()
+    .regex(/^-?\d{0,2}(?:\.\d{0,3})?$/)
+    .nullish(),
+  inspection_level: z.string().max(3).optional(),
+  severity: z.string().max(10).optional(),
+  strategy: z.string().max(4).optional(),
+  gate_metric: z.union([GateMetricEnum, BlankEnum]).optional(),
+  gate_threshold: z
+    .string()
+    .regex(/^-?\d{0,4}(?:\.\d{0,3})?$/)
+    .nullish(),
+  gate_window: z.union([GateWindowEnum, BlankEnum]).optional(),
+  gate_window_n: z.number().int().gte(0).lte(2147483647).nullish(),
+  gate_min_sample: z.number().int().gte(0).lte(2147483647).nullish(),
+  gate_actions: z.unknown().optional(),
+  gate_capa_type: z.string().max(20).optional(),
+  gate_capa_severity: z.string().max(10).optional(),
+  gate_approval_template: z.string().uuid().nullish(),
   created_by: z.number().int().nullish(),
   created_at: z.string().datetime({ offset: true }),
   modified_by: z.number().int().nullish(),
@@ -14377,11 +15017,30 @@ const SamplingRuleSetRequest = z.object({
   origin: z.string().max(100).optional(),
   active: z.boolean().optional(),
   is_fallback: z.boolean().optional(),
-  fallback_threshold: z.number().int().gte(0).lte(2147483647).nullish(),
   fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
   part_type: z.string().uuid(),
   process: z.string().uuid().nullish(),
   step: z.string().uuid(),
+  supplier: z.string().uuid().nullish(),
+  aql: z
+    .string()
+    .regex(/^-?\d{0,2}(?:\.\d{0,3})?$/)
+    .nullish(),
+  inspection_level: z.string().max(3).optional(),
+  severity: z.string().max(10).optional(),
+  strategy: z.string().max(4).optional(),
+  gate_metric: z.union([GateMetricEnum, BlankEnum]).optional(),
+  gate_threshold: z
+    .string()
+    .regex(/^-?\d{0,4}(?:\.\d{0,3})?$/)
+    .nullish(),
+  gate_window: z.union([GateWindowEnum, BlankEnum]).optional(),
+  gate_window_n: z.number().int().gte(0).lte(2147483647).nullish(),
+  gate_min_sample: z.number().int().gte(0).lte(2147483647).nullish(),
+  gate_actions: z.unknown().optional(),
+  gate_capa_type: z.string().max(20).optional(),
+  gate_capa_severity: z.string().max(10).optional(),
+  gate_approval_template: z.string().uuid().nullish(),
   created_by: z.number().int().nullish(),
   modified_by: z.number().int().nullish(),
   archived: z.boolean().optional(),
@@ -14392,11 +15051,30 @@ const PatchedSamplingRuleSetRequest = z
     origin: z.string().max(100),
     active: z.boolean(),
     is_fallback: z.boolean(),
-    fallback_threshold: z.number().int().gte(0).lte(2147483647).nullable(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullable(),
     part_type: z.string().uuid(),
     process: z.string().uuid().nullable(),
     step: z.string().uuid(),
+    supplier: z.string().uuid().nullable(),
+    aql: z
+      .string()
+      .regex(/^-?\d{0,2}(?:\.\d{0,3})?$/)
+      .nullable(),
+    inspection_level: z.string().max(3),
+    severity: z.string().max(10),
+    strategy: z.string().max(4),
+    gate_metric: z.union([GateMetricEnum, BlankEnum]),
+    gate_threshold: z
+      .string()
+      .regex(/^-?\d{0,4}(?:\.\d{0,3})?$/)
+      .nullable(),
+    gate_window: z.union([GateWindowEnum, BlankEnum]),
+    gate_window_n: z.number().int().gte(0).lte(2147483647).nullable(),
+    gate_min_sample: z.number().int().gte(0).lte(2147483647).nullable(),
+    gate_actions: z.unknown(),
+    gate_capa_type: z.string().max(20),
+    gate_capa_severity: z.string().max(10),
+    gate_approval_template: z.string().uuid().nullable(),
     created_by: z.number().int().nullable(),
     modified_by: z.number().int().nullable(),
     archived: z.boolean(),
@@ -14409,6 +15087,8 @@ const RuleTypeEnum = z.enum([
   "FIRST_N_PARTS",
   "LAST_N_PARTS",
   "EXACT_COUNT",
+  "AQL",
+  "C_ZERO",
 ]);
 const SamplingRule = z.object({
   id: z.string().uuid(),
@@ -14928,8 +15608,8 @@ const StepWithResolvedRules = z.object({
           })
           .partial()
       ),
-      fallback_threshold: z.number().int().nullable(),
       fallback_duration: z.number().int().nullable(),
+      tighten_after: z.number().int().nullable(),
     })
     .partial(),
   fallback_ruleset: z
@@ -14966,8 +15646,8 @@ const SamplingRuleUpdateRequest = z.object({
 const StepSamplingRulesUpdateRequest = z.object({
   rules: z.array(SamplingRuleUpdateRequest),
   fallback_rules: z.array(SamplingRuleUpdateRequest).optional(),
-  fallback_threshold: z.number().int().optional(),
   fallback_duration: z.number().int().optional(),
+  tighten_after: z.number().int().nullish(),
 });
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
@@ -17774,6 +18454,7 @@ export const schemas = {
   PaginatedCompanyList,
   CompanyRequest,
   PatchedCompanyRequest,
+  SupplierScorecard,
   CoreStatusEnum,
   ConditionGradeEnum,
   SourceTypeEnum,
@@ -17865,7 +18546,27 @@ export const schemas = {
   PaginatedMaterialLotList,
   MaterialLotRequest,
   PatchedMaterialLotRequest,
+  QualityReportStatusEnum,
+  ValuePassFailEnum,
+  MeasurementResult,
+  QualityReportEquipmentRoleEnum,
+  QualityReportEquipment,
+  QualityReportPersonnelRoleEnum,
+  QualityReportPersonnel,
+  QualityReports,
+  RaiseScarResponse,
+  RecordBulkRequestRequest,
+  ReceivingMeasurementInputRequest,
+  RecordInspectionRequestRequest,
+  ReceivingSampleUnitRequest,
+  RecordUnitsRequestRequest,
+  ReceivingCharacteristic,
+  SamplePlanResponse,
   MaterialLotSplitRequest,
+  MaterialLotBulkRowRequest,
+  MaterialLotBulkCreateRequest,
+  MaterialLotBulkCreateResponse,
+  MaterialLotBulkCreateError,
   MaterialUsage,
   PaginatedMaterialUsageList,
   TypeEnum,
@@ -17906,6 +18607,7 @@ export const schemas = {
   PaginatedPartTypesList,
   PartTypesRequest,
   PatchedPartTypesRequest,
+  PartTypeQualitySummary,
   PartTypeSelect,
   PaginatedPartTypeSelectList,
   Parts,
@@ -17962,14 +18664,6 @@ export const schemas = {
   DuplicateProcessRequestRequest,
   SubmitProcessForApprovalRequestRequest,
   SubmitProcessForApprovalResponse,
-  QualityReportStatusEnum,
-  ValuePassFailEnum,
-  MeasurementResult,
-  QualityReportEquipmentRoleEnum,
-  QualityReportEquipment,
-  QualityReportPersonnelRoleEnum,
-  QualityReportPersonnel,
-  QualityReports,
   PaginatedQualityReportsList,
   MeasurementResultRequest,
   QualityReportsRequest,
@@ -17985,6 +18679,8 @@ export const schemas = {
   FishboneNestedRequest,
   RcaRecordRequest,
   PatchedRcaRecordRequest,
+  GateMetricEnum,
+  GateWindowEnum,
   SamplingRuleSet,
   PaginatedSamplingRuleSetList,
   SamplingRuleSetRequest,
@@ -20242,6 +20938,11 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
     ],
     response: PaginatedCAPAList,
   },
@@ -20420,8 +21121,23 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     method: "get",
     path: "/api/CAPAs/stats/",
     alias: "api_CAPAs_stats_retrieve",
-    description: `Get aggregated CAPA statistics for dashboard display`,
+    description: `Get aggregated CAPA statistics for dashboard display.
+
+Honors the same query-param filters as the list endpoint (supplier,
+capa_type, status, severity, …) so a scoped list and its stat cards agree.`,
     requestFormat: "json",
+    parameters: [
+      {
+        name: "capa_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
     response: z
       .object({
         total: z.number().int(),
@@ -21140,6 +21856,21 @@ Provides list, create, retrieve, update, and delete operations.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Companies/:id/scorecard/",
+    alias: "api_Companies_scorecard_retrieve",
+    description: `Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, and open SCAR count.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierScorecard,
   },
   {
     method: "get",
@@ -25515,7 +26246,16 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
         name: "status",
         type: "Query",
         schema: z
-          .enum(["CONSUMED", "IN_USE", "QUARANTINE", "RECEIVED", "SCRAPPED"])
+          .enum([
+            "ACCEPTED",
+            "AWAITING_INSPECTION",
+            "CONSUMED",
+            "IN_USE",
+            "QUARANTINE",
+            "RECEIVED",
+            "REJECTED",
+            "SCRAPPED",
+          ])
           .optional(),
       },
       {
@@ -25613,6 +26353,141 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/accept/",
+    alias: "api_MaterialLots_accept_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/open_inspection/",
+    alias: "api_MaterialLots_open_inspection_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/raise_scar/",
+    alias: "api_MaterialLots_raise_scar_create",
+    description: `Raise a Supplier Corrective Action (SCAR) for this lot&#x27;s supplier, linking the lot&#x27;s receiving inspection report.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RaiseScarResponse,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/record_bulk/",
+    alias: "api_MaterialLots_record_bulk_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ defectives_found: z.number().int().gte(0) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/record_inspection/",
+    alias: "api_MaterialLots_record_inspection_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RecordInspectionRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/record_units/",
+    alias: "api_MaterialLots_record_units_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RecordUnitsRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/reject/",
+    alias: "api_MaterialLots_reject_create",
+    description: `Material lot tracking with split capability`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/:id/sample_plan/",
+    alias: "api_MaterialLots_sample_plan_retrieve",
+    description: `Derive the acceptance-sampling plan (n/Ac/Re) for this lot from its part type&#x27;s RECEIVING step + supplier sampling ruleset.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SamplePlanResponse,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/split/",
     alias: "api_MaterialLots_split_create",
     description: `Split a lot into a child lot`,
@@ -25630,6 +26505,27 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/bulk_create/",
+    alias: "api_MaterialLots_bulk_create_create",
+    description: `Receive N lots from a shipment (paste-grid). All-or-nothing — any row error rolls back.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MaterialLotBulkCreateRequest,
+      },
+    ],
+    response: MaterialLotBulkCreateResponse,
+    errors: [
+      {
+        status: 400,
+        schema: MaterialLotBulkCreateError,
+      },
+    ],
   },
   {
     method: "get",
@@ -28628,6 +29524,26 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/PartTypes/:id/quality-summary/",
+    alias: "api_PartTypes_quality_summary_retrieve",
+    description: `Aggregate quality rollup for a part type: inspection pass/fail + FPY, open dispositions/CAPAs, defect Pareto, recent failures, and a 30-day FPY trend.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PartTypeQualitySummary,
   },
   {
     method: "get",
@@ -31743,6 +32659,8 @@ Usage:
         type: "Query",
         schema: z
           .enum([
+            "AQL",
+            "C_ZERO",
             "EVERY_NTH_PART",
             "EXACT_COUNT",
             "FIRST_N_PARTS",

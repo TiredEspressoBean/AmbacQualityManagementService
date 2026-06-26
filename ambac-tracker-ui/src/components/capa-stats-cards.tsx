@@ -1,4 +1,4 @@
-import { useCapaStats } from "@/hooks/useCapaStats";
+import { useCapaStats, type CapaStatsFilters } from "@/hooks/useCapaStats";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     FileText,
@@ -7,8 +7,8 @@ import {
     AlertTriangle,
 } from "lucide-react";
 
-export function CapaStatsCards() {
-    const { data: stats, isLoading, error } = useCapaStats();
+export function CapaStatsCards({ filters }: { filters?: CapaStatsFilters }) {
+    const { data: stats, isLoading, error } = useCapaStats(filters);
 
     if (isLoading) {
         return <Skeleton className="h-5 w-96" />;

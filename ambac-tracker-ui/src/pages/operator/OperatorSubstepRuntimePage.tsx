@@ -82,6 +82,8 @@ type RouteParams = { stepId: string };
 type SearchParams = {
     part?: string;
     workOrder?: string;
+    /** Receiving inspection: the MaterialLot subject of this execution (no part/WO). */
+    material_lot?: string;
     execution?: string;
     at?: number;
     debug?: string;
@@ -357,6 +359,7 @@ export function OperatorSubstepRuntimePage() {
                                         stepExecutionId: search.execution ?? null,
                                         partId: search.part ?? null,
                                         workOrderId: search.workOrder ?? null,
+                                        materialLotId: search.material_lot ?? null,
                                         queue: search.queue ?? "",
                                         navigate,
                                         submit,
@@ -1037,6 +1040,7 @@ async function handleCompleteStep({
     stepExecutionId,
     partId,
     workOrderId,
+    materialLotId,
     queue,
     navigate,
     submit,
@@ -1047,6 +1051,8 @@ async function handleCompleteStep({
     stepExecutionId: string | null;
     partId: string | null;
     workOrderId: string | null;
+    /** Receiving inspection: the MaterialLot subject, when this isn't a part run. */
+    materialLotId: string | null;
     /** Comma-separated remaining part ids to work in serial after this one. */
     queue: string;
     navigate: ReturnType<typeof useNavigate>;
@@ -1079,6 +1085,20 @@ async function handleCompleteStep({
     if (failCount > 0) {
         toast.error("Some substeps failed to submit", {
             description: `${okCount} succeeded, ${failCount} failed. Retry from the review screen.`,
+        });
+        return;
+    }
+
+    // Receiving inspection (MaterialLot subject): captures are saved; the
+    // accept/reject disposition lives on the receiving inspection page, so
+    // route the operator back there to finish.
+    if (!partId && materialLotId) {
+        toast.success("Inspection captures saved", {
+            description: "Accept or reject the lot to finish.",
+        });
+        navigate({
+            to: "/production/receiving-inspection/$lotId",
+            params: { lotId: materialLotId },
         });
         return;
     }

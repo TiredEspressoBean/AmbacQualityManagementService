@@ -56,6 +56,13 @@ const productionPages = [
     { name: "Processes", url: "/editor/processes", icon: Workflow },
 ]
 
+// Inventory - materials & receiving (staff only, collapsible)
+const inventoryPages = [
+    { name: "Material Lots", url: "/production/material-lots", icon: Package },
+    { name: "Receiving Inspection", url: "/production/receiving-inspection", icon: ClipboardCheck },
+    { name: "Supplier Quality", url: "/production/supplier-quality", icon: ShieldCheck },
+]
+
 // Reman - Remanufacturing operations (staff only, collapsible)
 const remanPages = [
     { name: "Dashboard", url: "/reman", icon: Recycle },
@@ -112,6 +119,7 @@ export function AppSidebar({
     // Show sections based on effective permissions
     const showPersonal = isPlatformStaff || hasAny('respond_to_approval', 'view_approvalrequest')
     const showProduction = isPlatformStaff || hasAny('view_workorder', 'view_orders', 'view_processes')
+    const showInventory = isPlatformStaff || hasAny('view_materiallot', 'view_receivinginspectionplan')
     const showReman = isPlatformStaff || hasAny('view_core', 'view_harvestedcomponent')
     const showQuality = isPlatformStaff || hasAny('view_qualityreports', 'view_capa', 'view_trainingrecord')
     const showApprovals = isPlatformStaff || hasAny('view_approvalrequest', 'respond_to_approval')
@@ -166,6 +174,15 @@ export function AppSidebar({
                                     title="Production"
                                     pages={productionPages}
                                     defaultOpen={true}
+                                />
+                            )}
+
+                            {/* Inventory - materials & receiving */}
+                            {showInventory && (
+                                <NavPagesCollapsible
+                                    title="Inventory"
+                                    pages={inventoryPages}
+                                    defaultOpen={false}
                                 />
                             )}
 

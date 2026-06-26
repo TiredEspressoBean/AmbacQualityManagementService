@@ -3,6 +3,7 @@ import { useQuery, queryOptions } from '@tanstack/react-query';
 import ModelDetailPage from './ModelDetailPage';
 import { getFieldsConfigForModel } from './fieldsConfigMap';
 import { CompositeRenderer } from "@/pages/detail pages/RendererSidebarComponent";
+import { PartTypeQualityRenderer } from "@/pages/detail pages/PartTypeQualityRenderer";
 
 const getDetailComponentsForModel = (modelType: string) => {
     switch (modelType.toLowerCase()) {
@@ -13,6 +14,11 @@ const getDetailComponentsForModel = (modelType: string) => {
         case 'documents':
             return {
                 RendererSidebarComponent: CompositeRenderer,
+            };
+        case 'parttypes':
+            // Wide right panel = quality aggregate dashboard for the part type.
+            return {
+                RendererSidebarComponent: PartTypeQualityRenderer,
             };
         default:
             return {};

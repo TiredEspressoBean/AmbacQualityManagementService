@@ -94,6 +94,7 @@ const NODE_TYPE_OPTIONS = [
   { type: 'REWORK', label: 'Rework Step', icon: RefreshCw, description: 'Step with visit limit' },
   { type: 'TIMER', label: 'Timer/Wait Step', icon: Clock, description: 'Step with expected duration' },
   { type: 'TERMINAL', label: 'Terminal Step', icon: CheckCircle, description: 'Process end point' },
+  { type: 'RECEIVING', label: 'Receiving Inspection', icon: ClipboardCheck, description: 'Incoming material inspection gate' },
 ] as const;
 
 /**

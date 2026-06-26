@@ -103,17 +103,21 @@ export function recordCaughtError(
     kind: "query" | "mutation",
     source: string,
     error: unknown,
+    /** Optional human-readable message (e.g. a Zodios schema-mismatch summary).
+     *  When omitted, the message is derived from the error itself. */
+    messageOverride?: string,
 ) {
     if (typeof window === "undefined") return;
     record({
         kind,
         ts: new Date().toISOString(),
         message:
-            error instanceof Error
+            messageOverride ??
+            (error instanceof Error
                 ? error.message
                 : typeof error === "string"
                     ? error
-                    : safeStringify(error),
+                    : safeStringify(error)),
         stack: error instanceof Error ? error.stack : undefined,
         url: window.location.href,
         source,

@@ -96,6 +96,8 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     "Sampling-rule-sets": "Sampling-rule-sets",
     SamplingRuleSets: "Sampling-rule-sets",
     MeasurementDefinitions: "MeasurementDefinitions",
+    ReceivingInspectionPlans: "ReceivingInspectionPlans",
+    MaterialLots: "MaterialLots",
     CAPAs: "CAPAs",
     CapaTasks: "CapaTasks",
     CapaVerifications: "CapaVerifications",

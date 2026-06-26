@@ -1,6 +1,26 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { recordCaughtError } from './error-log'
+import { describeApiError } from './api/describeApiError'
+
+/**
+ * Enrich the error-log buffer (and, in dev, the console) with a source-locating
+ * description — most importantly for Zodios schema-validation failures, which
+ * are otherwise an opaque "no data" with no clue which endpoint/field broke.
+ * Returns the message recorded into the buffer. The user-facing toast stays
+ * friendly; the diagnostic detail goes to `__errorLog()` / the dev console.
+ */
+function reportApiError(kind: "query" | "mutation", source: string, error: unknown): void {
+    const desc = describeApiError(error);
+    const enriched = desc
+        ? `${desc.summary}${desc.detail ? ` — ${desc.detail}` : ""}`
+        : undefined;
+    recordCaughtError(kind, source, error, enriched);
+    if (desc && import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.error(`[API] ${desc.summary}`, desc.detail ?? "", error);
+    }
+}
 
 /**
  * Meta-aware global handlers.
@@ -34,7 +54,7 @@ type MutationMeta = {
 export const queryClient = new QueryClient({
     queryCache: new QueryCache({
         onError: (error, query) => {
-            recordCaughtError("query", JSON.stringify(query.queryKey), error);
+            reportApiError("query", JSON.stringify(query.queryKey), error);
             const meta = query.meta as QueryMeta | undefined;
             if (meta?.suppressGlobalError) return;
             toast.error(meta?.errorMessage ?? "Failed to load data", {
@@ -44,7 +64,7 @@ export const queryClient = new QueryClient({
     }),
     mutationCache: new MutationCache({
         onError: (error, _vars, _ctx, mutation) => {
-            recordCaughtError(
+            reportApiError(
                 "mutation",
                 JSON.stringify(mutation.options.mutationKey ?? "anonymous"),
                 error,
