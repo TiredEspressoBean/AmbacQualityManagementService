@@ -6,6 +6,7 @@ from dj_rest_auth.serializers import UserDetailsSerializer as BaseUserDetailsSer
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
 from django.conf import settings
+from django.db import models
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
@@ -25,6 +26,26 @@ if 'allauth' in settings.INSTALLED_APPS:
 
 
 # ===== BASE MIXINS =====
+
+class TrimmedDecimalField(serializers.DecimalField):
+    """DecimalField that drops trailing-zero padding on output.
+
+    Django ``DecimalField(decimal_places=N)`` + DRF's string coercion emit
+    fully-padded values ("250.0000", "10.5000"). That padding is storage
+    precision, not something a reader wants to see. We keep the value an exact
+    string (no float coercion → no precision loss) and just strip trailing
+    zeros after the point: "250.0000"→"250", "10.5000"→"10.5", "1.2470"→"1.247".
+    A value with no fractional part is left whole. Only affects representation;
+    parsing/validation on write is unchanged, and the OpenAPI type stays
+    ``string``/decimal, so no schema or frontend-type churn.
+    """
+
+    def to_representation(self, value):
+        s = super().to_representation(value)
+        if isinstance(s, str) and "." in s:
+            s = s.rstrip("0").rstrip(".")
+        return s
+
 
 class SecureModelMixin(serializers.ModelSerializer):
     """Base serializer for SecureModel instances.
@@ -46,6 +67,12 @@ class SecureModelMixin(serializers.ModelSerializer):
     """
 
     serializer_related_field = TenantScopedPrimaryKeyRelatedField
+    # Trim trailing-zero padding on every DecimalField output (see
+    # TrimmedDecimalField). Applies to all serializers inheriting this base.
+    serializer_field_mapping = {
+        **serializers.ModelSerializer.serializer_field_mapping,
+        models.DecimalField: TrimmedDecimalField,
+    }
 
     def get_user_filtered_queryset(self, model_class):
         """Get queryset filtered for the requesting user"""
