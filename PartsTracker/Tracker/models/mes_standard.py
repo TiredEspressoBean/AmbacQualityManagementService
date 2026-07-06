@@ -358,6 +358,10 @@ class SamplingRuleType(models.TextChoices):
     # and the evaluator is services.qms.acceptance_sampling.
     AQL = "AQL", "Acceptance Sampling (ANSI/ASQ Z1.4)"
     C_ZERO = "C_ZERO", "Zero-Acceptance (C=0 / Squeglia)"
+    # Variables lot acceptance (ANSI/ASQ Z1.9): measures one characteristic on the
+    # sample, accepts on x̄/s vs the acceptability constant k. Needs
+    # `variables_characteristic` set on the ruleset.
+    VARIABLES = "VARIABLES", "Variables Sampling (ANSI/ASQ Z1.9)"
 
 
 class GateMetric(models.TextChoices):
@@ -429,7 +433,13 @@ class SamplingRuleSet(SecureModel):
     severity = models.CharField(max_length=10, blank=True,
         help_text="AQL inspection severity (NORMAL/TIGHTENED/REDUCED).")
     strategy = models.CharField(max_length=4, blank=True,
-        help_text="Acceptance-sampling strategy: C0 (default) or Z14.")
+        help_text="Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).")
+    # Z1.9 variables sampling measures ONE characteristic. Null for attribute plans.
+    variables_characteristic = models.ForeignKey(
+        'Tracker.MeasurementDefinition', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='variables_rulesets',
+        help_text="The single numeric characteristic a Z1.9 variables plan measures.",
+    )
 
     supersedes = models.OneToOneField(
         "self",
@@ -518,12 +528,13 @@ class SamplingRuleSet(SecureModel):
     @classmethod
     def create_with_rules(cls, *, part_type, process, step, name, rules=None, fallback_ruleset=None,
                           fallback_duration=None, created_by=None, origin="", active=True,
-                          supersedes=None, is_fallback=False):
+                          supersedes=None, is_fallback=False, supplier=None):
         ruleset = cls.objects.create(
             part_type=part_type,
             process=process,
             step=step,
             name=name,
+            supplier=supplier,
             fallback_ruleset=fallback_ruleset,
             fallback_duration=fallback_duration,
             created_by=created_by,
@@ -1011,6 +1022,9 @@ class MaterialLot(SecureModel):
 
     _is_versioned = True  # engineering judgment — material lot spec
 
+    # CoC, mill/material certs, packing slips, supplier docs attached at receipt.
+    documents = GenericRelation('Tracker.Documents')
+
     LOT_STATUS_CHOICES = [
         ('RECEIVED', 'Received'),
         ('AWAITING_INSPECTION', 'Awaiting Inspection'),
@@ -1080,6 +1094,10 @@ class MaterialLot(SecureModel):
     unit_of_measure = models.CharField(max_length=20)  # "EA", "KG", "M", etc.
 
     status = models.CharField(max_length=20, choices=LOT_STATUS_CHOICES, default='RECEIVED')
+    hold_reason = models.CharField(
+        max_length=40, blank=True,
+        help_text="Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). "
+                  "Lets the receiving queue explain a hold.")
 
     # Shelf life tracking
     manufacture_date = models.DateField(null=True, blank=True)

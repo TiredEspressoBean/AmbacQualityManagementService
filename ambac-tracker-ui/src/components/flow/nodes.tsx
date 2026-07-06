@@ -264,6 +264,7 @@ export const DecisionNode = memo(({ data }: StepNodeProps) => {
           {data.decisionType === 'QA_RESULT' && 'QA Pass/Fail'}
           {data.decisionType === 'MEASUREMENT' && 'Measurement Check'}
           {data.decisionType === 'MANUAL' && 'Manual Decision'}
+          {data.decisionType === 'AGGREGATE' && 'Quality Gate'}
         </p>
       </BaseNodeContent>
       <div className="flex flex-col gap-1 pr-1">

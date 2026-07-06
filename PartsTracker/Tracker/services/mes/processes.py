@@ -473,7 +473,17 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
             # re-sent the whole node payload but the engineer only moved
             # the node on canvas), skip versioning.
             from Tracker.services.mes.steps import create_new_step_version
-            diffed = {k: v for k, v in node.items() if getattr(step, k, None) != v}
+
+            def _changed(k, v):
+                cur = getattr(step, k, None)
+                # FK-id fields arrive as UUID strings; the model attr is a UUID —
+                # compare as strings so an unchanged FK (e.g. outside_supplier_id)
+                # doesn't look "changed" and mint a spurious step version.
+                if k.endswith("_id"):
+                    return (str(cur) if cur is not None else None) != (str(v) if v is not None else None)
+                return cur != v
+
+            diffed = {k: v for k, v in node.items() if _changed(k, v)}
             if diffed:
                 step = create_new_step_version(
                     step,

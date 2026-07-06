@@ -306,22 +306,29 @@ def apply_step_sampling_rules_update(
     fallback_rules_data: list | None = None,
     fallback_duration: int | None = None,
     tighten_after: int | None = None,
+    gate: dict | None = None,
+    acceptance: dict | None = None,
+    supplier=None,
 ) -> SamplingRuleSet:
     """Archive existing active rulesets and create fresh active ones for a step.
 
     Creates a fallback ruleset first (if supplied), then links it to the new
-    main ruleset. ``tighten_after`` (consecutive failures) configures a
-    CONSECUTIVE_FAILS + TIGHTEN_SAMPLING quality gate on the main ruleset so the
-    switch to the fallback fires automatically; it requires a fallback ruleset
-    to switch to. Re-evaluates sampling for any active parts currently at this
-    step.
+    main ruleset. The quality gate and acceptance plan are set on the new main
+    ruleset in the SAME transaction (so the flow-editor dialog persists rules +
+    gate + acceptance in one atomic call). ``gate`` (explicit gate config) takes
+    precedence over the ``tighten_after`` shorthand. Re-evaluates sampling for any
+    active parts currently at this step.
 
     Returns the newly created main SamplingRuleSet.
     """
     from Tracker.models import GateMetric, GateAction
 
     with transaction.atomic():
-        step.sampling_ruleset.filter(active=True).update(active=False, archived=True)
+        # Scope deactivation to the (step, supplier) ruleset so saving one supplier's
+        # Receiving Inspection Plan doesn't archive other suppliers' plans on the same
+        # step. Flow-editor steps only have null-supplier rulesets, so supplier=None
+        # (the default) matches exactly the previous behavior for them.
+        step.sampling_ruleset.filter(active=True, supplier=supplier).update(active=False, archived=True)
 
         fallback_ruleset = None
         if fallback_rules_data:
@@ -329,6 +336,7 @@ def apply_step_sampling_rules_update(
                 part_type=step.part_type,
                 process=process,
                 step=step,
+                supplier=supplier,
                 name=f"Fallback for Step {step.id}",
                 rules=fallback_rules_data,
                 created_by=user,
@@ -341,6 +349,7 @@ def apply_step_sampling_rules_update(
             part_type=step.part_type,
             process=process,
             step=step,
+            supplier=supplier,
             name=f"Rules for Step {step.id}",
             rules=rules_data,
             fallback_ruleset=fallback_ruleset,
@@ -351,12 +360,40 @@ def apply_step_sampling_rules_update(
             is_fallback=False,
         )
 
-        # "Switch to the fallback after N consecutive failures" → a quality gate.
-        if tighten_after and fallback_ruleset is not None:
+        # Quality gate + acceptance plan on the new ruleset (atomic with the rules).
+        dirty: list[str] = []
+        if gate and gate.get("gate_metric"):
+            # Explicit gate config wins over the tighten_after shorthand.
+            main_ruleset.gate_metric = gate.get("gate_metric") or ""
+            main_ruleset.gate_threshold = gate.get("gate_threshold")
+            main_ruleset.gate_window = gate.get("gate_window") or ""
+            main_ruleset.gate_window_n = gate.get("gate_window_n")
+            main_ruleset.gate_min_sample = gate.get("gate_min_sample")
+            main_ruleset.gate_actions = gate.get("gate_actions") or []
+            main_ruleset.gate_capa_type = gate.get("gate_capa_type") or ""
+            main_ruleset.gate_capa_severity = gate.get("gate_capa_severity") or ""
+            main_ruleset.gate_approval_template_id = gate.get("gate_approval_template")
+            dirty += ["gate_metric", "gate_threshold", "gate_window", "gate_window_n",
+                      "gate_min_sample", "gate_actions", "gate_capa_type", "gate_capa_severity",
+                      "gate_approval_template"]
+        elif tighten_after and fallback_ruleset is not None:
+            # "Switch to the fallback after N consecutive failures" shorthand.
             main_ruleset.gate_metric = GateMetric.CONSECUTIVE_FAILS
             main_ruleset.gate_threshold = tighten_after
             main_ruleset.gate_actions = [GateAction.TIGHTEN_SAMPLING]
-            main_ruleset.save(update_fields=["gate_metric", "gate_threshold", "gate_actions"])
+            dirty += ["gate_metric", "gate_threshold", "gate_actions"]
+
+        if acceptance is not None:
+            main_ruleset.aql = acceptance.get("aql")
+            main_ruleset.inspection_level = acceptance.get("inspection_level") or ""
+            main_ruleset.severity = acceptance.get("severity") or ""
+            main_ruleset.strategy = acceptance.get("strategy") or ""
+            # Z1.9 variables: the single measured characteristic (null for attribute plans).
+            main_ruleset.variables_characteristic_id = acceptance.get("variables_characteristic")
+            dirty += ["aql", "inspection_level", "severity", "strategy", "variables_characteristic"]
+
+        if dirty:
+            main_ruleset.save(update_fields=dirty)
 
         active_parts = Parts.objects.filter(
             step=step,

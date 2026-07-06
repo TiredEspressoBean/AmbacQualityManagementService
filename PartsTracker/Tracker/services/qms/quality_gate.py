@@ -42,11 +42,15 @@ def gate_ruleset_for_step(step, part_type):
 def evaluate_step_gate(*, ruleset, work_order=None, material_lot=None,
                        trigger=None, triggering_part=None, user=None):
     """Evaluate *ruleset*'s quality gate for the given window and fire its actions
-    if tripped. No-op when the ruleset carries no gate. Idempotent per window.
+    if tripped. No-op when the ruleset carries no gate *metric*. Idempotent per window.
+
+    A gate is defined by its `gate_metric`; `gate_actions` are optional consequences.
+    A **routing-only gate** (metric set, no actions) still records a `StepGateFiring`
+    on threshold-cross — that firing is the signal `AGGREGATE` routing reads.
 
     Returns the `StepGateFiring` (created or pre-existing), or None.
     """
-    if ruleset is None or not ruleset.gate_metric or not ruleset.gate_actions:
+    if ruleset is None or not ruleset.gate_metric:
         return None
 
     step = ruleset.step
@@ -75,7 +79,7 @@ def evaluate_step_gate(*, ruleset, work_order=None, material_lot=None,
         )
 
         taken = []
-        for action in ruleset.gate_actions:
+        for action in (ruleset.gate_actions or []):
             try:
                 _dispatch_action(
                     action, ruleset=ruleset, firing=firing, work_order=work_order,
@@ -108,15 +112,35 @@ def _report_window_qs(ruleset, work_order, material_lot):
     qs = qs.order_by("-created_at")
     if ruleset.gate_window == GateWindow.ROLLING_N and ruleset.gate_window_n:
         ids = list(qs.values_list("id", flat=True)[: ruleset.gate_window_n])
-        qs = QualityReports.objects.filter(id__in=ids).order_by("-created_at")
+        qs = QualityReports.objects.filter(id__in=ids).order_by("-created_at")  # tenant-safe: ids come from the already-scoped qs above
     return qs
+
+
+def _report_defective_count(report) -> int:
+    """Defective *units* attributable to a single report — mirrors
+    ``receiving_inspection.evaluate_lot_acceptance``. Per-unit (DWI) capture
+    counts sampled units where any measurement is out of spec; bulk/attribute
+    capture uses the recorded ``defectives_found``; otherwise a FAIL report
+    contributes 1."""
+    from collections import defaultdict
+
+    results = list(report.measurements.all())
+    if results:
+        by_unit = defaultdict(list)
+        for r in results:
+            by_unit[r.sample_number].append(r)
+        return sum(1 for unit_results in by_unit.values()
+                   if any(r.is_within_spec is False for r in unit_results))
+    if report.defectives_found is not None:
+        return report.defectives_found
+    return 1 if report.status == "FAIL" else 0
 
 
 def _compute_metric(ruleset, *, work_order, material_lot):
     """Return the gate metric value as a Decimal, or None when it can't fire
     (e.g. FAIL_RATE_PCT below the minimum sample)."""
-    statuses = list(_report_window_qs(ruleset, work_order, material_lot)
-                    .values_list("status", flat=True))
+    reports = list(_report_window_qs(ruleset, work_order, material_lot))
+    statuses = [r.status for r in reports]
 
     if ruleset.gate_metric == GateMetric.CONSECUTIVE_FAILS:
         streak = 0
@@ -128,9 +152,11 @@ def _compute_metric(ruleset, *, work_order, material_lot):
         return Decimal(streak)
 
     if ruleset.gate_metric == GateMetric.DEFECTIVE_COUNT:
-        if material_lot is not None and material_lot.defectives_found is not None:
-            return Decimal(material_lot.defectives_found)
-        return Decimal(sum(1 for s in statuses if s == "FAIL"))
+        # Sum defective units across the window's reports. `defectives_found`
+        # lives on QualityReports, not MaterialLot — the DWI unit-by-unit path
+        # records per-unit MeasurementResults on the report, so counting from the
+        # reports is the only source (an empty window means nothing inspected yet).
+        return Decimal(sum(_report_defective_count(r) for r in reports))
 
     if ruleset.gate_metric == GateMetric.FAIL_RATE_PCT:
         total = len(statuses)

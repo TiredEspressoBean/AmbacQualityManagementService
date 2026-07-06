@@ -21,7 +21,7 @@
  *
  * URL: `/operator/steps/$stepId/substeps?part=&workOrder=&execution=&at=`
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useSearch, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -77,6 +77,13 @@ import {
     findMissingRequired,
     summarizeResponses,
 } from "@/lib/dwi/build-captures";
+import { type CapturedMeasurement } from "@/components/dwi/ReceivingAcceptanceStage";
+import { useSamplePlan } from "@/hooks/useReceivingMutations";
+import {
+    resolveCompletion,
+    advanceToNextQueuedPart,
+    type CompletionContext,
+} from "./completion-adapters";
 
 type RouteParams = { stepId: string };
 type SearchParams = {
@@ -84,6 +91,8 @@ type SearchParams = {
     workOrder?: string;
     /** Receiving inspection: the MaterialLot subject of this execution (no part/WO). */
     material_lot?: string;
+    /** OSP return inspection: the OutsideProcessShipment subject of this execution. */
+    osp_shipment?: string;
     execution?: string;
     at?: number;
     debug?: string;
@@ -153,6 +162,44 @@ export function OperatorSubstepRuntimePage() {
         atBind < sortedForBind.length ? sortedForBind[atBind] : undefined;
     const activeSubstepId = activeSubstep?.id;
     const activeIsInspectionPoint = Boolean(activeSubstep?.is_inspection_point);
+
+    // Flatten the measurement captures across all substeps — feeds the
+    // receiving acceptance stage's family verdict (attribute count / Z1.9 x̄·s).
+    const capturedMeasurements = useMemo<CapturedMeasurement[]>(() => {
+        const out: CapturedMeasurement[] = [];
+        for (const s of sortedForBind) {
+            const caps = buildCaptures(
+                s.body_blocks as unknown as object,
+                responsesBySubstepId[s.id] ?? {},
+            );
+            for (const c of caps) {
+                if (c.kind !== "measurement") continue;
+                out.push({
+                    definition_id: String(c.measurement_definition_id ?? ""),
+                    value_numeric: (c.value_numeric as number | null) ?? null,
+                    value_pass_fail: (c.value_string as string) || null,
+                });
+            }
+        }
+        return out;
+    }, [sortedForBind, responsesBySubstepId]);
+
+    // Receiving unit-by-unit cadence. Variables (Z1.9) needs n individual
+    // readings, so the operator walks the substeps once per sampled unit and
+    // each pass stamps its sample_number. Attribute plans stay single-pass
+    // (aggregate defectives count on the acceptance stage).
+    const isReceiving = Boolean(search.material_lot);
+    const { data: recvPlan } = useSamplePlan(isReceiving ? search.material_lot : undefined);
+    const unitCount = recvPlan?.sample_size ?? 1;
+    const isUnitMode = isReceiving && recvPlan?.k != null && unitCount > 1;
+    const currentUnit = Math.max(1, Number(search.unit ?? 1));
+
+    // Fresh capture state per unit — clear when the unit index changes.
+    useEffect(() => {
+        if (!isUnitMode) return;
+        setResponsesBySubstepId({});
+        setConfirmedIds(new Set());
+    }, [search.unit, isUnitMode]);
 
     // Eagerly pre-bind a QualityReports row when the operator lands on an
     // inspection-point substep. PartAnnotation (and other QR-aware capture
@@ -309,6 +356,30 @@ export function OperatorSubstepRuntimePage() {
         quality_report_id: current ? (qrIdBySubstepId[current.id] ?? null) : null,
     };
 
+    // Resolve the completion behaviour for this run's subject (part advancement,
+    // receiving acceptance, …). The generic player is unchanged; only the ending
+    // differs — see ./completion-adapters.
+    const completionCtx: CompletionContext = {
+        stepId,
+        substeps: sortedSubsteps,
+        responsesBySubstepId,
+        stepExecutionId: search.execution ?? null,
+        partId: search.part ?? null,
+        workOrderId: search.workOrder ?? null,
+        materialLotId: search.material_lot ?? null,
+        ospShipmentId: search.osp_shipment ?? null,
+        queue: search.queue ?? "",
+        unitMode: isUnitMode,
+        unit: currentUnit,
+        unitCount,
+        capturedMeasurements,
+        search,
+        navigate,
+        submit,
+        completeStep,
+    };
+    const completion = resolveCompletion(completionCtx);
+
     return (
         <PartContext.Provider value={partContext}>
             <div className="flex h-full min-h-0 flex-col bg-background operator-runtime">
@@ -319,6 +390,15 @@ export function OperatorSubstepRuntimePage() {
                     outcomeBySubstepId={outcomeBySubstepId}
                     onJump={goTo}
                 />
+
+                {isUnitMode && (
+                    <div className="shrink-0 border-b bg-muted/30 px-6 py-2 text-sm">
+                        <span className="font-medium">Sampled unit {currentUnit} of {unitCount}</span>
+                        <span className="ml-2 text-muted-foreground">
+                            Record this unit's reading, then continue to the next — the lot verdict is computed from all {unitCount}.
+                        </span>
+                    </div>
+                )}
 
                 <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
                     <div className="w-full max-w-3xl space-y-4">
@@ -352,22 +432,13 @@ export function OperatorSubstepRuntimePage() {
                                 responsesBySubstepId={responsesBySubstepId}
                                 outcomeBySubstepId={outcomeBySubstepId}
                                 onEdit={(idx) => goTo(idx)}
-                                onCompleteStep={() => {
-                                    handleCompleteStep({
-                                        substeps: sortedSubsteps,
-                                        responsesBySubstepId,
-                                        stepExecutionId: search.execution ?? null,
-                                        partId: search.part ?? null,
-                                        workOrderId: search.workOrder ?? null,
-                                        materialLotId: search.material_lot ?? null,
-                                        queue: search.queue ?? "",
-                                        navigate,
-                                        submit,
-                                        completeStep,
-                                    });
-                                }}
+                                onCompleteStep={() => { completion.onComplete?.(completionCtx); }}
                                 completing={submit.isPending || completeStep.isPending}
                                 stepExecutionAvailable={Boolean(search.execution)}
+                                // Subject-specific ending (part advance / receiving accept / …).
+                                completionFooter={
+                                    completion.Footer ? <completion.Footer ctx={completionCtx} /> : undefined
+                                }
                             />
                         ) : current ? (
                             <SubstepStage
@@ -884,6 +955,7 @@ function ReviewStage({
     onCompleteStep,
     completing,
     stepExecutionAvailable,
+    completionFooter,
 }: {
     substeps: Substep[];
     responsesBySubstepId: Record<string, OperatorResponses>;
@@ -892,6 +964,9 @@ function ReviewStage({
     onCompleteStep: () => void;
     completing: boolean;
     stepExecutionAvailable: boolean;
+    /** Subject-specific completion UI (receiving acceptance, etc.). When set,
+     *  it replaces the generic Complete button — see completion-adapters. */
+    completionFooter?: ReactNode;
 }) {
     return (
         <div className="space-y-4">
@@ -1006,240 +1081,39 @@ function ReviewStage({
                     );
                 })}
             </div>
-            <div className="flex items-center justify-end gap-3 border-t pt-4">
-                {!stepExecutionAvailable && (
-                    <span className="text-xs text-amber-600">
-                        {"Add `?execution=<id>` to the URL to enable submit."}
-                    </span>
-                )}
-                <Button
-                    size="lg"
-                    className="h-14 min-w-56 text-base font-semibold"
-                    disabled={!stepExecutionAvailable || completing}
-                    onClick={onCompleteStep}
-                >
-                    {completing ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Check className="mr-2 h-5 w-5" />
+            {completionFooter ? (
+                completionFooter
+            ) : (
+                <div className="flex items-center justify-end gap-3 border-t pt-4">
+                    {!stepExecutionAvailable && (
+                        <span className="text-xs text-amber-600">
+                            {"Add `?execution=<id>` to the URL to enable submit."}
+                        </span>
                     )}
-                    Complete step
-                </Button>
-            </div>
+                    <Button
+                        size="lg"
+                        className="h-14 min-w-56 text-base font-semibold"
+                        disabled={!stepExecutionAvailable || completing}
+                        onClick={onCompleteStep}
+                    >
+                        {completing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Check className="mr-2 h-5 w-5" />
+                        )}
+                        Complete step
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
 
 // ============================================================================
-// Completion — fan out submit calls in order
+// Completion behaviours live in ./completion-adapters (resolveCompletion).
+// The dead code below is removed; see the adapters module.
 // ============================================================================
 
-async function handleCompleteStep({
-    substeps,
-    responsesBySubstepId,
-    stepExecutionId,
-    partId,
-    workOrderId,
-    materialLotId,
-    queue,
-    navigate,
-    submit,
-    completeStep,
-}: {
-    substeps: Substep[];
-    responsesBySubstepId: Record<string, OperatorResponses>;
-    stepExecutionId: string | null;
-    partId: string | null;
-    workOrderId: string | null;
-    /** Receiving inspection: the MaterialLot subject, when this isn't a part run. */
-    materialLotId: string | null;
-    /** Comma-separated remaining part ids to work in serial after this one. */
-    queue: string;
-    navigate: ReturnType<typeof useNavigate>;
-    submit: ReturnType<typeof useSubmitSubstep>;
-    completeStep: ReturnType<typeof useCompleteStep>;
-}) {
-    if (!stepExecutionId) {
-        toast.error("Missing step_execution", {
-            description: "Add `?execution=<id>` to the URL to enable submit.",
-        });
-        return;
-    }
-    // Phase 1: flush per-substep captures.
-    let okCount = 0;
-    let failCount = 0;
-    for (const s of substeps) {
-        const responses = responsesBySubstepId[s.id] ?? {};
-        if (Object.keys(responses).length === 0) continue;
-        const captures = buildCaptures(s.body_blocks as unknown as object, responses);
-        try {
-            await submit.mutateAsync({
-                id: s.id,
-                data: { step_execution: stepExecutionId, captures },
-            });
-            okCount++;
-        } catch {
-            failCount++;
-        }
-    }
-    if (failCount > 0) {
-        toast.error("Some substeps failed to submit", {
-            description: `${okCount} succeeded, ${failCount} failed. Retry from the review screen.`,
-        });
-        return;
-    }
-
-    // Receiving inspection (MaterialLot subject): captures are saved; the
-    // accept/reject disposition lives on the receiving inspection page, so
-    // route the operator back there to finish.
-    if (!partId && materialLotId) {
-        toast.success("Inspection captures saved", {
-            description: "Accept or reject the lot to finish.",
-        });
-        navigate({
-            to: "/production/receiving-inspection/$lotId",
-            params: { lotId: materialLotId },
-        });
-        return;
-    }
-
-    // Phase 2: THE advancement trigger. Synchronously run the gate via
-    // `complete_step` and surface the result. The captures are already
-    // persisted; this call decides whether the part / lot can advance.
-    if (!partId) {
-        toast("Captures submitted", {
-            description: "Add `?part=<id>` to the URL to trigger advancement.",
-        });
-        return;
-    }
-    try {
-        const result = await completeStep.mutateAsync(partId);
-        if (result.status === "advanced") {
-            const advanced = [
-                ...(result.parts_advanced ?? []),
-                ...(result.split_parts_advanced ?? []),
-            ];
-            toast.success(`Step complete — lot advanced (${advanced.length} part${advanced.length === 1 ? "" : "s"} moved).`);
-        } else if (result.status === "blocked") {
-            const blockers = result.blockers_by_part ?? {};
-            const reasons = new Set<string>();
-            Object.values(blockers).forEach((list) =>
-                (list as string[]).forEach((r) => reasons.add(r)),
-            );
-            toast.warning("Step submitted — lot waiting on cohort", {
-                description: reasons.size > 0
-                    ? [...reasons].slice(0, 3).join("; ")
-                    : "Other parts in the cohort still have work to do.",
-            });
-        } else if (result.status === "halted") {
-            toast.error("Lot halted", { description: result.reason ?? "" });
-        } else {
-            toast.success("Step submitted");
-        }
-
-        // Serial queue: if more parts were checked in StartWorkDialog, jump
-        // to the next one. We ensure that part's StepExecution here
-        // (rather than prefetching on dialog Start) so this click is the
-        // only place that owns the get-or-create.
-        await advanceToNextQueuedPart({ queue, workOrderId, navigate });
-    } catch {
-        toast.error("Couldn't run advancement", {
-            description: "Captures saved; advancement will retry on the next event.",
-        });
-    }
-}
-
-/** Advance the operator to the next part in the StartWorkDialog queue.
- *  No-op when the queue is empty or essential context is missing. */
-async function advanceToNextQueuedPart({
-    queue,
-    workOrderId,
-    navigate,
-}: {
-    queue: string;
-    workOrderId: string | null;
-    navigate: ReturnType<typeof useNavigate>;
-}) {
-    if (!queue || !workOrderId) return;
-    const ids = queue.split(",").filter(Boolean);
-    if (ids.length === 0) return;
-
-    const [nextPartId, ...rest] = ids;
-
-    // Look up the next part's current step so we know where to route. The
-    // part may have been advanced or split since dialog open, so we read
-    // current state rather than trusting the dialog snapshot.
-    let nextStepId: string | null = null;
-    try {
-        const r = await fetch(`/api/Parts/${nextPartId}/`, { credentials: "include" });
-        if (r.ok) {
-            const part = await r.json();
-            if (part?.step) nextStepId = String(part.step);
-        }
-    } catch {
-        // network/auth blip — fall through, toast below
-    }
-    if (!nextStepId) {
-        toast.warning("Next queued part isn't at a routable step — skipping the rest", {
-            description: `${ids.length} part${ids.length === 1 ? "" : "s"} remaining in your queue.`,
-        });
-        return;
-    }
-
-    // Ensure StepExecution for the next part. Mirrors the
-    // `useEnsureStepExecution` hook but inline since this isn't React-render-time.
-    let executionId: string | null = null;
-    try {
-        const listUrl =
-            `/api/StepExecutions/?part=${encodeURIComponent(nextPartId)}` +
-            `&step=${encodeURIComponent(nextStepId)}&limit=1`;
-        const lr = await fetch(listUrl, { credentials: "include" });
-        const ld = await lr.json();
-        const existing = ld?.results?.[0];
-        if (existing?.id) {
-            executionId = String(existing.id);
-        } else {
-            const csrf = document.cookie
-                .split(";")
-                .map((c) => c.trim())
-                .find((c) => c.startsWith("csrftoken="))
-                ?.split("=")[1] ?? "";
-            const cr = await fetch("/api/StepExecutions/", {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
-                body: JSON.stringify({
-                    part: nextPartId,
-                    step: nextStepId,
-                    status: "IN_PROGRESS",
-                }),
-            });
-            if (cr.ok) {
-                const created = await cr.json();
-                if (created?.id) executionId = String(created.id);
-            }
-        }
-    } catch {
-        // fall through
-    }
-    if (!executionId) {
-        toast.error("Could not open the next queued part — try Start Work again.");
-        return;
-    }
-
-    toast.info(`Moving to next part (${ids.length - 1} remaining)`);
-    navigate({
-        to: "/operator/steps/$stepId/substeps",
-        params: { stepId: nextStepId },
-        search: {
-            part: nextPartId,
-            workOrder: workOrderId,
-            execution: executionId,
-            at: 0,
-            ...(rest.length > 0 ? { queue: rest.join(",") } : {}),
-        },
-    });
-}
 
 // ============================================================================
 // Misc screens

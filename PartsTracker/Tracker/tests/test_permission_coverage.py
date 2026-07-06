@@ -58,6 +58,10 @@ IMMUTABLE_MODELS = {
     # (the trigger raises for everyone, superusers included):
     'steptransitionlog', 'samplingauditlog', 'equipmentusage',
     'approvalresponse',
+    # Engine-managed audit record: StepGateFiring is created (+ its actions_taken
+    # updated) by services.qms.quality_gate.evaluate_step_gate, never via a role's
+    # CRUD. view_ is granted (STAFF_VIEW_PERMISSIONS); add/change/delete are not.
+    'stepgatefiring',
 }
 
 # add_ is performed by services / the runtime, never via a role's CRUD.
@@ -69,6 +73,7 @@ SYSTEM_WRITTEN_MODELS = {
     'permissionchangelog', 'capastatustransition', 'recordedit',
     'samplingdecision', 'samplingtriggerstate',
     'steptransitionlog', 'samplingauditlog',
+    'stepgatefiring',   # created by the quality-gate engine, not via role CRUD
 }
 
 # Granted to NO role as deliberate policy (not a gap to burn down). Maps
@@ -90,10 +95,14 @@ WITHHELD_PERMS = {
 SOFT_DELETE_MODELS = {
     'workorderhold', 'steprollback', 'batchrollback', 'stepoverride',
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
-    'batchexecution', 'steprequirement',
+    'batchexecution', 'steprequirement', 'outsideprocessshipment',
     'milestone', 'milestonetemplate',
     'lifelimitdefinition', 'parttypelifelimit', 'lifetracking',
     'notificationrule', 'notificationschedule',
+    # Supplier quality / part approval: records are retired via status
+    # (SUSPENDED/DISQUALIFIED/EXPIRED), and re-qualification creates a new row —
+    # history is preserved, never hard-deleted.
+    'supplierqualification', 'partapproval',
 }
 
 # Burn-down: operational perms that SHOULD be granted to roles but aren't yet.

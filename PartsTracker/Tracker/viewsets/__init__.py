@@ -67,6 +67,7 @@ from .mes_lite import (
     ProcessWithStepsViewSet,
     StepsViewSet,
     StepExecutionViewSet,
+    OutsideProcessShipmentViewSet,
     PartTypeViewSet,
 
     # Equipment ViewSets
@@ -84,6 +85,8 @@ from .qms import (
     QualityReportViewSet,
     ErrorTypeViewSet,
     QuarantineDispositionViewSet,
+    SupplierQualificationViewSet,
+    PartApprovalViewSet,
 
     # Sampling ViewSets
     SamplingRuleSetViewSet,
@@ -164,6 +167,7 @@ from .mes_standard import (
     # Material Lots
     MaterialLotViewSet,
     MaterialUsageViewSet,
+    IncomingInspectionViewSet,
 
     # Time Entries
     TimeEntryViewSet,
@@ -296,6 +300,7 @@ __all__ = [
     'ProcessWithStepsViewSet',
     'StepsViewSet',
     'StepExecutionViewSet',
+    'OutsideProcessShipmentViewSet',
     'PartTypeViewSet',
 
     # MES Lite - Equipment
@@ -307,6 +312,8 @@ __all__ = [
     'QualityReportViewSet',
     'ErrorTypeViewSet',
     'QuarantineDispositionViewSet',
+    'SupplierQualificationViewSet',
+    'PartApprovalViewSet',
 
     # QMS - Sampling
     'SamplingRuleSetViewSet',
@@ -363,6 +370,7 @@ __all__ = [
 
     # MES Standard - Material Lots
     'MaterialLotViewSet',
+    'IncomingInspectionViewSet',
     'MaterialUsageViewSet',
 
     # MES Standard - Time Entries
@@ -446,6 +454,7 @@ def register_viewsets(router):
     router.register(r'Processes_with_steps', ProcessWithStepsViewSet)
     router.register(r'Steps', StepsViewSet, basename='Steps')
     router.register(r'StepExecutions', StepExecutionViewSet, basename='StepExecutions')
+    router.register(r'OutsideProcessShipments', OutsideProcessShipmentViewSet, basename='OutsideProcessShipments')
     router.register(r'PartTypes', PartTypeViewSet, basename='PartTypes')
     router.register(r'Equipment', EquipmentViewSet, basename='equipment')
     router.register(r'Equipment-types', EquipmentTypeViewSet, basename='equipmenttype')
@@ -455,6 +464,8 @@ def register_viewsets(router):
     router.register(r'QualityReports', QualityReportViewSet, basename='QualityReports')
     router.register(r'Error-types', ErrorTypeViewSet, basename='errortype')
     router.register(r'QuarantineDispositions', QuarantineDispositionViewSet, basename='QuarantineDispositions')
+    router.register(r'SupplierQualifications', SupplierQualificationViewSet, basename='SupplierQualifications')
+    router.register(r'PartApprovals', PartApprovalViewSet, basename='PartApprovals')
     router.register(r'Sampling-rule-sets', SamplingRuleSetViewSet, basename='sampling-rule-sets')
     router.register(r'Sampling-rules', SamplingRuleViewSet, basename='sampling-rules')
     router.register(r'MeasurementDefinitions', MeasurementsDefinitionViewSet)
@@ -508,6 +519,7 @@ def register_viewsets(router):
     # Material Lots & Usage
     router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
     router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
+    router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
 
     # Time Entries
     router.register(r'TimeEntries', TimeEntryViewSet, basename='TimeEntries')

@@ -8,6 +8,7 @@ import {
     ClipboardCheck,
     Database,
     Factory,
+    FileCheck,
     FileSignature,
     Files,
     Flame,
@@ -19,9 +20,11 @@ import {
     MapPin,
     Package,
     PackageSearch,
+    BadgeCheck,
     Recycle,
     Settings,
     ShieldCheck,
+    Truck,
     Users,
     Wrench,
     Workflow,
@@ -56,11 +59,18 @@ const productionPages = [
     { name: "Processes", url: "/editor/processes", icon: Workflow },
 ]
 
-// Inventory - materials & receiving (staff only, collapsible)
+// Supply - inbound material + suppliers (staff only, collapsible). "Materials"
+// is the status-segmented hub that absorbs the old "Material Lots" + "Receiving
+// Inspection" entries (lots are one lifecycle; the inspection queue is its
+// "Awaiting inspection" lens).
 const inventoryPages = [
-    { name: "Material Lots", url: "/production/material-lots", icon: Package },
-    { name: "Receiving Inspection", url: "/production/receiving-inspection", icon: ClipboardCheck },
+    { name: "Incoming Inspection", url: "/production/incoming", icon: PackageSearch },
+    { name: "Outside Processing", url: "/production/outside-processing", icon: Truck },
+    { name: "Materials", url: "/production/material-lots", icon: Package },
+    { name: "Receiving Inspection Plans", url: "/production/receiving-plans", icon: ClipboardCheck },
     { name: "Supplier Quality", url: "/production/supplier-quality", icon: ShieldCheck },
+    { name: "Approved Suppliers", url: "/production/supplier-qualifications", icon: BadgeCheck },
+    { name: "Part Approvals", url: "/production/part-approvals", icon: FileCheck },
 ]
 
 // Reman - Remanufacturing operations (staff only, collapsible)
@@ -177,10 +187,10 @@ export function AppSidebar({
                                 />
                             )}
 
-                            {/* Inventory - materials & receiving */}
+                            {/* Supply - inbound material + suppliers */}
                             {showInventory && (
                                 <NavPagesCollapsible
-                                    title="Inventory"
+                                    title="Supply"
                                     pages={inventoryPages}
                                     defaultOpen={false}
                                 />

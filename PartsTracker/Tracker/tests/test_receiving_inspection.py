@@ -61,6 +61,49 @@ class AcceptanceSamplingTests(SimpleTestCase):
                                  severity="NORMAL", strategy="Z14")
         self.assertEqual(sp.accept_number, 2)  # same as AQL 1.0 at J
 
+    # ── Z1.4 arrow-following (MIL-STD-105E Table II-A), verified 2026-07-06 ──
+    def test_z14_up_arrow_follows_to_smaller_plan(self):
+        # Lot 20000, level II → code M; M@6.5 is an UP arrow → follow up to L@6.5
+        # (n=200, Ac=21). The OLD bug flattened this to Ac=21 at M's n=315.
+        sp = compute_sample_plan(lot_size=20000, aql=6.5, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (200, 21, 22))
+
+    def test_z14_no_bogus_ac21_at_top_right(self):
+        # Regression: N@4.0 and N@6.5 were a bogus Ac=21; they're UP arrows now.
+        # Lot 200000 level II → code N. N@4.0 ↑ → M@4.0 (n=315, Ac=21).
+        sp = compute_sample_plan(lot_size=200000, aql=4.0, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual(sp.sample_size, 315)      # followed the arrow (not N's 500)
+        self.assertEqual(sp.accept_number, 21)
+
+    def test_z14_down_arrow_follows_to_larger_plan(self):
+        # Lot 20, level II → code C; C@0.65 is a DOWN arrow → follow down to F@0.65
+        # (n=20, Ac=0). (n clamped by the lot of 20.)
+        sp = compute_sample_plan(lot_size=20, aql=0.65, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number), (20, 0))
+
+    def test_z19_k_verified_cells(self):
+        # Z1.9 std-dev method, normal. Lot 80 level II → code E (n=7); E@1.0 k=1.62
+        # (the E row was wrong before the 2026-07-06 audit).
+        sp = compute_sample_plan(lot_size=80, aql=1.0, inspection_level="II",
+                                 severity="NORMAL", strategy="Z19")
+        self.assertEqual(sp.sample_size, 7)
+        self.assertAlmostEqual(sp.k, 1.62)
+        # Lot 150 level II → code F (n=10); F@1.0 k=1.72.
+        sp2 = compute_sample_plan(lot_size=150, aql=1.0, inspection_level="II",
+                                  severity="NORMAL", strategy="Z19")
+        self.assertEqual((sp2.sample_size, sp2.k), (10, 1.72))
+
+    def test_z19_high_letters_fail_closed(self):
+        # Large lot → high code letter (K+), which is intentionally NOT tabulated
+        # (pending verified Z1.9-2003 values). We fail closed with an actionable
+        # message rather than return a borrowed/approximate k.
+        with self.assertRaises(ValueError):
+            compute_sample_plan(lot_size=3000, aql=1.0, inspection_level="II",
+                                severity="NORMAL", strategy="Z19")
+
 
 class _ReceivingFixtureMixin:
     """Builds a part type + RECEIVING step (with a characteristic + sampling ruleset)."""
@@ -394,3 +437,41 @@ class SupplierQualityTests(_ReceivingFixtureMixin, TenantTestCase):
         capa = open_scar_for_lot(lot, user=self.user_a)
         self.assertEqual(capa.supplier_id, self.supplier.id)
         self.assertIn(report, capa.quality_reports.all())
+
+
+class DefectiveCountGateTests(_ReceivingFixtureMixin, TenantTestCase):
+    """DEFECTIVE_COUNT for a lot must count defective sampled *units* from the
+    report's per-unit MeasurementResults. Regression: the DWI unit-by-unit path
+    never writes material_lot.defectives_found, so the old gate read that field
+    and under-counted."""
+
+    def setUp(self):
+        super().setUp()
+        self._build_fixtures()
+        self.ruleset.gate_metric = "DEFECTIVE_COUNT"
+        self.ruleset.gate_threshold = 2
+        self.ruleset.save()
+
+    def _fail_unit(self, sn):
+        return {"sample_number": sn,
+                "measurements": [{"definition": str(self.char.id), "value_pass_fail": "FAIL"}]}
+
+    def test_counts_defective_units_not_reports(self):
+        from Tracker.services.qms.quality_gate import _compute_metric
+        lot = self._make_lot(qty="50")
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        # Two defective units recorded on a single report — the lot field stays 0.
+        receiving_inspection.record_sample_units(
+            report, [self._fail_unit(1), self._fail_unit(2)], self.user_a)
+
+        metric = _compute_metric(self.ruleset, work_order=None, material_lot=lot)
+        self.assertEqual(metric, Decimal(2))  # units, not the 1 the FAIL-report count would give
+
+    def test_bulk_defectives_found_still_counted(self):
+        from Tracker.services.qms.quality_gate import _compute_metric
+        lot = self._make_lot(qty="50")
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        receiving_inspection.record_bulk(report, defectives_found=3, user=self.user_a)
+
+        metric = _compute_metric(self.ruleset, work_order=None, material_lot=lot)
+        self.assertEqual(metric, Decimal(3))

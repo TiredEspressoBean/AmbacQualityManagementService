@@ -532,7 +532,7 @@ export function SubstepEditorPage() {
                 {/* Header */}
                 <div className="flex shrink-0 items-center justify-between border-b bg-background px-6 py-4">
                     <div className="space-y-1">
-                        {processId && (
+                        {processId ? (
                             <Link
                                 to={PROCESS_FLOW_PATH}
                                 search={{ id: processId }}
@@ -540,6 +540,18 @@ export function SubstepEditorPage() {
                             >
                                 <ArrowLeft className="h-3 w-3" />
                                 Back to process flow
+                            </Link>
+                        ) : (
+                            // No process → standalone step. Today the only process-free
+                            // steps with substeps are receiving inspection plans, so link
+                            // back to the plan editor.
+                            <Link
+                                to="/production/receiving-plans/$stepId"
+                                params={{ stepId }}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                                <ArrowLeft className="h-3 w-3" />
+                                Back to receiving plan
                             </Link>
                         )}
                         <div className="flex items-center gap-2">

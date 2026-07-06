@@ -124,6 +124,7 @@ def submit_substep(
     marked_not_applicable: bool = False,
     na_reason_code: str = "",
     ip_address: Optional[str] = None,
+    sample_number: Optional[int] = None,
 ) -> SubmitResult:
     """Persist an operator's submission for a single substep.
 
@@ -186,7 +187,7 @@ def submit_substep(
                         "Batch-scope measurements aren't supported yet; keep measurement "
                         "captures on per-part (SAMPLED) substeps."
                     )
-                _handle_measurement(cap, substep, step_execution, user)
+                _handle_measurement(cap, substep, step_execution, user, sample_number)
                 # MeasurementInput doesn't write SubstepResponse — its row
                 # lives in StepExecutionMeasurement (+ MeasurementResult via
                 # promotion). We still count it for the response total so
@@ -364,10 +365,15 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
 # Per-kind handlers
 # -------------------------------------------------------------------------
 
-def _handle_measurement(cap, substep, step_execution, user):
+def _handle_measurement(cap, substep, step_execution, user, sample_number=None):
     """Route MeasurementInput captures through the existing two-tier service
     so Tier 1 (StepExecutionMeasurement) and Tier 2 (QualityReports +
-    MeasurementResult) stay in lockstep with non-substep capture paths."""
+    MeasurementResult) stay in lockstep with non-substep capture paths.
+
+    ``sample_number`` tags the promoted MeasurementResult with which sampled
+    unit (1..n) this reading belongs to — set by the receiving unit-by-unit
+    runtime so the lot-acceptance evaluators (attribute defective-unit count,
+    Z1.9 per-reading) can group/gather correctly. None for per-part DWI."""
     md_id = cap.get("measurement_definition_id")
     if not md_id:
         return
@@ -391,6 +397,7 @@ def _handle_measurement(cap, substep, step_execution, user):
         value_string=value_string,
         recorded_by=user,
         equipment=equipment,
+        sample_number=sample_number,
     )
 
 

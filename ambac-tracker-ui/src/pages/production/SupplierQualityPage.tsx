@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useSupplierScorecard } from "@/hooks/useSupplierScorecard";
+import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
@@ -17,6 +18,59 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: "
     );
 }
 
+function QualificationBadge({ supplierId }: { supplierId: string }) {
+    const { data: q } = useSupplierQualificationStatus(supplierId);
+    if (!q) return null;
+    if (!q.qualified) {
+        return <Badge variant="outline" className="text-muted-foreground">Not qualified</Badge>;
+    }
+    const tone = q.status === "CONDITIONAL" ? "secondary" : "default";
+    const expiringSoon = q.days_to_expiry != null && q.days_to_expiry <= 30;
+    return (
+        <Badge variant={expiringSoon ? "secondary" : tone}>
+            {q.status === "CONDITIONAL" ? "Conditional" : "Qualified"}
+            {expiringSoon ? ` · ${q.days_to_expiry}d` : ""}
+        </Badge>
+    );
+}
+
+const RATING_STYLE: Record<string, string> = {
+    A: "bg-green-600 text-white",
+    B: "bg-amber-500 text-white",
+    C: "bg-destructive text-destructive-foreground",
+};
+
+function RatingBadge({ rating, reason }: { rating: string | null; reason?: string }) {
+    if (!rating) return null;
+    return (
+        <Badge className={RATING_STYLE[rating] ?? ""} title={reason}>
+            Rating {rating}
+        </Badge>
+    );
+}
+
+// Recommend-only standing review from the scorecard (never auto-transitions —
+// this is the human's cue to act via the qualification lifecycle).
+const STANDING_STYLE: Record<string, { label: string; className: string }> = {
+    REVIEW_SUSPEND: { label: "Review: suspend", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+    REVIEW_CONDITIONAL: { label: "Review: conditional", className: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+    REVIEW_RESTORE: { label: "Review: restore", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
+};
+
+function StandingBadge({ action, reason }: { action?: string; reason?: string }) {
+    if (!action || action === "NONE") return null;
+    const cfg = STANDING_STYLE[action];
+    if (!cfg) return null;
+    // Link to the ASL — that's where a QA manager confirms the review (grant / suspend / restore).
+    return (
+        <Link to="/production/supplier-qualifications">
+            <Badge className={`cursor-pointer hover:opacity-80 ${cfg.className}`} title={reason}>
+                {cfg.label}
+            </Badge>
+        </Link>
+    );
+}
+
 function ScorecardCard({ id, name }: { id: string; name: string }) {
     const { data: sc, isLoading } = useSupplierScorecard(id);
     const scarLink = {
@@ -26,8 +80,13 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                    <span>{name}</span>
+                <CardTitle className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                        {name}
+                        {sc && <RatingBadge rating={sc.rating} reason={sc.rating_reason} />}
+                        {sc && <StandingBadge action={sc.recommended_action} reason={sc.recommendation_reason} />}
+                        <QualificationBadge supplierId={id} />
+                    </span>
                     {sc && sc.open_scar_count > 0 && (
                         <Link {...scarLink}>
                             <Badge variant="destructive" className="cursor-pointer hover:opacity-80">

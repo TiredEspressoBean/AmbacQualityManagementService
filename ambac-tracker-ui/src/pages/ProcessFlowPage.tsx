@@ -120,6 +120,10 @@ export default function ProcessFlowPage() {
   const [demoMode, setDemoMode] = useState<DemoMode>('template');
   const [localSteps, setLocalSteps] = useState<StepData[] | null>(null);
   const [localEdges, setLocalEdges] = useState<Edge[] | null>(null);
+  // Reject edges added via the step panel's "Route rejected items to…" picker.
+  // Merged into the stepEdges source fed to the canvas so they survive resyncs
+  // (step edits) without needing imperative canvas access. Cleared on save/reset.
+  const [pendingRejectEdges, setPendingRejectEdges] = useState<{ from_step: string; to_step: string; edge_type: string }[]>([]);
   const [nextStepId, setNextStepId] = useState(-1); // Negative numeric counter; stringified when used as a Step id
 
   // Process-level properties (for editing)
@@ -183,6 +187,9 @@ export default function ProcessFlowPage() {
         pass_threshold: step.pass_threshold as number | undefined,
         requires_first_piece_inspection: step.requires_first_piece_inspection as boolean | undefined,
         fpi_scope: step.fpi_scope as string | undefined,
+        is_outside_process: step.is_outside_process as boolean | undefined,
+        outside_supplier: step.outside_supplier as string | null,
+        outside_supplier_name: step.outside_supplier_name as string | null,
       };
     });
   }, [isDemo, processWithSteps?.process_steps]);
@@ -237,6 +244,24 @@ export default function ProcessFlowPage() {
       } as unknown as StepData;
     });
   }, [isDemo, baseStepsFromSource, localSteps, editMode, demoMode]);
+
+  // Step edges fed to the canvas. Reject edges added via the step panel's
+  // "Route rejected items to…" picker are merged into this source so the canvas
+  // renders them and they survive resyncs (the canvas rebuilds from this prop on
+  // step edits). They flow back out through onEdgesChange → localEdges, so the
+  // save payload picks them up. Cleared on save/reset.
+  const baseStepEdges = useMemo(
+    () =>
+      (isDemo
+        ? DEMO_STEP_EDGES
+        // eslint-disable-next-line local/no-double-cast-via-unknown -- backend step_edges shape has wider edge_type union than FlowCanvas accepts; runtime values are always within the FlowCanvas-accepted subset
+        : (processWithSteps?.step_edges as unknown as { from_step: string; to_step: string; edge_type: string }[] | undefined)) ?? [],
+    [isDemo, processWithSteps?.step_edges],
+  );
+  const mergedStepEdges = useMemo(
+    () => (pendingRejectEdges.length ? [...baseStepEdges, ...pendingRejectEdges] : baseStepEdges),
+    [baseStepEdges, pendingRejectEdges],
+  );
 
   // Initialize local steps and process props when entering edit mode
   const initializeLocalSteps = useCallback(() => {
@@ -359,6 +384,9 @@ export default function ProcessFlowPage() {
           passThreshold: updatedStep.pass_threshold,
           requiresFirstPieceInspection: updatedStep.requires_first_piece_inspection,
           fpiScope: updatedStep.fpi_scope,
+          isOutsideProcess: updatedStep.is_outside_process,
+          outsideSupplier: updatedStep.outside_supplier,
+          outsideSupplierName: updatedStep.outside_supplier_name,
         },
       };
     });
@@ -412,6 +440,9 @@ export default function ProcessFlowPage() {
         pass_threshold: step.pass_threshold,
         requires_first_piece_inspection: step.requires_first_piece_inspection || false,
         fpi_scope: step.fpi_scope || 'PER_WORKORDER',
+        is_outside_process: step.is_outside_process || false,
+        // FK by id — the graph-save applies node keys to the Step directly.
+        outside_supplier_id: step.outside_supplier || null,
       });
       });
 
@@ -451,6 +482,7 @@ export default function ProcessFlowPage() {
       setLocalSteps(null); // Reset to refetch fresh data
       setLocalEdges(null);
       setLocalProcessProps(null);
+      setPendingRejectEdges([]); // now persisted in server step_edges; avoid duplicate on refetch
     } catch (error) {
       console.error('Failed to save process:', error);
       toast.error('Failed to save process');
@@ -479,6 +511,7 @@ export default function ProcessFlowPage() {
     setLocalSteps(null);
     setLocalEdges(null);
     setLocalProcessProps(null);
+    setPendingRejectEdges([]);
     setHasChanges(false);
     setSelectedNode(null);
   }, []);
@@ -495,6 +528,67 @@ export default function ProcessFlowPage() {
       setHasChanges(true);
     }
   }, [editMode, localSteps, localEdges]);
+
+  // Quick-add reject edge from the step panel. Appends to pendingRejectEdges,
+  // which is merged into the canvas's stepEdges source (see mergedStepEdges).
+  const handleAddRejectEdge = useCallback((targetId: string) => {
+    const sourceId = selectedNode?.id;
+    if (!sourceId) return;
+    initializeLocalSteps(); // ensure edit state exists so the save path captures edges
+    setPendingRejectEdges((prev) =>
+      prev.some((e) => e.from_step === sourceId && e.to_step === targetId)
+        ? prev
+        : [...prev, { from_step: sourceId, to_step: targetId, edge_type: 'ALTERNATE' }],
+    );
+    setHasChanges(true);
+  }, [selectedNode, initializeLocalSteps]);
+
+  // Destinations + existing routes for the selected node's reject picker.
+  const rejectInfo = useMemo(() => {
+    if (!selectedNode || !editMode || isDemo) return null;
+    const sourceId = selectedNode.id;
+    const existingTargets = new Set<string>();
+    for (const e of localEdges ?? []) {
+      if (e.source !== sourceId) continue;
+      const isAlt =
+        e.sourceHandle === 'fail' ||
+        (e.data as { edge_type?: string } | undefined)?.edge_type === 'ALTERNATE' ||
+        e.id.endsWith('-alt');
+      if (isAlt) existingTargets.add(e.target);
+    }
+    for (const e of pendingRejectEdges) {
+      if (e.from_step === sourceId) existingTargets.add(e.to_step);
+    }
+    const labelFor = (s: StepData) => s.name || `Step ${s.id}`;
+    const byId = new Map(steps.map((s) => [String(s.id), s]));
+    const routes = [...existingTargets].map((id) => ({
+      id,
+      label: byId.get(id) ? labelFor(byId.get(id)!) : id,
+    }));
+    const destinations = steps
+      .filter((s) => {
+        const id = String(s.id);
+        if (id === sourceId) return false;
+        if (existingTargets.has(id)) return false;
+        if (s.is_entry_point || s.step_type === 'START') return false;
+        return true;
+      })
+      // Terminal steps (scrap, quarantine, return) first — the natural reject targets.
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(!!b.is_terminal) - Number(!!a.is_terminal) ||
+          labelFor(a).localeCompare(labelFor(b)),
+      )
+      .map((s) => ({
+        id: String(s.id),
+        label: labelFor(s),
+        hint: s.is_terminal
+          ? (s.terminal_status ? String(s.terminal_status).replace(/_/g, ' ').toLowerCase() : 'terminal')
+          : undefined,
+      }));
+    return { routes, destinations };
+  }, [selectedNode, editMode, isDemo, localEdges, pendingRejectEdges, steps]);
 
   const handleApprove = useCallback(async () => {
     if (!processId) return;
@@ -789,8 +883,8 @@ export default function ProcessFlowPage() {
   }, [selectedNode, demoMode, isDemo]);
 
   return (
-    <div className="h-screen flex flex-col p-3">
-      <Card className="flex-1 flex flex-col">
+    <div className="h-full flex flex-col p-3">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-2 pt-4 px-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1182,8 +1276,7 @@ export default function ProcessFlowPage() {
                 { }
                 <FlowCanvas
                   steps={steps}
-                  // eslint-disable-next-line local/no-double-cast-via-unknown -- backend step_edges shape has wider edge_type union than FlowCanvas accepts; runtime values are always within the FlowCanvas-accepted subset
-                  stepEdges={isDemo ? DEMO_STEP_EDGES : (processWithSteps?.step_edges as unknown as { from_step: string; to_step: string; edge_type: string }[] | undefined)}
+                  stepEdges={mergedStepEdges}
                   selectedNode={selectedNode}
                   onNodeClick={onNodeClick}
                   onPaneClick={onPaneClick}
@@ -1198,7 +1291,7 @@ export default function ProcessFlowPage() {
 
           {/* Right Panel - Step editor or Process settings */}
           {(selectedNode || (editMode && !isDemo)) && (
-            <div className="w-80 shrink-0 space-y-3 overflow-y-auto max-h-full">
+            <div className="w-80 shrink-0 space-y-3 overflow-y-auto min-h-0">
               {/* Validation Panel - show when editing */}
               {editMode && !isDemo && (
                 <ValidationPanel
@@ -1228,6 +1321,9 @@ export default function ProcessFlowPage() {
                     onClose={() => setSelectedNode(null)}
                     editable={editMode}
                     processId={processId}
+                    rejectDestinations={rejectInfo?.destinations}
+                    rejectRoutes={rejectInfo?.routes}
+                    onAddRejectEdge={handleAddRejectEdge}
                   />
                 ) : (
                   <Card>

@@ -8,7 +8,7 @@ from Tracker.models import (
     # QMS models
     QualityErrorsList, MeasurementResult, QualityReports,
     QualityReportEquipment, QualityReportPersonnel,
-    QuarantineDisposition,
+    QuarantineDisposition, SupplierQualification, PartApproval,
     # CAPA models
     CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification,
     # CAPA enums
@@ -185,11 +185,11 @@ class QualityReportsSerializer(SecureModelMixin):
                   "status_display", "description", "file", "created_at", "errors", "measurements", "sampling_audit_log",
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
-                  "material_lot", "sample_size", "accept_number", "reject_number",  # Receiving inspection
+                  "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",  # Receiving / OSP inspection
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
         read_only_fields = ("report_number", "created_at",
-                            "material_lot", "sample_size", "accept_number", "reject_number")
+                            "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number")
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):
@@ -412,6 +412,19 @@ _RESOLVED_ACTIVE_RULESET_SCHEMA = {
         "rules": {"type": "array", "items": _RESOLVED_RULE_SCHEMA},
         "fallback_duration": {"type": "integer", "nullable": True},
         "tighten_after": {"type": "integer", "nullable": True},
+        "gate_metric": {"type": "string"},
+        "gate_threshold": {"type": "string", "nullable": True},
+        "gate_window": {"type": "string"},
+        "gate_window_n": {"type": "integer", "nullable": True},
+        "gate_min_sample": {"type": "integer", "nullable": True},
+        "gate_actions": {"type": "array", "items": {"type": "string"}},
+        "gate_capa_type": {"type": "string"},
+        "gate_capa_severity": {"type": "string"},
+        "gate_approval_template": {"type": "string", "format": "uuid", "nullable": True},
+        "aql": {"type": "string", "nullable": True},
+        "inspection_level": {"type": "string"},
+        "severity": {"type": "string"},
+        "strategy": {"type": "string"},
     },
 }
 
@@ -483,7 +496,8 @@ class SamplingRuleWriteSerializer(serializers.Serializer):
 
 
 class StepSamplingRulesUpdateSerializer(serializers.Serializer):
-    """Serializer for updating step sampling rules"""
+    """Update a step's sampling rules — plus its quality gate and acceptance plan,
+    so the flow-editor dialog persists everything in one atomic call."""
     rules = SamplingRuleUpdateSerializer(many=True)
     fallback_rules = SamplingRuleUpdateSerializer(many=True, required=False)
     fallback_duration = serializers.IntegerField(required=False)
@@ -491,17 +505,62 @@ class StepSamplingRulesUpdateSerializer(serializers.Serializer):
         required=False, allow_null=True,
         help_text="Consecutive failures before tightening to the fallback ruleset "
                   "(sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).")
+    # Quality gate (set on the resulting primary ruleset).
+    gate_metric = serializers.CharField(required=False, allow_blank=True)
+    gate_threshold = serializers.DecimalField(max_digits=7, decimal_places=3, required=False, allow_null=True)
+    gate_window = serializers.CharField(required=False, allow_blank=True)
+    gate_window_n = serializers.IntegerField(required=False, allow_null=True)
+    gate_min_sample = serializers.IntegerField(required=False, allow_null=True)
+    gate_actions = serializers.ListField(child=serializers.CharField(), required=False)
+    gate_capa_type = serializers.CharField(required=False, allow_blank=True)
+    gate_capa_severity = serializers.CharField(required=False, allow_blank=True)
+    gate_approval_template = serializers.UUIDField(required=False, allow_null=True)
+    # Acceptance sampling (RECEIVING steps).
+    aql = serializers.DecimalField(max_digits=5, decimal_places=3, required=False, allow_null=True)
+    inspection_level = serializers.CharField(required=False, allow_blank=True)
+    severity = serializers.CharField(required=False, allow_blank=True)
+    strategy = serializers.CharField(required=False, allow_blank=True)
+    variables_characteristic = serializers.UUIDField(required=False, allow_null=True)
+    # Supplier scope for the (step, supplier) ruleset — Receiving Inspection Plans.
+    # Null/absent = the supplier-agnostic plan (flow-editor steps + "all suppliers" RIPs).
+    supplier = serializers.UUIDField(required=False, allow_null=True)
 
     def update_step_rules(self, step):
         """Use model method for applying sampling rules"""
         request = self.context.get('request')
         user = getattr(request, 'user', None) if request else None
+        vd = self.validated_data
 
-        return step.apply_sampling_rules_update(rules_data=self.validated_data['rules'],
-                                                fallback_rules_data=self.validated_data.get('fallback_rules', []),
-                                                fallback_duration=self.validated_data.get('fallback_duration'),
-                                                tighten_after=self.validated_data.get('tighten_after'),
-                                                user=user)
+        gate = {
+            'gate_metric': vd.get('gate_metric', ''),
+            'gate_threshold': vd.get('gate_threshold'),
+            'gate_window': vd.get('gate_window', ''),
+            'gate_window_n': vd.get('gate_window_n'),
+            'gate_min_sample': vd.get('gate_min_sample'),
+            'gate_actions': vd.get('gate_actions'),
+            'gate_capa_type': vd.get('gate_capa_type', ''),
+            'gate_capa_severity': vd.get('gate_capa_severity', ''),
+            'gate_approval_template': vd.get('gate_approval_template'),
+        }
+        # Only treat acceptance as "provided" when at least one field was sent,
+        # so editing a non-receiving step's rules doesn't wipe a plan.
+        acceptance = None
+        if any(k in vd for k in ('aql', 'inspection_level', 'severity', 'strategy', 'variables_characteristic')):
+            acceptance = {
+                'aql': vd.get('aql'),
+                'inspection_level': vd.get('inspection_level', ''),
+                'severity': vd.get('severity', ''),
+                'strategy': vd.get('strategy', ''),
+                'variables_characteristic': vd.get('variables_characteristic'),
+            }
+
+        return step.apply_sampling_rules_update(
+            rules_data=vd['rules'],
+            fallback_rules_data=vd.get('fallback_rules', []),
+            fallback_duration=vd.get('fallback_duration'),
+            tighten_after=vd.get('tighten_after'),
+            gate=gate, acceptance=acceptance, user=user,
+            supplier=str(vd['supplier']) if vd.get('supplier') else None)
 
 
 class StepSamplingRulesWriteSerializer(serializers.Serializer):
@@ -759,6 +818,79 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     def get_completion_blockers(self, obj):
         """Get list of reasons preventing completion"""
         return obj.get_completion_blockers()
+
+
+# ===== SUPPLIER QUALIFICATION (ASL) =====
+
+class SupplierQualificationSerializer(SecureModelMixin):
+    qualification_number = serializers.CharField(read_only=True)
+    supplier = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all())
+    part_type = TenantScopedPrimaryKeyRelatedField(
+        queryset=PartTypes.unscoped.all(), required=False, allow_null=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    scope_display = serializers.CharField(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = SupplierQualification
+        fields = (
+            'id', 'qualification_number', 'supplier', 'supplier_name',
+            'scope_type', 'part_type', 'scope_label', 'scope_display',
+            'status', 'status_display', 'basis', 'effective_date', 'expiry_date',
+            'approval_request', 'qualified_by', 'notes',
+            'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = (
+            'qualification_number', 'status', 'approval_request', 'qualified_by',
+            'created_at', 'updated_at',
+        )
+
+
+class QualificationStatusSerializer(serializers.Serializer):
+    """Resolved supplier standing for a scope (the `status` action response)."""
+    qualified = serializers.BooleanField()
+    status = serializers.CharField(allow_null=True)
+    basis = serializers.CharField(allow_null=True)
+    expiry_date = serializers.DateField(allow_null=True)
+    days_to_expiry = serializers.IntegerField(allow_null=True)
+    record_id = serializers.CharField(allow_null=True)
+
+
+# ===== PART APPROVAL (PPAP / FAI) =====
+
+class PartApprovalSerializer(SecureModelMixin):
+    approval_number = serializers.CharField(read_only=True)
+    part_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all())
+    supplier = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all())
+    part_type_name = serializers.CharField(source='part_type.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    approval_type_display = serializers.CharField(source='get_approval_type_display', read_only=True)
+
+    class Meta:
+        model = PartApproval
+        fields = (
+            'id', 'approval_number', 'part_type', 'part_type_name',
+            'supplier', 'supplier_name',
+            'approval_type', 'approval_type_display', 'reference',
+            'status', 'status_display', 'effective_date', 'expiry_date',
+            'approval_request', 'approved_by', 'notes',
+            'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = (
+            'approval_number', 'status', 'approval_request', 'approved_by',
+            'created_at', 'updated_at',
+        )
+
+
+class PartApprovalStatusSerializer(serializers.Serializer):
+    """Resolved (part_type, supplier) approval standing (the `status` action response)."""
+    approved = serializers.BooleanField()
+    status = serializers.CharField(allow_null=True)
+    approval_type = serializers.CharField(allow_null=True)
+    expiry_date = serializers.DateField(allow_null=True)
+    days_to_expiry = serializers.IntegerField(allow_null=True)
+    record_id = serializers.CharField(allow_null=True)
 
 
 # ===== CAPA SERIALIZERS =====
@@ -1591,10 +1723,30 @@ class SamplePlanResponseSerializer(serializers.Serializer):
     strategy = serializers.CharField()
     inspection_level = serializers.CharField()
     severity = serializers.CharField()
+    # Z1.9 variables: blank/null for attribute (C0/Z14) plans.
+    method = serializers.CharField(allow_blank=True, required=False)
+    k = serializers.FloatField(allow_null=True, required=False)
+    variables_characteristic_id = serializers.UUIDField(allow_null=True, required=False)
     characteristics = ReceivingCharacteristicSerializer(many=True)
     step_id = serializers.UUIDField(allow_null=True)
     has_substeps = serializers.BooleanField()
     step_execution_id = serializers.UUIDField(allow_null=True)
+
+
+class IncomingInspectionRowSerializer(serializers.Serializer):
+    """One row of the unified incoming-inspection worklist — a purchased MaterialLot
+    or an OutsideProcessShipment, normalized to a shared shape (SAP QM QA32-style,
+    `source` = the inspection-lot origin). See services.qms.incoming_inspection."""
+    source = serializers.ChoiceField(choices=["PURCHASED_LOT", "OUTSIDE_PROCESS"])
+    id = serializers.UUIDField()
+    reference = serializers.CharField(allow_blank=True)
+    item = serializers.CharField(allow_blank=True)
+    supplier = serializers.CharField(allow_blank=True)
+    quantity = serializers.FloatField(allow_null=True)
+    status = serializers.CharField()
+    status_display = serializers.CharField()
+    received_at = serializers.CharField(allow_null=True)
+    step_id = serializers.UUIDField(allow_null=True)
 
 
 class MaterialLotBulkRowSerializer(serializers.Serializer):

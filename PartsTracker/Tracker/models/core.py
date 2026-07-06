@@ -797,7 +797,7 @@ class SecureQuerySet(models.QuerySet):
             # primary-attached one. tenant-safe: `.objects` auto-scopes, so a
             # link can never surface a document across tenants.
             from Tracker.models import DocumentLink
-            linked_doc_ids = DocumentLink.objects.filter(
+            linked_doc_ids = DocumentLink.objects.filter(  # tenant-safe: .objects auto-scopes; a link can't surface a cross-tenant doc
                 archived=False,
             ).filter(
                 Q(content_type=order_ct, object_id__in=[str(id) for id in accessible_order_ids]) |
@@ -2350,6 +2350,10 @@ class Approval_Type(models.TextChoices):
     PCR_APPROVAL = 'PCR_APPROVAL', 'Process Change Request Approval'
     PCO_APPROVAL = 'PCO_APPROVAL', 'Process Change Order Approval'
     PCN_RELEASE = 'PCN_RELEASE', 'Process Change Notice Release'
+
+    # Part approval (production qualification of a part/supplier pair)
+    PPAP = 'PPAP', 'PPAP'
+    FAI = 'FAI', 'First Article (FAI / AS9102)'
 
 class Approval_Status_Type(models.TextChoices):
     NOT_REQUIRED = 'NOT_REQUIRED', 'Not Required'

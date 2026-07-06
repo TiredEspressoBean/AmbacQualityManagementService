@@ -28,7 +28,17 @@ export function ReceivingInspectionQueuePage() {
                 col({ header: "Material", renderCell: (l) => l.material_type_name ?? l.material_description ?? "—" }),
                 col({ header: "Supplier", renderCell: (l) => l.supplier_name ?? "—" }),
                 col({ header: "Qty", renderCell: (l) => `${l.quantity ?? "—"} ${l.unit_of_measure ?? ""}`.trim() }),
-                col({ header: "Status", renderCell: (l) => <Badge variant="secondary">{l.status}</Badge> }),
+                col({
+                    header: "Status",
+                    renderCell: (l) => (
+                        <div className="flex items-center gap-1.5">
+                            <Badge variant={l.status === "QUARANTINE" ? "destructive" : "secondary"}>{l.status}</Badge>
+                            {l.hold_reason === "SUPPLIER_UNQUALIFIED" && (
+                                <Badge variant="outline" className="border-amber-400 text-amber-700">Unqualified supplier</Badge>
+                            )}
+                        </div>
+                    ),
+                }),
             ]}
             renderActions={(l) => (
                 <Button

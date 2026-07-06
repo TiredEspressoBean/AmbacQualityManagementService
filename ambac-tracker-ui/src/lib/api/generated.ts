@@ -148,8 +148,10 @@ export type ApprovalTypeEnum =
    * `PCR_APPROVAL` - Process Change Request Approval
    * `PCO_APPROVAL` - Process Change Order Approval
    * `PCN_RELEASE` - Process Change Notice Release
+   * `PPAP` - PPAP
+   * `FAI` - First Article (FAI / AS9102)
    *
-   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE
+   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE, PPAP, FAI
    */
   | "DOCUMENT_RELEASE"
   | "CAPA_APPROVAL"
@@ -160,7 +162,9 @@ export type ApprovalTypeEnum =
   | "PROCESS_APPROVAL"
   | "PCR_APPROVAL"
   | "PCO_APPROVAL"
-  | "PCN_RELEASE";
+  | "PCN_RELEASE"
+  | "PPAP"
+  | "FAI";
 export type ApprovalFlowTypeEnum =
   /**
    * * `ALL_REQUIRED` - All Required
@@ -599,6 +603,7 @@ export type PartsStatusEnum =
   /**
    * * `PENDING` - Pending
    * `IN_PROGRESS` - In Progress
+   * `AT_OUTSIDE_PROCESS` - At Outside Process
    * `AWAITING_QA` - Awaiting QA
    * `READY_FOR_NEXT_STEP` - Ready for next step
    * `COMPLETED` - Completed
@@ -613,10 +618,11 @@ export type PartsStatusEnum =
    * `CORE_BANKED` - Core Banked
    * `RMA_CLOSED` - RMA Closed
    *
-   * @enum PENDING, IN_PROGRESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
+   * @enum PENDING, IN_PROGRESS, AT_OUTSIDE_PROCESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED
    */
   | "PENDING"
   | "IN_PROGRESS"
+  | "AT_OUTSIDE_PROCESS"
   | "AWAITING_QA"
   | "READY_FOR_NEXT_STEP"
   | "COMPLETED"
@@ -2372,6 +2378,26 @@ export type ImportSummary = {
   updated: number;
   errors: number;
 };
+export type IncomingInspectionRow = {
+  source: SourceEnum;
+  id: string;
+  reference: string;
+  item: string;
+  supplier: string;
+  quantity: number | null;
+  status: string;
+  status_display: string;
+  received_at: string | null;
+  step_id: string | null;
+};
+export type SourceEnum =
+  /**
+   * * `PURCHASED_LOT` - PURCHASED_LOT
+   * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
+   *
+   * @enum PURCHASED_LOT, OUTSIDE_PROCESS
+   */
+  "PURCHASED_LOT" | "OUTSIDE_PROCESS";
 export type IntegrationConfig = {
   id: string;
   tenant: string;
@@ -2565,6 +2591,10 @@ export type MaterialLot = {
    */
   unit_of_measure: string;
   status?: MaterialLotStatusEnum | undefined;
+  /**
+   * Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold.
+   */
+  hold_reason: string;
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
   certificate_of_conformance?: (string | null) | undefined;
@@ -2979,6 +3009,55 @@ export type OrdersRequest = {
   current_milestone?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
+export type OutsideProcessShipment = {
+  id: string;
+  /**
+   * Auto-generated, tenant-unique (OSP-YYYY-######).
+   */
+  shipment_number: string;
+  supplier: string;
+  supplier_name: string;
+  step: string;
+  step_name: string;
+  work_order?:
+    | /**
+     * The work order the shipped parts belong to (usually one).
+     */
+    (string | null)
+    | undefined;
+  reference?: /**
+   * Outbound PO / packing-slip reference.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  shipped_at: string;
+  shipped_by: number | null;
+  return_reference?: /**
+   * Inbound packing-slip reference on return.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  returned_at: string | null;
+  returned_by: number | null;
+  status: OutsideProcessShipmentStatusEnum;
+  status_display: string;
+  quantity: number;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type OutsideProcessShipmentStatusEnum =
+  /**
+   * * `SENT` - Sent Out
+   * `RETURNED` - Returned
+   * `CLOSED` - Closed
+   *
+   * @enum SENT, RETURNED, CLOSED
+   */
+  "SENT" | "RETURNED" | "CLOSED";
 export type PaginatedApprovalRequestList = {
   /**
    * @example 123
@@ -4017,6 +4096,95 @@ export type PaginatedOrdersList = {
     | undefined;
   results: Array<Orders>;
 };
+export type PaginatedOutsideProcessShipmentList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<OutsideProcessShipment>;
+};
+export type PaginatedPartApprovalList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<PartApproval>;
+};
+export type PartApproval = {
+  id: string;
+  approval_number: string;
+  part_type: string;
+  part_type_name: string;
+  supplier: string;
+  supplier_name: string;
+  approval_type?: PartApprovalTypeEnum | undefined;
+  approval_type_display: string;
+  reference?: /**
+   * PPAP/FAI package or submission reference (the artifact stays external).
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  status: QualificationStatusEnum;
+  status_display: string;
+  effective_date?: (string | null) | undefined;
+  expiry_date?: (string | null) | undefined;
+  approval_request: string | null;
+  approved_by: number | null;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type PartApprovalTypeEnum =
+  /**
+   * * `PPAP` - PPAP
+   * `FAI` - First Article (FAI / AS9102)
+   *
+   * @enum PPAP, FAI
+   */
+  "PPAP" | "FAI";
+export type QualificationStatusEnum =
+  /**
+   * * `PENDING` - Pending
+   * `APPROVED` - Approved
+   * `CONDITIONAL` - Conditional
+   * `SUSPENDED` - Suspended
+   * `EXPIRED` - Expired
+   * `DISQUALIFIED` - Disqualified
+   *
+   * @enum PENDING, APPROVED, CONDITIONAL, SUSPENDED, EXPIRED, DISQUALIFIED
+   */
+  | "PENDING"
+  | "APPROVED"
+  | "CONDITIONAL"
+  | "SUSPENDED"
+  | "EXPIRED"
+  | "DISQUALIFIED";
 export type PaginatedPartSelectList = {
   /**
    * @example 123
@@ -4132,6 +4300,14 @@ export type PartTypes = {
      */
     (string | null)
     | undefined;
+  requires_supplier_qualification?: /**
+   * Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock.
+   */
+  boolean | undefined;
+  requires_part_approval?: /**
+   * Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock.
+   */
+  boolean | undefined;
   itar_controlled?: /**
    * Part type is ITAR-controlled defense article (22 CFR 121 USML)
    */
@@ -4733,6 +4909,17 @@ export type Step = {
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
+  is_outside_process?: /**
+   * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
+   */
+  boolean | undefined;
+  outside_supplier?:
+    | /**
+     * Default subcontract vendor for this outside-process op (overridable per shipment).
+     */
+    (string | null)
+    | undefined;
+  outside_supplier_name: string | null;
   is_terminal?: boolean | undefined;
   terminal_status?: (TerminalStatusEnum | BlankEnum) | undefined;
   max_visits?:
@@ -5060,6 +5247,10 @@ export type QualityReports = {
    */
   material_lot: string | null;
   /**
+   * Set when this report is the return inspection of a subcontract shipment (mutually exclusive with `part` / `material_lot`).
+   */
+  osp_shipment: string | null;
+  /**
    * Acceptance-sampling sample size (n) snapshot at inspection time.
    */
   sample_size: number | null;
@@ -5287,6 +5478,39 @@ export type PaginatedRcaRecordList = {
     | undefined;
   results: Array<RcaRecord>;
 };
+export type PaginatedReadyToShipGroupList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<ReadyToShipGroup>;
+};
+export type ReadyToShipGroup = {
+  step_id: string;
+  step_name: string;
+  supplier_id: string | null;
+  supplier_name: string | null;
+  ready_count: number;
+  parts: Array<ReadyToShipPart>;
+};
+export type ReadyToShipPart = {
+  id: string;
+  erp_id: string;
+  work_order: string | null;
+  status: string;
+};
 export type PaginatedSPCBaselineListList = {
   /**
    * @example 123
@@ -5492,8 +5716,9 @@ export type RuleTypeEnum =
    * `EXACT_COUNT` - Exact Count (No Variance)
    * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
    * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
+   * `VARIABLES` - Variables Sampling (ANSI/ASQ Z1.9)
    *
-   * @enum EVERY_NTH_PART, PERCENTAGE, RANDOM, FIRST_N_PARTS, LAST_N_PARTS, EXACT_COUNT, AQL, C_ZERO
+   * @enum EVERY_NTH_PART, PERCENTAGE, RANDOM, FIRST_N_PARTS, LAST_N_PARTS, EXACT_COUNT, AQL, C_ZERO, VARIABLES
    */
   | "EVERY_NTH_PART"
   | "PERCENTAGE"
@@ -5502,7 +5727,8 @@ export type RuleTypeEnum =
   | "LAST_N_PARTS"
   | "EXACT_COUNT"
   | "AQL"
-  | "C_ZERO";
+  | "C_ZERO"
+  | "VARIABLES";
 export type PaginatedSamplingRuleSetList = {
   /**
    * @example 123
@@ -5583,7 +5809,7 @@ export type SamplingRuleSet = {
    */
   string | undefined;
   strategy?: /**
-   * Acceptance-sampling strategy: C0 (default) or Z14.
+   * Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).
    *
    * @maxLength 4
    */
@@ -6198,6 +6424,16 @@ export type Steps = {
     * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
+  is_outside_process?: /**
+   * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
+   */
+  boolean | undefined;
+  outside_supplier?:
+    | /**
+     * Default subcontract vendor for this outside-process op (overridable per shipment).
+     */
+    (string | null)
+    | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
   is_terminal?: boolean | undefined;
@@ -6729,6 +6965,71 @@ export type SubstepTranslation = {
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type PaginatedSupplierQualificationList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SupplierQualification>;
+};
+export type SupplierQualification = {
+  id: string;
+  qualification_number: string;
+  supplier: string;
+  supplier_name: string;
+  scope_type?: ScopeTypeEnum | undefined;
+  part_type?: (string | null) | undefined;
+  scope_label?: /**
+   * Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  scope_display: string;
+  status: QualificationStatusEnum;
+  status_display: string;
+  basis?: (BasisEnum | BlankEnum) | undefined;
+  effective_date?: (string | null) | undefined;
+  expiry_date?: (string | null) | undefined;
+  approval_request: string | null;
+  qualified_by: number | null;
+  notes?: string | undefined;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type ScopeTypeEnum =
+  /**
+   * * `PART_TYPE` - Part Type
+   * `COMMODITY` - Commodity
+   * `SPECIAL_PROCESS` - Special Process
+   *
+   * @enum PART_TYPE, COMMODITY, SPECIAL_PROCESS
+   */
+  "PART_TYPE" | "COMMODITY" | "SPECIAL_PROCESS";
+export type BasisEnum =
+  /**
+   * * `AUDIT` - Audit
+   * `PPAP` - PPAP
+   * `FAI` - First Article
+   * `SURVEY` - Survey
+   * `HISTORICAL` - Historical
+   *
+   * @enum AUDIT, PPAP, FAI, SURVEY, HISTORICAL
+   */
+  "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL";
 export type PaginatedTenantGroupList = {
   /**
    * @example 123
@@ -7684,6 +7985,21 @@ export type SplitReasonEnum =
    * @enum QUANTITY, OPERATION, REWORK
    */
   "QUANTITY" | "OPERATION" | "REWORK";
+export type PartApprovalRequest = {
+  part_type: string;
+  supplier: string;
+  approval_type?: PartApprovalTypeEnum | undefined;
+  reference?: /**
+   * PPAP/FAI package or submission reference (the artifact stays external).
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  effective_date?: (string | null) | undefined;
+  expiry_date?: (string | null) | undefined;
+  notes?: string | undefined;
+  archived?: boolean | undefined;
+};
 export type PartTravelerResponse = {
   part_id: string;
   part_erp_id: string;
@@ -8483,6 +8799,21 @@ export type PatchedOrdersRequest = Partial<{
   current_milestone: string | null;
   archived: boolean;
 }>;
+export type PatchedPartApprovalRequest = Partial<{
+  part_type: string;
+  supplier: string;
+  approval_type: PartApprovalTypeEnum;
+  /**
+   * PPAP/FAI package or submission reference (the artifact stays external).
+   *
+   * @maxLength 120
+   */
+  reference: string;
+  effective_date: string | null;
+  expiry_date: string | null;
+  notes: string;
+  archived: boolean;
+}>;
 export type PatchedPartsRequest = Partial<{
   /**
    * @minLength 1
@@ -9034,7 +9365,7 @@ export type PatchedSamplingRuleSetRequest = Partial<{
    */
   severity: string;
   /**
-   * Acceptance-sampling strategy: C0 (default) or Z14.
+   * Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).
    *
    * @maxLength 4
    */
@@ -9231,6 +9562,14 @@ export type PatchedStepsRequest = Partial<{
     * `RECEIVING` - Receiving Inspection
      */
   step_type: StepTypeEnum;
+  /**
+   * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
+   */
+  is_outside_process: boolean;
+  /**
+   * Default subcontract vendor for this outside-process op (overridable per shipment).
+   */
+  outside_supplier: string | null;
   is_decision_point: boolean;
   decision_type: DecisionTypeEnum | BlankEnum;
   is_terminal: boolean;
@@ -9482,6 +9821,22 @@ export type PatchedSubstepResponseRequest = Partial<{
    * Operator who captured the response.
    */
   responded_by: number;
+}>;
+export type PatchedSupplierQualificationRequest = Partial<{
+  supplier: string;
+  scope_type: ScopeTypeEnum;
+  part_type: string | null;
+  /**
+   * Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes.
+   *
+   * @maxLength 120
+   */
+  scope_label: string;
+  basis: BasisEnum | BlankEnum;
+  effective_date: string | null;
+  expiry_date: string | null;
+  notes: string;
+  archived: boolean;
 }>;
 export type PatchedTenantLLMProviderRequest = Partial<{
   /**
@@ -10634,6 +10989,9 @@ export type SamplePlanResponse = {
   strategy: string;
   inspection_level: string;
   severity: string;
+  method?: string | undefined;
+  k?: (number | null) | undefined;
+  variables_characteristic_id?: (string | null) | undefined;
   characteristics: Array<ReceivingCharacteristic>;
   step_id: string | null;
   has_substeps: boolean;
@@ -10730,7 +11088,7 @@ export type SamplingRuleSetRequest = {
    */
   string | undefined;
   strategy?: /**
-   * Acceptance-sampling strategy: C0 (default) or Z14.
+   * Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).
    *
    * @maxLength 4
    */
@@ -10991,6 +11349,16 @@ export type StepRequest = {
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
+  is_outside_process?: /**
+   * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
+   */
+  boolean | undefined;
+  outside_supplier?:
+    | /**
+     * Default subcontract vendor for this outside-process op (overridable per shipment).
+     */
+    (string | null)
+    | undefined;
   is_terminal?: boolean | undefined;
   terminal_status?: (TerminalStatusEnum | BlankEnum) | undefined;
   max_visits?:
@@ -11014,6 +11382,36 @@ export type StepSamplingRulesUpdateRequest = {
      */
     (number | null)
     | undefined;
+  gate_metric?: string | undefined;
+  gate_threshold?:
+    | /**
+     * @pattern ^-?\d{0,4}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  gate_window?: string | undefined;
+  gate_window_n?: (number | null) | undefined;
+  gate_min_sample?: (number | null) | undefined;
+  gate_actions?:
+    | Array</**
+       * @minLength 1
+       */
+      string>
+    | undefined;
+  gate_capa_type?: string | undefined;
+  gate_capa_severity?: string | undefined;
+  gate_approval_template?: (string | null) | undefined;
+  aql?:
+    | /**
+     * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
+     */
+    (string | null)
+    | undefined;
+  inspection_level?: string | undefined;
+  severity?: string | undefined;
+  strategy?: string | undefined;
+  variables_characteristic?: (string | null) | undefined;
+  supplier?: (string | null) | undefined;
 };
 export type StepSummary = {
   step_id: string;
@@ -11064,6 +11462,16 @@ export type StepsRequest = {
     * `RECEIVING` - Receiving Inspection
      */
   StepTypeEnum | undefined;
+  is_outside_process?: /**
+   * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
+   */
+  boolean | undefined;
+  outside_supplier?:
+    | /**
+     * Default subcontract vendor for this outside-process op (overridable per shipment).
+     */
+    (string | null)
+    | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
   is_terminal?: boolean | undefined;
@@ -11354,6 +11762,22 @@ export type SubstepResponseRequest = {
    * Operator who captured the response.
    */
   responded_by: number;
+};
+export type SupplierQualificationRequest = {
+  supplier: string;
+  scope_type?: ScopeTypeEnum | undefined;
+  part_type?: (string | null) | undefined;
+  scope_label?: /**
+   * Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  basis?: (BasisEnum | BlankEnum) | undefined;
+  effective_date?: (string | null) | undefined;
+  expiry_date?: (string | null) | undefined;
+  notes?: string | undefined;
+  archived?: boolean | undefined;
 };
 export type TenantAwareUserDetails = {
   pk: number;
@@ -11832,6 +12256,8 @@ const ApprovalTypeEnum = z.enum([
   "PCR_APPROVAL",
   "PCO_APPROVAL",
   "PCN_RELEASE",
+  "PPAP",
+  "FAI",
 ]);
 const ApprovalFlowTypeEnum = z.enum(["ALL_REQUIRED", "THRESHOLD", "ANY"]);
 const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
@@ -12759,6 +13185,10 @@ const SupplierScorecard = z.object({
   on_time_rate: z.number().nullable(),
   promised_lots: z.number().int(),
   open_scar_count: z.number().int(),
+  rating: z.string().nullable(),
+  rating_reason: z.string(),
+  recommended_action: z.string(),
+  recommendation_reason: z.string(),
 });
 const CoreStatusEnum = z.enum([
   "RECEIVED",
@@ -13666,6 +14096,19 @@ const HeatMapFacetsResponse = z.object({
   severities: z.array(SeverityFacet),
   total_count: z.number().int(),
 });
+const SourceEnum = z.enum(["PURCHASED_LOT", "OUTSIDE_PROCESS"]);
+const IncomingInspectionRow = z.object({
+  source: SourceEnum,
+  id: z.string().uuid(),
+  reference: z.string(),
+  item: z.string(),
+  supplier: z.string(),
+  quantity: z.number().nullable(),
+  status: z.string(),
+  status_display: z.string(),
+  received_at: z.string().nullable(),
+  step_id: z.string().uuid().nullable(),
+});
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
   "AWAITING_INSPECTION",
@@ -13695,6 +14138,7 @@ const MaterialLot = z.object({
   quantity_remaining: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().max(20),
   status: MaterialLotStatusEnum.optional(),
+  hold_reason: z.string(),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
   certificate_of_conformance: z.string().url().nullish(),
@@ -13816,6 +14260,7 @@ const QualityReports = z.object({
   verified_by_info: z.object({}).partial().passthrough().nullable(),
   is_first_piece: z.boolean().optional(),
   material_lot: z.string().uuid().nullable(),
+  osp_shipment: z.string().uuid().nullable(),
   sample_size: z.number().int().nullable(),
   accept_number: z.number().int().nullable(),
   reject_number: z.number().int().nullable(),
@@ -13829,6 +14274,17 @@ const QualityReports = z.object({
   errors_info: z.array(z.unknown()),
   file_info: z.object({}).partial().passthrough().nullable(),
   archived: z.boolean().optional(),
+});
+const ReceivingVerdict = z.object({
+  status: z.string(),
+  is_variables: z.boolean(),
+  sample_size: z.number().int().nullable(),
+  accept_number: z.number().int().nullable(),
+  reject_number: z.number().int().nullable(),
+  k: z.number().nullable(),
+  defectives: z.number().int(),
+  units_recorded: z.number().int(),
+  readings: z.number().int(),
 });
 const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
@@ -13868,6 +14324,9 @@ const SamplePlanResponse = z.object({
   strategy: z.string(),
   inspection_level: z.string(),
   severity: z.string(),
+  method: z.string().optional(),
+  k: z.number().nullish(),
+  variables_characteristic_id: z.string().uuid().nullish(),
   characteristics: z.array(ReceivingCharacteristic),
   step_id: z.string().uuid().nullable(),
   has_substeps: z.boolean(),
@@ -14172,6 +14631,7 @@ const StepIncrementResponse = z.object({
 const PartsStatusEnum = z.enum([
   "PENDING",
   "IN_PROGRESS",
+  "AT_OUTSIDE_PROCESS",
   "AWAITING_QA",
   "READY_FOR_NEXT_STEP",
   "COMPLETED",
@@ -14243,6 +14703,147 @@ const ImportStatusResponse = z.object({
   progress: z.object({}).partial().passthrough(),
   result: z.object({}).partial().passthrough().optional(),
 });
+const OutsideProcessShipmentStatusEnum = z.enum(["SENT", "RETURNED", "CLOSED"]);
+const OutsideProcessShipment = z.object({
+  id: z.string().uuid(),
+  shipment_number: z.string(),
+  supplier: z.string().uuid(),
+  supplier_name: z.string(),
+  step: z.string().uuid(),
+  step_name: z.string(),
+  work_order: z.string().uuid().nullish(),
+  reference: z.string().max(120).optional(),
+  shipped_at: z.string().datetime({ offset: true }),
+  shipped_by: z.number().int().nullable(),
+  return_reference: z.string().max(120).optional(),
+  returned_at: z.string().datetime({ offset: true }).nullable(),
+  returned_by: z.number().int().nullable(),
+  status: OutsideProcessShipmentStatusEnum,
+  status_display: z.string(),
+  quantity: z.number().int(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedOutsideProcessShipmentList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(OutsideProcessShipment),
+});
+const OutsideProcessShipmentRequest = z.object({
+  supplier: z.string().uuid(),
+  step: z.string().uuid(),
+  work_order: z.string().uuid().nullish(),
+  reference: z.string().max(120).optional(),
+  return_reference: z.string().max(120).optional(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedOutsideProcessShipmentRequest = z
+  .object({
+    supplier: z.string().uuid(),
+    step: z.string().uuid(),
+    work_order: z.string().uuid().nullable(),
+    reference: z.string().max(120),
+    return_reference: z.string().max(120),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const ReadyToShipPart = z.object({
+  id: z.string().uuid(),
+  erp_id: z.string(),
+  work_order: z.string().uuid().nullable(),
+  status: z.string(),
+});
+const ReadyToShipGroup = z.object({
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  supplier_id: z.string().uuid().nullable(),
+  supplier_name: z.string().nullable(),
+  ready_count: z.number().int(),
+  parts: z.array(ReadyToShipPart),
+});
+const PaginatedReadyToShipGroupList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(ReadyToShipGroup),
+});
+const SendPartsOutRequestRequest = z.object({
+  step: z.string().uuid(),
+  part_ids: z.array(z.string().uuid()),
+  supplier: z.string().uuid().optional(),
+  reference: z.string().optional(),
+});
+const PartApprovalTypeEnum = z.enum(["PPAP", "FAI"]);
+const QualificationStatusEnum = z.enum([
+  "PENDING",
+  "APPROVED",
+  "CONDITIONAL",
+  "SUSPENDED",
+  "EXPIRED",
+  "DISQUALIFIED",
+]);
+const PartApproval = z.object({
+  id: z.string().uuid(),
+  approval_number: z.string(),
+  part_type: z.string().uuid(),
+  part_type_name: z.string(),
+  supplier: z.string().uuid(),
+  supplier_name: z.string(),
+  approval_type: PartApprovalTypeEnum.optional(),
+  approval_type_display: z.string(),
+  reference: z.string().max(120).optional(),
+  status: QualificationStatusEnum,
+  status_display: z.string(),
+  effective_date: z.string().nullish(),
+  expiry_date: z.string().nullish(),
+  approval_request: z.string().uuid().nullable(),
+  approved_by: z.number().int().nullable(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedPartApprovalList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(PartApproval),
+});
+const PartApprovalRequest = z.object({
+  part_type: z.string().uuid(),
+  supplier: z.string().uuid(),
+  approval_type: PartApprovalTypeEnum.optional(),
+  reference: z.string().max(120).optional(),
+  effective_date: z.string().nullish(),
+  expiry_date: z.string().nullish(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedPartApprovalRequest = z
+  .object({
+    part_type: z.string().uuid(),
+    supplier: z.string().uuid(),
+    approval_type: PartApprovalTypeEnum,
+    reference: z.string().max(120),
+    effective_date: z.string().nullable(),
+    expiry_date: z.string().nullable(),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const PartApprovalStatus = z.object({
+  approved: z.boolean(),
+  status: z.string().nullable(),
+  approval_type: z.string().nullable(),
+  expiry_date: z.string().nullable(),
+  days_to_expiry: z.number().int().nullable(),
+  record_id: z.string().nullable(),
+});
 const PartTypes = z.object({
   id: z.string().uuid(),
   tenant: z.string().uuid().nullish(),
@@ -14253,6 +14854,8 @@ const PartTypes = z.object({
   name: z.string().max(50),
   ID_prefix: z.string().max(50).nullish(),
   ERP_id: z.string().max(50).nullish(),
+  requires_supplier_qualification: z.boolean().optional(),
+  requires_part_approval: z.boolean().optional(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -14274,6 +14877,8 @@ const PartTypesRequest = z.object({
   name: z.string().min(1).max(50),
   ID_prefix: z.string().max(50).nullish(),
   ERP_id: z.string().max(50).nullish(),
+  requires_supplier_qualification: z.boolean().optional(),
+  requires_part_approval: z.boolean().optional(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   usml_category: z.string().max(10).optional(),
@@ -14287,6 +14892,8 @@ const PatchedPartTypesRequest = z
     name: z.string().min(1).max(50),
     ID_prefix: z.string().max(50).nullable(),
     ERP_id: z.string().max(50).nullable(),
+    requires_supplier_qualification: z.boolean(),
+    requires_part_approval: z.boolean(),
     itar_controlled: z.boolean(),
     eccn: z.string().max(20),
     usml_category: z.string().max(10),
@@ -14596,6 +15203,9 @@ const Step = z.object({
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_outside_process: z.boolean().optional(),
+  outside_supplier: z.string().uuid().nullish(),
+  outside_supplier_name: z.string().nullable(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -15095,6 +15705,7 @@ const RuleTypeEnum = z.enum([
   "EXACT_COUNT",
   "AQL",
   "C_ZERO",
+  "VARIABLES",
 ]);
 const SamplingRule = z.object({
   id: z.string().uuid(),
@@ -15525,6 +16136,8 @@ const Steps = z.object({
   part_type_info: z.object({}).partial().passthrough().nullable(),
   part_type_name: z.string().nullable(),
   step_type: StepTypeEnum.optional(),
+  is_outside_process: z.boolean().optional(),
+  outside_supplier: z.string().uuid().nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
   is_terminal: z.boolean().optional(),
@@ -15556,6 +16169,8 @@ const StepsRequest = z.object({
   requires_first_piece_inspection: z.boolean().optional(),
   part_type: z.string().uuid(),
   step_type: StepTypeEnum.optional(),
+  is_outside_process: z.boolean().optional(),
+  outside_supplier: z.string().uuid().nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
   is_terminal: z.boolean().optional(),
@@ -15579,6 +16194,8 @@ const PatchedStepsRequest = z
     requires_first_piece_inspection: z.boolean(),
     part_type: z.string().uuid(),
     step_type: StepTypeEnum,
+    is_outside_process: z.boolean(),
+    outside_supplier: z.string().uuid().nullable(),
     is_decision_point: z.boolean(),
     decision_type: z.union([DecisionTypeEnum, BlankEnum]),
     is_terminal: z.boolean(),
@@ -15616,6 +16233,19 @@ const StepWithResolvedRules = z.object({
       ),
       fallback_duration: z.number().int().nullable(),
       tighten_after: z.number().int().nullable(),
+      gate_metric: z.string(),
+      gate_threshold: z.string().nullable(),
+      gate_window: z.string(),
+      gate_window_n: z.number().int().nullable(),
+      gate_min_sample: z.number().int().nullable(),
+      gate_actions: z.array(z.string()),
+      gate_capa_type: z.string(),
+      gate_capa_severity: z.string(),
+      gate_approval_template: z.string().uuid().nullable(),
+      aql: z.string().nullable(),
+      inspection_level: z.string(),
+      severity: z.string(),
+      strategy: z.string(),
     })
     .partial(),
   fallback_ruleset: z
@@ -15654,6 +16284,31 @@ const StepSamplingRulesUpdateRequest = z.object({
   fallback_rules: z.array(SamplingRuleUpdateRequest).optional(),
   fallback_duration: z.number().int().optional(),
   tighten_after: z.number().int().nullish(),
+  gate_metric: z.string().optional(),
+  gate_threshold: z
+    .string()
+    .regex(/^-?\d{0,4}(?:\.\d{0,3})?$/)
+    .nullish(),
+  gate_window: z.string().optional(),
+  gate_window_n: z.number().int().nullish(),
+  gate_min_sample: z.number().int().nullish(),
+  gate_actions: z.array(z.string().min(1)).optional(),
+  gate_capa_type: z.string().optional(),
+  gate_capa_severity: z.string().optional(),
+  gate_approval_template: z.string().uuid().nullish(),
+  aql: z
+    .string()
+    .regex(/^-?\d{0,2}(?:\.\d{0,3})?$/)
+    .nullish(),
+  inspection_level: z.string().optional(),
+  severity: z.string().optional(),
+  strategy: z.string().optional(),
+  variables_characteristic: z.string().uuid().nullish(),
+  supplier: z.string().uuid().nullish(),
+});
+const CreateReceivingPlanInputRequest = z.object({
+  part_type: z.string().uuid(),
+  name: z.string().optional(),
 });
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
@@ -15977,6 +16632,67 @@ const SubstepSubmitResponse = z.object({
   response_count: z.number().int(),
   quality_report_id: z.string().nullable(),
   measurement_count: z.number().int(),
+});
+const ScopeTypeEnum = z.enum(["PART_TYPE", "COMMODITY", "SPECIAL_PROCESS"]);
+const BasisEnum = z.enum(["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL"]);
+const SupplierQualification = z.object({
+  id: z.string().uuid(),
+  qualification_number: z.string(),
+  supplier: z.string().uuid(),
+  supplier_name: z.string(),
+  scope_type: ScopeTypeEnum.optional(),
+  part_type: z.string().uuid().nullish(),
+  scope_label: z.string().max(120).optional(),
+  scope_display: z.string(),
+  status: QualificationStatusEnum,
+  status_display: z.string(),
+  basis: z.union([BasisEnum, BlankEnum]).optional(),
+  effective_date: z.string().nullish(),
+  expiry_date: z.string().nullish(),
+  approval_request: z.string().uuid().nullable(),
+  qualified_by: z.number().int().nullable(),
+  notes: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedSupplierQualificationList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SupplierQualification),
+});
+const SupplierQualificationRequest = z.object({
+  supplier: z.string().uuid(),
+  scope_type: ScopeTypeEnum.optional(),
+  part_type: z.string().uuid().nullish(),
+  scope_label: z.string().max(120).optional(),
+  basis: z.union([BasisEnum, BlankEnum]).optional(),
+  effective_date: z.string().nullish(),
+  expiry_date: z.string().nullish(),
+  notes: z.string().optional(),
+  archived: z.boolean().optional(),
+});
+const PatchedSupplierQualificationRequest = z
+  .object({
+    supplier: z.string().uuid(),
+    scope_type: ScopeTypeEnum,
+    part_type: z.string().uuid().nullable(),
+    scope_label: z.string().max(120),
+    basis: z.union([BasisEnum, BlankEnum]),
+    effective_date: z.string().nullable(),
+    expiry_date: z.string().nullable(),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const QualificationStatus = z.object({
+  qualified: z.boolean(),
+  status: z.string().nullable(),
+  basis: z.string().nullable(),
+  expiry_date: z.string().nullable(),
+  days_to_expiry: z.number().int().nullable(),
+  record_id: z.string().nullable(),
 });
 const TenantGroup = z.object({
   id: z.string().uuid(),
@@ -18366,6 +19082,8 @@ const StepRequest = z.object({
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  is_outside_process: z.boolean().optional(),
+  outside_supplier: z.string().uuid().nullish(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -18547,6 +19265,8 @@ export const schemas = {
   DefectTypeFacet,
   SeverityFacet,
   HeatMapFacetsResponse,
+  SourceEnum,
+  IncomingInspectionRow,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -18560,6 +19280,7 @@ export const schemas = {
   QualityReportPersonnelRoleEnum,
   QualityReportPersonnel,
   QualityReports,
+  ReceivingVerdict,
   RaiseScarResponse,
   RecordBulkRequestRequest,
   ReceivingMeasurementInputRequest,
@@ -18609,6 +19330,22 @@ export const schemas = {
   ImportResponse,
   ImportPreviewResponse,
   ImportStatusResponse,
+  OutsideProcessShipmentStatusEnum,
+  OutsideProcessShipment,
+  PaginatedOutsideProcessShipmentList,
+  OutsideProcessShipmentRequest,
+  PatchedOutsideProcessShipmentRequest,
+  ReadyToShipPart,
+  ReadyToShipGroup,
+  PaginatedReadyToShipGroupList,
+  SendPartsOutRequestRequest,
+  PartApprovalTypeEnum,
+  QualificationStatusEnum,
+  PartApproval,
+  PaginatedPartApprovalList,
+  PartApprovalRequest,
+  PatchedPartApprovalRequest,
+  PartApprovalStatus,
   PartTypes,
   PaginatedPartTypesList,
   PartTypesRequest,
@@ -18737,6 +19474,7 @@ export const schemas = {
   CreateStepRevisionInputRequest,
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
+  CreateReceivingPlanInputRequest,
   SubstepCompletion,
   PaginatedSubstepCompletionList,
   SubstepCompletionRequest,
@@ -18765,6 +19503,13 @@ export const schemas = {
   PatchedSubstepRequest,
   SubstepSubmitRequestRequest,
   SubstepSubmitResponse,
+  ScopeTypeEnum,
+  BasisEnum,
+  SupplierQualification,
+  PaginatedSupplierQualificationList,
+  SupplierQualificationRequest,
+  PatchedSupplierQualificationRequest,
+  QualificationStatus,
   TenantGroup,
   PaginatedTenantGroupList,
   TenantGroupRequest,
@@ -19401,9 +20146,11 @@ POST: Executes the query.`,
             "CAPA_MAJOR",
             "DOCUMENT_RELEASE",
             "ECO",
+            "FAI",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
+            "PPAP",
             "PROCESS_APPROVAL",
             "TRAINING_CERT",
           ])
@@ -21867,7 +22614,7 @@ Provides list, create, retrieve, update, and delete operations.`,
     method: "get",
     path: "/api/Companies/:id/scorecard/",
     alias: "api_Companies_scorecard_retrieve",
-    description: `Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, and open SCAR count.`,
+    description: `Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review.`,
     requestFormat: "json",
     parameters: [
       {
@@ -25964,6 +26711,14 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
   },
   {
     method: "get",
+    path: "/api/IncomingInspection/",
+    alias: "api_IncomingInspection_list",
+    description: `Unified inbound-inspection queue: MaterialLots awaiting inspection (PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS), normalized with a &#x60;source&#x60; discriminator and shared status vocabulary.`,
+    requestFormat: "json",
+    response: z.array(IncomingInspectionRow),
+  },
+  {
+    method: "get",
     path: "/api/integration-sync-logs/",
     alias: "api_integration_sync_logs_list",
     description: `Read-only sync log history. Admin/staff only.`,
@@ -26371,6 +27126,21 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: QualityReports,
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/:id/evaluate_receiving/",
+    alias: "api_MaterialLots_evaluate_receiving_retrieve",
+    description: `Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ReceivingVerdict,
   },
   {
     method: "post",
@@ -28554,6 +29324,603 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "get",
+    path: "/api/OutsideProcessShipments/",
+    alias: "api_OutsideProcessShipments_list",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["CLOSED", "RETURNED", "SENT"]).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedOutsideProcessShipmentList,
+  },
+  {
+    method: "post",
+    path: "/api/OutsideProcessShipments/",
+    alias: "api_OutsideProcessShipments_create",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OutsideProcessShipmentRequest,
+      },
+    ],
+    response: OutsideProcessShipment,
+  },
+  {
+    method: "get",
+    path: "/api/OutsideProcessShipments/:id/",
+    alias: "api_OutsideProcessShipments_retrieve",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OutsideProcessShipment,
+  },
+  {
+    method: "put",
+    path: "/api/OutsideProcessShipments/:id/",
+    alias: "api_OutsideProcessShipments_update",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: OutsideProcessShipmentRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OutsideProcessShipment,
+  },
+  {
+    method: "patch",
+    path: "/api/OutsideProcessShipments/:id/",
+    alias: "api_OutsideProcessShipments_partial_update",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedOutsideProcessShipmentRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OutsideProcessShipment,
+  },
+  {
+    method: "delete",
+    path: "/api/OutsideProcessShipments/:id/",
+    alias: "api_OutsideProcessShipments_destroy",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/OutsideProcessShipments/:id/accept/",
+    alias: "api_OutsideProcessShipments_accept_create",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/OutsideProcessShipments/:id/receive_back/",
+    alias: "api_OutsideProcessShipments_receive_back_create",
+    description: `Receive the shipment back and open its return inspection.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "post",
+    path: "/api/OutsideProcessShipments/:id/reject/",
+    alias: "api_OutsideProcessShipments_reject_create",
+    description: `Outside-processing (subcontract) shipments — Flow B.
+
+List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+return-inspection accept/reject) runs through the actions below, which delegate
+to services.mes.outside_process. The return inspection is a QualityReports keyed
+to the shipment and runs the same DWI receiving runtime as incoming lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
+  },
+  {
+    method: "get",
+    path: "/api/OutsideProcessShipments/:id/sample_plan/",
+    alias: "api_OutsideProcessShipments_sample_plan_retrieve",
+    description: `Acceptance-sampling plan for the returned batch (lot size &#x3D; returned count).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SamplePlanResponse,
+  },
+  {
+    method: "get",
+    path: "/api/OutsideProcessShipments/export-excel/",
+    alias: "api_OutsideProcessShipments_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/OutsideProcessShipments/ready_to_ship/",
+    alias: "api_OutsideProcessShipments_ready_to_ship_list",
+    description: `Shipper board: parts staged at outside-process steps (not yet sent), grouped by step/vendor across work orders, ready to dispatch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["CLOSED", "RETURNED", "SENT"]).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedReadyToShipGroupList,
+  },
+  {
+    method: "post",
+    path: "/api/OutsideProcessShipments/send_out/",
+    alias: "api_OutsideProcessShipments_send_out_create",
+    description: `Send a batch of parts out to a subcontract vendor for an outside-process step. Creates the shipment, links the parts, and moves them to AT_OUTSIDE_PROCESS.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SendPartsOutRequestRequest,
+      },
+    ],
+    response: OutsideProcessShipment,
+  },
+  {
+    method: "get",
+    path: "/api/PartApprovals/",
+    alias: "api_PartApprovals_list",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "approval_type",
+        type: "Query",
+        schema: z.enum(["FAI", "PPAP"]).optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CONDITIONAL",
+            "DISQUALIFIED",
+            "EXPIRED",
+            "PENDING",
+            "SUSPENDED",
+          ])
+          .optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedPartApprovalList,
+  },
+  {
+    method: "post",
+    path: "/api/PartApprovals/",
+    alias: "api_PartApprovals_create",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartApprovalRequest,
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "get",
+    path: "/api/PartApprovals/:id/",
+    alias: "api_PartApprovals_retrieve",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "put",
+    path: "/api/PartApprovals/:id/",
+    alias: "api_PartApprovals_update",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartApprovalRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "patch",
+    path: "/api/PartApprovals/:id/",
+    alias: "api_PartApprovals_partial_update",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPartApprovalRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "delete",
+    path: "/api/PartApprovals/:id/",
+    alias: "api_PartApprovals_destroy",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/PartApprovals/:id/disqualify/",
+    alias: "api_PartApprovals_disqualify_create",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartApprovalRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "post",
+    path: "/api/PartApprovals/:id/grant/",
+    alias: "api_PartApprovals_grant_create",
+    description: `Grant (approve) a part approval. Body: {conditional?, effective_date?, expiry_date?}.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartApprovalRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "post",
+    path: "/api/PartApprovals/:id/suspend/",
+    alias: "api_PartApprovals_suspend_create",
+    description: `Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+delegate to the part-approval service. &#x60;grant&#x60; is gated by the
+&#x60;approve_partapproval&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PartApprovalRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: PartApproval,
+  },
+  {
+    method: "get",
+    path: "/api/PartApprovals/export-excel/",
+    alias: "api_PartApprovals_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/PartApprovals/metadata/",
+    alias: "api_PartApprovals_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/PartApprovals/status/",
+    alias: "api_PartApprovals_status_retrieve",
+    description: `Resolve a (part_type, supplier) approval standing — for badges / the
+receiving banner. ?part_type&#x3D;&amp;supplier&#x3D; (both required).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: PartApprovalStatus,
+  },
+  {
+    method: "get",
     path: "/api/Parts/",
     alias: "api_Parts_list",
     description: `Parts CRUD with CSV import/export support.
@@ -29389,6 +30756,16 @@ Import/Export endpoints (auto-configured from model):
         schema: z.string().optional(),
       },
       {
+        name: "requires_part_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "requires_supplier_qualification",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -29724,6 +31101,16 @@ Import/Export endpoints (auto-configured from model):
         name: "part_type",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "requires_part_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "requires_supplier_qualification",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "search",
@@ -31758,6 +33145,16 @@ Usage:
         schema: z.string().optional(),
       },
       {
+        name: "quality_reports__material_lot",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "quality_reports__material_lot__supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "resolution_completed",
         type: "Query",
         schema: z.boolean().optional(),
@@ -32673,6 +34070,7 @@ Usage:
             "LAST_N_PARTS",
             "PERCENTAGE",
             "RANDOM",
+            "VARIABLES",
           ])
           .optional(),
       },
@@ -34964,6 +36362,26 @@ Usage:
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "standalone",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "DECISION",
+            "RECEIVING",
+            "REWORK",
+            "START",
+            "TASK",
+            "TERMINAL",
+            "TIMER",
+          ])
+          .optional(),
+      },
     ],
     response: PaginatedStepsList,
   },
@@ -35294,6 +36712,31 @@ Returns the active + fallback rulesets for a given step`,
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: Steps,
+  },
+  {
+    method: "post",
+    path: "/api/Steps/create_receiving_plan/",
+    alias: "api_Steps_create_receiving_plan_create",
+    description: `Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CreateReceivingPlanInputRequest,
       },
       {
         name: "part_type",
@@ -36365,6 +37808,294 @@ negative range, then assign the final positive values.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/SupplierQualifications/",
+    alias: "api_SupplierQualifications_list",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "basis",
+        type: "Query",
+        schema: z
+          .enum(["AUDIT", "FAI", "HISTORICAL", "PPAP", "SURVEY"])
+          .optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "scope_type",
+        type: "Query",
+        schema: z
+          .enum(["COMMODITY", "PART_TYPE", "SPECIAL_PROCESS"])
+          .optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CONDITIONAL",
+            "DISQUALIFIED",
+            "EXPIRED",
+            "PENDING",
+            "SUSPENDED",
+          ])
+          .optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSupplierQualificationList,
+  },
+  {
+    method: "post",
+    path: "/api/SupplierQualifications/",
+    alias: "api_SupplierQualifications_create",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SupplierQualificationRequest,
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "get",
+    path: "/api/SupplierQualifications/:id/",
+    alias: "api_SupplierQualifications_retrieve",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "put",
+    path: "/api/SupplierQualifications/:id/",
+    alias: "api_SupplierQualifications_update",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SupplierQualificationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "patch",
+    path: "/api/SupplierQualifications/:id/",
+    alias: "api_SupplierQualifications_partial_update",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedSupplierQualificationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "delete",
+    path: "/api/SupplierQualifications/:id/",
+    alias: "api_SupplierQualifications_destroy",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/SupplierQualifications/:id/disqualify/",
+    alias: "api_SupplierQualifications_disqualify_create",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SupplierQualificationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "post",
+    path: "/api/SupplierQualifications/:id/grant/",
+    alias: "api_SupplierQualifications_grant_create",
+    description: `Grant (approve) a qualification. Body: {conditional?, effective_date?, expiry_date?}.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SupplierQualificationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "post",
+    path: "/api/SupplierQualifications/:id/suspend/",
+    alias: "api_SupplierQualifications_suspend_create",
+    description: `Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+(grant / suspend / disqualify) that delegate to the qualification service.
+&#x60;grant&#x60; is gated by the &#x60;approve_supplierqualification&#x60; marker perm.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SupplierQualificationRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SupplierQualification,
+  },
+  {
+    method: "get",
+    path: "/api/SupplierQualifications/export-excel/",
+    alias: "api_SupplierQualifications_export_excel_retrieve",
+    description: `Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/SupplierQualifications/metadata/",
+    alias: "api_SupplierQualifications_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/SupplierQualifications/status/",
+    alias: "api_SupplierQualifications_status_retrieve",
+    description: `Resolve a supplier&#x27;s qualification standing for a scope — for badges /
+the receiving banner. ?supplier&#x3D;&amp;part_type&#x3D; (or &amp;commodity / &amp;special_process).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "commodity",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "special_process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: QualificationStatus,
   },
   {
     method: "get",

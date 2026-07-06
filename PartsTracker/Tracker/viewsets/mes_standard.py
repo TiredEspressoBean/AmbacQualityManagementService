@@ -12,6 +12,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from django.db import transaction
@@ -36,8 +37,10 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer,
     RecordInspectionRequestSerializer, RecordUnitsRequestSerializer, RecordBulkRequestSerializer,
     SamplePlanResponseSerializer, MaterialLotBulkCreateSerializer,
+    IncomingInspectionRowSerializer,
 )
 from Tracker.services.qms import receiving_inspection
+from Tracker.services.qms import incoming_inspection
 from .base import TenantScopedMixin
 from .core import ExcelExportMixin
 
@@ -170,9 +173,15 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # Receiving-inspection queue: lots still needing a disposition.
+        # Receiving-inspection queue: lots still needing a disposition — RECEIVED,
+        # AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE with a
+        # hold_reason, e.g. an unqualified supplier) so they surface and get resolved.
         if self.request.query_params.get('inspection_pending') in ('true', '1'):
-            qs = qs.filter(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
+                | (Q(status='QUARANTINE') & ~Q(hold_reason=''))
+            )
         return qs
 
     def perform_create(self, serializer):
@@ -234,8 +243,12 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
             for m in receiving_inspection.receiving_characteristics(step)
         ]
         ex = receiving_inspection.receiving_execution(lot)
+        # variables_characteristic isn't on the SamplePlan DTO (lot-level); pull it
+        # from the resolved ruleset so the UI knows which characteristic to capture.
+        rs = receiving_inspection.resolve_sampling_ruleset(step, lot.supplier) if step else None
         return Response(SamplePlanResponseSerializer({
             **sp.__dict__,
+            'variables_characteristic_id': rs.variables_characteristic_id if rs else None,
             'characteristics': chars,
             'step_id': step.id if step else None,
             'has_substeps': bool(step and step.substeps.filter(archived=False).exists()),
@@ -352,6 +365,52 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
         return self._qr_response(report)
 
     @extend_schema(
+        request=None,
+        responses={200: inline_serializer(name="ReceivingVerdict", fields={
+            "status": serializers.CharField(),
+            "is_variables": serializers.BooleanField(),
+            "sample_size": serializers.IntegerField(allow_null=True),
+            "accept_number": serializers.IntegerField(allow_null=True),
+            "reject_number": serializers.IntegerField(allow_null=True),
+            "k": serializers.FloatField(allow_null=True),
+            "defectives": serializers.IntegerField(),
+            "units_recorded": serializers.IntegerField(),
+            "readings": serializers.IntegerField(),
+        })},
+        description="Run the lot-acceptance evaluation over the recorded inspection "
+                    "results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) "
+                    "and return the current verdict. Server-authoritative — the DWI "
+                    "unit-by-unit runtime reads this to show ACCEPT/REJECT before the "
+                    "operator commits.",
+    )
+    @action(detail=True, methods=['get'])
+    def evaluate_receiving(self, request, pk=None):
+        from collections import defaultdict
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        report = receiving_inspection.evaluate_lot_acceptance(report)
+        results = list(report.measurements.all())
+        by_unit = defaultdict(list)
+        for r in results:
+            by_unit[r.sample_number].append(r)
+        defectives = sum(1 for rs in by_unit.values()
+                         if any(x.is_within_spec is False for x in rs))
+        return Response({
+            'status': report.status,
+            'is_variables': report.acceptability_constant_k is not None,
+            'sample_size': report.sample_size,
+            'accept_number': report.accept_number,
+            'reject_number': report.reject_number,
+            'k': report.acceptability_constant_k,
+            'defectives': defectives,
+            'units_recorded': len(by_unit),
+            'readings': len(results),
+        })
+
+    @extend_schema(
         request=MaterialLotBulkCreateSerializer,
         responses={
             201: inline_serializer(name="MaterialLotBulkCreateResponse", fields={
@@ -397,6 +456,27 @@ class MaterialLotViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelView
                             status=status.HTTP_400_BAD_REQUEST)
         return Response({"count": len(created), "created_lot_ids": [str(c.id) for c in created]},
                         status=status.HTTP_201_CREATED)
+
+
+class IncomingInspectionViewSet(viewsets.ViewSet):
+    """Unified incoming-inspection worklist — purchased MaterialLots awaiting
+    inspection + OutsideProcessShipments out/returned, in one list keyed by a
+    `source` origin (SAP QM QA32-style). Read-only aggregation; rows carry enough
+    to dispatch the Inspect action to the right runtime."""
+    permission_classes = [IsAuthenticated]
+
+    def get_view_name(self):
+        return "Incoming Inspection"
+
+    @extend_schema(
+        responses=IncomingInspectionRowSerializer(many=True),
+        description="Unified inbound-inspection queue: MaterialLots awaiting inspection "
+                    "(PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS), "
+                    "normalized with a `source` discriminator and shared status vocabulary.",
+    )
+    def list(self, request):
+        rows = incoming_inspection.build_incoming_rows()
+        return Response(IncomingInspectionRowSerializer(rows, many=True).data)
 
 
 # ===== MATERIAL USAGE VIEWSETS =====

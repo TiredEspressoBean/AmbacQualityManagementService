@@ -202,6 +202,19 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Optional sampled-unit index (1..n) — receiving unit-by-unit runtime
+        # stamps it on this unit's measurements so lot-acceptance evaluators can
+        # group by unit / gather the sample. None for per-part DWI.
+        sample_number = request.data.get('sample_number')
+        if sample_number is not None:
+            try:
+                sample_number = int(sample_number)
+            except (TypeError, ValueError):
+                return Response(
+                    {'detail': '`sample_number` must be an integer.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Trusted client IP (edge-set header, not spoofable X-Forwarded-For).
         from Tracker.throttling import get_client_ip
         ip_address = get_client_ip(request)
@@ -221,6 +234,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 marked_not_applicable=bool(request.data.get('marked_not_applicable')),
                 na_reason_code=request.data.get('na_reason_code', '') or '',
                 ip_address=ip_address,
+                sample_number=sample_number,
             )
         except DjangoValidationError as exc:
             return Response(

@@ -335,9 +335,11 @@ paths:
           - CAPA_MAJOR
           - DOCUMENT_RELEASE
           - ECO
+          - FAI
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
+          - PPAP
           - PROCESS_APPROVAL
           - TRAINING_CERT
         description: |-
@@ -351,6 +353,8 @@ paths:
           * `PCR_APPROVAL` - Process Change Request Approval
           * `PCO_APPROVAL` - Process Change Order Approval
           * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
       - in: query
         name: content_type
         schema:
@@ -4019,7 +4023,8 @@ paths:
     get:
       operationId: api_Companies_scorecard_retrieve
       description: Supplier quality scorecard — receiving acceptance/reject rates,
-        CoC compliance, on-time delivery, and open SCAR count.
+        CoC compliance, on-time delivery, open SCAR count, and the recommend-only
+        standing review.
       parameters:
       - in: path
         name: id
@@ -9117,6 +9122,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/IncomingInspection/:
+    get:
+      operationId: api_IncomingInspection_list
+      description: 'Unified inbound-inspection queue: MaterialLots awaiting inspection
+        (PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS),
+        normalized with a `source` discriminator and shared status vocabulary.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncomingInspectionRow'
+          description: ''
   /api/MaterialLots/:
     get:
       operationId: api_MaterialLots_list
@@ -9352,6 +9377,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/evaluate_receiving/:
+    get:
+      operationId: api_MaterialLots_evaluate_receiving_retrieve
+      description: Run the lot-acceptance evaluation over the recorded inspection
+        results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return
+        the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads
+        this to show ACCEPT/REJECT before the operator commits.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceivingVerdict'
           description: ''
   /api/MaterialLots/{id}/open_inspection/:
     post:
@@ -11212,6 +11264,923 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/OutsideProcessShipments/:
+    get:
+      operationId: api_OutsideProcessShipments_list
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CLOSED
+          - RETURNED
+          - SENT
+        description: |-
+          * `SENT` - Sent Out
+          * `RETURNED` - Returned
+          * `CLOSED` - Closed
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOutsideProcessShipmentList'
+          description: ''
+    post:
+      operationId: api_OutsideProcessShipments_create
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+  /api/OutsideProcessShipments/{id}/:
+    get:
+      operationId: api_OutsideProcessShipments_retrieve
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+    put:
+      operationId: api_OutsideProcessShipments_update
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutsideProcessShipmentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+    patch:
+      operationId: api_OutsideProcessShipments_partial_update
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOutsideProcessShipmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOutsideProcessShipmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOutsideProcessShipmentRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+    delete:
+      operationId: api_OutsideProcessShipments_destroy
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/OutsideProcessShipments/{id}/accept/:
+    post:
+      operationId: api_OutsideProcessShipments_accept_create
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/OutsideProcessShipments/{id}/receive_back/:
+    post:
+      operationId: api_OutsideProcessShipments_receive_back_create
+      description: Receive the shipment back and open its return inspection.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/OutsideProcessShipments/{id}/reject/:
+    post:
+      operationId: api_OutsideProcessShipments_reject_create
+      description: |-
+        Outside-processing (subcontract) shipments — Flow B.
+
+        List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+        return-inspection accept/reject) runs through the actions below, which delegate
+        to services.mes.outside_process. The return inspection is a QualityReports keyed
+        to the shipment and runs the same DWI receiving runtime as incoming lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/OutsideProcessShipments/{id}/sample_plan/:
+    get:
+      operationId: api_OutsideProcessShipments_sample_plan_retrieve
+      description: Acceptance-sampling plan for the returned batch (lot size = returned
+        count).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Outside Process Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplePlanResponse'
+          description: ''
+  /api/OutsideProcessShipments/export-excel/:
+    get:
+      operationId: api_OutsideProcessShipments_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/OutsideProcessShipments/ready_to_ship/:
+    get:
+      operationId: api_OutsideProcessShipments_ready_to_ship_list
+      description: 'Shipper board: parts staged at outside-process steps (not yet
+        sent), grouped by step/vendor across work orders, ready to dispatch.'
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CLOSED
+          - RETURNED
+          - SENT
+        description: |-
+          * `SENT` - Sent Out
+          * `RETURNED` - Returned
+          * `CLOSED` - Closed
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReadyToShipGroupList'
+          description: ''
+  /api/OutsideProcessShipments/send_out/:
+    post:
+      operationId: api_OutsideProcessShipments_send_out_create
+      description: Send a batch of parts out to a subcontract vendor for an outside-process
+        step. Creates the shipment, links the parts, and moves them to AT_OUTSIDE_PROCESS.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendPartsOutRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendPartsOutRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendPartsOutRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideProcessShipment'
+          description: ''
+  /api/PartApprovals/:
+    get:
+      operationId: api_PartApprovals_list
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: query
+        name: approval_type
+        schema:
+          type: string
+          enum:
+          - FAI
+          - PPAP
+        description: |-
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CONDITIONAL
+          - DISQUALIFIED
+          - EXPIRED
+          - PENDING
+          - SUSPENDED
+        description: |-
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `CONDITIONAL` - Conditional
+          * `SUSPENDED` - Suspended
+          * `EXPIRED` - Expired
+          * `DISQUALIFIED` - Disqualified
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPartApprovalList'
+          description: ''
+    post:
+      operationId: api_PartApprovals_create
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+  /api/PartApprovals/{id}/:
+    get:
+      operationId: api_PartApprovals_retrieve
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+    put:
+      operationId: api_PartApprovals_update
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+    patch:
+      operationId: api_PartApprovals_partial_update
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartApprovalRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+    delete:
+      operationId: api_PartApprovals_destroy
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/PartApprovals/{id}/disqualify/:
+    post:
+      operationId: api_PartApprovals_disqualify_create
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+  /api/PartApprovals/{id}/grant/:
+    post:
+      operationId: api_PartApprovals_grant_create
+      description: 'Grant (approve) a part approval. Body: {conditional?, effective_date?,
+        expiry_date?}.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+  /api/PartApprovals/{id}/suspend/:
+    post:
+      operationId: api_PartApprovals_suspend_create
+      description: |-
+        Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+        production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+        delegate to the part-approval service. `grant` is gated by the
+        `approve_partapproval` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Approval.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartApprovalRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApproval'
+          description: ''
+  /api/PartApprovals/export-excel/:
+    get:
+      operationId: api_PartApprovals_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/PartApprovals/metadata/:
+    get:
+      operationId: api_PartApprovals_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/PartApprovals/status/:
+    get:
+      operationId: api_PartApprovals_status_retrieve
+      description: |-
+        Resolve a (part_type, supplier) approval standing — for badges / the
+        receiving banner. ?part_type=&supplier= (both required).
+      parameters:
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Part type id (required)
+        required: true
+      - in: query
+        name: supplier
+        schema:
+          type: string
+        description: Supplier id (required)
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartApprovalStatus'
+          description: ''
   /api/PartTypes/:
     get:
       operationId: api_PartTypes_list
@@ -11250,6 +12219,14 @@ paths:
         schema:
           type: string
         description: Filter processes by associated part type UUID
+      - in: query
+        name: requires_part_approval
+        schema:
+          type: boolean
+      - in: query
+        name: requires_supplier_qualification
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -11748,6 +12725,14 @@ paths:
         schema:
           type: string
         description: Filter processes by associated part type UUID
+      - in: query
+        name: requires_part_approval
+        schema:
+          type: boolean
+      - in: query
+        name: requires_supplier_qualification
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -14515,6 +15500,16 @@ paths:
         schema:
           type: string
       - in: query
+        name: quality_reports__material_lot
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: quality_reports__material_lot__supplier
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: resolution_completed
         schema:
           type: boolean
@@ -15667,6 +16662,7 @@ paths:
           - LAST_N_PARTS
           - PERCENTAGE
           - RANDOM
+          - VARIABLES
         description: |-
           * `EVERY_NTH_PART` - Every Nth Part
           * `PERCENTAGE` - Percentage of Parts
@@ -15676,6 +16672,7 @@ paths:
           * `EXACT_COUNT` - Exact Count (No Variance)
           * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
           * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
+          * `VARIABLES` - Variables Sampling (ANSI/ASQ Z1.9)
       - in: query
         name: ruleset
         schema:
@@ -18039,6 +19036,34 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: standalone
+        schema:
+          type: boolean
+        description: True = steps not attached to any process (e.g. purchased-material
+          RIPs).
+      - in: query
+        name: step_type
+        schema:
+          type: string
+          enum:
+          - DECISION
+          - RECEIVING
+          - REWORK
+          - START
+          - TASK
+          - TERMINAL
+          - TIMER
+        description: |-
+          Visual type for flow editor.
+
+          * `TASK` - Task
+          * `START` - Start
+          * `DECISION` - Decision
+          * `REWORK` - Rework
+          * `TIMER` - Timer/Wait
+          * `TERMINAL` - Terminal
+          * `RECEIVING` - Receiving Inspection
       tags:
       - api
       security:
@@ -18497,6 +19522,46 @@ paths:
       - tokenAuth: []
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Steps'
+          description: ''
+  /api/Steps/create_receiving_plan/:
+    post:
+      operationId: api_Steps_create_receiving_plan_create
+      description: Create a process-free RECEIVING step (a purchased-material Receiving
+        Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.
+      parameters:
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter steps by process's part type UUID
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter steps by process UUID (via ProcessStep)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceivingPlanInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateReceivingPlanInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateReceivingPlanInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
           content:
             application/json:
               schema:
@@ -20059,6 +21124,462 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Substep'
+          description: ''
+  /api/SupplierQualifications/:
+    get:
+      operationId: api_SupplierQualifications_list
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: query
+        name: basis
+        schema:
+          type: string
+          enum:
+          - AUDIT
+          - FAI
+          - HISTORICAL
+          - PPAP
+          - SURVEY
+        description: |-
+          * `AUDIT` - Audit
+          * `PPAP` - PPAP
+          * `FAI` - First Article
+          * `SURVEY` - Survey
+          * `HISTORICAL` - Historical
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: scope_type
+        schema:
+          type: string
+          enum:
+          - COMMODITY
+          - PART_TYPE
+          - SPECIAL_PROCESS
+        description: |-
+          * `PART_TYPE` - Part Type
+          * `COMMODITY` - Commodity
+          * `SPECIAL_PROCESS` - Special Process
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CONDITIONAL
+          - DISQUALIFIED
+          - EXPIRED
+          - PENDING
+          - SUSPENDED
+        description: |-
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `CONDITIONAL` - Conditional
+          * `SUSPENDED` - Suspended
+          * `EXPIRED` - Expired
+          * `DISQUALIFIED` - Disqualified
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSupplierQualificationList'
+          description: ''
+    post:
+      operationId: api_SupplierQualifications_create
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+  /api/SupplierQualifications/{id}/:
+    get:
+      operationId: api_SupplierQualifications_retrieve
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+    put:
+      operationId: api_SupplierQualifications_update
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+    patch:
+      operationId: api_SupplierQualifications_partial_update
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierQualificationRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+    delete:
+      operationId: api_SupplierQualifications_destroy
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/SupplierQualifications/{id}/disqualify/:
+    post:
+      operationId: api_SupplierQualifications_disqualify_create
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+  /api/SupplierQualifications/{id}/grant/:
+    post:
+      operationId: api_SupplierQualifications_grant_create
+      description: 'Grant (approve) a qualification. Body: {conditional?, effective_date?,
+        expiry_date?}.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+  /api/SupplierQualifications/{id}/suspend/:
+    post:
+      operationId: api_SupplierQualifications_suspend_create
+      description: |-
+        Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+        (grant / suspend / disqualify) that delegate to the qualification service.
+        `grant` is gated by the `approve_supplierqualification` marker perm.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Supplier Qualification.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierQualificationRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierQualification'
+          description: ''
+  /api/SupplierQualifications/export-excel/:
+    get:
+      operationId: api_SupplierQualifications_export_excel_retrieve
+      description: Export the current queryset to Excel format. Respects all filters,
+        search, and ordering applied to the list view.
+      parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of field names to export (e.g., id,name,status)
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download (e.g., my_export.xlsx)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Excel file download
+          description: ''
+  /api/SupplierQualifications/metadata/:
+    get:
+      operationId: api_SupplierQualifications_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/SupplierQualifications/status/:
+    get:
+      operationId: api_SupplierQualifications_status_retrieve
+      description: |-
+        Resolve a supplier's qualification standing for a scope — for badges /
+        the receiving banner. ?supplier=&part_type= (or &commodity / &special_process).
+      parameters:
+      - in: query
+        name: commodity
+        schema:
+          type: string
+        description: Commodity label (COMMODITY scope)
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Part type id (PART_TYPE scope)
+      - in: query
+        name: special_process
+        schema:
+          type: string
+        description: Special-process label
+      - in: query
+        name: supplier
+        schema:
+          type: string
+        description: Supplier id (required)
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualificationStatus'
           description: ''
   /api/TenantGroups/:
     get:
@@ -31583,6 +33104,8 @@ components:
       - PCR_APPROVAL
       - PCO_APPROVAL
       - PCN_RELEASE
+      - PPAP
+      - FAI
       type: string
       description: |-
         * `DOCUMENT_RELEASE` - Document Release
@@ -31595,6 +33118,8 @@ components:
         * `PCR_APPROVAL` - Process Change Request Approval
         * `PCO_APPROVAL` - Process Change Order Approval
         * `PCN_RELEASE` - Process Change Notice Release
+        * `PPAP` - PPAP
+        * `FAI` - First Article (FAI / AS9102)
     AssemblyRemoveRequest:
       type: object
       description: Serializer for removing a component from assembly
@@ -32050,6 +33575,20 @@ components:
       description: |-
         * `ACTIVE` - Active
         * `SUPERSEDED` - Superseded
+    BasisEnum:
+      enum:
+      - AUDIT
+      - PPAP
+      - FAI
+      - SURVEY
+      - HISTORICAL
+      type: string
+      description: |-
+        * `AUDIT` - Audit
+        * `PPAP` - PPAP
+        * `FAI` - First Article
+        * `SURVEY` - Survey
+        * `HISTORICAL` - Historical
     BatchExecution:
       type: object
       description: |-
@@ -33837,6 +35376,16 @@ components:
           minLength: 1
       required:
       - change_description
+    CreateReceivingPlanInputRequest:
+      type: object
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - part_type
     CreateStepRevisionInputRequest:
       type: object
       properties:
@@ -36954,6 +38503,50 @@ components:
             additionalProperties: {}
       required:
       - data
+    IncomingInspectionRow:
+      type: object
+      description: |-
+        One row of the unified incoming-inspection worklist — a purchased MaterialLot
+        or an OutsideProcessShipment, normalized to a shared shape (SAP QM QA32-style,
+        `source` = the inspection-lot origin). See services.qms.incoming_inspection.
+      properties:
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+        item:
+          type: string
+        supplier:
+          type: string
+        quantity:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+        status_display:
+          type: string
+        received_at:
+          type: string
+          nullable: true
+        step_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - id
+      - item
+      - quantity
+      - received_at
+      - reference
+      - source
+      - status
+      - status_display
+      - step_id
+      - supplier
     IntegrationCatalogItem:
       type: object
       properties:
@@ -37570,6 +39163,11 @@ components:
           maxLength: 20
         status:
           $ref: '#/components/schemas/MaterialLotStatusEnum'
+        hold_reason:
+          type: string
+          readOnly: true
+          description: Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED).
+            Lets the receiving queue explain a hold.
         manufacture_date:
           type: string
           format: date
@@ -37604,6 +39202,7 @@ components:
       required:
       - child_lot_count
       - created_at
+      - hold_reason
       - id
       - lot_number
       - material_type_name
@@ -38611,6 +40210,150 @@ components:
         * `selected` - Selected
         * `deselected` - Deselected
         * `pending` - Pending
+    OutsideProcessShipment:
+      type: object
+      description: |-
+        Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+
+        Read-mostly: shipments are created + transitioned via the viewset's send_out /
+        receive_back / accept / reject actions (services.mes.outside_process), not via
+        plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+        lot size.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        shipment_number:
+          type: string
+          readOnly: true
+          description: Auto-generated, tenant-unique (OSP-YYYY-######).
+        supplier:
+          type: string
+          format: uuid
+        supplier_name:
+          type: string
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+          readOnly: true
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work order the shipped parts belong to (usually one).
+        reference:
+          type: string
+          description: Outbound PO / packing-slip reference.
+          maxLength: 120
+        shipped_at:
+          type: string
+          format: date-time
+          readOnly: true
+        shipped_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        return_reference:
+          type: string
+          description: Inbound packing-slip reference on return.
+          maxLength: 120
+        returned_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        returned_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/OutsideProcessShipmentStatusEnum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - id
+      - quantity
+      - returned_at
+      - returned_by
+      - shipment_number
+      - shipped_at
+      - shipped_by
+      - status
+      - status_display
+      - step
+      - step_name
+      - supplier
+      - supplier_name
+      - updated_at
+    OutsideProcessShipmentRequest:
+      type: object
+      description: |-
+        Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+
+        Read-mostly: shipments are created + transitioned via the viewset's send_out /
+        receive_back / accept / reject actions (services.mes.outside_process), not via
+        plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+        lot size.
+      properties:
+        supplier:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work order the shipped parts belong to (usually one).
+        reference:
+          type: string
+          description: Outbound PO / packing-slip reference.
+          maxLength: 120
+        return_reference:
+          type: string
+          description: Inbound packing-slip reference on return.
+          maxLength: 120
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - step
+      - supplier
+    OutsideProcessShipmentStatusEnum:
+      enum:
+      - SENT
+      - RETURNED
+      - CLOSED
+      type: string
+      description: |-
+        * `SENT` - Sent Out
+        * `RETURNED` - Returned
+        * `CLOSED` - Closed
     PaginatedApprovalRequestList:
       type: object
       required:
@@ -39485,6 +41228,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Orders'
+    PaginatedOutsideProcessShipmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutsideProcessShipment'
+    PaginatedPartApprovalList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartApproval'
     PaginatedPartSelectList:
       type: object
       required:
@@ -39830,6 +41619,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RcaRecord'
+    PaginatedReadyToShipGroupList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadyToShipGroup'
     PaginatedSPCBaselineListList:
       type: object
       required:
@@ -40244,6 +42056,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubstepTranslation'
+    PaginatedSupplierQualificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupplierQualification'
     PaginatedTenantGroupList:
       type: object
       required:
@@ -40612,6 +42447,191 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkOrderList'
+    PartApproval:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        approval_number:
+          type: string
+          readOnly: true
+        part_type:
+          type: string
+          format: uuid
+        part_type_name:
+          type: string
+          readOnly: true
+        supplier:
+          type: string
+          format: uuid
+        supplier_name:
+          type: string
+          readOnly: true
+        approval_type:
+          $ref: '#/components/schemas/PartApprovalTypeEnum'
+        approval_type_display:
+          type: string
+          readOnly: true
+        reference:
+          type: string
+          description: PPAP/FAI package or submission reference (the artifact stays
+            external).
+          maxLength: 120
+        status:
+          allOf:
+          - $ref: '#/components/schemas/QualificationStatusEnum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        approval_request:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - approval_number
+      - approval_request
+      - approval_type_display
+      - approved_by
+      - created_at
+      - id
+      - part_type
+      - part_type_name
+      - status
+      - status_display
+      - supplier
+      - supplier_name
+      - updated_at
+    PartApprovalRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        supplier:
+          type: string
+          format: uuid
+        approval_type:
+          $ref: '#/components/schemas/PartApprovalTypeEnum'
+        reference:
+          type: string
+          description: PPAP/FAI package or submission reference (the artifact stays
+            external).
+          maxLength: 120
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - part_type
+      - supplier
+    PartApprovalStatus:
+      type: object
+      description: Resolved (part_type, supplier) approval standing (the `status`
+        action response).
+      properties:
+        approved:
+          type: boolean
+        status:
+          type: string
+          nullable: true
+        approval_type:
+          type: string
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        days_to_expiry:
+          type: integer
+          nullable: true
+        record_id:
+          type: string
+          nullable: true
+      required:
+      - approval_type
+      - approved
+      - days_to_expiry
+      - expiry_date
+      - record_id
+      - status
+    PartApprovalTypeEnum:
+      enum:
+      - PPAP
+      - FAI
+      type: string
+      description: |-
+        * `PPAP` - PPAP
+        * `FAI` - First Article (FAI / AS9102)
     PartIncrementInputRequest:
       type: object
       properties:
@@ -40784,6 +42804,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        requires_supplier_qualification:
+          type: boolean
+          description: Require an approved SupplierQualification covering the supplier
+            before a received lot of this part type can be accepted into stock.
+        requires_part_approval:
+          type: boolean
+          description: Require an active PartApproval (PPAP/FAI) covering the (part
+            type, supplier) before a received lot of this part type can be accepted
+            into stock.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -40855,6 +42884,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        requires_supplier_qualification:
+          type: boolean
+          description: Require an approved SupplierQualification covering the supplier
+            before a received lot of this part type can be accepted into stock.
+        requires_part_approval:
+          type: boolean
+          description: Require an active PartApproval (PPAP/FAI) covering the (part
+            type, supplier) before a received lot of this part type can be accepted
+            into stock.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -41087,6 +43125,7 @@ components:
       enum:
       - PENDING
       - IN_PROGRESS
+      - AT_OUTSIDE_PROCESS
       - AWAITING_QA
       - READY_FOR_NEXT_STEP
       - COMPLETED
@@ -41104,6 +43143,7 @@ components:
       description: |-
         * `PENDING` - Pending
         * `IN_PROGRESS` - In Progress
+        * `AT_OUTSIDE_PROCESS` - At Outside Process
         * `AWAITING_QA` - Awaiting QA
         * `READY_FOR_NEXT_STEP` - Ready for next step
         * `COMPLETED` - Completed
@@ -42566,6 +44606,84 @@ components:
           nullable: true
         archived:
           type: boolean
+    PatchedOutsideProcessShipmentRequest:
+      type: object
+      description: |-
+        Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+
+        Read-mostly: shipments are created + transitioned via the viewset's send_out /
+        receive_back / accept / reject actions (services.mes.outside_process), not via
+        plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+        lot size.
+      properties:
+        supplier:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+          description: The work order the shipped parts belong to (usually one).
+        reference:
+          type: string
+          description: Outbound PO / packing-slip reference.
+          maxLength: 120
+        return_reference:
+          type: string
+          description: Inbound packing-slip reference on return.
+          maxLength: 120
+        notes:
+          type: string
+        archived:
+          type: boolean
+    PatchedPartApprovalRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        supplier:
+          type: string
+          format: uuid
+        approval_type:
+          $ref: '#/components/schemas/PartApprovalTypeEnum'
+        reference:
+          type: string
+          description: PPAP/FAI package or submission reference (the artifact stays
+            external).
+          maxLength: 120
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        archived:
+          type: boolean
     PatchedPartTypesRequest:
       type: object
       description: |-
@@ -42599,6 +44717,15 @@ components:
           type: string
           nullable: true
           maxLength: 50
+        requires_supplier_qualification:
+          type: boolean
+          description: Require an approved SupplierQualification covering the supplier
+            before a received lot of this part type can be accepted into stock.
+        requires_part_approval:
+          type: boolean
+          description: Require an active PartApproval (PPAP/FAI) covering the (part
+            type, supplier) before a received lot of this part type can be accepted
+            into stock.
         itar_controlled:
           type: boolean
           description: Part type is ITAR-controlled defense article (22 CFR 121 USML)
@@ -43393,7 +45520,7 @@ components:
           maxLength: 10
         strategy:
           type: string
-          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          description: 'Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).'
           maxLength: 4
         gate_metric:
           description: |-
@@ -43725,6 +45852,17 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+        is_outside_process:
+          type: boolean
+          description: 'If True, this step is performed by an outside vendor: parts
+            are sent out (StepExecution send stamps / OutsideProcessShipment) and
+            run a receiving-style return inspection when they come back. See services/mes/outside_process.py.'
+        outside_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default subcontract vendor for this outside-process op (overridable
+            per shipment).
         is_decision_point:
           type: boolean
         decision_type:
@@ -44062,6 +46200,56 @@ components:
           maxLength: 200
         body_blocks:
           description: Translated TipTap document JSON; same shape as Substep.body_blocks.
+        archived:
+          type: boolean
+    PatchedSupplierQualificationRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        supplier:
+          type: string
+          format: uuid
+        scope_type:
+          $ref: '#/components/schemas/ScopeTypeEnum'
+        part_type:
+          type: string
+          format: uuid
+          nullable: true
+        scope_label:
+          type: string
+          description: Commodity or special-process name for COMMODITY/SPECIAL_PROCESS
+            scopes.
+          maxLength: 120
+        basis:
+          oneOf:
+          - $ref: '#/components/schemas/BasisEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
         archived:
           type: boolean
     PatchedTenantAwareUserDetailsRequest:
@@ -45991,6 +48179,51 @@ components:
       - part_type_documents
       - parts_in_qa
       - work_order_documents
+    QualificationStatus:
+      type: object
+      description: Resolved supplier standing for a scope (the `status` action response).
+      properties:
+        qualified:
+          type: boolean
+        status:
+          type: string
+          nullable: true
+        basis:
+          type: string
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        days_to_expiry:
+          type: integer
+          nullable: true
+        record_id:
+          type: string
+          nullable: true
+      required:
+      - basis
+      - days_to_expiry
+      - expiry_date
+      - qualified
+      - record_id
+      - status
+    QualificationStatusEnum:
+      enum:
+      - PENDING
+      - APPROVED
+      - CONDITIONAL
+      - SUSPENDED
+      - EXPIRED
+      - DISQUALIFIED
+      type: string
+      description: |-
+        * `PENDING` - Pending
+        * `APPROVED` - Approved
+        * `CONDITIONAL` - Conditional
+        * `SUSPENDED` - Suspended
+        * `EXPIRED` - Expired
+        * `DISQUALIFIED` - Disqualified
     QualityErrorsList:
       type: object
       description: |-
@@ -46346,6 +48579,13 @@ components:
           nullable: true
           description: Set when this report is a receiving inspection of an incoming
             lot (mutually exclusive with `part`).
+        osp_shipment:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Set when this report is the return inspection of a subcontract
+            shipment (mutually exclusive with `part` / `material_lot`).
         sample_size:
           type: integer
           readOnly: true
@@ -46418,6 +48658,7 @@ components:
       - machine_info
       - material_lot
       - operators_info
+      - osp_shipment
       - part_display
       - part_info
       - personnel_links
@@ -46996,6 +49237,56 @@ components:
         * `NOT_REQUIRED` - Not Required
         * `REQUIRED` - Required
         * `COMPLETED` - Completed
+    ReadyToShipGroup:
+      type: object
+      description: |-
+        One dispatchable group on the shipper board: parts staged at an outside-process
+        step (the dispatch unit), across work orders. See outside_process.build_ready_to_ship_groups.
+      properties:
+        step_id:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+        supplier_id:
+          type: string
+          format: uuid
+          nullable: true
+        supplier_name:
+          type: string
+          nullable: true
+        ready_count:
+          type: integer
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadyToShipPart'
+      required:
+      - parts
+      - ready_count
+      - step_id
+      - step_name
+      - supplier_id
+      - supplier_name
+    ReadyToShipPart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        erp_id:
+          type: string
+        work_order:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+      required:
+      - erp_id
+      - id
+      - status
+      - work_order
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.
@@ -47061,6 +49352,42 @@ components:
       required:
       - measurements
       - sample_number
+    ReceivingVerdict:
+      type: object
+      properties:
+        status:
+          type: string
+        is_variables:
+          type: boolean
+        sample_size:
+          type: integer
+          nullable: true
+        accept_number:
+          type: integer
+          nullable: true
+        reject_number:
+          type: integer
+          nullable: true
+        k:
+          type: number
+          format: double
+          nullable: true
+        defectives:
+          type: integer
+        units_recorded:
+          type: integer
+        readings:
+          type: integer
+      required:
+      - accept_number
+      - defectives
+      - is_variables
+      - k
+      - readings
+      - reject_number
+      - sample_size
+      - status
+      - units_recorded
     RecipientStrategyEnum:
       enum:
       - static
@@ -47389,6 +49716,7 @@ components:
       - EXACT_COUNT
       - AQL
       - C_ZERO
+      - VARIABLES
       type: string
       description: |-
         * `EVERY_NTH_PART` - Every Nth Part
@@ -47399,6 +49727,7 @@ components:
         * `EXACT_COUNT` - Exact Count (No Variance)
         * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
         * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
+        * `VARIABLES` - Variables Sampling (ANSI/ASQ Z1.9)
     SPCBaseline:
       type: object
       description: Full SPC Baseline serializer with all fields and computed properties.
@@ -47951,6 +50280,16 @@ components:
           type: string
         severity:
           type: string
+        method:
+          type: string
+        k:
+          type: number
+          format: double
+          nullable: true
+        variables_characteristic_id:
+          type: string
+          format: uuid
+          nullable: true
         characteristics:
           type: array
           items:
@@ -48219,7 +50558,7 @@ components:
           maxLength: 10
         strategy:
           type: string
-          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          description: 'Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).'
           maxLength: 4
         gate_metric:
           description: |-
@@ -48364,7 +50703,7 @@ components:
           maxLength: 10
         strategy:
           type: string
-          description: 'Acceptance-sampling strategy: C0 (default) or Z14.'
+          description: 'Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables).'
           maxLength: 4
         gate_metric:
           description: |-
@@ -48603,6 +50942,16 @@ components:
       description: |-
         * `sampled` - Per part (sampling)
         * `batch` - Per batch
+    ScopeTypeEnum:
+      enum:
+      - PART_TYPE
+      - COMMODITY
+      - SPECIAL_PROCESS
+      type: string
+      description: |-
+        * `PART_TYPE` - Part Type
+        * `COMMODITY` - Commodity
+        * `SPECIAL_PROCESS` - Special Process
     SendInvitationInputRequest:
       type: object
       properties:
@@ -48634,6 +50983,25 @@ components:
       - invitation_id
       - invitation_url
       - user_email
+    SendPartsOutRequestRequest:
+      type: object
+      properties:
+        step:
+          type: string
+          format: uuid
+        part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        supplier:
+          type: string
+          format: uuid
+        reference:
+          type: string
+      required:
+      - part_ids
+      - step
     SeverityEnum:
       enum:
       - CRITICAL
@@ -48796,6 +51164,14 @@ components:
       - message
       - tenant
       - user
+    SourceEnum:
+      enum:
+      - PURCHASED_LOT
+      - OUTSIDE_PROCESS
+      type: string
+      description: |-
+        * `PURCHASED_LOT` - PURCHASED_LOT
+        * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
     SourceTypeEnum:
       enum:
       - CUSTOMER_RETURN
@@ -48891,6 +51267,21 @@ components:
           oneOf:
           - $ref: '#/components/schemas/DecisionTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        is_outside_process:
+          type: boolean
+          description: 'If True, this step is performed by an outside vendor: parts
+            are sent out (StepExecution send stamps / OutsideProcessShipment) and
+            run a receiving-style return inspection when they come back. See services/mes/outside_process.py.'
+        outside_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default subcontract vendor for this outside-process op (overridable
+            per shipment).
+        outside_supplier_name:
+          type: string
+          readOnly: true
+          nullable: true
         is_terminal:
           type: boolean
         terminal_status:
@@ -48908,6 +51299,7 @@ components:
       required:
       - id
       - name
+      - outside_supplier_name
       - part_type
       - part_type_name
     StepDistributionResponse:
@@ -49675,6 +52067,17 @@ components:
           oneOf:
           - $ref: '#/components/schemas/DecisionTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        is_outside_process:
+          type: boolean
+          description: 'If True, this step is performed by an outside vendor: parts
+            are sent out (StepExecution send stamps / OutsideProcessShipment) and
+            run a receiving-style return inspection when they come back. See services/mes/outside_process.py.'
+        outside_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default subcontract vendor for this outside-process op (overridable
+            per shipment).
         is_terminal:
           type: boolean
         terminal_status:
@@ -49694,7 +52097,9 @@ components:
       - part_type
     StepSamplingRulesUpdateRequest:
       type: object
-      description: Serializer for updating step sampling rules
+      description: |-
+        Update a step's sampling rules — plus its quality gate and acceptance plan,
+        so the flow-editor dialog persists everything in one atomic call.
       properties:
         rules:
           type: array
@@ -49711,6 +52116,53 @@ components:
           nullable: true
           description: Consecutive failures before tightening to the fallback ruleset
             (sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate).
+        gate_metric:
+          type: string
+        gate_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,3})?$
+          nullable: true
+        gate_window:
+          type: string
+        gate_window_n:
+          type: integer
+          nullable: true
+        gate_min_sample:
+          type: integer
+          nullable: true
+        gate_actions:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        gate_capa_type:
+          type: string
+        gate_capa_severity:
+          type: string
+        gate_approval_template:
+          type: string
+          format: uuid
+          nullable: true
+        aql:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
+          nullable: true
+        inspection_level:
+          type: string
+        severity:
+          type: string
+        strategy:
+          type: string
+        variables_characteristic:
+          type: string
+          format: uuid
+          nullable: true
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
       required:
       - rules
     StepSummary:
@@ -49851,6 +52303,40 @@ components:
             tighten_after:
               type: integer
               nullable: true
+            gate_metric:
+              type: string
+            gate_threshold:
+              type: string
+              nullable: true
+            gate_window:
+              type: string
+            gate_window_n:
+              type: integer
+              nullable: true
+            gate_min_sample:
+              type: integer
+              nullable: true
+            gate_actions:
+              type: array
+              items:
+                type: string
+            gate_capa_type:
+              type: string
+            gate_capa_severity:
+              type: string
+            gate_approval_template:
+              type: string
+              format: uuid
+              nullable: true
+            aql:
+              type: string
+              nullable: true
+            inspection_level:
+              type: string
+            severity:
+              type: string
+            strategy:
+              type: string
           readOnly: true
         fallback_ruleset:
           type: object
@@ -49972,6 +52458,17 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+        is_outside_process:
+          type: boolean
+          description: 'If True, this step is performed by an outside vendor: parts
+            are sent out (StepExecution send stamps / OutsideProcessShipment) and
+            run a receiving-style return inspection when they come back. See services/mes/outside_process.py.'
+        outside_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default subcontract vendor for this outside-process op (overridable
+            per shipment).
         is_decision_point:
           type: boolean
         decision_type:
@@ -50080,6 +52577,17 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+        is_outside_process:
+          type: boolean
+          description: 'If True, this step is performed by an outside vendor: parts
+            are sent out (StepExecution send stamps / OutsideProcessShipment) and
+            run a receiving-style return inspection when they come back. See services/mes/outside_process.py.'
+        outside_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default subcontract vendor for this outside-process op (overridable
+            per shipment).
         is_decision_point:
           type: boolean
         decision_type:
@@ -50975,6 +53483,157 @@ components:
       properties:
         reason:
           type: string
+    SupplierQualification:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        qualification_number:
+          type: string
+          readOnly: true
+        supplier:
+          type: string
+          format: uuid
+        supplier_name:
+          type: string
+          readOnly: true
+        scope_type:
+          $ref: '#/components/schemas/ScopeTypeEnum'
+        part_type:
+          type: string
+          format: uuid
+          nullable: true
+        scope_label:
+          type: string
+          description: Commodity or special-process name for COMMODITY/SPECIAL_PROCESS
+            scopes.
+          maxLength: 120
+        scope_display:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/QualificationStatusEnum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        basis:
+          oneOf:
+          - $ref: '#/components/schemas/BasisEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        approval_request:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        qualified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - approval_request
+      - created_at
+      - id
+      - qualification_number
+      - qualified_by
+      - scope_display
+      - status
+      - status_display
+      - supplier
+      - supplier_name
+      - updated_at
+    SupplierQualificationRequest:
+      type: object
+      description: |-
+        Base serializer for SecureModel instances.
+
+        Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+        FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+        lookup queryset to the current-request tenant, so a request body can't
+        reference another tenant's row by PK. The scoped field no-ops on
+        non-tenant target models (User, ContentType, …), so those are unaffected.
+
+        This is why serializers should inherit ``SecureModelMixin`` instead of
+        ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+        guards against FK fields that bypass this.
+
+        NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+        mixin — declare it as the FIRST/sole serializer base. Listing
+        ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+        before it) an MRO error.
+      properties:
+        supplier:
+          type: string
+          format: uuid
+        scope_type:
+          $ref: '#/components/schemas/ScopeTypeEnum'
+        part_type:
+          type: string
+          format: uuid
+          nullable: true
+        scope_label:
+          type: string
+          description: Commodity or special-process name for COMMODITY/SPECIAL_PROCESS
+            scopes.
+          maxLength: 120
+        basis:
+          oneOf:
+          - $ref: '#/components/schemas/BasisEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        effective_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        archived:
+          type: boolean
+      required:
+      - supplier
     SupplierScorecard:
       type: object
       properties:
@@ -51002,6 +53661,15 @@ components:
           type: integer
         open_scar_count:
           type: integer
+        rating:
+          type: string
+          nullable: true
+        rating_reason:
+          type: string
+        recommended_action:
+          type: string
+        recommendation_reason:
+          type: string
       required:
       - coc_compliance
       - lots_accepted
@@ -51011,6 +53679,10 @@ components:
       - on_time_rate
       - open_scar_count
       - promised_lots
+      - rating
+      - rating_reason
+      - recommendation_reason
+      - recommended_action
       - reject_rate
       - supplier_id
     SwitchTenantRequestRequest:

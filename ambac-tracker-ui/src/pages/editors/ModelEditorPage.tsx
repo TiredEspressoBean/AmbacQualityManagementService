@@ -185,6 +185,10 @@ function getPriorityClass(priority?: number): string {
 
 export interface ModelEditorProps<T> {
     title: string;
+    /** Suppress the page-title heading (e.g. when embedded under a tab that
+     *  already labels the surface). The title is still used for search
+     *  placeholders and the "New {title}" button. */
+    hideTitle?: boolean;
     /**
      * The model name - used for:
      * 1. Generating detail links (e.g., `/details/Processes/1`)
@@ -244,6 +248,7 @@ export interface ModelEditorProps<T> {
 
 export function ModelEditorPage<T extends { id: string | number }>({
                                                               title,
+                                                              hideTitle,
                                                               modelName,
                                                               useList,
                                                               sortOptions,
@@ -460,7 +465,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
         // is responsible for its own breathing room from the sidebar/chrome.
         <div className="space-y-4 p-6 pb-24">
             {/* Title */}
-            <h2 className="text-xl font-semibold">{title}</h2>
+            {!hideTitle && <h2 className="text-xl font-semibold">{title}</h2>}
 
             {/* Optional header content (e.g., stats cards) */}
             {headerContent}

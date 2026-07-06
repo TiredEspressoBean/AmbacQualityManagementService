@@ -43,7 +43,7 @@ export default function Layout() {
                             their container divs. Keeping main padding-free is
                             what allows `sticky top-0` on a page's header to
                             pin flush to the chrome bar. */}
-                        <main className="flex-1 overflow-auto">
+                        <main className="flex-1 overflow-auto min-h-0">
                             <div className="container mx-auto justify-center h-full">
                                 <Outlet />
                             </div>

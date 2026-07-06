@@ -4,6 +4,7 @@ from collections import Counter
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.http import HttpResponse
+import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view, extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
 from rest_framework import viewsets, status, filters, serializers
@@ -19,7 +20,7 @@ from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
     # MES Lite models
     Orders, Parts, PartsStatus, WorkOrder, WorkOrderStatus, Steps, PartTypes, Processes,
-    StepExecution, ProcessStatus,
+    StepExecution, ProcessStatus, OutsideProcessShipment,
     # MES Standard models
     Equipments, EquipmentType,
     # Core models
@@ -35,10 +36,15 @@ from Tracker.serializers.mes_lite import (
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
     StepExecutionSerializer, StepExecutionListSerializer, WIPSummarySerializer,
+    OutsideProcessShipmentSerializer, ReadyToShipGroupSerializer,
     # Digital Traveler serializers
     WorkOrderStepHistoryResponseSerializer, PartTravelerResponseSerializer,
 )
-from Tracker.serializers.qms import StepSamplingRulesUpdateSerializer, StepWithResolvedRulesSerializer
+from Tracker.serializers.qms import (
+    StepSamplingRulesUpdateSerializer, StepWithResolvedRulesSerializer,
+    QualityReportsSerializer, SamplePlanResponseSerializer,
+)
+from Tracker.services.mes import outside_process
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ExcelExportMixin, ListMetadataMixin, with_int_pk_schema
 from .base import TenantScopedMixin
@@ -2116,6 +2122,25 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
 
 # ===== STEPS & PROCESS VIEWSETS =====
 
+class StepFilterSet(django_filters.FilterSet):
+    """Steps list filters. `standalone` (no process membership) + `step_type` let the
+    standard list endpoint serve Receiving Inspection Plans — standalone RECEIVING
+    steps — with DRF's built-in pagination, no custom action needed."""
+    standalone = django_filters.BooleanFilter(
+        field_name="process_memberships", lookup_expr="isnull",
+        help_text="True = steps not attached to any process (e.g. purchased-material RIPs).")
+
+    class Meta:
+        model = Steps
+        # Steps link to processes via the ProcessStep junction table.
+        fields = {
+            "process_memberships__process": ["exact"],
+            "process_memberships__process__part_type": ["exact"],
+            "part_type": ["exact"],
+            "step_type": ["exact"],
+        }
+
+
 @extend_schema(parameters=[
     OpenApiParameter(name="process", type=str, location=OpenApiParameter.QUERY, required=False,
                      description="Filter steps by process UUID (via ProcessStep)"),
@@ -2156,12 +2181,7 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
     queryset = Steps.unscoped.all()
     serializer_class = StepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    # Steps are now linked to processes via ProcessStep junction table
-    filterset_fields = {
-        "process_memberships__process": ["exact"],
-        "process_memberships__process__part_type": ["exact"],
-        "part_type": ["exact"],
-    }
+    filterset_class = StepFilterSet
     search_fields = ["part_type__name", "name"]
     ordering_fields = ["part_type__name", "name"]
     ordering = ["name"]
@@ -2200,6 +2220,28 @@ class StepsViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, views
         # Refresh and return the updated step
         step.refresh_from_db()
         return Response(StepsSerializer(step, context={"request": request}).data)
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CreateReceivingPlanInput",
+            fields={"part_type": serializers.UUIDField(),
+                    "name": serializers.CharField(required=False, allow_blank=True)}),
+        responses={201: StepsSerializer},
+        description="Create a process-free RECEIVING step (a purchased-material Receiving "
+                    "Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.")
+    @action(detail=False, methods=["post"], url_path="create_receiving_plan")
+    def create_receiving_plan(self, request):
+        from Tracker.services.qms import receiving_inspection
+        pt_id = request.data.get("part_type")
+        if not pt_id:
+            return Response({"detail": "part_type is required."}, status=status.HTTP_400_BAD_REQUEST)
+        part_type = PartTypes.objects.filter(pk=pt_id).first()
+        if part_type is None:
+            return Response({"detail": "Part type not found."}, status=status.HTTP_404_NOT_FOUND)
+        step = receiving_inspection.create_standalone_receiving_plan(
+            part_type, name=request.data.get("name", ""), user=request.user)
+        return Response(StepsSerializer(step, context={"request": request}).data,
+                        status=status.HTTP_201_CREATED)
 
     @extend_schema(responses=StepWithResolvedRulesSerializer)
     @action(detail=True, methods=["get"])
@@ -2620,7 +2662,7 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
     ordering_fields = ['created_at', 'name', 'updated_at', 'ID_prefix']
     ordering = ['-created_at']
     search_fields = ["name", "ID_prefix"]
-    filterset_fields = ['name']
+    filterset_fields = ['name', 'requires_supplier_qualification', 'requires_part_approval']
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -3009,3 +3051,150 @@ class EquipmentTypeViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixi
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs
+
+
+class OutsideProcessShipmentViewSet(TenantScopedMixin, ExcelExportMixin, viewsets.ModelViewSet):
+    """Outside-processing (subcontract) shipments — Flow B.
+
+    List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+    return-inspection accept/reject) runs through the actions below, which delegate
+    to services.mes.outside_process. The return inspection is a QualityReports keyed
+    to the shipment and runs the same DWI receiving runtime as incoming lots.
+    """
+    queryset = OutsideProcessShipment.unscoped.select_related('supplier', 'step', 'work_order')
+    serializer_class = OutsideProcessShipmentSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter, filters.SearchFilter]
+    search_fields = ['shipment_number', 'reference', 'supplier__name']
+    filterset_fields = ['status', 'supplier', 'step', 'work_order']
+    ordering_fields = ['shipped_at', 'returned_at', 'shipment_number']
+    ordering = ['-shipped_at']
+
+    action_permissions = {
+        'send_out': ['add_outsideprocessshipment'],
+        'receive_back': ['change_outsideprocessshipment'],
+        'accept': ['change_outsideprocessshipment'],
+        'reject': ['change_outsideprocessshipment'],
+    }
+
+    def _qr_response(self, report, status_code=status.HTTP_200_OK):
+        return Response(QualityReportsSerializer(report, context={'request': self.request}).data,
+                        status=status_code)
+
+    def _return_report(self, shipment):
+        return shipment.quality_reports.order_by('-created_at').first()
+
+    @extend_schema(
+        request=inline_serializer(name="SendPartsOutRequest", fields={
+            "step": serializers.UUIDField(),
+            "part_ids": serializers.ListField(child=serializers.UUIDField()),
+            "supplier": serializers.UUIDField(required=False),
+            "reference": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={201: OutsideProcessShipmentSerializer},
+        description="Send a batch of parts out to a subcontract vendor for an outside-process "
+                    "step. Creates the shipment, links the parts, and moves them to AT_OUTSIDE_PROCESS.",
+    )
+    @action(detail=False, methods=['post'], url_path='send_out')
+    def send_out(self, request):
+        step_id = request.data.get('step')
+        part_ids = request.data.get('part_ids') or []
+        if not step_id or not part_ids:
+            return Response({'detail': 'step and part_ids are required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        step = Steps.objects.filter(pk=step_id).first()
+        if step is None:
+            return Response({'detail': 'Step not found.'}, status=status.HTTP_400_BAD_REQUEST)
+        parts = list(Parts.objects.filter(pk__in=part_ids))
+        supplier = None
+        if request.data.get('supplier'):
+            from Tracker.models import Companies
+            supplier = Companies.objects.filter(pk=request.data['supplier']).first()
+        try:
+            shipment = outside_process.send_parts_out(
+                step=step, parts=parts, supplier=supplier,
+                reference=request.data.get('reference', ''), user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(OutsideProcessShipmentSerializer(shipment, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        responses=ReadyToShipGroupSerializer(many=True),
+        description="Shipper board: parts staged at outside-process steps (not yet sent), "
+                    "grouped by step/vendor across work orders, ready to dispatch.",
+    )
+    @action(detail=False, methods=['get'], url_path='ready_to_ship')
+    def ready_to_ship(self, request):
+        data = ReadyToShipGroupSerializer(
+            outside_process.build_ready_to_ship_groups(), many=True).data
+        # This action rides a paginated ModelViewSet, so the generated client types
+        # the response as a paginated envelope — match it (the list is small; the
+        # page params are accepted but unused).
+        return Response({"count": len(data), "next": None, "previous": None, "results": data})
+
+    @extend_schema(request=None, responses={201: QualityReportsSerializer},
+                   description="Receive the shipment back and open its return inspection.")
+    @action(detail=True, methods=['post'], url_path='receive_back')
+    def receive_back(self, request, pk=None):
+        shipment = self.get_object()
+        try:
+            report = outside_process.receive_parts_back(shipment, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report, status.HTTP_201_CREATED)
+
+    @extend_schema(responses={200: SamplePlanResponseSerializer},
+                   description="Acceptance-sampling plan for the returned batch (lot size = returned count).")
+    @action(detail=True, methods=['get'], url_path='sample_plan')
+    def sample_plan(self, request, pk=None):
+        shipment = self.get_object()
+        try:
+            sp = outside_process.sample_plan_for_shipment(shipment)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        step = shipment.step
+        chars = [
+            {'id': m.id, 'label': m.label, 'unit': m.unit or '', 'type': m.type,
+             'nominal': float(m.nominal) if m.nominal is not None else None,
+             'upper_tol': float(m.upper_tol) if m.upper_tol is not None else None,
+             'lower_tol': float(m.lower_tol) if m.lower_tol is not None else None}
+            for m in (step.required_measurements.all() if step else [])
+        ]
+        rs = outside_process.resolve_sampling_ruleset(step, shipment.supplier) if step else None
+        ex = outside_process._return_execution(shipment)
+        return Response(SamplePlanResponseSerializer({
+            **sp.__dict__,
+            'variables_characteristic_id': rs.variables_characteristic_id if rs else None,
+            'characteristics': chars,
+            'step_id': step.id if step else None,
+            'has_substeps': bool(step and step.substeps.filter(archived=False).exists()),
+            'step_execution_id': ex.id if ex else None,
+        }).data)
+
+    @extend_schema(request=None, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        shipment = self.get_object()
+        report = self._return_report(shipment)
+        if report is None:
+            return Response({'detail': 'No return inspection for this shipment.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            report = outside_process.accept_return(report, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)
+
+    @extend_schema(request=None, responses={200: QualityReportsSerializer})
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        shipment = self.get_object()
+        report = self._return_report(shipment)
+        if report is None:
+            return Response({'detail': 'No return inspection for this shipment.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            report = outside_process.reject_return(report, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._qr_response(report)

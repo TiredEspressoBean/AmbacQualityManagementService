@@ -59,12 +59,18 @@ class Command(BaseCommand):
         'Tracker_steps',
         'Tracker_stepexecution',
         'Tracker_steptransitionlog',
+        'Tracker_outsideprocessshipment',
 
         # QMS - Quality Reports
         'Tracker_qualityreports',
         'Tracker_qualityerrorslist',
         'Tracker_quarantinedisposition',
         'Tracker_qaapproval',
+
+        # QMS - Supplier quality / approvals / gates
+        'Tracker_supplierqualification',
+        'Tracker_partapproval',
+        'Tracker_stepgatefiring',
 
         # QMS - Sampling
         'Tracker_samplingruleset',

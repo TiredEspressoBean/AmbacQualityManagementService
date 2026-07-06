@@ -49,6 +49,12 @@ def ensure_membership_for_role(sender, instance, created, **kwargs):
 def auto_create_disposition(sender, instance, created, **kwargs):
     """Create disposition when QualityReport fails"""
     if instance.status == 'FAIL':
+        # Receiving-inspection failures (material_lot QRs) get a *populated* disposition
+        # from the reject flow (RejectDispositionDialog → QuarantineDispositions create,
+        # with type/severity/qty). Auto-creating a bare one here just duplicates it — the
+        # confirmed §15 defect. So auto-create only for in-process (part) failures.
+        if instance.material_lot_id:
+            return
         # Check if disposition already exists for this quality report
         if not instance.dispositions.filter(current_state__in=['OPEN', 'IN_PROGRESS']).exists():
             # Find a QA user to assign to (or use the operator)

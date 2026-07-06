@@ -281,7 +281,7 @@ def linked_document_ids(content_type, object_id):
     from Tracker.models import DocumentLink
 
     return list(
-        DocumentLink.objects.filter(
+        DocumentLink.objects.filter(  # tenant-safe: .objects auto-scopes
             content_type=content_type, object_id=str(object_id), archived=False,
         ).values_list('document_id', flat=True)
     )
@@ -300,7 +300,7 @@ def documents_attached_to(target):
     from Tracker.models import Documents
 
     ct = ContentType.objects.get_for_model(type(target))
-    return Documents.objects.filter(
+    return Documents.objects.filter(  # tenant-safe: .objects auto-scopes
         Q(content_type=ct, object_id=str(target.pk))
         | Q(id__in=linked_document_ids(ct, target.pk))
     ).distinct()

@@ -183,7 +183,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'erp_po_number', 'promised_date',
             'received_date', 'received_by',
             'quantity', 'quantity_remaining', 'unit_of_measure',
-            'status', 'manufacture_date', 'expiration_date',
+            'status', 'hold_reason', 'manufacture_date', 'expiration_date',
             'certificate_of_conformance', 'storage_location',
             'child_lot_count',
             'created_at', 'updated_at', 'archived', 'version',
@@ -191,7 +191,7 @@ class MaterialLotSerializer(SecureModelMixin):
         read_only_fields = (
             'created_at', 'updated_at', 'quantity_remaining',
             'parent_lot_number', 'child_lot_count', 'received_by',
-            'version',
+            'version', 'hold_reason',
         )
 
     # Fields that do NOT trigger a new version — purely operational state.

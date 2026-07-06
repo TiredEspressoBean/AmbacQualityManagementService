@@ -213,6 +213,8 @@ router.register("TenantGroups", TenantGroupViewSet, basename="TenantGroups")
 router.register("Tenants", TenantViewSet, basename="Tenants")
 router.register("TenantLLMProviders", TenantLLMProviderViewSet, basename="TenantLLMProviders")
 router.register("QuarantineDispositions", QuarantineDispositionViewSet, basename="QuarantineDispositions")
+router.register("SupplierQualifications", SupplierQualificationViewSet, basename="SupplierQualifications")
+router.register("PartApprovals", PartApprovalViewSet, basename="PartApprovals")
 router.register("HeatMapAnnotation", HeatMapAnnotationsViewSet, basename="HeatMapAnnotation")
 router.register("ThreeDModels", ThreeDModelViewSet, basename="ThreeDModels")
 
@@ -295,6 +297,12 @@ router.register(r'DowntimeEvents', DowntimeEventViewSet, basename='DowntimeEvent
 # Material Lots & Usage
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
+
+# Outside processing (subcontract shipments — Flow B)
+router.register(r'OutsideProcessShipments', OutsideProcessShipmentViewSet, basename='OutsideProcessShipments')
+
+# Unified incoming-inspection worklist (purchased lots + subcontract returns)
+router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
 
 # Time Entries
 router.register(r'TimeEntries', TimeEntryViewSet, basename='TimeEntries')

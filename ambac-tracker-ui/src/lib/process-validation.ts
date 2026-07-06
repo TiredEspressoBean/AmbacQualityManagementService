@@ -303,6 +303,39 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
     }
   }
 
+  // Quality-gate (aggregate-signal) steps route on the gate firing, so they need an
+  // alternate/reject edge to send parts somewhere (scrap, quarantine, rework, …). This
+  // can apply to ANY node type (a RECEIVING step, a task step) — not just decision-typed
+  // nodes — so it's checked separately. The gate itself only raises CAPA/requires approval;
+  // the routing is the edge, and without it the gate fires but parts have nowhere to go.
+  for (const node of nodes) {
+    const decisionType = (node.data?.decisionType ?? node.data?.decision_type) as string | undefined;
+    if (decisionType !== 'AGGREGATE') continue;
+    // Skip if the decision-node check above already flagged this node's connections.
+    const alreadyFlagged = issues.some(
+      i => i.nodeId === node.id && /(Fail|Pass) connection|no outgoing connections/.test(i.message),
+    );
+    if (alreadyFlagged) continue;
+    const outgoingEdges = edges.filter(e => e.source === node.id);
+    // A reject edge is identified by the "fail" handle (decision nodes) OR by an
+    // explicit ALTERNATE edge_type / "-alt" id (non-decision gate steps, whose
+    // source handle is stripped to the default by the canvas).
+    const hasAlternate = outgoingEdges.some(
+      e =>
+        e.sourceHandle === 'fail' ||
+        (e.data as { edge_type?: string } | undefined)?.edge_type === 'ALTERNATE' ||
+        e.id.endsWith('-alt'),
+    );
+    if (!hasAlternate) {
+      issues.push({
+        type: 'warning',
+        message: `Quality-gate step "${getNodeName(node)}" has no reject/alternate edge — when the gate trips, parts have nowhere to route. Draw an edge (e.g. to a scrap or quarantine node).`,
+        nodeId: node.id,
+        nodeName: getNodeName(node),
+      });
+    }
+  }
+
   // Check rework nodes have max_visits configured
   const reworkNodes = nodes.filter(isReworkNode);
   for (const node of reworkNodes) {

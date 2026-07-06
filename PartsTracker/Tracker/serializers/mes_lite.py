@@ -8,6 +8,7 @@ from Tracker.models import (
     # MES Lite models
     Orders, OrdersStatus, Parts, PartsStatus, WorkOrder, WorkOrderStatus,
     Steps, PartTypes, Processes, StepExecution, ProcessStep, StepEdge, EdgeType,
+    OutsideProcessShipment,
     # MES Standard models
     EquipmentType, Equipments, TimeEntry, MaterialUsage,
     # QMS models
@@ -825,6 +826,8 @@ class StepsSerializer(SecureModelMixin):
             'part_type', 'part_type_info', 'part_type_name',
             # Workflow engine - step type
             'step_type',
+            # Outside processing (subcontract op — Flow B)
+            'is_outside_process', 'outside_supplier',
             # Workflow engine - branching type (edges defined separately in StepEdge)
             'is_decision_point', 'decision_type',
             # Workflow engine - terminal
@@ -1043,6 +1046,7 @@ class WIPSummarySerializer(serializers.Serializer):
 class StepSerializer(SecureModelMixin):
     """Step serializer - just the node properties (no process/order/branching)"""
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
+    outside_supplier_name = serializers.CharField(source="outside_supplier.name", read_only=True, allow_null=True)
 
     class Meta:
         model = Steps
@@ -1058,6 +1062,8 @@ class StepSerializer(SecureModelMixin):
             "requires_first_piece_inspection", "fpi_scope",
             # Workflow engine - step type & behavior
             "step_type", "is_decision_point", "decision_type",
+            # Outside processing (subcontract op — Flow B)
+            "is_outside_process", "outside_supplier", "outside_supplier_name",
             # Workflow engine - terminal
             "is_terminal", "terminal_status",
             # Workflow engine - cycle control
@@ -1106,6 +1112,7 @@ class PartTypesSerializer(SecureModelMixin):
         fields = [
             'id', 'tenant', 'external_id', 'created_at', 'updated_at', 'archived',
             'name', 'ID_prefix', 'ERP_id',
+            'requires_supplier_qualification', 'requires_part_approval',
             'itar_controlled', 'eccn', 'usml_category',
             'default_disassembly_process',
             'version', 'is_current_version', 'previous_version',
@@ -1132,6 +1139,7 @@ class PartTypeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'tenant', 'external_id', 'created_at', 'updated_at',
             'name', 'ID_prefix', 'ERP_id',
+            'requires_supplier_qualification', 'requires_part_approval',
             'itar_controlled', 'eccn', 'usml_category',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -1512,3 +1520,52 @@ class WorkOrderUploadSerializer(serializers.Serializer):
             return work_order
         except ValueError as e:
             raise serializers.ValidationError(str(e))
+
+
+class ReadyToShipPartSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    erp_id = serializers.CharField(allow_blank=True)
+    work_order = serializers.UUIDField(allow_null=True)
+    status = serializers.CharField()
+
+
+class ReadyToShipGroupSerializer(serializers.Serializer):
+    """One dispatchable group on the shipper board: parts staged at an outside-process
+    step (the dispatch unit), across work orders. See outside_process.build_ready_to_ship_groups."""
+    step_id = serializers.UUIDField()
+    step_name = serializers.CharField()
+    supplier_id = serializers.UUIDField(allow_null=True)
+    supplier_name = serializers.CharField(allow_null=True)
+    ready_count = serializers.IntegerField()
+    parts = ReadyToShipPartSerializer(many=True)
+
+
+class OutsideProcessShipmentSerializer(SecureModelMixin):
+    """Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+
+    Read-mostly: shipments are created + transitioned via the viewset's send_out /
+    receive_back / accept / reject actions (services.mes.outside_process), not via
+    plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+    lot size."""
+
+    supplier = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all())
+    step = TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all())
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    step_name = serializers.CharField(source='step.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    quantity = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = OutsideProcessShipment
+        fields = (
+            'id', 'shipment_number', 'supplier', 'supplier_name', 'step', 'step_name',
+            'work_order', 'reference', 'shipped_at', 'shipped_by',
+            'return_reference', 'returned_at', 'returned_by',
+            'status', 'status_display', 'quantity', 'notes',
+            'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = (
+            'shipment_number', 'shipped_at', 'shipped_by', 'returned_at', 'returned_by',
+            'status', 'created_at', 'updated_at',
+            'supplier_name', 'step_name', 'status_display', 'quantity',
+        )

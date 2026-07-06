@@ -46,6 +46,7 @@ def record_dwi_measurement(
     value_string: str = "",
     recorded_by=None,
     equipment: Optional[Equipments] = None,
+    sample_number: Optional[int] = None,
 ) -> StepExecutionMeasurement:
     """Record a DWI MeasurementInput capture.
 
@@ -109,6 +110,7 @@ def record_dwi_measurement(
                 value_string=value_string,
                 recorded_by=recorded_by,
                 equipment=equipment,
+                sample_number=sample_number,
             )
 
     return sem
@@ -124,6 +126,7 @@ def _promote_to_inspection_record(
     value_string: str,
     recorded_by,
     equipment: Optional[Equipments],
+    sample_number: Optional[int] = None,
 ) -> None:
     """Find or create the QualityReports + create a MeasurementResult.
 
@@ -140,7 +143,7 @@ def _promote_to_inspection_record(
     `ncr.opened` event uses the QualityReports id as its idempotency key so
     repeated emits dedupe).
     """
-    from Tracker.models import MaterialLot
+    from Tracker.models import MaterialLot, OutsideProcessShipment
 
     step = step_execution.step
 
@@ -156,21 +159,30 @@ def _promote_to_inspection_record(
             .first()
         )
     else:
-        # Receiving DWI: the subject is a MaterialLot. There is one receiving
-        # inspection per lot (opened by receiving_inspection.open_inspection),
-        # so reuse that lot-keyed report — DWI captures append to it. Cores and
-        # other subjects have no inspection-record promotion path in v1.
+        # Receiving-style DWI: the subject is a MaterialLot (Flow A incoming) or
+        # an OutsideProcessShipment (Flow B subcontract return). One inspection
+        # per subject is opened up front (receiving_inspection.open_inspection /
+        # outside_process.receive_parts_back), so reuse that subject-keyed report —
+        # DWI captures append to it. Cores and other subjects have no
+        # inspection-record promotion path in v1.
         subj = step_execution.subject_object
-        if not isinstance(subj, MaterialLot):
+        if isinstance(subj, MaterialLot):
+            subject_filter = {'material_lot': subj}
+            report = (
+                QualityReports.objects
+                .filter(step=step, material_lot=subj)
+                .order_by('-created_at').first()
+            )
+        elif isinstance(subj, OutsideProcessShipment):
+            subject_filter = {'osp_shipment': subj}
+            report = (
+                QualityReports.objects
+                .filter(step=step, osp_shipment=subj)
+                .order_by('-created_at').first()
+            )
+        else:
             return
-        subject_filter = {'material_lot': subj}
         description_tag = ""
-        report = (
-            QualityReports.objects
-            .filter(step=step, material_lot=subj)
-            .order_by('-created_at')
-            .first()
-        )
 
     is_new_report = report is None
 
@@ -190,13 +202,33 @@ def _promote_to_inspection_record(
     prior_status = report.status
 
     # Auto-evaluates is_within_spec in MeasurementResult.save().
-    MeasurementResult.objects.create(
-        report=report,
-        definition=measurement_definition,
-        value_numeric=value,
-        value_pass_fail=value_string if value_string in ("PASS", "FAIL") else None,
-        created_by=recorded_by,
-    )
+    if sample_number is not None:
+        # Receiving unit-by-unit: exactly one reading per (report, definition, unit).
+        # Idempotent — a re-flush (network retry, or an operator correcting a unit's
+        # reading and re-submitting) UPDATES rather than appending a duplicate, which
+        # would double-count the lot verdict.
+        MeasurementResult.objects.update_or_create(
+            report=report,
+            definition=measurement_definition,
+            sample_number=sample_number,
+            defaults={
+                "value_numeric": value,
+                "value_pass_fail": value_string if value_string in ("PASS", "FAIL") else None,
+                "created_by": recorded_by,
+            },
+        )
+    else:
+        # Part / single-pass DWI: multiple readings of one characteristic are legitimate
+        # (re-measure, a late failing reading that flips the report to FAIL), so append.
+        # (The operator runtime's flush-once guard covers retry duplication here.)
+        MeasurementResult.objects.create(
+            report=report,
+            definition=measurement_definition,
+            value_numeric=value,
+            value_pass_fail=value_string if value_string in ("PASS", "FAIL") else None,
+            created_by=recorded_by,
+            sample_number=sample_number,
+        )
 
     # Recompute report.status from the cumulative measurements: any out-of-
     # spec MeasurementResult → FAIL; otherwise PASS once any measurements

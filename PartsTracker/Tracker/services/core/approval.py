@@ -313,6 +313,19 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
             obj.approval_required = False
             obj.save(update_fields=['approval_status', 'approval_required'])
 
+    elif obj_type == 'PartApproval':
+        # Part-approval gate (PPAP / FAI): a completed approval grants the
+        # (part_type, supplier) record. Rejection suspends it so it can be
+        # re-opened. State transitions live in services.qms.part_approval.
+        from Tracker.services.qms import part_approval as part_approval_svc
+        if status == Approval_Status_Type.APPROVED:
+            part_approval_svc.grant(obj, user=request.get_primary_approver())
+        elif status == Approval_Status_Type.REJECTED:
+            part_approval_svc.suspend(
+                obj, user=request.get_primary_approver(),
+                reason='Rejected during approval.',
+            )
+
     elif obj_type == 'Processes':
         if status == Approval_Status_Type.APPROVED:
             obj.approve(user=request.get_primary_approver())

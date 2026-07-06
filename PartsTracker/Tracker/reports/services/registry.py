@@ -39,6 +39,7 @@ REPORT_ADAPTERS: tuple[str, ...] = (
     "Tracker.reports.adapters.part_id_label.PartIdLabelAdapter",
     "Tracker.reports.adapters.part_id_label_batch.PartIdLabelBatchAdapter",
     "Tracker.reports.adapters.spc.SpcAdapter",
+    "Tracker.reports.adapters.scar.ScarReportAdapter",
 )
 
 

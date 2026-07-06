@@ -1503,3 +1503,82 @@ def scan_work_order_holds_and_overdue():
         held_emitted, overdue_emitted,
     )
     return {'held': held_emitted, 'overdue': overdue_emitted}
+
+
+@shared_task
+def expire_supplier_qualifications():
+    """Celery Beat task: flip active SupplierQualifications past their expiry_date
+    to EXPIRED. Cross-tenant via `.all_tenants`; each expire runs in its tenant
+    context. Returns a summary for observability."""
+    from django.utils import timezone
+    from Tracker.models import SupplierQualification
+    from Tracker.services.qms import supplier_qualification as svc
+
+    today = timezone.now().date()
+    expired = 0
+    due = (
+        SupplierQualification.all_tenants
+        .filter(status__in=SupplierQualification.ACTIVE_STATUSES,
+                expiry_date__isnull=False, expiry_date__lt=today)
+        .iterator()
+    )
+    for qual in due:
+        with tenant_context(str(qual.tenant_id)):
+            svc.expire(qual)
+            expired += 1
+
+    logger.info("expire_supplier_qualifications: expired=%d", expired)
+    return {'status': 'success', 'expired': expired}
+
+
+@shared_task
+def review_supplier_standings():
+    """Celery Beat task (RECOMMEND-ONLY): for each supplier with receiving history,
+    read its scorecard and emit `supplier.standing_review` when a qualification review
+    is warranted. **Never transitions** a qualification — a human confirms. Cross-tenant
+    via `.all_tenants`; each review runs in its tenant context."""
+    from Tracker.models import Companies, MaterialLot
+    from Tracker.services.qms import supplier_standing as svc
+
+    supplier_ids = (
+        MaterialLot.all_tenants
+        .filter(status__in=['ACCEPTED', 'REJECTED'], supplier__isnull=False)
+        .values_list('supplier_id', flat=True).distinct()
+    )
+    reviewed = 0
+    flagged = 0
+    for company in Companies.all_tenants.filter(id__in=list(supplier_ids)).iterator():
+        with tenant_context(str(company.tenant_id)):
+            rec = svc.review_and_notify(company)
+            reviewed += 1
+            if rec.recommended_action != svc.ACTION_NONE:
+                flagged += 1
+
+    logger.info("review_supplier_standings: reviewed=%d flagged=%d", reviewed, flagged)
+    return {'status': 'success', 'reviewed': reviewed, 'flagged': flagged}
+
+
+@shared_task
+def expire_part_approvals():
+    """Celery Beat task: flip active PartApprovals past their expiry_date to
+    EXPIRED. Cross-tenant via `.all_tenants`; each expire runs in its tenant
+    context. Returns a summary for observability."""
+    from django.utils import timezone
+    from Tracker.models import PartApproval
+    from Tracker.services.qms import part_approval as svc
+
+    today = timezone.now().date()
+    expired = 0
+    due = (
+        PartApproval.all_tenants
+        .filter(status__in=PartApproval.ACTIVE_STATUSES,
+                expiry_date__isnull=False, expiry_date__lt=today)
+        .iterator()
+    )
+    for approval in due:
+        with tenant_context(str(approval.tenant_id)):
+            svc.expire(approval)
+            expired += 1
+
+    logger.info("expire_part_approvals: expired=%d", expired)
+    return {'status': 'success', 'expired': expired}

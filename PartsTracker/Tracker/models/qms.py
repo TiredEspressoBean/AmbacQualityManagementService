@@ -382,8 +382,8 @@ class QualityReports(SecureModel):
         related_name='quality_reports',
         help_text="Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).",
     )
-    """The incoming material lot this report inspects (receiving inspection). Exactly one of
-    `part` / `material_lot` is set — enforced by a CheckConstraint (mirrors StepTransitionLog)."""
+    """The incoming material lot this report inspects (receiving inspection). At most one of
+    `part` / `material_lot` / `osp_shipment` is set — enforced by a CheckConstraint."""
 
     sample_size = models.PositiveIntegerField(null=True, blank=True,
         help_text="Acceptance-sampling sample size (n) snapshot at inspection time.")
@@ -394,6 +394,24 @@ class QualityReports(SecureModel):
     defectives_found = models.PositiveIntegerField(null=True, blank=True,
         help_text="Bulk/attribute capture: number of defectives found across the sample "
                   "(used when units aren't measured individually). Null = per-unit capture.")
+    # Z1.9 variables snapshot — set instead of Ac/Re when the plan is variables.
+    # A non-null k is the "this report is variables" signal for the evaluator.
+    acceptability_constant_k = models.FloatField(null=True, blank=True,
+        help_text="Z1.9 acceptability constant (k) snapshot; accept when x̄/s index ≥ k.")
+    variables_characteristic = models.ForeignKey(
+        'Tracker.MeasurementDefinition', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='variables_reports',
+        help_text="The characteristic measured for a Z1.9 variables acceptance decision.")
+
+    # ===== OUTSIDE-PROCESS RETURN INSPECTION (Flow B) =====
+    osp_shipment = models.ForeignKey(
+        'Tracker.OutsideProcessShipment', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='quality_reports',
+        help_text="Set when this report is the return inspection of a subcontract shipment "
+                  "(mutually exclusive with `part` / `material_lot`).",
+    )
+    """The returned outside-process shipment this report inspects. At most one of
+    `part` / `material_lot` / `osp_shipment` is set (subject-agnostic acceptance)."""
 
     class Meta:
         verbose_name_plural = 'Error Reports'
@@ -413,12 +431,18 @@ class QualityReports(SecureModel):
                 condition=models.Q(report_number__isnull=False) & ~models.Q(report_number=''),
                 name='qualityreport_tenant_number_uniq'
             ),
-            # A report targets a part OR an incoming lot, never both. `part` is
-            # legitimately nullable (general anomaly reports), so this is "not both"
-            # rather than "exactly one" — keeps existing part-less rows valid.
+            # A report targets at most one subject — a part, an incoming lot, or a
+            # returned outside-process shipment — never two at once. `part` is
+            # legitimately nullable (general anomaly reports), so this is
+            # "at most one" (pairwise not-both) rather than "exactly one", which
+            # keeps existing subject-less rows valid.
             models.CheckConstraint(
-                check=~(models.Q(part__isnull=False) & models.Q(material_lot__isnull=False)),
-                name='qualityreport_not_part_and_lot',
+                check=(
+                    ~(models.Q(part__isnull=False) & models.Q(material_lot__isnull=False))
+                    & ~(models.Q(part__isnull=False) & models.Q(osp_shipment__isnull=False))
+                    & ~(models.Q(material_lot__isnull=False) & models.Q(osp_shipment__isnull=False))
+                ),
+                name='qualityreport_at_most_one_subject',
             ),
         ]
 
@@ -426,7 +450,7 @@ class QualityReports(SecureModel):
         """
         Returns a summary string indicating which part the report refers to and the date.
         """
-        subject = self.material_lot or self.part
+        subject = self.material_lot or self.osp_shipment or self.part
         if self.report_number:
             return f"{self.report_number} - {subject}"
         return f"Quality Report for {subject} on {self.created_at.date()}"
@@ -943,6 +967,192 @@ class CapaStatus(models.TextChoices):
     PENDING_VERIFICATION = 'PENDING_VERIFICATION', 'Pending Verification'
     CLOSED = 'CLOSED', 'Closed'
     CANCELLED = 'CANCELLED', 'Cancelled'
+
+
+class SupplierQualification(SecureModel):
+    """Approved-supplier-list / qualification record: a supplier approved for a
+    scope (part type, commodity, or special process), with a lifecycle + expiry.
+
+    The ASL is the set of records with an active, in-date APPROVED/CONDITIONAL
+    status — a derived query, not a separate table. Re-qualification creates a new
+    record (history preserved); status changes are auditlog-tracked mutations.
+    Lifecycle transitions live in services/qms/supplier_qualification.py — save()
+    only auto-fills the sequence number.
+    """
+
+    SCOPE_PART_TYPE = 'PART_TYPE'
+    SCOPE_COMMODITY = 'COMMODITY'
+    SCOPE_SPECIAL_PROCESS = 'SPECIAL_PROCESS'
+    SCOPE_TYPE_CHOICES = [
+        (SCOPE_PART_TYPE, 'Part Type'),
+        (SCOPE_COMMODITY, 'Commodity'),
+        (SCOPE_SPECIAL_PROCESS, 'Special Process'),
+    ]
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('CONDITIONAL', 'Conditional'),
+        ('SUSPENDED', 'Suspended'),
+        ('EXPIRED', 'Expired'),
+        ('DISQUALIFIED', 'Disqualified'),
+    ]
+    ACTIVE_STATUSES = ('APPROVED', 'CONDITIONAL')
+
+    BASIS_CHOICES = [
+        ('AUDIT', 'Audit'),
+        ('PPAP', 'PPAP'),
+        ('FAI', 'First Article'),
+        ('SURVEY', 'Survey'),
+        ('HISTORICAL', 'Historical'),
+    ]
+
+    qualification_number = models.CharField(max_length=20, editable=False)
+    supplier = models.ForeignKey('Tracker.Companies', on_delete=models.CASCADE, related_name='qualifications')
+    scope_type = models.CharField(max_length=20, choices=SCOPE_TYPE_CHOICES, default=SCOPE_PART_TYPE)
+    part_type = models.ForeignKey(
+        'Tracker.PartTypes', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='supplier_qualifications',
+        help_text='Scope target when scope_type=PART_TYPE.')
+    scope_label = models.CharField(
+        max_length=120, blank=True,
+        help_text='Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes.')
+
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    basis = models.CharField(max_length=15, choices=BASIS_CHOICES, blank=True)
+    effective_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
+    approval_request = models.ForeignKey(
+        'Tracker.ApprovalRequest', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    qualified_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    notes = models.TextField(blank=True)
+    documents = GenericRelation('Documents')
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Supplier Qualification'
+        verbose_name_plural = 'Supplier Qualifications'
+        permissions = [
+            ('approve_supplierqualification', 'Can grant/approve supplier qualifications'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'qualification_number'],
+                name='supplierqualification_tenant_number_uniq'),
+        ]
+        indexes = [
+            models.Index(fields=['supplier', 'status'], name='squal_supplier_status_idx'),
+            models.Index(fields=['status', 'expiry_date'], name='squal_status_expiry_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.qualification_number} — {self.supplier.name} [{self.status}]"
+
+    @property
+    def scope_display(self):
+        if self.scope_type == self.SCOPE_PART_TYPE and self.part_type_id:
+            return self.part_type.name
+        return self.scope_label or self.get_scope_type_display()
+
+    def save(self, *args, **kwargs):
+        if not self.qualification_number:
+            self.qualification_number = self._generate_number()
+        super().save(*args, **kwargs)
+
+    def _generate_number(self):
+        from Tracker.utils.sequences import generate_next_sequence
+        year = timezone.now().year
+        return generate_next_sequence(
+            queryset=SupplierQualification.objects,
+            number_field='qualification_number',
+            prefix=f'SQUAL-{year}-',
+        )
+
+
+class PartApproval(SecureModel):
+    """Part-approval gate: a (part_type, supplier) approved for production via **PPAP**
+    (auto/IATF) or **FAI / AS9102** (aero), with a lifecycle + expiry. The receiving gate
+    checks for an active (APPROVED/CONDITIONAL), in-date record for the lot's
+    (part_type, supplier). Re-approval creates a new record (history preserved); status
+    changes are auditlog-tracked mutations. Lifecycle transitions live in
+    services/qms/part_approval.py; save() only auto-fills the sequence number.
+
+    Approval-STATE only — full PPAP-element / AS9102 form management stays external
+    (consistent with SupplierQualification and the change_control customer-notification flag).
+    """
+
+    APPROVAL_PPAP = 'PPAP'
+    APPROVAL_FAI = 'FAI'
+    APPROVAL_TYPE_CHOICES = [
+        (APPROVAL_PPAP, 'PPAP'),
+        (APPROVAL_FAI, 'First Article (FAI / AS9102)'),
+    ]
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('CONDITIONAL', 'Conditional'),
+        ('SUSPENDED', 'Suspended'),
+        ('EXPIRED', 'Expired'),
+        ('DISQUALIFIED', 'Disqualified'),
+    ]
+    ACTIVE_STATUSES = ('APPROVED', 'CONDITIONAL')
+
+    approval_number = models.CharField(max_length=20, editable=False)
+    part_type = models.ForeignKey(
+        'Tracker.PartTypes', on_delete=models.CASCADE, related_name='part_approvals')
+    supplier = models.ForeignKey(
+        'Tracker.Companies', on_delete=models.CASCADE, related_name='part_approvals')
+    approval_type = models.CharField(max_length=10, choices=APPROVAL_TYPE_CHOICES, default=APPROVAL_PPAP)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    reference = models.CharField(
+        max_length=120, blank=True,
+        help_text='PPAP/FAI package or submission reference (the artifact stays external).')
+    effective_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
+    approval_request = models.ForeignKey(
+        'Tracker.ApprovalRequest', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    notes = models.TextField(blank=True)
+    documents = GenericRelation('Documents')
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Part Approval'
+        verbose_name_plural = 'Part Approvals'
+        permissions = [
+            ('approve_partapproval', 'Can grant/approve part approvals'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'approval_number'],
+                name='partapproval_tenant_number_uniq'),
+        ]
+        indexes = [
+            models.Index(fields=['part_type', 'supplier', 'status'], name='partappr_pt_sup_status_idx'),
+            models.Index(fields=['status', 'expiry_date'], name='partappr_status_expiry_idx'),
+        ]
+
+    def __str__(self):
+        pt = self.part_type.name if self.part_type_id else '—'
+        sup = self.supplier.name if self.supplier_id else '—'
+        return f"{self.approval_number} — {pt} / {sup} [{self.status}]"
+
+    def save(self, *args, **kwargs):
+        if not self.approval_number:
+            self.approval_number = self._generate_number()
+        super().save(*args, **kwargs)
+
+    def _generate_number(self):
+        from Tracker.utils.sequences import generate_next_sequence
+        year = timezone.now().year
+        return generate_next_sequence(
+            queryset=PartApproval.objects,
+            number_field='approval_number',
+            prefix=f'PA-{year}-',
+        )
 
 
 class CAPA(SecureModel):

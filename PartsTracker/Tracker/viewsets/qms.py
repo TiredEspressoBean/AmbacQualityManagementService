@@ -15,7 +15,8 @@ from rest_framework.filters import OrderingFilter
 
 from Tracker.models import (
     # QMS models
-    QualityReports, QualityErrorsList, QuarantineDisposition,
+    QualityReports, QualityErrorsList, QuarantineDisposition, SupplierQualification,
+    PartApproval,
     CAPA, CapaTasks, RcaRecord, CapaVerification,
     FiveWhys, Fishbone,
     ThreeDModel, HeatMapAnnotations,
@@ -26,6 +27,8 @@ from Tracker.models import (
 )
 from Tracker.serializers.qms import (
     QualityReportsSerializer, QualityErrorsListSerializer, QuarantineDispositionSerializer,
+    SupplierQualificationSerializer, QualificationStatusSerializer,
+    PartApprovalSerializer, PartApprovalStatusSerializer,
     SamplingRuleSetSerializer, SamplingRuleSerializer, MeasurementDefinitionSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
@@ -86,7 +89,10 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
 
     # Fixed filterset fields - these should be actual model fields, not SerializerMethodField names
     filterset_fields = ["disposition_number", "current_state", "disposition_type", "resolution_completed",
-                        "assigned_to", "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name"]
+                        "assigned_to", "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
+                        # Held-lots surface + RTV loop: reach the rejected lot / its supplier through the
+                        # linked receiving quality reports (no denormalized FK on the disposition).
+                        "quality_reports__material_lot", "quality_reports__material_lot__supplier"]
 
     # Search fields should be actual model fields that can be searched
     search_fields = ["disposition_number", "description", "resolution_notes", "assigned_to__first_name",
@@ -111,10 +117,12 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
         if getattr(self, 'swagger_fake_view', False):
             return QuarantineDisposition.objects.none()
         qs = super().get_queryset()
+        # distinct(): the quality_reports__material_lot filters join the M2M, which
+        # can otherwise yield a disposition once per matching quality report.
         return qs.select_related('assigned_to',
                                                              'resolution_completed_by',
                                                              'part__part_type').prefetch_related(
-            'quality_reports', 'documents')
+            'quality_reports', 'documents').distinct()
 
     @action(detail=True, methods=['post'], url_path='close')
     def close(self, request, pk=None):
@@ -128,6 +136,174 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, ExcelEx
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(disposition).data)
+
+
+class SupplierQualificationViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+    """Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+    (grant / suspend / disqualify) that delegate to the qualification service.
+    `grant` is gated by the `approve_supplierqualification` marker perm."""
+    queryset = SupplierQualification.unscoped.all()
+    serializer_class = SupplierQualificationSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_fields = ['supplier', 'scope_type', 'part_type', 'status', 'basis']
+    search_fields = ['qualification_number', 'scope_label', 'supplier__name', 'part_type__name']
+    ordering_fields = ['qualification_number', 'status', 'expiry_date', 'created_at', 'updated_at']
+    ordering = ['-updated_at']
+
+    action_permissions = {
+        'grant': ['approve_supplierqualification'],
+        # suspend/disqualify mutate an existing record → change, not add (the CRUD default).
+        'suspend': ['change_supplierqualification'],
+        'disqualify': ['change_supplierqualification'],
+    }
+    crud_exempt_actions = {'grant', 'suspend', 'disqualify'}
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return SupplierQualification.objects.none()
+        return super().get_queryset().select_related('supplier', 'part_type', 'qualified_by')
+
+    @action(detail=True, methods=['post'], url_path='grant')
+    def grant(self, request, pk=None):
+        """Grant (approve) a qualification. Body: {conditional?, effective_date?, expiry_date?}."""
+        from Tracker.services.qms import supplier_qualification as svc
+        qualification = self.get_object()
+        try:
+            svc.grant(
+                qualification, user=request.user,
+                conditional=bool(request.data.get('conditional', False)),
+                effective_date=request.data.get('effective_date') or None,
+                expiry_date=request.data.get('expiry_date') or None,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(qualification).data)
+
+    @action(detail=True, methods=['post'], url_path='suspend')
+    def suspend(self, request, pk=None):
+        from Tracker.services.qms import supplier_qualification as svc
+        qualification = self.get_object()
+        svc.suspend(qualification, user=request.user, reason=request.data.get('reason', ''))
+        return Response(self.get_serializer(qualification).data)
+
+    @action(detail=True, methods=['post'], url_path='disqualify')
+    def disqualify(self, request, pk=None):
+        from Tracker.services.qms import supplier_qualification as svc
+        qualification = self.get_object()
+        svc.disqualify(qualification, user=request.user, reason=request.data.get('reason', ''))
+        return Response(self.get_serializer(qualification).data)
+
+    @extend_schema(
+        responses=QualificationStatusSerializer,
+        parameters=[
+            OpenApiParameter(name='supplier', description='Supplier id (required)', required=True, type=str),
+            OpenApiParameter(name='part_type', description='Part type id (PART_TYPE scope)', required=False, type=str),
+            OpenApiParameter(name='commodity', description='Commodity label (COMMODITY scope)', required=False, type=str),
+            OpenApiParameter(name='special_process', description='Special-process label', required=False, type=str),
+        ],
+    )
+    @action(detail=False, methods=['get'], url_path='status')
+    def status_for(self, request):
+        """Resolve a supplier's qualification standing for a scope — for badges /
+        the receiving banner. ?supplier=&part_type= (or &commodity / &special_process)."""
+        from Tracker.models import Companies, PartTypes
+        from Tracker.services.qms import supplier_qualification as svc
+
+        supplier_id = request.query_params.get('supplier')
+        if not supplier_id:
+            return Response({'detail': 'supplier is required'}, status=status.HTTP_400_BAD_REQUEST)
+        supplier = Companies.objects.filter(pk=supplier_id).first()
+        part_type = None
+        pt_id = request.query_params.get('part_type')
+        if pt_id:
+            part_type = PartTypes.objects.filter(pk=pt_id).first()
+        standing = svc.resolve_status(
+            supplier=supplier, part_type=part_type,
+            commodity=request.query_params.get('commodity'),
+            special_process=request.query_params.get('special_process'),
+        )
+        return Response(QualificationStatusSerializer(standing).data)
+
+
+class PartApprovalViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):
+    """Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+    production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+    delegate to the part-approval service. `grant` is gated by the
+    `approve_partapproval` marker perm."""
+    queryset = PartApproval.unscoped.all()
+    serializer_class = PartApprovalSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_fields = ['part_type', 'supplier', 'approval_type', 'status']
+    search_fields = ['approval_number', 'part_type__name', 'supplier__name']
+    ordering_fields = ['approval_number', 'status', 'expiry_date', 'created_at', 'updated_at']
+    ordering = ['-updated_at']
+
+    action_permissions = {
+        'grant': ['approve_partapproval'],
+        # suspend/disqualify mutate an existing record → change, not add (the CRUD default).
+        'suspend': ['change_partapproval'],
+        'disqualify': ['change_partapproval'],
+    }
+    crud_exempt_actions = {'grant', 'suspend', 'disqualify'}
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return PartApproval.objects.none()
+        return super().get_queryset().select_related('part_type', 'supplier', 'approved_by')
+
+    @action(detail=True, methods=['post'], url_path='grant')
+    def grant(self, request, pk=None):
+        """Grant (approve) a part approval. Body: {conditional?, effective_date?, expiry_date?}."""
+        from Tracker.services.qms import part_approval as svc
+        approval = self.get_object()
+        try:
+            svc.grant(
+                approval, user=request.user,
+                conditional=bool(request.data.get('conditional', False)),
+                effective_date=request.data.get('effective_date') or None,
+                expiry_date=request.data.get('expiry_date') or None,
+            )
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(approval).data)
+
+    @action(detail=True, methods=['post'], url_path='suspend')
+    def suspend(self, request, pk=None):
+        from Tracker.services.qms import part_approval as svc
+        approval = self.get_object()
+        svc.suspend(approval, user=request.user, reason=request.data.get('reason', ''))
+        return Response(self.get_serializer(approval).data)
+
+    @action(detail=True, methods=['post'], url_path='disqualify')
+    def disqualify(self, request, pk=None):
+        from Tracker.services.qms import part_approval as svc
+        approval = self.get_object()
+        svc.disqualify(approval, user=request.user, reason=request.data.get('reason', ''))
+        return Response(self.get_serializer(approval).data)
+
+    @extend_schema(
+        responses=PartApprovalStatusSerializer,
+        parameters=[
+            OpenApiParameter(name='part_type', description='Part type id (required)', required=True, type=str),
+            OpenApiParameter(name='supplier', description='Supplier id (required)', required=True, type=str),
+        ],
+    )
+    @action(detail=False, methods=['get'], url_path='status')
+    def status_for(self, request):
+        """Resolve a (part_type, supplier) approval standing — for badges / the
+        receiving banner. ?part_type=&supplier= (both required)."""
+        from Tracker.models import Companies, PartTypes
+        from Tracker.services.qms import part_approval as svc
+
+        pt_id = request.query_params.get('part_type')
+        supplier_id = request.query_params.get('supplier')
+        if not pt_id or not supplier_id:
+            return Response({'detail': 'part_type and supplier are required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        part_type = PartTypes.objects.filter(pk=pt_id).first()
+        supplier = Companies.objects.filter(pk=supplier_id).first()
+        standing = svc.resolve_status(part_type=part_type, supplier=supplier)
+        return Response(PartApprovalStatusSerializer(standing).data)
 
 
 # ===== SAMPLING VIEWSETS =====

@@ -123,6 +123,9 @@ from .mes_lite import (
     # Step execution (workflow tracking)
     StepExecution,
 
+    # Outside processing (subcontract ops — Flow B)
+    OutsideProcessShipment,
+
     # Step requirements (workflow engine)
     RequirementType,
     StepRequirement,
@@ -223,6 +226,8 @@ from .qms import (
     EquipmentUsage,
     QaApproval,
     QuarantineDisposition,
+    SupplierQualification,
+    PartApproval,
 
     # Step transitions
     StepTransitionLog,
@@ -421,6 +426,7 @@ __all__ = [
     'WorkOrderStatus',
     'ProcessStatus',
     'StepExecution',
+    'OutsideProcessShipment',
     'RequirementType',
     'StepRequirement',
     'DecisionDataMissing',
@@ -475,6 +481,8 @@ __all__ = [
     'EquipmentUsage',
     'QaApproval',
     'QuarantineDisposition',
+    'SupplierQualification',
+    'PartApproval',
     'StepTransitionLog',
     'ModelProcessingStatus',
     'ThreeDModel',

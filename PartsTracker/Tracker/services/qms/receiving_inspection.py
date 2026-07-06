@@ -16,10 +16,14 @@ Domain errors raise ``ValueError`` (the viewset maps to HTTP 400).
 """
 from __future__ import annotations
 
+import logging
+
 from django.db import transaction
 
 from Tracker.services.mes import inventory
 from Tracker.services.qms.acceptance_sampling import compute_sample_plan
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_receiving_step(part_type):
@@ -36,6 +40,26 @@ def resolve_sampling_ruleset(step, supplier):
     from Tracker.models import SamplingRuleSet
     base = SamplingRuleSet.objects.filter(step=step, active=True)
     return base.filter(supplier=supplier).first() or base.filter(supplier__isnull=True).first()
+
+
+# ── Receiving Inspection Plans (RIPs) — purchased material, process-free ──────
+# A RIP is a standalone RECEIVING step (no process membership): the incoming-
+# inspection plan for purchased material, authored on the Supply page. RECEIVING
+# steps that live ON a process (OSP returns, in-workflow receiving nodes) belong
+# to that process and are authored in the flow editor — they are NOT RIPs here.
+
+def create_standalone_receiving_plan(part_type, name="", user=None):
+    """Create a process-free RECEIVING step (a purchased-material RIP) for a part type.
+    Deliberately does NOT reuse an in-process RECEIVING step — those belong to their
+    process; a RIP is always standalone."""
+    from Tracker.models import Steps
+    return Steps.objects.create(
+        tenant=part_type.tenant,
+        part_type=part_type,
+        step_type="RECEIVING",
+        name=name or f"Receiving — {part_type.name}",
+        description="Incoming inspection plan for purchased material.",
+    )
 
 
 def _plan_for(lot, step):
@@ -92,6 +116,14 @@ def route_received_lot(lot, user):
     """
     if lot.status != "RECEIVED":
         return None
+    # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
+    # for this part type is quarantined and flagged rather than flowing to stock.
+    if _held_for_unqualified_supplier(lot):
+        return None
+    # Part-approval gate (soft hold): a lot whose (part type, supplier) has no
+    # active part approval (PPAP / FAI) is quarantined and flagged.
+    if _held_for_unapproved_part(lot):
+        return None
     step = resolve_receiving_step(lot.material_type) if lot.material_type_id else None
     if step is None:
         inventory.mark_dock_to_stock(lot)
@@ -100,6 +132,94 @@ def route_received_lot(lot, user):
         return open_inspection(lot, user)
     except ValueError:
         return None  # leave RECEIVED → visible in the queue
+
+
+def _held_for_unqualified_supplier(lot) -> bool:
+    """Soft-hold a received lot whose part type requires supplier qualification and
+    whose supplier has no active qualification covering it. Quarantines + emits
+    `supplier.unqualified`. Returns True when the lot was held."""
+    part_type = lot.material_type if lot.material_type_id else None
+    if part_type is None or not getattr(part_type, "requires_supplier_qualification", False):
+        return False
+
+    from Tracker.services.qms.supplier_qualification import is_supplier_qualified
+    if is_supplier_qualified(supplier=lot.supplier, part_type=part_type):
+        return False
+
+    inventory.quarantine_lot(lot)
+    lot.hold_reason = "SUPPLIER_UNQUALIFIED"
+    lot.save(update_fields=["hold_reason"])
+    _emit_supplier_unqualified(lot)
+    return True
+
+
+def _emit_supplier_unqualified(lot) -> None:
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import SupplierUnqualifiedPayload
+
+    supplier = lot.supplier
+    part_type = lot.material_type
+    payload = SupplierUnqualifiedPayload(
+        id=str(lot.id),
+        tenant_id=str(lot.tenant_id) if lot.tenant_id else "",
+        material_lot_id=str(lot.id),
+        lot_number=lot.lot_number,
+        supplier_id=str(supplier.id) if supplier else None,
+        supplier_name=supplier.name if supplier else "",
+        part_type_id=str(part_type.id) if part_type else None,
+        part_type_name=part_type.name if part_type else "",
+    )
+    emit(
+        "supplier.unqualified",
+        tenant=lot.tenant,
+        payload=payload,
+        correlation_id=f"materiallot:{lot.id}",
+        idempotency_key=f"supplier.unqualified:materiallot:{lot.id}",
+    )
+
+
+def _held_for_unapproved_part(lot) -> bool:
+    """Soft-hold a received lot whose part type requires part approval and whose
+    (part type, supplier) has no active part approval (PPAP / FAI). Quarantines +
+    emits `part.unapproved`. Returns True when the lot was held."""
+    part_type = lot.material_type if lot.material_type_id else None
+    if part_type is None or not getattr(part_type, "requires_part_approval", False):
+        return False
+
+    from Tracker.services.qms.part_approval import is_part_approved
+    if is_part_approved(part_type=part_type, supplier=lot.supplier):
+        return False
+
+    inventory.quarantine_lot(lot)
+    lot.hold_reason = "PART_UNAPPROVED"
+    lot.save(update_fields=["hold_reason"])
+    _emit_part_unapproved(lot)
+    return True
+
+
+def _emit_part_unapproved(lot) -> None:
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import PartUnapprovedPayload
+
+    supplier = lot.supplier
+    part_type = lot.material_type
+    payload = PartUnapprovedPayload(
+        id=str(lot.id),
+        tenant_id=str(lot.tenant_id) if lot.tenant_id else "",
+        material_lot_id=str(lot.id),
+        lot_number=lot.lot_number,
+        supplier_id=str(supplier.id) if supplier else None,
+        supplier_name=supplier.name if supplier else "",
+        part_type_id=str(part_type.id) if part_type else None,
+        part_type_name=part_type.name if part_type else "",
+    )
+    emit(
+        "part.unapproved",
+        tenant=lot.tenant,
+        payload=payload,
+        correlation_id=f"materiallot:{lot.id}",
+        idempotency_key=f"part.unapproved:materiallot:{lot.id}",
+    )
 
 
 def open_inspection(lot, user):
@@ -124,6 +244,10 @@ def open_inspection(lot, user):
         raise ValueError("No RECEIVING step configured for this part type.")
 
     sp = _plan_for(lot, step)
+    # For a Z1.9 variables plan, snapshot k + the measured characteristic so the
+    # evaluator can apply the x̄/s vs k rule. Resolve the ruleset for the characteristic.
+    rs = resolve_sampling_ruleset(step, lot.supplier) if sp.method else None
+    variables_char = rs.variables_characteristic if rs else None
 
     with transaction.atomic():
         StepExecution.objects.create(
@@ -143,6 +267,8 @@ def open_inspection(lot, user):
             sample_size=sp.sample_size,
             accept_number=sp.accept_number,
             reject_number=sp.reject_number,
+            acceptability_constant_k=sp.k,
+            variables_characteristic=variables_char,
         )
         if user is not None and user.is_authenticated:
             report.personnel_links.create(user=user, role="INSPECTOR")
@@ -246,6 +372,12 @@ def evaluate_lot_acceptance(report):
     """
     from collections import defaultdict
 
+    # Z1.9 variables: a non-null k means decide on x̄/s vs k, not defective-count.
+    if report.acceptability_constant_k is not None:
+        _evaluate_variables_lot(report)
+        _fire_lot_gate(report)
+        return report
+
     n = report.sample_size or 0
     results = list(report.measurements.all())
     if results:
@@ -272,6 +404,55 @@ def evaluate_lot_acceptance(report):
         status = "PASS"
     else:
         status = "PENDING"
+
+    if status != report.status:
+        report.status = status
+        report.save(update_fields=["status"])
+    _fire_lot_gate(report)
+    return report
+
+
+def _fire_lot_gate(report):
+    """Fire the receiving step's quality gate for this lot (auto-SCAR / hold /
+    require-approval), mirroring the in-process trigger in `quality_report.py`.
+    Best-effort — a gate failure never breaks the acceptance evaluation; idempotent
+    per (ruleset, step, lot) via `StepGateFiring`."""
+    lot = report.material_lot if report.material_lot_id else None
+    step = report.step
+    if lot is None or step is None:
+        return
+    rs = resolve_sampling_ruleset(step, getattr(lot, "supplier", None))
+    if rs is None:
+        return
+    try:
+        from Tracker.services.qms.quality_gate import evaluate_step_gate
+        evaluate_step_gate(ruleset=rs, material_lot=lot, trigger=report)
+    except Exception:
+        logger.exception("Lot quality gate failed (report=%s)", report.pk)
+
+
+def _evaluate_variables_lot(report):
+    """Z1.9 verdict: gather the sample's readings for the measured characteristic,
+    derive USL/LSL from its tolerances, and apply x̄/s vs k. Stays PENDING until the
+    full sample of n is recorded."""
+    from Tracker.services.qms.acceptance_sampling import evaluate_variables
+
+    n = report.sample_size or 0
+    char = report.variables_characteristic
+    if char is None:
+        return report  # misconfigured Z1.9 plan (no characteristic) → leave PENDING
+
+    values = [float(r.value_numeric) for r in report.measurements.all()
+              if r.definition_id == char.id and r.value_numeric is not None]
+
+    usl = (float(char.nominal) + float(char.upper_tol)) if (char.nominal is not None and char.upper_tol is not None) else None
+    lsl = (float(char.nominal) - float(char.lower_tol)) if (char.nominal is not None and char.lower_tol is not None) else None
+
+    if len(values) < max(n, 2) or (usl is None and lsl is None):
+        status = "PENDING"
+    else:
+        res = evaluate_variables(values=values, usl=usl, lsl=lsl, k=report.acceptability_constant_k)
+        status = "PASS" if res["accept"] else "FAIL"
 
     if status != report.status:
         report.status = status

@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { useParams, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
 import { useRetrieveParts } from "@/hooks/parts";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Truck } from "lucide-react";
 import { QaProgressSection } from "@/components/qa-progress-section";
 import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
@@ -45,6 +45,10 @@ export function WorkOrderDetailPage() {
     });
 
     const allParts = allPartsData?.results || [];
+
+    // Parts currently out at a subcontract vendor (Flow B). The send-out /
+    // receive-back actions live on the Control page — this is a link there.
+    const atOspCount = allParts.filter((p) => p.part_status === "AT_OUTSIDE_PROCESS").length;
 
     // Check if work order is overdue
     const isOverdue = workOrder?.expected_completion
@@ -120,6 +124,18 @@ export function WorkOrderDetailPage() {
                                 <AlertTriangle className="h-3 w-3" />
                                 Overdue
                             </Badge>
+                        )}
+                        {atOspCount > 0 && (
+                            <Link
+                                to="/workorder/$workOrderId/control"
+                                params={{ workOrderId }}
+                                title="Manage send-out / receive-back on the Control page"
+                            >
+                                <Badge variant="outline" className="text-xs flex items-center gap-1 hover:bg-accent">
+                                    <Truck className="h-3 w-3" />
+                                    {atOspCount} at outside process
+                                </Badge>
+                            </Link>
                         )}
                     </div>
                 </div>

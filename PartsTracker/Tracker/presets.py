@@ -62,6 +62,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_orders', 'view_workorder', 'view_parts', 'view_parttypes',
     'view_processes', 'view_steps', 'view_processstep', 'view_stepedge',
     'view_stepexecution', 'view_steptransitionlog', 'view_stepmeasurementrequirement',
+    'view_outsideprocessshipment',
     'view_companies', 'view_orderviewer', 'view_externalapiorderidentifier',
     # DWI (digital work instructions)
     'view_substep', 'view_substepcompletion', 'view_substepresource',
@@ -87,6 +88,8 @@ STAFF_VIEW_PERMISSIONS = [
     'view_qualityreports', 'view_qualityerrorslist', 'view_qualityreportdefect',
     'view_qaapproval', 'view_quarantinedisposition',
     'view_qualityreportequipment', 'view_qualityreportpersonnel',
+    # Supplier quality / part approval / quality gates
+    'view_supplierqualification', 'view_partapproval', 'view_stepgatefiring',
     # CAPA & RCA
     'view_capa', 'view_capatasks', 'view_capataskassignee', 'view_capaverification',
     'view_rcarecord', 'view_fishbone', 'view_fivewhys', 'view_rootcause',
@@ -153,6 +156,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_workorder', 'change_workorder',
     'add_parts', 'change_parts',
     'add_stepexecution', 'change_stepexecution',
+    # Outside processing (subcontract send-out / receive-back — Flow B).
+    # delete is opted out (retired via status/void), like other operational records.
+    'add_outsideprocessshipment', 'change_outsideprocessshipment',
     # (steptransitionlog is service-written and DB-immutable — view only)
     # Production exceptions
     'add_workorderhold', 'change_workorderhold',
@@ -199,6 +205,10 @@ STAFF_OPERATIONAL_WRITE = [
     'add_qualityreportdefect', 'change_qualityreportdefect',
     'add_qaapproval', 'change_qaapproval',
     'add_quarantinedisposition', 'change_quarantinedisposition',
+    # Supplier quality / part approval (records managed by QA; delete is opted
+    # out — retired via status, not destroyed. `approve_*` live in SOD below.)
+    'add_supplierqualification', 'change_supplierqualification',
+    'add_partapproval', 'change_partapproval',
     'add_qualityreportequipment', 'change_qualityreportequipment',
     'add_qualityreportpersonnel', 'change_qualityreportpersonnel',
     # CAPA & RCA — anyone can raise and work; approval verbs are SoD-gated
@@ -308,6 +318,9 @@ SOD_APPROVAL_PERMISSIONS = [
     'approve_capa', 'close_capa', 'verify_capa',
     'review_rca',
     'approve_disposition', 'close_disposition',
+    # Supplier quality / part approval grant authority (the `grant` action's
+    # marker perm) — QA Manager / Tenant Admin tier, like other approve verbs.
+    'approve_supplierqualification', 'approve_partapproval',
     # Approver routing — who is eligible to approve what
     'add_approverassignment', 'change_approverassignment', 'delete_approverassignment',
     'add_groupapproverassignment', 'change_groupapproverassignment', 'delete_groupapproverassignment',

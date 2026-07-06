@@ -873,13 +873,26 @@ class CompanyViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, vie
         "on_time_rate": serializers.FloatField(allow_null=True),
         "promised_lots": serializers.IntegerField(),
         "open_scar_count": serializers.IntegerField(),
+        "rating": serializers.CharField(allow_null=True),
+        "rating_reason": serializers.CharField(),
+        # Recommend-only standing review (never auto-transitions; a human confirms
+        # via the qualification lifecycle). Surfaced as a badge on the scorecard.
+        "recommended_action": serializers.CharField(),  # NONE | REVIEW_CONDITIONAL | REVIEW_SUSPEND | REVIEW_RESTORE
+        "recommendation_reason": serializers.CharField(),
     })}, description="Supplier quality scorecard — receiving acceptance/reject rates, "
-                     "CoC compliance, on-time delivery, and open SCAR count.")
+                     "CoC compliance, on-time delivery, open SCAR count, and the "
+                     "recommend-only standing review.")
     @action(detail=True, methods=['get'])
     def scorecard(self, request, pk=None):
         from Tracker.services.qms.supplier_scorecard import compute_supplier_scorecard
+        from Tracker.services.qms.supplier_standing import evaluate_supplier_standing
         supplier = self.get_object()
-        return Response(compute_supplier_scorecard(supplier).__dict__)
+        rec = evaluate_supplier_standing(supplier)
+        return Response({
+            **compute_supplier_scorecard(supplier).__dict__,
+            "recommended_action": rec.recommended_action,
+            "recommendation_reason": rec.reason,
+        })
 
 
 class UserDetailsView(BaseUserDetailsView):

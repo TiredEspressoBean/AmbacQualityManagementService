@@ -250,3 +250,192 @@ register_event(EventType(
     ),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# supplier.unqualified — a lot was received from a supplier not qualified for it
+# =============================================================================
+
+@dataclass(frozen=True)
+class SupplierUnqualifiedPayload:
+    """Payload for `supplier.unqualified`. Fired when a received lot is soft-held
+    because its supplier has no active qualification for the part type."""
+
+    id: str                   # MaterialLot id; correlation id source
+    tenant_id: str
+    material_lot_id: str
+    lot_number: str
+    supplier_id: str | None
+    supplier_name: str
+    part_type_id: str | None
+    part_type_name: str
+
+    @classmethod
+    def sample(cls) -> 'SupplierUnqualifiedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-00000000010a',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            material_lot_id='00000000-0000-0000-0000-00000000010a',
+            lot_number='LOT-2026-0007',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+            part_type_id='00000000-0000-0000-0000-00000000002a',
+            part_type_name='Injector Body',
+        )
+
+
+register_event(EventType(
+    code='supplier.unqualified',
+    label='Unqualified Supplier Receipt',
+    domain='Quality',
+    payload_schema=SupplierUnqualifiedPayload,
+    default_channels=['in_app', 'email'],
+    default_recipient_groups=['QA Manager', 'Purchasing'],
+    default_on=True,
+    transactional=False,
+    description='A received lot was held because its supplier is not qualified for the part type.',
+    external_routable=False,
+))
+
+
+# =============================================================================
+# part.unapproved — a lot was received for a (part type, supplier) with no
+# active part approval (PPAP / FAI) covering it
+# =============================================================================
+
+@dataclass(frozen=True)
+class PartUnapprovedPayload:
+    """Payload for `part.unapproved`. Fired when a received lot is soft-held
+    because its (part type, supplier) has no active part approval (PPAP/FAI)."""
+
+    id: str                   # MaterialLot id; correlation id source
+    tenant_id: str
+    material_lot_id: str
+    lot_number: str
+    supplier_id: str | None
+    supplier_name: str
+    part_type_id: str | None
+    part_type_name: str
+
+    @classmethod
+    def sample(cls) -> 'PartUnapprovedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-00000000010b',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            material_lot_id='00000000-0000-0000-0000-00000000010b',
+            lot_number='LOT-2026-0008',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+            part_type_id='00000000-0000-0000-0000-00000000002a',
+            part_type_name='Injector Body',
+        )
+
+
+register_event(EventType(
+    code='part.unapproved',
+    label='Unapproved Part Receipt',
+    domain='Quality',
+    payload_schema=PartUnapprovedPayload,
+    default_channels=['in_app', 'email'],
+    default_recipient_groups=['QA Manager', 'Purchasing'],
+    default_on=True,
+    transactional=False,
+    description='A received lot was held because its (part type, supplier) has no active part approval (PPAP/FAI).',
+    external_routable=False,
+))
+
+
+# =============================================================================
+# supplier.standing_review — a supplier's scorecard crossed a threshold; review
+# its qualification standing (RECOMMEND-ONLY — no automatic status change)
+# =============================================================================
+
+@dataclass(frozen=True)
+class SupplierStandingReviewPayload:
+    """Payload for `supplier.standing_review`. Fired when a supplier's scorecard
+    warrants reviewing its qualification standing. Recommend-only: the system does
+    NOT transition the qualification — a human confirms via the SQ lifecycle."""
+
+    id: str                     # supplier id; correlation source
+    tenant_id: str
+    supplier_id: str
+    supplier_name: str
+    rating: str                 # scorecard tier 'A' | 'B' | 'C'
+    recommended_action: str     # 'REVIEW_CONDITIONAL' | 'REVIEW_SUSPEND' | 'REVIEW_RESTORE'
+    reason: str
+
+    @classmethod
+    def sample(cls) -> 'SupplierStandingReviewPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000b1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+            rating='C',
+            recommended_action='REVIEW_SUSPEND',
+            reason='Scorecard C — 1 open SCAR(s). Recommend suspension review.',
+        )
+
+
+register_event(EventType(
+    code='supplier.standing_review',
+    label='Supplier Standing Review',
+    domain='Quality',
+    payload_schema=SupplierStandingReviewPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['QA Manager'],
+    default_on=True,
+    transactional=False,
+    description=('A supplier scorecard crossed a threshold; review its qualification '
+                 'standing. Recommend-only — no automatic status change.'),
+    external_routable=False,
+))
+
+
+# =============================================================================
+# supplier.qualification_expired — a SupplierQualification passed its expiry_date
+# and was flipped to EXPIRED by the daily beat task
+# =============================================================================
+
+@dataclass(frozen=True)
+class SupplierQualificationExpiredPayload:
+    """Payload for `supplier.qualification_expired`. Fired when the daily beat
+    task expires a qualification past its expiry_date. The supplier is no longer
+    on the ASL for this scope — a QA manager should re-qualify or reroute sourcing."""
+
+    id: str                     # qualification id; correlation source
+    tenant_id: str
+    qualification_id: str
+    qualification_number: str
+    supplier_id: str
+    supplier_name: str
+    scope: str                  # scope_display (part type name / commodity / process)
+    expiry_date: str            # ISO date
+
+    @classmethod
+    def sample(cls) -> 'SupplierQualificationExpiredPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000c1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            qualification_id='00000000-0000-0000-0000-0000000000c1',
+            qualification_number='SQ-000123',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+            scope='Injector Body',
+            expiry_date='2026-06-30',
+        )
+
+
+register_event(EventType(
+    code='supplier.qualification_expired',
+    label='Supplier Qualification Expired',
+    domain='Quality',
+    payload_schema=SupplierQualificationExpiredPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['QA Manager'],
+    default_on=True,
+    transactional=False,
+    description=('A supplier qualification passed its expiry date and was flipped to '
+                 'EXPIRED. The supplier is off the ASL for this scope until re-qualified.'),
+    external_routable=False,
+))

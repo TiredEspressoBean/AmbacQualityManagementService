@@ -924,7 +924,7 @@ export const coreDisassemblyRoute = createRoute({
 export const materialLotsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/production/material-lots',
-    component: lazyRouteComponent(() => import("@/pages/production/MaterialLotsPage"), "MaterialLotsPage"),
+    component: lazyRouteComponent(() => import("@/pages/production/MaterialsPage"), "MaterialsPage"),
 });
 export const receiveLotsBatchRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -941,10 +941,68 @@ export const receivingInspectionRoute = createRoute({
     path: '/production/receiving-inspection/$lotId',
     component: lazyRouteComponent(() => import("@/pages/production/ReceivingInspectionPage"), "ReceivingInspectionPage"),
 });
+export const incomingHubRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/incoming',
+    component: lazyRouteComponent(() => import("@/pages/production/IncomingHubPage"), "IncomingHubPage"),
+});
+export const outsideProcessingBoardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/outside-processing',
+    component: lazyRouteComponent(() => import("@/pages/production/OutsideProcessingBoardPage"), "OutsideProcessingBoardPage"),
+});
+export const receivingPlansRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/receiving-plans',
+    component: lazyRouteComponent(() => import("@/pages/production/ReceivingInspectionPlansPage"), "ReceivingInspectionPlansPage"),
+});
+export const receivingPlanEditorRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/receiving-plans/$stepId',
+    component: lazyRouteComponent(() => import("@/pages/production/ReceivingInspectionPlanEditorPage"), "ReceivingInspectionPlanEditorPage"),
+});
+// Standalone (process-free) DWI authoring for a receiving plan. Reuses the same
+// SubstepEditorPage as the in-process flow editor — that page tolerates a
+// missing processId (no "back to process flow" link, falls back to the plan).
+export const receivingPlanSubstepsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/receiving-plans/$stepId/substeps',
+    component: lazyRouteComponent(() => import("@/pages/editors/SubstepEditorPage"), "SubstepEditorPage"),
+});
 export const supplierQualityRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/production/supplier-quality',
     component: lazyRouteComponent(() => import("@/pages/production/SupplierQualityPage"), "SupplierQualityPage"),
+});
+export const supplierQualificationsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/supplier-qualifications',
+    component: lazyRouteComponent(() => import("@/pages/production/SupplierQualificationsPage"), "SupplierQualificationsPage"),
+});
+export const supplierQualificationNewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/supplier-qualifications/new',
+    component: lazyRouteComponent(() => import("@/pages/production/SupplierQualificationFormPage"), "SupplierQualificationFormPage"),
+});
+export const supplierQualificationEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/supplier-qualifications/$qualId/edit',
+    component: lazyRouteComponent(() => import("@/pages/production/SupplierQualificationFormPage"), "SupplierQualificationFormPage"),
+});
+export const partApprovalsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/part-approvals',
+    component: lazyRouteComponent(() => import("@/pages/production/PartApprovalsPage"), "PartApprovalsPage"),
+});
+export const partApprovalNewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/part-approvals/new',
+    component: lazyRouteComponent(() => import("@/pages/production/PartApprovalFormPage"), "PartApprovalFormPage"),
+});
+export const partApprovalEditRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/production/part-approvals/$approvalId/edit',
+    component: lazyRouteComponent(() => import("@/pages/production/PartApprovalFormPage"), "PartApprovalFormPage"),
 });
 
 export const harvestedComponentsRoute = createRoute({
@@ -981,11 +1039,23 @@ const operatorSubstepRuntimeRoute = createRoute({
     validateSearch: (search: Record<string, unknown>) => ({
         part: typeof search.part === 'string' ? search.part : undefined,
         workOrder: typeof search.workOrder === 'string' ? search.workOrder : undefined,
+        // Receiving inspection: the MaterialLot subject of this execution (no part/WO).
+        // Without it the runtime can't route back to the receiving page on complete.
+        material_lot: typeof search.material_lot === 'string' ? search.material_lot : undefined,
+        // OSP return inspection: the OutsideProcessShipment subject of this execution.
+        osp_shipment: typeof search.osp_shipment === 'string' ? search.osp_shipment : undefined,
         execution: typeof search.execution === 'string' ? search.execution : undefined,
+        // Current substep index — drives the player + refresh/kiosk resume.
+        at: search.at != null && Number.isFinite(Number(search.at)) ? Number(search.at) : undefined,
+        // Receiving unit-by-unit: which sampled unit (1..n) is being inspected.
+        unit: search.unit != null && Number.isFinite(Number(search.unit)) ? Number(search.unit) : undefined,
+        // Serial queue of remaining part ids (StartWorkDialog multi-select).
+        queue: typeof search.queue === 'string' ? search.queue : undefined,
+        debug: typeof search.debug === 'string' ? search.debug : undefined,
     }),
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, myNotificationsRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreDisassemblyRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, supplierQualityRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
+const routeTree = rootRoute.addChildren([homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, EditOrdersPartsFormRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, samplingRulesCreateRoute, samplingRulesEditRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, myNotificationsRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreDisassemblyRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, incomingHubRoute, outsideProcessingBoardRoute, receivingPlansRoute, receivingPlanEditorRoute, receivingPlanSubstepsRoute, supplierQualityRoute, supplierQualificationsRoute, supplierQualificationNewRoute, supplierQualificationEditRoute, partApprovalsRoute, partApprovalNewRoute, partApprovalEditRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
 
 // Create router with context
 export function createAppRouter(queryClient: QueryClient) {

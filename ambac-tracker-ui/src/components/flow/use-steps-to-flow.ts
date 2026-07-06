@@ -37,6 +37,11 @@ export interface StepData {
   // First Piece Inspection
   requires_first_piece_inspection?: boolean;
   fpi_scope?: string;
+  // Outside processing (subcontract op — the node owns the whole step: send out →
+  // vendor → return → inspect). Set on a RECEIVING step to make it an OSP node.
+  is_outside_process?: boolean;
+  outside_supplier?: string | null;
+  outside_supplier_name?: string | null;
   // 4c — live part distribution at this step (work-order runtime overlay).
   liveMetrics?: {
     total: number;
@@ -150,6 +155,10 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         passThreshold: step.pass_threshold,
         requiresFirstPieceInspection: step.requires_first_piece_inspection,
         fpiScope: step.fpi_scope,
+        // Outside processing (OSP node config)
+        isOutsideProcess: step.is_outside_process,
+        outsideSupplier: step.outside_supplier,
+        outsideSupplierName: step.outside_supplier_name,
         // 4c — live overlay (always-on when present; not demo-gated).
         liveMetrics: step.liveMetrics,
       },

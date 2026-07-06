@@ -392,9 +392,18 @@ SPECTACULAR_SETTINGS = {
         "OrdersStatusEnum": "Tracker.models.mes_lite.OrdersStatus.choices",
         "WorkOrderStatusEnum": "Tracker.models.mes_lite.WorkOrderStatus.choices",
         "ProcessStatusEnum": "Tracker.models.mes_lite.ProcessStatus.choices",
+        # Receiving / supplier-quality 'status' choice sets (were colliding as StatusEnum).
+        # SupplierQualification & PartApproval have byte-identical lifecycle values, and
+        # spectacular keys enums by value-set — so one shared name covers both (adding a
+        # second override for PartApproval.status is a duplicate-value-set error).
+        "QualificationStatusEnum": "Tracker.models.qms.SupplierQualification.STATUS_CHOICES",
+        "OutsideProcessShipmentStatusEnum": "Tracker.models.mes_lite.OutsideProcessShipment.SHIPMENT_STATUS_CHOICES",
         # Approval workflow enums
         "ApprovalFlowTypeEnum": "Tracker.models.core.ApprovalFlows.choices",
         "ApprovalSequenceEnum": "Tracker.models.core.SequenceTypes.choices",
+        # 'approval_type' collision: core Approval vs PartApproval (PPAP/FAI)
+        "ApprovalTypeEnum": "Tracker.models.core.Approval_Type.choices",
+        "PartApprovalTypeEnum": "Tracker.models.qms.PartApproval.APPROVAL_TYPE_CHOICES",
         # Severity enum - both CAPA and Disposition use same values, use single name
         "SeverityEnum": "Tracker.models.qms.CapaSeverity.choices",
         # Step/workflow enums - reference the choices lists on the Steps model
@@ -740,6 +749,25 @@ CELERY_BEAT_SCHEDULE = {
     "check-capa-reminders": {
         "task": "Tracker.tasks.check_capa_reminders",
         "schedule": crontab(hour=8, minute=0),
+        "options": {"expires": 3600},
+    },
+    # Daily expiry sweep for supplier qualifications (ASL) past expiry_date
+    "expire-supplier-qualifications": {
+        "task": "Tracker.tasks.expire_supplier_qualifications",
+        "schedule": crontab(hour=7, minute=0),
+        "options": {"expires": 3600},
+    },
+    # Daily recommend-only scorecard→standing review (emits supplier.standing_review;
+    # never auto-transitions a qualification)
+    "review-supplier-standings": {
+        "task": "Tracker.tasks.review_supplier_standings",
+        "schedule": crontab(hour=7, minute=30),
+        "options": {"expires": 3600},
+    },
+    # Daily expiry sweep for part approvals (PPAP/FAI) past expiry_date
+    "expire-part-approvals": {
+        "task": "Tracker.tasks.expire_part_approvals",
+        "schedule": crontab(hour=7, minute=0),
         "options": {"expires": 3600},
     },
     # Hourly scan for stale WO holds + overdue WOs (emits notification events)

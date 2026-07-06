@@ -1254,7 +1254,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, and open SCAR count. */
+        /** @description Supplier quality scorecard — receiving acceptance/reject rates, CoC compliance, on-time delivery, open SCAR count, and the recommend-only standing review. */
         get: operations["api_Companies_scorecard_retrieve"];
         put?: never;
         post?: never;
@@ -3431,6 +3431,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/IncomingInspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Unified inbound-inspection queue: MaterialLots awaiting inspection (PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS), normalized with a `source` discriminator and shared status vocabulary. */
+        get: operations["api_IncomingInspection_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/": {
         parameters: {
             query?: never;
@@ -3480,6 +3497,23 @@ export interface paths {
         put?: never;
         /** @description Material lot tracking with split capability */
         post: operations["api_MaterialLots_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/evaluate_receiving/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Run the lot-acceptance evaluation over the recorded inspection results (attribute defective-unit count vs Ac/Re, or Z1.9 x̄/s vs k) and return the current verdict. Server-authoritative — the DWI unit-by-unit runtime reads this to show ACCEPT/REJECT before the operator commits. */
+        get: operations["api_MaterialLots_evaluate_receiving_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4345,6 +4379,402 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_Orders_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        get: operations["api_OutsideProcessShipments_list"];
+        put?: never;
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        post: operations["api_OutsideProcessShipments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        get: operations["api_OutsideProcessShipments_retrieve"];
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        put: operations["api_OutsideProcessShipments_update"];
+        post?: never;
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        delete: operations["api_OutsideProcessShipments_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        patch: operations["api_OutsideProcessShipments_partial_update"];
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        post: operations["api_OutsideProcessShipments_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/{id}/receive_back/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Receive the shipment back and open its return inspection. */
+        post: operations["api_OutsideProcessShipments_receive_back_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Outside-processing (subcontract) shipments — Flow B.
+         *
+         *     List/retrieve are plain CRUD; the lifecycle (send-out, receive-back, and the
+         *     return-inspection accept/reject) runs through the actions below, which delegate
+         *     to services.mes.outside_process. The return inspection is a QualityReports keyed
+         *     to the shipment and runs the same DWI receiving runtime as incoming lots.
+         */
+        post: operations["api_OutsideProcessShipments_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/{id}/sample_plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Acceptance-sampling plan for the returned batch (lot size = returned count). */
+        get: operations["api_OutsideProcessShipments_sample_plan_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_OutsideProcessShipments_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/ready_to_ship/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Shipper board: parts staged at outside-process steps (not yet sent), grouped by step/vendor across work orders, ready to dispatch. */
+        get: operations["api_OutsideProcessShipments_ready_to_ship_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OutsideProcessShipments/send_out/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send a batch of parts out to a subcontract vendor for an outside-process step. Creates the shipment, links the parts, and moves them to AT_OUTSIDE_PROCESS. */
+        post: operations["api_OutsideProcessShipments_send_out_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        get: operations["api_PartApprovals_list"];
+        put?: never;
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        post: operations["api_PartApprovals_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        get: operations["api_PartApprovals_retrieve"];
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        put: operations["api_PartApprovals_update"];
+        post?: never;
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        delete: operations["api_PartApprovals_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        patch: operations["api_PartApprovals_partial_update"];
+        trace?: never;
+    };
+    "/api/PartApprovals/{id}/disqualify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        post: operations["api_PartApprovals_disqualify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/{id}/grant/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Grant (approve) a part approval. Body: {conditional?, effective_date?, expiry_date?}. */
+        post: operations["api_PartApprovals_grant_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Part-approval (PPAP / FAI) records: a (part_type, supplier) approved for
+         *     production. CRUD plus lifecycle actions (grant / suspend / disqualify) that
+         *     delegate to the part-approval service. `grant` is gated by the
+         *     `approve_partapproval` marker perm.
+         */
+        post: operations["api_PartApprovals_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_PartApprovals_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_PartApprovals_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartApprovals/status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Resolve a (part_type, supplier) approval standing — for badges / the
+         *     receiving banner. ?part_type=&supplier= (both required).
+         */
+        get: operations["api_PartApprovals_status_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7549,6 +7979,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Steps/create_receiving_plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a part type. Never adopts an in-process RECEIVING step. */
+        post: operations["api_Steps_create_receiving_plan_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Steps/export-excel/": {
         parameters: {
             query?: never;
@@ -8046,6 +8493,181 @@ export interface paths {
          *     negative range, then assign the final positive values.
          */
         post: operations["api_Substeps_reorder_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        get: operations["api_SupplierQualifications_list"];
+        put?: never;
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        post: operations["api_SupplierQualifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        get: operations["api_SupplierQualifications_retrieve"];
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        put: operations["api_SupplierQualifications_update"];
+        post?: never;
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        delete: operations["api_SupplierQualifications_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        patch: operations["api_SupplierQualifications_partial_update"];
+        trace?: never;
+    };
+    "/api/SupplierQualifications/{id}/disqualify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        post: operations["api_SupplierQualifications_disqualify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/{id}/grant/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Grant (approve) a qualification. Body: {conditional?, effective_date?, expiry_date?}. */
+        post: operations["api_SupplierQualifications_grant_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Approved-supplier-list / qualification records. CRUD plus lifecycle actions
+         *     (grant / suspend / disqualify) that delegate to the qualification service.
+         *     `grant` is gated by the `approve_supplierqualification` marker perm.
+         */
+        post: operations["api_SupplierQualifications_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/export-excel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the current queryset to Excel format. Respects all filters, search, and ordering applied to the list view. */
+        get: operations["api_SupplierQualifications_export_excel_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_SupplierQualifications_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SupplierQualifications/status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Resolve a supplier's qualification standing for a scope — for badges /
+         *     the receiving banner. ?supplier=&part_type= (or &commodity / &special_process).
+         */
+        get: operations["api_SupplierQualifications_status_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13451,9 +14073,11 @@ export interface components {
          *     * `PCR_APPROVAL` - Process Change Request Approval
          *     * `PCO_APPROVAL` - Process Change Order Approval
          *     * `PCN_RELEASE` - Process Change Notice Release
+         *     * `PPAP` - PPAP
+         *     * `FAI` - First Article (FAI / AS9102)
          * @enum {string}
          */
-        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE";
+        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI";
         /** @description Serializer for removing a component from assembly */
         AssemblyRemoveRequest: {
             /** @default  */
@@ -13667,6 +14291,15 @@ export interface components {
          * @enum {string}
          */
         BaselineStatusEnum: "ACTIVE" | "SUPERSEDED";
+        /**
+         * @description * `AUDIT` - Audit
+         *     * `PPAP` - PPAP
+         *     * `FAI` - First Article
+         *     * `SURVEY` - Survey
+         *     * `HISTORICAL` - Historical
+         * @enum {string}
+         */
+        BasisEnum: "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL";
         /**
          * @description Minimal BatchExecution shape for the lifecycle viewset.
          *
@@ -14565,6 +15198,11 @@ export interface components {
         };
         CreateMilestoneTemplateRevisionInputRequest: {
             change_description: string;
+        };
+        CreateReceivingPlanInputRequest: {
+            /** Format: uuid */
+            part_type: string;
+            name?: string;
         };
         CreateStepRevisionInputRequest: {
             change_description: string;
@@ -16090,6 +16728,26 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /**
+         * @description One row of the unified incoming-inspection worklist — a purchased MaterialLot
+         *     or an OutsideProcessShipment, normalized to a shared shape (SAP QM QA32-style,
+         *     `source` = the inspection-lot origin). See services.qms.incoming_inspection.
+         */
+        IncomingInspectionRow: {
+            source: components["schemas"]["SourceEnum"];
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            item: string;
+            supplier: string;
+            /** Format: double */
+            quantity: number | null;
+            status: string;
+            status_display: string;
+            received_at: string | null;
+            /** Format: uuid */
+            step_id: string | null;
+        };
         IntegrationCatalogItem: {
             provider: string;
             name: string;
@@ -16356,6 +17014,8 @@ export interface components {
             readonly quantity_remaining: string;
             unit_of_measure: string;
             status?: components["schemas"]["MaterialLotStatusEnum"];
+            /** @description Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold. */
+            readonly hold_reason: string;
             /** Format: date */
             manufacture_date?: string | null;
             /** Format: date */
@@ -16853,6 +17513,82 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "selected" | "deselected" | "pending";
+        /**
+         * @description Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+         *
+         *     Read-mostly: shipments are created + transitioned via the viewset's send_out /
+         *     receive_back / accept / reject actions (services.mes.outside_process), not via
+         *     plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+         *     lot size.
+         */
+        OutsideProcessShipment: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Auto-generated, tenant-unique (OSP-YYYY-######). */
+            readonly shipment_number: string;
+            /** Format: uuid */
+            supplier: string;
+            readonly supplier_name: string;
+            /** Format: uuid */
+            step: string;
+            readonly step_name: string;
+            /**
+             * Format: uuid
+             * @description The work order the shipped parts belong to (usually one).
+             */
+            work_order?: string | null;
+            /** @description Outbound PO / packing-slip reference. */
+            reference?: string;
+            /** Format: date-time */
+            readonly shipped_at: string;
+            readonly shipped_by: number | null;
+            /** @description Inbound packing-slip reference on return. */
+            return_reference?: string;
+            /** Format: date-time */
+            readonly returned_at: string | null;
+            readonly returned_by: number | null;
+            readonly status: components["schemas"]["OutsideProcessShipmentStatusEnum"];
+            readonly status_display: string;
+            readonly quantity: number;
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /**
+         * @description Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+         *
+         *     Read-mostly: shipments are created + transitioned via the viewset's send_out /
+         *     receive_back / accept / reject actions (services.mes.outside_process), not via
+         *     plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+         *     lot size.
+         */
+        OutsideProcessShipmentRequest: {
+            /** Format: uuid */
+            supplier: string;
+            /** Format: uuid */
+            step: string;
+            /**
+             * Format: uuid
+             * @description The work order the shipped parts belong to (usually one).
+             */
+            work_order?: string | null;
+            /** @description Outbound PO / packing-slip reference. */
+            reference?: string;
+            /** @description Inbound packing-slip reference on return. */
+            return_reference?: string;
+            notes?: string;
+            archived?: boolean;
+        };
+        /**
+         * @description * `SENT` - Sent Out
+         *     * `RETURNED` - Returned
+         *     * `CLOSED` - Closed
+         * @enum {string}
+         */
+        OutsideProcessShipmentStatusEnum: "SENT" | "RETURNED" | "CLOSED";
         PaginatedApprovalRequestList: {
             /** @example 123 */
             count: number;
@@ -17423,6 +18159,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Orders"][];
         };
+        PaginatedOutsideProcessShipmentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["OutsideProcessShipment"][];
+        };
+        PaginatedPartApprovalList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["PartApproval"][];
+        };
         PaginatedPartSelectList: {
             /** @example 123 */
             count: number;
@@ -17647,6 +18413,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["RcaRecord"][];
+        };
+        PaginatedReadyToShipGroupList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ReadyToShipGroup"][];
         };
         PaginatedSPCBaselineListList: {
             /** @example 123 */
@@ -17918,6 +18699,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["SubstepTranslation"][];
         };
+        PaginatedSupplierQualificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SupplierQualification"][];
+        };
         PaginatedTenantGroupList: {
             /** @example 123 */
             count: number;
@@ -18158,6 +18954,103 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["WorkOrderList"][];
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        PartApproval: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly approval_number: string;
+            /** Format: uuid */
+            part_type: string;
+            readonly part_type_name: string;
+            /** Format: uuid */
+            supplier: string;
+            readonly supplier_name: string;
+            approval_type?: components["schemas"]["PartApprovalTypeEnum"];
+            readonly approval_type_display: string;
+            /** @description PPAP/FAI package or submission reference (the artifact stays external). */
+            reference?: string;
+            readonly status: components["schemas"]["QualificationStatusEnum"];
+            readonly status_display: string;
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            /** Format: uuid */
+            readonly approval_request: string | null;
+            readonly approved_by: number | null;
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        PartApprovalRequest: {
+            /** Format: uuid */
+            part_type: string;
+            /** Format: uuid */
+            supplier: string;
+            approval_type?: components["schemas"]["PartApprovalTypeEnum"];
+            /** @description PPAP/FAI package or submission reference (the artifact stays external). */
+            reference?: string;
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            notes?: string;
+            archived?: boolean;
+        };
+        /** @description Resolved (part_type, supplier) approval standing (the `status` action response). */
+        PartApprovalStatus: {
+            approved: boolean;
+            status: string | null;
+            approval_type: string | null;
+            /** Format: date */
+            expiry_date: string | null;
+            days_to_expiry: number | null;
+            record_id: string | null;
+        };
+        /**
+         * @description * `PPAP` - PPAP
+         *     * `FAI` - First Article (FAI / AS9102)
+         * @enum {string}
+         */
+        PartApprovalTypeEnum: "PPAP" | "FAI";
         PartIncrementInputRequest: {
             /** @description Decision result for branching steps: 'pass', 'fail', 'default', 'alternate', or measurement value */
             decision?: string;
@@ -18239,6 +19132,10 @@ export interface components {
             name: string;
             ID_prefix?: string | null;
             ERP_id?: string | null;
+            /** @description Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock. */
+            requires_supplier_qualification?: boolean;
+            /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
+            requires_part_approval?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -18274,6 +19171,10 @@ export interface components {
             name: string;
             ID_prefix?: string | null;
             ERP_id?: string | null;
+            /** @description Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock. */
+            requires_supplier_qualification?: boolean;
+            /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
+            requires_part_approval?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -18369,6 +19270,7 @@ export interface components {
         /**
          * @description * `PENDING` - Pending
          *     * `IN_PROGRESS` - In Progress
+         *     * `AT_OUTSIDE_PROCESS` - At Outside Process
          *     * `AWAITING_QA` - Awaiting QA
          *     * `READY_FOR_NEXT_STEP` - Ready for next step
          *     * `COMPLETED` - Completed
@@ -18384,7 +19286,7 @@ export interface components {
          *     * `RMA_CLOSED` - RMA Closed
          * @enum {string}
          */
-        PartsStatusEnum: "PENDING" | "IN_PROGRESS" | "AWAITING_QA" | "READY_FOR_NEXT_STEP" | "COMPLETED" | "QUARANTINED" | "REWORK_NEEDED" | "REWORK_IN_PROGRESS" | "SCRAPPED" | "CANCELLED" | "SHIPPED" | "IN_STOCK" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED";
+        PartsStatusEnum: "PENDING" | "IN_PROGRESS" | "AT_OUTSIDE_PROCESS" | "AWAITING_QA" | "READY_FOR_NEXT_STEP" | "COMPLETED" | "QUARANTINED" | "REWORK_NEEDED" | "REWORK_IN_PROGRESS" | "SCRAPPED" | "CANCELLED" | "SHIPPED" | "IN_STOCK" | "AWAITING_PICKUP" | "CORE_BANKED" | "RMA_CLOSED";
         PasswordChangeRequest: {
             old_password: string;
             new_password1: string;
@@ -19208,6 +20110,64 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description Outside-process (subcontract) shipment — the Flow B send/return aggregate.
+         *
+         *     Read-mostly: shipments are created + transitioned via the viewset's send_out /
+         *     receive_back / accept / reject actions (services.mes.outside_process), not via
+         *     plain CRUD writes. `quantity` (the linked-part count) is the return-inspection
+         *     lot size.
+         */
+        PatchedOutsideProcessShipmentRequest: {
+            /** Format: uuid */
+            supplier?: string;
+            /** Format: uuid */
+            step?: string;
+            /**
+             * Format: uuid
+             * @description The work order the shipped parts belong to (usually one).
+             */
+            work_order?: string | null;
+            /** @description Outbound PO / packing-slip reference. */
+            reference?: string;
+            /** @description Inbound packing-slip reference on return. */
+            return_reference?: string;
+            notes?: string;
+            archived?: boolean;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        PatchedPartApprovalRequest: {
+            /** Format: uuid */
+            part_type?: string;
+            /** Format: uuid */
+            supplier?: string;
+            approval_type?: components["schemas"]["PartApprovalTypeEnum"];
+            /** @description PPAP/FAI package or submission reference (the artifact stays external). */
+            reference?: string;
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            notes?: string;
+            archived?: boolean;
+        };
+        /**
          * @description Part types serializer with versioning support.
          *
          *     Content edits (name, ID_prefix, ERP_id, ITAR fields) create a new
@@ -19226,6 +20186,10 @@ export interface components {
             name?: string;
             ID_prefix?: string | null;
             ERP_id?: string | null;
+            /** @description Require an approved SupplierQualification covering the supplier before a received lot of this part type can be accepted into stock. */
+            requires_supplier_qualification?: boolean;
+            /** @description Require an active PartApproval (PPAP/FAI) covering the (part type, supplier) before a received lot of this part type can be accepted into stock. */
+            requires_part_approval?: boolean;
             /** @description Part type is ITAR-controlled defense article (22 CFR 121 USML) */
             itar_controlled?: boolean;
             /** @description Default ECCN for parts of this type (e.g., EAR99, 9A004) */
@@ -19708,7 +20672,7 @@ export interface components {
             inspection_level?: string;
             /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
             severity?: string;
-            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            /** @description Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables). */
             strategy?: string;
             /**
              * @description Aggregate signal this step watches. Blank = no gate.
@@ -19939,6 +20903,13 @@ export interface components {
              *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
+            is_outside_process?: boolean;
+            /**
+             * Format: uuid
+             * @description Default subcontract vendor for this outside-process op (overridable per shipment).
+             */
+            outside_supplier?: string | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -20164,6 +21135,40 @@ export interface components {
             title?: string;
             /** @description Translated TipTap document JSON; same shape as Substep.body_blocks. */
             body_blocks?: unknown;
+            archived?: boolean;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        PatchedSupplierQualificationRequest: {
+            /** Format: uuid */
+            supplier?: string;
+            scope_type?: components["schemas"]["ScopeTypeEnum"];
+            /** Format: uuid */
+            part_type?: string | null;
+            /** @description Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes. */
+            scope_label?: string;
+            basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            notes?: string;
             archived?: boolean;
         };
         /**
@@ -21179,6 +22184,26 @@ export interface components {
             current_step_id: string | null;
             parts_in_qa: number;
         };
+        /** @description Resolved supplier standing for a scope (the `status` action response). */
+        QualificationStatus: {
+            qualified: boolean;
+            status: string | null;
+            basis: string | null;
+            /** Format: date */
+            expiry_date: string | null;
+            days_to_expiry: number | null;
+            record_id: string | null;
+        };
+        /**
+         * @description * `PENDING` - Pending
+         *     * `APPROVED` - Approved
+         *     * `CONDITIONAL` - Conditional
+         *     * `SUSPENDED` - Suspended
+         *     * `EXPIRED` - Expired
+         *     * `DISQUALIFIED` - Disqualified
+         * @enum {string}
+         */
+        QualificationStatusEnum: "PENDING" | "APPROVED" | "CONDITIONAL" | "SUSPENDED" | "EXPIRED" | "DISQUALIFIED";
         /**
          * @description Quality errors list serializer.
          *
@@ -21381,6 +22406,11 @@ export interface components {
              * @description Set when this report is a receiving inspection of an incoming lot (mutually exclusive with `part`).
              */
             readonly material_lot: string | null;
+            /**
+             * Format: uuid
+             * @description Set when this report is the return inspection of a subcontract shipment (mutually exclusive with `part` / `material_lot`).
+             */
+            readonly osp_shipment: string | null;
             /** @description Acceptance-sampling sample size (n) snapshot at inspection time. */
             readonly sample_size: number | null;
             /** @description Acceptance-sampling accept number (Ac) snapshot. */
@@ -21668,6 +22698,28 @@ export interface components {
          * @enum {string}
          */
         RcaReviewStatusEnum: "NOT_REQUIRED" | "REQUIRED" | "COMPLETED";
+        /**
+         * @description One dispatchable group on the shipper board: parts staged at an outside-process
+         *     step (the dispatch unit), across work orders. See outside_process.build_ready_to_ship_groups.
+         */
+        ReadyToShipGroup: {
+            /** Format: uuid */
+            step_id: string;
+            step_name: string;
+            /** Format: uuid */
+            supplier_id: string | null;
+            supplier_name: string | null;
+            ready_count: number;
+            parts: components["schemas"]["ReadyToShipPart"][];
+        };
+        ReadyToShipPart: {
+            /** Format: uuid */
+            id: string;
+            erp_id: string;
+            /** Format: uuid */
+            work_order: string | null;
+            status: string;
+        };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
             /** Format: uuid */
@@ -21694,6 +22746,18 @@ export interface components {
         ReceivingSampleUnitRequest: {
             sample_number: number;
             measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
+        };
+        ReceivingVerdict: {
+            status: string;
+            is_variables: boolean;
+            sample_size: number | null;
+            accept_number: number | null;
+            reject_number: number | null;
+            /** Format: double */
+            k: number | null;
+            defectives: number;
+            units_recorded: number;
+            readings: number;
         };
         /**
          * @description * `static` - Static — recipients from this rule only
@@ -21845,9 +22909,10 @@ export interface components {
          *     * `EXACT_COUNT` - Exact Count (No Variance)
          *     * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
          *     * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
+         *     * `VARIABLES` - Variables Sampling (ANSI/ASQ Z1.9)
          * @enum {string}
          */
-        RuleTypeEnum: "EVERY_NTH_PART" | "PERCENTAGE" | "RANDOM" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "EXACT_COUNT" | "AQL" | "C_ZERO";
+        RuleTypeEnum: "EVERY_NTH_PART" | "PERCENTAGE" | "RANDOM" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "EXACT_COUNT" | "AQL" | "C_ZERO" | "VARIABLES";
         /** @description Full SPC Baseline serializer with all fields and computed properties. */
         SPCBaseline: {
             /** Format: uuid */
@@ -22183,6 +23248,11 @@ export interface components {
             strategy: string;
             inspection_level: string;
             severity: string;
+            method?: string;
+            /** Format: double */
+            k?: number | null;
+            /** Format: uuid */
+            variables_characteristic_id?: string | null;
             characteristics: components["schemas"]["ReceivingCharacteristic"][];
             /** Format: uuid */
             step_id: string | null;
@@ -22316,7 +23386,7 @@ export interface components {
             inspection_level?: string;
             /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
             severity?: string;
-            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            /** @description Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables). */
             strategy?: string;
             /**
              * @description Aggregate signal this step watches. Blank = no gate.
@@ -22395,7 +23465,7 @@ export interface components {
             inspection_level?: string;
             /** @description AQL inspection severity (NORMAL/TIGHTENED/REDUCED). */
             severity?: string;
-            /** @description Acceptance-sampling strategy: C0 (default) or Z14. */
+            /** @description Acceptance-sampling strategy: C0 (default), Z14, or Z19 (variables). */
             strategy?: string;
             /**
              * @description Aggregate signal this step watches. Blank = no gate.
@@ -22523,6 +23593,13 @@ export interface components {
          * @enum {string}
          */
         ScopeEnum: "sampled" | "batch";
+        /**
+         * @description * `PART_TYPE` - Part Type
+         *     * `COMMODITY` - Commodity
+         *     * `SPECIAL_PROCESS` - Special Process
+         * @enum {string}
+         */
+        ScopeTypeEnum: "PART_TYPE" | "COMMODITY" | "SPECIAL_PROCESS";
         SendInvitationInputRequest: {
             user_id: number;
         };
@@ -22535,6 +23612,14 @@ export interface components {
             expires_at: string;
             invitation_url: string;
             email_sent: boolean;
+        };
+        SendPartsOutRequestRequest: {
+            /** Format: uuid */
+            step: string;
+            part_ids: string[];
+            /** Format: uuid */
+            supplier?: string;
+            reference?: string;
         };
         /**
          * @description * `CRITICAL` - Critical
@@ -22615,6 +23700,12 @@ export interface components {
             };
         };
         /**
+         * @description * `PURCHASED_LOT` - PURCHASED_LOT
+         *     * `OUTSIDE_PROCESS` - OUTSIDE_PROCESS
+         * @enum {string}
+         */
+        SourceEnum: "PURCHASED_LOT" | "OUTSIDE_PROCESS";
+        /**
          * @description * `CUSTOMER_RETURN` - Customer Return
          *     * `PURCHASED` - Purchased Core
          *     * `WARRANTY` - Warranty Return
@@ -22676,6 +23767,14 @@ export interface components {
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
+            is_outside_process?: boolean;
+            /**
+             * Format: uuid
+             * @description Default subcontract vendor for this outside-process op (overridable per shipment).
+             */
+            outside_supplier?: string | null;
+            readonly outside_supplier_name: string | null;
             is_terminal?: boolean;
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
@@ -23131,19 +24230,49 @@ export interface components {
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
+            /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
+            is_outside_process?: boolean;
+            /**
+             * Format: uuid
+             * @description Default subcontract vendor for this outside-process op (overridable per shipment).
+             */
+            outside_supplier?: string | null;
             is_terminal?: boolean;
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
         };
-        /** @description Serializer for updating step sampling rules */
+        /**
+         * @description Update a step's sampling rules — plus its quality gate and acceptance plan,
+         *     so the flow-editor dialog persists everything in one atomic call.
+         */
         StepSamplingRulesUpdateRequest: {
             rules: components["schemas"]["SamplingRuleUpdateRequest"][];
             fallback_rules?: components["schemas"]["SamplingRuleUpdateRequest"][];
             fallback_duration?: number;
             /** @description Consecutive failures before tightening to the fallback ruleset (sets a CONSECUTIVE_FAILS + TIGHTEN_SAMPLING gate). */
             tighten_after?: number | null;
+            gate_metric?: string;
+            /** Format: decimal */
+            gate_threshold?: string | null;
+            gate_window?: string;
+            gate_window_n?: number | null;
+            gate_min_sample?: number | null;
+            gate_actions?: string[];
+            gate_capa_type?: string;
+            gate_capa_severity?: string;
+            /** Format: uuid */
+            gate_approval_template?: string | null;
+            /** Format: decimal */
+            aql?: string | null;
+            inspection_level?: string;
+            severity?: string;
+            strategy?: string;
+            /** Format: uuid */
+            variables_characteristic?: string | null;
+            /** Format: uuid */
+            supplier?: string | null;
         };
         /** @description Lightweight step summary for work order overview */
         StepSummary: {
@@ -23204,6 +24333,20 @@ export interface components {
                 }[];
                 fallback_duration?: number | null;
                 tighten_after?: number | null;
+                gate_metric?: string;
+                gate_threshold?: string | null;
+                gate_window?: string;
+                gate_window_n?: number | null;
+                gate_min_sample?: number | null;
+                gate_actions?: string[];
+                gate_capa_type?: string;
+                gate_capa_severity?: string;
+                /** Format: uuid */
+                gate_approval_template?: string | null;
+                aql?: string | null;
+                inspection_level?: string;
+                severity?: string;
+                strategy?: string;
             };
             readonly fallback_ruleset: {
                 /** Format: uuid */
@@ -23275,6 +24418,13 @@ export interface components {
              *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
+            is_outside_process?: boolean;
+            /**
+             * Format: uuid
+             * @description Default subcontract vendor for this outside-process op (overridable per shipment).
+             */
+            outside_supplier?: string | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -23336,6 +24486,13 @@ export interface components {
              *     * `RECEIVING` - Receiving Inspection
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
+            is_outside_process?: boolean;
+            /**
+             * Format: uuid
+             * @description Default subcontract vendor for this outside-process op (overridable per shipment).
+             */
+            outside_supplier?: string | null;
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
             is_terminal?: boolean;
@@ -23866,6 +25023,88 @@ export interface components {
         SupersedeRequestRequest: {
             reason?: string;
         };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        SupplierQualification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly qualification_number: string;
+            /** Format: uuid */
+            supplier: string;
+            readonly supplier_name: string;
+            scope_type?: components["schemas"]["ScopeTypeEnum"];
+            /** Format: uuid */
+            part_type?: string | null;
+            /** @description Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes. */
+            scope_label?: string;
+            readonly scope_display: string;
+            readonly status: components["schemas"]["QualificationStatusEnum"];
+            readonly status_display: string;
+            basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            /** Format: uuid */
+            readonly approval_request: string | null;
+            readonly qualified_by: number | null;
+            notes?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        /**
+         * @description Base serializer for SecureModel instances.
+         *
+         *     Tenant safety: sets ``serializer_related_field`` so DRF auto-generates
+         *     FK fields as ``TenantScopedPrimaryKeyRelatedField`` — these re-scope their
+         *     lookup queryset to the current-request tenant, so a request body can't
+         *     reference another tenant's row by PK. The scoped field no-ops on
+         *     non-tenant target models (User, ContentType, …), so those are unaffected.
+         *
+         *     This is why serializers should inherit ``SecureModelMixin`` instead of
+         *     ``serializers.ModelSerializer`` directly. ``test_serializer_fk_tenant_scoping``
+         *     guards against FK fields that bypass this.
+         *
+         *     NOTE: this is now a concrete ``ModelSerializer`` subclass, not a bare
+         *     mixin — declare it as the FIRST/sole serializer base. Listing
+         *     ``serializers.ModelSerializer`` alongside it is redundant and (when listed
+         *     before it) an MRO error.
+         */
+        SupplierQualificationRequest: {
+            /** Format: uuid */
+            supplier: string;
+            scope_type?: components["schemas"]["ScopeTypeEnum"];
+            /** Format: uuid */
+            part_type?: string | null;
+            /** @description Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes. */
+            scope_label?: string;
+            basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date */
+            effective_date?: string | null;
+            /** Format: date */
+            expiry_date?: string | null;
+            notes?: string;
+            archived?: boolean;
+        };
         SupplierScorecard: {
             supplier_id: string;
             lots_received: number;
@@ -23880,6 +25119,10 @@ export interface components {
             on_time_rate: number | null;
             promised_lots: number;
             open_scar_count: number;
+            rating: string | null;
+            rating_reason: string;
+            recommended_action: string;
+            recommendation_reason: string;
         };
         SwitchTenantRequestRequest: {
             /** Format: uuid */
@@ -25683,8 +26926,10 @@ export interface operations {
                  *     * `PCR_APPROVAL` - Process Change Request Approval
                  *     * `PCO_APPROVAL` - Process Change Order Approval
                  *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -32178,6 +33423,25 @@ export interface operations {
             };
         };
     };
+    api_IncomingInspection_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomingInspectionRow"][];
+                };
+            };
+        };
+    };
     api_MaterialLots_list: {
         parameters: {
             query?: {
@@ -32361,6 +33625,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_evaluate_receiving_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivingVerdict"];
                 };
             };
         };
@@ -33720,6 +35006,660 @@ export interface operations {
             };
         };
     };
+    api_OutsideProcessShipments_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `SENT` - Sent Out
+                 *     * `RETURNED` - Returned
+                 *     * `CLOSED` - Closed
+                 */
+                status?: "CLOSED" | "RETURNED" | "SENT";
+                step?: string;
+                supplier?: string;
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOutsideProcessShipmentList"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutsideProcessShipmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OutsideProcessShipmentRequest"];
+                "multipart/form-data": components["schemas"]["OutsideProcessShipmentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutsideProcessShipmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["OutsideProcessShipmentRequest"];
+                "multipart/form-data": components["schemas"]["OutsideProcessShipmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_OutsideProcessShipments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOutsideProcessShipmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedOutsideProcessShipmentRequest"];
+                "multipart/form-data": components["schemas"]["PatchedOutsideProcessShipmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_receive_back_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_sample_plan_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Outside Process Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplePlanResponse"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_ready_to_ship_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `SENT` - Sent Out
+                 *     * `RETURNED` - Returned
+                 *     * `CLOSED` - Closed
+                 */
+                status?: "CLOSED" | "RETURNED" | "SENT";
+                step?: string;
+                supplier?: string;
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReadyToShipGroupList"];
+                };
+            };
+        };
+    };
+    api_OutsideProcessShipments_send_out_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendPartsOutRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SendPartsOutRequestRequest"];
+                "multipart/form-data": components["schemas"]["SendPartsOutRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutsideProcessShipment"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "FAI" | "PPAP";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `CONDITIONAL` - Conditional
+                 *     * `SUSPENDED` - Suspended
+                 *     * `EXPIRED` - Expired
+                 *     * `DISQUALIFIED` - Disqualified
+                 */
+                status?: "APPROVED" | "CONDITIONAL" | "DISQUALIFIED" | "EXPIRED" | "PENDING" | "SUSPENDED";
+                supplier?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPartApprovalList"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_PartApprovals_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPartApprovalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_disqualify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_grant_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Approval. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartApprovalRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PartApprovalRequest"];
+                "multipart/form-data": components["schemas"]["PartApprovalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApproval"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_PartApprovals_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_PartApprovals_status_retrieve: {
+        parameters: {
+            query: {
+                /** @description Part type id (required) */
+                part_type: string;
+                /** @description Supplier id (required) */
+                supplier: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartApprovalStatus"];
+                };
+            };
+        };
+    };
     api_PartTypes_list: {
         parameters: {
             query?: {
@@ -33732,6 +35672,8 @@ export interface operations {
                 ordering?: string;
                 /** @description Filter processes by associated part type UUID */
                 part_type?: string;
+                requires_part_approval?: boolean;
+                requires_supplier_qualification?: boolean;
                 /** @description A search term. */
                 search?: string;
             };
@@ -34121,6 +36063,8 @@ export interface operations {
                 ordering?: string;
                 /** @description Filter processes by associated part type UUID */
                 part_type?: string;
+                requires_part_approval?: boolean;
+                requires_supplier_qualification?: boolean;
                 /** @description A search term. */
                 search?: string;
             };
@@ -35724,6 +37668,8 @@ export interface operations {
                 part?: string;
                 part__ERP_id?: string;
                 part__part_type__name?: string;
+                quality_reports__material_lot?: string;
+                quality_reports__material_lot__supplier?: string;
                 resolution_completed?: boolean;
                 resolution_completed_by?: number;
                 /** @description A search term. */
@@ -36415,8 +38361,9 @@ export interface operations {
                  *     * `EXACT_COUNT` - Exact Count (No Variance)
                  *     * `AQL` - Acceptance Sampling (ANSI/ASQ Z1.4)
                  *     * `C_ZERO` - Zero-Acceptance (C=0 / Squeglia)
+                 *     * `VARIABLES` - Variables Sampling (ANSI/ASQ Z1.9)
                  */
-                rule_type?: "AQL" | "C_ZERO" | "EVERY_NTH_PART" | "EXACT_COUNT" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "PERCENTAGE" | "RANDOM";
+                rule_type?: "AQL" | "C_ZERO" | "EVERY_NTH_PART" | "EXACT_COUNT" | "FIRST_N_PARTS" | "LAST_N_PARTS" | "PERCENTAGE" | "RANDOM" | "VARIABLES";
                 ruleset?: string;
                 /** @description A search term. */
                 search?: string;
@@ -37996,6 +39943,20 @@ export interface operations {
                 process_memberships__process__part_type?: string;
                 /** @description A search term. */
                 search?: string;
+                /** @description True = steps not attached to any process (e.g. purchased-material RIPs). */
+                standalone?: boolean;
+                /**
+                 * @description Visual type for flow editor.
+                 *
+                 *     * `TASK` - Task
+                 *     * `START` - Start
+                 *     * `DECISION` - Decision
+                 *     * `REWORK` - Rework
+                 *     * `TIMER` - Timer/Wait
+                 *     * `TERMINAL` - Terminal
+                 *     * `RECEIVING` - Receiving Inspection
+                 */
+                step_type?: "DECISION" | "RECEIVING" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
             };
             header?: never;
             path?: never;
@@ -38246,6 +40207,36 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Steps"];
+                };
+            };
+        };
+    };
+    api_Steps_create_receiving_plan_create: {
+        parameters: {
+            query?: {
+                /** @description Filter steps by process's part type UUID */
+                part_type?: string;
+                /** @description Filter steps by process UUID (via ProcessStep) */
+                process?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReceivingPlanInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CreateReceivingPlanInputRequest"];
+                "multipart/form-data": components["schemas"]["CreateReceivingPlanInputRequest"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -39362,6 +41353,338 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Substep"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `AUDIT` - Audit
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article
+                 *     * `SURVEY` - Survey
+                 *     * `HISTORICAL` - Historical
+                 */
+                basis?: "AUDIT" | "FAI" | "HISTORICAL" | "PPAP" | "SURVEY";
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /**
+                 * @description * `PART_TYPE` - Part Type
+                 *     * `COMMODITY` - Commodity
+                 *     * `SPECIAL_PROCESS` - Special Process
+                 */
+                scope_type?: "COMMODITY" | "PART_TYPE" | "SPECIAL_PROCESS";
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `CONDITIONAL` - Conditional
+                 *     * `SUSPENDED` - Suspended
+                 *     * `EXPIRED` - Expired
+                 *     * `DISQUALIFIED` - Disqualified
+                 */
+                status?: "APPROVED" | "CONDITIONAL" | "DISQUALIFIED" | "EXPIRED" | "PENDING" | "SUSPENDED";
+                supplier?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSupplierQualificationList"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_SupplierQualifications_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedSupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["PatchedSupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_disqualify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_grant_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Supplier Qualification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierQualificationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupplierQualificationRequest"];
+                "multipart/form-data": components["schemas"]["SupplierQualificationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierQualification"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_export_excel_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of field names to export (e.g., id,name,status) */
+                fields?: string;
+                /** @description Custom filename for the download (e.g., my_export.xlsx) */
+                filename?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_SupplierQualifications_status_retrieve: {
+        parameters: {
+            query: {
+                /** @description Commodity label (COMMODITY scope) */
+                commodity?: string;
+                /** @description Part type id (PART_TYPE scope) */
+                part_type?: string;
+                /** @description Special-process label */
+                special_process?: string;
+                /** @description Supplier id (required) */
+                supplier: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualificationStatus"];
                 };
             };
         };
