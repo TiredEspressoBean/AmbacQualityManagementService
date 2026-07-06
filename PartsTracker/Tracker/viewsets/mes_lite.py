@@ -3075,6 +3075,10 @@ class OutsideProcessShipmentViewSet(TenantScopedMixin, ExcelExportMixin, viewset
         'accept': ['change_outsideprocessshipment'],
         'reject': ['change_outsideprocessshipment'],
     }
+    # receive_back/accept/reject mutate an existing shipment → gated solely by
+    # change_ (above), not the POST→add CRUD default. send_out genuinely creates,
+    # so it stays non-exempt (add_ is correct there).
+    crud_exempt_actions = {'receive_back', 'accept', 'reject'}
 
     def _qr_response(self, report, status_code=status.HTTP_200_OK):
         return Response(QualityReportsSerializer(report, context={'request': self.request}).data,
