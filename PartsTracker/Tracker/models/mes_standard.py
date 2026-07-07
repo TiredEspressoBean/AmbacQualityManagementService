@@ -633,6 +633,52 @@ class SamplingTriggerState(SecureModel):
         return f"Fallback {self.ruleset} active on WO-{self.work_order.ERP_id} @ {self.step}"
 
 
+class SamplingSeverityState(SecureModel):
+    """Runtime Z1.4 inspection-severity state for a (receiving step, supplier).
+
+    Severity switching (Normal ↔ Tightened ↔ Reduced) is driven by lot-acceptance
+    history, so the *effective* severity is runtime state — not the versioned
+    ``SamplingRuleSet.severity`` config field (which is only the *starting*
+    severity). Scoped to (step, supplier): incoming inspection is supplier-scoped,
+    cross-work-order. The switching engine (`services.qms.severity_switching`)
+    owns transitions; the plan resolver reads ``severity`` here.
+    """
+    SEVERITY_CHOICES = [('NORMAL', 'Normal'), ('TIGHTENED', 'Tightened'), ('REDUCED', 'Reduced')]
+
+    step = models.ForeignKey('Tracker.Steps', on_delete=models.CASCADE, related_name='severity_states')
+    supplier = models.ForeignKey('Tracker.Companies', null=True, blank=True,
+                                 on_delete=models.CASCADE, related_name='severity_states')
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='NORMAL')
+    severity_since = models.DateTimeField(null=True, blank=True)  # when current severity was entered
+    # Latched when tightened inspection persists N consecutive lots without earning
+    # a return to normal: Z1.4 says stop accepting the supplier's product. Surfaced
+    # as a recommendation (never an automatic ASL suspension).
+    discontinued = models.BooleanField(default=False)
+
+    # Incremental switching counters (updated per decided lot; reset on transition) —
+    # deterministic, no reliance on timestamp ordering.
+    recent_outcomes = models.JSONField(default=list, blank=True)   # last ≤5: 'A'|'R'|'G'
+    consecutive_accepts = models.PositiveIntegerField(default=0)   # clean accepts in a row
+    lots_in_regime = models.PositiveIntegerField(default=0)        # lots since the current severity began
+
+    class Meta:
+        verbose_name = 'Sampling Severity State'
+        verbose_name_plural = 'Sampling Severity States'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'step', 'supplier'],
+                name='samplingseveritystate_tenant_uniq',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['step', 'supplier'], name='sevstate_step_sup_idx'),
+        ]
+
+    def __str__(self):
+        who = self.supplier.name if self.supplier_id else "all suppliers"
+        return f"{self.severity} @ {self.step} / {who}"
+
+
 class SamplingTriggerManager:
     """
     Manager class for updating sampling trigger state based on inspection results.

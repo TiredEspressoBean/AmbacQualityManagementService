@@ -77,6 +77,7 @@ class Command(BaseCommand):
         'Tracker_samplingrule',
         'Tracker_samplingauditlog',
         'Tracker_samplingtriggerstate',
+        'Tracker_samplingseveritystate',
         'Tracker_samplinganalytics',
         'Tracker_measurementdefinition',
         'Tracker_measurementresult',

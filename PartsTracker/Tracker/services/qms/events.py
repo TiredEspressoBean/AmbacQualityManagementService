@@ -493,3 +493,51 @@ register_event(EventType(
                  'before it lapses. Fired at the 60- and 30-day marks.'),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# supplier.inspection_discontinued — Z1.4 tightened inspection persisted 5
+# consecutive lots without returning to normal; the standard says stop accepting
+# the supplier's product for this step (surfaced as a recommendation, not an
+# automatic ASL suspension)
+# =============================================================================
+
+@dataclass(frozen=True)
+class InspectionDiscontinuedPayload:
+    """Payload for `supplier.inspection_discontinued`. Fired when Z1.4 severity
+    switching latches "discontinue" — QA should stop accepting this supplier's
+    product for the step and drive corrective action before resuming."""
+
+    id: str                     # severity-state id; correlation source
+    tenant_id: str
+    step_id: str
+    step_name: str
+    supplier_id: str
+    supplier_name: str
+
+    @classmethod
+    def sample(cls) -> 'InspectionDiscontinuedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000d1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            step_id='00000000-0000-0000-0000-0000000000e1',
+            step_name='Receiving Inspection',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+        )
+
+
+register_event(EventType(
+    code='supplier.inspection_discontinued',
+    label='Inspection Discontinued (Z1.4)',
+    domain='Quality',
+    payload_schema=InspectionDiscontinuedPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['QA Manager'],
+    default_on=True,
+    transactional=False,
+    description=('Z1.4 tightened inspection ran 5 consecutive lots without returning to '
+                 'normal — stop accepting this supplier for the step and drive corrective '
+                 'action. Recommendation, not an automatic suspension.'),
+    external_routable=False,
+))

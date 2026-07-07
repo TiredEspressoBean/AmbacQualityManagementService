@@ -84,6 +84,31 @@ class AcceptanceSamplingTests(SimpleTestCase):
                                  severity="NORMAL", strategy="Z14")
         self.assertEqual((sp.sample_size, sp.accept_number), (20, 0))
 
+    # ── Z1.4 severity switching (Tables II-B tightened / II-C reduced), 2026-07-07 ──
+    def test_z14_tightened_is_stricter(self):
+        # Lot 500 level II → code H. Normal H@2.5 = Ac 3; Tightened H@2.5 = Ac 5
+        # (same n=50, Re=Ac+1). Tightened accepts on FEWER defectives per its ladder.
+        normal = compute_sample_plan(lot_size=500, aql=2.5, inspection_level="II",
+                                     severity="NORMAL", strategy="Z14")
+        tight = compute_sample_plan(lot_size=500, aql=2.5, inspection_level="II",
+                                    severity="TIGHTENED", strategy="Z14")
+        self.assertEqual((normal.sample_size, normal.accept_number), (50, 3))
+        self.assertEqual((tight.sample_size, tight.accept_number, tight.reject_number), (50, 5, 6))
+
+    def test_z14_tightened_up_arrow(self):
+        # Lot 20000 level II → code M; tightened M@6.5 ↑ → L@6.5 (n=200, Ac=41).
+        sp = compute_sample_plan(lot_size=20000, aql=6.5, inspection_level="II",
+                                 severity="TIGHTENED", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (200, 41, 42))
+
+    def test_z14_reduced_smaller_sample_and_gap(self):
+        # Lot 500 level II → code H. Reduced uses a SMALLER sample (n=20 vs 50) and
+        # H@2.5 = (Ac 1, Re 4) — Re is NOT Ac+1 (the accept/reject gap).
+        sp = compute_sample_plan(lot_size=500, aql=2.5, inspection_level="II",
+                                 severity="REDUCED", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (20, 1, 4))
+        self.assertGreater(sp.reject_number, sp.accept_number + 1)  # the gap exists
+
     def test_z19_k_verified_cells(self):
         # Z1.9 std-dev method, normal. Lot 80 level II → code E (n=7); E@1.0 k=1.62
         # (the E row was wrong before the 2026-07-06 audit).
@@ -235,6 +260,17 @@ class ReceivingFlowTests(_ReceivingFixtureMixin, TenantTestCase):
         receiving_inspection.reject(report, self.user_a)
         lot.refresh_from_db()
         self.assertEqual(lot.status, "REJECTED")
+
+    def test_reduced_gap_lot_is_accepted(self):
+        # Reduced plan with an accept/reject gap (Ac=1, Re=4): 2 defectives lands in
+        # the gap → the lot is ACCEPTED (the switching engine reverts to normal).
+        lot = self._make_lot(qty="500")
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        report.sample_size, report.accept_number, report.reject_number = 20, 1, 4
+        report.save(update_fields=["sample_size", "accept_number", "reject_number"])
+        receiving_inspection.record_bulk(report, defectives_found=2, user=self.user_a)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "PASS")
 
     def test_route_received_with_step_opens_inspection(self):
         lot = self._make_lot()  # part_type has a RECEIVING step (fixture)

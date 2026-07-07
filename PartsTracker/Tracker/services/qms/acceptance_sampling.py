@@ -5,8 +5,10 @@ Given a lot size + plan parameters, returns the sample size (n) and accept/rejec
 numbers (Ac/Re). Three strategies:
   - ``C0``  — zero-acceptance-number (Squeglia). Ac is ALWAYS 0, Re ALWAYS 1
               (any defective rejects the lot). Default for aero/auto.
-  - ``Z14`` — ANSI/ASQ Z1.4 single sampling, normal severity. Re = Ac + 1
-              (single sampling has no gap). **Attribute** (count defectives).
+  - ``Z14`` — ANSI/ASQ Z1.4 single sampling, **Normal / Tightened / Reduced**
+              severity (Tables II-A / II-B / II-C). **Attribute** (count defectives).
+              Normal & Tightened: Re = Ac + 1. Reduced: Re may exceed Ac + 1 — the
+              accept/reject gap (Ac < d < Re → accept the lot, revert to normal).
   - ``Z19`` — ANSI/ASQ Z1.9 (ex MIL-STD-414) **variables**, standard-deviation
               method, normal severity. Returns n + the acceptability constant ``k``;
               the lot is accepted when the quality index (USL−x̄)/s (and/or
@@ -82,6 +84,51 @@ _Z14_NORMAL_AC = {
     "L": {0.65: 3,     1.0: 5,     1.5: 7,     2.5: 10,    4.0: 14,    6.5: 21},
     "M": {0.65: 5,     1.0: 7,     1.5: 10,    2.5: 14,    4.0: 21,    6.5: _UP},
     "N": {0.65: 7,     1.0: 10,    1.5: 14,    2.5: 21,    4.0: _UP,   6.5: _UP},
+}
+
+# Z1.4 Table II-B single sampling, TIGHTENED — Ac per (code letter, AQL). Re = Ac + 1.
+# Same sample sizes as normal (_Z14_SAMPLE_SIZE). Arrows follow the same rule as II-A.
+# Cross-verified 2026-07-07 against the MIL-STD-105E primary scan (gridded image reads
+# of rows H/K/N) with the decoder validated on the known-good Normal table. The
+# tightened Ac ladder is 0,1,2,3,5,8,12,18,27,41.
+_Z14_TIGHTENED_AC = {
+    "C": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: _DOWN, 2.5: _DOWN, 4.0: 0,    6.5: 1},
+    "D": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: _DOWN, 2.5: 0,    4.0: 1,    6.5: 2},
+    "E": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: 0,    2.5: 1,    4.0: 2,    6.5: 3},
+    "F": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: 0,    1.5: 1,    2.5: 2,    4.0: 3,    6.5: 5},
+    "G": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: 0,    1.0: 1,    1.5: 2,    2.5: 3,    4.0: 5,    6.5: 8},
+    "H": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: 0,    0.65: 1,    1.0: 2,    1.5: 3,    2.5: 5,    4.0: 8,    6.5: 12},
+    "J": {0.10: _DOWN, 0.15: _DOWN, 0.25: 0,    0.40: 1,    0.65: 2,    1.0: 3,    1.5: 5,    2.5: 8,    4.0: 12,   6.5: 18},
+    "K": {0.10: _DOWN, 0.15: 0,    0.25: 1,    0.40: 2,    0.65: 3,    1.0: 5,    1.5: 8,    2.5: 12,   4.0: 18,   6.5: 27},
+    "L": {0.10: 0,    0.15: 1,    0.25: 2,    0.40: 3,    0.65: 5,    1.0: 8,    1.5: 12,   2.5: 18,   4.0: 27,   6.5: 41},
+    "M": {0.10: 1,    0.15: 2,    0.25: 3,    0.40: 5,    0.65: 8,    1.0: 12,   1.5: 18,   2.5: 27,   4.0: 41,   6.5: _UP},
+    "N": {0.10: 2,    0.15: 3,    0.25: 5,    0.40: 8,    0.65: 12,   1.0: 18,   1.5: 27,   2.5: 41,   4.0: _UP,  6.5: _UP},
+}
+
+# Z1.4 Table II-C single sampling, REDUCED — (Ac, Re) per (code letter, AQL).
+# REDUCED uses SMALLER sample sizes AND has the accept/reject gap (Re is often
+# NOT Ac+1): when observed defectives d satisfy Ac < d < Re, the lot is ACCEPTED
+# but reduced inspection is discontinued (revert to normal — §4.7.4.b / §4.10.1.4).
+# Cross-verified 2026-07-07 (rows D–N confirmed via gridded image reads). Row C
+# (degenerate n=2) had an ambiguous top-corner cell at AQL 4.0/6.5 → left as arrows
+# (fail-closed: resolves down to row D, a slightly larger conservative sample) rather
+# than ship an unverified value.
+_Z14_REDUCED_SAMPLE_SIZE = {
+    "A": 2, "B": 2, "C": 2, "D": 3, "E": 5, "F": 8, "G": 13, "H": 20,
+    "J": 32, "K": 50, "L": 80, "M": 125, "N": 200, "P": 315, "Q": 500, "R": 800,
+}
+_Z14_REDUCED_ACRE = {
+    "C": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: _DOWN,  4.0: _DOWN,    6.5: _DOWN},   # 4.0/6.5 uncertain → fail-closed to D
+    "D": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: _DOWN,  4.0: (0, 1),    6.5: (0, 2)},
+    "E": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: (0, 1),  4.0: (0, 2),    6.5: (1, 3)},
+    "F": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: (0, 1),  2.5: (0, 2),  4.0: (1, 3),    6.5: (1, 4)},
+    "G": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: (0, 1),  1.5: (0, 2),  2.5: (1, 3),  4.0: (1, 4),    6.5: (2, 5)},
+    "H": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: (0, 1),  1.0: (0, 2),  1.5: (1, 3),  2.5: (1, 4),  4.0: (2, 5),    6.5: (3, 6)},
+    "J": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: (0, 1),  0.65: (0, 2),  1.0: (1, 3),  1.5: (1, 4),  2.5: (2, 5),  4.0: (3, 6),    6.5: (5, 8)},
+    "K": {0.10: _DOWN, 0.15: _DOWN, 0.25: (0, 1),  0.40: (0, 2),  0.65: (1, 3),  1.0: (1, 4),  1.5: (2, 5),  2.5: (3, 6),  4.0: (5, 8),    6.5: (7, 10)},
+    "L": {0.10: _DOWN, 0.15: (0, 1),  0.25: (0, 2),  0.40: (1, 3),  0.65: (1, 4),  1.0: (2, 5),  1.5: (3, 6),  2.5: (5, 8),  4.0: (7, 10),   6.5: (10, 13)},
+    "M": {0.10: (0, 1),  0.15: (0, 2),  0.25: (1, 3),  0.40: (1, 4),  0.65: (2, 5),  1.0: (3, 6),  1.5: (5, 8),  2.5: (7, 10), 4.0: (10, 13),  6.5: (14, 17)},
+    "N": {0.10: (0, 2),  0.15: (1, 3),  0.25: (1, 4),  0.40: (2, 5),  0.65: (3, 6),  1.0: (5, 8),  1.5: (7, 10), 2.5: (10, 13),4.0: (14, 17),  6.5: (21, 24)},
 }
 
 # C=0 (Squeglia) sample sizes by AQL → [(lot_max, n)]. Ac=0, Re=1 always.
@@ -186,13 +233,15 @@ def _code_letter(lot_size: int, level: str) -> str:
     return _CODE_LETTERS[-1][1][level]
 
 
-def _z14_ac(letter: str, aql: float) -> tuple[int, int]:
-    """Resolve (sample_size, Ac) for a Z1.4 normal single plan, FOLLOWING arrows
-    to the adjacent plan (↓ = larger sample below; ↑ = smaller sample above), per
-    MIL-STD-105E. Following an arrow changes BOTH n and Ac to the resolved letter's.
+def _z14_resolve(letter: str, aql: float, table: dict, sizes: dict):
+    """Resolve (sample_size, cell) for a Z1.4 single plan, FOLLOWING arrows to the
+    adjacent plan (↓ = larger sample below; ↑ = smaller sample above), per
+    MIL-STD-105E. Following an arrow changes BOTH n and the plan to the resolved
+    letter's. ``cell`` is an int Ac (normal/tightened) or an (Ac, Re) tuple (reduced).
 
-    Code letters A/B (tiny lots) aren't tabulated here; a missing cell is treated
-    as ↓ (search toward a larger, numeric plan), then clamped by lot size upstream.
+    Code letters A/B (tiny lots) aren't tabulated; a missing cell searches toward
+    the tabulated C–N band (↓ from below it, ↑ from above), then is clamped by lot
+    size upstream. A wholly-untabulated column trips the cycle guard → raise.
     """
     idx = _LETTERS.index(letter)
     seen: set[str] = set()
@@ -201,19 +250,31 @@ def _z14_ac(letter: str, aql: float) -> tuple[int, int]:
         if lt in seen:  # cycle guard (shouldn't happen in a valid table)
             break
         seen.add(lt)
-        cell = _Z14_NORMAL_AC.get(lt, {}).get(aql)
-        if isinstance(cell, int):
-            return _Z14_SAMPLE_SIZE[lt], cell
+        cell = table.get(lt, {}).get(aql)
+        if isinstance(cell, (int, tuple)):
+            return sizes[lt], cell
         if cell == _UP:
             idx -= 1
         elif cell == _DOWN:
             idx += 1
         else:
-            # Untabulated letter for this AQL: A/B sit below the tabulated C–N
-            # band (search down toward it); P/Q/R sit above (search up toward it).
-            # If the whole AQL column is untabulated, the cycle guard trips → raise.
             idx += -1 if idx > _LAST_TAB_IDX else 1
     raise ValueError(f"No Z1.4 plan for code letter {letter} at AQL {aql}")
+
+
+def _z14_plan(letter: str, aql: float, severity: str) -> tuple[int, int, int]:
+    """(sample_size, Ac, Re) for a Z1.4 single plan at the given severity.
+    Normal/Tightened: Re = Ac + 1. Reduced: (Ac, Re) from the table — Re may exceed
+    Ac + 1 (the accept/reject gap; a lot with Ac < d < Re is accepted but reverts
+    inspection to normal)."""
+    if severity == "TIGHTENED":
+        n, ac = _z14_resolve(letter, aql, _Z14_TIGHTENED_AC, _Z14_SAMPLE_SIZE)
+        return n, ac, ac + 1
+    if severity == "REDUCED":
+        n, (ac, re) = _z14_resolve(letter, aql, _Z14_REDUCED_ACRE, _Z14_REDUCED_SAMPLE_SIZE)
+        return n, ac, re
+    n, ac = _z14_resolve(letter, aql, _Z14_NORMAL_AC, _Z14_SAMPLE_SIZE)
+    return n, ac, ac + 1
 
 
 def _c0_sample_size(lot_size: int, aql: float) -> int:
@@ -298,24 +359,23 @@ def compute_sample_plan(
     C0: Ac=0, Re=1, n from the Squeglia table. Z14: code letter from lot size +
     level, n + Ac from the normal single-sampling table (arrows followed), Re = Ac + 1.
 
-    ``severity`` is carried on the returned plan for display but is a **NORMAL-only
-    passthrough** — only the Normal master tables are implemented. TIGHTENED /
-    REDUCED are NOT applied to the math (per the 2026-07 audit: lock to NORMAL and
-    defer switching; small shops rarely maintain the consecutive-lot/limit-number
-    bookkeeping switching requires). When a customer/AS9100 auditor requires
-    documented severity switching, transcribe Z1.4 Tables II-B/II-C directly (do
-    NOT derive them from the Normal Ac).
+    ``severity`` selects the Z1.4 master table: NORMAL (Table II-A), TIGHTENED
+    (II-B — same n, stricter Ac), or REDUCED (II-C — smaller n, and Re may exceed
+    Ac + 1, the accept/reject gap). The effective severity is chosen by the
+    switching engine (``services.qms.severity_switching``); this function just
+    applies whatever severity it's handed. C=0 and Z1.9 ignore severity.
     """
     if lot_size < 0:
         raise ValueError("lot_size must be non-negative")
     aql_s = _snap_aql(aql)
     level = inspection_level if inspection_level in ("I", "II", "III") else "II"
+    sev = severity if severity in ("NORMAL", "TIGHTENED", "REDUCED") else "NORMAL"
 
     if strategy == "Z14":
         letter = _code_letter(lot_size, level)
-        n, ac = _z14_ac(letter, aql_s)
+        n, ac, re = _z14_plan(letter, aql_s, sev)
         n = min(n, lot_size) if lot_size > 0 else 0
-        return SamplePlan(n, ac, ac + 1, "Z14", level, severity)
+        return SamplePlan(n, ac, re, "Z14", level, sev)
 
     if strategy == "Z19":
         letter = _z19_code_letter(lot_size, level)

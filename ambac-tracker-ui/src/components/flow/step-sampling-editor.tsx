@@ -740,9 +740,8 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                   <Label className="text-sm font-medium">Escalation (severity switching)</Label>
                   <p className="text-xs text-muted-foreground">
                     {form.watch('strategy') === 'Z14'
-                      ? 'Severity tightens after rejected lots (Normal → Tightened) and relaxes after a sustained good run (→ Reduced), per Z1.4 switching rules. Starting severity is set in the plan above.'
-                      : 'Inspection escalates to 100% after a rejected lot (C=0 convention).'}
-                    {' '}Switching is automatic from lot-acceptance history (supplier scorecard) — engine wiring is a pending backend task.
+                      ? 'Severity switches automatically from lot-acceptance history, per Z1.4: tighten after rejected lots (Normal → Tightened), relax after a sustained good run (→ Reduced), and revert on a rejection. The severity set above is the STARTING point; the effective severity tracks the supplier’s history per receiving step.'
+                      : 'Inspection escalates to 100% after a rejected lot (C=0 convention). Z1.4 severity switching applies only to the Z1.4 plan.'}
                   </p>
                 </div>
               </div>

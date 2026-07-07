@@ -63,12 +63,15 @@ def create_standalone_receiving_plan(part_type, name="", user=None):
 
 
 def _plan_for(lot, step):
+    from Tracker.services.qms.severity_switching import effective_severity
     rs = resolve_sampling_ruleset(step, lot.supplier)
     return compute_sample_plan(
         lot_size=int(lot.quantity or 0),
         aql=float(rs.aql) if rs and rs.aql is not None else 1.0,
         inspection_level=(rs.inspection_level if rs and rs.inspection_level else "II"),
-        severity=(rs.severity if rs and rs.severity else "NORMAL"),
+        # Effective (runtime) severity from the switching engine, not the ruleset's
+        # static starting severity — a tightened/reduced supplier gets the right plan.
+        severity=effective_severity(step, lot.supplier, rs),
         strategy=(rs.strategy if rs and rs.strategy else "C0"),
     )
 
@@ -402,6 +405,10 @@ def evaluate_lot_acceptance(report):
         status = "FAIL"
     elif units_recorded >= n and defectives <= ac:
         status = "PASS"
+    elif units_recorded >= n and defectives < re:
+        # Reduced-inspection accept/reject gap (Re > Ac + 1): accept the lot, but
+        # the switching engine reverts this (step, supplier) to normal inspection.
+        status = "PASS"
     else:
         status = "PENDING"
 
@@ -409,6 +416,9 @@ def evaluate_lot_acceptance(report):
         report.status = status
         report.save(update_fields=["status"])
     _fire_lot_gate(report)
+    if status in ("PASS", "FAIL"):
+        from Tracker.services.qms.severity_switching import update_after_lot
+        update_after_lot(report)
     return report
 
 
