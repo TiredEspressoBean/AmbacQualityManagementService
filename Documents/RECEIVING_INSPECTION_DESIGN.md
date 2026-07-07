@@ -13,7 +13,7 @@ receiving runtime** were built. **When the body and §16/§17 disagree, §16/§1
 
 | § | Topic | State (2026-07) |
 |---|---|---|
-| 1 | Acceptance-sampling calculator | **Built + table-verified (2026-07-06)** — C=0 / Z1.4 / **Z1.9**. API is `compute_sample_plan()` → 8-field `SamplePlan`. Z1.4 Table II-A transcribed from the MIL-STD-105E scan with **arrows preserved + followed** (fixed the prior bug where arrows were flattened to numbers — the bogus M/N `21`s). Z1.9 std-dev k **verified B–J**; **K–P fail closed** (raise, not guess) pending a purchased Z1.9-2003 copy. `severity` is **NORMAL-only** (tightened/reduced switching deferred, documented). |
+| 1 | Acceptance-sampling calculator | **Built + table-verified (2026-07-06)** — C=0 / Z1.4 / **Z1.9**. API is `compute_sample_plan()` → 8-field `SamplePlan`. Z1.4 Table II-A transcribed from the MIL-STD-105E scan with **arrows preserved + followed** (fixed the prior bug where arrows were flattened to numbers — the bogus M/N `21`s). Z1.9 std-dev k **verified B–J**; **K–P fail closed** (raise, not guess) pending a purchased Z1.9-2003 copy. **Three-way severity switching (Normal/Tightened/Reduced, Tables II-A/B/C) built (2026-07-07)** — automatic from lot history via `services.qms.severity_switching`. |
 | 2 | Flow A — purchased-material receiving | **Built** — but inspection runs through the **DWI runtime** (§16), not the bespoke page this section describes. |
 | 3 | Flow B — outside processing (OSP) | **Built end-to-end** (2026-07-06). Backend: `Steps.is_outside_process`/`outside_supplier`, `OutsideProcessShipment` aggregate (SENT/RETURNED/CLOSED), `StepExecution.outside_process_shipment`, `PartsStatus.AT_OUTSIDE_PROCESS`, `QualityReports.osp_shipment` (subject constraint widened to at-most-one), `services/mes/outside_process.py`, viewset + endpoints. FE: send-out (quantity-first dialog) + receive-back on the WO control page (`OutsideProcessPanel`), OSP completion adapter (accept/reject on finish), detail-page badge, flow-editor "Outside process" toggle + vendor on RECEIVING nodes, and a shipper board at `/production/outside-processing` (Supply: *Ready to ship* / *At vendor*). Return inspection reuses the DWI runtime. **Nothing left.** |
 | 4 | Unified incoming-inspection queue | **Built** (2026-07-06) — one worklist across both flows (lots + OSP returns) with a `source` column, SAP QM QA32-style. `GET /api/IncomingInspection/` + `/production/incoming`. Supersedes §4's "future unification" note. |
@@ -42,8 +42,9 @@ design both, build A first.
 > **Sampling standard:** pluggable, **C=0 (Squeglia) as default** (most auto/aero
 > customer requirements prohibit AQL>0), **ANSI/ASQ Z1.4** single sampling (ex
 > MIL-STD-105E, general level **II**, normal severity) selectable per plan, plus
-> trivial `100%` / `skip-lot`. Built so Z1.4 tightened/reduced severity and
-> double/multiple sampling are additive. Confirm no customer mandates a different plan.
+> trivial `100%` / `skip-lot`. Z1.4 tightened/reduced **severity switching is built**
+> (automatic from lot history); double/multiple sampling stays additive. Confirm no
+> customer mandates a different plan.
 
 ---
 
@@ -90,8 +91,8 @@ def evaluate_variables(*, values, usl=None, lsl=None, k) -> dict   # Z1.9 x̄/s 
     auto (IATF customer-specific reqs) and aero primes prohibit AQL>0.
   - **Z1.4** (ANSI/ASQ, ex-MIL-STD-105E) — single sampling, levels S-1..S-4 + I/II/III,
     via the two standard tables (lot-size+level → code letter; code letter+AQL → n,Ac,Re)
-    incl. arrow rules. Severity switching and double/multiple sampling are clean
-    extension points.
+    incl. arrow rules. **Severity switching (Normal/Tightened/Reduced) is built**;
+    double/multiple sampling is a clean extension point.
 - Plus `'100%'` and `'skip-lot'` as trivial strategies.
 - **Test this hard** against published table values before anything depends on it —
   it is the piece most likely to be subtly wrong.
@@ -787,7 +788,10 @@ The flat `SamplingRuleType` enum conflates two orthogonal axes; the model below 
   (Squeglia). **Terminal & singular** — a single `plan` object, no list.
 - `VARIABLES` (Z1.9, measured mean/σ) — **BUILT (2026-07)**, not reserved. Its own
   family: measures one characteristic on n units → x̄/s vs `k`.
-- *(reserved, not built)* `CONTINUOUS` (CSP).
+- *(reserved, not built)* `CONTINUOUS` (CSP) — an **in-process / production-flow**
+  discipline (alternates 100% inspection with a sampling frequency over a continuous
+  unit stream). It belongs to the `STREAMING` in-process domain, **not** receiving/SQM,
+  which is inherently lot-based (there is no "lot" or supplier in a continuous stream).
 
 Modeled as a discriminated union on `family`. A family selector at the top of the dialog
 swaps the whole sub-form, so AQL never bleeds onto a streaming step and the two families
@@ -816,8 +820,8 @@ The `plan` defines *how* to sample; the **subject** (what is being accepted) is 
 polymorphic binding:
 - **Flow A — purchased `MaterialLot`** — the *only* subject wired up now.
 - **Flow B — `OutsideProcessShipment` / part-batch** — our own parts grouped by the user,
-  shipped to an external processor, received back, inspected on return. **Reserved, not
-  built** (design doc §3 Flow B).
+  shipped to an external processor, received back, inspected on return. **Built
+  end-to-end (2026-07-06)** — reuses the subject-agnostic calculator (§3 Flow B).
 
 **Receiving states belong to the subject, not the engine.** Each subject owns its lifecycle
 (`MaterialLot`: AWAITING_INSPECTION→ACCEPTED/REJECTED; an OSP shipment:
@@ -829,10 +833,13 @@ touching the sampling model (same way Z1.9 plugs in as a registry entry).
 
 ### 13.5 Scope now vs. reserved
 - **Built:** `STREAMING` (existing rule types + explicit 100% optional),
-  `LOT_ACCEPTANCE` (AQL single + C=0), **and `VARIABLES` (Z1.9)** — on the `family`
-  discriminator + registry, lot subject = `MaterialLot` only.
-- **Reserved (additive later, no refactor):** double/multiple sampling,
-  `CONTINUOUS` (CSP); and the Flow B `OutsideProcessShipment` acceptance subject.
+  `LOT_ACCEPTANCE` (AQL single + C=0), `VARIABLES` (Z1.9), **Z1.4 three-way severity
+  switching (2026-07-07)**, and the Flow B `OutsideProcessShipment` acceptance subject
+  (2026-07-06) — on the `family` discriminator + registry.
+- **Reserved (additive later, no refactor):** double/multiple sampling — lot
+  acceptance, so it extends receiving/SQM (and OSP returns). `CONTINUOUS` (CSP) is
+  also reserved but is an **in-process/`STREAMING`** discipline — a different domain
+  from receiving/SQM, not a lot-acceptance plan.
 - **Not doing:** free mode-string + if-blocks; schemaless JSON params; mixing families;
   keeping AQL as first-class ruleset columns long-term.
 
@@ -1004,7 +1011,8 @@ are code-verified (grep/read), not inferred from the design intent above.
 - `acceptance_sampling.py` — **table-verified (2026-07-06):** Z1.4 Table II-A transcribed from the
   MIL-STD-105E scan with arrows preserved + *followed* (the suspect M/N `21`s were the bug — up-arrows,
   not Ac=21); Z1.9 std-dev `k` verified B–J against MIL-STD-414, K–P **fail-closed** (raise, not guess);
-  `severity` locked to NORMAL (switching deferred, documented). Tests lock arrow-following + fail-closed.
+  **three-way severity switching (Tables II-B/II-C) built 2026-07-07** (automatic from lot history).
+  Tests lock arrow-following + fail-closed + tightened/reduced Ac + the switching transitions.
   *(Only residual: buy Z1.9-2003 for large-lot variables K–P if a customer needs it.)*
 
 ## 18. Backlog — single source of truth for remaining work
@@ -1023,7 +1031,8 @@ are code-verified (grep/read), not inferred from the design intent above.
    they're up-arrows, not Ac=21; flattening arrows could accept lots the standard rejects);
    Z1.9 std-dev k **verified for B–J** against MIL-STD-414, **K–P fail-closed** (raise with an
    actionable message rather than ship unverified constants — pure Z1.9-2003, no standard mixing);
-   `severity` locked to **NORMAL** (tightened/reduced switching deferred, per audit). Tests lock
+   `severity` was locked to NORMAL at sign-off; **three-way switching (Tables II-B/II-C)
+   built 2026-07-07** — see §13.5 / the sampling row in the index. Tests lock
    arrow-following + the fail-closed path. *Remaining only if a customer needs large-lot variables:*
    buy ANSI/ASQ Z1.9-2003 and transcribe verified K–P (the free MIL-STD-414 values exist but use
    different high-letter sample sizes, so they'd mix standards — deliberately not used).
@@ -1066,4 +1075,7 @@ are code-verified (grep/read), not inferred from the design intent above.
 
 **Genuinely deferred — enterprise-tier, needs a named customer/clause (§11):** inventory ledger, skip-lot / dock-to-stock earning, PPAP element mgmt, supplier portal (SCAR response).
 
-**Reserved — additive when needed:** Z1.4 tightened/reduced switching, double/multiple sampling, CSP.
+**Reserved — additive when needed:** double/multiple sampling (lot acceptance — extends
+receiving/SQM + OSP returns). *(Z1.4 tightened/reduced severity switching — **built 2026-07-07**,
+no longer reserved.)* **CSP (continuous sampling)** is reserved but belongs to the
+in-process/`STREAMING` domain, not receiving/SQM.
