@@ -439,3 +439,57 @@ register_event(EventType(
                  'EXPIRED. The supplier is off the ASL for this scope until re-qualified.'),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# supplier.qualification_expiring_soon — a SupplierQualification is approaching
+# its expiry_date (proactive re-qualification reminder, fired at 60- and 30-day
+# marks by the daily beat task)
+# =============================================================================
+
+@dataclass(frozen=True)
+class SupplierQualificationExpiringSoonPayload:
+    """Payload for `supplier.qualification_expiring_soon`. Fired ahead of expiry
+    so QA can re-qualify before the supplier drops off the ASL. Emitted once per
+    reminder window (60, then 30 days out), not daily."""
+
+    id: str                     # qualification id; correlation source
+    tenant_id: str
+    qualification_id: str
+    qualification_number: str
+    supplier_id: str
+    supplier_name: str
+    scope: str
+    expiry_date: str            # ISO date
+    days_to_expiry: int
+    reminder_window: int        # 60 or 30 — which threshold this reminder is for
+
+    @classmethod
+    def sample(cls) -> 'SupplierQualificationExpiringSoonPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000c1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            qualification_id='00000000-0000-0000-0000-0000000000c1',
+            qualification_number='SQ-000123',
+            supplier_id='00000000-0000-0000-0000-0000000000b1',
+            supplier_name='Great Lakes Diesel',
+            scope='Injector Body',
+            expiry_date='2026-08-30',
+            days_to_expiry=30,
+            reminder_window=30,
+        )
+
+
+register_event(EventType(
+    code='supplier.qualification_expiring_soon',
+    label='Supplier Qualification Expiring Soon',
+    domain='Quality',
+    payload_schema=SupplierQualificationExpiringSoonPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['QA Manager'],
+    default_on=True,
+    transactional=False,
+    description=('A supplier qualification is approaching its expiry date. Re-qualify '
+                 'before it lapses. Fired at the 60- and 30-day marks.'),
+    external_routable=False,
+))

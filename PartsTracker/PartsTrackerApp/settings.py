@@ -757,6 +757,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=7, minute=0),
         "options": {"expires": 3600},
     },
+    # Daily proactive re-qualification reminders (emits supplier.qualification_expiring_soon
+    # at the 60/30-day marks for ASL records approaching expiry)
+    "notify-expiring-qualifications": {
+        "task": "Tracker.tasks.notify_expiring_qualifications",
+        "schedule": crontab(hour=7, minute=15),
+        "options": {"expires": 3600},
+    },
     # Daily recommend-only scorecard→standing review (emits supplier.standing_review;
     # never auto-transitions a qualification)
     "review-supplier-standings": {

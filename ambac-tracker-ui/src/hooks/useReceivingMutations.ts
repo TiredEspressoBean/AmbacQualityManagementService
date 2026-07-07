@@ -37,6 +37,36 @@ export const useBulkCreateLots = () => {
     });
 };
 
+// ----- Certificate of Conformance capture (multipart PATCH of the lot) -----
+// The generated client types certificate_of_conformance as a URL string, so a
+// File upload goes through a raw multipart PATCH (mirrors useDocumentUpload).
+export const useUploadLotCoC = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (vars: { id: string; file: File }) => {
+            const form = new FormData();
+            form.append("certificate_of_conformance", vars.file);
+            const res = await fetch(`/api/MaterialLots/${vars.id}/`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+                body: form,
+            });
+            if (!res.ok) {
+                let detail = "Upload failed";
+                try { const b = await res.json(); detail = b.detail ?? JSON.stringify(b); } catch { /* ignore */ }
+                throw new Error(`${res.status}: ${detail}`);
+            }
+            return res.json();
+        },
+        onSuccess: (_data, vars) => {
+            invalidateReceiving(queryClient);
+            queryClient.invalidateQueries({ queryKey: ["material-lot", vars.id] });
+            queryClient.invalidateQueries({ queryKey: ["supplier-scorecard"] });
+        },
+    });
+};
+
 // ----- Inspection lifecycle actions (detail, keyed by lot id) -----
 
 export const useOpenInspection = () => {

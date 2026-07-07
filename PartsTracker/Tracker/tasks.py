@@ -1532,6 +1532,36 @@ def expire_supplier_qualifications():
 
 
 @shared_task
+def notify_expiring_qualifications():
+    """Celery Beat task: proactively remind on SupplierQualifications approaching
+    expiry (within 60 days). The service emits once per 60/30-day window, so daily
+    runs don't spam. Cross-tenant via `.all_tenants`; each emit runs in its tenant
+    context. Returns a summary for observability."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from Tracker.models import SupplierQualification
+    from Tracker.services.qms import supplier_qualification as svc
+
+    today = timezone.now().date()
+    horizon = today + timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
+    notified = 0
+    due = (
+        SupplierQualification.all_tenants
+        .filter(status__in=SupplierQualification.ACTIVE_STATUSES,
+                expiry_date__isnull=False,
+                expiry_date__gte=today, expiry_date__lte=horizon)
+        .iterator()
+    )
+    for qual in due:
+        with tenant_context(str(qual.tenant_id)):
+            if svc.notify_expiring_soon(qual):
+                notified += 1
+
+    logger.info("notify_expiring_qualifications: notified=%d", notified)
+    return {'status': 'success', 'notified': notified}
+
+
+@shared_task
 def review_supplier_standings():
     """Celery Beat task (RECOMMEND-ONLY): for each supplier with receiving history,
     read its scorecard and emit `supplier.standing_review` when a qualification review

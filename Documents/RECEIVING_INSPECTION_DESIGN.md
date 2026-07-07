@@ -700,11 +700,15 @@ record that requirement in the PR:
 - **True PPM** (vs. the reject-rate proxy the scorecard uses).
 - **Scorecard-driven skip-lot / dock-to-stock automation** (earning/reversion).
 - Full **append-only inventory ledger** (the status-flip seam is sufficient until a
-  real inventory/cost requirement appears). ⚠ **(2026-07) This defer assumes lot
-  traceability — which lot was consumed at which step — is captured by `MaterialUsage`.
-  AS9100/IATF require material traceability, so confirm `MaterialUsage` actually
-  provides it before accepting "status-flip is sufficient"; if it's thin, this defer
-  is too aggressive.**
+  real inventory/cost requirement appears). ✅ **(2026-07-06) Traceability defer verified:**
+  `MaterialUsage` captures the full chain — `lot`/`harvested_component` → `part` → `step`
+  (plus `work_order`, `qty_consumed`, `consumed_by`, `consumed_at`) and is exposed via a CRUD
+  viewset + serializer, so "which lot was consumed at which step" / "which parts came from
+  lot X" is answerable and recordable. The ledger defer **stands**. **But a real gap remains
+  (NOT enterprise-tier, NOT the ledger):** nothing *writes* `MaterialUsage` automatically —
+  there is no consumption service wired into the build/step flow, so the traceability chain is
+  only as complete as manual data entry. Closing it is a small "record consumption at step"
+  hook (a writer + a capture point), tracked as a follow-up — distinct from the ledger.
 
 **Exception — Flow B (outside processing) is right-sized.** Sending parts out for
 plating / heat-treat / grinding is *common* at small job shops, so OSP receiving is
@@ -740,12 +744,13 @@ fishbone; approval engine; doc control; dashboard; inbox). Gaps, tiered against 
 2. **Reject → one-click NCR/disposition.** Confirmed standard ("create NC from a failed
    record"). This is the §10.7 reject→disposition wiring — validated as expected, needs
    the `QuarantineDisposition.material_lot` FK first.
-3. **CoC capture at receipt.** `MaterialLot.certificate_of_conformance` (text) exists and
-   feeds the scorecard, but there's no capture-the-cert UI on receive/inspection. Cheap,
-   audit-relevant.
-4. **Proactive requalification reminders** (Ideagen/QT9 notify 60/30 days pre-expiry). We
-   flip to EXPIRED + highlight in the list; add an "expiring soon" notification via the
-   beat task + notification engine.
+3. ~~**CoC capture at receipt.**~~ **DONE (2026-07-06):** dedicated CoC upload on the receiving
+   inspection page populates `MaterialLot.certificate_of_conformance` (the FileField the
+   scorecard's `coc_compliance` reads) via a multipart PATCH — distinct from the generic
+   attached-Documents button, which does not feed that metric.
+4. ~~**Proactive requalification reminders**~~ **DONE (2026-07-06):** `notify_expiring_qualifications`
+   beat task (daily) emits `supplier.qualification_expiring_soon` at the 60- and 30-day marks
+   (idempotent per window), alongside the existing expire-on-lapse notification.
 5. **Print / PDF the inspection record + NCR/disposition** (audit packet). Excel export +
    ReportButton exist; a clean record PDF does not.
 6. **Inline photo/defect capture** on inspection + NCR (Tulip Image widget benchmark).

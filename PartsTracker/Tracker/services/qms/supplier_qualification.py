@@ -164,6 +164,52 @@ def expire(qualification):
     return qualification
 
 
+# Reminder marks (days before expiry), tightest first — a qualification fires the
+# 60-day reminder, then the 30-day reminder, each exactly once.
+_EXPIRY_REMINDER_DAYS = (30, 60)
+
+
+def notify_expiring_soon(qualification) -> bool:
+    """Emit `supplier.qualification_expiring_soon` when the qualification is inside
+    a reminder window (<= 30 or <= 60 days out). Idempotent per (qualification,
+    window) so each threshold notifies once, not daily. Returns True if emitted."""
+    if qualification.expiry_date is None:
+        return False
+    days = (qualification.expiry_date - timezone.now().date()).days
+    window = next((d for d in _EXPIRY_REMINDER_DAYS if days <= d), None)
+    if window is None:
+        return False
+    _emit_expiring_soon(qualification, days_to_expiry=days, window=window)
+    return True
+
+
+def _emit_expiring_soon(qualification, *, days_to_expiry: int, window: int) -> None:
+    from Tracker.services.core.notifications import emit
+    from Tracker.services.qms.events import SupplierQualificationExpiringSoonPayload
+
+    supplier = qualification.supplier
+    payload = SupplierQualificationExpiringSoonPayload(
+        id=str(qualification.id),
+        tenant_id=str(qualification.tenant_id) if qualification.tenant_id else "",
+        qualification_id=str(qualification.id),
+        qualification_number=qualification.qualification_number or "",
+        supplier_id=str(supplier.id),
+        supplier_name=supplier.name,
+        scope=qualification.scope_display,
+        expiry_date=qualification.expiry_date.isoformat(),
+        days_to_expiry=days_to_expiry,
+        reminder_window=window,
+    )
+    emit(
+        "supplier.qualification_expiring_soon",
+        tenant=qualification.tenant,
+        payload=payload,
+        correlation_id=f"supplier_qualification:{qualification.id}",
+        # One reminder per window (60, then 30) — keyed by window so it doesn't repeat daily.
+        idempotency_key=f"supplier.qualification_expiring_soon:{qualification.id}:{window}",
+    )
+
+
 def _emit_qualification_expired(qualification) -> None:
     """Notify (notification-rule eligible) that a qualification expired — the
     supplier is now off the ASL for this scope."""

@@ -86,6 +86,30 @@ class SupplierQualificationServiceTests(TenantTestCase):
             notification_event.disconnect(receiver)
         self.assertIn("supplier.qualification_expired", seen)
 
+    def _granted_expiring_in(self, days):
+        from django.utils import timezone
+        q = self._open()
+        svc.grant(q, user=self.user_a,
+                  expiry_date=timezone.now().date() + datetime.timedelta(days=days))
+        return q
+
+    def test_expiring_soon_fires_30_day_window(self):
+        q = self._granted_expiring_in(25)
+        self.assertTrue(svc.notify_expiring_soon(q))   # 25 days → tightest window 30
+
+    def test_expiring_soon_fires_60_day_window(self):
+        q = self._granted_expiring_in(45)
+        self.assertTrue(svc.notify_expiring_soon(q))   # 45 days → window 60
+
+    def test_not_expiring_soon_is_noop(self):
+        q = self._granted_expiring_in(90)
+        self.assertFalse(svc.notify_expiring_soon(q))  # outside both windows
+
+    def test_no_expiry_date_is_noop(self):
+        q = self._open()
+        svc.grant(q, user=self.user_a)                 # no expiry_date
+        self.assertFalse(svc.notify_expiring_soon(q))
+
 
 class ReceivingQualificationGateTests(TenantTestCase):
     def setUp(self):

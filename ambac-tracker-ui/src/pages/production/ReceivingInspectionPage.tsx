@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Schema } from "@/lib/api/types";
 import {
     useSamplePlan, useOpenInspection, useRecordUnits, useRecordBulk, useAcceptLot, useRejectLot, useRaiseScar,
+    useUploadLotCoC,
 } from "@/hooks/useReceivingMutations";
 import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
@@ -30,6 +31,40 @@ function QualificationBanner({ supplierId, partTypeId }: { supplierId?: string |
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
             ⚠ This lot's supplier is <b>not qualified</b> for this part type. If the part type requires
             qualification, the lot was held — qualify the supplier (Approved Suppliers) before accepting.
+        </div>
+    );
+}
+
+/** Dedicated Certificate of Conformance capture — populates the lot's
+ *  `certificate_of_conformance` FileField (what the supplier scorecard's
+ *  CoC-compliance metric reads), distinct from generic attached Documents. */
+function CocCapture({ lotId, cocUrl }: { lotId: string; cocUrl?: string | null }) {
+    const upload = useUploadLotCoC();
+    const inputRef = useRef<HTMLInputElement>(null);
+    const pick = () => inputRef.current?.click();
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        if (f) upload.mutate({ id: lotId, file: f }, {
+            onSuccess: () => toast.success("Certificate of Conformance saved"),
+            onError: () => toast.error("Could not upload the certificate"),
+        });
+        e.target.value = "";
+    };
+    return (
+        <div className="rounded-md border p-3 flex items-center gap-2 text-sm">
+            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+            {cocUrl ? (
+                <>
+                    <span>Certificate of Conformance on file.</span>
+                    <a href={cocUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">View</a>
+                </>
+            ) : (
+                <span className="text-amber-700">No Certificate of Conformance captured for this lot.</span>
+            )}
+            <input ref={inputRef} type="file" className="hidden" onChange={onFile} />
+            <Button variant="outline" size="sm" className="ml-auto" disabled={upload.isPending} onClick={pick}>
+                {upload.isPending ? "Uploading…" : cocUrl ? "Replace" : "Upload CoC"}
+            </Button>
         </div>
     );
 }
@@ -188,7 +223,7 @@ export function ReceivingInspectionPage() {
                         <span className="font-mono">{lot.lot_number}</span>
                         <Badge variant="outline">{lot.status}</Badge>
                         <Button variant="outline" size="sm" className="ml-auto" onClick={() => setDocsOpen(true)}>
-                            <FileText className="h-4 w-4 mr-1" /> Documents (CoC, certs)
+                            <FileText className="h-4 w-4 mr-1" /> Documents
                         </Button>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
@@ -197,6 +232,7 @@ export function ReceivingInspectionPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <QualificationBanner supplierId={lot.supplier as string | null} partTypeId={lot.material_type as string | null} />
+                    <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} />
                     {noPlan && (
                         <p className="text-sm text-destructive">
                             No RECEIVING step configured for this part type. Add a Receiving Inspection step to its
