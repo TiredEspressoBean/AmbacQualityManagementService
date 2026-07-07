@@ -23,6 +23,9 @@ from .training_records import DemoTrainingRecordsSeeder
 from .documents import DemoDocumentsSeeder
 from .training_exercises import TrainingExercisesSeeder
 from .sampling import DemoSamplingSeeder
+from .receiving import DemoReceivingSeeder
+from .supplier_quality import DemoSupplierQualitySeeder
+from .outside_process import DemoOutsideProcessSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -41,6 +44,9 @@ __all__ = [
     'DemoDocumentsSeeder',
     'TrainingExercisesSeeder',
     'DemoSamplingSeeder',
+    'DemoReceivingSeeder',
+    'DemoSupplierQualitySeeder',
+    'DemoOutsideProcessSeeder',
     'DemoRemanSeeder',
     'DemoLifeTrackingSeeder',
     'DemoThreeDModelSeeder',

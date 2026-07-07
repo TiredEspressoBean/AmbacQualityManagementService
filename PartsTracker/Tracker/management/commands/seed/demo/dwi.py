@@ -196,15 +196,23 @@ class DemoDwiSeeder(BaseSeeder):
         super().__init__(stdout, style, scale=scale)
         self.tenant = tenant
 
-    def seed(self, manufacturing, models_3d):
+    def seed(self, manufacturing, models_3d, receiving=None, outside_process=None):
         self.log("Creating demo DWI work instructions (substeps)...")
 
         steps = {s.name: s for s in (manufacturing.get("steps", []) if manufacturing else [])}
+        # The RECEIVING and OSP steps are authored by their own seeders, not the
+        # manufacturing one — merge them in so their work instructions get authored too.
+        recv_step = receiving.get("step") if isinstance(receiving, dict) else None
+        osp_step = outside_process.get("step") if isinstance(outside_process, dict) else None
+        for extra in (recv_step, osp_step):
+            if extra is not None:
+                steps[extra.name] = extra
+
         md = {m.label: m for m in (manufacturing.get("measurement_definitions", []) if manufacturing else [])}
         models = models_3d.get("3d_models", []) if models_3d else []
         model_id = str(models[0].id) if models else ""
 
-        content = self._content(md, model_id)
+        content = self._content(md, model_id, recv_step=recv_step, osp_step=osp_step)
 
         created = 0
         for step_name, substeps in content.items():
@@ -235,7 +243,7 @@ class DemoDwiSeeder(BaseSeeder):
         self.log(f"  Created {created} substeps across {len(content)} steps")
         return {"substeps_created": created}
 
-    def _content(self, md, model_id):
+    def _content(self, md, model_id, recv_step=None, osp_step=None):
         """Map step name -> list of substeps. Built at seed time so measurement
         and 3D-model ids are the real seeded rows."""
 
@@ -243,6 +251,18 @@ class DemoDwiSeeder(BaseSeeder):
             """Measurement node only if the demo definition exists."""
             m = md.get(label)
             return [_measurement(step, key, m, characteristic)] if m else []
+
+        def step_measures(step, step_name, characteristic=""):
+            """Measurement nodes for every MeasurementDefinition on a step (used for
+            the RECEIVING / OSP steps, whose defs live on the step itself, not in the
+            manufacturing measurement_definitions map)."""
+            if step is None:
+                return []
+            from Tracker.models import MeasurementDefinition
+            nodes = []
+            for m in MeasurementDefinition.objects.filter(step=step, type="NUMERIC"):
+                nodes.append(_measurement(step_name, f"measure-{m.id}", m, characteristic))
+            return nodes
 
         callout_block = (
             [
@@ -260,7 +280,37 @@ class DemoDwiSeeder(BaseSeeder):
             else []
         )
 
-        return {
+        content = {
+            "Core Receiving": [
+                {
+                    "title": "Receive and log incoming core",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _para("Receive the incoming core, scan its identity band, and log its arrival condition."),
+                        _callout("note", "Cores arrive as-is from the field — record what you see, don't clean yet."),
+                        _scan("Core Receiving", "core-serial", "Scan core serial / identity band"),
+                        _photo("Core Receiving", "arrival-photo", "Photograph the core as received", required=False),
+                        _quality_status("Core Receiving", "arrival-condition", "Arrival condition"),
+                        _inspection_signatures("Core Receiving", "receiving-signoff", require_detected=True),
+                    ),
+                },
+            ],
+            "Component Grading": [
+                {
+                    "title": "Grade and sort components",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _heading("Grade each harvested component"),
+                        _para("Assess each component against the grading criteria and sort into reuse / rework / scrap."),
+                        _callout("caution", "When in doubt, grade down — a reused-but-marginal component fails downstream."),
+                        _quality_status("Component Grading", "grade-result", "Grade decision"),
+                        _error_types("Component Grading", "grade-defects", "Defects driving the grade", min_rows=0),
+                        _inspection_signatures("Component Grading", "grade-signoff", require_detected=True),
+                    ),
+                },
+            ],
             "Disassembly": [
                 {
                     "title": "Tear down injector",
@@ -379,3 +429,47 @@ class DemoDwiSeeder(BaseSeeder):
                 },
             ],
         }
+
+        # Receiving inspection (Flow A) — DWI-based incoming inspection. Runs the
+        # RECEIVING_COMPLETION adapter: unit-by-unit capture → verdict → accept/reject.
+        if recv_step is not None:
+            content[recv_step.name] = [
+                {
+                    "title": "Inspect incoming material",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _heading("Incoming inspection"),
+                        _para("Inspect the sampled units against the receiving characteristics, then set the verdict."),
+                        _callout("note", "Sample size and accept/reject come from the receiving sampling plan (C=0 / AQL)."),
+                        _scan(recv_step.name, "lot-scan", "Scan the lot / packing slip", required=False),
+                        *step_measures(recv_step, recv_step.name, characteristic="RCV-01"),
+                        _quality_status(recv_step.name, "recv-result", "Incoming inspection result"),
+                        _inspection_signatures(recv_step.name, "recv-signoff", require_detected=True),
+                        _error_types(recv_step.name, "recv-defects", "Defects found", min_rows=0),
+                    ),
+                },
+            ]
+
+        # Outside processing (Flow B) — return inspection. Runs the OSP_COMPLETION
+        # adapter: accept advances the parts, reject quarantines for disposition.
+        if osp_step is not None:
+            content[osp_step.name] = [
+                {
+                    "title": "Return inspection (post-coating)",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "requires_signature": True,
+                    "body": _doc(
+                        _heading("Inspect returned subcontract work"),
+                        _para("Verify the coating on the returned parts and record the measured thickness."),
+                        _callout("caution", "Reject the shipment if thickness is out of tolerance — it routes to disposition."),
+                        *step_measures(osp_step, osp_step.name, characteristic="OSP-01"),
+                        _photo(osp_step.name, "coating-photo", "Photograph the coated surface", required=False),
+                        _quality_status(osp_step.name, "osp-result", "Return inspection result"),
+                        _attest_signature(osp_step.name, "osp-signoff", "Return inspection sign-off"),
+                    ),
+                },
+            ]
+
+        return content

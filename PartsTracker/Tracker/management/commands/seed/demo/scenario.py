@@ -33,6 +33,8 @@ from .documents import DemoDocumentsSeeder
 from .training_exercises import TrainingExercisesSeeder
 from .sampling import DemoSamplingSeeder
 from .receiving import DemoReceivingSeeder
+from .supplier_quality import DemoSupplierQualitySeeder
+from .outside_process import DemoOutsideProcessSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -94,6 +96,11 @@ class DemoScenario(BaseSeeder):
         result['receiving'] = self._seed_receiving(
             result['companies'], result['users'], result['manufacturing'])
 
+        # Phase 2b3: Supplier Quality (ASL, part approvals, CoC, holds)
+        self.log("\n--- Phase 2b3: Supplier Quality ---")
+        result['supplier_quality'] = self._seed_supplier_quality(
+            result['companies'], result['users'], result['manufacturing'], result['receiving'])
+
         # Phase 2c: Reman Setup
         self.log("\n--- Phase 2c: Remanufacturing Setup ---")
         result['reman'] = self._seed_reman(result['companies'], result['users'], result['manufacturing'])
@@ -106,6 +113,11 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 3: Orders and Work Orders ---")
         result['orders'] = self._seed_orders(result['companies'], result['users'], result['manufacturing'])
 
+        # Phase 3b: Outside Processing (subcontract shipments — needs parts from orders)
+        self.log("\n--- Phase 3b: Outside Processing ---")
+        result['outside_process'] = self._seed_outside_process(
+            result['companies'], result['users'], result['manufacturing'], result['orders'])
+
         # Phase 4: Quality Events
         self.log("\n--- Phase 4: Quality Events ---")
         result['quality'] = self._seed_quality_events(result['orders'], result['users'], result['manufacturing'])
@@ -114,9 +126,12 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 4b: 3D Models and Annotations ---")
         result['models_3d'] = self._seed_3d_models(result['users'])
 
-        # Phase 4c: DWI work instructions (substeps + 3D callouts)
+        # Phase 4c: DWI work instructions (substeps + 3D callouts) — authored across
+        # the process plus the receiving + OSP steps for the new completion adapters.
         self.log("\n--- Phase 4c: DWI Work Instructions ---")
-        result['dwi'] = self._seed_dwi(result['manufacturing'], result['models_3d'])
+        result['dwi'] = self._seed_dwi(
+            result['manufacturing'], result['models_3d'],
+            result['receiving'], result['outside_process'])
 
         # Phase 4d: SHOWCASE storyline (named objects threaded by one hero part)
         self.log("\n--- Phase 4d: Showcase Storyline ---")
@@ -196,6 +211,20 @@ class DemoScenario(BaseSeeder):
         seeder._verbose = self._verbose
         return seeder.seed(companies, users, manufacturing)
 
+    def _seed_supplier_quality(self, companies, users, manufacturing, receiving):
+        """Seed the SQM surfaces: ASL qualifications across the lifecycle, part
+        approvals (PPAP/FAI), CoC files on accepted lots, and a qualification hold."""
+        seeder = DemoSupplierQualitySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed(companies, users, manufacturing, receiving)
+
+    def _seed_outside_process(self, companies, users, manufacturing, orders):
+        """Seed OSP: an outside-process step + parts staged ready-to-ship, at vendor
+        (SENT), and returned (RETURNED, return inspection open)."""
+        seeder = DemoOutsideProcessSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed(companies, users, manufacturing, orders)
+
     def _seed_reman(self, companies, users, manufacturing):
         """
         Create demo remanufacturing data.
@@ -235,15 +264,16 @@ class DemoScenario(BaseSeeder):
         seeder = DemoThreeDModelSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         return seeder.seed(users)
 
-    def _seed_dwi(self, manufacturing, models_3d):
+    def _seed_dwi(self, manufacturing, models_3d, receiving=None, outside_process=None):
         """
-        Author digital work instructions (Substep.body_blocks) on the demo
+        Author digital work instructions (Substep.body_blocks) across the demo
         steps: 3D part callouts + defect annotation on inspection steps,
         measurement captures wired to the demo MeasurementDefinitions,
-        attestation/signature gates, and scan/photo captures.
+        attestation/signature gates, and scan/photo captures — plus the receiving
+        and OSP steps so the RECEIVING_COMPLETION / OSP_COMPLETION adapters demo.
         """
         seeder = DemoDwiSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
-        return seeder.seed(manufacturing, models_3d)
+        return seeder.seed(manufacturing, models_3d, receiving, outside_process)
 
     def _seed_showcase(self, manufacturing, models_3d, users):
         """
