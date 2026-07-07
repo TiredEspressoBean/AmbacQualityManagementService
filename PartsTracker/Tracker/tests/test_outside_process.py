@@ -138,6 +138,19 @@ class OutsideProcessInspectionTests(_OSPFixtureMixin, TenantTestCase):
     def _return_execution(self):
         return osp._return_execution(self.shipment)
 
+    def test_ensure_quality_report_converges_on_shipment_report(self):
+        # Regression: the eager QR pre-bind (POST ensure_inspection_qr) 400'd for
+        # OSP-shipment subjects — ensure_quality_report only handled part and
+        # MaterialLot. It must return the shipment's existing return-inspection
+        # report, not None (and not mint a duplicate).
+        from Tracker.services.dwi.operator_capture import ensure_quality_report
+        ex = self._return_execution()
+        report = ensure_quality_report(self.inspection_substep, ex, self.user_a)
+        self.assertIsNotNone(report)
+        self.assertEqual(report.id, self.report.id)
+        self.assertEqual(
+            QualityReports.objects.filter(osp_shipment=self.shipment).count(), 1)
+
     def test_dwi_capture_promotes_to_shipment_report(self):
         # DWI capture on the shipment-subject execution appends to the osp report.
         ex = self._return_execution()

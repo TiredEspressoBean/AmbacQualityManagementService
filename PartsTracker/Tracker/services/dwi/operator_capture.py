@@ -341,22 +341,30 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
             )
         return report
 
-    # Receiving DWI — the subject is a MaterialLot. Converge on the lot's
-    # receiving report (opened by receiving_inspection.open_inspection).
-    from Tracker.models import MaterialLot
+    # Receiving-style DWI — the subject is a MaterialLot (Flow A incoming) or an
+    # OutsideProcessShipment (Flow B subcontract return). Converge on the
+    # subject-keyed inspection report (opened by receiving_inspection.
+    # open_inspection / outside_process.receive_parts_back) — same row the
+    # inline-capture path uses.
+    from Tracker.models import MaterialLot, OutsideProcessShipment
     subj = step_execution.subject_object
-    if not isinstance(subj, MaterialLot):
+    if isinstance(subj, MaterialLot):
+        subject_filter = {"material_lot": subj}
+    elif isinstance(subj, OutsideProcessShipment):
+        subject_filter = {"osp_shipment": subj}
+    else:
         # Cores and other subjects have no QualityReports promotion path.
         return None  # type: ignore[return-value]
     report = (
         QualityReports.objects
-        .filter(step=step_execution.step, material_lot=subj)
+        .filter(step=step_execution.step, **subject_filter)
         .order_by("-created_at").first()
     )
     if report is None:
         report = QualityReports.objects.create(
-            step=step_execution.step, material_lot=subj,
-            detected_by=user, sampling_method="dwi_substep_submit", status="PENDING",
+            step=step_execution.step, detected_by=user,
+            sampling_method="dwi_substep_submit", status="PENDING",
+            **subject_filter,
         )
     return report
 
