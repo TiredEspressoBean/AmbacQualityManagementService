@@ -15,8 +15,8 @@ DWI seeder (which authors the return-inspection work instructions on the OSP ste
 from decimal import Decimal
 
 from Tracker.models import (
-    Companies, MeasurementDefinition, Parts, PartsStatus, ProcessStep,
-    StepMeasurementRequirement, Steps,
+    Companies, EdgeType, MeasurementDefinition, Parts, PartsStatus, ProcessStep,
+    StepEdge, StepMeasurementRequirement, Steps,
 )
 from Tracker.services.mes import outside_process
 
@@ -89,6 +89,20 @@ class DemoOutsideProcessSeeder(BaseSeeder):
                           .order_by("-order").values_list("order", flat=True).first() or 0) + 1
             ProcessStep.objects.get_or_create(process=process, step=osp_step,
                                               defaults={"order": next_order})
+            # Splice the OSP step into the routing chain (Assembly → Nitride →
+            # Final Test) so it isn't an unreachable dangling node in the flow
+            # editor — and returned parts have a real next step after acceptance.
+            assembly = Steps.objects.filter(part_type=part_type, name="Assembly").first()
+            final_test = Steps.objects.filter(part_type=part_type, name="Final Test").first()
+            if assembly is not None and final_test is not None:
+                StepEdge.objects.filter(process=process, from_step=assembly,
+                                        to_step=final_test, edge_type=EdgeType.DEFAULT).delete()
+                for frm, to in ((assembly, osp_step), (osp_step, final_test)):
+                    StepEdge.objects.update_or_create(
+                        process=process, from_step=frm, to_step=to, edge_type=EdgeType.DEFAULT,
+                        defaults={"condition_measurement": None, "condition_operator": "",
+                                  "condition_value": None},
+                    )
 
         # --- Parts staged at the OSP step (dedicated, so other narratives are untouched) ---
         def make_part(suffix):

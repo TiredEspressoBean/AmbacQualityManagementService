@@ -76,13 +76,12 @@ class DemoReceivingSeeder(BaseSeeder):
         # the inspection as DWI instead, author substeps on this RECEIVING step
         # via the substep editor (the operator runtime + ReceivingNode support it).
 
-        # Wire the receiving step into the part type's process chain (if one exists).
+        # Purchased-material receiving is a STANDALONE plan (RIP): the receiving
+        # flow resolves it by (part_type, step_type=RECEIVING) — process membership
+        # is irrelevant, and attaching it to the chain just renders an unreachable
+        # dangling node in the flow editor. Detach any previously-seeded wiring.
         if process is not None:
-            next_order = (ProcessStep.objects.filter(process=process)
-                          .order_by('-order').values_list('order', flat=True).first() or 0) + 1
-            ProcessStep.objects.get_or_create(
-                process=process, step=recv_step,
-                defaults={'order': next_order})
+            ProcessStep.objects.filter(process=process, step=recv_step).delete()
 
         # --- Sampling rulesets on the step (default + supplier-specific) ---
         default_rs, _ = SamplingRuleSet.objects.update_or_create(
