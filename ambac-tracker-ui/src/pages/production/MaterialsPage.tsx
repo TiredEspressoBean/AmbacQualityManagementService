@@ -110,7 +110,7 @@ export function MaterialsPage() {
                     header: "Status",
                     renderCell: (l) => (
                         <div className="flex items-center gap-1.5">
-                            <Badge variant={STATUS_VARIANT[l.status] ?? "outline"}>{l.status}</Badge>
+                            <Badge variant={STATUS_VARIANT[l.status ?? ""] ?? "outline"}>{l.status}</Badge>
                             {l.hold_reason === "SUPPLIER_UNQUALIFIED" && (
                                 <Badge variant="outline" className="border-amber-400 text-amber-700">Unqualified supplier</Badge>
                             )}

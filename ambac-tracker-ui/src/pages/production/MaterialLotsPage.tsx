@@ -45,7 +45,7 @@ export function MaterialLotsPage() {
                 col({ header: "Qty", renderCell: (l) => `${l.quantity ?? "—"} ${l.unit_of_measure ?? ""}`.trim() }),
                 col({
                     header: "Status",
-                    renderCell: (l) => <Badge variant={STATUS_VARIANT[l.status] ?? "outline"}>{l.status}</Badge>,
+                    renderCell: (l) => <Badge variant={STATUS_VARIANT[l.status ?? ""] ?? "outline"}>{l.status}</Badge>,
                 }),
                 col({ header: "Received", renderCell: (l) => l.received_date ?? "—" }),
             ]}

@@ -469,7 +469,7 @@ export function ReceivingInspectionPage() {
                 lotNumber={lot.lot_number ?? String(lot.id)}
                 supplierName={lot.supplier_name}
                 hasSupplier={!!lot.supplier}
-                quantity={lot.quantity ?? 0}
+                quantity={Number(lot.quantity ?? 0)}
                 defectives={mode === "bulk" ? (parseInt(bulkDefectives) || 0) : defectives}
                 sampleSize={n}
                 acceptNumber={ac}

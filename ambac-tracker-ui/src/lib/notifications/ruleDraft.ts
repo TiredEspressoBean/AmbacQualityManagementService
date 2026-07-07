@@ -29,7 +29,7 @@ import type {
     TenantRule,
     TenantRuleRequest,
 } from "@/hooks/notificationRules";
-import type { _Escalation, _EscalationRequest } from "@/lib/api/generated";
+import type { _Escalation } from "@/lib/api/generated";
 
 export type RuleScope = "tenant" | "customer" | "personal";
 
@@ -121,13 +121,20 @@ function escalationFromWire(
  * "leave the existing policy alone," and we always want toggling escalation off
  * in the UI to actually delete the server-side policy.
  */
-function escalationToWire(
-    policy: EscalationPolicyDraft,
-): _EscalationRequest | null {
+function escalationToWire(policy: EscalationPolicyDraft): {
+    enabled: boolean;
+    steps: {
+        order: number;
+        delay_seconds: number;
+        recipient_users: number[];
+        recipient_groups: string[];
+        subject_override: string;
+    }[];
+} | null {
     const hasContent = policy.enabled || policy.steps.length > 0;
     if (!hasContent) return null;
     return {
-        enabled: policy.enabled,
+        enabled: policy.enabled ?? false,
         steps: policy.steps.map((s, i) => ({
             order: i,
             delay_seconds: s.delaySeconds,

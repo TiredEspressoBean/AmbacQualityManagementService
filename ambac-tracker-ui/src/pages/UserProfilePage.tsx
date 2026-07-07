@@ -154,19 +154,6 @@ export function UserProfilePage() {
                                     </dd>
                                 </div>
                             )}
-                            {user.tenant_groups && user.tenant_groups.length > 0 && (
-                                <div className="flex items-center justify-between py-2">
-                                    <dt className="text-sm font-medium text-muted-foreground">Tenant Groups</dt>
-                                    <dd className="flex flex-wrap gap-2 justify-end">
-                                        {user.tenant_groups.map((group) => (
-                                            <Badge key={group.id} variant="secondary">
-                                                {group.name}
-                                                {group.role_type && <span className="ml-1 text-xs opacity-70">({group.role_type})</span>}
-                                            </Badge>
-                                        ))}
-                                    </dd>
-                                </div>
-                            )}
                         </dl>
                     </CardContent>
                 </Card>

@@ -113,9 +113,10 @@ export function ReceiveLotsBatchPage() {
                     toast.success(`Received ${data?.count ?? rows.length} lot(s)`);
                     navigate({ to: "/production/material-lots" });
                 },
-                onError: (err: { response?: { data?: { errors?: { index: number; errors: unknown }[] } } }) => {
+                onError: (err: unknown) => {
                     const map: Record<number, unknown> = {};
-                    for (const entry of err.response?.data?.errors ?? []) {
+                    const apiErr = err as { response?: { data?: { errors?: { index: number; errors: unknown }[] } } } | undefined;
+                    for (const entry of apiErr?.response?.data?.errors ?? []) {
                         if (typeof entry.index === "number") map[entry.index] = entry.errors;
                     }
                     setServerErrors(map);

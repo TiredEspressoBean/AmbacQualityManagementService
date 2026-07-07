@@ -526,7 +526,7 @@ export default function SamplingRuleSetsFormPage() {
                         <FormField control={form.control} name="gate_metric" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Metric</FormLabel>
-                                <Select value={field.value || NONE} onValueChange={(v) => field.onChange(v === NONE ? "" : v)}>
+                                <Select value={(field.value as string | null) || NONE} onValueChange={(v) => field.onChange(v === NONE ? "" : v)}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="No gate" /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value={NONE}>No gate</SelectItem>
@@ -557,7 +557,7 @@ export default function SamplingRuleSetsFormPage() {
                                 <FormField control={form.control} name="gate_window" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Window</FormLabel>
-                                        <Select value={field.value || NONE} onValueChange={(v) => field.onChange(v === NONE ? "" : v)}>
+                                        <Select value={(field.value as string | null) || NONE} onValueChange={(v) => field.onChange(v === NONE ? "" : v)}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="—" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 <SelectItem value={NONE}>—</SelectItem>

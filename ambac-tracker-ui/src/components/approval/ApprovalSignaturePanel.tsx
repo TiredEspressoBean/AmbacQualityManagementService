@@ -95,7 +95,7 @@ export function ApprovalSignaturePanel({
 
     const pending = current.status === "PENDING" ? current : null;
     const currentUserId = authUser?.pk || authUser?.id;
-    const userGroupIds = (authUser?.groups || []).map((g: { id: number }) => g.id);
+    const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
     const canRespond =
         !!pending &&
         isUserAnApprover(currentUserId, userGroupIds, pending) &&

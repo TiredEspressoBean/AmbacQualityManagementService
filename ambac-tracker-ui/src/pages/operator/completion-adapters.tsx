@@ -192,12 +192,18 @@ export async function advanceToNextQueuedPart({
     navigate({
         to: "/operator/steps/$stepId/substeps",
         params: { stepId: nextStepId },
+        // Fresh search for the next part — drop the previous part's context
+        // (material_lot / unit / osp_shipment) rather than carrying it over.
         search: {
             part: nextPartId,
             workOrder: workOrderId,
             execution: executionId,
             at: 0,
-            ...(rest.length > 0 ? { queue: rest.join(",") } : {}),
+            material_lot: undefined,
+            osp_shipment: undefined,
+            unit: undefined,
+            debug: undefined,
+            queue: rest.length > 0 ? rest.join(",") : undefined,
         },
     });
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useForm, useWatch, type UseFormReturn } from "react-hook-form";
+import { useForm, useWatch, type Resolver, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -149,7 +149,10 @@ export default function ApprovalTemplateFormPage() {
     );
 
     const form = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        // zod `.default()` on default_approvers/default_groups/escalate_to makes the
+        // schema's input type differ from its output (FormValues), so the resolver's
+        // inferred type diverges. Cast to the output-typed Resolver (codebase pattern).
+        resolver: zodResolver(formSchema) as Resolver<FormValues>,
         defaultValues: {
             template_name: "",
             // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: approval_type is required enum but must start unset before user selects

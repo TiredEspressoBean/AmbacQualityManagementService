@@ -242,7 +242,7 @@ export function UserManagementPage() {
         if (selected.size === 0) return;
         const targets = rows.filter((r) => selected.has(r.id));
         const results = await Promise.allSettled(
-            targets.map((r) => per(r.id, r.email)),
+            targets.map((r) => per(r.id, r.email ?? "")),
         );
         const ok = results.filter((r) => r.status === "fulfilled").length;
         const fail = results.length - ok;
@@ -587,26 +587,26 @@ export function UserManagementPage() {
                                                         Edit profile
                                                     </DropdownMenuItem>
                                                     {u._status === "pending_invite" || u._status === "expired_invite" ? (
-                                                        <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email)}>
+                                                        <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>
                                                             <Mail className="h-4 w-4 mr-2" />
                                                             Resend invitation
                                                         </DropdownMenuItem>
                                                     ) : null}
-                                                    <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email)}>
+                                                    <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>
                                                         <LinkIcon className="h-4 w-4 mr-2" />
                                                         Copy access link
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {u.is_active ? (
                                                         <DropdownMenuItem
-                                                            onClick={() => handleSetActive(u.id, u.email, false)}
+                                                            onClick={() => handleSetActive(u.id, u.email ?? "", false)}
                                                             className="text-destructive focus:text-destructive"
                                                         >
                                                             <UserX className="h-4 w-4 mr-2" />
                                                             Deactivate
                                                         </DropdownMenuItem>
                                                     ) : (
-                                                        <DropdownMenuItem onClick={() => handleSetActive(u.id, u.email, true)}>
+                                                        <DropdownMenuItem onClick={() => handleSetActive(u.id, u.email ?? "", true)}>
                                                             <UserCheck className="h-4 w-4 mr-2" />
                                                             Activate
                                                         </DropdownMenuItem>

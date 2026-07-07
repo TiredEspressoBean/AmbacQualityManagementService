@@ -315,7 +315,7 @@ function formatLiteral(type: CelType, raw: string | number | string[]): string {
         return Number.isFinite(n) ? String(n) : "";
     }
     if (type === "boolean") {
-        return raw === true || raw === "true" ? "true" : "false";
+        return raw === "true" || raw === 1 ? "true" : "false";
     }
     const s = String(raw);
     if (!s) return "";

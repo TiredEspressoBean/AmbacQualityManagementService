@@ -252,7 +252,7 @@ export const bulkIncrementPartsMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_increment_create>>, unknown, string[]>({
         mutationKey: partsMutationKeys.bulkIncrement,
         mutationFn: (ids) =>
-            api.api_Parts_bulk_increment_create({ ids }, { headers: csrfHeaders() }),
+            api.api_Parts_bulk_increment_create({ ids } as never, { headers: csrfHeaders() }),
         onSuccess: () => invalidateAllParts(queryClient),
         meta: { errorMessage: "Couldn't increment parts", successMessage: "Parts incremented" },
     });
@@ -261,7 +261,7 @@ export const bulkRollbackPartsMutationOptions = (queryClient: QueryClient) =>
     mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_rollback_create>>, unknown, string[]>({
         mutationKey: partsMutationKeys.bulkRollback,
         mutationFn: (ids) =>
-            api.api_Parts_bulk_rollback_create({ ids }, { headers: csrfHeaders() }),
+            api.api_Parts_bulk_rollback_create({ ids } as never, { headers: csrfHeaders() }),
         onSuccess: () => invalidateAllParts(queryClient),
         meta: { errorMessage: "Couldn't roll back parts", successMessage: "Parts rolled back" },
     });
@@ -271,7 +271,9 @@ export const bulkSetStatusPartsMutationOptions = (queryClient: QueryClient) =>
         mutationKey: partsMutationKeys.bulkSetStatus,
         mutationFn: (payload) =>
             api.api_Parts_bulk_set_status_create(
-                { ids: payload.ids, status: payload.status as never, reason: payload.reason },
+                // Schema gap: the action's request body (ids/status/reason) isn't
+                // declared on the endpoint, so the generated type is the Parts shape.
+                { ids: payload.ids, status: payload.status, reason: payload.reason } as never,
                 { headers: csrfHeaders() },
             ),
         onSuccess: () => invalidateAllParts(queryClient),
@@ -412,7 +414,7 @@ export type DecisionOptions = {
  *  runtime resolver: branch labels for MANUAL, auto-route note for QA_RESULT. */
 export function useDecisionOptions(partId: string | null | undefined, options?: { enabled?: boolean }) {
     return useQuery({
-        queryKey: [...partsKeys.detail(partId ?? ""), "decision_options"] as const,
+        queryKey: [...partsKeys.detail({ params: { id: partId ?? "" } }), "decision_options"] as const,
         queryFn: () =>
             api.api_Parts_decision_options_retrieve({
                 params: { id: String(partId) },
@@ -459,7 +461,7 @@ export type ReworkStatus = {
  *  step's cap, and the escalation target when the cap is exceeded (4b). */
 export function useReworkStatus(partId: string | null | undefined, options?: { enabled?: boolean }) {
     return useQuery({
-        queryKey: [...partsKeys.detail(partId ?? ""), "rework_status"] as const,
+        queryKey: [...partsKeys.detail({ params: { id: partId ?? "" } }), "rework_status"] as const,
         queryFn: () =>
             api.api_Parts_rework_status_retrieve({
                 params: { id: String(partId) },

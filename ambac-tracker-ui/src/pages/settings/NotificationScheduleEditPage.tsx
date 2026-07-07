@@ -110,7 +110,7 @@ function EditorBody({
     const patch = (updates: Partial<ScheduleDraft>) =>
         setDraft((current) => ({ ...current, ...updates }));
 
-    const close = () => navigate({ to: "/settings/notification-schedules" });
+    const close = () => navigate({ to: "/settings/notification-rules" });
 
     const createTenant = useCreateTenantSchedule();
     const createCustomer = useCreateCustomerSchedule();
@@ -164,7 +164,7 @@ function EditorBody({
             <div className="sticky top-0 z-10 -mx-6 px-6 pt-6 pb-4 mb-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
                 <div className="flex items-center justify-between gap-4 mb-3">
                     <Link
-                        to="/settings/notification-schedules"
+                        to="/settings/notification-rules"
                         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-4 w-4 mr-1" />

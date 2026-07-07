@@ -78,7 +78,7 @@ export function useReorderSubsteps() {
         mutationFn: (body) =>
             api.api_Substeps_reorder_create(body as never, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
-            }) as Promise<void>,
+            }) as unknown as Promise<void>,
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: [QK_BASE] });
         },

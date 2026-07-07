@@ -95,6 +95,8 @@ type SearchParams = {
     osp_shipment?: string;
     execution?: string;
     at?: number;
+    /** Receiving unit-by-unit: which sampled unit (1..n) is being inspected. */
+    unit?: number;
     debug?: string;
     /** Comma-separated list of remaining part ids to work in serial after
      *  the current one. Populated by the `StartWorkDialog` when an
@@ -151,7 +153,7 @@ export function OperatorSubstepRuntimePage() {
     // Falls back to undefined while data is loading; the effect bails.
     const rawSubsteps = (data?.results as Substep[] | undefined) ?? [];
     const sortedForBind = useMemo(
-        () => [...rawSubsteps].sort((a, b) => a.order - b.order),
+        () => [...rawSubsteps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
         [rawSubsteps],
     );
     const rawAtBind = Number(search.at ?? 0);
@@ -273,7 +275,10 @@ export function OperatorSubstepRuntimePage() {
     const cohortParts = useMemo(
         () =>
             (cohortPartsData?.results ?? [])
-                .filter((p) => !p.split_from_cohort)
+                // The Parts list serializer doesn't expose a split-off marker, so
+                // this narrows optionally: a future `split_from_cohort` field would
+                // exclude solo-advancing parts; until then it's a no-op passthrough.
+                .filter((p) => !(p as { split_from_cohort?: boolean }).split_from_cohort)
                 .map((p) => ({ id: String(p.id), label: p.ERP_id ?? String(p.id).slice(0, 8) })),
         [cohortPartsData],
     );
@@ -295,7 +300,7 @@ export function OperatorSubstepRuntimePage() {
     }
 
     const substeps: Substep[] = (data?.results as Substep[] | undefined) ?? [];
-    const sortedSubsteps = [...substeps].sort((a, b) => a.order - b.order);
+    const sortedSubsteps = [...substeps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     if (sortedSubsteps.length === 0) {
         // A step can legitimately have no substeps — most commonly a pure
         // decision point (routing, no work to instruct). Still render the
@@ -340,7 +345,17 @@ export function OperatorSubstepRuntimePage() {
         navigate({
             to: "/operator/steps/$stepId/substeps",
             params: { stepId },
-            search: { ...search, at: idx },
+            search: {
+                part: search.part,
+                workOrder: search.workOrder,
+                material_lot: search.material_lot,
+                osp_shipment: search.osp_shipment,
+                execution: search.execution,
+                unit: search.unit,
+                queue: search.queue,
+                debug: search.debug,
+                at: idx,
+            },
         });
     };
 

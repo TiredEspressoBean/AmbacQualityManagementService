@@ -22,6 +22,20 @@ export type CapturedMeasurement = {
 
 type Verdict = "accept" | "reject" | "pending";
 
+/** Client-side Z1.9 verdict. Discriminated on `state` so the "pending" case
+ *  (readings still being captured) doesn't carry the computed x̄/s/k stats. */
+type VariablesVerdict =
+    | { state: "pending"; recorded: number }
+    | {
+        state: "accept" | "reject";
+        mean: number;
+        s: number;
+        qu: number | null;
+        ql: number | null;
+        k: number;
+        recorded: number;
+    };
+
 /**
  * The acceptance decision, rendered as the final stage of a receiving DWI so
  * the inspector never leaves the guided runtime. Family-aware:
@@ -124,12 +138,12 @@ export function ReceivingAcceptanceStage({
 
     // Z1.9 verdict from the readings the operator captured for the measured
     // characteristic (x̄/s vs k). Mirrors the receiving page's advisory logic.
-    const variablesVerdict = useMemo(() => {
+    const variablesVerdict: VariablesVerdict | null = useMemo(() => {
         if (!isVariables || !varChar || samplePlan?.k == null) return null;
         const vals = capturedMeasurements
             .filter((m) => String(m.definition_id) === String(varChar.id) && m.value_numeric != null)
             .map((m) => m.value_numeric as number);
-        if (vals.length < Math.max(n, 2)) return { state: "pending" as Verdict, recorded: vals.length };
+        if (vals.length < Math.max(n, 2)) return { state: "pending", recorded: vals.length };
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
         const s = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / (vals.length - 1));
         const usl = varChar.nominal != null && varChar.upper_tol != null ? varChar.nominal + varChar.upper_tol : null;
@@ -141,7 +155,7 @@ export function ReceivingAcceptanceStage({
         const accept = s === 0
             ? (usl == null || mean <= usl) && (lsl == null || mean >= lsl)
             : idx.length > 0 && idx.every((q) => q >= k);
-        return { state: (accept ? "accept" : "reject") as Verdict, mean, s, qu, ql, k, recorded: vals.length };
+        return { state: accept ? "accept" : "reject", mean, s, qu, ql, k, recorded: vals.length };
     }, [isVariables, varChar, samplePlan, capturedMeasurements, n]);
 
     // Attribute (bulk): tally defects by RIP characteristic when the plan has
@@ -366,7 +380,7 @@ export function ReceivingAcceptanceStage({
                 lotNumber={lot?.lot_number ?? lotId}
                 supplierName={lot?.supplier_name}
                 hasSupplier={!!lot?.supplier}
-                quantity={lot?.quantity ?? 0}
+                quantity={Number(lot?.quantity ?? 0)}
                 defectives={isVariables ? undefined : bd}
                 sampleSize={hasPlan ? n : undefined}
                 acceptNumber={ac}

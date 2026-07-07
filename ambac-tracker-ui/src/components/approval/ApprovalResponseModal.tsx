@@ -25,10 +25,10 @@ import {
 } from "./SignatureVerification";
 import { useSubmitApprovalResponse } from "@/hooks/useSubmitApprovalResponse";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
-import { type DecisionEnum } from "@/lib/api/generated";
+import { type ApprovalResponseDecisionEnum } from "@/lib/api/generated";
 
 interface ApprovalResponsePayload {
-    decision: DecisionEnum;
+    decision: ApprovalResponseDecisionEnum;
     comments?: string;
     signature_data?: string;
     signature_meaning?: string;

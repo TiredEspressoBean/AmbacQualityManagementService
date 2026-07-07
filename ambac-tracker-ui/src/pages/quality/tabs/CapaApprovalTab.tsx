@@ -27,21 +27,23 @@ type CapaApprovalTabProps = {
 };
 
 function isUserAnApprover(
-    userId: number | undefined,
-    userGroupIds: number[] | undefined,
+    userId: number | string | undefined,
+    userGroupIds: Array<number | string> | undefined,
     approvalRequest: ApprovalRequest | null
 ): boolean {
     if (!userId || !approvalRequest) return false;
 
+    const uid = String(userId);
     // Check if user is in required_approvers
-    if (approvalRequest.required_approvers?.includes(userId)) {
+    if (approvalRequest.required_approvers?.some(a => String(a) === uid)) {
         return true;
     }
 
     // Check if user's group is in approver_groups
-    if (userGroupIds && approvalRequest.approver_groups?.length) {
-        const hasMatchingGroup = userGroupIds.some(groupId =>
-            approvalRequest.approver_groups.includes(groupId)
+    const gids = (userGroupIds ?? []).map(String);
+    if (gids.length && approvalRequest.approver_groups?.length) {
+        const hasMatchingGroup = gids.some(gid =>
+            approvalRequest.approver_groups.some(g => String(g) === gid)
         );
         if (hasMatchingGroup) return true;
     }
@@ -49,9 +51,10 @@ function isUserAnApprover(
     return false;
 }
 
-function hasUserResponded(userId: number | undefined, responses: ApprovalResponse[]): boolean {
+function hasUserResponded(userId: number | string | undefined, responses: ApprovalResponse[]): boolean {
     if (!userId || !responses) return false;
-    return responses.some(r => r.approver === userId);
+    const uid = String(userId);
+    return responses.some(r => String(r.approver) === uid);
 }
 
 export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
@@ -75,8 +78,8 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
 
     // Check if current user can respond
     const currentUserId = authUser?.pk || authUser?.id;
-    // Extract group IDs from group objects
-    const userGroupIds = (authUser?.groups || []).map((g) => g.id);
+    // Extract group IDs from group objects — TenantGroup ids are UUID strings
+    const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&
         !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []);
 

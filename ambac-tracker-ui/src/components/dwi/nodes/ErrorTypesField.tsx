@@ -61,14 +61,16 @@ type Attrs = {
 };
 
 type ResponseRow = {
-    error_type_id: number;
+    // QualityErrorsList UUID (string) — was `number`, and the select's onChange
+    // ran Number() on the UUID (NaN whenever the operator changed defect type).
+    error_type_id: string;
     severity: Severity;
     location?: string;
     notes?: string;
     count: number;
 };
 
-type ErrorTypeShape = { id: number; error_name: string };
+type ErrorTypeShape = { id: string; error_name: string };
 
 export function ErrorTypesFieldEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -168,7 +170,7 @@ function View(props: NodeViewProps) {
                             <select
                                 disabled={!isOperator}
                                 value={row.error_type_id}
-                                onChange={(e) => setRow(i, { error_type_id: Number(e.target.value) })}
+                                onChange={(e) => setRow(i, { error_type_id: e.target.value })}
                                 className="h-7 flex-1 rounded border bg-background px-2 text-xs"
                             >
                                 {errorTypes.map((et) => (

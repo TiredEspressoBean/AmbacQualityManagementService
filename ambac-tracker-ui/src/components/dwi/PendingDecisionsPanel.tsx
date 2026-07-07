@@ -71,7 +71,9 @@ function useReconcilePendingDecisions() {
             api.api_SamplingDecisions_reconcile_create(
                 data as never,
                 { headers: csrfHeaders() },
-            ) as Promise<ReconcileSummary>,
+                // Schema gap: reconcile's summary response isn't declared on the
+                // endpoint, so the generated type is the SamplingDecision shape.
+            ) as unknown as Promise<ReconcileSummary>,
         onSuccess: () => {
             qc.invalidateQueries({
                 predicate: (q) => q.queryKey[0] === "samplingDecisions",

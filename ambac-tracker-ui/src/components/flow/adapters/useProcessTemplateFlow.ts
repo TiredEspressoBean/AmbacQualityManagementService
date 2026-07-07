@@ -204,7 +204,7 @@ export function useProcessTemplateFlow({ processId, enabled = true }: UseProcess
         block_on_quarantine: ps.step.block_on_quarantine,
         pass_threshold: ps.step.pass_threshold,
         part_type: ps.step.part_type ? String(ps.step.part_type) : undefined,
-        part_type_name: ps.step.part_type_name,
+        part_type_name: ps.step.part_type_name ?? undefined,
       },
     }));
 

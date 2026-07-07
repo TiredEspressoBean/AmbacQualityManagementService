@@ -47,8 +47,13 @@ export type BulkRecordResponse = {
     errors: Array<{ index: number; error: string }> | null;
 };
 
-// Extract queries type from Zodios endpoint
-type StepExecutionMeasurementsListQueries = Parameters<typeof api.api_StepExecutionMeasurements_list>[0] extends { queries?: infer Q } ? Q : Parameters<typeof api.api_StepExecutionMeasurements_list>[0];
+// Extract queries type from the Zodios endpoint's config param. Indexing is
+// used (not a conditional `extends { queries?: infer Q }`) because the param is
+// optional — the conditional distributes over `| undefined` and collapses back
+// to the whole config object, which broke callers passing bare query objects.
+type StepExecutionMeasurementsListQueries = NonNullable<
+    Parameters<typeof api.api_StepExecutionMeasurements_list>[0]
+>["queries"];
 
 // Optional config for advanced cases (headers, etc.)
 type ListHookConfig = {

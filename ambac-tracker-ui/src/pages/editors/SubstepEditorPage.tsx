@@ -315,7 +315,7 @@ export function SubstepEditorPage() {
         : Boolean((substeps[0] as Substep & { is_editable?: boolean }).is_editable);
 
     const sortedSubsteps = useMemo(() => {
-        const byOrder = [...substeps].sort((a, b) => a.order - b.order);
+        const byOrder = [...substeps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         if (!pendingOrder) return byOrder;
         const idx = new Map(pendingOrder.map((id, i) => [id, i]));
         // Fall back to backend order for any substep that wasn't part of the
@@ -338,7 +338,7 @@ export function SubstepEditorPage() {
         const nextIds = reordered.map((s) => s.id);
         // If we've drifted back to the backend order, drop the pending state.
         const backendIds = [...substeps]
-            .sort((a, b) => a.order - b.order)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
             .map((s) => s.id);
         if (
             nextIds.length === backendIds.length &&
@@ -444,7 +444,7 @@ export function SubstepEditorPage() {
         seed: Partial<PendingCreate> & Pick<PendingCreate, "title" | "body_blocks">,
     ) => {
         const existingOrders = [
-            ...sortedSubsteps.map((s) => s.order),
+            ...sortedSubsteps.map((s) => s.order ?? 0),
             ...pendingCreates.map((p) => p.order),
         ];
         const nextOrder = existingOrders.length ? Math.max(...existingOrders) + 1 : 0;
@@ -467,7 +467,7 @@ export function SubstepEditorPage() {
         const order =
             (sortedSubsteps.length || pendingCreates.length
                 ? Math.max(
-                      ...sortedSubsteps.map((s) => s.order),
+                      ...sortedSubsteps.map((s) => s.order ?? 0),
                       ...pendingCreates.map((p) => p.order),
                   ) + 1
                 : 0);
@@ -483,7 +483,7 @@ export function SubstepEditorPage() {
         const order =
             (sortedSubsteps.length || pendingCreates.length
                 ? Math.max(
-                      ...sortedSubsteps.map((s) => s.order),
+                      ...sortedSubsteps.map((s) => s.order ?? 0),
                       ...pendingCreates.map((p) => p.order),
                   ) + 1
                 : 0);
@@ -895,7 +895,7 @@ function SubstepExpandedBody({
     const workingOptional = pending?.is_optional ?? substep.is_optional;
     const workingSignature = pending?.requires_signature ?? substep.requires_signature;
     const workingInspection =
-        pending?.is_inspection_point ?? substep.is_inspection_point;
+        pending?.is_inspection_point ?? (substep.is_inspection_point ?? false);
     const workingCritical =
         pending?.is_critical ?? (substep.is_critical ?? false);
     const workingAllowNa =

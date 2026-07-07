@@ -57,7 +57,10 @@ type Attrs = {
     default_role: EquipmentRole;
 };
 
-type ResponseRow = { equipment_id: number; role: EquipmentRole; notes?: string };
+// equipment_id is an Equipments UUID (string). It was typed `number` before,
+// and the select's onChange ran Number() on the UUID — storing NaN whenever
+// the operator changed equipment. Real bug, fixed with the type.
+type ResponseRow = { equipment_id: string; role: EquipmentRole; notes?: string };
 
 export function EquipmentRolesFieldEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -110,7 +113,7 @@ function View(props: NodeViewProps) {
     const rows: ResponseRow[] = Array.isArray(value) ? (value as ResponseRow[]) : [];
 
     const { data: equipResp } = useRetrieveEquipments();
-    const equipments = (equipResp?.results ?? []) as Array<{ id: number; name: string }>;
+    const equipments = (equipResp?.results ?? []) as Array<{ id: string; name: string }>;
 
     const update = (next: ResponseRow[]) => {
         if (!isOperator) return;
@@ -147,7 +150,7 @@ function View(props: NodeViewProps) {
                         <select
                             disabled={!isOperator}
                             value={row.equipment_id}
-                            onChange={(e) => setRow(i, { equipment_id: Number(e.target.value) })}
+                            onChange={(e) => setRow(i, { equipment_id: e.target.value })}
                             className="h-8 flex-1 rounded border bg-background px-2 text-sm"
                         >
                             {equipments.map((eq) => (

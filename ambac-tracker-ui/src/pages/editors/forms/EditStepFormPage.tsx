@@ -118,6 +118,7 @@ export default function StepFormPage() {
     useEffect(() => {
         if (mode === "edit" && step) {
             const stepWithRules = step as typeof step & {
+                requires_first_piece_inspection?: boolean
                 active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
             }
@@ -126,7 +127,7 @@ export default function StepFormPage() {
                 name: step.name ?? "",
                 description: step.description ?? "",
                 part_type: step.part_type,
-                requires_first_piece_inspection: step.requires_first_piece_inspection ?? false,
+                requires_first_piece_inspection: stepWithRules.requires_first_piece_inspection ?? false,
                 rules: stepWithRules.active_ruleset?.rules ?? [],
                 fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
                 tighten_after: stepWithRules.active_ruleset?.tighten_after ?? undefined,

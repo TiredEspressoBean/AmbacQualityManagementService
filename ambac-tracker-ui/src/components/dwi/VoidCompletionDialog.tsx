@@ -46,7 +46,9 @@ function useVoidCompletion() {
             api.api_SubstepCompletions_void_create(
                 { reason } as never,
                 { params: { id }, headers: csrfHeaders() },
-            ) as Promise<VoidResponse>,
+                // Schema gap: void's response isn't declared on the endpoint,
+                // so the generated type is the SubstepCompletion shape.
+            ) as unknown as Promise<VoidResponse>,
         onSuccess: () => {
             // Refresh substep-completion + traveler queries so the
             // voided state reflects everywhere.

@@ -16,7 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FlowCanvas, StepEditorPanel, type StepWithOrder } from '@/components/flow';
+import { FlowCanvas, StepEditorPanel } from '@/components/flow';
+import type { StepData as StepWithOrder } from '@/components/flow/use-steps-to-flow';
 type StepData = StepWithOrder;
 import { useRetrieveProcesses } from '@/hooks/useRetrieveProcesses';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
@@ -665,7 +666,7 @@ export default function ProcessFlowPage() {
 
   // Provenance: is this DRAFT the working copy of an open PCR?
   const { data: linkedPcr } = usePcrForDraftProcess(
-    processStatus === 'DRAFT' && !isDemo ? processId : undefined,
+    processStatus === 'DRAFT' && !isDemo ? (processId ?? undefined) : undefined,
   );
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const { has: hasPerm } = usePermissionSet();

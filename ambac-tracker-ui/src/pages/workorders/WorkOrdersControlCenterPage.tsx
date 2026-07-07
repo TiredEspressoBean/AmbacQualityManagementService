@@ -110,6 +110,7 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
         process_name: proc.name ?? "—",
         customer: order.company_name ?? order.name ?? "—",
         part_type: proc.part_type_name ?? "—",
+        is_batch: false,
         parent_workorder_id: w.parent_workorder_id ?? null,
         split_reason: null,
         steps: [],

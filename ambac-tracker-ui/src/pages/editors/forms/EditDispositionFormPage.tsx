@@ -279,7 +279,7 @@ export default function EditDispositionFormPage() {
     // Resolve an employee id to a display name. Returns null when the id isn't
     // in the loaded options (e.g. an assignee outside the first page) so callers
     // fall back to a placeholder instead of rendering "undefined undefined".
-    const employeeName = (id?: string | null) => {
+    const employeeName = (id?: number | null) => {
         const e = employees.find((emp) => emp.id === id)
         return e ? empLabel(e) : null
     }

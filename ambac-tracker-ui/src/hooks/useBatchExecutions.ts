@@ -45,7 +45,7 @@ export function batchesForWoStepOptions(workOrderId: string, stepId: string) {
         queryFn: () =>
             api.api_BatchExecutions_list({
                 queries: { work_order: workOrderId, step: stepId } as never,
-            }) as Promise<ListResponse>,
+            }) as unknown as Promise<ListResponse>,
         enabled: !!workOrderId && !!stepId,
         staleTime: 15_000,
     });
@@ -73,7 +73,7 @@ export function useCreateBatchExecution() {
         mutationFn: (data) =>
             api.api_BatchExecutions_create(data as never, {
                 headers: csrfHeaders(),
-            }) as Promise<BatchExecutionRow>,
+            }) as unknown as Promise<BatchExecutionRow>,
         onSuccess: () => invalidateBatches(qc),
         meta: {
             errorMessage: "Couldn't start batch",

@@ -196,7 +196,10 @@ export function CoreReceiveBatchPage() {
     );
     const { data: customersData } = useRetrieveCustomers({});
     const customers = useMemo(
-        () => (Array.isArray(customersData) ? customersData : []) as Array<{ id: string; name: string }>,
+        () => (Array.isArray(customersData) ? customersData : []).map((u) => ({
+            id: String(u.id),
+            name: [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username,
+        })),
         [customersData],
     );
 

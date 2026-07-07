@@ -138,6 +138,7 @@ function adaptWorkOrderDetail(w: WorkOrder): MockWorkOrder {
         process_name: proc.name ?? "—",
         customer: order.company_name ?? order.name ?? "—",
         part_type: proc.part_type_name ?? "—",
+        is_batch: false,
         parent_workorder_id: w.parent_workorder_id ?? null,
         split_reason: null,
         steps: [],
@@ -169,7 +170,7 @@ function adaptPart(p: PartRow): MockPart {
     return {
         id: p.id,
         serial: p.ERP_id,
-        step_id: p.step,
+        step_id: p.step ?? "",
         status: (p.part_status ?? "PENDING") as MockPartStatus,
         updated_at: p.updated_at,
         operator: null, // Parts list serializer doesn't expose the current operator directly
@@ -758,8 +759,7 @@ const FORCE_ADVANCE_GROUPS = new Set([
 function userCanForceAdvance(user: ReturnType<typeof useAuthUser>["data"]): boolean {
     if (!user) return false;
     if (user.is_superuser || user.is_staff) return true;
-    const allGroups = [...(user.groups ?? []), ...(user.tenant_groups ?? [])];
-    return allGroups.some((g) => g.name && FORCE_ADVANCE_GROUPS.has(g.name));
+    return (user.groups ?? []).some((g) => g.name && FORCE_ADVANCE_GROUPS.has(g.name));
 }
 
 function applyAction(part: MockPart, steps: MockStep[], action: Action): MockPart {
@@ -1114,19 +1114,9 @@ export function WorkOrderControlPage() {
                 },
             });
         } else if (action.kind === "status") {
-            bulkSetStatusMutation.mutate({ ids, status: action.status }, {
-                onSuccess: (data) => {
-                    const failures = (data.results as { ok?: boolean; error?: string; id?: string }[]).filter((r) => !r.ok);
-                    if (failures.length > 0) setBulkErrorBanner(`${failures.length} part(s) failed to update status.`);
-                },
-            });
+            bulkSetStatusMutation.mutate({ ids, status: action.status });
         } else if (action.kind === "scrap") {
-            bulkSetStatusMutation.mutate({ ids, status: "SCRAPPED", reason: action.reason }, {
-                onSuccess: (data) => {
-                    const failures = (data.results as { ok?: boolean; error?: string; id?: string }[]).filter((r) => !r.ok);
-                    if (failures.length > 0) setBulkErrorBanner(`${failures.length} part(s) failed to update status.`);
-                },
-            });
+            bulkSetStatusMutation.mutate({ ids, status: "SCRAPPED", reason: action.reason });
         } else if (action.kind === "move") {
             void Promise.all(
                 ids.map((id) => updatePart.mutateAsync({ id, data: { step: action.stepId } })),
