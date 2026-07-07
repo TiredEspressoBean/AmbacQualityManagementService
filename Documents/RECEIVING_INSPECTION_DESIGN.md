@@ -231,7 +231,7 @@ QMS split. Nav (Supply group): *Incoming Inspection*, *Materials*, *Receiving In
 Both gates below ride engines that already exist — confirmed by reading the code, not
 assumed. This is why receiving inspection is mostly *extension*, not *greenfield*.
 
-### 5a. Approval engine → ride it directly  ·  **[PARTIAL: `SupplierQualification` built (§10); `PartApproval` PPAP/FAI NOT built]**
+### 5a. Approval engine → ride it directly  ·  **[BUILT: `SupplierQualification` (§10) + `PartApproval` PPAP/FAI marker gate (2026-07-06)]**
 
 `ApprovalRequest` (`models/core.py`) is **generic** (`GenericForeignKey`), with
 `ApprovalTemplate` (sequencing, ALL/ANY/THRESHOLD flows, delegation, escalation) and
@@ -465,29 +465,19 @@ type/severity). One surface, in the process editor, for a step's whole acceptanc
 4. Whether to refactor the legacy `fallback_*` fields into `gate_*` now or leave the
    implicit-gate shim (default: leave it, clean up opportunistically).
 
-### 9.4 Remaining backend — gate trigger for lot/receiving steps (KNOWN TODO)
+### 9.4 Gate trigger for lot/receiving steps — **[DONE 2026-07-02]**
 
 The gate engine and all five actions are **built and tested**, and the **in-process
 trigger is wired**: a FAIL `QualityReport` runs `process_quality_report_side_effects →
 evaluate_step_gate`, so gate actions fire on ordinary in-process steps today.
 
-**The lot/receiving trigger is NOT wired yet.** `evaluate_step_gate` supports a
-`material_lot` subject, but nothing calls it from the receiving path —
-`evaluate_lot_acceptance` doesn't invoke the gate, and a lot `QualityReport` has no
-`part`, so the in-process entry point bails. **Consequence:** a quality gate configured
-on a **lot-acceptance / RECEIVING step** (e.g. via the flow-editor dialog) is **persisted
-but inert** — its "actions when tripped" never fire.
-
-**Backend task:** wire the lot entry point — call `evaluate_step_gate(ruleset, material_lot=…)`
-from `evaluate_lot_acceptance` (and/or the receiving QR side-effects) so lot gates fire on
-lot acceptance/rejection, mirroring the in-process path. Small, additive; until it lands,
-the dialog's gate config for lot steps is configuration-only.
-
-> **(2026-07)** Still not wired — grep-confirmed. Note the acceptance decision now runs
-> through the **DWI runtime** (`ReceivingAcceptanceStage`) + the `evaluate_receiving`
-> action, not the bespoke page this section assumed. Place the gate hook where the
-> lot verdict is actually decided (inside/after `evaluate_lot_acceptance`, which both the
-> `record_bulk` path and `evaluate_receiving` call) so it fires regardless of which UI drove it.
+**The lot/receiving trigger is now wired (2026-07-02).** `evaluate_lot_acceptance` calls
+`_fire_lot_gate → evaluate_step_gate(ruleset, material_lot=…)` on every decided lot, so a
+gate configured on a lot-acceptance / RECEIVING step fires on lot acceptance/rejection —
+mirroring the in-process path, and regardless of which UI drove the verdict (the
+`record_bulk` path and `evaluate_receiving` both route through `evaluate_lot_acceptance`).
+The gate guard no longer requires actions, so a threshold-cross fires the `StepGateFiring`
+record even with no side-effect actions configured.
 
 **Related — gate must fire on threshold-cross regardless of side-effect actions.**
 Routing is NOT a gate action — post-inspection routing is the step's edges + its
@@ -524,7 +514,7 @@ same lot gap noted in §9.4 / §13.4.
 
 ---
 
-## 10. Supplier Qualification / ASL  ·  **[BUILT: model + service + expiry task + UI. NOT built: §10.3 standing loop]**
+## 10. Supplier Qualification / ASL  ·  **[BUILT end-to-end: model + service + expiry task + UI + §10.3 standing loop (recommend-only) + expiry/expiring-soon notifications]**
 
 > The SQM control that's structurally missing today. Current SQM can *measure*
 > (scorecard) and *react* (SCAR) but cannot *gate* on approval status. This track
@@ -613,9 +603,11 @@ Celery beat task (`(tenant_id)` arg, re-fetch in task) scans for
 `status=APPROVED/CONDITIONAL` past `expiry_date` → `expire()` + notify. Surface
 "expiring within N days" in the UI.
 
-> **As built (2026-07):** `tasks.expire_supplier_qualifications` exists and works, **but
-> is NOT registered in `CELERY_BEAT_SCHEDULE`** — so it never runs on its own. Add a beat
-> entry to make the expiry loop live. (The "notify" side isn't wired either.)
+> **As built (updated 2026-07-07):** `tasks.expire_supplier_qualifications` runs daily
+> (registered in `CELERY_BEAT_SCHEDULE`) and `expire()` emits `supplier.qualification_expired`.
+> Proactive reminders are also wired: `notify_expiring_qualifications` (daily) emits
+> `supplier.qualification_expiring_soon` at the 60- and 30-day marks. The UI shows an
+> "expiring soon" badge on the scorecard. **Fully live.**
 
 ### 10.5 Serializers / viewsets / perms
 
@@ -659,14 +651,26 @@ against the supplier and feeds the scorecard. Turns reject → disposition(RTV) 
 - **C (loop):** `evaluate_supplier_standing` + scorecard→severity wiring (ties to §9)
   + the §10.7 disposition RTV wiring.
 
-### 10.9 Open items
-1. **Scope granularity** — start with the three `scope_type`s above; confirm
-   commodity/special-process is enough vs. per-spec rows (esp. Nadcap for Flow B).
-2. **Enforcement** — soft hold (default) vs. hard pre-receipt block, per part type.
-3. **PPAP/FAI depth** — `basis=PPAP/FAI` is a marker here; full AS9102/PPAP element
-   management stays out of scope (separate track).
-4. Whether `evaluate_supplier_standing` auto-suspends or only *recommends* (manual
-   confirm) — auto-transition vs. flag-for-review.
+### 10.9 Open items → **Decided (2026-07-07), calibrated to the <200-head target (§11)**
+1. **Scope granularity — DECIDED: keep the three `scope_type`s; no per-spec rows.**
+   Small shops reason in part-type / commodity / special-process, not a supplier×spec
+   matrix (that's enterprise flowdown management). **Nadcap is handled by the existing
+   model, not per-spec rows:** `SPECIAL_PROCESS` scope + the supplier's Nadcap cert
+   attached as a document + `expiry_date` — you track "approved for Heat Treat, cert
+   expires …", referencing the supplier's accreditation rather than re-tracking specs.
+   Per-spec granularity waits for a named customer requirement.
+2. **Enforcement — DECIDED: soft-hold is the global default (as built).** The material
+   is physically on the dock; a hard "can't receive" block just creates untracked limbo.
+   Receive → quarantine (`SUPPLIER_UNQUALIFIED`) → a human resolves (retro-qualify /
+   deviation / RTV). A **hard block is a deferred opt-in per critical part type**, and
+   even then means "block acceptance into stock," never "block logging/receiving" — not
+   built speculatively (§11).
+3. **PPAP/FAI depth — DECIDED (unchanged):** `PartApproval` is a PPAP/FAI *marker* gate;
+   full AS9102/PPAP element management stays enterprise-tier (§11), needs a named clause.
+4. **Standing transition — DECIDED: recommend-only.** `evaluate_supplier_standing` never
+   auto-suspends; it emits `supplier.standing_review` and a human confirms via the SQ
+   lifecycle. (Built 2026-07-04; §10.3.) Note: auto-*severity-switching* on the sampling
+   plan IS automated — that's a statistical plan mechanic, not an ASL standing transition.
 
 ---
 
@@ -998,7 +1002,7 @@ are code-verified (grep/read), not inferred from the design intent above.
 - `supplier_scorecard.py` — genuine aggregation → A/B/C rating. (PPM = deferred enhancement, now feasible with per-sample defect data.)
 - `scar.py` — real `CAPA(SUPPLIER)` creation + QR link. (Supplier *response* capture = deferred portal.)
 - `supplier_qualification.py` — scope resolution + full lifecycle (open/grant/submit-for-approval/suspend/disqualify/expire).
-- `tasks.expire_supplier_qualifications` — cross-tenant expiry sweep, **now scheduled** (2026-07-02, daily in `CELERY_BEAT_SCHEDULE`). *(The "notify on expiry" side is still not wired.)*
+- `tasks.expire_supplier_qualifications` — cross-tenant expiry sweep, daily in `CELERY_BEAT_SCHEDULE`; `expire()` emits `supplier.qualification_expired`, and `notify_expiring_qualifications` emits `supplier.qualification_expiring_soon` at the 60/30-day marks. *(Notify fully wired 2026-07-07.)*
 - `events.py` `supplier.unqualified` + the receiving soft-hold gate (`_held_for_unqualified_supplier`) — built + emitted.
 - `quality_gate.py` **engine** + all five actions — real (metric/threshold/idempotent `StepGateFiring`/dispatch).
 
