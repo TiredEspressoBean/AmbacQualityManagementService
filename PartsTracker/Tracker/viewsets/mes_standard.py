@@ -37,10 +37,11 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer,
     RecordInspectionRequestSerializer, RecordUnitsRequestSerializer, RecordBulkRequestSerializer,
     SamplePlanResponseSerializer, MaterialLotBulkCreateSerializer,
-    IncomingInspectionRowSerializer,
+    IncomingInspectionRowSerializer, InspectionInboxSerializer,
 )
 from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
+from Tracker.services.qms import inspection_inbox
 from .base import TenantScopedMixin
 from .core import ExcelExportMixin
 
@@ -477,6 +478,28 @@ class IncomingInspectionViewSet(viewsets.ViewSet):
     def list(self, request):
         rows = incoming_inspection.build_incoming_rows()
         return Response(IncomingInspectionRowSerializer(rows, many=True).data)
+
+
+class InspectionInboxViewSet(viewsets.ViewSet):
+    """The QA inspector's task inbox — one flat list across every inspection
+    source (FPI queue-jumpers, receiving lots w/ sampling answer + severity
+    badge + resume progress, OSP returns, in-process operations), plus
+    type-count chips with oldest-age. Read-only aggregation; see
+    services.qms.inspection_inbox for the row contract and tone rules."""
+    permission_classes = [IsAuthenticated]
+
+    def get_view_name(self):
+        return "Inspection Inbox"
+
+    @extend_schema(
+        responses=InspectionInboxSerializer,
+        description="The inspector's flat task inbox: FPI first, then by urgency "
+                    "tone, then age. Counts carry oldest-age per type so chips "
+                    "reveal rot, not just volume.",
+    )
+    def list(self, request):
+        payload = inspection_inbox.build_inbox()
+        return Response(InspectionInboxSerializer(payload).data)
 
 
 # ===== MATERIAL USAGE VIEWSETS =====

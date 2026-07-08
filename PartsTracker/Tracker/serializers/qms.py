@@ -1788,6 +1788,50 @@ class IncomingInspectionRowSerializer(serializers.Serializer):
     step_id = serializers.UUIDField(allow_null=True)
 
 
+class InspectionInboxSeveritySerializer(serializers.Serializer):
+    """The severity badge on a receiving inbox row (see SamplingSeverityStateSerializer
+    for the full read model)."""
+    severity = serializers.ChoiceField(choices=["NORMAL", "TIGHTENED", "REDUCED"])
+    severity_since = serializers.CharField(allow_null=True)
+    discontinued = serializers.BooleanField()
+    rejects_in_window = serializers.IntegerField()
+    next_severity_on_accepts = serializers.CharField()
+    accepts_needed = serializers.IntegerField(allow_null=True)
+
+
+class InspectionInboxRowSerializer(serializers.Serializer):
+    """One row of the inspector's task inbox — flat across every inspection
+    source, never grouped by work order. See services.qms.inspection_inbox."""
+    type = serializers.ChoiceField(choices=["fpi", "receiving", "outside_process", "in_process"])
+    subject_kind = serializers.ChoiceField(choices=["fpi_record", "material_lot", "shipment", "operation"])
+    id = serializers.CharField()
+    title = serializers.CharField(allow_blank=True)
+    detail = serializers.CharField(allow_blank=True)
+    wo = serializers.CharField(allow_null=True)
+    quantity = serializers.FloatField(allow_null=True)
+    age_hours = serializers.FloatField(allow_null=True)
+    due_tone = serializers.ChoiceField(choices=["red", "orange", "green", "gray"])
+    due_label = serializers.CharField(allow_blank=True)
+    plan = serializers.CharField(allow_null=True)
+    severity = InspectionInboxSeveritySerializer(allow_null=True)
+    resume = serializers.CharField(allow_null=True)
+    blocked_reason = serializers.CharField(allow_null=True)
+
+
+class InspectionInboxTypeCountSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    oldest_age_hours = serializers.FloatField(allow_null=True)
+
+
+class InspectionInboxSerializer(serializers.Serializer):
+    """The full inbox payload: rows + type-count chips (with oldest-age, since
+    counts alone hide rot) + totals."""
+    rows = InspectionInboxRowSerializer(many=True)
+    counts = serializers.DictField(child=InspectionInboxTypeCountSerializer())
+    total = serializers.IntegerField()
+    blocked = serializers.IntegerField()
+
+
 class MaterialLotBulkRowSerializer(serializers.Serializer):
     """One row of a bulk lot-receive (paste-grid)."""
     lot_number = serializers.CharField(max_length=100)

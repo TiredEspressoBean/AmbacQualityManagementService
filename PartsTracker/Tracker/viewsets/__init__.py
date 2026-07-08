@@ -169,6 +169,7 @@ from .mes_standard import (
     MaterialLotViewSet,
     MaterialUsageViewSet,
     IncomingInspectionViewSet,
+    InspectionInboxViewSet,
 
     # Time Entries
     TimeEntryViewSet,
@@ -373,6 +374,7 @@ __all__ = [
     # MES Standard - Material Lots
     'MaterialLotViewSet',
     'IncomingInspectionViewSet',
+    'InspectionInboxViewSet',
     'MaterialUsageViewSet',
 
     # MES Standard - Time Entries
@@ -523,6 +525,7 @@ def register_viewsets(router):
     router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
     router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
     router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
+    router.register(r'InspectionInbox', InspectionInboxViewSet, basename='InspectionInbox')
 
     # Time Entries
     router.register(r'TimeEntries', TimeEntryViewSet, basename='TimeEntries')

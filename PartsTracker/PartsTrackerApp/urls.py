@@ -304,6 +304,7 @@ router.register(r'OutsideProcessShipments', OutsideProcessShipmentViewSet, basen
 
 # Unified incoming-inspection worklist (purchased lots + subcontract returns)
 router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
+router.register(r'InspectionInbox', InspectionInboxViewSet, basename='InspectionInbox')
 
 # Time Entries
 router.register(r'TimeEntries', TimeEntryViewSet, basename='TimeEntries')
