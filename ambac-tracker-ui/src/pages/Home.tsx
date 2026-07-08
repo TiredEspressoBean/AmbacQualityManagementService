@@ -47,7 +47,7 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground">Here's what needs you right now.</p>
             </div>
             {blocks.map((b) => (
-                <b.Component key={b.id} />
+                <b.Component key={b.id} user={user} />
             ))}
         </div>
     );
