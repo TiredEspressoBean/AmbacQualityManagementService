@@ -344,6 +344,45 @@ personal cal nag; soft-skip event (THEN-start over UP NEXT) for coaching data;
 time-became-ready timestamp on the queue aggregate (feeds the aging tint — falls out
 of the readiness conjunction anyway).
 
+**BE wiring inventory (verified against the codebase, 2026-07-08).** Two Explore
+sweeps mapped every element of both prototypes to what exists. Net: cheaper than
+budgeted; only the two §9 tables are genuinely new.
+
+- *Tier 0 — exists, wire only:* TimeEntry `clock_in`/`clock_out` actions;
+  **`entry_type` already has SETUP/PRODUCTION** (the setup→run fork is zero schema);
+  Resume = my open TimeEntry (carries step/part/WO FKs — likely obsoletes the
+  localStorage stopgap); undo = `StepExecution.ROLLED_BACK` + small service; ERP_id
+  scan search; `check_training_authorization` (+ bulk variant); `my_pending`
+  approvals / `my_tasks` CAPAs / disposition filters; minimal QualityReports POST
+  (Log NC); DowntimeEvent + `resolve`.
+- *Tier 1 — exposure (data exists, no API):* queue aggregate endpoint
+  (**`StepExecution.entered_at` IS time-became-ready** — aging needs no new
+  timestamp; `wip_summary` is the precedent); inspection-inbox aggregate (union of
+  `build_incoming_rows` + `needs_qa` + FPI pending — all exist, nothing unions
+  them); **SamplingSeverityState has zero serializer/endpoint** (severity_since +
+  recent_outcomes + consecutive_accepts fully derive the badge + switch-back
+  countdown); sampling badge + 7-of-13 via `MeasurementResult.sample_number`
+  counts; approval claim = viewset action over the **existing ApprovalAssignment
+  through-table** + claimable filter; gauge nag = `EquipmentUsage(operator,
+  used_at)` × `CalibrationRecord.due_soon()` (*verify EquipmentUsage is actually
+  written during capture*); new notification event types ride the registry
+  (`fpi.*`, `training.signoff_requested`, `lead.ping` → Shift Lead *group*; no
+  user→lead mapping exists, group-based is honest v1).
+- *Tier 2 — thin fields:* `FPIRecord.acknowledged_by/at` (+ pending-list endpoint =
+  the whole FPI loop, both surfaces); `MaterialLot.hold_reason` conventions
+  (AWAITING_COC, GAUGE_UNAVAILABLE — free CharField); disposition `due_date`
+  (absent; add or ship gray dot).
+- *Tier 3 — new tables (only these):* OperationBlocker (+ `acknowledged_by/at` for
+  the routed→seen strip; escalation = new scan riding tasks.py:1419 pattern);
+  ShiftNote + read-ack through-table.
+- *Deferrals confirmed:* "needed by WO-x" receiving triage — MaterialLot has **no
+  forward demand linkage** (consumption hook now pays a third time); "+N with this
+  setup" real version = rung 2 (part-type+step approximation for v1); ~min/pc =
+  rung 2 std times.
+- *Asymmetry:* QA home = pure exposure over existing QMS models, **zero new
+  tables**; operator home owns both new aggregates; the FPI loop and
+  OperationBlocker each serve both surfaces.
+
 **Open decisions:** THEN-empty at narrow scope (leave sparse vs backfill nearby);
 skip-with-reason prompting threshold; QA landing five-workflow treatment; shared-kiosk
 operator switching (only if station tablets happen).
