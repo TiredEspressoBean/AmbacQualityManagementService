@@ -541,3 +541,94 @@ register_event(EventType(
                  'action. Recommendation, not an automatic suspension.'),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# fpi.requested / fpi.decided — the first-piece andon loop. A pending FPI can
+# idle a machine and an operator; the request is a queue-jumper to QA, the
+# verdict routes back to the floor. The middle state ("seen by") lives on the
+# record (acknowledged_by/at), read by the operator surface — not an event.
+# =============================================================================
+
+@dataclass(frozen=True)
+class FpiRequestedPayload:
+    """Payload for `fpi.requested`. Fired when a pending FPI record is created."""
+
+    id: str                       # FPIRecord id; correlation id source
+    tenant_id: str
+    fpi_record_id: str
+    work_order_id: str | None
+    work_order_number: str
+    step_id: str | None
+    step_name: str
+    equipment_name: str
+
+    @classmethod
+    def sample(cls) -> 'FpiRequestedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000f1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            fpi_record_id='00000000-0000-0000-0000-0000000000f1',
+            work_order_id='00000000-0000-0000-0000-000000000007',
+            work_order_number='WO-2026-0007',
+            step_id='00000000-0000-0000-0000-000000000003',
+            step_name='Final Test',
+            equipment_name='Test Bench 2',
+        )
+
+
+register_event(EventType(
+    code='fpi.requested',
+    label='First Piece Waiting',
+    domain='Quality',
+    payload_schema=FpiRequestedPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['QA Inspector', 'QA Manager'],
+    default_on=True,
+    transactional=False,
+    description='A first piece is waiting for inspection — a machine and operator may be idle behind it.',
+    external_routable=False,
+))
+
+
+@dataclass(frozen=True)
+class FpiDecidedPayload:
+    """Payload for `fpi.decided`. Fired on pass / fail / waive."""
+
+    id: str                       # FPIRecord id; correlation id source
+    tenant_id: str
+    fpi_record_id: str
+    work_order_id: str | None
+    work_order_number: str
+    step_id: str | None
+    step_name: str
+    equipment_name: str
+    status: str                   # PASSED | FAILED | WAIVED
+
+    @classmethod
+    def sample(cls) -> 'FpiDecidedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000f1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            fpi_record_id='00000000-0000-0000-0000-0000000000f1',
+            work_order_id='00000000-0000-0000-0000-000000000007',
+            work_order_number='WO-2026-0007',
+            step_id='00000000-0000-0000-0000-000000000003',
+            step_name='Final Test',
+            equipment_name='Test Bench 2',
+            status='PASSED',
+        )
+
+
+register_event(EventType(
+    code='fpi.decided',
+    label='First Piece Decided',
+    domain='Quality',
+    payload_schema=FpiDecidedPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['Production Manager'],
+    default_on=True,
+    transactional=False,
+    description='A first-piece inspection was decided (passed / failed / waived) — the run can proceed or needs setup attention.',
+    external_routable=False,
+))

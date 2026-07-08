@@ -1259,6 +1259,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
         'pass_inspection': ['sign_off_fpi'],
         'fail_inspection': ['sign_off_fpi'],
         'waive': ['sign_off_fpi'],
+        # Acknowledging ("I'm on it") is a QA act like buy-off, same gate.
+        'acknowledge': ['sign_off_fpi'],
     }
 
     def get_serializer_class(self):
@@ -1448,6 +1450,28 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
+        description="Acknowledge a pending FPI (QA is on it). Idempotent — the "
+                    "first acknowledgment wins; the operator surface shows 'Seen by X'.",
+        request=None,
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post'])
+    def acknowledge(self, request, pk=None):
+        """QA acknowledges the pending first-piece request."""
+        fpi = self.get_object()
+        from Tracker.services.qms.fpi import acknowledge_fpi
+        try:
+            acknowledge_fpi(fpi, request.user)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "detail": "FPI acknowledged",
+            "id": str(fpi.id),
+            "acknowledged_by": fpi.acknowledged_by.username if fpi.acknowledged_by_id else None,
+            "acknowledged_at": fpi.acknowledged_at,
+        })
+
+    @extend_schema(
         description="Get or create FPI record for work order/step combination",
         request={"application/json": {"type": "object", "properties": {
             "work_order": {"type": "string", "format": "uuid"},
@@ -1554,6 +1578,11 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewS
             create_data['equipment'] = lookup['equipment']
 
         fpi = FPIRecord.objects.create(**create_data)  # tenant-safe: create_data['tenant'] set above
+
+        # The andon call: a machine and operator may be idle from this moment.
+        from Tracker.services.qms.fpi import notify_fpi_requested
+        notify_fpi_requested(fpi)
+
         serializer = self.get_serializer(fpi)
 
         return Response({

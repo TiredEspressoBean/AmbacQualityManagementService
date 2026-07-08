@@ -1519,6 +1519,7 @@ class FPIRecordSerializer(SecureModelMixin):
     designated_part_info = serializers.SerializerMethodField()
     inspected_by_info = serializers.SerializerMethodField()
     waived_by_info = serializers.SerializerMethodField()
+    acknowledged_by_info = serializers.SerializerMethodField()
     equipment_info = serializers.SerializerMethodField()
 
     class Meta:
@@ -1538,12 +1539,14 @@ class FPIRecordSerializer(SecureModelMixin):
             'inspected_at',
             'waived', 'waived_by', 'waived_by_info',
             'waive_reason',
+            'acknowledged_by', 'acknowledged_by_info', 'acknowledged_at',
             'quality_report',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'status', 'result', 'inspected_by', 'inspected_at',
             'waived', 'waived_by', 'waive_reason',
+            'acknowledged_by', 'acknowledged_at',
             'quality_report',
             'created_at', 'updated_at'
         )
@@ -1597,6 +1600,13 @@ class FPIRecordSerializer(SecureModelMixin):
         if obj.waived_by:
             from .core import UserSelectSerializer
             return UserSelectSerializer(obj.waived_by).data
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_acknowledged_by_info(self, obj):
+        if obj.acknowledged_by:
+            from .core import UserSelectSerializer
+            return UserSelectSerializer(obj.acknowledged_by).data
         return None
 
     @extend_schema_field(serializers.DictField(allow_null=True))

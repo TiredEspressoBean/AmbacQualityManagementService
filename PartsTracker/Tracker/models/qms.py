@@ -2674,6 +2674,23 @@ class FPIRecord(SecureModel):
         help_text='When inspection was completed'
     )
 
+    # The visible waiting-state loop: a machine and an operator may be idle
+    # behind a pending FPI, so "did QA see this?" must be answerable from the
+    # record (sent → seen → verdict), not by walking the floor.
+    acknowledged_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        help_text='QA user who acknowledged the pending request (is on it)'
+    )
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the pending request was acknowledged'
+    )
+
     waived = models.BooleanField(
         default=False,
         help_text='Whether FPI requirement was waived'
