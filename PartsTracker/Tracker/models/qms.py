@@ -718,6 +718,9 @@ class QuarantineDisposition(SecureModel):
     # QA workflow
     assigned_to = models.ForeignKey(User, on_delete=models.PROTECT, related_name='assigned_dispositions', null=True,
                                     blank=True)
+    due_date = models.DateField(
+        null=True, blank=True,
+        help_text="Target resolution date — drives the due dot on quality inboxes")
     description = models.TextField(blank=True)
     resolution_notes = models.TextField(blank=True)
 

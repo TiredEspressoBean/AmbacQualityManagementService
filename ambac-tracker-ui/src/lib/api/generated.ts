@@ -2208,6 +2208,15 @@ export type FPIRecord = {
    */
   waive_reason: string;
   /**
+   * QA user who acknowledged the pending request (is on it)
+   */
+  acknowledged_by: number | null;
+  acknowledged_by_info: {};
+  /**
+   * When the pending request was acknowledged
+   */
+  acknowledged_at: string | null;
+  /**
    * The designated first piece's QualityReport this buy-off was made against
    */
   quality_report: string | null;
@@ -2398,6 +2407,79 @@ export type SourceEnum =
    * @enum PURCHASED_LOT, OUTSIDE_PROCESS
    */
   "PURCHASED_LOT" | "OUTSIDE_PROCESS";
+export type InspectionInbox = {
+  rows: Array<InspectionInboxRow>;
+  counts: {};
+  total: number;
+  blocked: number;
+};
+export type InspectionInboxRow = {
+  type: InspectionInboxTypeEnum;
+  subject_kind: SubjectKindEnum;
+  id: string;
+  title: string;
+  detail: string;
+  wo: string | null;
+  quantity: number | null;
+  age_hours: number | null;
+  due_tone: DueToneEnum;
+  due_label: string;
+  plan: string | null;
+  severity: InspectionInboxSeverity;
+  resume: string | null;
+  blocked_reason: string | null;
+};
+export type InspectionInboxTypeEnum =
+  /**
+   * * `fpi` - fpi
+   * `receiving` - receiving
+   * `outside_process` - outside_process
+   * `in_process` - in_process
+   *
+   * @enum fpi, receiving, outside_process, in_process
+   */
+  "fpi" | "receiving" | "outside_process" | "in_process";
+export type SubjectKindEnum =
+  /**
+   * * `fpi_record` - fpi_record
+   * `material_lot` - material_lot
+   * `shipment` - shipment
+   * `operation` - operation
+   *
+   * @enum fpi_record, material_lot, shipment, operation
+   */
+  "fpi_record" | "material_lot" | "shipment" | "operation";
+export type DueToneEnum =
+  /**
+   * * `red` - red
+   * `orange` - orange
+   * `green` - green
+   * `gray` - gray
+   *
+   * @enum red, orange, green, gray
+   */
+  "red" | "orange" | "green" | "gray";
+export type InspectionInboxSeverity = {
+  severity: InspectionInboxSeveritySeverityEnum;
+  severity_since: string | null;
+  discontinued: boolean;
+  rejects_in_window: number;
+  next_severity_on_accepts: string;
+  accepts_needed: number | null;
+};
+export type InspectionInboxSeveritySeverityEnum =
+  /**
+   * * `NORMAL` - NORMAL
+   * `TIGHTENED` - TIGHTENED
+   * `REDUCED` - REDUCED
+   *
+   * @enum NORMAL, TIGHTENED, REDUCED
+   */
+  "NORMAL" | "TIGHTENED" | "REDUCED";
+export type InspectionInboxTypeCount = {
+  count: number;
+  oldest_age_hours: number | null;
+};
 export type IntegrationConfig = {
   id: string;
   tenant: string;
@@ -5388,6 +5470,12 @@ export type QuarantineDisposition = {
   severity?: SeverityEnum | undefined;
   severity_display: string;
   assigned_to?: (number | null) | undefined;
+  due_date?:
+    | /**
+     * Target resolution date — drives the due dot on quality inboxes
+     */
+    (string | null)
+    | undefined;
   description?: string | undefined;
   resolution_notes?: string | undefined;
   resolution_completed?: boolean | undefined;
@@ -5908,6 +5996,50 @@ export type GateWindowEnum =
    * @enum WORK_ORDER, ROLLING_N, LOT
    */
   "WORK_ORDER" | "ROLLING_N" | "LOT";
+export type PaginatedSamplingSeverityStateList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<SamplingSeverityState>;
+};
+export type SamplingSeverityState = {
+  id: string;
+  step: string;
+  step_name: string;
+  supplier: string | null;
+  supplier_name: string | null;
+  severity: SamplingSeverityStateSeverityEnum;
+  severity_since: string | null;
+  discontinued: boolean;
+  consecutive_accepts: number;
+  lots_in_regime: number;
+  rejects_in_window: number;
+  next_severity_on_accepts: string;
+  accepts_needed: number | null;
+  updated_at: string;
+};
+export type SamplingSeverityStateSeverityEnum =
+  /**
+   * * `NORMAL` - Normal
+   * `TIGHTENED` - Tightened
+   * `REDUCED` - Reduced
+   *
+   * @enum NORMAL, TIGHTENED, REDUCED
+   */
+  "NORMAL" | "TIGHTENED" | "REDUCED";
 export type PaginatedScheduleSlotList = {
   /**
    * @example 123
@@ -9095,6 +9227,10 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   disposition_type: DispositionTypeEnum | BlankEnum;
   severity: SeverityEnum;
   assigned_to: number | null;
+  /**
+   * Target resolution date — drives the due dot on quality inboxes
+   */
+  due_date: string | null;
   description: string;
   resolution_notes: string;
   resolution_completed: boolean;
@@ -10470,6 +10606,12 @@ export type QuarantineDispositionRequest = {
   disposition_type?: (DispositionTypeEnum | BlankEnum) | undefined;
   severity?: SeverityEnum | undefined;
   assigned_to?: (number | null) | undefined;
+  due_date?:
+    | /**
+     * Target resolution date — drives the due dot on quality inboxes
+     */
+    (string | null)
+    | undefined;
   description?: string | undefined;
   resolution_notes?: string | undefined;
   resolution_completed?: boolean | undefined;
@@ -13878,6 +14020,9 @@ const FPIRecord = z.object({
   waived_by: z.number().int().nullable(),
   waived_by_info: z.object({}).partial().passthrough().nullable(),
   waive_reason: z.string(),
+  acknowledged_by: z.number().int().nullable(),
+  acknowledged_by_info: z.object({}).partial().passthrough().nullable(),
+  acknowledged_at: z.string().datetime({ offset: true }).nullable(),
   quality_report: z.string().uuid().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -14108,6 +14253,58 @@ const IncomingInspectionRow = z.object({
   status_display: z.string(),
   received_at: z.string().nullable(),
   step_id: z.string().uuid().nullable(),
+});
+const InspectionInboxTypeEnum = z.enum([
+  "fpi",
+  "receiving",
+  "outside_process",
+  "in_process",
+]);
+const SubjectKindEnum = z.enum([
+  "fpi_record",
+  "material_lot",
+  "shipment",
+  "operation",
+]);
+const DueToneEnum = z.enum(["red", "orange", "green", "gray"]);
+const InspectionInboxSeveritySeverityEnum = z.enum([
+  "NORMAL",
+  "TIGHTENED",
+  "REDUCED",
+]);
+const InspectionInboxSeverity = z.object({
+  severity: InspectionInboxSeveritySeverityEnum,
+  severity_since: z.string().nullable(),
+  discontinued: z.boolean(),
+  rejects_in_window: z.number().int(),
+  next_severity_on_accepts: z.string(),
+  accepts_needed: z.number().int().nullable(),
+});
+const InspectionInboxRow = z.object({
+  type: InspectionInboxTypeEnum,
+  subject_kind: SubjectKindEnum,
+  id: z.string(),
+  title: z.string(),
+  detail: z.string(),
+  wo: z.string().nullable(),
+  quantity: z.number().nullable(),
+  age_hours: z.number().nullable(),
+  due_tone: DueToneEnum,
+  due_label: z.string(),
+  plan: z.string().nullable(),
+  severity: InspectionInboxSeverity.nullable(),
+  resume: z.string().nullable(),
+  blocked_reason: z.string().nullable(),
+});
+const InspectionInboxTypeCount = z.object({
+  count: z.number().int(),
+  oldest_age_hours: z.number().nullable(),
+});
+const InspectionInbox = z.object({
+  rows: z.array(InspectionInboxRow),
+  counts: z.record(InspectionInboxTypeCount),
+  total: z.number().int(),
+  blocked: z.number().int(),
 });
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
@@ -15400,6 +15597,7 @@ const QuarantineDisposition = z.object({
   severity: SeverityEnum.optional(),
   severity_display: z.string(),
   assigned_to: z.number().int().nullish(),
+  due_date: z.string().nullish(),
   description: z.string().optional(),
   resolution_notes: z.string().optional(),
   resolution_completed: z.boolean().optional(),
@@ -15450,6 +15648,7 @@ const QuarantineDispositionRequest = z.object({
   disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
   severity: SeverityEnum.optional(),
   assigned_to: z.number().int().nullish(),
+  due_date: z.string().nullish(),
   description: z.string().optional(),
   resolution_notes: z.string().optional(),
   resolution_completed: z.boolean().optional(),
@@ -15483,6 +15682,7 @@ const PatchedQuarantineDispositionRequest = z
     disposition_type: z.union([DispositionTypeEnum, BlankEnum]),
     severity: SeverityEnum,
     assigned_to: z.number().int().nullable(),
+    due_date: z.string().nullable(),
     description: z.string(),
     resolution_notes: z.string(),
     resolution_completed: z.boolean(),
@@ -15770,6 +15970,33 @@ const PaginatedSamplingDecisionList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(SamplingDecision),
+});
+const SamplingSeverityStateSeverityEnum = z.enum([
+  "NORMAL",
+  "TIGHTENED",
+  "REDUCED",
+]);
+const SamplingSeverityState = z.object({
+  id: z.string().uuid(),
+  step: z.string().uuid(),
+  step_name: z.string(),
+  supplier: z.string().uuid().nullable(),
+  supplier_name: z.string().nullable(),
+  severity: SamplingSeverityStateSeverityEnum,
+  severity_since: z.string().datetime({ offset: true }).nullable(),
+  discontinued: z.boolean(),
+  consecutive_accepts: z.number().int(),
+  lots_in_regime: z.number().int(),
+  rejects_in_window: z.number().int(),
+  next_severity_on_accepts: z.string(),
+  accepts_needed: z.number().int().nullable(),
+  updated_at: z.string().datetime({ offset: true }),
+});
+const PaginatedSamplingSeverityStateList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(SamplingSeverityState),
 });
 const ScheduleSlotStatusEnum = z.enum([
   "SCHEDULED",
@@ -19267,6 +19494,14 @@ export const schemas = {
   HeatMapFacetsResponse,
   SourceEnum,
   IncomingInspectionRow,
+  InspectionInboxTypeEnum,
+  SubjectKindEnum,
+  DueToneEnum,
+  InspectionInboxSeveritySeverityEnum,
+  InspectionInboxSeverity,
+  InspectionInboxRow,
+  InspectionInboxTypeCount,
+  InspectionInbox,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -19436,6 +19671,9 @@ export const schemas = {
   OutcomeEnum,
   SamplingDecision,
   PaginatedSamplingDecisionList,
+  SamplingSeverityStateSeverityEnum,
+  SamplingSeverityState,
+  PaginatedSamplingSeverityStateList,
   ScheduleSlotStatusEnum,
   ScheduleSlot,
   PaginatedScheduleSlotList,
@@ -20067,6 +20305,21 @@ POST: Executes the query.`,
     response: z.void(),
   },
   {
+    method: "post",
+    path: "/api/ApprovalRequests/:id/claim/",
+    alias: "api_ApprovalRequests_claim_create",
+    description: `Claim a group-routed approval: self-assign as its approver so it moves from the group&#x27;s shared queue into the caller&#x27;s pending list.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ApprovalRequest,
+  },
+  {
     method: "get",
     path: "/api/ApprovalRequests/:id/pending-approvers/",
     alias: "api_ApprovalRequests_pending_approvers_retrieve",
@@ -20100,6 +20353,84 @@ POST: Executes the query.`,
       },
     ],
     response: ApprovalResponse,
+  },
+  {
+    method: "get",
+    path: "/api/ApprovalRequests/claimable/",
+    alias: "api_ApprovalRequests_claimable_list",
+    description: `Approvals the current user can claim: pending, routed to one of their groups, and not yet claimed or individually assigned.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "approval_type",
+        type: "Query",
+        schema: z
+          .enum([
+            "CAPA_APPROVAL",
+            "CAPA_CRITICAL",
+            "CAPA_MAJOR",
+            "DOCUMENT_RELEASE",
+            "ECO",
+            "FAI",
+            "PCN_RELEASE",
+            "PCO_APPROVAL",
+            "PCR_APPROVAL",
+            "PPAP",
+            "PROCESS_APPROVAL",
+            "TRAINING_CERT",
+          ])
+          .optional(),
+      },
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "requested_by",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "APPROVED",
+            "CANCELLED",
+            "NOT_REQUIRED",
+            "PENDING",
+            "REJECTED",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedApprovalRequestList,
   },
   {
     method: "get",
@@ -21572,6 +21903,36 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/CalibrationRecords/my-gauge-nag/",
+    alias: "api_CalibrationRecords_my_gauge_nag_retrieve",
+    description: `Gauges the current user recently used whose calibration is due soon or overdue — the personal pre-empt for the point-of-use calibration gate.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "due_within",
+        type: "Query",
+        schema: z.number().int().optional().default(7),
+      },
+      {
+        name: "used_within",
+        type: "Query",
+        schema: z.number().int().optional().default(7),
+      },
+    ],
+    response: z.array(
+      z
+        .object({
+          equipment_id: z.string(),
+          equipment_name: z.string(),
+          due_date: z.string(),
+          days_until_due: z.number().int(),
+          overdue: z.boolean(),
+        })
+        .partial()
+    ),
   },
   {
     method: "get",
@@ -26090,6 +26451,21 @@ before batch production proceeds. Configurable per step via fpi_scope:
   },
   {
     method: "post",
+    path: "/api/FPIRecords/:id/acknowledge/",
+    alias: "api_FPIRecords_acknowledge_create",
+    description: `Acknowledge a pending FPI (QA is on it). Idempotent — the first acknowledgment wins; the operator surface shows &#x27;Seen by X&#x27;.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/FPIRecords/:id/fail/",
     alias: "api_FPIRecords_fail_create",
     description: `Mark FPI as failed`,
@@ -26716,6 +27092,14 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     description: `Unified inbound-inspection queue: MaterialLots awaiting inspection (PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS), normalized with a &#x60;source&#x60; discriminator and shared status vocabulary.`,
     requestFormat: "json",
     response: z.array(IncomingInspectionRow),
+  },
+  {
+    method: "get",
+    path: "/api/InspectionInbox/",
+    alias: "api_InspectionInbox_list",
+    description: `The inspector&#x27;s flat task inbox: FPI first, then by urgency tone, then age. Counts carry oldest-age per type so chips reveal rot, not just volume.`,
+    requestFormat: "json",
+    response: z.array(InspectionInbox),
   },
   {
     method: "get",
@@ -34403,6 +34787,86 @@ Returns a summary: { reconciled, now_selected, now_deselected,
 still_pending }. Supervisor UI uses this to surface what flipped.`,
     requestFormat: "json",
     response: SamplingDecision,
+  },
+  {
+    method: "get",
+    path: "/api/SamplingSeverityStates/",
+    alias: "api_SamplingSeverityStates_list",
+    description: `Read-only runtime Z1.4 severity state per (receiving step, supplier).
+
+Mutations belong exclusively to the switching engine
+(&#x60;services.qms.severity_switching.update_after_lot&#x60;) — this surface exists
+so inspector/supplier views can show the effective severity and the
+switch-back position instead of hiding the machinery (the SAP-QM opacity
+problem from the round-4 research).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "discontinued",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "severity",
+        type: "Query",
+        schema: z.enum(["NORMAL", "REDUCED", "TIGHTENED"]).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "supplier",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedSamplingSeverityStateList,
+  },
+  {
+    method: "get",
+    path: "/api/SamplingSeverityStates/:id/",
+    alias: "api_SamplingSeverityStates_retrieve",
+    description: `Read-only runtime Z1.4 severity state per (receiving step, supplier).
+
+Mutations belong exclusively to the switching engine
+(&#x60;services.qms.severity_switching.update_after_lot&#x60;) — this surface exists
+so inspector/supplier views can show the effective severity and the
+switch-back position instead of hiding the machinery (the SAP-QM opacity
+problem from the round-4 research).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: SamplingSeverityState,
+  },
+  {
+    method: "get",
+    path: "/api/SamplingSeverityStates/metadata/",
+    alias: "api_SamplingSeverityStates_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",

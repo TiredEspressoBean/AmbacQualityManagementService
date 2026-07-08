@@ -42,6 +42,23 @@ export interface paths {
         patch: operations["api_ApprovalRequests_partial_update"];
         trace?: never;
     };
+    "/api/ApprovalRequests/{id}/claim/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Claim a group-routed approval: self-assign as its approver so it moves from the group's shared queue into the caller's pending list. */
+        post: operations["api_ApprovalRequests_claim_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ApprovalRequests/{id}/pending-approvers/": {
         parameters: {
             query?: never;
@@ -70,6 +87,23 @@ export interface paths {
         put?: never;
         /** @description Submit an approval response (approve/reject/delegate) with optional signature + password identity verification. */
         post: operations["api_ApprovalRequests_submit_response_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ApprovalRequests/claimable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Approvals the current user can claim: pending, routed to one of their groups, and not yet claimed or individually assigned. */
+        get: operations["api_ApprovalRequests_claimable_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -883,6 +917,23 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_CalibrationRecords_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CalibrationRecords/my-gauge-nag/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Gauges the current user recently used whose calibration is due soon or overdue — the personal pre-empt for the point-of-use calibration gate. */
+        get: operations["api_CalibrationRecords_my_gauge_nag_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2968,6 +3019,23 @@ export interface paths {
         patch: operations["api_FPIRecords_partial_update"];
         trace?: never;
     };
+    "/api/FPIRecords/{id}/acknowledge/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Acknowledge a pending FPI (QA is on it). Idempotent — the first acknowledgment wins; the operator surface shows 'Seen by X'. */
+        post: operations["api_FPIRecords_acknowledge_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/FPIRecords/{id}/fail/": {
         parameters: {
             query?: never;
@@ -3440,6 +3508,23 @@ export interface paths {
         };
         /** @description Unified inbound-inspection queue: MaterialLots awaiting inspection (PURCHASED_LOT) + OutsideProcessShipments out/returned (OUTSIDE_PROCESS), normalized with a `source` discriminator and shared status vocabulary. */
         get: operations["api_IncomingInspection_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/InspectionInbox/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Counts carry oldest-age per type so chips reveal rot, not just volume. */
+        get: operations["api_InspectionInbox_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7146,6 +7231,73 @@ export interface paths {
          *     still_pending }. Supervisor UI uses this to surface what flipped.
          */
         post: operations["api_SamplingDecisions_reconcile_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingSeverityStates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only runtime Z1.4 severity state per (receiving step, supplier).
+         *
+         *     Mutations belong exclusively to the switching engine
+         *     (`services.qms.severity_switching.update_after_lot`) — this surface exists
+         *     so inspector/supplier views can show the effective severity and the
+         *     switch-back position instead of hiding the machinery (the SAP-QM opacity
+         *     problem from the round-4 research).
+         */
+        get: operations["api_SamplingSeverityStates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingSeverityStates/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Read-only runtime Z1.4 severity state per (receiving step, supplier).
+         *
+         *     Mutations belong exclusively to the switching engine
+         *     (`services.qms.severity_switching.update_after_lot`) — this surface exists
+         *     so inspector/supplier views can show the effective severity and the
+         *     switch-back position instead of hiding the machinery (the SAP-QM opacity
+         *     problem from the round-4 research).
+         */
+        get: operations["api_SamplingSeverityStates_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/SamplingSeverityStates/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_SamplingSeverityStates_metadata_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -15945,6 +16097,14 @@ export interface components {
             work_order?: string | null;
             archived?: boolean;
         };
+        /**
+         * @description * `red` - red
+         *     * `orange` - orange
+         *     * `green` - green
+         *     * `gray` - gray
+         * @enum {string}
+         */
+        DueToneEnum: "red" | "orange" | "green" | "gray";
         DuplicateProcessRequestRequest: {
             /** @default (Copy) */
             name_suffix: string;
@@ -16231,6 +16391,16 @@ export interface components {
             } | null;
             /** @description Reason for waiving FPI requirement */
             readonly waive_reason: string;
+            /** @description QA user who acknowledged the pending request (is on it) */
+            readonly acknowledged_by: number | null;
+            readonly acknowledged_by_info: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Format: date-time
+             * @description When the pending request was acknowledged
+             */
+            readonly acknowledged_at: string | null;
             /**
              * Format: uuid
              * @description The designated first piece's QualityReport this buy-off was made against
@@ -16748,6 +16918,72 @@ export interface components {
             /** Format: uuid */
             step_id: string | null;
         };
+        /**
+         * @description The full inbox payload: rows + type-count chips (with oldest-age, since
+         *     counts alone hide rot) + totals.
+         */
+        InspectionInbox: {
+            rows: components["schemas"]["InspectionInboxRow"][];
+            counts: {
+                [key: string]: components["schemas"]["InspectionInboxTypeCount"];
+            };
+            total: number;
+            blocked: number;
+        };
+        /**
+         * @description One row of the inspector's task inbox — flat across every inspection
+         *     source, never grouped by work order. See services.qms.inspection_inbox.
+         */
+        InspectionInboxRow: {
+            type: components["schemas"]["InspectionInboxTypeEnum"];
+            subject_kind: components["schemas"]["SubjectKindEnum"];
+            id: string;
+            title: string;
+            detail: string;
+            wo: string | null;
+            /** Format: double */
+            quantity: number | null;
+            /** Format: double */
+            age_hours: number | null;
+            due_tone: components["schemas"]["DueToneEnum"];
+            due_label: string;
+            plan: string | null;
+            severity: components["schemas"]["InspectionInboxSeverity"] | null;
+            resume: string | null;
+            blocked_reason: string | null;
+        };
+        /**
+         * @description The severity badge on a receiving inbox row (see SamplingSeverityStateSerializer
+         *     for the full read model).
+         */
+        InspectionInboxSeverity: {
+            severity: components["schemas"]["InspectionInboxSeveritySeverityEnum"];
+            severity_since: string | null;
+            discontinued: boolean;
+            rejects_in_window: number;
+            next_severity_on_accepts: string;
+            accepts_needed: number | null;
+        };
+        /**
+         * @description * `NORMAL` - NORMAL
+         *     * `TIGHTENED` - TIGHTENED
+         *     * `REDUCED` - REDUCED
+         * @enum {string}
+         */
+        InspectionInboxSeveritySeverityEnum: "NORMAL" | "TIGHTENED" | "REDUCED";
+        InspectionInboxTypeCount: {
+            count: number;
+            /** Format: double */
+            oldest_age_hours: number | null;
+        };
+        /**
+         * @description * `fpi` - fpi
+         *     * `receiving` - receiving
+         *     * `outside_process` - outside_process
+         *     * `in_process` - in_process
+         * @enum {string}
+         */
+        InspectionInboxTypeEnum: "fpi" | "receiving" | "outside_process" | "in_process";
         IntegrationCatalogItem: {
             provider: string;
             name: string;
@@ -18488,6 +18724,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["SamplingRuleSet"][];
+        };
+        PaginatedSamplingSeverityStateList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["SamplingSeverityState"][];
         };
         PaginatedScheduleSlotList: {
             /** @example 123 */
@@ -20483,6 +20734,11 @@ export interface components {
             disposition_type?: components["schemas"]["DispositionTypeEnum"] | components["schemas"]["BlankEnum"];
             severity?: components["schemas"]["SeverityEnum"];
             assigned_to?: number | null;
+            /**
+             * Format: date
+             * @description Target resolution date — drives the due dot on quality inboxes
+             */
+            due_date?: string | null;
             description?: string;
             resolution_notes?: string;
             resolution_completed?: boolean;
@@ -22499,6 +22755,11 @@ export interface components {
             severity?: components["schemas"]["SeverityEnum"];
             readonly severity_display: string;
             assigned_to?: number | null;
+            /**
+             * Format: date
+             * @description Target resolution date — drives the due dot on quality inboxes
+             */
+            due_date?: string | null;
             description?: string;
             resolution_notes?: string;
             resolution_completed?: boolean;
@@ -22572,6 +22833,11 @@ export interface components {
             disposition_type?: components["schemas"]["DispositionTypeEnum"] | components["schemas"]["BlankEnum"];
             severity?: components["schemas"]["SeverityEnum"];
             assigned_to?: number | null;
+            /**
+             * Format: date
+             * @description Target resolution date — drives the due dot on quality inboxes
+             */
+            due_date?: string | null;
             description?: string;
             resolution_notes?: string;
             resolution_completed?: boolean;
@@ -23513,6 +23779,40 @@ export interface components {
             value?: number | null;
             order: number;
         };
+        /**
+         * @description Read-only runtime Z1.4 severity state, with the switching-procedure
+         *     position spelled out so the inspector-facing badge ("Tightened since X ·
+         *     N more accepts returns to Normal") derives from the engine's own
+         *     thresholds. Mutations belong exclusively to the switching engine.
+         */
+        SamplingSeverityState: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly step: string;
+            readonly step_name: string;
+            /** Format: uuid */
+            readonly supplier: string | null;
+            readonly supplier_name: string | null;
+            readonly severity: components["schemas"]["SamplingSeverityStateSeverityEnum"];
+            /** Format: date-time */
+            readonly severity_since: string | null;
+            readonly discontinued: boolean;
+            readonly consecutive_accepts: number;
+            readonly lots_in_regime: number;
+            readonly rejects_in_window: number;
+            readonly next_severity_on_accepts: string;
+            readonly accepts_needed: number | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `NORMAL` - Normal
+         *     * `TIGHTENED` - Tightened
+         *     * `REDUCED` - Reduced
+         * @enum {string}
+         */
+        SamplingSeverityStateSeverityEnum: "NORMAL" | "TIGHTENED" | "REDUCED";
         /**
          * @description * `small` - small
          *     * `medium` - medium
@@ -24509,6 +24809,14 @@ export interface components {
             sequencing_mode?: string;
             archived?: boolean;
         };
+        /**
+         * @description * `fpi_record` - fpi_record
+         *     * `material_lot` - material_lot
+         *     * `shipment` - shipment
+         *     * `operation` - operation
+         * @enum {string}
+         */
+        SubjectKindEnum: "fpi_record" | "material_lot" | "shipment" | "operation";
         SubmitProcessForApprovalRequestRequest: {
             /** @description Optional reason for approval request */
             reason?: string;
@@ -26819,6 +27127,28 @@ export interface operations {
             };
         };
     };
+    api_ApprovalRequests_claim_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Approval Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequest"];
+                };
+            };
+        };
+    };
     api_ApprovalRequests_pending_approvers_retrieve: {
         parameters: {
             query?: never;
@@ -26865,6 +27195,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalResponse"];
+                };
+            };
+        };
+    };
+    api_ApprovalRequests_claimable_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `DOCUMENT_RELEASE` - Document Release
+                 *     * `CAPA_APPROVAL` - CAPA Approval
+                 *     * `CAPA_CRITICAL` - CAPA Critical
+                 *     * `CAPA_MAJOR` - CAPA Major
+                 *     * `ECO` - Engineering Change Order
+                 *     * `TRAINING_CERT` - Training Certification
+                 *     * `PROCESS_APPROVAL` - Process Approval
+                 *     * `PCR_APPROVAL` - Process Change Request Approval
+                 *     * `PCO_APPROVAL` - Process Change Order Approval
+                 *     * `PCN_RELEASE` - Process Change Notice Release
+                 *     * `PPAP` - PPAP
+                 *     * `FAI` - First Article (FAI / AS9102)
+                 */
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                content_type?: number;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                object_id?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                requested_by?: number;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `NOT_REQUIRED` - Not Required
+                 *     * `PENDING` - Pending
+                 *     * `APPROVED` - Approved
+                 *     * `REJECTED` - Rejected
+                 *     * `CANCELLED` - Cancelled
+                 */
+                status?: "APPROVED" | "CANCELLED" | "NOT_REQUIRED" | "PENDING" | "REJECTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedApprovalRequestList"];
                 };
             };
         };
@@ -28867,6 +29251,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_my_gauge_nag_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Due horizon (days) */
+                due_within?: number;
+                /** @description Lookback window for usage (days) */
+                used_within?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        equipment_id?: string;
+                        equipment_name?: string;
+                        /** Format: date */
+                        due_date?: string;
+                        days_until_due?: number;
+                        overdue?: boolean;
+                    }[];
                 };
             };
         };
@@ -32368,6 +32783,30 @@ export interface operations {
             };
         };
     };
+    api_FPIRecords_acknowledge_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this FPI Record. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_FPIRecords_fail_create: {
         parameters: {
             query?: never;
@@ -33438,6 +33877,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncomingInspectionRow"][];
+                };
+            };
+        };
+    };
+    api_InspectionInbox_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionInbox"][];
                 };
             };
         };
@@ -38624,6 +39082,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SamplingDecision"];
+                };
+            };
+        };
+    };
+    api_SamplingSeverityStates_list: {
+        parameters: {
+            query?: {
+                discontinued?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `NORMAL` - Normal
+                 *     * `TIGHTENED` - Tightened
+                 *     * `REDUCED` - Reduced
+                 */
+                severity?: "NORMAL" | "REDUCED" | "TIGHTENED";
+                step?: string;
+                supplier?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSamplingSeverityStateList"];
+                };
+            };
+        };
+    };
+    api_SamplingSeverityStates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Sampling Severity State. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplingSeverityState"];
+                };
+            };
+        };
+    };
+    api_SamplingSeverityStates_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };

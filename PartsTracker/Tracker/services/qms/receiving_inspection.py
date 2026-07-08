@@ -25,6 +25,15 @@ from Tracker.services.qms.acceptance_sampling import compute_sample_plan
 
 logger = logging.getLogger(__name__)
 
+# MaterialLot.hold_reason vocabulary. A free CharField by design (shops invent
+# reasons), but these codes are the ones the SYSTEM sets/reads — the inspection
+# inbox sinks held rows and shows the code as the blocked chip. Keep new
+# system-set reasons here so the FE can map them to labels.
+HOLD_SUPPLIER_UNQUALIFIED = "SUPPLIER_UNQUALIFIED"  # set by check_supplier_qualification
+HOLD_PART_UNAPPROVED = "PART_UNAPPROVED"            # set by check_part_approval
+HOLD_AWAITING_COC = "AWAITING_COC"                  # manual: cert of conformance missing
+HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out for cal
+
 
 def resolve_receiving_step(part_type):
     """The current RECEIVING step for a part type, or None."""
@@ -150,7 +159,7 @@ def _held_for_unqualified_supplier(lot) -> bool:
         return False
 
     inventory.quarantine_lot(lot)
-    lot.hold_reason = "SUPPLIER_UNQUALIFIED"
+    lot.hold_reason = HOLD_SUPPLIER_UNQUALIFIED
     lot.save(update_fields=["hold_reason"])
     _emit_supplier_unqualified(lot)
     return True
@@ -194,7 +203,7 @@ def _held_for_unapproved_part(lot) -> bool:
         return False
 
     inventory.quarantine_lot(lot)
-    lot.hold_reason = "PART_UNAPPROVED"
+    lot.hold_reason = HOLD_PART_UNAPPROVED
     lot.save(update_fields=["hold_reason"])
     _emit_part_unapproved(lot)
     return True

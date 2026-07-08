@@ -381,6 +381,12 @@ SPECTACULAR_SETTINGS = {
 
 
     "ENUM_NAME_OVERRIDES": {
+        # Inspection-inbox row 'type' — would otherwise collide with
+        # MeasurementDefinition.type and rename the long-exported TypeEnum.
+        "InspectionInboxTypeEnum": "Tracker.serializers.qms.INSPECTION_INBOX_TYPES",
+        # Pin the historical TypeEnum name to MeasurementDefinition.type so
+        # future 'type'-named fields can't rename it out from under the FE.
+        "TypeEnum": "Tracker.models.mes_lite.MEASUREMENT_TYPE_CHOICES",
         # Status enums - resolve collision between different 'status' fields
         "CapaStatusEnum": "Tracker.models.qms.CapaStatus.choices",
         "CapaTaskStatusEnum": "Tracker.models.qms.CapaTaskStatus.choices",

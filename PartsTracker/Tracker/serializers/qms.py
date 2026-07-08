@@ -727,7 +727,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         fields = (
             # Core fields
             'id', 'disposition_number', 'current_state', 'disposition_type', 'severity', 'severity_display',
-            'assigned_to', 'description', 'resolution_notes',
+            'assigned_to', 'due_date', 'description', 'resolution_notes',
             # Resolution tracking
             'resolution_completed', 'resolution_completed_by', 'resolution_completed_by_name',
             'resolution_completed_at',
@@ -1809,10 +1809,15 @@ class InspectionInboxSeveritySerializer(serializers.Serializer):
     accepts_needed = serializers.IntegerField(allow_null=True)
 
 
+# Named for ENUM_NAME_OVERRIDES — a bare "type" field otherwise collides with
+# MeasurementDefinition.type and renames the long-exported TypeEnum.
+INSPECTION_INBOX_TYPES = ["fpi", "receiving", "outside_process", "in_process"]
+
+
 class InspectionInboxRowSerializer(serializers.Serializer):
     """One row of the inspector's task inbox — flat across every inspection
     source, never grouped by work order. See services.qms.inspection_inbox."""
-    type = serializers.ChoiceField(choices=["fpi", "receiving", "outside_process", "in_process"])
+    type = serializers.ChoiceField(choices=INSPECTION_INBOX_TYPES)
     subject_kind = serializers.ChoiceField(choices=["fpi_record", "material_lot", "shipment", "operation"])
     id = serializers.CharField()
     title = serializers.CharField(allow_blank=True)

@@ -369,6 +369,11 @@ class Processes(SecureModel):
         return qs.order_by('name')
 
 
+# Named so ENUM_NAME_OVERRIDES can pin the long-exported "TypeEnum" schema name
+# to this choice set (bare "type" fields collide across serializers).
+MEASUREMENT_TYPE_CHOICES = [("NUMERIC", "Numeric"), ("PASS_FAIL", "Pass/Fail")]
+
+
 class MeasurementDefinition(SecureModel):
     """
     Defines a measurement specification for a step, with tolerances.
@@ -386,7 +391,7 @@ class MeasurementDefinition(SecureModel):
     label = models.CharField(max_length=100)  # e.g. "Outer Diameter"
     type = models.CharField(
         max_length=20,
-        choices=[("NUMERIC", "Numeric"), ("PASS_FAIL", "Pass/Fail")],
+        choices=MEASUREMENT_TYPE_CHOICES,
     )
     unit = models.CharField(max_length=50, blank=True)  # e.g. "mm", "psi"
     nominal = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)

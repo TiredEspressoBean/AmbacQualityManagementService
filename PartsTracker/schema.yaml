@@ -212,6 +212,31 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/ApprovalRequests/{id}/claim/:
+    post:
+      operationId: api_ApprovalRequests_claim_create
+      description: 'Claim a group-routed approval: self-assign as its approver so
+        it moves from the group''s shared queue into the caller''s pending list.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Approval Request.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+          description: ''
   /api/ApprovalRequests/{id}/pending-approvers/:
     get:
       operationId: api_ApprovalRequests_pending_approvers_retrieve
@@ -272,6 +297,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApprovalResponse'
+          description: ''
+  /api/ApprovalRequests/claimable/:
+    get:
+      operationId: api_ApprovalRequests_claimable_list
+      description: 'Approvals the current user can claim: pending, routed to one of
+        their groups, and not yet claimed or individually assigned.'
+      parameters:
+      - in: query
+        name: approval_type
+        schema:
+          type: string
+          enum:
+          - CAPA_APPROVAL
+          - CAPA_CRITICAL
+          - CAPA_MAJOR
+          - DOCUMENT_RELEASE
+          - ECO
+          - FAI
+          - PCN_RELEASE
+          - PCO_APPROVAL
+          - PCR_APPROVAL
+          - PPAP
+          - PROCESS_APPROVAL
+          - TRAINING_CERT
+        description: |-
+          * `DOCUMENT_RELEASE` - Document Release
+          * `CAPA_APPROVAL` - CAPA Approval
+          * `CAPA_CRITICAL` - CAPA Critical
+          * `CAPA_MAJOR` - CAPA Major
+          * `ECO` - Engineering Change Order
+          * `TRAINING_CERT` - Training Certification
+          * `PROCESS_APPROVAL` - Process Approval
+          * `PCR_APPROVAL` - Process Change Request Approval
+          * `PCO_APPROVAL` - Process Change Order Approval
+          * `PCN_RELEASE` - Process Change Notice Release
+          * `PPAP` - PPAP
+          * `FAI` - First Article (FAI / AS9102)
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: object_id
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: requested_by
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - CANCELLED
+          - NOT_REQUIRED
+          - PENDING
+          - REJECTED
+        description: |-
+          * `NOT_REQUIRED` - Not Required
+          * `PENDING` - Pending
+          * `APPROVED` - Approved
+          * `REJECTED` - Rejected
+          * `CANCELLED` - Cancelled
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApprovalRequestList'
           description: ''
   /api/ApprovalRequests/export-excel/:
     get:
@@ -2854,6 +2979,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/CalibrationRecords/my-gauge-nag/:
+    get:
+      operationId: api_CalibrationRecords_my_gauge_nag_retrieve
+      description: Gauges the current user recently used whose calibration is due
+        soon or overdue — the personal pre-empt for the point-of-use calibration gate.
+      parameters:
+      - in: query
+        name: due_within
+        schema:
+          type: integer
+          default: 7
+        description: Due horizon (days)
+      - in: query
+        name: used_within
+        schema:
+          type: integer
+          default: 7
+        description: Lookback window for usage (days)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    equipment_id:
+                      type: string
+                    equipment_name:
+                      type: string
+                    due_date:
+                      type: string
+                      format: date
+                    days_until_due:
+                      type: integer
+                    overdue:
+                      type: boolean
           description: ''
   /api/CalibrationRecords/overdue/:
     get:
@@ -7799,6 +7968,32 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/FPIRecords/{id}/acknowledge/:
+    post:
+      operationId: api_FPIRecords_acknowledge_create
+      description: Acknowledge a pending FPI (QA is on it). Idempotent — the first
+        acknowledgment wins; the operator surface shows 'Seen by X'.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/FPIRecords/{id}/fail/:
     post:
       operationId: api_FPIRecords_fail_create
@@ -9141,6 +9336,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/IncomingInspectionRow'
+          description: ''
+  /api/InspectionInbox/:
+    get:
+      operationId: api_InspectionInbox_list
+      description: 'The inspector''s flat task inbox: FPI first, then by urgency tone,
+        then age. Counts carry oldest-age per type so chips reveal rot, not just volume.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InspectionInbox'
           description: ''
   /api/MaterialLots/:
     get:
@@ -17129,6 +17343,122 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SamplingDecision'
+          description: ''
+  /api/SamplingSeverityStates/:
+    get:
+      operationId: api_SamplingSeverityStates_list
+      description: |-
+        Read-only runtime Z1.4 severity state per (receiving step, supplier).
+
+        Mutations belong exclusively to the switching engine
+        (`services.qms.severity_switching.update_after_lot`) — this surface exists
+        so inspector/supplier views can show the effective severity and the
+        switch-back position instead of hiding the machinery (the SAP-QM opacity
+        problem from the round-4 research).
+      parameters:
+      - in: query
+        name: discontinued
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - NORMAL
+          - REDUCED
+          - TIGHTENED
+        description: |-
+          * `NORMAL` - Normal
+          * `TIGHTENED` - Tightened
+          * `REDUCED` - Reduced
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: supplier
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSamplingSeverityStateList'
+          description: ''
+  /api/SamplingSeverityStates/{id}/:
+    get:
+      operationId: api_SamplingSeverityStates_retrieve
+      description: |-
+        Read-only runtime Z1.4 severity state per (receiving step, supplier).
+
+        Mutations belong exclusively to the switching engine
+        (`services.qms.severity_switching.update_after_lot`) — this surface exists
+        so inspector/supplier views can show the effective severity and the
+        switch-back position instead of hiding the machinery (the SAP-QM opacity
+        problem from the round-4 research).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Sampling Severity State.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SamplingSeverityState'
+          description: ''
+  /api/SamplingSeverityStates/metadata/:
+    get:
+      operationId: api_SamplingSeverityStates_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/ScheduleSlots/:
     get:
@@ -36883,6 +37213,18 @@ components:
       - category
       - reason
       - start_time
+    DueToneEnum:
+      enum:
+      - red
+      - orange
+      - green
+      - gray
+      type: string
+      description: |-
+        * `red` - red
+        * `orange` - orange
+        * `green` - green
+        * `gray` - gray
     DuplicateProcessRequestRequest:
       type: object
       properties:
@@ -37406,6 +37748,22 @@ components:
           type: string
           readOnly: true
           description: Reason for waiving FPI requirement
+        acknowledged_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: QA user who acknowledged the pending request (is on it)
+        acknowledged_by_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the pending request was acknowledged
         quality_report:
           type: string
           format: uuid
@@ -37424,6 +37782,9 @@ components:
         archived:
           type: boolean
       required:
+      - acknowledged_at
+      - acknowledged_by
+      - acknowledged_by_info
       - created_at
       - designated_part_info
       - equipment_info
@@ -38547,6 +38908,149 @@ components:
       - status_display
       - step_id
       - supplier
+    InspectionInbox:
+      type: object
+      description: |-
+        The full inbox payload: rows + type-count chips (with oldest-age, since
+        counts alone hide rot) + totals.
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectionInboxRow'
+        counts:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/InspectionInboxTypeCount'
+        total:
+          type: integer
+        blocked:
+          type: integer
+      required:
+      - blocked
+      - counts
+      - rows
+      - total
+    InspectionInboxRow:
+      type: object
+      description: |-
+        One row of the inspector's task inbox — flat across every inspection
+        source, never grouped by work order. See services.qms.inspection_inbox.
+      properties:
+        type:
+          $ref: '#/components/schemas/InspectionInboxTypeEnum'
+        subject_kind:
+          $ref: '#/components/schemas/SubjectKindEnum'
+        id:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        wo:
+          type: string
+          nullable: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+        age_hours:
+          type: number
+          format: double
+          nullable: true
+        due_tone:
+          $ref: '#/components/schemas/DueToneEnum'
+        due_label:
+          type: string
+        plan:
+          type: string
+          nullable: true
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/InspectionInboxSeverity'
+          nullable: true
+        resume:
+          type: string
+          nullable: true
+        blocked_reason:
+          type: string
+          nullable: true
+      required:
+      - age_hours
+      - blocked_reason
+      - detail
+      - due_label
+      - due_tone
+      - id
+      - plan
+      - quantity
+      - resume
+      - severity
+      - subject_kind
+      - title
+      - type
+      - wo
+    InspectionInboxSeverity:
+      type: object
+      description: |-
+        The severity badge on a receiving inbox row (see SamplingSeverityStateSerializer
+        for the full read model).
+      properties:
+        severity:
+          $ref: '#/components/schemas/InspectionInboxSeveritySeverityEnum'
+        severity_since:
+          type: string
+          nullable: true
+        discontinued:
+          type: boolean
+        rejects_in_window:
+          type: integer
+        next_severity_on_accepts:
+          type: string
+        accepts_needed:
+          type: integer
+          nullable: true
+      required:
+      - accepts_needed
+      - discontinued
+      - next_severity_on_accepts
+      - rejects_in_window
+      - severity
+      - severity_since
+    InspectionInboxSeveritySeverityEnum:
+      enum:
+      - NORMAL
+      - TIGHTENED
+      - REDUCED
+      type: string
+      description: |-
+        * `NORMAL` - NORMAL
+        * `TIGHTENED` - TIGHTENED
+        * `REDUCED` - REDUCED
+    InspectionInboxTypeCount:
+      type: object
+      properties:
+        count:
+          type: integer
+        oldest_age_hours:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - count
+      - oldest_age_hours
+    InspectionInboxTypeEnum:
+      enum:
+      - fpi
+      - receiving
+      - outside_process
+      - in_process
+      type: string
+      description: |-
+        * `fpi` - fpi
+        * `receiving` - receiving
+        * `outside_process` - outside_process
+        * `in_process` - in_process
     IntegrationCatalogItem:
       type: object
       properties:
@@ -41734,6 +42238,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SamplingRuleSet'
+    PaginatedSamplingSeverityStateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SamplingSeverityState'
     PaginatedScheduleSlotList:
       type: object
       required:
@@ -45199,6 +45726,11 @@ components:
         assigned_to:
           type: integer
           nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Target resolution date — drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -48780,6 +49312,11 @@ components:
         assigned_to:
           type: integer
           nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Target resolution date — drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -48941,6 +49478,11 @@ components:
         assigned_to:
           type: integer
           nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Target resolution date — drives the due dot on quality inboxes
         description:
           type: string
         resolution_notes:
@@ -50784,6 +51326,91 @@ components:
       required:
       - order
       - rule_type
+    SamplingSeverityState:
+      type: object
+      description: |-
+        Read-only runtime Z1.4 severity state, with the switching-procedure
+        position spelled out so the inspector-facing badge ("Tightened since X ·
+        N more accepts returns to Normal") derives from the engine's own
+        thresholds. Mutations belong exclusively to the switching engine.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+          readOnly: true
+        step_name:
+          type: string
+          readOnly: true
+        supplier:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        supplier_name:
+          type: string
+          readOnly: true
+          nullable: true
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/SamplingSeverityStateSeverityEnum'
+          readOnly: true
+        severity_since:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        discontinued:
+          type: boolean
+          readOnly: true
+        consecutive_accepts:
+          type: integer
+          readOnly: true
+        lots_in_regime:
+          type: integer
+          readOnly: true
+        rejects_in_window:
+          type: integer
+          readOnly: true
+        next_severity_on_accepts:
+          type: string
+          readOnly: true
+        accepts_needed:
+          type: integer
+          nullable: true
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accepts_needed
+      - consecutive_accepts
+      - discontinued
+      - id
+      - lots_in_regime
+      - next_severity_on_accepts
+      - rejects_in_window
+      - severity
+      - severity_since
+      - step
+      - step_name
+      - supplier
+      - supplier_name
+      - updated_at
+    SamplingSeverityStateSeverityEnum:
+      enum:
+      - NORMAL
+      - TIGHTENED
+      - REDUCED
+      type: string
+      description: |-
+        * `NORMAL` - Normal
+        * `TIGHTENED` - Tightened
+        * `REDUCED` - Reduced
     ScaleEnum:
       enum:
       - small
@@ -52625,6 +53252,18 @@ components:
       required:
       - name
       - part_type
+    SubjectKindEnum:
+      enum:
+      - fpi_record
+      - material_lot
+      - shipment
+      - operation
+      type: string
+      description: |-
+        * `fpi_record` - fpi_record
+        * `material_lot` - material_lot
+        * `shipment` - shipment
+        * `operation` - operation
     SubmitProcessForApprovalRequestRequest:
       type: object
       properties:
