@@ -1,9 +1,10 @@
 # Operator & QA Landing Experience — Design + Roadmap
 
-*(2026-07-08. Distills the multi-session design arc: three research rounds across ~45
-MES/QMS/ERP/connected-worker products, three prototype generations, and the MES maturity
-discussion. Companion to `RECEIVING_INSPECTION_DESIGN.md`. §12 backlog is the single
-source of truth for remaining work.)*
+*(2026-07-08. Distills the multi-session design arc: four research rounds across ~60
+MES/QMS/ERP/connected-worker/QC products, four prototype generations across three
+surfaces, and the MES maturity discussion. Companion to
+`RECEIVING_INSPECTION_DESIGN.md`. §12 backlog is the single source of truth for
+remaining work.)*
 
 ---
 
@@ -74,7 +75,7 @@ aggregate + hero + relevance layers, ~4–5 d), #4 ~15% (needs the blocker aggre
 ~3–4 d). **≈2 focused weeks to all five at v1** — an integration problem, not a
 platform problem.
 
-## 5. Research digest (3 rounds, ~45 products)
+## 5. Research digest (4 rounds, ~60 products)
 
 **Operator landing universals:** clock-in gates first; priority queue scoped to
 station; one-tap start/stop; instructions one tap away; quality capture inline.
@@ -111,6 +112,65 @@ non-comparative. **Pacing displays are a machine-data feature, not a person feat
 puts pace on the operator entry view). Redzone caution: unused surfaces read as
 clutter even in beloved apps — additions must earn their tile.
 
+**Round 4 (2026-07-08, five targeted digests: connected-worker, mid-market MES
+terminals, cross-industry next-task UX, eQMS dashboards, shop-floor QC tools):**
+
+- **Aging without a scheduler** (Toast/Square KDS; Epic Brain): urgency = color
+  thresholds on **time-in-ready-state**, painted on the artifact itself so peripheral
+  vision does the prioritizing. Companion: acknowledge-on-breach (Epic) — a due-date
+  breach demands a logged human ack, converting silent aging into an accountable event.
+- **The flag lifecycle** (L2L Dispatch; anti-pattern = Tulip's dead-air red/green
+  toggle): a raised blocker shows *routed → seen-by → resolved* with elapsed time and
+  auto-escalates unacknowledged. Kills the "did anyone see this?" floor-walk.
+- **Skip mechanics** (Zendesk Guided mode, DoorDash): reason **required**, as tap-chips
+  not free text (Zendesk's own users filed for required); **blocker** (global, born
+  owned) ≠ **personal skip** (job stays in others' queues; logged quietly for coaching);
+  starting a THEN tile instead of UP NEXT is a *soft skip*, same data at zero friction.
+  Show the **consequence preview before the tap** ("routes to Materials, leaves your
+  queue, next job appears"); never import acceptance-rate scoring — documented
+  resentment + gaming, and in a shop it incentivizes hiding problems.
+- **Terminal mechanics** (ShopPulse/Epicor/JobBOSS²/VISUAL): badge-in interstitial
+  (your work left, last-shift notes right, one Got-it); **Start forks setup→run** (the
+  most-wanted job-shop labor analytic, captured for one tap); completion = good qty →
+  scrap qty → forced reason if >0 → complete/incomplete fork (kills phantom-open ops);
+  **scan = identity + job + labor start in one gesture** (scan *arms Start*, it doesn't
+  navigate); undo window after Complete (Toast recall — cheap mistakes make fast
+  operators); one-tap Break; status-color band + time-in-state — all derivable from our
+  own events, no machine feed. Guardrail (Datanomix's whole brand): every mechanic ≤2
+  taps or it gets ignored.
+- **First piece is an andon call, not a worklist row** (ShopPulse FAI + andon TTR
+  literature, 12min→2.5min with escalation): operator side = visible sent → seen-by-QA
+  → verdict states; inspector side = pinned banner with a live **"machine waiting"
+  timer**. A machine and operator idle behind it — economically unlike a shelf-aging lot.
+- **Trust furniture:** evidence-bearing empty state — name the upstream jobs and where
+  they're stuck (readiness derivation knows the cause; beats gig-app hotspots); the
+  browsable **"See everything ready (N)"** self-serve list (Fulcrum) is what makes a
+  system-picked hero acceptable; **"+N with this setup"** batching hint (Square all-day
+  analog) gives a legitimate, visible reason to deviate from queue order.
+- **eQMS landings are task inboxes, not metric dashboards** (near-unanimous; Qualio
+  '26 split Home into My Actions + Watch List; charts pushed to reports). One flat list
+  + clickable **count-filter chips**; four-state due dot (Veeva exactly: red overdue /
+  orange ≤5d / green / gray — bucket, never raw day counts); **"Available to claim"**
+  (Veeva: group-eligible, unclaimed, Accept moves it to mine) maps 1:1 onto
+  ApprovalRequest group eligibility; audit-prep grid (QT9: missing + overdue across
+  modules) = the quality-manager block and the weekly-meeting agenda; **no batch-approve
+  anywhere** — per-item e-signature is the compliance norm; anti-pattern with
+  paying-user evidence (Arena's top complaint): recently-visited ≠ needs-attention —
+  never MRU, never a raw table. Mid-market ships ONE surface where role picks the
+  default chips; forked persona dashboards are enterprise-priced.
+- **QC-tool findings:** sampling rendered as **the answer** ("n=32 · Ac 0"), never the
+  code tables (1factory); severity shown as a labeled badge **with the switch-back
+  rule** — SAP hides the machinery and confuses users; *nobody* shows the
+  return-to-Normal countdown → free differentiation for our severity engine; blocked
+  rows **sink but stay counted** with reason chips (separates "inspector slow" from
+  "upstream owes something" — protects inspectors from bad metrics); receiving triage
+  by **needed-by-WO**, not FIFO (supplier risk drives sampling *depth*, never queue
+  position); calibration gates at point of use — blocking with logged override, only
+  possible when cal + capture live in one system (UQMES does) — plus the personal
+  pre-empt ("N gauges you used this week are due"); no inspector-facing throughput
+  stats anywhere — **blocked-time attribution** is the inspector-friendly stat; FAIR
+  paperwork lifecycle stays out of the bench queue (measuring ≠ report assembly).
+
 ## 6. Landing page spec
 
 **Operator (kiosk tiles, prototype at `/dev/operator-home`):**
@@ -123,14 +183,36 @@ mini-tiles; cert-locked shown dimmed = personal state; blocked EXCLUDED = global
 with trust caption "N jobs blocked — owners notified") · Report a problem (two-branch)
 · Call my lead. Footer: "Today: N completed · M flagged" (own day only).
 
+**v4 additions (round-4 lifts, all in the prototype):** aging tint by
+time-in-ready-state on THEN tiles + "ready Nh · due X" on the hero; "+N with this
+setup" batching hint; first-piece sent-for-check strip with QA acknowledgment; per-note
+"Got it" on shift notes (ack logged); consequence preview + "→ owner" chips inside
+"Can't run this?"; **your-flags strip** (routed → seen-by lifecycle for flags I
+raised); evidence-bearing empty state (names upstream jobs + widen-scope); cert locks
+offer "request sign-off"; "See everything ready (N)" trust link; undo/flag chip after
+completion; Break button; tappable day-recap footer; Start forks setup→run; THEN-start
+logged as a quiet soft-skip.
+
 **Hero ranking function:** `up_next = ready ∩ certified ∩ scope(chosen ∪ inferred-from-
 history)` ordered by WO priority → due → aging. Contract: *usually right with a
 visible escape* — not divinely correct. Empty-at-scope degrades gracefully.
 
-**QA inspector:** two panes — inspection queue (incoming, exists) + "My quality
-actions" merged inbox (approvals + CAPA tasks + my dispositions; overdue red). In-
-process checks live on the queue page's Checks-due lens; receiving QA stays in
-Incoming Inspection.
+**QA inspector (prototype at `/dev/qa-home`):** pinned **first-piece queue-jumper**
+banner (andon semantics: live "machine waiting" timer + Start check; the operator sees
+seen/in-progress states on their side). Below it ONE flat inspection inbox —
+count-filter chips (All / Receiving / In-process / Final / First piece + Overdue;
+zero-count chips hide) over Overdue / Today / This-week horizons; rows carry the
+four-state due dot, the sampling answer badge (`n=13 · Ac 1`), a severity badge that
+explains itself on tap (tightened-since + switch-back countdown), a needed-by-WO
+triage line, blocked rows sunk with reason chips, and a resume-mid-capture indicator
+("7 of 13 samples · char 4/9"). Second block = "My quality actions" (uniPoint To-Do
+semantics: due dots, deep links, Reassign from the row) + **Available to claim**
+(group-eligible unclaimed approvals with Accept). Side tile: personal calibration nag
+("N gauges you used this week due in 7d" — pre-empts the point-of-use gate). Footer
+passive: today's counts + tappable **blocked-time attribution**. Quiet state = green
+"audit-ready" confirmation (unoccupied market ground). Deliberately absent:
+batch-approve, throughput-vs-goal, MRU lists. In-process checks still live on the
+queue page's Checks-due lens; this page is the *task inbox* tier above it.
 
 **Lead variant (later):** adds blockers-aging tile, release-to-floor, short-close
 nags, team workload. All accountability visuals live here, not on the operator page.
@@ -213,15 +295,21 @@ Interim relevance signals (pre-rung-3): history-inferred (`completed_by`), cert-
 
 ## 11. Prototypes & current state
 
-- `/dev/operator-home` — kiosk tiles v3: hero + deviation flow (verified: 2 taps →
-  hero swap), scope combobox (verified: Assembly Line scoping), shift notes, two-branch
-  problem picker, blocked-count caption.
+- `/dev/operator-home` — kiosk tiles **v4**: v3 base (hero + deviation flow, verified
+  2 taps → hero swap; scope combobox; shift notes; two-branch problem picker;
+  blocked-count caption) + the round-4 lifts listed in §6 (aging tints, flag-lifecycle
+  strip, FPI strip, notes ack, consequence preview, undo chip, setup hint, soft-skip,
+  Break, setup→run fork).
 - `/dev/work-queue` — v3 at-scale: readiness sections, blocked bucket w/ aging +
   Nudge, filter rail w/ comboboxes, horizon buckets; QA lens flat + chips + horizons.
+- `/dev/qa-home` — **new**: the QA-inspector task inbox per §6 (FPI queue-jumper
+  banner, chip-filtered flat inbox, severity badges w/ switch-back, claim queue,
+  gauge nag, blocked-time footer).
 - **Real app (committed):** role-gated home blocks (scan box → *currently the control
   page — retarget to operator surface*, WO queue w/ persona CTAs, inspection queue,
   quality actions), typecheck fixed & clean, seeded demo covers SQM/OSP/DWI.
-- **Uncommitted at time of writing:** both /dev prototypes, this doc.
+- **Uncommitted at time of writing:** operator-home v4 delta, `/dev/qa-home` + its
+  route, this doc refresh. (v3 prototypes + doc v1 are committed at `7724e76`.)
 
 ## 12. Backlog — single source of truth (build order)
 
@@ -244,6 +332,17 @@ Interim relevance signals (pre-rung-3): history-inferred (`completed_by`), cert-
 expiry — the one new "social" aggregate); who-is-my-lead relationship; attribution
 decision for durable Resume; consumption hook (rung 0 — also receiving §11 follow-up);
 `split_from_cohort` missing on Parts serializer (runtime filter is a silent no-op).
+
+**Round-4 additions (each wires with its host feature, not standalone):** FPI
+request→ack→verdict states + notification (rides the blocker/owner plumbing; powers
+the operator strip *and* the inspector banner); shift-note read-acknowledgment (field
+on the shift-notes model — the ack is the QMS-friendly part); setup/run fork on the
+labor session (a category on TimeEntry, one tap at Start); approval **claim** action
+for group-eligible ApprovalRequests (Accept → assigned; the Veeva pattern);
+per-user gauge-usage link (measurement equipment × user, recent window) to power the
+personal cal nag; soft-skip event (THEN-start over UP NEXT) for coaching data;
+time-became-ready timestamp on the queue aggregate (feeds the aging tint — falls out
+of the readiness conjunction anyway).
 
 **Open decisions:** THEN-empty at narrow scope (leave sparse vs backfill nearby);
 skip-with-reason prompting threshold; QA landing five-workflow treatment; shared-kiosk
