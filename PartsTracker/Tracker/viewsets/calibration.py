@@ -189,6 +189,32 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExport
         })
 
     @extend_schema(
+        description="Gauges the current user recently used whose calibration is "
+                    "due soon or overdue — the personal pre-empt for the "
+                    "point-of-use calibration gate.",
+        parameters=[
+            OpenApiParameter(name='used_within', description='Lookback window for usage (days)',
+                             required=False, type=int, default=7),
+            OpenApiParameter(name='due_within', description='Due horizon (days)',
+                             required=False, type=int, default=7),
+        ],
+        responses={200: {"type": "array", "items": {"type": "object", "properties": {
+            "equipment_id": {"type": "string"},
+            "equipment_name": {"type": "string"},
+            "due_date": {"type": "string", "format": "date"},
+            "days_until_due": {"type": "integer"},
+            "overdue": {"type": "boolean"},
+        }}}},
+    )
+    @action(detail=False, methods=['get'], url_path='my-gauge-nag')
+    def my_gauge_nag(self, request):
+        """Equipment I used recently with calibration due soon / overdue."""
+        from Tracker.services.qms.gauge_nag import my_gauge_nag
+        used_within = int(request.query_params.get('used_within', 7))
+        due_within = int(request.query_params.get('due_within', 7))
+        return Response(my_gauge_nag(request.user, used_within, due_within))
+
+    @extend_schema(
         description="Get calibration history for a specific piece of equipment",
         parameters=[
             OpenApiParameter(name='equipment_id', description='Equipment ID', required=True, type=str),
