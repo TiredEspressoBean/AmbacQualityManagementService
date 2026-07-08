@@ -106,6 +106,55 @@ def set_approvers(
         )
 
 
+def claim_approval(request: ApprovalRequest, user) -> ApproverAssignment:
+    """Claim a group-routed approval: the user self-assigns as its approver.
+
+    Group assignment means "any member may respond"; before a claim, requests
+    routed only to a group sit in every member's queue and rot when everyone
+    assumes someone else has them. A claim converts that shared eligibility
+    into individual ownership (is_required=True → in ALL_REQUIRED flows the
+    claimer becomes the completer).
+
+    Only purely group-routed requests are claimable: if any individual
+    assignment already exists (template, manual, or a prior claim), adding a
+    required approver would change someone else's completion contract.
+    """
+    if request.status != Approval_Status_Type.PENDING:
+        raise ValidationError("Only pending approvals can be claimed.")
+
+    user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
+    if not request.group_assignments.filter(group_id__in=[g.id for g in user_groups]).exists():
+        raise PermissionDenied("You are not in any group eligible for this approval.")
+
+    if request.approver_assignments.exists():
+        raise ValidationError("This approval is already claimed or individually assigned.")
+
+    if request.responses.filter(approver=user).exists():
+        raise ValidationError("You have already responded to this approval.")
+
+    assignment, _created = add_approver(
+        request, user,
+        is_required=True,
+        assignment_source=ApproverAssignmentSource.CLAIMED,
+        assigned_by=user,
+    )
+    return assignment
+
+
+def claimable_approvals(queryset, user):
+    """Filter a (tenant-scoped) ApprovalRequest queryset to what `user` can claim:
+    PENDING, routed to one of their groups, no individual assignment yet,
+    and not already responded to by them."""
+    user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
+    return queryset.filter(
+        status=Approval_Status_Type.PENDING,
+        group_assignments__group_id__in=[g.id for g in user_groups],
+        approver_assignments__isnull=True,
+    ).exclude(
+        responses__approver=user,
+    ).distinct()
+
+
 # =========================================================================
 # ApprovalRequest — factory
 # =========================================================================

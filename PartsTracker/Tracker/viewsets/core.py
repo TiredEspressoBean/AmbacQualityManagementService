@@ -1875,13 +1875,15 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
     pagination_class = LimitOffsetPagination
     action_permissions = {
         'submit_response': ['respond_to_approval'],
+        'claim': ['respond_to_approval'],
     }
-    # Responding to an approval is not creating an ApprovalRequest, so
-    # the POST→add_approvalrequest CRUD gate must not apply here — an
-    # eligible approver legitimately lacks `add_approvalrequest`.
-    # `respond_to_approval` (above) + the per-instance `can_approve`
-    # check inside the action are the real gates.
-    crud_exempt_actions = {'submit_response'}
+    # Responding to (or claiming) an approval is not creating an
+    # ApprovalRequest, so the POST→add_approvalrequest CRUD gate must not
+    # apply here — an eligible approver legitimately lacks
+    # `add_approvalrequest`. `respond_to_approval` (above) + the
+    # per-instance group-eligibility check inside the service are the
+    # real gates.
+    crud_exempt_actions = {'submit_response', 'claim'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -2031,6 +2033,56 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
 
         serializer = self.get_serializer(pending_approvals, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        description=(
+            "Approvals the current user can claim: pending, routed to one of "
+            "their groups, and not yet claimed or individually assigned."
+        ),
+        responses={200: ApprovalRequestSerializer(many=True)},
+    )
+    @action(detail=False, methods=['get'], url_path='claimable',
+            permission_classes=[IsAuthenticated, TenantAccessPermission])
+    def claimable(self, request):
+        """Group-eligible, unclaimed approvals — the 'available to claim' queue."""
+        from Tracker.services.core.approval import claimable_approvals
+        approvals = claimable_approvals(self.get_queryset(), request.user)
+
+        page = self.paginate_queryset(approvals)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(approvals, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        description=(
+            "Claim a group-routed approval: self-assign as its approver so it "
+            "moves from the group's shared queue into the caller's pending list."
+        ),
+        request=None,
+        responses={200: ApprovalRequestSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='claim')
+    def claim(self, request, pk=None):
+        """Claim a group-routed approval (Accept → mine)."""
+        # `respond_to_approval` enforced declaratively via action_permissions.
+        # Group eligibility + already-claimed checks live in the service.
+        from django.core.exceptions import PermissionDenied, ValidationError
+        from Tracker.services.core.approval import claim_approval
+
+        approval = self.get_object()
+        try:
+            claim_approval(approval, request.user)
+        except PermissionDenied as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except ValidationError as e:
+            detail = e.messages[0] if getattr(e, 'messages', None) else str(e)
+            return Response({'detail': detail}, status=status.HTTP_400_BAD_REQUEST)
+
+        approval.refresh_from_db()
+        return Response(self.get_serializer(approval).data)
 
 
 @extend_schema_view(

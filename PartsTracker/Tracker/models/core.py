@@ -2383,6 +2383,7 @@ class ApproverAssignmentSource(models.TextChoices):
     MANUAL = 'MANUAL', 'Manual Assignment'
     DELEGATION = 'DELEGATION', 'Delegated'
     ESCALATION = 'ESCALATION', 'Escalation'
+    CLAIMED = 'CLAIMED', 'Claimed from Group'
 
 
 class ApproverAssignment(models.Model):
