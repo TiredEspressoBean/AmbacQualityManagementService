@@ -135,6 +135,30 @@ def update_after_lot(report) -> None:
         _emit_discontinued(state, supplier)
 
 
+def switching_status(state) -> dict:
+    """Explain where a state sits in the switching procedure, for display.
+
+    The standard's thresholds live here (not in serializers) so the badge the
+    inspector sees — "Tightened since X, N more accepts returns to Normal" —
+    can never drift from the engine that enforces it.
+    """
+    rejects = (state.recent_outcomes or []).count("R")
+    if state.severity == "TIGHTENED":
+        target = "NORMAL"
+        needed = max(0, _TIGHTENED_TO_NORMAL_ACCEPTS - state.consecutive_accepts)
+    elif state.severity == "NORMAL":
+        target = "REDUCED"
+        needed = max(0, _NORMAL_TO_REDUCED_ACCEPTS - state.consecutive_accepts)
+    else:  # REDUCED reverts on a reject or gap lot, not by an accept count
+        target = "NORMAL"
+        needed = None
+    return {
+        "rejects_in_window": rejects,
+        "next_severity_on_accepts": target,
+        "accepts_needed": needed,
+    }
+
+
 def _emit_discontinued(state, supplier) -> None:
     from Tracker.services.core.notifications import emit
     from Tracker.services.qms.events import InspectionDiscontinuedPayload

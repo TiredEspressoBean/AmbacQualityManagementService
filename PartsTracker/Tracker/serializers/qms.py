@@ -18,7 +18,7 @@ from Tracker.models import (
     MeasurementDefinition, Steps, WorkOrder,
     # MES Standard models
     SamplingRule, SamplingRuleSet, SamplingRuleType, SamplingAnalytics,
-    SamplingAuditLog, SamplingTriggerState,
+    SamplingAuditLog, SamplingSeverityState, SamplingTriggerState,
     # Manufacturing / supplier
     PartTypes, Companies,
     # Core models
@@ -334,6 +334,45 @@ class SamplingRuleSerializer(SecureModelMixin):
 
 
 # ===== SAMPLING RULESET SERIALIZERS =====
+
+class SamplingSeverityStateSerializer(SecureModelMixin):
+    """Read-only runtime Z1.4 severity state, with the switching-procedure
+    position spelled out so the inspector-facing badge ("Tightened since X ·
+    N more accepts returns to Normal") derives from the engine's own
+    thresholds. Mutations belong exclusively to the switching engine."""
+    step_name = serializers.CharField(source="step.name", read_only=True)
+    supplier_name = serializers.CharField(source="supplier.name", read_only=True, allow_null=True)
+    rejects_in_window = serializers.SerializerMethodField()
+    next_severity_on_accepts = serializers.SerializerMethodField()
+    accepts_needed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SamplingSeverityState
+        fields = (
+            'id', 'step', 'step_name', 'supplier', 'supplier_name',
+            'severity', 'severity_since', 'discontinued',
+            'consecutive_accepts', 'lots_in_regime',
+            'rejects_in_window', 'next_severity_on_accepts', 'accepts_needed',
+            'updated_at',
+        )
+        read_only_fields = fields
+
+    def _status(self, obj) -> dict:
+        from Tracker.services.qms.severity_switching import switching_status
+        return switching_status(obj)
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_rejects_in_window(self, obj) -> int:
+        return self._status(obj)["rejects_in_window"]
+
+    @extend_schema_field(serializers.CharField())
+    def get_next_severity_on_accepts(self, obj) -> str:
+        return self._status(obj)["next_severity_on_accepts"]
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_accepts_needed(self, obj):
+        return self._status(obj)["accepts_needed"]
+
 
 class SamplingRuleSetSerializer(SecureModelMixin):
     """Enhanced sampling ruleset serializer"""

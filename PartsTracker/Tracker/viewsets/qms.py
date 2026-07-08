@@ -21,7 +21,7 @@ from Tracker.models import (
     FiveWhys, Fishbone,
     ThreeDModel, HeatMapAnnotations,
     # MES models
-    SamplingRuleSet, SamplingRule, MeasurementDefinition,
+    SamplingRuleSet, SamplingRule, SamplingSeverityState, MeasurementDefinition,
     # Core models
     NotificationTask,
 )
@@ -29,7 +29,8 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer, QualityErrorsListSerializer, QuarantineDispositionSerializer,
     SupplierQualificationSerializer, QualificationStatusSerializer,
     PartApprovalSerializer, PartApprovalStatusSerializer,
-    SamplingRuleSetSerializer, SamplingRuleSerializer, MeasurementDefinitionSerializer,
+    SamplingRuleSetSerializer, SamplingRuleSerializer, SamplingSeverityStateSerializer,
+    MeasurementDefinitionSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
 )
@@ -324,6 +325,28 @@ class SamplingRuleSetViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMi
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs
+
+
+class SamplingSeverityStateViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ReadOnlyModelViewSet):
+    """Read-only runtime Z1.4 severity state per (receiving step, supplier).
+
+    Mutations belong exclusively to the switching engine
+    (`services.qms.severity_switching.update_after_lot`) — this surface exists
+    so inspector/supplier views can show the effective severity and the
+    switch-back position instead of hiding the machinery (the SAP-QM opacity
+    problem from the round-4 research).
+    """
+    queryset = SamplingSeverityState.unscoped.all()
+    serializer_class = SamplingSeverityStateSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["step", "supplier", "severity", "discontinued"]
+    ordering_fields = ["severity_since", "updated_at"]
+    ordering = ["-updated_at"]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return SamplingSeverityState.objects.none()
+        return super().get_queryset().select_related('step', 'supplier')
 
 
 class SamplingRuleViewSet(TenantScopedMixin, ListMetadataMixin, ExcelExportMixin, viewsets.ModelViewSet):

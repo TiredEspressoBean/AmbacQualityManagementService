@@ -91,6 +91,7 @@ from .qms import (
     # Sampling ViewSets
     SamplingRuleSetViewSet,
     SamplingRuleViewSet,
+    SamplingSeverityStateViewSet,
     MeasurementsDefinitionViewSet,
 
     # CAPA ViewSets
@@ -318,6 +319,7 @@ __all__ = [
     # QMS - Sampling
     'SamplingRuleSetViewSet',
     'SamplingRuleViewSet',
+    'SamplingSeverityStateViewSet',
     'MeasurementsDefinitionViewSet',
 
     # QMS - CAPA
@@ -468,6 +470,7 @@ def register_viewsets(router):
     router.register(r'PartApprovals', PartApprovalViewSet, basename='PartApprovals')
     router.register(r'Sampling-rule-sets', SamplingRuleSetViewSet, basename='sampling-rule-sets')
     router.register(r'Sampling-rules', SamplingRuleViewSet, basename='sampling-rules')
+    router.register(r'SamplingSeverityStates', SamplingSeverityStateViewSet, basename='samplingseveritystates')
     router.register(r'MeasurementDefinitions', MeasurementsDefinitionViewSet)
 
     # CAPA
