@@ -54,6 +54,12 @@ ADMIN_ONLY_MODELS = {
 IMMUTABLE_MODELS = {
     'permissionchangelog', 'capastatustransition', 'recordedit',
     'stepexecutionmeasurement', 'samplingdecision', 'samplingtriggerstate',
+    # Z1.4 runtime severity state: mutated ONLY by the switching engine
+    # (services.qms.severity_switching.update_after_lot); the API is read-only.
+    'samplingseveritystate',
+    # Z1.4 runtime severity state: mutated ONLY by the switching engine
+    # (services.qms.severity_switching.update_after_lot); the API is read-only.
+    'samplingseveritystate',
     # DB-trigger-immutable tables whose change_/delete_ grants were dead
     # (the trigger raises for everyone, superusers included):
     'steptransitionlog', 'samplingauditlog', 'equipmentusage',
@@ -71,7 +77,7 @@ IMMUTABLE_MODELS = {
 # granted — INSERT is allowed, mutation is not.)
 SYSTEM_WRITTEN_MODELS = {
     'permissionchangelog', 'capastatustransition', 'recordedit',
-    'samplingdecision', 'samplingtriggerstate',
+    'samplingdecision', 'samplingtriggerstate', 'samplingseveritystate',
     'steptransitionlog', 'samplingauditlog',
     'stepgatefiring',   # created by the quality-gate engine, not via role CRUD
 }

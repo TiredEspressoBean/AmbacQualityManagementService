@@ -107,6 +107,8 @@ STAFF_VIEW_PERMISSIONS = [
     # Sampling
     'view_samplingrule', 'view_samplingruleset', 'view_samplingdecision',
     'view_samplinganalytics', 'view_samplingauditlog', 'view_samplingtriggerstate',
+    'view_samplingseveritystate',
+    'view_samplingseveritystate',
     # Process Change Control
     'view_processchangerequest', 'view_processchangeorder', 'view_processchangenotice',
     # Training
