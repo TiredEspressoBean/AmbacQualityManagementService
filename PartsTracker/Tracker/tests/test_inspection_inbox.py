@@ -1,7 +1,8 @@
 """The QA inspector's task inbox (services.qms.inspection_inbox + endpoint).
 
 One flat list across FPI / receiving / OSP / in-process, with the sampling
-answer, severity badge, resume progress, blocked reasons, and type counts.
+answer, severity badge, resume progress, and blocked reasons. Standard
+list-of-rows contract — clients derive type-count chips from the rows.
 """
 import datetime
 from decimal import Decimal
@@ -12,7 +13,7 @@ from Tracker.models import (
     Processes, QualityReports, SamplingRuleSet, SamplingSeverityState, Steps,
     WorkOrder, WorkOrderStatus,
 )
-from Tracker.services.qms.inspection_inbox import build_inbox
+from Tracker.services.qms.inspection_inbox import build_inbox_rows
 
 
 class InspectionInboxTests(TenantTestCase):
@@ -44,8 +45,7 @@ class InspectionInboxTests(TenantTestCase):
             recent_outcomes=["R", "R", "A", "A"])
         self._lot()
 
-        inbox = build_inbox()
-        rows = [r for r in inbox["rows"] if r["type"] == "receiving"]
+        rows = [r for r in build_inbox_rows() if r["type"] == "receiving"]
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertIn("Lot LOT-001", row["title"])
@@ -60,14 +60,11 @@ class InspectionInboxTests(TenantTestCase):
     def test_blocked_lot_sinks_but_stays_counted(self):
         self._lot(n="LOT-HELD", status="QUARANTINE", hold="SUPPLIER_UNQUALIFIED")
 
-        inbox = build_inbox()
-        rows = [r for r in inbox["rows"] if r["type"] == "receiving"]
+        rows = [r for r in build_inbox_rows() if r["type"] == "receiving"]
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["blocked_reason"], "SUPPLIER_UNQUALIFIED")
         self.assertIsNone(rows[0]["plan"])
         self.assertEqual(rows[0]["due_tone"], "gray")
-        self.assertEqual(inbox["blocked"], 1)
-        self.assertEqual(inbox["counts"]["receiving"]["count"], 1)
 
     def test_resume_progress_from_per_unit_results(self):
         lot = self._lot()
@@ -86,8 +83,7 @@ class InspectionInboxTests(TenantTestCase):
                 sample_number=i, value_numeric=Decimal("1.0"), is_within_spec=True,
                 created_by=self.user_a)
 
-        inbox = build_inbox()
-        row = [r for r in inbox["rows"] if r["type"] == "receiving"][0]
+        row = [r for r in build_inbox_rows() if r["type"] == "receiving"][0]
         self.assertEqual(row["resume"], "7 of 13 samples")
 
     def test_in_process_groups_by_operation(self):
@@ -107,8 +103,7 @@ class InspectionInboxTests(TenantTestCase):
         # via update() so the fixture states the fact the inbox reads.
         Parts.objects.filter(work_order=wo).update(requires_sampling=True)
 
-        inbox = build_inbox()
-        rows = [r for r in inbox["rows"] if r["type"] == "in_process"]
+        rows = [r for r in build_inbox_rows() if r["type"] == "in_process"]
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["title"], "Nozzle Inspection · 3 pcs")
@@ -128,10 +123,10 @@ class InspectionInboxTests(TenantTestCase):
             tenant=self.tenant_a, work_order=wo, step=step,
             part_type=self.part_type, status="PENDING")
 
-        inbox = build_inbox()
-        self.assertEqual(inbox["rows"][0]["type"], "fpi")
-        self.assertEqual(inbox["rows"][0]["due_tone"], "red")
-        self.assertEqual(inbox["counts"]["fpi"]["count"], 1)
+        rows = build_inbox_rows()
+        self.assertEqual(rows[0]["type"], "fpi")
+        self.assertEqual(rows[0]["due_tone"], "red")
+        self.assertEqual(sum(1 for r in rows if r["type"] == "fpi"), 1)
 
     def test_endpoint_returns_payload(self):
         from rest_framework.test import APIClient
@@ -143,5 +138,5 @@ class InspectionInboxTests(TenantTestCase):
         response = client.get('/api/InspectionInbox/')
         self.assertEqual(response.status_code, 200, response.content)
         body = response.json()
-        self.assertEqual(body["total"], len(body["rows"]))
-        self.assertIn("receiving", body["counts"])
+        self.assertIsInstance(body, list)
+        self.assertIn("receiving", [r["type"] for r in body])

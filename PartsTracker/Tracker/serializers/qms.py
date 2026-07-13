@@ -1512,6 +1512,13 @@ class FPIRecordSerializer(SecureModelMixin):
     from Tracker.models import FPIRecord
 
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    # Explicit so the schema carries allow_blank: the model field is blank=True
+    # ("" = undecided, PENDING records) — without this the generated client's
+    # strict enum rejects every pending FPI at runtime.
+    result = serializers.ChoiceField(
+        choices=FPIRecord._meta.get_field('result').choices,
+        allow_blank=True, read_only=True,
+    )
     result_display = serializers.CharField(source='get_result_display', read_only=True)
     work_order_info = serializers.SerializerMethodField()
     step_info = serializers.SerializerMethodField()
@@ -1831,20 +1838,6 @@ class InspectionInboxRowSerializer(serializers.Serializer):
     severity = InspectionInboxSeveritySerializer(allow_null=True)
     resume = serializers.CharField(allow_null=True)
     blocked_reason = serializers.CharField(allow_null=True)
-
-
-class InspectionInboxTypeCountSerializer(serializers.Serializer):
-    count = serializers.IntegerField()
-    oldest_age_hours = serializers.FloatField(allow_null=True)
-
-
-class InspectionInboxSerializer(serializers.Serializer):
-    """The full inbox payload: rows + type-count chips (with oldest-age, since
-    counts alone hide rot) + totals."""
-    rows = InspectionInboxRowSerializer(many=True)
-    counts = serializers.DictField(child=InspectionInboxTypeCountSerializer())
-    total = serializers.IntegerField()
-    blocked = serializers.IntegerField()
 
 
 class MaterialLotBulkRowSerializer(serializers.Serializer):

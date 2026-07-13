@@ -37,7 +37,7 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer,
     RecordInspectionRequestSerializer, RecordUnitsRequestSerializer, RecordBulkRequestSerializer,
     SamplePlanResponseSerializer, MaterialLotBulkCreateSerializer,
-    IncomingInspectionRowSerializer, InspectionInboxSerializer,
+    IncomingInspectionRowSerializer, InspectionInboxRowSerializer,
 )
 from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
@@ -483,23 +483,24 @@ class IncomingInspectionViewSet(viewsets.ViewSet):
 class InspectionInboxViewSet(viewsets.ViewSet):
     """The QA inspector's task inbox — one flat list across every inspection
     source (FPI queue-jumpers, receiving lots w/ sampling answer + severity
-    badge + resume progress, OSP returns, in-process operations), plus
-    type-count chips with oldest-age. Read-only aggregation; see
-    services.qms.inspection_inbox for the row contract and tone rules."""
+    badge + resume progress, OSP returns, in-process operations). Read-only
+    aggregation, standard list-of-rows contract (the IncomingInspection
+    pattern); clients derive type counts / oldest-age chips from the rows.
+    See services.qms.inspection_inbox for the row contract and tone rules."""
     permission_classes = [IsAuthenticated]
 
     def get_view_name(self):
         return "Inspection Inbox"
 
     @extend_schema(
-        responses=InspectionInboxSerializer,
+        responses=InspectionInboxRowSerializer(many=True),
         description="The inspector's flat task inbox: FPI first, then by urgency "
-                    "tone, then age. Counts carry oldest-age per type so chips "
-                    "reveal rot, not just volume.",
+                    "tone, then age. Derive type-count chips (with oldest-age — "
+                    "counts alone hide rot) from the rows.",
     )
     def list(self, request):
-        payload = inspection_inbox.build_inbox()
-        return Response(InspectionInboxSerializer(payload).data)
+        rows = inspection_inbox.build_inbox_rows()
+        return Response(InspectionInboxRowSerializer(rows, many=True).data)
 
 
 # ===== MATERIAL USAGE VIEWSETS =====

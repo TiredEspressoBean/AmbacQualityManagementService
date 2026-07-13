@@ -243,9 +243,10 @@ def _fpi_rows():
         }
 
 
-def build_inbox():
-    """The inspector inbox: rows (FPI first, then by urgency tone, then age)
-    + per-type counts with oldest-age (counts alone hide rot)."""
+def build_inbox_rows():
+    """The inspector inbox rows: FPI first, then by urgency tone, then age.
+    A flat list (the ``build_incoming_rows`` convention) — clients derive the
+    type-count chips (with oldest-age; counts alone hide rot) from the rows."""
     rows = [*_fpi_rows(), *_receiving_rows(), *_outside_process_rows(), *_in_process_rows()]
 
     tone_rank = {"red": 0, "orange": 1, "green": 2, "gray": 3}
@@ -254,17 +255,4 @@ def build_inbox():
         tone_rank.get(r["due_tone"], 3),
         -(r["age_hours"] or 0.0),
     ))
-
-    counts = {}
-    for r in rows:
-        c = counts.setdefault(r["type"], {"count": 0, "oldest_age_hours": None})
-        c["count"] += 1
-        if r["age_hours"] is not None:
-            c["oldest_age_hours"] = max(c["oldest_age_hours"] or 0.0, r["age_hours"])
-
-    return {
-        "rows": rows,
-        "counts": counts,
-        "total": len(rows),
-        "blocked": sum(1 for r in rows if r["blocked_reason"]),
-    }
+    return rows
