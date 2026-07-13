@@ -22794,6 +22794,16 @@ export interface components {
             readonly accept_number: number | null;
             /** @description Acceptance-sampling reject number (Re) snapshot. */
             readonly reject_number: number | null;
+            /**
+             * Format: uuid
+             * @description The part-visit whose capture produced this report (DWI inspection points).
+             */
+            readonly step_execution: string | null;
+            /**
+             * Format: uuid
+             * @description The substep whose capture produced this report. One report per (step_execution, substep) inspection event.
+             */
+            readonly substep: string | null;
             readonly equipment_links: components["schemas"]["QualityReportEquipment"][];
             readonly personnel_links: components["schemas"]["QualityReportPersonnel"][];
             readonly part_info: {

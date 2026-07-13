@@ -5355,6 +5355,14 @@ export type QualityReports = {
    * Acceptance-sampling reject number (Re) snapshot.
    */
   reject_number: number | null;
+  /**
+   * The part-visit whose capture produced this report (DWI inspection points).
+   */
+  step_execution: string | null;
+  /**
+   * The substep whose capture produced this report. One report per (step_execution, substep) inspection event.
+   */
+  substep: string | null;
   equipment_links: Array<QualityReportEquipment>;
   personnel_links: Array<QualityReportPersonnel>;
   part_info: {};
@@ -14462,6 +14470,8 @@ const QualityReports = z.object({
   sample_size: z.number().int().nullable(),
   accept_number: z.number().int().nullable(),
   reject_number: z.number().int().nullable(),
+  step_execution: z.string().uuid().nullable(),
+  substep: z.string().uuid().nullable(),
   equipment_links: z.array(QualityReportEquipment),
   personnel_links: z.array(QualityReportPersonnel),
   part_info: z.object({}).partial().passthrough().nullable(),

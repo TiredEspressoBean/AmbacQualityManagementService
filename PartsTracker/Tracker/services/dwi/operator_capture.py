@@ -312,9 +312,10 @@ def submit_substep(
 
 def ensure_quality_report(substep, step_execution, user) -> QualityReports:
     """Find or create the QualityReports for this (step_execution, substep)
-    inspection event. The existing `record_dwi_measurement` service uses a
-    description-tag idempotency pattern; we match it so both paths converge
-    on the same report row.
+    inspection event. `record_dwi_measurement` finds-or-creates against the same
+    pair, so both capture paths converge on one report row — the partial unique
+    constraint on (step_execution, substep) is what makes that convergence a
+    guarantee rather than a hope.
 
     Exposed via `POST /api/Substeps/{id}/ensure_inspection_qr/` so the
     operator runtime can pre-bind a QR to capture nodes (PartAnnotation,
@@ -322,23 +323,19 @@ def ensure_quality_report(substep, step_execution, user) -> QualityReports:
     operator finishes the substep. Idempotent — safe to call eagerly on
     substep open.
     """
-    from Tracker.services.qms.inline_capture import _build_substep_tag  # type: ignore[attr-defined]
-
     if step_execution.part_id is not None:
-        # Part DWI — one report per (step_execution, substep), keyed by tag.
-        description_tag = _build_substep_tag(step_execution.id, substep.id)
-        report = (
-            QualityReports.objects
-            .filter(step=step_execution.step, part=step_execution.part,
-                    description__startswith=description_tag)
-            .first()
+        # Part DWI — one report per (step_execution, substep).
+        report, _ = QualityReports.objects.get_or_create(
+            step_execution=step_execution,
+            substep=substep,
+            defaults={
+                "step": step_execution.step,
+                "part": step_execution.part,
+                "detected_by": user,
+                "sampling_method": "dwi_substep_submit",
+                "status": "PENDING",
+            },
         )
-        if report is None:
-            report = QualityReports.objects.create(
-                step=step_execution.step, part=step_execution.part,
-                detected_by=user, sampling_method="dwi_substep_submit",
-                status="PENDING", description=description_tag,
-            )
         return report
 
     # Receiving-style DWI — the subject is a MaterialLot (Flow A incoming) or an

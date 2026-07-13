@@ -999,6 +999,132 @@ class RecordDwiMeasurementTier2Tests(DwiPhase3BaseTestCase):
         self.assertEqual(self.part.part_status, PartsStatus.QUARANTINED)
 
 
+class QualityReportProvenanceTests(DwiPhase3BaseTestCase):
+    """A report knows which part-visit and which substep produced it.
+
+    Before these FKs existed the linkage was a `[dwi:exec=…:substep=…]` string
+    stashed in `description` and found by prefix match — so a part that reworked
+    through the same step twice produced two reports distinguishable only by
+    timestamp, and editing a description silently orphaned one.
+    """
+
+    def _second_visit(self):
+        """The same part back at the same step — a rework loop."""
+        return StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step, visit_number=2,
+        )
+
+    def test_capture_records_its_provenance(self):
+        from Tracker.models import QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.247,
+            recorded_by=self.user,
+        )
+
+        report = QualityReports.objects.get()
+        self.assertEqual(report.step_execution, self.step_execution)
+        self.assertEqual(report.substep, self.inspection_substep)
+        # The tag no longer squats in the human-readable field.
+        self.assertNotIn("dwi:exec", report.description or "")
+
+    def test_rework_visits_get_separate_reports(self):
+        """The compliance property: visit 1's readings never merge into visit 2's."""
+        from Tracker.models import MeasurementResult, QualityReports
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        visit_2 = self._second_visit()
+
+        record_dwi_measurement(
+            step_execution=self.step_execution, substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.260,  # visit 1 failed — that's why it's being reworked
+            recorded_by=self.user,
+        )
+        record_dwi_measurement(
+            step_execution=visit_2, substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.247,  # visit 2 passed
+            recorded_by=self.user,
+        )
+
+        self.assertEqual(QualityReports.objects.count(), 2)
+
+        first = QualityReports.objects.get(step_execution=self.step_execution)
+        second = QualityReports.objects.get(step_execution=visit_2)
+        self.assertEqual(first.status, "FAIL")
+        self.assertEqual(second.status, "PASS")
+
+        # Each visit's measurement stayed with its own visit.
+        self.assertEqual(
+            [mr.value_numeric for mr in MeasurementResult.objects.filter(report=first)],
+            [1.260],
+        )
+        self.assertEqual(
+            [mr.value_numeric for mr in MeasurementResult.objects.filter(report=second)],
+            [1.247],
+        )
+
+    def test_both_capture_paths_converge_on_one_report(self):
+        """The operator runtime's `ensure_quality_report` and the inline
+        measurement promotion find-or-create against the same pair, so a substep
+        that is pre-bound and then measured yields one report, not two."""
+        from Tracker.models import QualityReports
+        from Tracker.services.dwi.operator_capture import ensure_quality_report
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+
+        pre_bound = ensure_quality_report(
+            self.inspection_substep, self.step_execution, self.user,
+        )
+        record_dwi_measurement(
+            step_execution=self.step_execution,
+            substep=self.inspection_substep,
+            measurement_definition=self.measurement_def,
+            value=1.247,
+            recorded_by=self.user,
+        )
+
+        self.assertEqual(QualityReports.objects.count(), 1)
+        self.assertEqual(QualityReports.objects.get().pk, pre_bound.pk)
+
+    def test_duplicate_inspection_event_is_refused_by_the_database(self):
+        """The partial unique constraint is what makes convergence a guarantee
+        rather than a convention two services happen to share."""
+        from django.db import IntegrityError, transaction
+        from Tracker.models import QualityReports
+
+        QualityReports.objects.create(
+            tenant=self.tenant, step=self.step, part=self.part,
+            step_execution=self.step_execution, substep=self.inspection_substep,
+            detected_by=self.user, status="PENDING",
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            QualityReports.objects.create(
+                tenant=self.tenant, step=self.step, part=self.part,
+                step_execution=self.step_execution, substep=self.inspection_substep,
+                detected_by=self.user, status="PENDING",
+            )
+
+    def test_capture_less_reports_are_unconstrained(self):
+        """Receiving / OSP / hand-logged reports have no capture event behind
+        them; the constraint is partial so any number of them coexist."""
+        from Tracker.models import QualityReports
+
+        for _ in range(3):
+            QualityReports.objects.create(
+                tenant=self.tenant, step=self.step, part=self.part,
+                detected_by=self.user, status="PENDING",
+            )
+
+        self.assertEqual(
+            QualityReports.objects.filter(step_execution__isnull=True).count(), 3,
+        )
+
+
 class SpcAdapterUnionReadTests(DwiPhase3BaseTestCase):
     """SPC adapter UNION-reads both MeasurementResult and StepExecutionMeasurement."""
 

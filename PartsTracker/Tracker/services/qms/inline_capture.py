@@ -148,14 +148,16 @@ def _promote_to_inspection_record(
     step = step_execution.step
 
     if step_execution.part_id is not None:
-        # Part DWI: one report per (step_execution, substep) inspection event,
-        # keyed via a description tag (QualityReports lacks a direct substep FK).
+        # Part DWI: one report per (step_execution, substep) inspection event.
         part = step_execution.part
-        subject_filter = {'part': part}
-        description_tag = _build_substep_tag(step_execution.id, substep.id)
+        report_fields = {
+            'part': part,
+            'step_execution': step_execution,
+            'substep': substep,
+        }
         report = (
             QualityReports.objects
-            .filter(step=step, part=part, description__startswith=description_tag)
+            .filter(step_execution=step_execution, substep=substep)
             .first()
         )
     else:
@@ -167,14 +169,14 @@ def _promote_to_inspection_record(
         # inspection-record promotion path in v1.
         subj = step_execution.subject_object
         if isinstance(subj, MaterialLot):
-            subject_filter = {'material_lot': subj}
+            report_fields = {'material_lot': subj}
             report = (
                 QualityReports.objects
                 .filter(step=step, material_lot=subj)
                 .order_by('-created_at').first()
             )
         elif isinstance(subj, OutsideProcessShipment):
-            subject_filter = {'osp_shipment': subj}
+            report_fields = {'osp_shipment': subj}
             report = (
                 QualityReports.objects
                 .filter(step=step, osp_shipment=subj)
@@ -182,7 +184,6 @@ def _promote_to_inspection_record(
             )
         else:
             return
-        description_tag = ""
 
     is_new_report = report is None
 
@@ -193,8 +194,7 @@ def _promote_to_inspection_record(
             machine=equipment,
             sampling_method="inline_dwi",
             status="PENDING",  # set properly after the MeasurementResult is in
-            description=description_tag,
-            **subject_filter,
+            **report_fields,
         )
 
     # Capture the report's status BEFORE adding the new measurement so we
@@ -245,13 +245,6 @@ def _promote_to_inspection_record(
     transitioning_into_fail = (prior_status != "FAIL" and new_status == "FAIL")
     if is_new_report or transitioning_into_fail:
         record_quality_report_side_effects(report)
-
-
-def _build_substep_tag(step_execution_id, substep_id) -> str:
-    """Stable tag stored in QualityReports.description to identify the
-    inspection event this report belongs to. Kept short enough to leave room
-    for human-readable description text appended after it."""
-    return f"[dwi:exec={step_execution_id}:substep={substep_id}]"
 
 
 def _compute_report_status(report: QualityReports) -> str:

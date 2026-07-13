@@ -413,6 +413,29 @@ class QualityReports(SecureModel):
     """The returned outside-process shipment this report inspects. At most one of
     `part` / `material_lot` / `osp_shipment` is set (subject-agnostic acceptance)."""
 
+    # ===== INSPECTION EVENT PROVENANCE (which capture produced this report) =====
+    # `part` says *what* was inspected; these say *when* — which visit to the step,
+    # and which substep of it. A part that reworks through the same step twice gets
+    # a distinct StepExecution per visit, so without these two the visits' reports
+    # are indistinguishable except by timestamp.
+    #
+    # Both null when no single capture event owns the report: hand-logged anomaly
+    # reports, and receiving / OSP inspections (which are subject-keyed via
+    # material_lot / osp_shipment and deliberately shared across every substep of
+    # the inspection, so no one substep can claim them). Null means "no owning
+    # capture event" — never "unknown part".
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='quality_reports',
+        help_text="The part-visit whose capture produced this report (DWI inspection points).",
+    )
+    substep = models.ForeignKey(
+        'Tracker.Substep', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='quality_reports',
+        help_text="The substep whose capture produced this report. One report per "
+                  "(step_execution, substep) inspection event.",
+    )
+
     class Meta:
         verbose_name_plural = 'Error Reports'
         verbose_name = 'Error Report'
@@ -424,12 +447,23 @@ class QualityReports(SecureModel):
             models.Index(fields=['part', 'status'], name='qr_part_status_idx'),
             models.Index(fields=['step', 'created_at'], name='qr_step_created_idx'),
             models.Index(fields=['status', 'created_at'], name='qr_status_created_idx'),
+            models.Index(fields=['step_execution', 'substep'], name='qr_exec_substep_idx'),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=['tenant', 'report_number'],
                 condition=models.Q(report_number__isnull=False) & ~models.Q(report_number=''),
                 name='qualityreport_tenant_number_uniq'
+            ),
+            # One report per inspection event. Both capture paths (inline measurement
+            # promotion and the operator-runtime substep submit) find-or-create against
+            # this pair, so the constraint is what makes those two races converge on one
+            # row instead of minting duplicates. Partial: the many reports with no
+            # capture behind them (receiving, OSP, hand-logged) leave both null.
+            models.UniqueConstraint(
+                fields=['step_execution', 'substep'],
+                condition=models.Q(step_execution__isnull=False) & models.Q(substep__isnull=False),
+                name='qualityreport_exec_substep_uniq',
             ),
             # A report targets at most one subject — a part, an incoming lot, or a
             # returned outside-process shipment — never two at once. `part` is

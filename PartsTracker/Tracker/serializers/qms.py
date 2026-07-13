@@ -186,10 +186,14 @@ class QualityReportsSerializer(SecureModelMixin):
                   "detected_by", "detected_by_info", "verified_by", "verified_by_info",
                   "is_first_piece",  # First Piece Inspection flag
                   "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",  # Receiving / OSP inspection
+                  "step_execution", "substep",  # Inspection-event provenance (which visit / which substep)
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
+        # Provenance is written by the capture services (inline_capture /
+        # operator_capture), never by an API client hand-filing a report.
         read_only_fields = ("report_number", "created_at",
-                            "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number")
+                            "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",
+                            "step_execution", "substep")
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):

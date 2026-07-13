@@ -49307,6 +49307,20 @@ components:
           readOnly: true
           nullable: true
           description: Acceptance-sampling reject number (Re) snapshot.
+        step_execution:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The part-visit whose capture produced this report (DWI inspection
+            points).
+        substep:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The substep whose capture produced this report. One report
+            per (step_execution, substep) inspection event.
         equipment_links:
           type: array
           items:
@@ -49372,7 +49386,9 @@ components:
       - sample_size
       - status
       - status_display
+      - step_execution
       - step_info
+      - substep
       - verified_by_info
     QualityReportsRequest:
       type: object
