@@ -15,9 +15,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
+    ArrowRight,
     CheckSquare,
     ClipboardList,
     FileSignature,
+    PackageSearch,
     Calendar,
     AlertTriangle,
     Clock,
@@ -38,8 +40,12 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 // Hooks
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { useMyCapaTasks, type CapaTask } from "@/hooks/useMyCapaTasks";
+import { useMyDispositions, type MyDisposition } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals, type PendingApproval } from "@/hooks/useMyPendingApprovals";
+import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
+import { useClaimApproval } from "@/hooks/useClaimApproval";
 import { useCompleteCapaTask } from "@/hooks/useCompleteCapaTask";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { useQueryClient } from "@tanstack/react-query";
@@ -57,7 +63,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 // TYPES
 // ============================================================================
 
-type InboxItemType = "capa_task" | "approval";
+type InboxItemType = "capa_task" | "approval" | "disposition";
 type UrgencyLevel = "overdue" | "due_today" | "due_this_week" | "upcoming";
 
 interface InboxItem {
@@ -126,6 +132,27 @@ function transformApproval(approval: PendingApproval): InboxItem {
         isOverdue,
         createdAt: new Date(approval.requested_at),
         originalApproval: approval,
+    };
+}
+
+function transformDisposition(disp: MyDisposition): InboxItem {
+    const dueDate = disp.due_date ? new Date(disp.due_date) : undefined;
+    const isOverdue = dueDate ? dueDate < new Date() : false;
+    return {
+        id: `disposition-${disp.id}`,
+        numericId: disp.id,
+        type: "disposition",
+        title: disp.description || "Quarantine disposition",
+        subtitle: disp.severity_display || disp.severity || undefined,
+        reference: disp.disposition_number ?? "",
+        referenceUrl: `/dispositions/edit/${disp.id}`,
+        dueDate,
+        status: disp.current_state ?? "OPEN",
+        statusDisplay: disp.current_state === "IN_PROGRESS" ? "In Progress" : "Open",
+        isOverdue,
+        // The serializer doesn't expose created_at; unused for dispositions
+        // (grouping/sorting run on dueDate).
+        createdAt: new Date(0),
     };
 }
 
@@ -235,6 +262,7 @@ const urgencyConfig: Record<UrgencyLevel, { label: string; icon: IconComponent; 
 const typeConfig: Record<InboxItemType, { icon: IconComponent; bgColor: string; iconColor: string }> = {
     capa_task: { icon: ClipboardList, bgColor: "bg-primary/10", iconColor: "text-primary" },
     approval: { icon: FileSignature, bgColor: "bg-amber-100 dark:bg-amber-900/30", iconColor: "text-amber-700 dark:text-amber-400" },
+    disposition: { icon: PackageSearch, bgColor: "bg-red-100 dark:bg-red-900/30", iconColor: "text-red-700 dark:text-red-400" },
 };
 
 // ============================================================================
@@ -559,6 +587,15 @@ function InboxItemCard({ item }: { item: InboxItem }) {
                                 Review
                             </Link>
                         </Button>
+                    ) : item.type === "disposition" ? (
+                        // Dispositions resolve on their own workflow surface
+                        // (disposition type, containment, verification) — route.
+                        <Button size="sm" variant="default" className="h-8 gap-1" asChild>
+                            <Link to={item.referenceUrl}>
+                                <PackageSearch className="h-3 w-3" />
+                                Disposition
+                            </Link>
+                        </Button>
                     ) : (
                         <Button
                             size="sm"
@@ -631,6 +668,57 @@ function UrgencySection({
 }
 
 // ============================================================================
+// AVAILABLE TO CLAIM
+// ============================================================================
+
+/** Group-routed approvals nobody has picked up. Group assignment means "any
+ *  member may respond" — so these sit in every member's queue while everyone
+ *  assumes someone else is signing. Accept converts shared eligibility into
+ *  individual ownership and the item moves into "my approvals". */
+function ClaimableStrip() {
+    const { data: claimable = [] } = useClaimableApprovals();
+    const claim = useClaimApproval();
+
+    if (claimable.length === 0) return null;
+
+    return (
+        <div className="rounded-lg border border-dashed p-3">
+            <p className="text-xs text-muted-foreground">
+                Available to claim — your group is eligible, nobody has it yet:
+            </p>
+            <div className="mt-2 space-y-1">
+                {claimable.map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 rounded-md border p-2.5">
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm">
+                                {c.reason || c.approval_type}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                                <span className="font-mono">{c.approval_number}</span>
+                                {c.due_date ? ` · due ${c.due_date.slice(0, 10)}` : ""}
+                            </span>
+                        </span>
+                        <Button
+                            size="sm" variant="outline" className="h-8 shrink-0"
+                            disabled={claim.isPending}
+                            onClick={() =>
+                                claim.mutate(c.id, {
+                                    onSuccess: () => toast.success("Claimed — moved to your approvals."),
+                                    onError: () => toast.error("Could not claim (someone may have beaten you to it)."),
+                                })
+                            }
+                        >
+                            Accept
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
 // LOADING & EMPTY STATES
 // ============================================================================
 
@@ -669,19 +757,23 @@ function EmptyState() {
 // ============================================================================
 
 export function InboxPage() {
+    const { data: user } = useAuthUser();
     const { data: tasksData, isLoading: tasksLoading, error: tasksError } = useMyCapaTasks();
     const { data: approvalsData, isLoading: approvalsLoading, error: approvalsError } = useMyPendingApprovals();
+    const { data: dispositionsData, isLoading: dispositionsLoading } = useMyDispositions(user?.pk);
 
-    const isLoading = tasksLoading || approvalsLoading;
+    const isLoading = tasksLoading || approvalsLoading || dispositionsLoading;
     const hasError = tasksError || approvalsError;
 
     // Transform data to InboxItems
     const rawTasks = tasksData || [];
     const rawApprovals = approvalsData || [];
+    const rawDispositions = dispositionsData || [];
 
     const tasks = rawTasks.map(transformCapaTask);
     const approvals = rawApprovals.map(transformApproval);
-    const items = [...tasks, ...approvals];
+    const dispositions = rawDispositions.map(transformDisposition);
+    const items = [...tasks, ...approvals, ...dispositions];
 
     const grouped = groupByUrgency(items);
 
@@ -689,6 +781,7 @@ export function InboxPage() {
     const totalCount = items.length;
     const capaTaskCount = tasks.length;
     const approvalCount = approvals.length;
+    const dispositionCount = dispositions.length;
 
     if (hasError) {
         return (
@@ -734,19 +827,29 @@ export function InboxPage() {
                         Approvals
                         {approvalCount > 0 && <Badge variant="secondary">{approvalCount}</Badge>}
                     </TabsTrigger>
+                    <TabsTrigger value="dispositions" className="gap-2">
+                        <PackageSearch className="h-4 w-4" />
+                        Dispositions
+                        {dispositionCount > 0 && <Badge variant="secondary">{dispositionCount}</Badge>}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="all" className="space-y-4">
                     {isLoading ? (
                         <LoadingSkeleton />
-                    ) : totalCount === 0 ? (
-                        <EmptyState />
                     ) : (
                         <>
-                            <UrgencySection urgency="overdue" items={grouped.overdue} />
-                            <UrgencySection urgency="due_today" items={grouped.due_today} />
-                            <UrgencySection urgency="due_this_week" items={grouped.due_this_week} />
-                            <UrgencySection urgency="upcoming" items={grouped.upcoming} defaultOpen={false} />
+                            <ClaimableStrip />
+                            {totalCount === 0 ? (
+                                <EmptyState />
+                            ) : (
+                                <>
+                                    <UrgencySection urgency="overdue" items={grouped.overdue} />
+                                    <UrgencySection urgency="due_today" items={grouped.due_today} />
+                                    <UrgencySection urgency="due_this_week" items={grouped.due_this_week} />
+                                    <UrgencySection urgency="upcoming" items={grouped.upcoming} defaultOpen={false} />
+                                </>
+                            )}
                         </>
                     )}
                 </TabsContent>
@@ -769,14 +872,34 @@ export function InboxPage() {
                 <TabsContent value="approvals" className="space-y-4">
                     {isLoading ? (
                         <LoadingSkeleton />
-                    ) : approvalCount === 0 ? (
+                    ) : (
+                        <>
+                            <ClaimableStrip />
+                            {approvalCount === 0 ? (
+                                <EmptyState />
+                            ) : (
+                                <>
+                                    <UrgencySection urgency="overdue" items={grouped.overdue.filter(i => i.type === "approval")} />
+                                    <UrgencySection urgency="due_today" items={grouped.due_today.filter(i => i.type === "approval")} />
+                                    <UrgencySection urgency="due_this_week" items={grouped.due_this_week.filter(i => i.type === "approval")} />
+                                    <UrgencySection urgency="upcoming" items={grouped.upcoming.filter(i => i.type === "approval")} defaultOpen={false} />
+                                </>
+                            )}
+                        </>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="dispositions" className="space-y-4">
+                    {isLoading ? (
+                        <LoadingSkeleton />
+                    ) : dispositionCount === 0 ? (
                         <EmptyState />
                     ) : (
                         <>
-                            <UrgencySection urgency="overdue" items={grouped.overdue.filter(i => i.type === "approval")} />
-                            <UrgencySection urgency="due_today" items={grouped.due_today.filter(i => i.type === "approval")} />
-                            <UrgencySection urgency="due_this_week" items={grouped.due_this_week.filter(i => i.type === "approval")} />
-                            <UrgencySection urgency="upcoming" items={grouped.upcoming.filter(i => i.type === "approval")} defaultOpen={false} />
+                            <UrgencySection urgency="overdue" items={grouped.overdue.filter(i => i.type === "disposition")} />
+                            <UrgencySection urgency="due_today" items={grouped.due_today.filter(i => i.type === "disposition")} />
+                            <UrgencySection urgency="due_this_week" items={grouped.due_this_week.filter(i => i.type === "disposition")} />
+                            <UrgencySection urgency="upcoming" items={grouped.upcoming.filter(i => i.type === "disposition")} defaultOpen={false} />
                         </>
                     )}
                 </TabsContent>
