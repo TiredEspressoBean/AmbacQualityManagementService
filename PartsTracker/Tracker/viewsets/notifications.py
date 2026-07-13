@@ -21,17 +21,25 @@ is reused for both since they're managed by the same admin role):
 """
 from __future__ import annotations
 
+from django.utils import timezone
 from rest_framework import filters, serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
 
 from Tracker.permissions import TenantAccessPermission
-from Tracker.models import ExternalContact, NotificationRule, NotificationSchedule
+from Tracker.models import (
+    ExternalContact,
+    NotificationOutbox,
+    NotificationRule,
+    NotificationSchedule,
+)
 from Tracker.serializers.notifications import (
     CustomerRuleSerializer,
     ExternalContactSerializer,
+    NotificationFeedItemSerializer,
     PersonalRuleSerializer,
     TenantRuleSerializer,
 )
@@ -300,3 +308,80 @@ class ScheduledContentProviderCatalogView(APIView):
         return Response(entries, status=status.HTTP_200_OK)
 
 
+
+
+# =============================================================================
+# In-app notification feed — the reader for what InAppChannel writes.
+# =============================================================================
+
+class NotificationFeedViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
+    """The request user's in-app notification feed.
+
+    InAppChannel does no wire delivery — the outbox row IS the notification,
+    and this endpoint is the reader it was written toward. Self-scoped like
+    PersonalRuleViewSet: any authenticated user reads their own rows; the
+    admin-only NotificationOutbox CRUD perms deliberately don't apply (this
+    is a /me-style surface, not outbox administration).
+
+    The AWARENESS surface (ephemeral, mark-read), distinct from /inbox's
+    COMMITMENTS (owned, due-dated work items). Kept separate by design.
+    """
+
+    queryset = NotificationOutbox.all_tenants.none()
+    serializer_class = NotificationFeedItemSerializer
+    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    filter_backends = [filters.OrderingFilter]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return NotificationOutbox.objects.none()
+        # tenant-safe: request runs under TenantMiddleware ContextVar; SecureManager auto-scopes.
+        qs = NotificationOutbox.objects.filter(
+            user=self.request.user,
+            channel='in_app',
+            archived_at__isnull=True,
+            is_test=False,
+        ).exclude(status__in=['failed', 'cancelled', 'suppressed'])
+        if self.request.query_params.get('unread', '').lower() == 'true':
+            qs = qs.filter(read_at__isnull=True)
+        return qs
+
+    @extend_schema(
+        description="Number of unread in-app notifications for the current user.",
+        responses={200: inline_serializer(
+            name='NotificationUnreadCount',
+            fields={'unread': serializers.IntegerField()},
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='unread-count')
+    def unread_count(self, request):
+        return Response({'unread': self.get_queryset().filter(read_at__isnull=True).count()})
+
+    @extend_schema(
+        description="Mark one notification as read (idempotent).",
+        request=None,
+        responses={200: NotificationFeedItemSerializer},
+    )
+    @action(detail=True, methods=['post'], url_path='mark-read')
+    def mark_read(self, request, pk=None):
+        row = self.get_object()
+        if row.read_at is None:
+            row.read_at = timezone.now()
+            row.save(update_fields=['read_at', 'updated_at'])
+        return Response(self.get_serializer(row).data)
+
+    @extend_schema(
+        description="Mark every unread in-app notification as read.",
+        request=None,
+        responses={200: inline_serializer(
+            name='NotificationMarkAllRead',
+            fields={'marked': serializers.IntegerField()},
+        )},
+    )
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request):
+        marked = self.get_queryset().filter(read_at__isnull=True).update(
+            read_at=timezone.now(),
+        )
+        return Response({'marked': marked})

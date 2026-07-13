@@ -361,6 +361,13 @@ router.register(
     ExternalContactViewSet,
     basename='notification-external-contacts',
 )
+# The in-app feed — the reader InAppChannel writes toward.
+router.register(
+    r'notifications/feed',
+
+    NotificationFeedViewSet,
+    basename='notification-feed',
+)
 
 # Phase 3.5 scheduled notification deliveries.
 router.register(

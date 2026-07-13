@@ -3523,7 +3523,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Counts carry oldest-age per type so chips reveal rot, not just volume. */
+        /** @description The inspector's flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age — counts alone hide rot) from the rows. */
         get: operations["api_InspectionInbox_list"];
         put?: never;
         post?: never;
@@ -11912,6 +11912,113 @@ export interface paths {
         patch: operations["api_notifications_external_contacts_partial_update"];
         trace?: never;
     };
+    "/api/notifications/feed/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The request user's in-app notification feed.
+         *
+         *     InAppChannel does no wire delivery — the outbox row IS the notification,
+         *     and this endpoint is the reader it was written toward. Self-scoped like
+         *     PersonalRuleViewSet: any authenticated user reads their own rows; the
+         *     admin-only NotificationOutbox CRUD perms deliberately don't apply (this
+         *     is a /me-style surface, not outbox administration).
+         *
+         *     The AWARENESS surface (ephemeral, mark-read), distinct from /inbox's
+         *     COMMITMENTS (owned, due-dated work items). Kept separate by design.
+         */
+        get: operations["api_notifications_feed_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/feed/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The request user's in-app notification feed.
+         *
+         *     InAppChannel does no wire delivery — the outbox row IS the notification,
+         *     and this endpoint is the reader it was written toward. Self-scoped like
+         *     PersonalRuleViewSet: any authenticated user reads their own rows; the
+         *     admin-only NotificationOutbox CRUD perms deliberately don't apply (this
+         *     is a /me-style surface, not outbox administration).
+         *
+         *     The AWARENESS surface (ephemeral, mark-read), distinct from /inbox's
+         *     COMMITMENTS (owned, due-dated work items). Kept separate by design.
+         */
+        get: operations["api_notifications_feed_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/feed/{id}/mark-read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Mark one notification as read (idempotent). */
+        post: operations["api_notifications_feed_mark_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/feed/mark-all-read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Mark every unread in-app notification as read. */
+        post: operations["api_notifications_feed_mark_all_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/feed/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Number of unread in-app notifications for the current user. */
+        get: operations["api_notifications_feed_unread_count_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications/rules/customer/": {
         parameters: {
             query?: never;
@@ -16363,14 +16470,7 @@ export interface components {
              */
             readonly status: components["schemas"]["FPIRecordStatusEnum"];
             readonly status_display: string;
-            /**
-             * @description Final result of the FPI
-             *
-             *     * `PASS` - Pass
-             *     * `FAIL` - Fail
-             *     * `CONDITIONAL` - Conditional Pass
-             */
-            readonly result: components["schemas"]["FPIRecordResultEnum"];
+            readonly result: components["schemas"]["FPIRecordResultEnum"] | components["schemas"]["BlankEnum"];
             readonly result_display: string;
             /** @description User who performed the inspection */
             readonly inspected_by: number | null;
@@ -16919,18 +17019,6 @@ export interface components {
             step_id: string | null;
         };
         /**
-         * @description The full inbox payload: rows + type-count chips (with oldest-age, since
-         *     counts alone hide rot) + totals.
-         */
-        InspectionInbox: {
-            rows: components["schemas"]["InspectionInboxRow"][];
-            counts: {
-                [key: string]: components["schemas"]["InspectionInboxTypeCount"];
-            };
-            total: number;
-            blocked: number;
-        };
-        /**
          * @description One row of the inspector's task inbox — flat across every inspection
          *     source, never grouped by work order. See services.qms.inspection_inbox.
          */
@@ -16971,11 +17059,6 @@ export interface components {
          * @enum {string}
          */
         InspectionInboxSeveritySeverityEnum: "NORMAL" | "TIGHTENED" | "REDUCED";
-        InspectionInboxTypeCount: {
-            count: number;
-            /** Format: double */
-            oldest_age_hours: number | null;
-        };
         /**
          * @description * `fpi` - fpi
          *     * `receiving` - receiving
@@ -17662,6 +17745,29 @@ export interface components {
             default_channels: string[];
             default_on: boolean;
             supports_escalation: boolean;
+        };
+        /**
+         * @description One row of the user's in-app notification feed — the reader for what
+         *     InAppChannel writes ("the row is the notification"). Read-only; the only
+         *     mutations are the feed viewset's mark-read actions.
+         */
+        NotificationFeedItem: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly event_code: string;
+            readonly rendered_subject: string;
+            readonly rendered_body_text: string;
+            readonly rendered_action_url: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        NotificationMarkAllRead: {
+            marked: number;
+        };
+        NotificationUnreadCount: {
+            unread: number;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -18379,6 +18485,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["MeasurementDefinition"][];
+        };
+        PaginatedNotificationFeedItemList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["NotificationFeedItem"][];
         };
         PaginatedOrdersList: {
             /** @example 123 */
@@ -33895,7 +34016,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InspectionInbox"][];
+                    "application/json": components["schemas"]["InspectionInboxRow"][];
                 };
             };
         };
@@ -47145,6 +47266,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExternalContact"];
+                };
+            };
+        };
+    };
+    api_notifications_feed_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNotificationFeedItemList"];
+                };
+            };
+        };
+    };
+    api_notifications_feed_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification outbox. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationFeedItem"];
+                };
+            };
+        };
+    };
+    api_notifications_feed_mark_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this notification outbox. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationFeedItem"];
+                };
+            };
+        };
+    };
+    api_notifications_feed_mark_all_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationMarkAllRead"];
+                };
+            };
+        };
+    };
+    api_notifications_feed_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationUnreadCount"];
                 };
             };
         };

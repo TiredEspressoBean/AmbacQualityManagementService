@@ -24,6 +24,7 @@ from Tracker.models import (
     EscalationStep,
     ExternalContact,
     MAX_ESCALATION_STEPS,
+    NotificationOutbox,
     NotificationRule,
     SCOPE_CUSTOMER,
     SCOPE_PERSONAL,
@@ -325,6 +326,25 @@ class CustomerRuleSerializer(_BaseRuleSerializer):
                     ),
                 })
         return attrs
+
+
+class NotificationFeedItemSerializer(serializers.ModelSerializer):
+    """One row of the user's in-app notification feed — the reader for what
+    InAppChannel writes ("the row is the notification"). Read-only; the only
+    mutations are the feed viewset's mark-read actions."""
+
+    class Meta:
+        model = NotificationOutbox
+        fields = [
+            "id",
+            "event_code",
+            "rendered_subject",
+            "rendered_body_text",
+            "rendered_action_url",
+            "read_at",
+            "created_at",
+        ]
+        read_only_fields = fields
 
 
 # =============================================================================

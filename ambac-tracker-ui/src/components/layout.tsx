@@ -1,6 +1,7 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TrialBanner } from "@/components/trial-banner";
 
@@ -36,7 +37,10 @@ export default function Layout() {
                             so pages can use `sticky top-0` without fighting padding. */}
                         <div className="flex items-center justify-between px-3 py-2 border-b bg-background/95 backdrop-blur-sm shrink-0">
                             <SidebarTrigger className="h-8 w-8 hover:bg-accent" />
-                            <ThemeToggle />
+                            <div className="flex items-center gap-1">
+                                <NotificationBell />
+                                <ThemeToggle />
+                            </div>
                         </div>
 
                         {/* Main has no padding — pages own their own gutters via

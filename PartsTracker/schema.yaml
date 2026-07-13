@@ -9341,7 +9341,8 @@ paths:
     get:
       operationId: api_InspectionInbox_list
       description: 'The inspector''s flat task inbox: FPI first, then by urgency tone,
-        then age. Counts carry oldest-age per type so chips reveal rot, not just volume.'
+        then age. Derive type-count chips (with oldest-age — counts alone hide rot)
+        from the rows.'
       tags:
       - api
       security:
@@ -9354,7 +9355,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/InspectionInbox'
+                  $ref: '#/components/schemas/InspectionInboxRow'
           description: ''
   /api/MaterialLots/:
     get:
@@ -28485,6 +28486,141 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/notifications/feed/:
+    get:
+      operationId: api_notifications_feed_list
+      description: |-
+        The request user's in-app notification feed.
+
+        InAppChannel does no wire delivery — the outbox row IS the notification,
+        and this endpoint is the reader it was written toward. Self-scoped like
+        PersonalRuleViewSet: any authenticated user reads their own rows; the
+        admin-only NotificationOutbox CRUD perms deliberately don't apply (this
+        is a /me-style surface, not outbox administration).
+
+        The AWARENESS surface (ephemeral, mark-read), distinct from /inbox's
+        COMMITMENTS (owned, due-dated work items). Kept separate by design.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationFeedItemList'
+          description: ''
+  /api/notifications/feed/{id}/:
+    get:
+      operationId: api_notifications_feed_retrieve
+      description: |-
+        The request user's in-app notification feed.
+
+        InAppChannel does no wire delivery — the outbox row IS the notification,
+        and this endpoint is the reader it was written toward. Self-scoped like
+        PersonalRuleViewSet: any authenticated user reads their own rows; the
+        admin-only NotificationOutbox CRUD perms deliberately don't apply (this
+        is a /me-style surface, not outbox administration).
+
+        The AWARENESS surface (ephemeral, mark-read), distinct from /inbox's
+        COMMITMENTS (owned, due-dated work items). Kept separate by design.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification outbox.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationFeedItem'
+          description: ''
+  /api/notifications/feed/{id}/mark-read/:
+    post:
+      operationId: api_notifications_feed_mark_read_create
+      description: Mark one notification as read (idempotent).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this notification outbox.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationFeedItem'
+          description: ''
+  /api/notifications/feed/mark-all-read/:
+    post:
+      operationId: api_notifications_feed_mark_all_read_create
+      description: Mark every unread in-app notification as read.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationMarkAllRead'
+          description: ''
+  /api/notifications/feed/unread-count/:
+    get:
+      operationId: api_notifications_feed_unread_count_retrieve
+      description: Number of unread in-app notifications for the current user.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationUnreadCount'
+          description: ''
   /api/notifications/rules/customer/:
     get:
       operationId: api_notifications_rules_customer_list
@@ -37702,15 +37838,10 @@ components:
           type: string
           readOnly: true
         result:
-          allOf:
-          - $ref: '#/components/schemas/FPIRecordResultEnum'
           readOnly: true
-          description: |-
-            Final result of the FPI
-
-            * `PASS` - Pass
-            * `FAIL` - Fail
-            * `CONDITIONAL` - Conditional Pass
+          oneOf:
+          - $ref: '#/components/schemas/FPIRecordResultEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         result_display:
           type: string
           readOnly: true
@@ -38908,29 +39039,6 @@ components:
       - status_display
       - step_id
       - supplier
-    InspectionInbox:
-      type: object
-      description: |-
-        The full inbox payload: rows + type-count chips (with oldest-age, since
-        counts alone hide rot) + totals.
-      properties:
-        rows:
-          type: array
-          items:
-            $ref: '#/components/schemas/InspectionInboxRow'
-        counts:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/InspectionInboxTypeCount'
-        total:
-          type: integer
-        blocked:
-          type: integer
-      required:
-      - blocked
-      - counts
-      - rows
-      - total
     InspectionInboxRow:
       type: object
       description: |-
@@ -39027,18 +39135,6 @@ components:
         * `NORMAL` - NORMAL
         * `TIGHTENED` - TIGHTENED
         * `REDUCED` - REDUCED
-    InspectionInboxTypeCount:
-      type: object
-      properties:
-        count:
-          type: integer
-        oldest_age_hours:
-          type: number
-          format: double
-          nullable: true
-      required:
-      - count
-      - oldest_age_hours
     InspectionInboxTypeEnum:
       enum:
       - fpi
@@ -40521,6 +40617,60 @@ components:
       - domain
       - label
       - supports_escalation
+    NotificationFeedItem:
+      type: object
+      description: |-
+        One row of the user's in-app notification feed — the reader for what
+        InAppChannel writes ("the row is the notification"). Read-only; the only
+        mutations are the feed viewset's mark-read actions.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_code:
+          type: string
+          readOnly: true
+        rendered_subject:
+          type: string
+          readOnly: true
+        rendered_body_text:
+          type: string
+          readOnly: true
+        rendered_action_url:
+          type: string
+          readOnly: true
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - event_code
+      - id
+      - read_at
+      - rendered_action_url
+      - rendered_body_text
+      - rendered_subject
+    NotificationMarkAllRead:
+      type: object
+      properties:
+        marked:
+          type: integer
+      required:
+      - marked
+    NotificationUnreadCount:
+      type: object
+      properties:
+        unread:
+          type: integer
+      required:
+      - unread
     NullEnum:
       enum:
       - null
@@ -41709,6 +41859,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeasurementDefinition'
+    PaginatedNotificationFeedItemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationFeedItem'
     PaginatedOrdersList:
       type: object
       required:

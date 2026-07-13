@@ -2176,14 +2176,7 @@ export type FPIRecord = {
      */
   status: FPIRecordStatusEnum;
   status_display: string;
-  /**
-     * Final result of the FPI
-    
-    * `PASS` - Pass
-    * `FAIL` - Fail
-    * `CONDITIONAL` - Conditional Pass
-     */
-  result: FPIRecordResultEnum;
+  result: FPIRecordResultEnum | BlankEnum;
   result_display: string;
   /**
    * User who performed the inspection
@@ -2244,6 +2237,11 @@ export type FPIRecordResultEnum =
    * @enum PASS, FAIL, CONDITIONAL
    */
   "PASS" | "FAIL" | "CONDITIONAL";
+export type BlankEnum =
+  /**
+   * @enum
+   */
+  unknown;
 export type GeneratedReport = {
   id: string;
   /**
@@ -2339,11 +2337,6 @@ export type HeatMapAnnotationsSeverityEnum =
    * @enum LOW, MEDIUM, HIGH, CRITICAL
    */
   "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-export type BlankEnum =
-  /**
-   * @enum
-   */
-  unknown;
 export type HeatMapAnnotationsRequest = {
   model: string;
   part: string;
@@ -2407,12 +2400,6 @@ export type SourceEnum =
    * @enum PURCHASED_LOT, OUTSIDE_PROCESS
    */
   "PURCHASED_LOT" | "OUTSIDE_PROCESS";
-export type InspectionInbox = {
-  rows: Array<InspectionInboxRow>;
-  counts: {};
-  total: number;
-  blocked: number;
-};
 export type InspectionInboxRow = {
   type: InspectionInboxTypeEnum;
   subject_kind: SubjectKindEnum;
@@ -2476,10 +2463,6 @@ export type InspectionInboxSeveritySeverityEnum =
    * @enum NORMAL, TIGHTENED, REDUCED
    */
   "NORMAL" | "TIGHTENED" | "REDUCED";
-export type InspectionInboxTypeCount = {
-  count: number;
-  oldest_age_hours: number | null;
-};
 export type IntegrationConfig = {
   id: string;
   tenant: string;
@@ -4158,6 +4141,34 @@ export type PaginatedMeasurementDefinitionList = {
     (string | null)
     | undefined;
   results: Array<MeasurementDefinition>;
+};
+export type PaginatedNotificationFeedItemList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<NotificationFeedItem>;
+};
+export type NotificationFeedItem = {
+  id: string;
+  event_code: string;
+  rendered_subject: string;
+  rendered_body_text: string;
+  rendered_action_url: string;
+  read_at: string | null;
+  created_at: string;
 };
 export type PaginatedOrdersList = {
   /**
@@ -13996,6 +14007,7 @@ const FPIRecordStatusEnum = z.enum([
   "WAIVED",
 ]);
 const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
+const BlankEnum = z.literal("");
 const FPIRecord = z.object({
   id: z.string().uuid(),
   work_order: z.string().uuid(),
@@ -14011,7 +14023,7 @@ const FPIRecord = z.object({
   shift_date: z.string().nullish(),
   status: FPIRecordStatusEnum,
   status_display: z.string(),
-  result: FPIRecordResultEnum,
+  result: z.union([FPIRecordResultEnum, BlankEnum]),
   result_display: z.string(),
   inspected_by: z.number().int().nullable(),
   inspected_by_info: z.object({}).partial().passthrough().nullable(),
@@ -14169,7 +14181,6 @@ const HeatMapAnnotationsSeverityEnum = z.enum([
   "HIGH",
   "CRITICAL",
 ]);
-const BlankEnum = z.unknown();
 const HeatMapAnnotations = z.object({
   id: z.string().uuid(),
   model: z.string().uuid(),
@@ -14295,16 +14306,6 @@ const InspectionInboxRow = z.object({
   severity: InspectionInboxSeverity.nullable(),
   resume: z.string().nullable(),
   blocked_reason: z.string().nullable(),
-});
-const InspectionInboxTypeCount = z.object({
-  count: z.number().int(),
-  oldest_age_hours: z.number().nullable(),
-});
-const InspectionInbox = z.object({
-  rows: z.array(InspectionInboxRow),
-  counts: z.record(InspectionInboxTypeCount),
-  total: z.number().int(),
-  blocked: z.number().int(),
 });
 const MaterialLotStatusEnum = z.enum([
   "RECEIVED",
@@ -18126,6 +18127,23 @@ const PatchedExternalContactRequest = z
     enabled: z.boolean(),
   })
   .partial();
+const NotificationFeedItem = z.object({
+  id: z.string().uuid(),
+  event_code: z.string(),
+  rendered_subject: z.string(),
+  rendered_body_text: z.string(),
+  rendered_action_url: z.string(),
+  read_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+});
+const PaginatedNotificationFeedItemList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(NotificationFeedItem),
+});
+const NotificationMarkAllRead = z.object({ marked: z.number().int() });
+const NotificationUnreadCount = z.object({ unread: z.number().int() });
 const RecipientStrategyEnum = z.enum(["static", "from_payload", "union"]);
 const _EscalationStep = z.object({
   order: z.number().int().gte(0).lte(2),
@@ -19467,6 +19485,7 @@ export const schemas = {
   PatchedQualityErrorsListRequest,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
+  BlankEnum,
   FPIRecord,
   PaginatedFPIRecordList,
   FPIRecordRequest,
@@ -19484,7 +19503,6 @@ export const schemas = {
   AcceptToInventoryResponse,
   HarvestedComponentScrapRequest,
   HeatMapAnnotationsSeverityEnum,
-  BlankEnum,
   HeatMapAnnotations,
   PaginatedHeatMapAnnotationsList,
   HeatMapAnnotationsRequest,
@@ -19500,8 +19518,6 @@ export const schemas = {
   InspectionInboxSeveritySeverityEnum,
   InspectionInboxSeverity,
   InspectionInboxRow,
-  InspectionInboxTypeCount,
-  InspectionInbox,
   MaterialLotStatusEnum,
   MaterialLot,
   PaginatedMaterialLotList,
@@ -19903,6 +19919,10 @@ export const schemas = {
   PaginatedExternalContactList,
   ExternalContactRequest,
   PatchedExternalContactRequest,
+  NotificationFeedItem,
+  PaginatedNotificationFeedItemList,
+  NotificationMarkAllRead,
+  NotificationUnreadCount,
   RecipientStrategyEnum,
   _EscalationStep,
   _Escalation,
@@ -27097,9 +27117,9 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "get",
     path: "/api/InspectionInbox/",
     alias: "api_InspectionInbox_list",
-    description: `The inspector&#x27;s flat task inbox: FPI first, then by urgency tone, then age. Counts carry oldest-age per type so chips reveal rot, not just volume.`,
+    description: `The inspector&#x27;s flat task inbox: FPI first, then by urgency tone, then age. Derive type-count chips (with oldest-age — counts alone hide rot) from the rows.`,
     requestFormat: "json",
-    response: z.array(InspectionInbox),
+    response: z.array(InspectionInboxRow),
   },
   {
     method: "get",
@@ -28435,6 +28455,95 @@ customer FK validation handled at the serializer layer.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/feed/",
+    alias: "api_notifications_feed_list",
+    description: `The request user&#x27;s in-app notification feed.
+
+InAppChannel does no wire delivery — the outbox row IS the notification,
+and this endpoint is the reader it was written toward. Self-scoped like
+PersonalRuleViewSet: any authenticated user reads their own rows; the
+admin-only NotificationOutbox CRUD perms deliberately don&#x27;t apply (this
+is a /me-style surface, not outbox administration).
+
+The AWARENESS surface (ephemeral, mark-read), distinct from /inbox&#x27;s
+COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedNotificationFeedItemList,
+  },
+  {
+    method: "get",
+    path: "/api/notifications/feed/:id/",
+    alias: "api_notifications_feed_retrieve",
+    description: `The request user&#x27;s in-app notification feed.
+
+InAppChannel does no wire delivery — the outbox row IS the notification,
+and this endpoint is the reader it was written toward. Self-scoped like
+PersonalRuleViewSet: any authenticated user reads their own rows; the
+admin-only NotificationOutbox CRUD perms deliberately don&#x27;t apply (this
+is a /me-style surface, not outbox administration).
+
+The AWARENESS surface (ephemeral, mark-read), distinct from /inbox&#x27;s
+COMMITMENTS (owned, due-dated work items). Kept separate by design.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NotificationFeedItem,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/feed/:id/mark-read/",
+    alias: "api_notifications_feed_mark_read_create",
+    description: `Mark one notification as read (idempotent).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NotificationFeedItem,
+  },
+  {
+    method: "post",
+    path: "/api/notifications/feed/mark-all-read/",
+    alias: "api_notifications_feed_mark_all_read_create",
+    description: `Mark every unread in-app notification as read.`,
+    requestFormat: "json",
+    response: z.object({ marked: z.number().int() }),
+  },
+  {
+    method: "get",
+    path: "/api/notifications/feed/unread-count/",
+    alias: "api_notifications_feed_unread_count_retrieve",
+    description: `Number of unread in-app notifications for the current user.`,
+    requestFormat: "json",
+    response: z.object({ unread: z.number().int() }),
   },
   {
     method: "get",

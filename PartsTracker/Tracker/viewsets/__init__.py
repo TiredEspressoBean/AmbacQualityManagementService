@@ -153,6 +153,10 @@ from .dashboard import (
 )
 
 # MES Standard ViewSets (Scheduling, Traceability, Labor)
+
+
+
+
 from .mes_standard import (
     # Work Centers
     WorkCenterViewSet,
@@ -210,6 +214,7 @@ from .life_tracking import (
 
 from .notifications import (
     NotificationEventTypeCatalogView,
+    NotificationFeedViewSet,
     TenantRuleViewSet,
     CustomerRuleViewSet,
     PersonalRuleViewSet,
@@ -230,6 +235,7 @@ from .change_control import (
 
 __all__ = [
     'NotificationEventTypeCatalogView',
+    'NotificationFeedViewSet',
     'TenantRuleViewSet',
     'CustomerRuleViewSet',
     'PersonalRuleViewSet',
