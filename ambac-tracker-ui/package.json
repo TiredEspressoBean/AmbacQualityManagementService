@@ -10,7 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "check:api": "node scripts/check-api-calls.cjs",
     "preview": "vite preview",
-    "generate-api": "bunx openapi-zod-client ../PartsTracker/schema.yaml -o src/lib/api/generated.ts --export-schemas --export-types --with-docs --additional-props-default-value false -t src/lib/api/template.hbs && node -e \"const fs=require('fs');const p='src/lib/api/generated.ts';fs.writeFileSync(p,fs.readFileSync(p,'utf8').replace('const NullEnum = z.unknown();','const NullEnum = z.null();'))\" && bunx openapi-typescript ../PartsTracker/schema.yaml -o src/lib/api/generated-types.ts",
+    "generate-api": "bunx openapi-zod-client ../PartsTracker/schema.yaml -o src/lib/api/generated.ts --export-schemas --export-types --with-docs --additional-props-default-value false -t src/lib/api/template.hbs && node scripts/fix-generated-api.cjs && bunx openapi-typescript ../PartsTracker/schema.yaml -o src/lib/api/generated-types.ts",
     "generate-types": "bunx openapi-typescript ../PartsTracker/schema.yaml -o src/lib/api/generated-types.ts",
     "audit:colors": "grep -rn --include='*.tsx' '#[0-9a-fA-F]' src/ || echo 'No hardcoded colors found'"
   },
