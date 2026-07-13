@@ -1,9 +1,9 @@
 # Moving Dev to a New Computer
 
-*(2026-07-13. Written for the current Windows 11 setup; adjust paths for
-other platforms. The critical section is §1 — everything else can be
-reconstructed from the repo, but §1's artifacts are gitignored and are lost
-if you don't copy them.)*
+*(2026-07-13, corrected against an actual move. Written for the current
+Windows 11 setup; adjust paths for other platforms. The critical section is
+§1 — everything else can be reconstructed from the repo, but §1's artifacts
+are gitignored and are lost if you don't copy them.)*
 
 ## 1. What does NOT travel with `git clone` — copy these first
 
@@ -14,22 +14,36 @@ if you don't copy them.)*
 | `.env` | repo root | Secrets: DB credentials, `DJANGO_SECRET_KEY`, **`FIELD_ENCRYPTION_KEY`**, superuser bootstrap. `.env.example` lists the keys but not your values. |
 | `ambac-tracker-ui/.env` | frontend | `VITE_LANGGRAPH_API_URL` etc. |
 | `.env.docker` | repo root | Container-flavored env values. |
-| `~/.claude/` (user) | home dir | Claude Code user settings (`settings.json`: model/effort/permission mode), keybindings, plans, session history. MCP server registrations live in `~/.claude.json` — chrome-devtools, memory (its graph data file too), railway, shadcn, assistant-ui. |
+| `mcpServers` block of `~/.claude.json` | home dir | MCP server registrations — chrome-devtools, memory, railway, shadcn, assistant-ui. **Copy the block, not the file**: `~/.claude.json` also holds `machineID` / `userID` / OAuth state that is specific to each install. Also grab the **memory server's data file** (path is in its `mcpServers.memory` entry) — that's accumulated content and nothing regenerates it. |
 | Postgres data | docker volume | Only if you want to carry the dev database instead of reseeding — see §7. Usually reseeding is cleaner. |
 | `.idea/` | repo root | PyCharm project config (run configurations), if you use them. |
 
-> **Do this now, not at move time:** `FIELD_ENCRYPTION_KEY` is currently
-> unset on the old machine, meaning an EPHEMERAL key is generated per
-> process — sessions and encrypted fields already die on every backend
-> restart. Generate a stable key, put it in `.env` on BOTH machines, and
-> that whole failure class disappears:
+> **Do NOT copy `~/.claude/` itself** — Claude Code has already recreated it
+> live on the new machine (credentials, daemon, sessions), so overwriting it
+> risks breaking auth to save a 41-byte `settings.json` you can re-set in
+> seconds. The `mcpServers` block above is the only user-level thing worth
+> carrying.
+
+> **`FIELD_ENCRYPTION_KEY` must stay identical** anywhere the same DB is
+> read, or encrypted fields become unreadable. It's pinned in `.env` as of
+> 2026-07-13; leaving it unset means an ephemeral key per process, which logs
+> everyone out on every backend restart. Fresh one if ever needed:
 > `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
 
 ## 2. Prerequisites (versions as of this writing)
 
-- **Git** (+ `gh` CLI if you use it)
+- **Git** (+ `gh` CLI if you use it). **Set your identity before the first
+  commit** — a fresh Git install has none, and the failure surfaces only
+  when you try to commit ("Author identity unknown"):
+  `git config user.name "TiredEspressoBean"` /
+  `git config user.email "isherwoc@student.osu.edu"` (repo-local; use
+  `--global` only if you want it for every repo on the machine).
 - **Docker Desktop** — the dev data layer runs in containers
-- **Python 3.13.x** (venv lives at `PartsTracker/.venv`)
+- **Python 3.13.x** (venv lives at `PartsTracker/.venv`). **Not 3.14** —
+  `requirements.txt` is pinned against 3.13. If PyCharm has already made a
+  3.14 venv at the *repo root*, delete it, build the venv where this doc
+  says, and repoint the PyCharm interpreter at it (`.idea/misc.xml` will
+  still name the old SDK).
 - **Bun 1.3.x** (frontend package manager/runner) and **Node 22.x**
   (used by `scripts/*.cjs` post-processing in `generate-api`)
 - **Claude Code** (latest — 2.1.205+; older 2.1.17x had a Windows
@@ -69,9 +83,13 @@ docker run -d --name partstracker-redis -p 6379:6379 redis:7-alpine
 ```
 
 Notes:
-- **Postgres must be the pgvector image** — the AI/doc-chunk features and a
-  chunk of the test suite (`is_vector_extension_available` skips) need the
-  `vector` extension. `ankane/pgvector` is the lighter dev-only equivalent of
+- **Postgres must be the pgvector image — this is a hard floor, not a
+  feature toggle.** Migration `0001_initial` does `CREATE EXTENSION vector`
+  and then declares a `VectorField(dimensions=768)`, so on stock `postgres:N`
+  the *first* migration dies and you never get a schema at all. (The
+  `is_vector_extension_available` skips in the test suite make it look
+  optional. It isn't — those only spare you a cascade of test errors once
+  you already have a DB.) `ankane/pgvector` is the lighter dev-only equivalent of
   the compose `Dockerfile.postgres` (which also bakes in pgaudit/pgBackRest —
   audit logging + WAL archiving that dev doesn't need).
 - **Redis here is passwordless** (dev backend connects to `localhost:6379`
@@ -100,7 +118,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate            # creates the `vector` extension; NOT the others
-python manage.py setup_database     # uuid-ossp + pg_trgm extensions, RBAC groups, audit triggers
+python manage.py setup_database     # pg_trgm extension, RBAC groups, audit triggers
 python manage.py setup_defaults     # document types + approval-workflow templates
 python manage.py seed_demo          # demo tenant, users (password demo123), demo stories
 python manage.py setup_notification_rules
@@ -108,7 +126,7 @@ python manage.py runserver          # :8000
 ```
 
 **Why `setup_database` matters:** `migrate` only creates the `vector`
-extension (migration 0001). `uuid-ossp` / `pg_trgm`, the RBAC groups, and the
+extension (migration 0001). `pg_trgm`, the RBAC groups, and the 8
 audit-immutability triggers come from `setup_database` — skip it and the app
 comes up broken in non-obvious ways. (The `docker compose --profile local`
 backend runs the equivalent on boot; the native workflow must run it by
@@ -182,6 +200,8 @@ alongside the `pg_dump`.
 
 ## 9. Known gotchas (all learned the hard way)
 
+- **Git has no identity on a new machine** — you find out at the first commit.
+  See §2.
 - **Redis down ⇒ mysterious 500s** on cache-using endpoints only (§4).
 - **Backend restart with ephemeral `FIELD_ENCRYPTION_KEY`** logs everyone
   out and orphans encrypted data — pin the key (§1).
