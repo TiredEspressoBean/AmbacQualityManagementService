@@ -360,6 +360,14 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "Production Manager", order: ["scan", "wo-queue", "quality-actions"] },
 ];
 
+/** The user's primary persona (first PERSONA_ORDER match), or null. Home uses
+ *  this to swap the whole landing for persona-specific surfaces (QA gets the
+ *  inspection task inbox instead of the block stack). */
+export function primaryPersona(user: AuthUser): string | null {
+    const names = new Set((user.groups ?? []).map((g) => g.name));
+    return PERSONA_ORDER.find((p) => names.has(p.group))?.group ?? null;
+}
+
 export function resolveHomeBlocks(user: AuthUser): BlockDef[] {
     // auth/user returns tenant-scoped groups (UserRole memberships) in `groups`
     // (TenantAwareUserDetailsSerializer) — the only group field on the payload.

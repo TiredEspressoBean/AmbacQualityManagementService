@@ -1,6 +1,7 @@
 import { useAuthUser } from "@/hooks/useAuthUser";
 import Login from "@/components/auth/Login";
-import { resolveHomeBlocks } from "@/components/home/home-blocks";
+import { primaryPersona, resolveHomeBlocks } from "@/components/home/home-blocks";
+import { QaHomePage } from "@/pages/quality/QaHomePage";
 
 export default function Home() {
     const { data: user, isLoading } = useAuthUser();
@@ -16,6 +17,13 @@ export default function Home() {
     // Logged-out: show login
     if (!user) {
         return <Login />;
+    }
+
+    // QA personas land on the inspection task inbox — a full surface, not a
+    // block stack (design doc §6: the QA landing is a task inbox).
+    const persona = primaryPersona(user);
+    if (persona === "QA Inspector" || persona === "QA Manager") {
+        return <QaHomePage user={user} />;
     }
 
     const blocks = resolveHomeBlocks(user);
